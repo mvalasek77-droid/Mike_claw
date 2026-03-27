@@ -1,0 +1,266 @@
+{
+  "generation": 3,
+  "timestamp": "2026-03-27T20:04:50.561074",
+  "target_date": "2026-03-27",
+  "predictions": {
+    "lottomax": [
+      {
+        "strategy": "score_optimized",
+        "numbers": [
+          1,
+          13,
+          20,
+          23,
+          28,
+          47,
+          49
+        ]
+      },
+      {
+        "strategy": "hot_heavy",
+        "numbers": [
+          4,
+          26,
+          28,
+          31,
+          33,
+          37,
+          40
+        ]
+      },
+      {
+        "strategy": "overdue_focused",
+        "numbers": [
+          5,
+          10,
+          20,
+          28,
+          33,
+          44,
+          48
+        ]
+      },
+      {
+        "strategy": "cross_lottery_transfer",
+        "numbers": [
+          15,
+          16,
+          19,
+          20,
+          28,
+          39,
+          44
+        ]
+      },
+      {
+        "strategy": "pattern_cluster",
+        "numbers": [
+          9,
+          10,
+          20,
+          26,
+          31,
+          44,
+          48
+        ]
+      },
+      {
+        "strategy": "variation_1",
+        "numbers": [
+          9,
+          20,
+          30,
+          32,
+          34,
+          35,
+          39
+        ]
+      },
+      {
+        "strategy": "variation_2",
+        "numbers": [
+          7,
+          11,
+          12,
+          20,
+          28,
+          39,
+          49
+        ]
+      }
+    ],
+    "lotto649": [
+      {
+        "strategy": "score_optimized",
+        "numbers": [
+          11,
+          23,
+          27,
+          28,
+          36,
+          49
+        ]
+      },
+      {
+        "strategy": "hot_heavy",
+        "numbers": [
+          19,
+          24,
+          28,
+          31,
+          33,
+          34
+        ]
+      },
+      {
+        "strategy": "overdue_focused",
+        "numbers": [
+          1,
+          18,
+          23,
+          25,
+          27,
+          49
+        ]
+      },
+      {
+        "strategy": "cross_lottery_transfer",
+        "numbers": [
+          17,
+          19,
+          21,
+          32,
+          33,
+          41
+        ]
+      },
+      {
+        "strategy": "pattern_cluster",
+        "numbers": [
+          1,
+          19,
+          26,
+          27,
+          37,
+          49
+        ]
+      },
+      {
+        "strategy": "variation_1",
+        "numbers": [
+          2,
+          23,
+          30,
+          31,
+          35,
+          46
+        ]
+      },
+      {
+        "strategy": "variation_2",
+        "numbers": [
+          4,
+          15,
+          23,
+          34,
+          47,
+          49
+        ]
+      }
+    ],
+    "bc49": [
+      {
+        "strategy": "score_optimized",
+        "numbers": [
+          8,
+          17,
+          21,
+          26,
+          31,
+          44
+        ]
+      },
+      {
+        "strategy": "hot_heavy",
+        "numbers": [
+          6,
+          18,
+          19,
+          26,
+          30,
+          31
+        ]
+      },
+      {
+        "strategy": "overdue_focused",
+        "numbers": [
+          8,
+          19,
+          20,
+          23,
+          28,
+          30
+        ]
+      },
+      {
+        "strategy": "cross_lottery_transfer",
+        "numbers": [
+          10,
+          22,
+          23,
+          30,
+          39,
+          41
+        ]
+      },
+      {
+        "strategy": "pattern_cluster",
+        "numbers": [
+          9,
+          14,
+          19,
+          20,
+          31,
+          44
+        ]
+      },
+      {
+        "strategy": "variation_1",
+        "numbers": [
+          9,
+          18,
+          19,
+          20,
+          29,
+          46
+        ]
+      },
+      {
+        "strategy": "variation_2",
+        "numbers": [
+          18,
+          19,
+          20,
+          21,
+          23,
+          28
+        ]
+      }
+    ]
+  },
+  "weights": {
+    "hot": 3.3075,
+    "warm": 2.0,
+    "cold": 0.5,
+    "overdue": 2.7563,
+    "pair_bonus": 1.6538,
+    "triplet_bonus": 2.0,
+    "adjacent_bonus": 1.8,
+    "alternating_link": 3.1587,
+    "prior_draw_link": 4.0,
+    "cross_lottery": 1.5,
+    "positional": 1.2,
+    "day_before": 2.0,
+    "transition": 1.9845
+  }
+}

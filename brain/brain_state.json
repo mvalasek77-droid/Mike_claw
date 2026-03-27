@@ -1,0 +1,44 @@
+{
+  "generation": 3,
+  "total_predictions": 266,
+  "total_hits": 76,
+  "best_accuracy": 0.3458646616541353,
+  "stagnation_counter": 0,
+  "mutation_rate": 0.02,
+  "strategy_state": {
+    "weights": {
+      "hot": 3.3075000000000006,
+      "warm": 2.0,
+      "cold": 0.5,
+      "overdue": 2.75625,
+      "pair_bonus": 1.6537500000000003,
+      "triplet_bonus": 2.0,
+      "adjacent_bonus": 1.8,
+      "alternating_link": 3.1587499999999995,
+      "prior_draw_link": 4.0,
+      "cross_lottery": 1.5,
+      "positional": 1.2,
+      "day_before": 2.0,
+      "transition": 1.9845000000000002
+    },
+    "generation": 2,
+    "accuracy_history": []
+  },
+  "accuracy_log": [
+    {
+      "generation": 2,
+      "accuracy": 0.22556390977443608,
+      "total_hits": 30,
+      "total_numbers": 133,
+      "timestamp": "2026-03-27T20:04:50.488150"
+    },
+    {
+      "generation": 3,
+      "accuracy": 0.3458646616541353,
+      "total_hits": 46,
+      "total_numbers": 133,
+      "timestamp": "2026-03-27T20:04:50.542666"
+    }
+  ],
+  "saved_at": "2026-03-27T20:04:50.561395"
+}
