@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LOTTERY PATTERN BOT - THE OBSESSIVE LEARNER
+PROJECT DOUBLE DIP - THE OBSESSIVE LEARNER
 ============================================
 
 A self-evolving lottery pattern analysis system that:
@@ -39,7 +39,7 @@ console = Console()
 def print_banner():
     banner = """
     ╔══════════════════════════════════════════════════════════════╗
-    ║            LOTTERY PATTERN BOT v1.0                         ║
+    ║            PROJECT DOUBLE DIP v1.0                           ║
     ║            THE OBSESSIVE PATTERN HUNTER                     ║
     ║                                                             ║
     ║   I analyze. I learn. I adapt. I predict.                   ║
@@ -123,7 +123,7 @@ def show_status():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Lottery Pattern Bot - The Obsessive Learner")
+    parser = argparse.ArgumentParser(description="Project Double Dip - The Obsessive Learner")
     parser.add_argument("--cycles", type=int, default=10,
                         help="Number of evolution cycles to run (default: 10)")
     parser.add_argument("--single", action="store_true",
