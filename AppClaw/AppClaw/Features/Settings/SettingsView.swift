@@ -49,7 +49,7 @@ struct SettingsView: View {
                                 Image(systemName: "exclamationmark.triangle")
                                     .foregroundColor(.yellow)
                                     .font(.caption)
-                                Text("Enter your Anthropic API key to use MikeClaw")
+                                Text("Enter your Anthropic API key to use AppClaw")
                                     .font(.caption)
                                     .foregroundColor(.yellow)
                             }

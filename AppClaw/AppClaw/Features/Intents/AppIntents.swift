@@ -2,9 +2,9 @@ import AppIntents
 import Foundation
 
 // MARK: - App Shortcuts Provider
-// Registers MikeClaw's capabilities with Siri and Shortcuts
+// Registers AppClaw's capabilities with Siri and Shortcuts
 
-struct MikeClawShortcuts: AppShortcutsProvider {
+struct AppClawShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: AskClaudeIntent(),
@@ -103,7 +103,7 @@ struct IntentResultView: View {
             HStack {
                 Image(systemName: "pawprint.fill")
                     .foregroundColor(.green)
-                Text("MikeClaw")
+                Text("AppClaw")
                     .font(.caption.bold())
                     .foregroundColor(.green)
             }
@@ -135,7 +135,7 @@ enum IntentError: Error, CustomLocalizedStringResourceConvertible {
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .missingAPIKey:
-            return "Add your Anthropic API key in MikeClaw Settings to use this shortcut."
+            return "Add your Anthropic API key in AppClaw Settings to use this shortcut."
         case .responseEmpty:
             return "No response was received from Claude."
         }

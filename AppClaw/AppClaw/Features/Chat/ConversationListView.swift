@@ -15,7 +15,7 @@ struct ConversationListView: View {
                     conversationList
                 }
             }
-            .navigationTitle("MikeClaw")
+            .navigationTitle("AppClaw")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -38,7 +38,7 @@ struct ConversationListView: View {
                 .foregroundColor(.green.opacity(0.8))
 
             VStack(spacing: 8) {
-                Text("MikeClaw")
+                Text("AppClaw")
                     .font(.largeTitle.bold())
                     .foregroundColor(.white)
                 Text("Agentic AI on iPhone")

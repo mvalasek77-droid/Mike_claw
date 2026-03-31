@@ -1,4 +1,4 @@
-# MikeClaw — Agentic AI for iPhone
+# AppClaw — Agentic AI for iPhone
 
 A native iOS app bringing the **Openclaw** agentic experience to iPhone. Built with SwiftUI, Claude API, MCP (Model Context Protocol), and Apple's App Intents framework.
 
@@ -6,7 +6,7 @@ A native iOS app bringing the **Openclaw** agentic experience to iPhone. Built w
 
 ## What It Does
 
-MikeClaw is a **Claude-powered agentic assistant** that runs natively on iPhone. It can:
+AppClaw is a **Claude-powered agentic assistant** that runs natively on iPhone. It can:
 
 - **Have conversations** with Claude (claude-sonnet-4-6 by default)
 - **Use tools** via MCP servers you configure — search the web, query databases, call APIs
@@ -51,7 +51,7 @@ iPhone
 - Anthropic API key from [console.anthropic.com](https://console.anthropic.com)
 
 ### Build
-1. Open `MikeClaw.xcodeproj` in Xcode
+1. Open `AppClaw.xcodeproj` in Xcode
 2. Set your Team under Signing & Capabilities
 3. Build & run on your device (⌘R)
 4. In the app, go to **Settings** → enter your Anthropic API key
@@ -66,10 +66,10 @@ The server must respond to JSON-RPC `tools/list` and `tools/call` methods.
 ## Siri / Shortcuts Integration
 
 Once installed, ask Siri:
-> *"Ask MikeClaw what's the weather in Vancouver"*
-> *"Hey MikeClaw, summarize my last meeting notes"*
+> *"Ask AppClaw what's the weather in Vancouver"*
+> *"Hey AppClaw, summarize my last meeting notes"*
 
-Or open the Shortcuts app and add the **Ask Claude** action from MikeClaw.
+Or open the Shortcuts app and add the **Ask Claude** action from AppClaw.
 
 ---
 
@@ -77,7 +77,7 @@ Or open the Shortcuts app and add the **Ask Claude** action from MikeClaw.
 
 This app is designed around the signals from Apple's upcoming WWDC direction:
 
-| Apple Signal | MikeClaw Implementation |
+| Apple Signal | AppClaw Implementation |
 |---|---|
 | Siri as standalone chat | App Intents with phrase-based triggers |
 | Ambient intelligence | Background Shortcut execution, no app open required |
@@ -91,9 +91,9 @@ This app is designed around the signals from Apple's upcoming WWDC direction:
 ## File Structure
 
 ```
-MikeClaw/
+AppClaw/
 ├── App/
-│   ├── MikeClawApp.swift          — @main entry point
+│   ├── AppClawApp.swift          — @main entry point
 │   └── RootView.swift             — tab navigation
 ├── Models/
 │   ├── Message.swift              — Message, Conversation, ToolUse
@@ -118,7 +118,7 @@ MikeClaw/
 
 ---
 
-## Extending MikeClaw
+## Extending AppClaw
 
 ### Add a new App Intent (for new Siri phrases)
 ```swift
@@ -131,7 +131,7 @@ struct MyCustomIntent: AppIntent {
         return .result(dialog: "Done!")
     }
 }
-// Register in MikeClawShortcuts.appShortcuts
+// Register in AppClawShortcuts.appShortcuts
 ```
 
 ### Add a built-in tool (without MCP)
