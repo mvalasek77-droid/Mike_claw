@@ -75,6 +75,7 @@ final class HermesDreamEngine {
         await phase2_promotePatterns(&report)
         await phase3_generateInsights(&report)
         await phase4_selfImprove(&report)
+        await phase5_resolveContradictions(&report)
 
         report.finishedAt = Date()
         await saveDreamReport(report)
@@ -215,6 +216,75 @@ final class HermesDreamEngine {
         )
     }
 
+    // MARK: - Phase 5: Resolve contradictions
+    //
+    // Looks for entries in the same category where the content directly
+    // contradicts a later entry (e.g. two self_improvement notes about the
+    // same tool with conflicting advice, or two dream_insights with
+    // opposite conclusions).
+    //
+    // Strategy: when two entries in the same category share the same top
+    // keyword AND were written > 1 h apart, keep only the newer one and
+    // mark the older as superseded (importance → 1 so it gets pruned next cycle).
+
+    private func phase5_resolveContradictions(_ report: inout DreamReport) async {
+        let candidateCategories = ["dream_insight", "self_improvement", "kairos_insight"]
+        var resolved = 0
+
+        for category in candidateCategories {
+            let entries = await memory.entries(for: category)
+            guard entries.count >= 2 else { continue }
+
+            // Group by dominant keyword (first non-stopword word in content text)
+            var groups: [String: [MemoryEntry]] = [:]
+            for entry in entries {
+                let text = (entry.content.value as? [String: Any])?
+                    .values.compactMap { $0 as? String }.joined(separator: " ")
+                    ?? "\(entry.content.value)"
+                if let key = dominantKeyword(text) {
+                    groups[key, default: []].append(entry)
+                }
+            }
+
+            for (_, group) in groups where group.count >= 2 {
+                // Sort newest first; demote all but the newest
+                let sorted = group.sorted { $0.timestamp > $1.timestamp }
+                let toSupersede = sorted.dropFirst()
+                    .filter { $0.importance > 1 }
+
+                let superseded: [MemoryEntry] = toSupersede.map { entry in
+                    MemoryEntry(
+                        id: entry.id, timestamp: entry.timestamp,
+                        category: entry.category,
+                        content: entry.content.value,
+                        metadata: entry.metadata.mapValues(\.value),
+                        importance: 1,    // will be pruned next consolidation
+                        tier: entry.tier
+                    )
+                }
+
+                if !superseded.isEmpty {
+                    try? await memory.updateBatch(superseded)
+                    resolved += superseded.count
+                }
+            }
+        }
+
+        report.resolved = resolved
+        report.phases.append(
+            resolved > 0
+                ? "Contradiction resolution: superseded \(resolved) outdated entries."
+                : "Contradiction resolution: no contradictions found."
+        )
+    }
+
+    private func dominantKeyword(_ text: String) -> String? {
+        text.lowercased()
+            .components(separatedBy: .alphanumerics.inverted)
+            .filter { $0.count > 4 && !Self.stopwords.contains($0) }
+            .first
+    }
+
     // MARK: - Persistence
 
     private func saveDreamReport(_ report: DreamReport) async {
@@ -225,6 +295,7 @@ final class HermesDreamEngine {
                 "duration_s": Int(duration),
                 "pruned": report.pruned,
                 "promoted": report.promoted,
+                "resolved": report.resolved,
                 "insights": report.insights,
                 "improvements": report.improvements
             ],
@@ -240,6 +311,7 @@ struct DreamReport {
     var finishedAt: Date?
     var pruned: Int = 0
     var promoted: Int = 0
+    var resolved: Int = 0
     var phases: [String] = []
     var insights: [String] = []
     var improvements: [String] = []

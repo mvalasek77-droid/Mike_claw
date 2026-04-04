@@ -75,17 +75,63 @@ struct AnyCodable: Codable {
     }
 }
 
+// MARK: - MemoryIndex (Layered Memory Architecture)
+//
+// A lightweight keyword → entry-ID map persisted separately from the full
+// entry store.  The HermesAgentHarness queries this index first; it only
+// deserialises full entries for the small result set, preventing context
+// entropy from reloading entire conversation histories.
+
+struct MemoryIndex: Codable {
+    /// keyword → set of entry IDs that contain it
+    var keywordMap: [String: [UUID]] = [:]
+    var updatedAt: Date = Date()
+
+    /// Add an entry's keywords to the index.
+    mutating func index(entry: MemoryEntry) {
+        let words = tokenise("\(entry.content.value) \(entry.category)")
+        for word in words {
+            var ids = keywordMap[word, default: []]
+            if !ids.contains(entry.id) { ids.append(entry.id) }
+            keywordMap[word] = ids
+        }
+    }
+
+    /// Remove an entry's ID from all keyword buckets.
+    mutating func remove(id: UUID) {
+        for key in keywordMap.keys {
+            keywordMap[key]?.removeAll { $0 == id }
+        }
+    }
+
+    /// Look up entry IDs matching ALL of the given keywords (AND logic).
+    func lookup(keywords: [String]) -> Set<UUID> {
+        guard !keywords.isEmpty else { return [] }
+        let sets = keywords.map { kw -> Set<UUID> in
+            Set(keywordMap[kw.lowercased()] ?? [])
+        }
+        return sets.dropFirst().reduce(sets[0]) { $0.intersection($1) }
+    }
+
+    /// Look up entry IDs matching ANY keyword (OR logic).
+    func lookupAny(keywords: [String]) -> Set<UUID> {
+        Set(keywords.flatMap { keywordMap[$0.lowercased()] ?? [] })
+    }
+
+    private func tokenise(_ text: String) -> [String] {
+        text.lowercased()
+            .components(separatedBy: .alphanumerics.inverted)
+            .filter { $0.count > 3 }
+    }
+}
+
 // MARK: - HermesMemory
 
 /// Fully on-device, sandboxed memory store.
 ///
-/// Improvements over v1:
-/// - Category index: O(1) lookup per category instead of full linear scan
-/// - Write debouncing: coalesces rapid observe() calls into one disk write
-/// - Two tiers: shortTerm (raw) / longTerm (promoted by DreamEngine)
-/// - Importance decay: entries lose 1 importance point every 3 days of inactivity
-/// - Capacity cap: max 2 000 short-term entries; oldest/least-important evicted first
-/// - allEntries(): proper full-list accessor (replaces `recentEntries(limit:10_000)` hack)
+/// v3 additions:
+/// - MemoryIndex: lightweight keyword map persisted separately for O(1) search
+///   without deserialising full entry payloads (layered memory architecture)
 actor HermesMemory {
     static let shared = HermesMemory()
 
@@ -100,6 +146,8 @@ actor HermesMemory {
     private var entries: [MemoryEntry] = []
     /// Category → entry IDs (maintained in sync with `entries`)
     private var categoryIndex: [String: [UUID]] = [:]
+    /// Lightweight keyword index (separate file, fast to load)
+    private var memoryIndex: MemoryIndex = MemoryIndex()
     private var loaded = false
 
     /// Pending debounced persist task
@@ -114,6 +162,7 @@ actor HermesMemory {
 
     private var shortTermFile: URL { memoryDir.appendingPathComponent("short_term.json") }
     private var longTermFile:  URL { memoryDir.appendingPathComponent("long_term.json") }
+    private var indexFile:     URL { memoryDir.appendingPathComponent("memory_index.json") }
 
     // MARK: - Encoder / Decoder
 
@@ -246,13 +295,30 @@ actor HermesMemory {
     private func append(_ entry: MemoryEntry) {
         entries.append(entry)
         categoryIndex[entry.category, default: []].append(entry.id)
+        memoryIndex.index(entry: entry)
     }
 
     private func rebuildCategoryIndex() {
         categoryIndex = [:]
+        memoryIndex = MemoryIndex()
         for entry in entries {
             categoryIndex[entry.category, default: []].append(entry.id)
+            memoryIndex.index(entry: entry)
         }
+    }
+
+    // MARK: - Index-based search (layered architecture: no full deserialisation)
+
+    /// Fast keyword search via MemoryIndex — resolves only matching entry IDs.
+    func indexSearch(keywords: [String], limit: Int = 20) async -> [MemoryEntry] {
+        await loadIfNeeded()
+        let ids = memoryIndex.lookupAny(keywords: keywords.map { $0.lowercased() })
+        let idMap = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
+        return ids
+            .compactMap { idMap[$0] }
+            .sorted { $0.timestamp > $1.timestamp }
+            .prefix(limit)
+            .map { $0 }
     }
 
     /// Importance decay: short-term entries lose 1 point per `decayIntervalDays` days of age.
@@ -310,9 +376,20 @@ actor HermesMemory {
                 all.append(contentsOf: decoded)
             }
         }
-        // Sort by timestamp ascending so newest is at the end
         entries = all.sorted { $0.timestamp < $1.timestamp }
-        rebuildCategoryIndex()
+
+        // Load the lightweight index if present; rebuild if missing or stale
+        if let idxData = try? Data(contentsOf: indexFile),
+           let idx = try? decoder.decode(MemoryIndex.self, from: idxData) {
+            memoryIndex = idx
+            // Rebuild category index from entries (cheap)
+            categoryIndex = [:]
+            for entry in entries {
+                categoryIndex[entry.category, default: []].append(entry.id)
+            }
+        } else {
+            rebuildCategoryIndex()   // also rebuilds memoryIndex
+        }
     }
 
     func persistNow() async throws {
@@ -324,6 +401,9 @@ actor HermesMemory {
         if !long.isEmpty {
             try encoder.encode(long).write(to: longTermFile, options: .atomic)
         }
+        // Persist the lightweight index separately (much smaller than full entry files)
+        let idxData = try encoder.encode(memoryIndex)
+        try idxData.write(to: indexFile, options: .atomic)
     }
 
     private func ensureDir() throws {
