@@ -145,8 +145,19 @@ actor HermesAgentHarness {
             if result.success { toolResults[tool.id] = result.value }
         }
 
-        // Build a response and append to transcript
-        let response = synthesiseResponse(role: role, task: task, toolResults: toolResults)
+        // Build a response via the LLM (Hermes context injected inside HermesLLMClient)
+        let llmMessages = transcript.map {
+            LLMMessage(role: $0.role == .user ? .user : .assistant, content: $0.content)
+        }
+        let llmRequest = LLMRequest(
+            systemPrompt: roleInstructions(role),
+            messages: llmMessages,
+            tools: pool,
+            maxTokens: min(4096, budget.remaining),
+            role: role
+        )
+        let llmResponse = try await HermesLLMClient.shared.complete(llmRequest)
+        let response = llmResponse.content
         append(message: TranscriptMessage(role: .assistant, content: response))
 
         // Dual-level verification
@@ -235,22 +246,6 @@ actor HermesAgentHarness {
 
     private func append(message: TranscriptMessage) {
         transcript.append(message)
-    }
-
-    // MARK: - Response synthesis
-
-    private func synthesiseResponse(role: AgentRole,
-                                    task: String,
-                                    toolResults: [String: Any]) -> String {
-        // Bug fix #7: assert in debug so this stub is never silently shipped.
-        // TODO: replace with real LLM API call using HermesSessionState.tokenBudget.
-        #if DEBUG
-        // assertionFailure("synthesiseResponse is a stub — wire up your LLM API here.")
-        #endif
-        let toolSummary = toolResults.isEmpty
-            ? "No tools returned results."
-            : toolResults.keys.joined(separator: ", ")
-        return "[\(role.rawValue.uppercased())] Task: \(task). Tools used: \(toolSummary)."
     }
 
     // MARK: - Dual-level verification
