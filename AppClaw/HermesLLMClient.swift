@@ -221,50 +221,97 @@ enum LLMError: Error, LocalizedError {
 }
 
 // MARK: - Apple Foundation Models bridge (iOS 26+)
+//
+// Requires:
+//   1. Xcode with iOS 26 SDK (Xcode 26 beta or later)
+//   2. Add FoundationModels.framework to target → Frameworks, Libraries,
+//      and Embedded Content (it ships with the iOS 26 SDK, no entitlement needed)
+//   3. Deployment target can stay at iOS 17+ — all API calls are guarded
+//      with #available(iOS 26.0, *) at runtime
 
-/// Wraps the FoundationModels framework so the rest of the app stays
-/// compatible with older iOS versions.
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
+
 enum AppleFoundationModelsBridge {
 
+    // MARK: - Availability
+
+    /// True when Apple Intelligence is supported AND enabled on this device.
     static var isAvailable: Bool {
+        #if canImport(FoundationModels)
         if #available(iOS 26.0, *) {
-            // Check Apple Intelligence is enabled on this device
-            return _checkAppleIntelligenceAvailable()
+            switch SystemLanguageModel.default.availability {
+            case .available:   return true
+            case .unavailable: return false   // .deviceNotEligible / .appleIntelligenceNotEnabled / .modelNotReady
+            }
         }
+        #endif
         return false
     }
 
-    @available(iOS 26.0, *)
+    // MARK: - Completion
+
     static func complete(_ request: LLMRequest,
                          stream: StreamHandler?) async throws -> LLMResponse {
-        // Import FoundationModels at runtime to avoid linker issues on iOS < 26
-        // Full implementation:
-        //
-        //   import FoundationModels
-        //
-        //   let model = SystemLanguageModel.default
-        //   let session = LanguageModelSession(model: model)
-        //   let prompt = buildPrompt(request)
-        //
-        //   var fullText = ""
-        //   for try await partial in session.streamResponse(to: prompt) {
-        //       stream?(partial.text)
-        //       fullText += partial.text
-        //   }
-        //   return LLMResponse(content: fullText, promptTokens: ...,
-        //                      completionTokens: ...,
-        //                      provider: .appleFoundationModels,
-        //                      toolCallsRequested: [])
-        //
-        // Uncomment the above once FoundationModels is in your SDK target.
-        throw LLMError.noProviderConfigured   // remove when SDK linked
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *) {
+            return try await _complete26(request, stream: stream)
+        }
+        #endif
+        throw LLMError.noProviderConfigured
     }
 
-    private static func _checkAppleIntelligenceAvailable() -> Bool {
-        // Availability check via ProcessInfo or FoundationModels.SystemLanguageModel.availability
-        // Returns false on unsupported hardware (pre-A17 Pro / pre-M1) even on iOS 26
-        return false   // placeholder until FoundationModels SDK linked
+    // MARK: - iOS 26 implementation (compiled only when SDK available)
+
+    #if canImport(FoundationModels)
+    @available(iOS 26.0, *)
+    private static func _complete26(_ request: LLMRequest,
+                                    stream: StreamHandler?) async throws -> LLMResponse {
+        guard case .available = SystemLanguageModel.default.availability else {
+            throw LLMError.noProviderConfigured
+        }
+
+        // One session per agent run — holds conversation state internally.
+        let session = LanguageModelSession(instructions: request.systemPrompt)
+        let composed = composePrompt(from: request.messages)
+
+        var fullText = ""
+        let estimatedPromptTokens = composed.count / 4
+
+        if let handler = stream {
+            for try await partial in session.streamResponse(to: composed) {
+                handler(partial.content)
+                fullText += partial.content
+            }
+        } else {
+            let response = try await session.respond(to: composed)
+            fullText = response.content
+        }
+
+        return LLMResponse(
+            content: fullText,
+            promptTokens: estimatedPromptTokens,
+            completionTokens: fullText.count / 4,
+            provider: .appleFoundationModels,
+            toolCallsRequested: []
+        )
     }
+
+    private static func composePrompt(from messages: [LLMMessage]) -> String {
+        messages
+            .filter { $0.role != .system }
+            .map { msg -> String in
+                switch msg.role {
+                case .user:      return "User: \(msg.content)"
+                case .assistant: return "Assistant: \(msg.content)"
+                case .system:    return ""
+                }
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+    }
+    #endif
 }
 
 // MARK: - Claude API bridge
