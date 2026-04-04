@@ -68,6 +68,11 @@ struct WorkflowState: Codable {
         stepCheckpoints[name] = AnyCodable(result)
         currentStepIndex += 1
         updatedAt = Date()
+        // Bug fix #5: only mark completed when totalSteps > 0 AND we've
+        // reached the end — prevents instant completion when totalSteps is 0.
+        if totalSteps > 0 {
+            status = currentStepIndex >= totalSteps ? .completed : .running
+        }
     }
 }
 
@@ -139,7 +144,6 @@ actor HermesSessionState {
         encoder.outputFormatting = .prettyPrinted
         decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        // Start with defaults; loadFromDisk() will replace if a saved snapshot exists
         snapshot = SessionSnapshot(
             conversation: .fresh(),
             workflow: .idle(),
@@ -147,6 +151,9 @@ actor HermesSessionState {
             savedAt: Date(),
             appVersion: Bundle.main.shortVersion
         )
+        // Bug fix #4: load persisted state immediately on init so callers
+        // never accidentally start with a blank session after a crash.
+        Task { await self.loadFromDisk() }
     }
 
     // MARK: - Lifecycle
@@ -206,9 +213,8 @@ actor HermesSessionState {
     }
 
     func advanceWorkflowStep(name: String, result: Any) async throws {
+        // Bug fix #5: status transition is now handled inside advanceStep itself.
         snapshot.workflow.advanceStep(name: name, result: result)
-        snapshot.workflow.status = snapshot.workflow.currentStepIndex >= snapshot.workflow.totalSteps
-            ? .completed : .running
         try await saveToDisk()
     }
 

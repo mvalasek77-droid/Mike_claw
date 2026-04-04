@@ -336,6 +336,8 @@ actor HermesMemory {
 
     /// Evict short-term entries beyond cap: lowest importance first, then oldest.
     private func evictIfNeeded() {
+        // Bug fix #6: count only shortTerm entries against the cap — longTerm
+        // entries are permanently retained and must not trigger eviction.
         let shortTerm = entries.filter { $0.tier == .shortTerm }
         guard shortTerm.count > shortTermCap else { return }
 

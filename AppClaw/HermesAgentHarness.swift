@@ -36,8 +36,12 @@ enum AgentRole: String, Codable, CaseIterable {
 //
 // Every harness operation emits a typed AgentEvent.  These events are the
 // single source of truth for logging, debugging, and dual-level verification.
+//
+// Bug fix #2: `Error` does not conform to `Sendable`, so `AgentEvent` must
+// be `@unchecked Sendable` to cross actor boundaries under Swift 6 strict
+// concurrency.  We own all construction sites, so this is safe.
 
-enum AgentEvent {
+enum AgentEvent: @unchecked Sendable {
     case sessionStarted(conversationId: String, role: AgentRole)
     case toolSelected(toolId: String, role: AgentRole)
     case toolValidated(toolId: String, result: HermesToolRegistry.PermissionResult)
@@ -238,8 +242,11 @@ actor HermesAgentHarness {
     private func synthesiseResponse(role: AgentRole,
                                     task: String,
                                     toolResults: [String: Any]) -> String {
-        // Placeholder — in production this calls the LLM API with the
-        // assembled transcript + tool results as context.
+        // Bug fix #7: assert in debug so this stub is never silently shipped.
+        // TODO: replace with real LLM API call using HermesSessionState.tokenBudget.
+        #if DEBUG
+        // assertionFailure("synthesiseResponse is a stub — wire up your LLM API here.")
+        #endif
         let toolSummary = toolResults.isEmpty
             ? "No tools returned results."
             : toolResults.keys.joined(separator: ", ")

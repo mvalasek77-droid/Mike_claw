@@ -72,6 +72,8 @@ actor HermesKairos {
     private var lastActivity: Date = Date()
     private var observationLog: [KairosObservation] = []
     private var pendingWrites: [(category: String, content: Any, metadata: [String: Any])] = []
+    // Bug fix #3: store the loop Task so pause() can cancel it and stop the chain.
+    private var loopTask: Task<Void, Never>?
 
     // Config
     private let idleBudgetSeconds: TimeInterval = 15
@@ -92,6 +94,9 @@ actor HermesKairos {
     /// Pause Kairos (e.g. when app backgrounds — DreamEngine takes over instead).
     func pause() {
         isRunning = false
+        // Bug fix #3: cancel the stored task so the recursive chain terminates.
+        loopTask?.cancel()
+        loopTask = nil
     }
 
     /// Signal that the user is active — resets the 15-second idle budget.
@@ -102,10 +107,11 @@ actor HermesKairos {
     // MARK: - Idle check loop
 
     private func scheduleNextCheck() {
-        Task { [weak self] in
+        // Bug fix #3: store the task so pause() can cancel it.
+        loopTask = Task { [weak self] in
             // Poll every 5 s; fire the full observation when idle budget is met
             try? await Task.sleep(nanoseconds: 5_000_000_000)
-            guard let self, await self.isRunning else { return }
+            guard !Task.isCancelled, let self, await self.isRunning else { return }
             await self.tick()
             await self.scheduleNextCheck()
         }
