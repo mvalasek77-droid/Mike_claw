@@ -3,60 +3,73 @@ import BackgroundTasks
 
 // MARK: - HermesDreamEngine
 //
-// "Dream mode" — runs while the app is backgrounded (typically at night).
-// It consolidates memory, promotes important patterns, prunes noise,
-// and writes a brief self-improvement log so Hermes wakes up smarter.
+// "Dream mode" — runs while the app is backgrounded, targeting ~2 am local time.
 //
-// Register the BGProcessingTask identifier "com.openclaw.hermes.dream"
-// in Info.plist under BGTaskSchedulerPermittedIdentifiers.
+// Improvements over v1:
+// - Batch memory updates: all promotions in one persist call (was N separate calls)
+// - Smart 2 am scheduling: aims for the next 2 am local time, not "5 hours from now"
+// - Proper English stopword list for topic insight generation
+// - Removed unused `dreamLog: [DreamEntry]`
+// - `handleDream` no longer captures `self` strongly in nested closure
+// - `phase4_selfImprove` scoped to recent 24 h, not all-time
 
 final class HermesDreamEngine {
     static let shared = HermesDreamEngine()
 
     private let taskIdentifier = "com.openclaw.hermes.dream"
     private let memory = HermesMemory.shared
-    private var dreamLog: [DreamEntry] = []
-
-    // How many hours of inactivity before dreaming starts
-    private let dreamAfterHours: Double = 5
 
     private init() {}
 
-    // MARK: - Registration (call from AppDelegate / @main)
+    // MARK: - Registration
 
-    /// Register the background processing task. Call once at app launch.
     func registerBackgroundTask() {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: taskIdentifier, using: nil) { task in
-            guard let processingTask = task as? BGProcessingTask else { return }
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: taskIdentifier, using: nil) { [weak self] task in
+            guard let self, let processingTask = task as? BGProcessingTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
             self.handleDream(task: processingTask)
         }
     }
 
-    /// Schedule the next dream session. Call when the app moves to background.
+    /// Call when the app moves to background. Schedules the next dream at ~2 am local.
     func scheduleNextDream() {
         let request = BGProcessingTaskRequest(identifier: taskIdentifier)
         request.requiresNetworkConnectivity = false
         request.requiresExternalPower = false
-        request.earliestBeginDate = Date(timeIntervalSinceNow: dreamAfterHours * 3600)
+        request.earliestBeginDate = nextDreamDate()
         try? BGTaskScheduler.shared.submit(request)
+    }
+
+    /// Next occurrence of 2 am local time. If it's already past 2 am today, uses tomorrow.
+    private func nextDreamDate() -> Date {
+        let cal = Calendar.current
+        var components = cal.dateComponents([.year, .month, .day], from: Date())
+        components.hour = 2
+        components.minute = 0
+        components.second = 0
+        let todayAt2 = cal.date(from: components) ?? Date()
+        // If we've passed today's 2 am, aim for tomorrow
+        return todayAt2 > Date() ? todayAt2 : todayAt2.addingTimeInterval(86400)
     }
 
     // MARK: - Dream execution
 
     private func handleDream(task: BGProcessingTask) {
-        let dreamTask = Task {
+        let dreamTask = Task { [weak self] in
+            guard let self else { return }
             await self.runDreamCycle()
             task.setTaskCompleted(success: true)
-            self.scheduleNextDream()     // schedule the next night
+            self.scheduleNextDream()
         }
         task.expirationHandler = { dreamTask.cancel() }
     }
 
-    /// Full dream cycle. Can also be triggered manually (e.g., from Settings for testing).
+    /// Full dream cycle. Also callable manually (e.g., from a Debug/Settings screen).
     @discardableResult
     func runDreamCycle() async -> DreamReport {
-        let start = Date()
-        var report = DreamReport(startedAt: start)
+        var report = DreamReport(startedAt: Date())
 
         await phase1_consolidate(&report)
         await phase2_promotePatterns(&report)
@@ -68,13 +81,13 @@ final class HermesDreamEngine {
         return report
     }
 
-    // MARK: - Phase 1: Consolidate (prune old/low-value memories)
+    // MARK: - Phase 1: Consolidate
 
     private func phase1_consolidate(_ report: inout DreamReport) async {
-        let before = await memory.recentEntries(limit: 10_000).count
+        let before = await memory.allEntries().count
         do {
             try await memory.consolidate(importanceThreshold: 2, keepWindow: 7 * 86400)
-            let after = await memory.recentEntries(limit: 10_000).count
+            let after = await memory.allEntries().count
             report.pruned = max(0, before - after)
             report.phases.append("Pruned \(report.pruned) low-importance entries.")
         } catch {
@@ -82,107 +95,134 @@ final class HermesDreamEngine {
         }
     }
 
-    // MARK: - Phase 2: Promote patterns (bump importance of recurring content)
+    // MARK: - Phase 2: Promote patterns (single batch persist)
 
     private func phase2_promotePatterns(_ report: inout DreamReport) async {
-        let all = await memory.recentEntries(limit: 5_000)
-        var promoted = 0
+        let all = await memory.allEntries()
 
-        // Count category frequency
-        let freq = Dictionary(grouping: all, by: \.category)
-            .mapValues(\.count)
+        let freq = Dictionary(grouping: all, by: \.category).mapValues(\.count)
+
+        // Collect all mutations first, then write once
+        var updated: [MemoryEntry] = []
+        var promotedIDs: [UUID] = []
 
         for entry in all {
             let count = freq[entry.category, default: 0]
-            // If a category appears > 5 times, treat it as a recurring pattern → promote
             if count > 5 && entry.importance < 4 {
-                var updated = entry
-                updated = MemoryEntry(
-                    id: entry.id,
-                    timestamp: entry.timestamp,
-                    category: entry.category,
-                    content: entry.content.value,
-                    metadata: entry.metadata.mapValues(\.value),
-                    importance: min(entry.importance + 1, 5)
+                var e = entry
+                e = MemoryEntry(
+                    id: e.id, timestamp: e.timestamp, category: e.category,
+                    content: e.content.value,
+                    metadata: e.metadata.mapValues(\.value),
+                    importance: min(e.importance + 1, 5),
+                    tier: e.tier
                 )
-                try? await memory.update(updated)
-                promoted += 1
+                updated.append(e)
+            }
+            // Promote high-importance entries to long-term tier
+            if entry.importance >= 4 && entry.tier == .shortTerm {
+                promotedIDs.append(entry.id)
             }
         }
-        report.promoted = promoted
-        report.phases.append("Promoted \(promoted) recurring-pattern entries.")
+
+        do {
+            if !updated.isEmpty  { try await memory.updateBatch(updated) }
+            if !promotedIDs.isEmpty { try await memory.promoteToLongTerm(promotedIDs) }
+        } catch {
+            report.phases.append("Promotion error: \(error)")
+        }
+
+        report.promoted = updated.count
+        report.phases.append("Promoted \(updated.count) entries; moved \(promotedIDs.count) to long-term.")
     }
 
-    // MARK: - Phase 3: Generate insights (summarise recent context)
+    // MARK: - Phase 3: Generate insights
+
+    private static let stopwords: Set<String> = [
+        "the","and","for","are","but","not","you","all","can","had","her","was","one",
+        "our","out","day","get","has","him","his","how","man","new","now","old","see",
+        "two","way","who","boy","did","its","let","put","say","she","too","use","that",
+        "with","have","this","will","your","from","they","know","want","been","good",
+        "much","some","time","very","when","come","here","just","like","long","make",
+        "many","more","only","over","such","take","than","them","well","were","what",
+        "also","into","most","other","said","then","there","these","think","those",
+        "about","after","being","could","every","going","great","their","where","which",
+        "would","should","would","because","through"
+    ]
 
     private func phase3_generateInsights(_ report: inout DreamReport) async {
         let recentMessages = await memory.entries(for: "user_message")
-            .suffix(50)
-            .compactMap { $0.content.value as? [String: Any] }
-            .compactMap { $0["text"] as? String }
+            .prefix(100)
+            .compactMap { ($0.content.value as? [String: Any])?["text"] as? String }
 
         guard !recentMessages.isEmpty else {
             report.phases.append("No recent messages to analyse.")
             return
         }
 
-        // Build a simple word-frequency insight (on-device, no LLM call needed)
         let words = recentMessages.joined(separator: " ")
             .lowercased()
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { $0.count > 4 }   // ignore short words
+            .components(separatedBy: .alphanumerics.inverted)
+            .filter { $0.count > 3 && !Self.stopwords.contains($0) }
+
         let freq = Dictionary(words.map { ($0, 1) }, uniquingKeysWith: +)
-        let topWords = freq.sorted { $0.value > $1.value }.prefix(5).map(\.key)
+        let topWords = freq.sorted { $0.value > $1.value }.prefix(8).map(\.key)
 
-        let insight = "Top recurring topics: \(topWords.joined(separator: ", "))."
+        guard !topWords.isEmpty else { return }
+
+        let insight = "Recurring topics in recent conversations: \(topWords.joined(separator: ", "))."
         report.insights.append(insight)
-        report.phases.append("Generated topic insight: \(insight)")
+        report.phases.append("Topic insight: \(insight)")
 
-        // Store the insight in memory with high importance
         try? await memory.observe(
             category: "dream_insight",
-            content: ["insight": insight, "basedOn": recentMessages.count],
+            content: ["insight": insight, "basedOn": recentMessages.count, "topWords": topWords],
             metadata: ["importance": 4]
         )
     }
 
-    // MARK: - Phase 4: Self-improve (write a clean-up note for next session)
+    // MARK: - Phase 4: Self-improve
 
     private func phase4_selfImprove(_ report: inout DreamReport) async {
-        // Surface patterns that look like repeated errors → store as a reminder
+        // Scope to last 24 h only — all-time error counts are noisy
+        let since = Date().addingTimeInterval(-86400)
         let errors = await memory.entries(for: "tool_exec")
+            .filter { $0.timestamp >= since }
             .filter {
-                if let d = $0.content.value as? [String: Any], let ok = d["success"] as? Bool {
-                    return !ok
-                }
-                return false
+                guard let d = $0.content.value as? [String: Any],
+                      let ok = d["success"] as? Bool else { return false }
+                return !ok
             }
 
-        if errors.count >= 3 {
-            let toolNames = errors.compactMap {
-                ($0.content.value as? [String: Any])?["tool"] as? String
-            }
-            let counts = Dictionary(toolNames.map { ($0, 1) }, uniquingKeysWith: +)
-            let worst = counts.sorted { $0.value > $1.value }.prefix(2).map { "\($0.key) (\($0.value)x)" }
-            let note = "Heads-up: repeated failures in \(worst.joined(separator: ", ")). Consider reviewing these tools."
-
-            report.improvements.append(note)
-            try? await memory.observe(
-                category: "self_improvement",
-                content: ["note": note],
-                metadata: ["importance": 5]
-            )
+        guard errors.count >= 3 else {
+            report.phases.append("Self-improvement: no recurring failures in last 24 h.")
+            return
         }
-        report.phases.append("Self-improvement scan complete.")
+
+        let toolNames = errors.compactMap { ($0.content.value as? [String: Any])?["tool"] as? String }
+        let counts = Dictionary(toolNames.map { ($0, 1) }, uniquingKeysWith: +)
+        let worst = counts.sorted { $0.value > $1.value }.prefix(2)
+            .map { "\($0.key) (\($0.value)x)" }
+        let note = "Heads-up: repeated failures in \(worst.joined(separator: ", ")) over the last 24 h. Consider reviewing these tools."
+
+        report.improvements.append(note)
+        report.phases.append("Self-improvement note written.")
+
+        try? await memory.observe(
+            category: "self_improvement",
+            content: ["note": note, "errorCount": errors.count],
+            metadata: ["importance": 5]
+        )
     }
 
     // MARK: - Persistence
 
     private func saveDreamReport(_ report: DreamReport) async {
+        let duration = report.finishedAt.map { $0.timeIntervalSince(report.startedAt) } ?? 0
         try? await memory.observe(
             category: "dream_report",
             content: [
-                "duration_s": report.finishedAt.flatMap { $0.timeIntervalSince(report.startedAt) } ?? 0,
+                "duration_s": Int(duration),
                 "pruned": report.pruned,
                 "promoted": report.promoted,
                 "insights": report.insights,
@@ -203,9 +243,4 @@ struct DreamReport {
     var phases: [String] = []
     var insights: [String] = []
     var improvements: [String] = []
-}
-
-struct DreamEntry {
-    let date: Date
-    let summary: String
 }
