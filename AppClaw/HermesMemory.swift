@@ -314,11 +314,10 @@ actor HermesMemory {
         await loadIfNeeded()
         let ids = memoryIndex.lookupAny(keywords: keywords.map { $0.lowercased() })
         let idMap = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
-        return ids
+        return Array(ids
             .compactMap { idMap[$0] }
             .sorted { $0.timestamp > $1.timestamp }
-            .prefix(limit)
-            .map { $0 }
+            .prefix(limit))
     }
 
     /// Importance decay: short-term entries lose 1 point per `decayIntervalDays` days of age.

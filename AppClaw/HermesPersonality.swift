@@ -172,7 +172,8 @@ actor HermesPersonality {
         let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
         let base = pool[day % pool.count]
         // Personalise if we have a name
-        return name.isEmpty ? base : base.replacingOccurrences(of: "!", with: "\(name)!", range: base.range(of: "!")!)
+        guard !name.isEmpty, let excl = base.range(of: "!") else { return base }
+        return base.replacingOccurrences(of: "!", with: "\(name)!", range: excl)
     }
 
     // MARK: - Relationship depth label

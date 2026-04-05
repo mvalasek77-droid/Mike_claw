@@ -124,9 +124,7 @@ final class ChatViewModel: ObservableObject {
         isTyping = true
         let msgID = UUID()
         streamingID = msgID
-        let assistantMsg = ChatMessage(id: msgID, role: .assistant, text: "", isStreaming: true)
-        messages.append(assistantMsg)
-        let idx = messages.count - 1
+        messages.append(ChatMessage(id: msgID, role: .assistant, text: "", isStreaming: true))
 
         // Build LLM request from pre-captured history
         let request = LLMRequest(
@@ -137,36 +135,36 @@ final class ChatViewModel: ObservableObject {
             role: .execute
         )
 
-        // Stream tokens via callback — update message on MainActor
+        // Stream tokens — look up message by UUID each time to avoid stale index
         let capturedID = msgID
         do {
             let response = try await HermesLLMClient.shared.complete(
                 request: request,
                 stream: { [weak self] token in
                     Task { @MainActor [weak self] in
-                        guard let self, self.streamingID == capturedID else { return }
-                        var current = self.messages[idx]
-                        current.text += token
-                        self.messages[idx] = current
+                        guard let self, self.streamingID == capturedID,
+                              let i = self.messages.firstIndex(where: { $0.id == capturedID })
+                        else { return }
+                        self.messages[i].text += token
                     }
                 }
             )
-            // Ensure final text is set (non-streaming providers return full text at once)
-            var final = messages[idx]
-            if final.text.isEmpty { final.text = response.content }
-            final.isStreaming = false
-            messages[idx] = final
+            // Non-streaming providers return full text in response.content
+            if let i = messages.firstIndex(where: { $0.id == capturedID }) {
+                if messages[i].text.isEmpty { messages[i].text = response.content }
+                messages[i].isStreaming = false
+            }
         } catch {
-            var errMsg = messages[idx]
-            errMsg.text = "Sorry, I had trouble responding. Try again?"
-            errMsg.isStreaming = false
-            messages[idx] = errMsg
+            if let i = messages.firstIndex(where: { $0.id == capturedID }) {
+                messages[i].text = "Sorry, I had trouble responding. Try again?"
+                messages[i].isStreaming = false
+            }
         }
 
         streamingID = nil
         isTyping = false
 
-        let finalText = messages[idx].text
+        let finalText = messages.first(where: { $0.id == capturedID })?.text ?? ""
         await HermesIntegration.shared.logAssistantResponse(finalText)
         learnFromAssistantMessage(finalText)
     }

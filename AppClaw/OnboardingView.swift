@@ -424,10 +424,12 @@ private struct ProviderStep: View {
 
                     // API key entry
                     VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
-                        Link("→ Get your free API key at console.anthropic.com",
-                             destination: URL(string: "https://console.anthropic.com")!)
-                            .font(OCFont.caption())
-                            .foregroundColor(.OC.primary)
+                        if let consoleURL = URL(string: "https://console.anthropic.com") {
+                            Link("→ Get your free API key at console.anthropic.com",
+                                 destination: consoleURL)
+                                .font(OCFont.caption())
+                                .foregroundColor(.OC.primary)
+                        }
 
                         HStack {
                             Group {
