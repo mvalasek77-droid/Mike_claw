@@ -150,7 +150,7 @@ def build_pdf(output_path, source_dir):
     story.append(Spacer(1, 40*mm))
     story.append(Paragraph("🐻 OpenClaw", cover_style))
     story.append(Spacer(1, 4*mm))
-    story.append(Paragraph("AppClaw — Hermes Agent Layer", sub_style))
+    story.append(Paragraph("AppClaw — Hermes Agent + Personalization Layer", sub_style))
     story.append(Spacer(1, 6*mm))
     story.append(HRFlowable(width="80%", thickness=1, color=ACCENT, spaceAfter=6*mm))
     story.append(Paragraph("Complete Swift Source Code", meta_style))
@@ -160,17 +160,27 @@ def build_pdf(output_path, source_dir):
     # File index table
     tdata = [["File", "Description"]]
     descriptions = {
-        "BearLogoView.swift":       "OpenClaw bear head logo (SwiftUI)",
-        "HermesTheme.swift":        "OpenClaw colour palette & typography",
-        "HermesMemory.swift":       "On-device memory store + MemoryIndex",
-        "HermesIntegration.swift":  "High-level logging API",
-        "HermesContextTracker.swift":"Sliding-window topic & intent detector",
-        "HermesDreamEngine.swift":  "Autodream consolidation (5 phases)",
+        "AppClawApp.swift":           "@main entry point, BGTask, onboarding gate",
+        "BearLogoView.swift":         "OpenClaw bear head logo (SwiftUI Path)",
+        "HermesTheme.swift":          "OpenClaw colour palette & typography",
+        "HermesMemory.swift":         "On-device memory store + MemoryIndex",
+        "HermesIntegration.swift":    "High-level logging API",
+        "HermesContextTracker.swift": "Sliding-window topic & intent detector",
+        "HermesDreamEngine.swift":    "Autodream consolidation (5 phases)",
         "HermesProactiveEngine.swift":"Always-on suggestion engine",
-        "HermesKairos.swift":       "15s budget proactive observer",
-        "HermesToolRegistry.swift": "Metadata-first registry + 18-module security",
-        "HermesSessionState.swift": "Crash-safe state, workflow, token budget",
-        "HermesAgentHarness.swift": "Agent roles, harness, typed event stream",
+        "HermesKairos.swift":         "15s budget proactive observer",
+        "HermesToolRegistry.swift":   "Metadata-first registry + 18-module security",
+        "HermesSessionState.swift":   "Crash-safe state, workflow, token budget",
+        "HermesAgentHarness.swift":   "Agent roles, harness, typed event stream",
+        "HermesLLMClient.swift":      "Foundation Models + Claude API routing",
+        "HermesPrivacyGate.swift":    "Guideline 5.1.1 consent gate",
+        "UserPersona.swift":          "User profile, interests, companion mode",
+        "HermesPersonality.swift":    "Persona prompt builder + affirmations",
+        "HermesInterestEngine.swift": "Interest-based notification scheduling",
+        "HermesCronScheduler.swift":  "Cron jobs + NL schedule parser",
+        "HermesAutomation.swift":     "Spending tracker + app URL automation",
+        "OnboardingView.swift":       "6-step animated onboarding flow",
+        "ChatView.swift":             "Streaming chat UI (OpenClaw theme)",
     }
     for f in swift_files:
         name = os.path.basename(f)
