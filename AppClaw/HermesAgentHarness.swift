@@ -149,8 +149,10 @@ actor HermesAgentHarness {
         let llmMessages = transcript.map {
             LLMMessage(role: $0.role == .user ? .user : .assistant, content: $0.content)
         }
+        // Pass a minimal base prompt — HermesLLMClient.buildSystemPrompt()
+        // enriches it with role instructions + full Hermes context automatically.
         let llmRequest = LLMRequest(
-            systemPrompt: roleInstructions(role),
+            systemPrompt: "You are AppClaw, a helpful and proactive AI assistant.",
             messages: llmMessages,
             tools: pool,
             maxTokens: min(4096, budget.remaining),

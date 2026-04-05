@@ -1,0 +1,811 @@
+import SwiftUI
+import Combine
+
+// MARK: - ChatMessage
+
+struct ChatMessage: Identifiable, Equatable {
+    let id: UUID
+    let role: MessageRole
+    var text: String
+    let timestamp: Date
+    var isStreaming: Bool
+
+    enum MessageRole { case user, assistant, system }
+
+    init(id: UUID = UUID(), role: MessageRole, text: String,
+         timestamp: Date = Date(), isStreaming: Bool = false) {
+        self.id = id; self.role = role; self.text = text
+        self.timestamp = timestamp; self.isStreaming = isStreaming
+    }
+}
+
+// MARK: - ChatViewModel
+
+@MainActor
+final class ChatViewModel: ObservableObject {
+    @Published var messages:    [ChatMessage] = []
+    @Published var inputText:   String = ""
+    @Published var isTyping:    Bool   = false
+    @Published var suggestions: [String] = []
+    @Published var affirmation: String?  = nil
+    @Published var showAffirmation: Bool = false
+    @Published var quickActions: [(title: String, icon: String, action: () -> Void)] = []
+
+    private var streamingID: UUID?
+    private var suggestionTask: Task<Void, Never>?
+    private let persona: UserPersona
+    private let sessionId: String = UUID().uuidString
+
+    init(persona: UserPersona) {
+        self.persona = persona
+        Task { await setup() }
+    }
+
+    // MARK: - Setup
+
+    private func setup() async {
+        // Daily affirmation
+        let aff = await HermesPersonality.shared.todaysAffirmation(for: persona)
+        let lastShown = UserDefaults.standard.object(forKey: "lastAffirmationDate") as? Date
+        let today = Calendar.current.startOfDay(for: Date())
+        if lastShown == nil || Calendar.current.startOfDay(for: lastShown!) < today {
+            affirmation = aff
+            showAffirmation = true
+        }
+
+        // Greeting if first launch today
+        if messages.isEmpty {
+            let name = persona.userName.isEmpty ? "" : " \(persona.userName)"
+            let hour = Calendar.current.component(.hour, from: Date())
+            let greeting: String
+            switch hour {
+            case 5..<12:  greeting = "Good morning\(name)! ☀️ What's on your mind?"
+            case 12..<17: greeting = "Hey\(name)! 👋 How's your afternoon going?"
+            case 17..<21: greeting = "Good evening\(name)! 🌇 How was your day?"
+            default:       greeting = "Hey\(name) 🌙 Up late? What's going on?"
+            }
+            messages.append(ChatMessage(role: .assistant, text: greeting))
+        }
+
+        // Load suggestions
+        await refreshSuggestions()
+
+        // Build quick actions
+        buildQuickActions()
+    }
+
+    // MARK: - Send message
+
+    func send() async {
+        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        inputText = ""
+
+        // Append user message
+        messages.append(ChatMessage(role: .user, text: text))
+
+        // Snapshot history now (before assistant placeholder is added)
+        let history = buildHistory()
+
+        // Log to memory
+        await HermesIntegration.shared.logUserMessage(text, in: sessionId)
+        Kairos.shared.userDidAct()
+
+        // Learn facts and interests from this message
+        learnFromMessage(text)
+
+        // Check for automation intent
+        if let task = await HermesAutomation.shared.detectTask(from: text) {
+            await HermesAutomation.shared.saveTask(task)
+        }
+
+        // Detect cron schedule intent
+        let lower = text.lowercased()
+        if lower.contains("remind") || lower.contains("every day") ||
+           lower.contains("schedule") || lower.contains("every week") {
+            if let schedule = HermesCronScheduler.parseSchedule(from: text) {
+                let job = CronJob(title: String(text.prefix(50)), body: text, schedule: schedule)
+                await HermesCronScheduler.shared.add(job)
+            }
+        }
+
+        // Stream assistant response
+        await streamResponse(history: history)
+
+        // Refresh suggestions in background
+        suggestionTask?.cancel()
+        suggestionTask = Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            await refreshSuggestions()
+        }
+    }
+
+    private func streamResponse(history: [(role: String, content: String)]) async {
+        isTyping = true
+        let msgID = UUID()
+        streamingID = msgID
+        let assistantMsg = ChatMessage(id: msgID, role: .assistant, text: "", isStreaming: true)
+        messages.append(assistantMsg)
+        let idx = messages.count - 1
+
+        // Build LLM request from pre-captured history
+        let request = LLMRequest(
+            systemPrompt: await buildPersonaSystemPrompt(),
+            messages: history.map { LLMMessage(role: $0.role == "user" ? .user : .assistant, content: $0.content) },
+            tools: [],
+            maxTokens: 1024,
+            role: .execute
+        )
+
+        // Stream tokens via callback — update message on MainActor
+        let capturedID = msgID
+        do {
+            let response = try await HermesLLMClient.shared.complete(
+                request: request,
+                stream: { [weak self] token in
+                    Task { @MainActor [weak self] in
+                        guard let self, self.streamingID == capturedID else { return }
+                        var current = self.messages[idx]
+                        current.text += token
+                        self.messages[idx] = current
+                    }
+                }
+            )
+            // Ensure final text is set (non-streaming providers return full text at once)
+            var final = messages[idx]
+            if final.text.isEmpty { final.text = response.content }
+            final.isStreaming = false
+            messages[idx] = final
+        } catch {
+            var errMsg = messages[idx]
+            errMsg.text = "Sorry, I had trouble responding. Try again?"
+            errMsg.isStreaming = false
+            messages[idx] = errMsg
+        }
+
+        streamingID = nil
+        isTyping = false
+
+        let finalText = messages[idx].text
+        await HermesIntegration.shared.logAssistantResponse(finalText)
+        learnFromAssistantMessage(finalText)
+    }
+
+    private func buildPersonaSystemPrompt() async -> String {
+        await HermesPersonality.shared.buildPersonaPrompt(for: persona)
+    }
+
+    private func buildHistory() -> [(role: String, content: String)] {
+        messages.suffix(20).compactMap { msg -> (role: String, content: String)? in
+            switch msg.role {
+            case .user:      return (role: "user",      content: msg.text)
+            case .assistant: return (role: "assistant", content: msg.text)
+            case .system:    return nil
+            }
+        }
+    }
+
+    // MARK: - Learning
+
+    private func learnFromMessage(_ text: String) {
+        let facts = HermesPersonality.shared.extractFactsSync(from: text, persona: persona)
+        for (key, value) in facts {
+            persona.learn(key: key, value: value)
+        }
+        Task { @MainActor in
+            let interests = await HermesInterestEngine.shared.detectInterests(in: text)
+            for interest in interests {
+                if !self.persona.interests.contains(where: { $0.id == interest.id }) {
+                    self.persona.interests.append(interest)
+                }
+            }
+            self.persona.save()
+        }
+    }
+
+    private func learnFromAssistantMessage(_ text: String) {
+        // Extract facts the assistant may have stated about the user
+        let facts = HermesPersonality.shared.extractFactsSync(from: text, persona: persona)
+        for (key, value) in facts { persona.learn(key: key, value: value) }
+    }
+
+    // MARK: - Suggestions
+
+    private func refreshSuggestions() async {
+        let raw = await HermesIntegration.shared.pollSuggestions()
+        suggestions = raw.prefix(4).map { $0.title }
+    }
+
+    // MARK: - Quick actions
+
+    private func buildQuickActions() {
+        quickActions = [
+            (title: "Log Spending", icon: "dollarsign.circle.fill", action: {
+                Task { @MainActor in
+                    self.inputText = "I want to log some spending"
+                }
+            }),
+            (title: "My Schedule", icon: "calendar.badge.clock", action: {
+                Task { @MainActor in
+                    self.inputText = "What do I have coming up?"
+                }
+            }),
+            (title: "Open App", icon: "apps.iphone", action: {
+                Task { @MainActor in
+                    self.inputText = "Open Starbucks for me"
+                }
+            }),
+            (title: "Remind Me", icon: "bell.fill", action: {
+                Task { @MainActor in
+                    self.inputText = "Remind me to "
+                }
+            }),
+        ]
+    }
+
+    // MARK: - Dismiss affirmation
+
+    func dismissAffirmation() {
+        withAnimation { showAffirmation = false }
+        UserDefaults.standard.set(Date(), forKey: "lastAffirmationDate")
+    }
+}
+
+// MARK: - HermesPersonality sync helper (for use on MainActor)
+
+extension HermesPersonality {
+    /// Synchronous wrapper — safe to call from non-async context on MainActor.
+    nonisolated func extractFactsSync(from text: String, persona: UserPersona) -> [String: String] {
+        // We can't call actor methods synchronously, so replicate the logic here
+        var facts: [String: String] = [:]
+        let lower = text.lowercased()
+        let nbaTeams = ["lakers","celtics","warriors","bulls","nets","knicks","heat","spurs","bucks"]
+        let nflTeams = ["chiefs","patriots","cowboys","packers","eagles","49ers","ravens","broncos"]
+        for team in nbaTeams where lower.contains(team) { facts["favorite_nba_team"] = team.capitalized }
+        for team in nflTeams where lower.contains(team) { facts["favorite_nfl_team"] = team.capitalized }
+        if lower.contains("starbucks")  { facts["likes_starbucks"] = "true" }
+        if lower.contains("pizza")      { facts["likes_pizza"]     = "true" }
+        if lower.contains("gym") || lower.contains("workout") { facts["is_active"] = "true" }
+        if lower.contains("work from home") || lower.contains("wfh") { facts["works_from_home"] = "true" }
+        return facts
+    }
+}
+
+// MARK: - ChatView
+
+struct ChatView: View {
+    @ObservedObject var persona: UserPersona
+    @StateObject private var vm: ChatViewModel
+    @Namespace private var bottomID
+    @State private var showSettings = false
+    @State private var showAutomation = false
+
+    init(persona: UserPersona) {
+        self.persona = persona
+        _vm = StateObject(wrappedValue: ChatViewModel(persona: persona))
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.OC.background.ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    // Affirmation banner
+                    if vm.showAffirmation, let aff = vm.affirmation {
+                        AffirmationBanner(text: aff, onDismiss: vm.dismissAffirmation)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+
+                    // Suggestion chips
+                    if !vm.suggestions.isEmpty {
+                        SuggestionChipsView(suggestions: vm.suggestions) { chip in
+                            vm.inputText = chip
+                            Task { await vm.send() }
+                        }
+                    }
+
+                    // Message list
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                ForEach(vm.messages) { msg in
+                                    MessageBubble(message: msg, persona: persona)
+                                        .id(msg.id)
+                                }
+                                if vm.isTyping {
+                                    TypingIndicator(name: persona.assistantName)
+                                }
+                                Color.clear.frame(height: 1).id("bottom")
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                        }
+                        .onChange(of: vm.messages.count) { _ in
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                proxy.scrollTo("bottom", anchor: .bottom)
+                            }
+                        }
+                        .onChange(of: vm.isTyping) { _ in
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                proxy.scrollTo("bottom", anchor: .bottom)
+                            }
+                        }
+                    }
+
+                    // Quick actions row
+                    QuickActionsBar(actions: vm.quickActions)
+
+                    // Input bar
+                    InputBar(text: $vm.inputText) {
+                        Task { await vm.send() }
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    HStack(spacing: 8) {
+                        BearLogoView(size: 32)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(persona.assistantName.isEmpty ? "Claw" : persona.assistantName)
+                                .font(OCFont.headline)
+                                .foregroundColor(Color.OC.primaryText)
+                            Text("Always here for you")
+                                .font(OCFont.caption)
+                                .foregroundColor(Color.OC.secondaryText)
+                        }
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .foregroundColor(Color.OC.secondaryText)
+                            .font(.system(size: 18))
+                    }
+                }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView(persona: persona)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - MessageBubble
+
+struct MessageBubble: View {
+    let message: ChatMessage
+    let persona: UserPersona
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            if message.role == .user { Spacer(minLength: 60) }
+
+            if message.role == .assistant {
+                BearLogoView(size: 28)
+                    .padding(.bottom, 4)
+            }
+
+            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
+                Text(message.text.isEmpty && message.isStreaming ? "..." : message.text)
+                    .font(OCFont.body)
+                    .foregroundColor(message.role == .user ? Color.OC.background : Color.OC.primaryText)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(bubbleBackground)
+                    .clipShape(BubbleShape(isUser: message.role == .user))
+
+                Text(timeString(message.timestamp))
+                    .font(OCFont.caption)
+                    .foregroundColor(Color.OC.secondaryText)
+                    .padding(.horizontal, 4)
+            }
+
+            if message.role == .assistant { Spacer(minLength: 60) }
+        }
+    }
+
+    @ViewBuilder
+    private var bubbleBackground: some View {
+        if message.role == .user {
+            Color.OC.primary
+        } else {
+            Color.OC.surface
+        }
+    }
+
+    private func timeString(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.timeStyle = .short
+        return f.string(from: date)
+    }
+}
+
+// MARK: - BubbleShape
+
+struct BubbleShape: Shape {
+    let isUser: Bool
+    let r: CGFloat = 18
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let tl = isUser ? r : 4
+        let tr = isUser ? 4 : r
+        let bl = r
+        let br = r
+
+        p.move(to: CGPoint(x: rect.minX + tl, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX - tr, y: rect.minY))
+        p.addArc(center: CGPoint(x: rect.maxX - tr, y: rect.minY + tr),
+                 radius: tr, startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - br))
+        p.addArc(center: CGPoint(x: rect.maxX - br, y: rect.maxY - br),
+                 radius: br, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
+        p.addLine(to: CGPoint(x: rect.minX + bl, y: rect.maxY))
+        p.addArc(center: CGPoint(x: rect.minX + bl, y: rect.maxY - bl),
+                 radius: bl, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + tl))
+        p.addArc(center: CGPoint(x: rect.minX + tl, y: rect.minY + tl),
+                 radius: tl, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+        p.closeSubpath()
+        return p
+    }
+}
+
+// MARK: - TypingIndicator
+
+struct TypingIndicator: View {
+    let name: String
+    @State private var phase = 0
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            BearLogoView(size: 28).padding(.bottom, 4)
+            HStack(spacing: 5) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .fill(Color.OC.secondaryText)
+                        .frame(width: 7, height: 7)
+                        .scaleEffect(phase == i ? 1.3 : 0.85)
+                        .animation(
+                            .easeInOut(duration: 0.4)
+                            .repeatForever()
+                            .delay(Double(i) * 0.15),
+                            value: phase
+                        )
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.OC.surface)
+            .clipShape(Capsule())
+            Spacer(minLength: 60)
+        }
+        .onAppear {
+            withAnimation { phase = 1 }
+        }
+    }
+}
+
+// MARK: - AffirmationBanner
+
+struct AffirmationBanner: View {
+    let text: String
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "heart.fill")
+                .foregroundColor(Color.OC.accent)
+                .font(.system(size: 16))
+            Text(text)
+                .font(OCFont.footnote)
+                .foregroundColor(Color.OC.primaryText)
+                .lineLimit(2)
+            Spacer()
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .foregroundColor(Color.OC.secondaryText)
+                    .font(.system(size: 12, weight: .semibold))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            LinearGradient(
+                colors: [Color.OC.accent.opacity(0.18), Color.OC.surface],
+                startPoint: .leading, endPoint: .trailing
+            )
+        )
+        .overlay(
+            Rectangle()
+                .frame(width: 3)
+                .foregroundColor(Color.OC.accent),
+            alignment: .leading
+        )
+    }
+}
+
+// MARK: - SuggestionChipsView
+
+struct SuggestionChipsView: View {
+    let suggestions: [String]
+    let onTap: (String) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(suggestions, id: \.self) { chip in
+                    Button {
+                        onTap(chip)
+                    } label: {
+                        Text(chip)
+                            .font(OCFont.caption)
+                            .foregroundColor(Color.OC.primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.OC.primary.opacity(0.12))
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(Color.OC.primary.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+        }
+    }
+}
+
+// MARK: - QuickActionsBar
+
+struct QuickActionsBar: View {
+    let actions: [(title: String, icon: String, action: () -> Void)]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(actions.indices, id: \.self) { i in
+                    let action = actions[i]
+                    Button {
+                        action.action()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: action.icon)
+                                .font(.system(size: 13))
+                            Text(action.title)
+                                .font(OCFont.caption)
+                        }
+                        .foregroundColor(Color.OC.secondaryText)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Color.OC.surface)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(Color.OC.border, lineWidth: 1)
+                        )
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+        }
+        .background(Color.OC.background)
+    }
+}
+
+// MARK: - InputBar
+
+struct InputBar: View {
+    @Binding var text: String
+    let onSend: () -> Void
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack(alignment: .leading) {
+                if text.isEmpty {
+                    Text("Message \(Image(systemName: "pawprint.fill"))…")
+                        .font(OCFont.body)
+                        .foregroundColor(Color.OC.secondaryText.opacity(0.6))
+                        .padding(.horizontal, 14)
+                }
+                TextField("", text: $text, axis: .vertical)
+                    .font(OCFont.body)
+                    .foregroundColor(Color.OC.primaryText)
+                    .lineLimit(1...5)
+                    .padding(.horizontal, 14)
+                    .focused($focused)
+                    .submitLabel(.send)
+                    .onSubmit {
+                        if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            onSend()
+                        }
+                    }
+            }
+            .frame(minHeight: 44)
+            .background(Color.OC.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(focused ? Color.OC.primary.opacity(0.5) : Color.OC.border, lineWidth: 1)
+            )
+
+            Button(action: onSend) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                     ? Color.OC.secondaryText : Color.OC.background)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? Color.OC.surface
+                        : Color.OC.primary
+                    )
+                    .clipShape(Circle())
+            }
+            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .animation(.easeInOut(duration: 0.15), value: text)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.OC.background)
+    }
+}
+
+// MARK: - SettingsView (inline stub — full version in SettingsView.swift)
+
+struct SettingsView: View {
+    @ObservedObject var persona: UserPersona
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                // Profile
+                Section("Profile") {
+                    HStack {
+                        Text("Your Name")
+                            .foregroundColor(Color.OC.primaryText)
+                        Spacer()
+                        Text(persona.userName.isEmpty ? "Not set" : persona.userName)
+                            .foregroundColor(Color.OC.secondaryText)
+                    }
+                    HStack {
+                        Text("Assistant Name")
+                            .foregroundColor(Color.OC.primaryText)
+                        Spacer()
+                        Text(persona.assistantName.isEmpty ? "Claw" : persona.assistantName)
+                            .foregroundColor(Color.OC.secondaryText)
+                    }
+                }
+
+                // Communication style
+                Section("Communication Style") {
+                    ForEach(CommunicationStyle.allCases) { style in
+                        HStack {
+                            Text(style.rawValue.capitalized)
+                                .foregroundColor(Color.OC.primaryText)
+                            Spacer()
+                            if persona.style == style {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(Color.OC.primary)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { persona.style = style; persona.save() }
+                    }
+                }
+
+                // Interests
+                Section("Interests (\(persona.interests.count))") {
+                    ForEach(persona.interests) { interest in
+                        HStack {
+                            Text(interest.emoji)
+                            Text(interest.label)
+                                .foregroundColor(Color.OC.primaryText)
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { interest.notificationsEnabled },
+                                set: { val in
+                                    if let idx = persona.interests.firstIndex(where: { $0.id == interest.id }) {
+                                        persona.interests[idx].notificationsEnabled = val
+                                        persona.save()
+                                        Task {
+                                            await HermesInterestEngine.shared
+                                                .scheduleInterestNotifications(for: persona)
+                                        }
+                                    }
+                                }
+                            ))
+                            .labelsHidden()
+                            .tint(Color.OC.primary)
+                        }
+                    }
+                    if persona.interests.isEmpty {
+                        Text("No interests yet — chat to add some!")
+                            .foregroundColor(Color.OC.secondaryText)
+                            .font(OCFont.footnote)
+                    }
+                }
+
+                // Affirmations
+                Section("Daily Affirmation") {
+                    Toggle("Enabled", isOn: $persona.dailyAffirmationsEnabled)
+                        .tint(Color.OC.primary)
+                        .onChange(of: persona.dailyAffirmationsEnabled) { _ in
+                            persona.save()
+                            Task {
+                                await HermesPersonality.shared.scheduleDailyAffirmation(for: persona)
+                            }
+                        }
+                    if persona.dailyAffirmationsEnabled {
+                        DatePicker("Time", selection: $persona.affirmationTime, displayedComponents: .hourAndMinute)
+                            .foregroundColor(Color.OC.primaryText)
+                            .onChange(of: persona.affirmationTime) { _ in
+                                persona.save()
+                                Task {
+                                    await HermesPersonality.shared.scheduleDailyAffirmation(for: persona)
+                                }
+                            }
+                    }
+                }
+
+                // About
+                Section("About") {
+                    HStack {
+                        Text("Version")
+                            .foregroundColor(Color.OC.primaryText)
+                        Spacer()
+                        Text("1.0.0")
+                            .foregroundColor(Color.OC.secondaryText)
+                    }
+                    HStack {
+                        Text("Memory entries")
+                            .foregroundColor(Color.OC.primaryText)
+                        Spacer()
+                        MemoryCountBadge()
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color.OC.background)
+            .listRowBackground(Color.OC.surface)
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(Color.OC.primary)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - MemoryCountBadge
+
+struct MemoryCountBadge: View {
+    @State private var count = 0
+
+    var body: some View {
+        Text("\(count)")
+            .foregroundColor(Color.OC.secondaryText)
+            .task {
+                let entries = await HermesMemory.shared.allEntries()
+                count = entries.count
+            }
+    }
+}
+
+// MARK: - Kairos shorthand
+
+private typealias Kairos = HermesKairos
