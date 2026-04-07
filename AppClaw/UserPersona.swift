@@ -148,12 +148,27 @@ final class UserPersona: ObservableObject, Codable {
     // Onboarding Q&A answers (used to seed first conversation)
     @Published var onboardingAnswers: [String] = []
 
+    // MARK: - Companion selection
+    /// ID of the chosen companion (e.g. "luna", "dante").
+    @Published var selectedCompanionID: String = "luna" {
+        didSet { UserDefaults.standard.set(selectedCompanionID, forKey: "selectedCompanionID") }
+    }
+
+    // MARK: - Tracking permissions
+    @Published var trackingPermissions: TrackingPermissions = TrackingPermissions()
+
+    // MARK: - Computed companion accessor
+    var selectedCompanion: CompanionPersonality {
+        CompanionPersonality.find(id: selectedCompanionID) ?? .luna
+    }
+
     // MARK: - Codable (manual because of @Published)
 
     enum CodingKeys: String, CodingKey {
         case userName, assistantName, style, gender, interests,
              trackedHabits, onboardingComplete, dailyAffirmationsEnabled,
-             affirmationTime, learnedFacts, onboardingAnswers
+             affirmationTime, learnedFacts, onboardingAnswers,
+             selectedCompanionID, trackingPermissions
     }
 
     init() {}
@@ -171,6 +186,8 @@ final class UserPersona: ObservableObject, Codable {
         affirmationTime        = try c.decodeIfPresent(Date.self,        forKey: .affirmationTime)        ?? Date()
         learnedFacts           = try c.decodeIfPresent([String: String].self, forKey: .learnedFacts)      ?? [:]
         onboardingAnswers      = try c.decodeIfPresent([String].self,    forKey: .onboardingAnswers)      ?? []
+        selectedCompanionID    = try c.decodeIfPresent(String.self,      forKey: .selectedCompanionID)    ?? "luna"
+        trackingPermissions    = try c.decodeIfPresent(TrackingPermissions.self, forKey: .trackingPermissions) ?? TrackingPermissions()
     }
 
     func encode(to encoder: Encoder) throws {
@@ -186,6 +203,8 @@ final class UserPersona: ObservableObject, Codable {
         try c.encode(affirmationTime,        forKey: .affirmationTime)
         try c.encode(learnedFacts,           forKey: .learnedFacts)
         try c.encode(onboardingAnswers,      forKey: .onboardingAnswers)
+        try c.encode(selectedCompanionID,    forKey: .selectedCompanionID)
+        try c.encode(trackingPermissions,    forKey: .trackingPermissions)
     }
 
     // MARK: - Persistence
@@ -262,6 +281,11 @@ final class UserPersona: ObservableObject, Codable {
             lines.append("Their interests include: \(list).")
         }
         learnedFacts.forEach { k, v in lines.append("They mentioned: \(k) = \(v).") }
+
+        // Tracking context
+        let trackingSummary = trackingPermissions.systemPromptSummary
+        if !trackingSummary.isEmpty { lines.append(trackingSummary) }
+
         return lines.joined(separator: " ")
     }
 }

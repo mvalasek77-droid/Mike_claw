@@ -1,20 +1,23 @@
 import SwiftUI
 
-// MARK: - OnboardingView
+// MARK: - CompanionOnboardingView
 //
-// 6-step personalized setup. Friendly, conversational, fun.
-// Step 1  — Welcome
-// Step 2  — User's name + assistant name
-// Step 3  — Communication style picker
-// Step 4  — Gender (drives companion personality)
-// Step 5  — Interests picker
-// Step 6  — AI provider setup (Foundation Models auto-detected; Claude API key entry)
+// 8-step personalized setup.
+// Step 0 — Welcome
+// Step 1 — User's name
+// Step 2 — Communication style
+// Step 3 — Companion selection  ← NEW
+// Step 4 — Interests
+// Step 5 — Data permissions     ← NEW
+// Step 6 — AI provider setup
+// Step 7 — Ready (auto-advances)
 
-struct OnboardingView: View {
+struct CompanionOnboardingView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var persona = UserPersona.load()
     @State private var step: Int = 0
-    @State private var animating = false
+
+    private let totalSteps = 7   // 0…6 (provider is last)
 
     var body: some View {
         ZStack {
@@ -23,7 +26,7 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 // Progress dots
                 HStack(spacing: 8) {
-                    ForEach(0..<6, id: \.self) { i in
+                    ForEach(0..<totalSteps, id: \.self) { i in
                         Capsule()
                             .fill(i <= step ? Color.OC.accent : Color.OC.border)
                             .frame(width: i == step ? 24 : 8, height: 8)
@@ -31,6 +34,7 @@ struct OnboardingView: View {
                     }
                 }
                 .padding(.top, OCSizing.spacingLG)
+                .padding(.horizontal, OCSizing.spacingLG)
 
                 // Step content
                 Group {
@@ -38,8 +42,9 @@ struct OnboardingView: View {
                     case 0: WelcomeStep()
                     case 1: NamingStep(persona: persona)
                     case 2: StyleStep(persona: persona)
-                    case 3: GenderStep(persona: persona)
+                    case 3: CompanionSelectionView(persona: persona)
                     case 4: InterestsStep(persona: persona)
+                    case 5: DataPermissionsView(persona: persona) { advance() }
                     default: ProviderStep(persona: persona, onComplete: finish)
                     }
                 }
@@ -49,28 +54,35 @@ struct OnboardingView: View {
                 ))
                 .id(step)
 
-                // Navigation
+                // Navigation button (hidden on steps with their own CTA: 5, 6)
                 if step < 5 {
                     Button(action: advance) {
                         HStack {
-                            Text(step == 0 ? "Let's go! 🐾" : "Next")
+                            Text(nextButtonLabel)
                                 .font(OCFont.headline())
                             Image(systemName: "arrow.right")
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.OC.accent)
-                        .foregroundColor(.black)
+                        .background(canAdvance ? Color.OC.accent : Color.OC.border)
+                        .foregroundColor(canAdvance ? .black : .OC.textMuted)
                         .cornerRadius(OCSizing.radiusLG)
                         .padding(.horizontal, OCSizing.spacingLG)
                     }
                     .padding(.bottom, OCSizing.spacingXL)
                     .disabled(!canAdvance)
-                    .opacity(canAdvance ? 1 : 0.4)
                 }
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.82), value: step)
+    }
+
+    private var nextButtonLabel: String {
+        switch step {
+        case 0: return "Let's go! 🐾"
+        case 3: return persona.selectedCompanionID.isEmpty ? "Choose a companion first" : "Meet \(persona.selectedCompanion.name) →"
+        default: return "Next"
+        }
     }
 
     private var canAdvance: Bool {
@@ -81,7 +93,7 @@ struct OnboardingView: View {
     }
 
     private func advance() {
-        withAnimation { step = min(step + 1, 5) }
+        withAnimation { step = min(step + 1, totalSteps) }
     }
 
     private func finish() {
@@ -114,12 +126,12 @@ private struct WelcomeStep: View {
                     }
                 }
 
-            Text("Meet your new\nAI companion")
+            Text("Meet your\npersonal companion")
                 .font(OCFont.title(30))
                 .foregroundColor(.OC.textPrimary)
                 .multilineTextAlignment(.center)
 
-            Text("Smart, warm, and always learning about you.\nLet's set things up — it takes under a minute.")
+            Text("Someone who listens, remembers, and grows with you.\nLet's set things up — it takes under 2 minutes.")
                 .font(OCFont.body())
                 .foregroundColor(.OC.textSecondary)
                 .multilineTextAlignment(.center)
@@ -148,7 +160,7 @@ private struct NamingStep: View {
                 Text("What's your name?")
                     .font(OCFont.title())
                     .foregroundColor(.OC.textPrimary)
-                Text("I'll use this to make our conversations feel personal.")
+                Text("Your companion will use it to make things feel personal.")
                     .font(OCFont.body())
                     .foregroundColor(.OC.textSecondary)
             }
@@ -158,16 +170,6 @@ private struct NamingStep: View {
                 .focused($focused)
                 .padding(.horizontal, OCSizing.spacingLG)
                 .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { focused = true } }
-
-            VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
-                Text("What should I call myself?")
-                    .font(OCFont.headline())
-                    .foregroundColor(.OC.textPrimary)
-                    .padding(.horizontal, OCSizing.spacingLG)
-
-                OCTextField("Assistant name (default: Claw)", text: $persona.assistantName)
-                    .padding(.horizontal, OCSizing.spacingLG)
-            }
 
             Spacer()
             Spacer()
@@ -236,53 +238,6 @@ private struct StyleCard: View {
     }
 }
 
-// MARK: - Step 3: Gender
-
-private struct GenderStep: View {
-    @ObservedObject var persona: UserPersona
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: OCSizing.spacingMD) {
-            Spacer()
-            VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
-                Text("💙 Personalise your companion")
-                    .font(OCFont.caption())
-                    .foregroundColor(.OC.accent)
-                Text("How do you identify?")
-                    .font(OCFont.title())
-                    .foregroundColor(.OC.textPrimary)
-                Text("This helps me adapt my personality to feel right for you. Totally optional.")
-                    .font(OCFont.body())
-                    .foregroundColor(.OC.textSecondary)
-            }
-            .padding(.horizontal, OCSizing.spacingLG)
-
-            ForEach(UserGender.allCases) { gender in
-                Button {
-                    withAnimation(.spring(response: 0.3)) { persona.gender = gender }
-                } label: {
-                    HStack {
-                        Text(gender.label).font(OCFont.headline()).foregroundColor(.OC.textPrimary)
-                        Spacer()
-                        if persona.gender == gender {
-                            Image(systemName: "checkmark.circle.fill").foregroundColor(.OC.accent)
-                        }
-                    }
-                    .padding(OCSizing.spacingMD)
-                    .background(persona.gender == gender ? Color.OC.accentSoft : Color.OC.surfaceRaised)
-                    .cornerRadius(OCSizing.radiusMD)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                            .strokeBorder(persona.gender == gender ? Color.OC.accent : Color.OC.border, lineWidth: 1)
-                    )
-                }
-                .padding(.horizontal, OCSizing.spacingLG)
-            }
-            Spacer()
-        }
-    }
-}
-
 // MARK: - Step 4: Interests
 
 private struct InterestsStep: View {
@@ -311,12 +266,11 @@ private struct InterestsStep: View {
                     .font(OCFont.caption()).foregroundColor(.OC.accent)
                 Text("Pick your interests")
                     .font(OCFont.title()).foregroundColor(.OC.textPrimary)
-                Text("I'll send you updates and bring them up in conversation.")
+                Text("Your companion will bring these up and send relevant updates.")
                     .font(OCFont.body()).foregroundColor(.OC.textSecondary)
             }
             .padding(.horizontal, OCSizing.spacingLG)
 
-            // Interest grid
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 ForEach(suggestions) { interest in
                     let selected = persona.interests.contains(where: { $0.id == interest.id })
@@ -344,7 +298,6 @@ private struct InterestsStep: View {
             }
             .padding(.horizontal, OCSizing.spacingLG)
 
-            // Custom interest
             HStack {
                 OCTextField("Add your own (e.g. Marvel, Lakers...)", text: $customText)
                 Button {
@@ -363,7 +316,7 @@ private struct InterestsStep: View {
     }
 }
 
-// MARK: - Step 5: Provider setup
+// MARK: - Step 6: Provider setup
 
 private struct ProviderStep: View {
     @ObservedObject var persona: UserPersona
@@ -382,10 +335,11 @@ private struct ProviderStep: View {
                         .font(OCFont.caption()).foregroundColor(.OC.accent)
                     Text("Choose your AI engine")
                         .font(OCFont.title()).foregroundColor(.OC.textPrimary)
+                    Text("\(persona.selectedCompanion.name) runs on the engine you choose.")
+                        .font(OCFont.body()).foregroundColor(.OC.textSecondary)
                 }
                 .padding(.horizontal, OCSizing.spacingLG)
 
-                // Apple Intelligence card
                 ProviderCard(
                     icon: "applelogo",
                     iconColor: .OC.success,
@@ -400,7 +354,6 @@ private struct ProviderStep: View {
                 }
                 .padding(.horizontal, OCSizing.spacingLG)
 
-                // Divider
                 HStack {
                     Rectangle().fill(Color.OC.border).frame(height: 1)
                     Text("or").font(OCFont.caption()).foregroundColor(.OC.textMuted)
@@ -408,7 +361,6 @@ private struct ProviderStep: View {
                 }
                 .padding(.horizontal, OCSizing.spacingLG)
 
-                // Claude API card
                 VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
                     ProviderCard(
                         icon: "cloud.fill",
@@ -422,7 +374,6 @@ private struct ProviderStep: View {
                     )
                     .padding(.horizontal, OCSizing.spacingLG)
 
-                    // API key entry
                     VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
                         if let consoleURL = URL(string: "https://console.anthropic.com") {
                             Link("→ Get your free API key at console.anthropic.com",
@@ -442,9 +393,7 @@ private struct ProviderStep: View {
                             .font(OCFont.mono())
                             .foregroundColor(.OC.textPrimary)
 
-                            Button {
-                                showKey.toggle()
-                            } label: {
+                            Button { showKey.toggle() } label: {
                                 Image(systemName: showKey ? "eye.slash" : "eye")
                                     .foregroundColor(.OC.textMuted)
                             }
@@ -462,7 +411,7 @@ private struct ProviderStep: View {
                                 if checking {
                                     ProgressView().tint(.black).scaleEffect(0.8)
                                 } else {
-                                    Text("Save & Start Chatting")
+                                    Text("Save & Meet \(persona.selectedCompanion.name)")
                                         .font(OCFont.headline())
                                 }
                             }
