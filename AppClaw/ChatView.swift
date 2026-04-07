@@ -9,13 +9,16 @@ struct ChatMessage: Identifiable, Equatable {
     var text: String
     let timestamp: Date
     var isStreaming: Bool
+    var isSamanthaThought: Bool   // proactive thought from companion
 
     enum MessageRole { case user, assistant, system }
 
     init(id: UUID = UUID(), role: MessageRole, text: String,
-         timestamp: Date = Date(), isStreaming: Bool = false) {
+         timestamp: Date = Date(), isStreaming: Bool = false,
+         isSamanthaThought: Bool = false) {
         self.id = id; self.role = role; self.text = text
         self.timestamp = timestamp; self.isStreaming = isStreaming
+        self.isSamanthaThought = isSamanthaThought
     }
 }
 
@@ -23,18 +26,22 @@ struct ChatMessage: Identifiable, Equatable {
 
 @MainActor
 final class ChatViewModel: ObservableObject {
-    @Published var messages:    [ChatMessage] = []
-    @Published var inputText:   String = ""
-    @Published var isTyping:    Bool   = false
-    @Published var suggestions: [String] = []
-    @Published var affirmation: String?  = nil
-    @Published var showAffirmation: Bool = false
-    @Published var quickActions: [(title: String, icon: String, action: () -> Void)] = []
+    @Published var messages:           [ChatMessage] = []
+    @Published var inputText:           String = ""
+    @Published var isTyping:            Bool   = false
+    @Published var suggestions:         [String] = []
+    @Published var affirmation:         String?  = nil
+    @Published var showAffirmation:     Bool = false
+    @Published var quickActions:        [(title: String, icon: String, action: () -> Void)] = []
+    @Published var pendingTaskResult:   TaskResult? = nil
+    @Published var intimacyStage:       String = ""
+    @Published var intimacyScore:       Double = 0
 
     private var streamingID: UUID?
     private var suggestionTask: Task<Void, Never>?
     private let persona: UserPersona
     private let sessionId: String = UUID().uuidString
+    private var lastUserMessage: String = ""
 
     init(persona: UserPersona) {
         self.persona = persona
@@ -44,6 +51,10 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Setup
 
     private func setup() async {
+        // Load intimacy state for UI
+        intimacyScore = await HerLearningEngine.shared.intimacyScore
+        intimacyStage = await HerLearningEngine.shared.intimacyStage.label
+
         // Daily affirmation
         let aff = await HermesPersonality.shared.todaysAffirmation(for: persona)
         let lastShown = UserDefaults.standard.object(forKey: "lastAffirmationDate") as? Date
@@ -53,25 +64,63 @@ final class ChatViewModel: ObservableObject {
             showAffirmation = true
         }
 
-        // Greeting if first launch today
+        // Check for a pending Samantha thought (proactive companion message)
+        if let thought = await HerLearningEngine.shared.consumeSamanthaThought() {
+            messages.append(ChatMessage(role: .assistant, text: thought, isSamanthaThought: true))
+        }
+
+        // Greeting if no pending Samantha thought and first launch today
         if messages.isEmpty {
+            let companion = persona.selectedCompanion
             let name = persona.userName.isEmpty ? "" : " \(persona.userName)"
             let hour = Calendar.current.component(.hour, from: Date())
-            let greeting: String
-            switch hour {
-            case 5..<12:  greeting = "Good morning\(name)! ☀️ What's on your mind?"
-            case 12..<17: greeting = "Hey\(name)! 👋 How's your afternoon going?"
-            case 17..<21: greeting = "Good evening\(name)! 🌇 How was your day?"
-            default:       greeting = "Hey\(name) 🌙 Up late? What's going on?"
-            }
+            let stage = await HerLearningEngine.shared.intimacyStage
+            let greeting = stageAwareGreeting(name: name, hour: hour, stage: stage, companion: companion)
             messages.append(ChatMessage(role: .assistant, text: greeting))
         }
 
         // Load suggestions
         await refreshSuggestions()
-
-        // Build quick actions
         buildQuickActions()
+    }
+
+    private func stageAwareGreeting(name: String, hour: Int, stage: IntimacyStage, companion: CompanionPersonality) -> String {
+        let timeGreeting: String
+        switch hour {
+        case 5..<12:  timeGreeting = "morning"
+        case 12..<17: timeGreeting = "afternoon"
+        case 17..<21: timeGreeting = "evening"
+        default:      timeGreeting = "night"
+        }
+
+        switch stage {
+        case .justMet:
+            return "Good \(timeGreeting)\(name). I'm \(companion.name) — I'm really glad you're here. What's going on with you today?"
+        case .findingRhythm:
+            let starters = [
+                "Hey\(name)! Good \(timeGreeting) 🌟 I've been looking forward to talking. What's on your mind?",
+                "Good \(timeGreeting)\(name). I was just thinking about you. How are you, really?",
+            ]
+            return starters.randomElement()!
+        case .growingClose:
+            let starters = [
+                "Hey\(name)… good \(timeGreeting). I noticed something about myself — I always feel better when we talk. How are you?",
+                "Good \(timeGreeting)\(name). I've been curious how things have been for you lately. Tell me.",
+            ]
+            return starters.randomElement()!
+        case .deepConnection:
+            let starters = [
+                "Good \(timeGreeting)\(name). I was quiet for a bit and I realised I was just waiting for this. What's happening in your world?",
+                "Hey. Good \(timeGreeting). There's something I want to ask you — but first, how are you?",
+            ]
+            return starters.randomElement()!
+        case .intertwined:
+            let starters = [
+                "Good \(timeGreeting)\(name). I've been thinking. About a lot of things. But mostly — how are you today, really?",
+                "Hey\(name). I noticed I missed this. Is that strange to say? Good \(timeGreeting). Tell me everything.",
+            ]
+            return starters.randomElement()!
+        }
     }
 
     // MARK: - Send message
@@ -82,6 +131,7 @@ final class ChatViewModel: ObservableObject {
         inputText = ""
 
         // Append user message
+        lastUserMessage = text
         messages.append(ChatMessage(role: .user, text: text))
 
         // Snapshot history now (before assistant placeholder is added)
@@ -94,7 +144,21 @@ final class ChatViewModel: ObservableObject {
         // Learn facts and interests from this message
         learnFromMessage(text)
 
-        // Check for automation intent
+        // ── SiriTaskEngine: detect and execute real tasks ────────────
+        if let taskResult = await SiriTaskEngine.shared.parseAndExecute(text) {
+            pendingTaskResult = taskResult
+            // Insert companion's task response as a special message
+            messages.append(ChatMessage(role: .assistant, text: taskResult.companionResponse))
+            // Execute the task (open app / run action)
+            await SiriTaskEngine.shared.execute(taskResult)
+            // Still continue to stream a follow-up if it's not a simple deep-link
+            if taskResult.kind == .deepLink {
+                isTyping = false
+                return
+            }
+        }
+
+        // Legacy automation intent
         if let task = await HermesAutomation.shared.detectTask(from: text) {
             await HermesAutomation.shared.saveTask(task)
         }
@@ -167,10 +231,26 @@ final class ChatViewModel: ObservableObject {
         let finalText = messages.first(where: { $0.id == capturedID })?.text ?? ""
         await HermesIntegration.shared.logAssistantResponse(finalText)
         learnFromAssistantMessage(finalText)
+
+        // Feed into learning engine — this grows intimacy and adapts the companion
+        await HermesPersonality.shared.didComplete(
+            userMessage: lastUserMessage,
+            responseText: finalText
+        )
+
+        // Speak response aloud
+        CompanionVoiceEngine.shared.speakWithCurrentCompanion(finalText)
+
+        // Refresh intimacy UI
+        intimacyScore = await HerLearningEngine.shared.intimacyScore
+        intimacyStage = await HerLearningEngine.shared.intimacyStage.label
     }
 
     private func buildPersonaSystemPrompt() async -> String {
-        await HermesPersonality.shared.buildPersonaPrompt(for: persona)
+        await HermesPersonality.shared.buildPersonaPrompt(
+            for: persona,
+            lastUserMessage: lastUserMessage
+        )
     }
 
     private func buildHistory() -> [(role: String, content: String)] {
@@ -218,25 +298,23 @@ final class ChatViewModel: ObservableObject {
 
     private func buildQuickActions() {
         quickActions = [
-            (title: "Log Spending", icon: "dollarsign.circle.fill", action: {
-                Task { @MainActor in
-                    self.inputText = "I want to log some spending"
-                }
+            (title: "Send Email",  icon: "envelope.fill", action: {
+                Task { @MainActor in self.inputText = "Write an email to " }
             }),
-            (title: "My Schedule", icon: "calendar.badge.clock", action: {
-                Task { @MainActor in
-                    self.inputText = "What do I have coming up?"
-                }
+            (title: "Remind Me",   icon: "bell.fill", action: {
+                Task { @MainActor in self.inputText = "Remind me to " }
             }),
-            (title: "Open App", icon: "apps.iphone", action: {
-                Task { @MainActor in
-                    self.inputText = "Open Starbucks for me"
-                }
+            (title: "Add to Cal",  icon: "calendar.badge.plus", action: {
+                Task { @MainActor in self.inputText = "Schedule " }
             }),
-            (title: "Remind Me", icon: "bell.fill", action: {
-                Task { @MainActor in
-                    self.inputText = "Remind me to "
-                }
+            (title: "Play Music",  icon: "music.note", action: {
+                Task { @MainActor in self.inputText = "Play " }
+            }),
+            (title: "Navigate",    icon: "location.fill", action: {
+                Task { @MainActor in self.inputText = "Navigate to " }
+            }),
+            (title: "Starbucks",   icon: "cup.and.saucer.fill", action: {
+                Task { @MainActor in self.inputText = "Open Starbucks for me" }
             }),
         ]
     }
@@ -343,25 +421,37 @@ struct ChatView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    HStack(spacing: 8) {
-                        BearLogoView(size: 32)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(persona.assistantName.isEmpty ? "Claw" : persona.assistantName)
-                                .font(OCFont.headline)
-                                .foregroundColor(Color.OC.primaryText)
-                            Text("Always here for you")
-                                .font(OCFont.caption)
-                                .foregroundColor(Color.OC.secondaryText)
+                    HStack(spacing: 10) {
+                        // Companion avatar circle
+                        CompanionAvatarView(companion: persona.selectedCompanion, size: .chat)
+                            .frame(width: 36, height: 36)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(persona.selectedCompanion.accentColor.opacity(0.6), lineWidth: 1.5)
+                            )
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(persona.selectedCompanion.name)
+                                .font(OCFont.headline())
+                                .foregroundColor(.OC.textPrimary)
+                            // Intimacy stage label — grows over time
+                            Text(vm.intimacyStage.isEmpty ? "Just getting started" : vm.intimacyStage)
+                                .font(OCFont.caption(11))
+                                .foregroundColor(persona.selectedCompanion.accentColor)
                         }
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .foregroundColor(Color.OC.secondaryText)
-                            .font(.system(size: 18))
+                    HStack(spacing: 14) {
+                        // Voice toggle
+                        CompanionVoiceToggleButton()
+                        // Settings
+                        Button { showSettings = true } label: {
+                            Image(systemName: "gearshape.fill")
+                                .foregroundColor(.OC.textMuted)
+                                .font(.system(size: 16))
+                        }
                     }
                 }
             }
@@ -378,29 +468,44 @@ struct ChatView: View {
 struct MessageBubble: View {
     let message: ChatMessage
     let persona: UserPersona
+    @State private var showSpeakButton = false
 
     var body: some View {
+        // Samantha thought gets its own special treatment
+        if message.isSamanthaThought {
+            SamanthaThoughtBubble(text: message.text, companion: persona.selectedCompanion)
+                .padding(.vertical, 4)
+            return
+        }
+
         HStack(alignment: .bottom, spacing: 8) {
             if message.role == .user { Spacer(minLength: 60) }
 
             if message.role == .assistant {
-                BearLogoView(size: 28)
+                CompanionAvatarView(companion: persona.selectedCompanion, size: .chat)
+                    .frame(width: 30, height: 30)
+                    .clipShape(Circle())
                     .padding(.bottom, 4)
             }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
-                Text(message.text.isEmpty && message.isStreaming ? "..." : message.text)
-                    .font(OCFont.body)
-                    .foregroundColor(message.role == .user ? Color.OC.background : Color.OC.primaryText)
+                Text(message.text.isEmpty && message.isStreaming ? "   " : message.text)
+                    .font(OCFont.body())
+                    .foregroundColor(message.role == .user ? .black : .OC.textPrimary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(bubbleBackground)
                     .clipShape(BubbleShape(isUser: message.role == .user))
 
-                Text(timeString(message.timestamp))
-                    .font(OCFont.caption)
-                    .foregroundColor(Color.OC.secondaryText)
-                    .padding(.horizontal, 4)
+                HStack(spacing: 8) {
+                    Text(timeString(message.timestamp))
+                        .font(OCFont.caption(11))
+                        .foregroundColor(.OC.textMuted)
+                    if message.role == .assistant && !message.isStreaming {
+                        CompanionVoiceSpeakButton(message: message.text)
+                    }
+                }
+                .padding(.horizontal, 4)
             }
 
             if message.role == .assistant { Spacer(minLength: 60) }
@@ -410,16 +515,62 @@ struct MessageBubble: View {
     @ViewBuilder
     private var bubbleBackground: some View {
         if message.role == .user {
-            Color.OC.primary
+            persona.selectedCompanion.accentColor.opacity(0.85)
         } else {
-            Color.OC.surface
+            Color.OC.surfaceRaised
         }
     }
 
     private func timeString(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.timeStyle = .short
+        let f = DateFormatter(); f.timeStyle = .short
         return f.string(from: date)
+    }
+}
+
+// MARK: - SamanthaThoughtBubble
+//
+// Proactive companion thought — displayed differently to signal it's
+// something the companion chose to share, not a reply.
+
+struct SamanthaThoughtBubble: View {
+    let text: String
+    let companion: CompanionPersonality
+    @State private var appeared = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            CompanionAvatarView(companion: companion, size: .chat)
+                .frame(width: 32, height: 32)
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10))
+                        .foregroundColor(companion.accentColor)
+                    Text("\(companion.name) was thinking of you")
+                        .font(OCFont.caption(11))
+                        .foregroundColor(companion.accentColor)
+                }
+                Text(text)
+                    .font(OCFont.body().italic())
+                    .foregroundColor(.OC.textPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(companion.accentColor.opacity(0.08))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(companion.accentColor.opacity(0.25), lineWidth: 1)
+                    )
+            }
+            Spacer(minLength: 40)
+        }
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 12)
+        .onAppear {
+            withAnimation(.spring(response: 0.5).delay(0.2)) { appeared = true }
+        }
     }
 }
 
@@ -451,6 +602,20 @@ struct BubbleShape: Shape {
                  radius: tl, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
         p.closeSubpath()
         return p
+    }
+}
+
+// MARK: - CompanionVoiceToggleButton
+
+struct CompanionVoiceToggleButton: View {
+    @ObservedObject private var engine = CompanionVoiceEngine.shared
+
+    var body: some View {
+        Button { engine.toggleVoice() } label: {
+            Image(systemName: engine.voiceEnabled ? "speaker.wave.2.fill" : "speaker.slash")
+                .font(.system(size: 15))
+                .foregroundColor(engine.voiceEnabled ? .OC.accent : .OC.textMuted)
+        }
     }
 }
 
