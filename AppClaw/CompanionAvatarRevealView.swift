@@ -139,7 +139,7 @@ struct CompanionFaceTimeView: View {
         }
         // Play companion's voice intro
         let intro = companion.introMessage
-        CompanionVoiceEngine.shared.speak(intro, using: companion.voiceProfile)
+        CompanionVoiceEngine.shared.speak(intro, character: companion.voiceCharacter)
 
         // Start call timer
         startCallTimer()

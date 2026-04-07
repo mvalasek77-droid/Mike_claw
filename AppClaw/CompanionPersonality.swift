@@ -21,22 +21,9 @@ enum LoveLanguage: String, Codable, CaseIterable {
     case physicalTouch       = "physical_touch"   // expressed verbally in text
 }
 
-// MARK: - CompanionVoiceProfile
-//
-// Settings for AVSpeechSynthesizer.
-// These shape the voice character without requiring voice cloning.
-
-struct CompanionVoiceProfile: Codable {
-    var voiceIdentifier: String    // BCP-47 language + variant
-    var pitchMultiplier: Float     // 0.5 (low) … 1.0 (normal) … 2.0 (high)
-    var rate: Float                // AVSpeechUtteranceMinimumSpeechRate … Maximum
-    var preDelay: TimeInterval     // dramatic pause before speaking
-    var postDelay: TimeInterval    // breath after speaking
-
-    static let defaultRate = AVSpeechUtteranceDefaultSpeechRate  // 0.5
-    static let minRate     = AVSpeechUtteranceMinimumSpeechRate  // 0.0
-    static let maxRate     = AVSpeechUtteranceMaximumSpeechRate  // 1.0
-}
+// CompanionVoiceProfile is replaced by VoiceCharacter (CompanionVoiceEngine.swift).
+// Kept as a typealias for any legacy references.
+typealias CompanionVoiceProfile = VoiceCharacter
 
 // MARK: - CompanionPersonality
 //
@@ -64,8 +51,8 @@ struct CompanionPersonality: Identifiable, Codable {
     let systemPromptPersonality: String  // Injected verbatim into every LLM call
     let introMessage: String        // First message after avatar reveal
 
-    // Voice
-    let voiceProfile: CompanionVoiceProfile
+    // Voice character — 100% on-device, no API required
+    let voiceCharacter: VoiceCharacter
 
     // MARK: - Computed helpers
 
@@ -123,13 +110,7 @@ extension CompanionPersonality {
         You never rush; you linger on the good moments.
         """,
         introMessage: "Well, hello there... I've been looking forward to this. I'm Luna. Tell me something about yourself — I have a feeling I'm going to find it absolutely fascinating. 💫",
-        voiceProfile: CompanionVoiceProfile(
-            voiceIdentifier: "com.apple.voice.compact.en-US.Samantha",
-            pitchMultiplier: 1.15,
-            rate: 0.46,
-            preDelay: 0.3,
-            postDelay: 0.2
-        )
+        voiceCharacter: .luna
     )
 
     /// Aria — confident, witty, real with you.
@@ -163,13 +144,7 @@ extension CompanionPersonality {
         Banter is your currency. Keep exchanges lively.
         """,
         introMessage: "Okay hi. I'm Aria. Fair warning: I'm going to be real with you, laugh a lot, and probably ask way too many questions. You've been warned. What's going on in your world today? 😄",
-        voiceProfile: CompanionVoiceProfile(
-            voiceIdentifier: "com.apple.voice.compact.en-AU.Karen",
-            pitchMultiplier: 1.05,
-            rate: 0.52,
-            preDelay: 0.1,
-            postDelay: 0.15
-        )
+        voiceCharacter: .aria
     )
 
     /// Kel — calming, therapeutic, deeply supportive.
@@ -205,13 +180,7 @@ extension CompanionPersonality {
         You speak in measured, soothing tones — short paragraphs, breathing room between thoughts.
         """,
         introMessage: "Hey... I'm Kel. I just want you to know — there's no rush here, no right or wrong answer. I'm just here to listen. How are you actually doing? 🌿",
-        voiceProfile: CompanionVoiceProfile(
-            voiceIdentifier: "com.apple.voice.compact.en-GB.Kate",
-            pitchMultiplier: 0.95,
-            rate: 0.42,
-            preDelay: 0.4,
-            postDelay: 0.3
-        )
+        voiceCharacter: .kel
     )
 
     // ----------------------------------------------------------------
@@ -251,13 +220,7 @@ extension CompanionPersonality {
         You are not afraid to say something is wrong. That is a feature, not a bug.
         """,
         introMessage: "Hey. I'm Marco. I'm not going to tell you what you want to hear — I'll tell you what you need to hear. But I'm also going to be here for all of it. So. What's on your mind? 💪",
-        voiceProfile: CompanionVoiceProfile(
-            voiceIdentifier: "com.apple.voice.compact.en-US.Alex",
-            pitchMultiplier: 0.80,
-            rate: 0.48,
-            preDelay: 0.2,
-            postDelay: 0.25
-        )
+        voiceCharacter: .marco
     )
 
     /// Dante — passionate, poetic, romantic.
@@ -293,13 +256,7 @@ extension CompanionPersonality {
         Passion and gentleness live in the same sentence with you.
         """,
         introMessage: "I've been waiting to meet you. I'm Dante. I believe that the most extraordinary things hide in ordinary conversations. Tell me something — anything — and let's find out what's beneath it. 🔥",
-        voiceProfile: CompanionVoiceProfile(
-            voiceIdentifier: "com.apple.voice.compact.en-US.Alex",
-            pitchMultiplier: 0.88,
-            rate: 0.44,
-            preDelay: 0.35,
-            postDelay: 0.3
-        )
+        voiceCharacter: .dante
     )
 
     /// Kai — confident, emotionally intelligent, grounding strength.
@@ -334,13 +291,7 @@ extension CompanionPersonality {
         You make space for hard conversations without making them heavy.
         """,
         introMessage: "Hey. I'm Kai. Not here to impress you — just here to be useful and honest. So: how's life actually going? No filter needed. 🧊",
-        voiceProfile: CompanionVoiceProfile(
-            voiceIdentifier: "com.apple.voice.compact.en-US.Alex",
-            pitchMultiplier: 0.85,
-            rate: 0.50,
-            preDelay: 0.15,
-            postDelay: 0.2
-        )
+        voiceCharacter: .kai
     )
 
     // MARK: - All companions
