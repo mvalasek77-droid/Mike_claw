@@ -371,9 +371,17 @@ struct ChatView: View {
     @State private var showAutomation = false
     @State private var showAPIKeyBanner = false
 
+    /// Designated init — used internally (e.g. previews, explicit persona injection).
     init(persona: UserPersona) {
         self.persona = persona
         _vm = StateObject(wrappedValue: ChatViewModel(persona: persona))
+    }
+
+    /// Convenience no-arg init used by RootView — loads the stored persona from disk.
+    init() {
+        let p = UserPersona.load()
+        self.persona = p
+        _vm = StateObject(wrappedValue: ChatViewModel(persona: p))
     }
 
     var body: some View {
