@@ -425,6 +425,15 @@ private struct ProviderStep: View {
                             .cornerRadius(OCSizing.radiusLG)
                         }
                         .disabled(apiKey.count < 20 || checking)
+
+                        // Skip option — user can add the key later in Settings
+                        Button(action: onComplete) {
+                            Text("Skip for now — I'll add it in Settings later")
+                                .font(OCFont.body(13))
+                                .foregroundColor(.OC.textMuted)
+                                .underline()
+                        }
+                        .padding(.top, 4)
                     }
                     .padding(.horizontal, OCSizing.spacingLG)
                 }

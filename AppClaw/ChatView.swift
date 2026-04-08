@@ -369,6 +369,7 @@ struct ChatView: View {
     @Namespace private var bottomID
     @State private var showSettings = false
     @State private var showAutomation = false
+    @State private var showAPIKeyBanner = false
 
     init(persona: UserPersona) {
         self.persona = persona
@@ -381,6 +382,12 @@ struct ChatView: View {
                 Color.OC.background.ignoresSafeArea()
 
                 VStack(spacing: 0) {
+                    // API key required banner (shown when no provider is configured)
+                    if showAPIKeyBanner {
+                        APIKeyBanner { showSettings = true }
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+
                     // Affirmation banner
                     if vm.showAffirmation, let aff = vm.affirmation {
                         AffirmationBanner(text: aff, onDismiss: vm.dismissAffirmation)
@@ -471,6 +478,22 @@ struct ChatView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView(persona: persona)
+                    .onDisappear {
+                        // Re-check provider after settings is dismissed — key may have been saved
+                        Task {
+                            let p = await HermesLLMClient.shared.provider
+                            await MainActor.run {
+                                withAnimation { showAPIKeyBanner = (p == .none) }
+                            }
+                        }
+                    }
+            }
+            .task {
+                // Show banner immediately if no provider is ready
+                let p = await HermesLLMClient.shared.provider
+                await MainActor.run {
+                    withAnimation { showAPIKeyBanner = (p == .none) }
+                }
             }
         }
         .preferredColorScheme(.dark)
@@ -664,6 +687,51 @@ struct TypingIndicator: View {
         }
         .onAppear {
             withAnimation { phase = 1 }
+        }
+    }
+}
+
+// MARK: - APIKeyBanner
+//
+// Shown at the top of ChatView when no LLM provider is configured.
+// Tapping anywhere on the banner opens Settings so the user can add their key.
+
+private struct APIKeyBanner: View {
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: "key.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 15))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("API key needed")
+                        .font(OCFont.headline())
+                        .foregroundColor(Color.OC.primaryText)
+                    Text("Tap here to add your Claude API key in Settings.")
+                        .font(OCFont.body(12))
+                        .foregroundColor(Color.OC.secondaryText)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundColor(Color.OC.secondaryText)
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                LinearGradient(
+                    colors: [Color.orange.opacity(0.15), Color.OC.surface],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .overlay(
+                Rectangle()
+                    .frame(width: 3)
+                    .foregroundColor(.orange),
+                alignment: .leading
+            )
         }
     }
 }

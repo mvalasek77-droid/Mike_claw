@@ -58,7 +58,17 @@ actor HermesLLMClient {
     // MARK: - Provider selection
 
     /// Call once at app start (after privacy gate resolves).
+    ///
+    /// Auto-bootstrap rule: if a Claude API key already exists in the Keychain
+    /// we treat that as implicit cloud consent — the user put it there, so they
+    /// agree data reaches Anthropic's servers.  This handles:
+    ///   • First run immediately after onboarding (consent + key set together)
+    ///   • Subsequent launches where consent state and key state drifted
+    ///   • Key entered in Settings after skipping the provider step
     func configure() async {
+        if !await privacy.consentGiven && ClaudeAPIBridge.isConfigured {
+            await privacy.acceptCloudAI()
+        }
         if await privacy.consentGiven {
             _provider = Self.bestAvailableProvider()
         } else {
