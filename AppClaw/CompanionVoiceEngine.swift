@@ -248,16 +248,22 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         isSpeaking = true
         startEngine(character: character)
 
+        guard engineReady else { return }
+
         let utterance = buildUtterance(clean, character: character)
 
-        synth.write(utterance) { [weak self] buffer in
-            guard let self,
-                  let pcm = buffer as? AVAudioPCMBuffer,
-                  pcm.frameLength > 0 else { return }
-            DispatchQueue.main.async {
-                guard self.engineReady, self.engine.isRunning else { return }
-                self.player.scheduleBuffer(pcm)
-            }
+        // Capture node refs before entering the synth callback.
+        // AVAudioPlayerNode.scheduleBuffer() is thread-safe — calling it
+        // directly from the synth callback avoids the main-thread round-trip
+        // that was causing buffers to arrive late and voice to cut out.
+        let capturedPlayer = player
+        let capturedEngine = engine
+
+        synth.write(utterance) { buffer in
+            guard let pcm = buffer as? AVAudioPCMBuffer,
+                  pcm.frameLength > 0,
+                  capturedEngine.isRunning else { return }
+            capturedPlayer.scheduleBuffer(pcm)
         }
     }
 
@@ -285,7 +291,8 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     // MARK: - Engine setup
 
     private func startEngine(character: VoiceCharacter) {
-        if engine.isRunning { engine.stop(); engine.reset() }
+        if engine.isRunning { engine.stop() }
+        engine.reset()   // detaches all nodes cleanly before re-attaching
 
         engine.attach(player)
         engine.attach(pitchUnit)

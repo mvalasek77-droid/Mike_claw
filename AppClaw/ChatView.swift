@@ -218,9 +218,23 @@ final class ChatViewModel: ObservableObject {
                 if messages[i].text.isEmpty { messages[i].text = response.content }
                 messages[i].isStreaming = false
             }
+        } catch let error as LLMError {
+            if let i = messages.firstIndex(where: { $0.id == capturedID }) {
+                switch error {
+                case .noProviderConfigured, .apiKeyMissing:
+                    messages[i].text = "I need my brain connected first — go to Settings and add your Claude API key, then I'll be right here for you. 💛"
+                case .rateLimited:
+                    messages[i].text = "Too many messages at once — give me just a second and try again?"
+                case .contextTooLong:
+                    messages[i].text = "Our conversation is getting really long — starting fresh might help. I remember the important things."
+                default:
+                    messages[i].text = "Something went wrong on my end. Try again in a moment?"
+                }
+                messages[i].isStreaming = false
+            }
         } catch {
             if let i = messages.firstIndex(where: { $0.id == capturedID }) {
-                messages[i].text = "Sorry, I had trouble responding. Try again?"
+                messages[i].text = "Something went wrong on my end. Try again in a moment?"
                 messages[i].isStreaming = false
             }
         }

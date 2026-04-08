@@ -349,7 +349,10 @@ private struct ProviderStep: View {
                     badgeColor: appleAvailable ? .OC.success : .OC.textMuted,
                     isAvailable: appleAvailable
                 ) {
-                    Task { await HermesPrivacyGate.shared.acceptOnDeviceOnly() }
+                    Task {
+                        await HermesPrivacyGate.shared.acceptOnDeviceOnly()
+                        await HermesLLMClient.shared.configure()
+                    }
                     onComplete()
                 }
                 .padding(.horizontal, OCSizing.spacingLG)
@@ -437,6 +440,8 @@ private struct ProviderStep: View {
                              value: apiKey.trimmingCharacters(in: .whitespaces))
         Task {
             await HermesPrivacyGate.shared.acceptCloudAI()
+            // Configure LLM client immediately — without this the provider stays .none all session
+            await HermesLLMClient.shared.configure()
             await MainActor.run { checking = false }
             onComplete()
         }
