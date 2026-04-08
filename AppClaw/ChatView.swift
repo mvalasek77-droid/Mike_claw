@@ -837,15 +837,90 @@ struct InputBar: View {
     }
 }
 
-// MARK: - SettingsView (inline stub — full version in SettingsView.swift)
+// MARK: - SettingsView
 
 struct SettingsView: View {
     @ObservedObject var persona: UserPersona
     @Environment(\.dismiss) private var dismiss
 
+    @State private var apiKey: String = ""
+    @State private var showKey: Bool = false
+    @State private var keySaved: Bool = false
+    @State private var providerLabel: String = "Checking…"
+
     var body: some View {
         NavigationStack {
             List {
+
+                // ── AI Engine ────────────────────────────────────────────
+                Section {
+                    // Status row
+                    HStack {
+                        Image(systemName: "brain.head.profile")
+                            .foregroundColor(.OC.accent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("AI Engine")
+                                .font(OCFont.headline())
+                                .foregroundColor(Color.OC.primaryText)
+                            Text(providerLabel)
+                                .font(OCFont.body(13))
+                                .foregroundColor(Color.OC.secondaryText)
+                        }
+                    }
+
+                    // API key field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Claude API Key")
+                            .font(OCFont.body(13))
+                            .foregroundColor(Color.OC.secondaryText)
+
+                        HStack {
+                            Group {
+                                if showKey {
+                                    TextField("sk-ant-api03-…", text: $apiKey)
+                                } else {
+                                    SecureField("Paste your API key here", text: $apiKey)
+                                }
+                            }
+                            .font(.system(.footnote, design: .monospaced))
+                            .foregroundColor(Color.OC.primaryText)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+
+                            Button { showKey.toggle() } label: {
+                                Image(systemName: showKey ? "eye.slash" : "eye")
+                                    .foregroundColor(Color.OC.secondaryText)
+                            }
+                        }
+                        .padding(10)
+                        .background(Color.OC.surface)
+                        .cornerRadius(10)
+                        .overlay(RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(apiKey.count > 20 ? Color.OC.accent : Color.OC.border, lineWidth: 1))
+
+                        Button(action: saveAPIKey) {
+                            HStack {
+                                Image(systemName: keySaved ? "checkmark.circle.fill" : "key.fill")
+                                Text(keySaved ? "Saved!" : "Save & Activate")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(apiKey.count > 20 ? Color.OC.accent : Color.OC.border)
+                            .foregroundColor(apiKey.count > 20 ? .black : Color.OC.textMuted)
+                            .cornerRadius(10)
+                        }
+                        .disabled(apiKey.count < 20)
+
+                        Link("→ Get a free API key at console.anthropic.com",
+                             destination: URL(string: "https://console.anthropic.com")!)
+                            .font(OCFont.body(12))
+                            .foregroundColor(Color.OC.accent)
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("AI Engine")
+                }
+
                 // Profile
                 Section("Profile") {
                     HStack {
@@ -965,6 +1040,42 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear { loadCurrentKey() }
+    }
+
+    private func loadCurrentKey() {
+        // Show masked existing key if present
+        if let existing = KeychainHelper.read(service: "com.openclaw.appclaw",
+                                               key: "anthropic_api_key"), !existing.isEmpty {
+            apiKey = existing
+        }
+        Task {
+            let p = await HermesLLMClient.shared.provider
+            await MainActor.run {
+                switch p {
+                case .appleFoundationModels: providerLabel = "Apple Intelligence (on-device)"
+                case .claudeAPI:             providerLabel = "Claude API — active ✓"
+                case .none:                  providerLabel = "Not configured — add your API key below"
+                }
+            }
+        }
+    }
+
+    private func saveAPIKey() {
+        let trimmed = apiKey.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count > 20 else { return }
+        KeychainHelper.write(service: "com.openclaw.appclaw",
+                             key: "anthropic_api_key",
+                             value: trimmed)
+        Task {
+            await HermesPrivacyGate.shared.acceptCloudAI()
+            await HermesLLMClient.shared.configure()
+            await MainActor.run {
+                keySaved = true
+                providerLabel = "Claude API — active ✓"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { keySaved = false }
+            }
+        }
     }
 }
 

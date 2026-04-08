@@ -230,8 +230,10 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     // MARK: - Audio session
 
     private func configureAudioSession() {
+        // .mixWithOthers lets the voice engine coexist with a muted AVPlayer
+        // (e.g. the companion reveal video) without either one evicting the other.
         try? AVAudioSession.sharedInstance().setCategory(
-            .playback, mode: .spokenAudio, options: [.duckOthers]
+            .playback, mode: .spokenAudio, options: [.mixWithOthers]
         )
         try? AVAudioSession.sharedInstance().setActive(true)
     }

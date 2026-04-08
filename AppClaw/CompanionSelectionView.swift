@@ -368,52 +368,26 @@ private struct PlaceholderAvatarView: View {
     let companion: CompanionPersonality
     let size: AvatarSize
 
-    private var initials: String {
-        String(companion.name.prefix(1))
-    }
-
-    private var fontSize: CGFloat {
-        switch size {
-        case .card:   return 52
-        case .detail: return 80
-        case .chat:   return 18
-        }
-    }
-
     var body: some View {
         ZStack {
-            // Gradient background using companion accent
-            LinearGradient(
-                colors: [
-                    companion.accentColor.opacity(0.85),
-                    companion.accentColor.opacity(0.4),
-                    Color.black.opacity(0.8)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // Illustrated portrait — drawn fully in SwiftUI, no assets needed
+            CompanionPortraitView(companion: companion, size: size)
 
-            VStack(spacing: 8) {
-                // Silhouette icon
-                Image(systemName: companion.gender == .female ? "person.fill" : "person.fill")
-                    .font(.system(size: fontSize * 0.8, weight: .light))
-                    .foregroundColor(.white.opacity(0.35))
-                    .offset(y: fontSize * 0.2)
-            }
-
-            // Name initial overlay
-            VStack {
-                Spacer()
-                HStack {
-                    Text(companion.name)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.4))
-                        .cornerRadius(8)
-                        .padding(10)
+            // Name badge overlay (card + detail sizes only)
+            if size != .chat {
+                VStack {
                     Spacer()
+                    HStack {
+                        Text(companion.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.95))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(8)
+                            .padding(10)
+                        Spacer()
+                    }
                 }
             }
         }
