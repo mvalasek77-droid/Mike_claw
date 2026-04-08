@@ -2,20 +2,19 @@ import SwiftUI
 import AVFoundation
 import AVKit
 
-// MARK: - CompanionAvatarRevealView
+// MARK: - CompanionFaceTimeView
 //
-// The one-time "FaceTime-style" intro call shown after onboarding.
-// Black background. Companion avatar fills the screen with a calling animation,
-// then companion voice introduces herself/himself.
-// Tapping "Answer" transitions into the app.
+// One-time "FaceTime-style" intro call shown after companion selection.
+// Black background → incoming call animation → Answer → plays companion reveal
+// video (if bundled) or full-screen blurred avatar → companion voice intro.
 //
-// Referenced as CompanionFaceTimeView in AppClawApp.swift.
+// The reveal video should be an mp4 bundled in the Xcode target named e.g.
+// "reveal_luna.mp4". Drop the file into the project and add it to the target.
+// If no video is found the view falls back to the static avatar background.
 
 struct CompanionFaceTimeView: View {
     @EnvironmentObject private var appState: AppState
     @State private var phase: RevealPhase = .incoming
-    @State private var ringScale: CGFloat = 1.0
-    @State private var ringOpacity: Double = 0.7
     @State private var avatarScale: CGFloat = 0.85
     @State private var avatarOpacity: Double = 0
     @State private var infoOpacity: Double = 0
@@ -23,55 +22,71 @@ struct CompanionFaceTimeView: View {
     @State private var callTimerText: String = "Incoming call…"
     @State private var callTimer: Int = 0
     @State private var dismissed = false
+    @State private var player: AVPlayer?
+    @State private var playerOpacity: Double = 0
 
     private let companion: CompanionPersonality
 
     init() {
-        // Load selected companion; fall back to Luna
         let id = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
         self.companion = CompanionPersonality.find(id: id) ?? .luna
     }
 
     var body: some View {
         ZStack {
-            // Pure black background
             Color.black.ignoresSafeArea()
 
-            // Companion avatar (full screen, blurred / dimmed)
-            CompanionAvatarView(companion: companion, size: .detail)
-                .scaledToFill()
-                .ignoresSafeArea()
-                .scaleEffect(avatarScale)
-                .opacity(avatarOpacity * 0.45)
-                .blur(radius: 4)
-
-            // Pulsing ring animation
-            if phase == .incoming || phase == .ringing {
-                RingPulseView(color: companion.accentColor)
-                    .opacity(ringOpacity)
+            // MARK: Background layer — video (preferred) or blurred avatar
+            if let player = player {
+                VideoPlayer(player: player)
+                    .ignoresSafeArea()
+                    .opacity(playerOpacity)
+                    .allowsHitTesting(false)
+            } else {
+                CompanionAvatarView(companion: companion, size: .detail)
+                    .scaledToFill()
+                    .ignoresSafeArea()
+                    .scaleEffect(avatarScale)
+                    .opacity(avatarOpacity * 0.45)
+                    .blur(radius: 4)
             }
 
-            // Center avatar + name block
+            // Dim overlay so UI stays readable over video
+            if phase == .connected {
+                LinearGradient(
+                    colors: [.black.opacity(0.55), .clear, .black.opacity(0.7)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .ignoresSafeArea()
+            }
+
+            // MARK: Pulse rings (incoming / ringing only)
+            if phase == .incoming || phase == .ringing {
+                RingPulseView(color: companion.accentColor)
+            }
+
+            // MARK: Center content
             VStack(spacing: 20) {
                 Spacer()
 
-                // Companion avatar circle
-                ZStack {
-                    Circle()
-                        .fill(companion.accentColor.opacity(0.2))
-                        .frame(width: 150, height: 150)
+                // Avatar circle — shrinks after connect when video takes over
+                if phase != .connected || player == nil {
+                    ZStack {
+                        Circle()
+                            .fill(companion.accentColor.opacity(0.2))
+                            .frame(width: 150, height: 150)
 
-                    CompanionAvatarView(companion: companion, size: .chat)
-                        .frame(width: 130, height: 130)
-                        .clipShape(Circle())
-                        .overlay(
-                            Circle().strokeBorder(companion.accentColor.opacity(0.6), lineWidth: 2)
-                        )
+                        CompanionAvatarView(companion: companion, size: .chat)
+                            .frame(width: 130, height: 130)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle().strokeBorder(companion.accentColor.opacity(0.6), lineWidth: 2)
+                            )
+                    }
+                    .scaleEffect(phase == .connected ? 0.7 : 1.0)
+                    .animation(.spring(response: 0.5), value: phase)
                 }
-                .scaleEffect(phase == .connected ? 0.7 : 1.0)
-                .animation(.spring(response: 0.5), value: phase)
 
-                // Companion name
                 VStack(spacing: 6) {
                     Text(companion.name)
                         .font(.system(size: 32, weight: .semibold, design: .rounded))
@@ -86,7 +101,7 @@ struct CompanionFaceTimeView: View {
                 Spacer()
                 Spacer()
 
-                // Action buttons
+                // MARK: Buttons
                 if phase == .incoming || phase == .ringing {
                     IncomingCallButtons(
                         accentColor: companion.accentColor,
@@ -97,36 +112,31 @@ struct CompanionFaceTimeView: View {
                 }
 
                 if phase == .connected {
-                    ConnectedButtons(
-                        onContinue: { enter() }
-                    )
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    ConnectedButtons(onContinue: { enter() })
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
 
                 Spacer().frame(height: 60)
             }
         }
         .onAppear { startIncomingSequence() }
+        .onDisappear { tearDownPlayer() }
         .statusBarHidden(true)
     }
 
     // MARK: - State machine
 
     private func startIncomingSequence() {
-        // Fade in avatar background
         withAnimation(.easeIn(duration: 1.2)) {
             avatarOpacity = 1
             avatarScale = 1.0
         }
-        // Info text
         withAnimation(.easeIn(duration: 0.8).delay(0.5)) {
             infoOpacity = 1
         }
-        // Buttons
         withAnimation(.spring(response: 0.5).delay(0.9)) {
             buttonOpacity = 1
         }
-        // Transition to ringing after short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             withAnimation { phase = .ringing }
         }
@@ -137,12 +147,45 @@ struct CompanionFaceTimeView: View {
             phase = .connected
             callTimerText = "Connected"
         }
-        // Play companion's voice intro
-        let intro = companion.introMessage
-        CompanionVoiceEngine.shared.speak(intro, character: companion.voiceCharacter)
 
-        // Start call timer
+        // Try to load and play the reveal video
+        loadRevealVideo()
+
+        // Companion voice intro
+        CompanionVoiceEngine.shared.speak(companion.introMessage, character: companion.voiceCharacter)
         startCallTimer()
+    }
+
+    private func loadRevealVideo() {
+        guard let videoName = companion.revealVideoName else { return }
+
+        // Search bundle for the file with or without extension
+        let url: URL? = Bundle.main.url(forResource: videoName, withExtension: "mp4")
+            ?? Bundle.main.url(forResource: videoName, withExtension: "mov")
+            ?? Bundle.main.url(forResource: videoName, withExtension: nil)
+
+        guard let videoURL = url else {
+            // No video found — the blurred avatar background continues to show
+            return
+        }
+
+        let newPlayer = AVPlayer(url: videoURL)
+        newPlayer.isMuted = true          // Voice engine handles audio
+        newPlayer.actionAtItemEnd = .none // Loop
+
+        // Loop playback
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: newPlayer.currentItem,
+            queue: .main
+        ) { _ in newPlayer.seek(to: .zero); newPlayer.play() }
+
+        self.player = newPlayer
+        newPlayer.play()
+
+        withAnimation(.easeIn(duration: 0.8)) {
+            playerOpacity = 1
+        }
     }
 
     private func decline() {
@@ -150,17 +193,22 @@ struct CompanionFaceTimeView: View {
             avatarOpacity = 0
             infoOpacity   = 0
             buttonOpacity = 0
+            playerOpacity = 0
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            enter()
-        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { enter() }
     }
 
     private func enter() {
         guard !dismissed else { return }
         dismissed = true
         CompanionVoiceEngine.shared.stopSpeaking()
+        tearDownPlayer()
         appState.markAvatarSeen()
+    }
+
+    private func tearDownPlayer() {
+        player?.pause()
+        player = nil
     }
 
     private func startCallTimer() {
@@ -180,7 +228,7 @@ private enum RevealPhase {
     case incoming, ringing, connected
 }
 
-// MARK: - Pulsing ring animation
+// MARK: - RingPulseView
 
 private struct RingPulseView: View {
     let color: Color
@@ -203,14 +251,11 @@ private struct RingPulseView: View {
                     )
             }
         }
-        .onAppear {
-            scale = 1.25
-            opacity = 0
-        }
+        .onAppear { scale = 1.25; opacity = 0 }
     }
 }
 
-// MARK: - Incoming call buttons (Answer / Decline)
+// MARK: - IncomingCallButtons
 
 private struct IncomingCallButtons: View {
     let accentColor: Color
@@ -219,44 +264,31 @@ private struct IncomingCallButtons: View {
 
     var body: some View {
         HStack(spacing: 60) {
-            // Decline
-            VStack(spacing: 10) {
-                Button(action: onDecline) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.red.opacity(0.85))
-                            .frame(width: 72, height: 72)
-                        Image(systemName: "phone.down.fill")
-                            .font(.system(size: 26))
-                            .foregroundColor(.white)
-                    }
-                }
-                Text("Decline")
-                    .font(.system(size: 13))
-                    .foregroundColor(.white.opacity(0.8))
-            }
+            callButton(icon: "phone.down.fill", color: .red, label: "Decline", action: onDecline)
+            callButton(icon: "phone.fill",      color: .green, label: "Answer", action: onAnswer)
+        }
+    }
 
-            // Answer
-            VStack(spacing: 10) {
-                Button(action: onAnswer) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.green.opacity(0.9))
-                            .frame(width: 72, height: 72)
-                        Image(systemName: "phone.fill")
-                            .font(.system(size: 26))
-                            .foregroundColor(.white)
-                    }
+    private func callButton(icon: String, color: Color, label: String, action: @escaping () -> Void) -> some View {
+        VStack(spacing: 10) {
+            Button(action: action) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.88))
+                        .frame(width: 72, height: 72)
+                    Image(systemName: icon)
+                        .font(.system(size: 26))
+                        .foregroundColor(.white)
                 }
-                Text("Answer")
-                    .font(.system(size: 13))
-                    .foregroundColor(.white.opacity(0.8))
             }
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundColor(.white.opacity(0.8))
         }
     }
 }
 
-// MARK: - Connected screen buttons
+// MARK: - ConnectedButtons
 
 private struct ConnectedButtons: View {
     let onContinue: () -> Void
