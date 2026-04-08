@@ -103,7 +103,7 @@ struct Interest: Codable, Identifiable, Hashable {
 
     enum Category: String, Codable, CaseIterable {
         case movies, sports, music, food, tech, fitness,
-             travel, gaming, books, finance, fashion, pets
+             travel, gaming, books, finance, fashion, pets, other
     }
 }
 
@@ -272,17 +272,28 @@ final class UserPersona: ObservableObject, Codable {
     /// Full system-prompt context block about this user.
     var systemPromptContext: String {
         var lines: [String] = []
-        if !userName.isEmpty       { lines.append("The user's name is \(userName).") }
-        lines.append("They prefer a \(style.label) communication style.")
-        lines.append(style.voiceInstruction)
-        if gender != .preferNotToSay { lines.append(gender.companionVoice) }
-        if !interests.isEmpty {
-            let list = interests.map { "\($0.emoji) \($0.label)\($0.detail.map { " (\($0))" } ?? "")" }.joined(separator: ", ")
-            lines.append("Their interests include: \(list).")
-        }
-        learnedFacts.forEach { k, v in lines.append("They mentioned: \(k) = \(v).") }
 
-        // Tracking context
+        if !userName.isEmpty { lines.append("The user's name is \(userName).") }
+        lines.append("They prefer a \(style.label) communication style.")
+        if gender != .preferNotToSay { lines.append(gender.companionVoice) }
+
+        // Interests — phrased so the companion treats them as intimate knowledge,
+        // not a data field. These should surface naturally, not be recited.
+        if !interests.isEmpty {
+            let list = interests.map { "\($0.emoji) \($0.label)" }.joined(separator: ", ")
+            lines.append("""
+            Things this person genuinely loves: \(list). \
+            A good companion remembers what lights someone up and brings it back — \
+            not as a checklist, but the way a close friend would: \
+            "Didn't you say you were into \(interests.first?.label ?? "this")? What's happening with that?"
+            """)
+        }
+
+        // Learned facts from conversation
+        learnedFacts.forEach { k, v in
+            lines.append("Something they mentioned: \(k.replacingOccurrences(of: "_", with: " ")) = \(v).")
+        }
+
         let trackingSummary = trackingPermissions.systemPromptSummary
         if !trackingSummary.isEmpty { lines.append(trackingSummary) }
 

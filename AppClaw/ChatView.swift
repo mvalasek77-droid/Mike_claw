@@ -249,7 +249,8 @@ final class ChatViewModel: ObservableObject {
         // Feed into learning engine — this grows intimacy and adapts the companion
         await HermesPersonality.shared.didComplete(
             userMessage: lastUserMessage,
-            responseText: finalText
+            responseText: finalText,
+            interests: persona.interests
         )
 
         // Speak response aloud
@@ -923,6 +924,8 @@ struct SettingsView: View {
     @State private var showKey: Bool = false
     @State private var keySaved: Bool = false
     @State private var providerLabel: String = "Checking…"
+    @State private var showAddInterests: Bool = false
+    @State private var customInterestText: String = ""
 
     var body: some View {
         NavigationStack {
@@ -1032,11 +1035,12 @@ struct SettingsView: View {
                     }
                 }
 
-                // Interests
-                Section("Interests (\(persona.interests.count))") {
+                // ── Interests ──────────────────────────────────────────
+                Section {
+                    // Existing interests — swipe to delete or toggle notifications
                     ForEach(persona.interests) { interest in
-                        HStack {
-                            Text(interest.emoji)
+                        HStack(spacing: 10) {
+                            Text(interest.emoji).font(.system(size: 18))
                             Text(interest.label)
                                 .foregroundColor(Color.OC.primaryText)
                             Spacer()
@@ -1055,13 +1059,48 @@ struct SettingsView: View {
                             ))
                             .labelsHidden()
                             .tint(Color.OC.primary)
+
+                            Button(role: .destructive) {
+                                withAnimation { persona.removeInterest(id: interest.id); persona.save() }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundColor(.red.opacity(0.8))
+                                    .font(.system(size: 18))
+                            }
+                            .buttonStyle(.borderless)
                         }
                     }
-                    if persona.interests.isEmpty {
-                        Text("No interests yet — chat to add some!")
+
+                    if persona.interests.isEmpty && !showAddInterests {
+                        Text("No interests yet — add some below or chat to add more.")
                             .foregroundColor(Color.OC.secondaryText)
                             .font(OCFont.footnote)
                     }
+
+                    // Toggle add panel
+                    Button {
+                        withAnimation(.spring(response: 0.35)) { showAddInterests.toggle() }
+                    } label: {
+                        HStack {
+                            Image(systemName: showAddInterests ? "minus" : "plus")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text(showAddInterests ? "Done adding" : "Add an interest")
+                                .font(OCFont.body(13))
+                        }
+                        .foregroundColor(Color.OC.accent)
+                    }
+
+                    // Expandable add-interest panel
+                    if showAddInterests {
+                        InterestPickerPanel(persona: persona, customText: $customInterestText)
+                    }
+
+                } header: {
+                    Text("Interests (\(persona.interests.count))")
+                } footer: {
+                    Text("Your companion uses these to bring up what you love, send updates, and make conversations feel personal.")
+                        .font(OCFont.footnote)
+                        .foregroundColor(Color.OC.secondaryText)
                 }
 
                 // Affirmations
@@ -1152,6 +1191,111 @@ struct SettingsView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { keySaved = false }
             }
         }
+    }
+}
+
+// MARK: - InterestPickerPanel
+//
+// Used inside SettingsView to add interests from a preset grid or freeform text.
+// Mirrors the onboarding InterestsStep so the two stay in sync.
+
+private struct InterestPickerPanel: View {
+    @ObservedObject var persona: UserPersona
+    @Binding var customText: String
+
+    private let presets: [Interest] = [
+        Interest(id: "movies",         category: .movies,   label: "Movies & TV",  emoji: "🎬"),
+        Interest(id: "sports_nba",     category: .sports,   label: "NBA",          emoji: "🏀"),
+        Interest(id: "sports_nfl",     category: .sports,   label: "NFL",          emoji: "🏈"),
+        Interest(id: "music",          category: .music,    label: "Music",        emoji: "🎵"),
+        Interest(id: "fitness",        category: .fitness,  label: "Fitness",      emoji: "💪"),
+        Interest(id: "food_starbucks", category: .food,     label: "Starbucks",    emoji: "☕️"),
+        Interest(id: "travel",         category: .travel,   label: "Travel",       emoji: "✈️"),
+        Interest(id: "gaming",         category: .gaming,   label: "Gaming",       emoji: "🎮"),
+        Interest(id: "tech",           category: .tech,     label: "Tech",         emoji: "⚡️"),
+        Interest(id: "finance",        category: .finance,  label: "Investing",    emoji: "📈"),
+        Interest(id: "books",          category: .books,    label: "Books",        emoji: "📚"),
+        Interest(id: "pets",           category: .pets,     label: "Pets",         emoji: "🐾"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+
+            // Preset chips — greyed out if already added
+            LazyVGrid(
+                columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())],
+                spacing: 8
+            ) {
+                ForEach(presets) { preset in
+                    let already = persona.interests.contains(where: { $0.id == preset.id })
+                    Button {
+                        guard !already else { return }
+                        withAnimation(.spring(response: 0.25)) {
+                            persona.addInterest(preset)
+                            persona.save()
+                            Task { await HermesInterestEngine.shared
+                                .scheduleInterestNotifications(for: persona) }
+                        }
+                    } label: {
+                        VStack(spacing: 3) {
+                            Text(preset.emoji).font(.title3)
+                            Text(preset.label)
+                                .font(OCFont.caption(10))
+                                .foregroundColor(already ? Color.OC.textMuted : Color.OC.textPrimary)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(already ? Color.OC.surface.opacity(0.4) : Color.OC.accentSoft)
+                        .cornerRadius(OCSizing.radiusMD)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: OCSizing.radiusMD)
+                                .strokeBorder(
+                                    already ? Color.OC.border.opacity(0.4) : Color.OC.accent,
+                                    lineWidth: already ? 0.5 : 1.5
+                                )
+                        )
+                        .opacity(already ? 0.45 : 1)
+                    }
+                    .disabled(already)
+                }
+            }
+
+            // Custom interest field
+            HStack(spacing: 8) {
+                TextField("Add your own (e.g. Marvel, Arsenal...)", text: $customText)
+                    .font(OCFont.body(13))
+                    .foregroundColor(Color.OC.textPrimary)
+                    .autocorrectionDisabled()
+
+                Button {
+                    let t = customText.trimmingCharacters(in: .whitespaces)
+                    guard t.count > 1 else { return }
+                    let newInterest = Interest(
+                        id: "custom_\(t.lowercased().replacingOccurrences(of: " ", with: "_"))",
+                        category: .other,
+                        label: t,
+                        emoji: "⭐️"
+                    )
+                    withAnimation {
+                        persona.addInterest(newInterest)
+                        persona.save()
+                        customText = ""
+                        Task { await HermesInterestEngine.shared
+                            .scheduleInterestNotifications(for: persona) }
+                    }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(customText.count > 1 ? Color.OC.accent : Color.OC.border)
+                }
+                .disabled(customText.count < 2)
+            }
+            .padding(10)
+            .background(Color.OC.surface)
+            .cornerRadius(OCSizing.radiusMD)
+        }
+        .padding(.vertical, 4)
     }
 }
 

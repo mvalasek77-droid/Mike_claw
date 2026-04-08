@@ -52,10 +52,11 @@ actor HermesPersonality {
         // ── 3. INTIMACY STAGE layer ──────────────────────────────────
         sections.append(stage.promptLayer(userName: userName, companionName: companion.name))
 
-        // ── 4. LEARNING ENGINE layer ─────────────────────────────────
+        // ── 4. LEARNING ENGINE layer (interests-aware) ───────────────
         let learningLayer = await learning.buildLearningPromptLayer(
             userName: userName,
-            companionName: companion.name
+            companionName: companion.name,
+            interests: persona.interests
         )
         if !learningLayer.isEmpty { sections.append(learningLayer) }
 
@@ -128,8 +129,8 @@ actor HermesPersonality {
 
     // MARK: - After response — feed learning engine
 
-    func didComplete(userMessage: String, responseText: String) async {
-        await learning.processUserMessage(userMessage, responseText: responseText)
+    func didComplete(userMessage: String, responseText: String, interests: [Interest] = []) async {
+        await learning.processUserMessage(userMessage, responseText: responseText, interests: interests)
     }
 
     // MARK: - Relationship depth label (public utility)
