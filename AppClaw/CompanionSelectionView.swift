@@ -282,7 +282,7 @@ struct CompanionDetailSheet: View {
 
                             // First message preview
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("First thing she'll say to you")
+                                Text("First thing \(companion.gender == .female ? "she'll" : "he'll") say to you")
                                     .font(OCFont.caption(12))
                                     .foregroundColor(.OC.textMuted)
                                     .textCase(.uppercase)
