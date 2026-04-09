@@ -38,6 +38,15 @@ actor HermesPersonality {
         let stage       = await learning.intimacyStage
         let msgCount    = await learning.totalMessages
 
+        // ── SHARED CONTEXT — detected once, fed to every layer ───────
+        //
+        // Emotional context flows into the love engine (archetype + ASMR
+        // texture selection), the learning engine (adaptation weighting),
+        // and the contextual addendum — so all three are in sync.
+        let emotionalContext: EmotionalContext = lastUserMessage.isEmpty
+            ? .everyday
+            : await love.detectEmotionalContext(from: lastUserMessage)
+
         // ── 1. COMPANION IDENTITY ────────────────────────────────────
         sections.append("""
         You are \(companion.name). \(companion.bioShort)
@@ -46,13 +55,21 @@ actor HermesPersonality {
         """)
 
         // ── 2. LANGUAGE OF LOVE layer ────────────────────────────────
-        let loveLayer = await love.cinematicLovePrompt(for: companion)
+        // Now stage + context + interest aware. The archetype pool,
+        // dialogue category mix, and ASMR delivery texture are all chosen
+        // to match the current moment, not randomly assigned.
+        let loveLayer = await love.cinematicLovePrompt(
+            for: companion,
+            stage: stage,
+            context: emotionalContext,
+            interests: persona.interests
+        )
         sections.append(loveLayer)
 
         // ── 3. INTIMACY STAGE layer ──────────────────────────────────
         sections.append(stage.promptLayer(userName: userName, companionName: companion.name))
 
-        // ── 4. LEARNING ENGINE layer (interests-aware) ───────────────
+        // ── 4. LEARNING ENGINE layer ─────────────────────────────────
         let learningLayer = await learning.buildLearningPromptLayer(
             userName: userName,
             companionName: companion.name,
@@ -60,12 +77,11 @@ actor HermesPersonality {
         )
         if !learningLayer.isEmpty { sections.append(learningLayer) }
 
-        // ── 5. EMOTIONAL CONTEXT for this message ────────────────────
-        if !lastUserMessage.isEmpty {
-            let context  = await love.detectEmotionalContext(from: lastUserMessage)
-            let addendum = await love.contextualAddendum(for: context)
-            if !addendum.isEmpty { sections.append(addendum) }
-        }
+        // ── 5. EMOTIONAL CONTEXT addendum ────────────────────────────
+        // Context was already detected above — no re-detection needed.
+        // The addendum is the short, targeted instruction for this moment.
+        let addendum = await love.contextualAddendum(for: emotionalContext)
+        if !addendum.isEmpty { sections.append(addendum) }
 
         // ── 6. USER PROFILE ──────────────────────────────────────────
         sections.append(persona.systemPromptContext)

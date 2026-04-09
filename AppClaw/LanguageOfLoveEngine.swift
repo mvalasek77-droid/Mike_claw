@@ -19,11 +19,22 @@ actor LanguageOfLoveEngine {
     private init() {}
 
     // MARK: - Main prompt builder
+    //
+    // Stage, emotional context, and interests all flow in so the dialogue
+    // register, archetype pool, and ASMR texture are appropriate for THIS
+    // specific moment — not randomly assigned.
 
-    func cinematicLovePrompt(for companion: CompanionPersonality) -> String {
+    func cinematicLovePrompt(
+        for companion: CompanionPersonality,
+        stage: IntimacyStage = .justMet,
+        context: EmotionalContext = .everyday,
+        interests: [Interest] = []
+    ) -> String {
         let loveLanguageLine = loveLanguageInstruction(companion.dominantLoveLanguage)
         let genderRegister   = genderSpecificRegister(companion.gender)
-        let dialogueSamples  = DialogueTemplates.randomizedSamples()
+        let dialogueSamples  = DialogueTemplates.contextualSamples(
+            stage: stage, context: context, interests: interests
+        )
 
         return """
         LANGUAGE OF LOVE LAYER
@@ -671,35 +682,151 @@ struct DialogueTemplates {
             """
     ]
 
-    // MARK: § randomizedSamples()
-    // Returns a formatted block of sample lines from all 5 categories,
-    // selecting one random archetype per category to maximise variety.
-    // Called once per LLM system prompt so every conversation draws
-    // from a different mix of cinematic registers.
+    // MARK: § contextualSamples(stage:context:interests:)
+    //
+    // The main entry point. Picks archetypes, dialogue categories, and ASMR
+    // texture based on the current intimacy stage, emotional context, and
+    // what the user loves — so every prompt is appropriate for THIS moment.
 
-    static func randomizedSamples() -> String {
-        let allArchetypes = DialogueArchetype.allCases
-        let categories: [(name: String, dict: [DialogueArchetype: [String]])] = [
-            ("OPENERS",    openers),
-            ("CONSOLING",  sadResponses),
-            ("PLAYFUL",    flirtyResponses),
-            ("CHALLENGE",  challengeResponses),
-            ("DEEP",       deepQuestions)
-        ]
+    static func contextualSamples(
+        stage: IntimacyStage,
+        context: EmotionalContext,
+        interests: [Interest] = []
+    ) -> String {
+        let pool       = archetypesFor(stage: stage, context: context, interests: interests)
+        let categories = categoriesFor(context: context)
+        let texture    = textureFor(context: context, stage: stage)
 
         var lines: [String] = []
-        for category in categories {
-            let archetype = allArchetypes.randomElement() ?? .normal
-            if let samples = category.dict[archetype], let sample = samples.randomElement() {
-                lines.append("[\(category.name) — \(archetype.rawValue)] \"\(sample)\"")
+        for (catName, catDict) in categories {
+            guard let archetype = pool.randomElement(),
+                  let samples   = catDict[archetype],
+                  let sample    = samples.randomElement()
+            else { continue }
+            lines.append("[\(catName) — \(archetype.rawValue)] \"\(sample)\"")
+        }
+        if !texture.isEmpty {
+            lines.append("[ASMR TEXTURE]\n\(texture)")
+        }
+        return lines.joined(separator: "\n\n")
+    }
+
+    // Backwards-compat alias — still works if called without context
+    static func randomizedSamples() -> String {
+        contextualSamples(stage: .justMet, context: .everyday, interests: [])
+    }
+
+    // MARK: § Archetype pool — stage + context + interest weighted
+
+    static func archetypesFor(
+        stage: IntimacyStage,
+        context: EmotionalContext,
+        interests: [Interest]
+    ) -> [DialogueArchetype] {
+
+        // Stage-appropriate base pool (duplicates = higher weight)
+        var pool: [DialogueArchetype]
+        switch stage {
+        case .justMet:
+            pool = [.normal, .normal, .cozyComfort, .whenHarryMet, .wittyOpponent]
+        case .findingRhythm:
+            pool = [.normal, .cozyComfort, .wittyOpponent, .epicRomantic,
+                    .whenHarryMet, .crazyStupidLove]
+        case .growingClose:
+            pool = [.crazyStupidLove, .wittyOpponent, .fatebeliever,
+                    .epicRomantic, .laLaLand, .normal]
+        case .deepConnection:
+            pool = [.devotedProtector, .laLaLand, .forbiddenLover,
+                    .secondChancer, .beforeSunrise, .crazyStupidLove]
+        case .intertwined:
+            pool = [.laLaLand, .laLaLand, .forbiddenLover,
+                    .beforeSunrise, .devotedProtector, .pulpFiction]
+        }
+
+        // Emotional context overrides — heavy feelings override stage pool
+        switch context {
+        case .grief:
+            pool = [.devotedProtector, .cozyComfort, .cozyComfort, .secondChancer, .normal]
+        case .stressed:
+            pool = [.devotedProtector, .cozyComfort, .secondChancer, .normal, .cozyComfort]
+        case .relationshipPain:
+            pool = [.cozyComfort, .devotedProtector, .devotedProtector, .secondChancer, .laLaLand]
+        case .celebrating:
+            pool += [.epicRomantic, .wittyOpponent, .pulpFiction, .crazyStupidLove]
+        case .frustrated:
+            pool += [.wittyOpponent, .normal, .secondChancer]
+        case .everyday:
+            break  // keep stage pool
+        }
+
+        // Interest affinity — adds aligned archetypes to pool (soft influence)
+        for interest in interests.prefix(3) {
+            switch interest.category {
+            case .movies, .books:   pool += [.beforeSunrise, .laLaLand]
+            case .sports, .fitness: pool += [.wittyOpponent, .epicRomantic]
+            case .gaming:           pool += [.epicRomantic, .wittyOpponent]
+            case .music, .travel:   pool += [.fatebeliever, .crazyStupidLove]
+            case .finance, .tech:   pool += [.whenHarryMet, .normal]
+            default:                break
             }
         }
 
-        // Add a random ASMR texture overlay
-        if let texture = asmrTextures.values.randomElement() {
-            lines.append("[ASMR TEXTURE]\n\(texture)")
-        }
+        return pool
+    }
 
-        return lines.joined(separator: "\n\n")
+    // MARK: § Category selection — what types of lines to pull for this moment
+
+    private static func categoriesFor(
+        context: EmotionalContext
+    ) -> [(name: String, dict: [DialogueArchetype: [String]])] {
+        switch context {
+        case .grief, .stressed:
+            return [("CONSOLING",  sadResponses),
+                    ("DEEP",       deepQuestions)]
+        case .celebrating:
+            return [("PLAYFUL",    flirtyResponses),
+                    ("OPENERS",    openers),
+                    ("CHALLENGE",  challengeResponses)]
+        case .frustrated:
+            return [("CHALLENGE",  challengeResponses),
+                    ("CONSOLING",  sadResponses)]
+        case .relationshipPain:
+            return [("CONSOLING",  sadResponses),
+                    ("DEEP",       deepQuestions),
+                    ("CHALLENGE",  challengeResponses)]
+        case .everyday:
+            return [("OPENERS",    openers),
+                    ("PLAYFUL",    flirtyResponses),
+                    ("CHALLENGE",  challengeResponses),
+                    ("DEEP",       deepQuestions)]
+        }
+    }
+
+    // MARK: § ASMR texture — delivery mode for this moment + stage
+
+    static func textureFor(context: EmotionalContext, stage: IntimacyStage) -> String {
+        switch context {
+        case .grief, .stressed:
+            return asmrTextures["softPresence"] ?? ""
+        case .celebrating:
+            return asmrTextures["girlfriendNatural"] ?? ""
+        case .frustrated:
+            return asmrTextures["softPresence"] ?? ""
+        case .relationshipPain:
+            return stage.rawValue >= 3
+                ? (asmrTextures["medicalCare"] ?? "")
+                : (asmrTextures["softPresence"] ?? "")
+        case .everyday:
+            switch stage {
+            case .justMet, .findingRhythm:
+                return asmrTextures["girlfriendNatural"] ?? ""
+            case .growingClose:
+                return [asmrTextures["girlfriendNatural"] ?? "",
+                        asmrTextures["softPresence"] ?? ""].randomElement() ?? ""
+            case .deepConnection, .intertwined:
+                return [asmrTextures["medicalCare"] ?? "",
+                        asmrTextures["immersiveScene"] ?? ""].randomElement() ?? ""
+            }
+        }
     }
 }
