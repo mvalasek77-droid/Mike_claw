@@ -22,6 +22,10 @@ struct AppClawApp: App {
     }
 }
 
+// MARK: - AppMode
+
+enum AppMode { case video, chat }
+
 // MARK: - AppState
 
 @MainActor
@@ -29,6 +33,8 @@ final class AppState: ObservableObject {
     @Published var onboardingComplete: Bool
     @Published var notificationsEnabled: Bool = false
     @Published var companionSeenAvatar: Bool
+    /// Toggles between the persistent video view and the chat view.
+    @Published var currentMode: AppMode = .video
 
     init() {
         onboardingComplete   = UserDefaults.standard.bool(forKey: "onboardingComplete")
@@ -43,9 +49,11 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(true, forKey: "onboardingComplete")
     }
 
-    /// Called after the user dismisses the avatar reveal screen.
+    /// Called after the user dismisses the one-time FaceTime reveal screen.
+    /// Routes to video mode (the persistent companion screen), not directly to chat.
     func markAvatarSeen() {
         companionSeenAvatar = true
+        currentMode = .video
         UserDefaults.standard.set(true, forKey: "claw.seenAvatar")
     }
 }
@@ -53,10 +61,12 @@ final class AppState: ObservableObject {
 // MARK: - RootView
 //
 // State machine:
-//   onboardingComplete == false  → OnboardingView  (pick name, companion, permissions)
+//   onboardingComplete == false      → OnboardingView         (pick name, companion, permissions)
 //   onboardingComplete == true
-//     companionSeenAvatar == false → CompanionFaceTimeView  (one-time avatar reveal)
-//     companionSeenAvatar == true  → ChatView               (main app)
+//     companionSeenAvatar == false   → CompanionFaceTimeView  (one-time FaceTime-style reveal)
+//     companionSeenAvatar == true
+//       currentMode == .video        → CompanionVideoView     (persistent companion screen)
+//       currentMode == .chat         → ChatView               (text chat)
 
 struct RootView: View {
     @EnvironmentObject private var appState: AppState
@@ -71,11 +81,16 @@ struct RootView: View {
                 CompanionFaceTimeView()
                     .environmentObject(appState)
                     .transition(.opacity)
+            } else if appState.currentMode == .video {
+                CompanionVideoView()
+                    .environmentObject(appState)
+                    .transition(.opacity)
             } else {
                 ChatView()
                     .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.35), value: appState.currentMode)
         .animation(.easeInOut(duration: 0.4), value: appState.companionSeenAvatar)
         .animation(.easeInOut(duration: 0.4), value: appState.onboardingComplete)
         .task {

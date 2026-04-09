@@ -365,6 +365,7 @@ extension HermesPersonality {
 // MARK: - ChatView
 
 struct ChatView: View {
+    @EnvironmentObject private var appState: AppState
     @ObservedObject var persona: UserPersona
     @StateObject private var vm: ChatViewModel
     @Namespace private var bottomID
@@ -451,26 +452,37 @@ struct ChatView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    HStack(spacing: 10) {
-                        // Companion avatar circle
-                        CompanionAvatarView(companion: persona.selectedCompanion, size: .chat)
-                            .frame(width: 36, height: 36)
-                            .clipShape(Circle())
-                            .overlay(
-                                Circle()
-                                    .strokeBorder(persona.selectedCompanion.accentColor.opacity(0.6), lineWidth: 1.5)
-                            )
+                    // Tapping the companion's avatar/name returns to video mode
+                    Button {
+                        CompanionVoiceEngine.shared.stopSpeaking()
+                        appState.currentMode = .video
+                    } label: {
+                        HStack(spacing: 10) {
+                            CompanionAvatarView(companion: persona.selectedCompanion, size: .chat)
+                                .frame(width: 36, height: 36)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(persona.selectedCompanion.accentColor.opacity(0.6), lineWidth: 1.5)
+                                )
 
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(persona.selectedCompanion.name)
-                                .font(OCFont.headline())
-                                .foregroundColor(.OC.textPrimary)
-                            // Intimacy stage label — grows over time
-                            Text(vm.intimacyStage.isEmpty ? "Just getting started" : vm.intimacyStage)
-                                .font(OCFont.caption(11))
-                                .foregroundColor(persona.selectedCompanion.accentColor)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(persona.selectedCompanion.name)
+                                    .font(OCFont.headline())
+                                    .foregroundColor(.OC.textPrimary)
+                                // Intimacy stage label — grows over time
+                                HStack(spacing: 4) {
+                                    Image(systemName: "video.fill")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(persona.selectedCompanion.accentColor.opacity(0.7))
+                                    Text(vm.intimacyStage.isEmpty ? "Just getting started" : vm.intimacyStage)
+                                        .font(OCFont.caption(11))
+                                        .foregroundColor(persona.selectedCompanion.accentColor)
+                                }
+                            }
                         }
                     }
+                    .buttonStyle(.plain)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 14) {

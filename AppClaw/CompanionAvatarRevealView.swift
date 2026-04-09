@@ -334,3 +334,179 @@ private struct ConnectedButtons: View {
         }
     }
 }
+
+// MARK: - CompanionVideoView
+//
+// Persistent companion screen — shown every time the app opens (after the
+// one-time FaceTime reveal) and any time the user taps "Video" from chat.
+//
+// Layout:
+//   • Full-screen looping companion video (muted) or avatar fallback
+//   • Dark gradient overlay so text/buttons remain readable
+//   • Companion name + intimacy stage at top
+//   • Short voice greeting on appear (rate-limited: at most once per 10 min)
+//   • "Start Chatting" button → switches to .chat mode
+//   • Voice toggle top-right
+
+struct CompanionVideoView: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var player: AVPlayer?
+    @State private var avatarOpacity: Double = 0
+    @State private var contentOpacity: Double = 0
+    @State private var intimacyStageLabel: String = ""
+
+    private let companion: CompanionPersonality
+    private let persona: UserPersona
+
+    init() {
+        let p = UserPersona.load()
+        self.persona = p
+        let id = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
+        self.companion = CompanionPersonality.find(id: id) ?? .luna
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            // ── Video or blurred avatar background ────────────────────
+            if let player = player {
+                AVPlayerLayerView(player: player)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+            } else {
+                CompanionAvatarView(companion: companion, size: .detail)
+                    .scaledToFill()
+                    .ignoresSafeArea()
+                    .opacity(avatarOpacity)
+                    .blur(radius: 3)
+            }
+
+            // Dark gradient: heavier at top + bottom, clear in middle
+            LinearGradient(
+                colors: [.black.opacity(0.72), .clear, .black.opacity(0.80)],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            // ── UI ────────────────────────────────────────────────────
+            VStack(spacing: 0) {
+
+                // Top bar: voice toggle
+                HStack {
+                    Spacer()
+                    CompanionVoiceToggleButton()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 58)
+
+                Spacer()
+
+                // Companion name + stage
+                VStack(spacing: 6) {
+                    Text(companion.name)
+                        .font(.system(size: 34, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                    if !intimacyStageLabel.isEmpty {
+                        Text(intimacyStageLabel)
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
+                            .foregroundColor(companion.accentColor)
+                    }
+                }
+
+                Spacer()
+
+                // Start chatting button
+                Button {
+                    CompanionVoiceEngine.shared.stopSpeaking()
+                    appState.currentMode = .chat
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.system(size: 16))
+                        Text("Start Chatting")
+                            .font(OCFont.headline())
+                    }
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.white)
+                    .cornerRadius(OCSizing.radiusLG)
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 56)
+            }
+            .opacity(contentOpacity)
+        }
+        .onAppear {
+            configureAudio()
+            loadVideo()
+            maybeGreet()
+            Task {
+                intimacyStageLabel = await HerLearningEngine.shared.intimacyStage.label
+            }
+            withAnimation(.easeIn(duration: 0.6)) {
+                avatarOpacity = 1
+                contentOpacity = 1
+            }
+        }
+        .onDisappear {
+            player?.pause()
+            player = nil
+        }
+    }
+
+    // MARK: - Audio session
+
+    private func configureAudio() {
+        try? AVAudioSession.sharedInstance().setCategory(
+            .playback, mode: .spokenAudio, options: [.mixWithOthers]
+        )
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+
+    // MARK: - Video
+
+    private func loadVideo() {
+        guard let name = companion.revealVideoName else { return }
+        let url = Bundle.main.url(forResource: name, withExtension: "mp4")
+            ?? Bundle.main.url(forResource: name, withExtension: "mov")
+        guard let videoURL = url else { return }
+
+        let item = AVPlayerItem(url: videoURL)
+        let newPlayer = AVPlayer(playerItem: item)
+        newPlayer.isMuted = true
+        newPlayer.actionAtItemEnd = .none
+
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item, queue: .main
+        ) { _ in newPlayer.seek(to: .zero); newPlayer.play() }
+
+        withAnimation(.easeIn(duration: 0.5)) { player = newPlayer }
+        newPlayer.play()
+    }
+
+    // MARK: - Voice greeting (rate-limited to once per 10 minutes)
+
+    private func maybeGreet() {
+        let key = "videoView.lastGreeting"
+        let last = UserDefaults.standard.object(forKey: key) as? Date ?? .distantPast
+        guard Date().timeIntervalSince(last) > 600 else { return }
+        UserDefaults.standard.set(Date(), forKey: key)
+
+        let name = persona.userName.isEmpty ? "" : " \(persona.userName)"
+        let hour = Calendar.current.component(.hour, from: Date())
+        let greeting: String
+        switch hour {
+        case 5..<12:  greeting = "Good morning\(name)."
+        case 12..<17: greeting = "Good afternoon\(name)."
+        case 17..<21: greeting = "Good evening\(name)."
+        default:      greeting = "Hey\(name)."
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            CompanionVoiceEngine.shared.speak(greeting, character: companion.voiceCharacter)
+        }
+    }
+}
