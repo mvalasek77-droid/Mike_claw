@@ -304,6 +304,26 @@ extension CompanionPersonality {
         all.first { $0.id == id }
     }
 
+    // MARK: - Relationship mode fitness
+
+    /// The modes where this companion is the natural "recommended" choice.
+    /// All companions are available in every mode — this controls who gets featured.
+    var featuredRelationshipModes: Set<RelationshipMode> {
+        switch id {
+        case "luna":  return [.flirtyFriend, .romanticCompanion]
+        case "aria":  return [.friend, .flirtyFriend]
+        case "kel":   return [.professional, .friend]
+        case "marco": return [.professional, .friend]
+        case "dante": return [.flirtyFriend, .romanticCompanion]
+        case "kai":   return [.professional, .friend, .flirtyFriend, .romanticCompanion]
+        default:      return [.friend]
+        }
+    }
+
+    func isFeatured(for mode: RelationshipMode) -> Bool {
+        featuredRelationshipModes.contains(mode)
+    }
+
     // MARK: - Personalised intro
 
     /// Spoken by TTS on the one-time FaceTime reveal screen.

@@ -11,11 +11,20 @@ struct CompanionSelectionView: View {
     @State private var genderFilter: CompanionGender? = nil
     @State private var detailCompanion: CompanionPersonality? = nil
 
+    private var mode: RelationshipMode { persona.relationshipMode }
+
     private var filtered: [CompanionPersonality] {
+        let base: [CompanionPersonality]
         switch genderFilter {
-        case .female: return CompanionPersonality.allFemale
-        case .male:   return CompanionPersonality.allMale
-        case nil:     return CompanionPersonality.all
+        case .female: base = CompanionPersonality.allFemale
+        case .male:   base = CompanionPersonality.allMale
+        case nil:     base = CompanionPersonality.all
+        }
+        // Featured companions for the current mode appear first
+        return base.sorted { a, b in
+            let af = a.isFeatured(for: mode), bf = b.isFeatured(for: mode)
+            if af == bf { return false }
+            return af && !bf
         }
     }
 
@@ -30,9 +39,14 @@ struct CompanionSelectionView: View {
                 Text("Who do you want by your side?")
                     .font(OCFont.title())
                     .foregroundColor(.OC.textPrimary)
-                Text("Your companion learns about you and grows with you over time.")
-                    .font(OCFont.body())
-                    .foregroundColor(.OC.textSecondary)
+
+                // Mode-aware subtitle
+                HStack(spacing: 6) {
+                    Text(mode.emoji)
+                    Text("\(mode.label) mode — best matches shown first.")
+                        .font(OCFont.body(13))
+                        .foregroundColor(.OC.textSecondary)
+                }
             }
             .padding(.horizontal, OCSizing.spacingLG)
             .padding(.top, OCSizing.spacingMD)
@@ -56,7 +70,8 @@ struct CompanionSelectionView: View {
                     ForEach(filtered) { companion in
                         CompanionCard(
                             companion: companion,
-                            isSelected: persona.selectedCompanionID == companion.id
+                            isSelected: persona.selectedCompanionID == companion.id,
+                            isFeaturedForMode: companion.isFeatured(for: mode)
                         ) {
                             withAnimation(.spring(response: 0.3)) {
                                 persona.selectedCompanionID = companion.id
@@ -110,6 +125,7 @@ private struct FilterPill: View {
 private struct CompanionCard: View {
     let companion: CompanionPersonality
     let isSelected: Bool
+    var isFeaturedForMode: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -121,6 +137,7 @@ private struct CompanionCard: View {
                     CompanionAvatarView(companion: companion, size: .card)
                         .frame(height: 160)
                         .clipped()
+                        .opacity(isFeaturedForMode ? 1 : 0.72)
 
                     // Gender badge
                     Text(companion.genderLabel)
@@ -131,6 +148,24 @@ private struct CompanionCard: View {
                         .background(Color.black.opacity(0.45))
                         .cornerRadius(6)
                         .padding(8)
+
+                    // Featured badge (top-right)
+                    if isFeaturedForMode {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Text("★ Best match")
+                                    .font(OCFont.caption(9))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3)
+                                    .background(companion.accentColor.opacity(0.9))
+                                    .cornerRadius(5)
+                                    .padding(6)
+                            }
+                            Spacer()
+                        }
+                    }
                 }
 
                 // Info area

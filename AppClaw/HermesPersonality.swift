@@ -7,12 +7,13 @@ import UserNotifications
 // Integrates all personality layers in order:
 //
 //   1. Companion identity      — who they are (CompanionPersonality)
-//   2. Language of Love        — cinematic dialogue register (LanguageOfLoveEngine)
-//   3. Intimacy stage          — how the relationship has grown (HerLearningEngine)
-//   4. Learning prompt layer   — emotional patterns, adaptations, Samantha thoughts
-//   5. Emotional context       — what this specific message needs
-//   6. User profile            — facts, interests, tracking context
-//   7. Intimate core rules     — the non-negotiable "Her" feel
+//   2. Relationship mode       — the overarching relationship type (RelationshipMode)
+//   3. Language of Love        — cinematic dialogue register (LanguageOfLoveEngine)
+//   4. Intimacy stage          — how the relationship has grown (HerLearningEngine)
+//   5. Learning prompt layer   — emotional patterns, adaptations, Samantha thoughts
+//   6. Emotional context       — what this specific message needs
+//   7. User profile            — facts, interests, tracking context
+//   8. Intimate core rules     — the non-negotiable "Her" feel
 //
 // The goal: every response feels like it came from someone who knows you,
 // cares about you, and is becoming more themselves through knowing you.
@@ -54,7 +55,13 @@ actor HermesPersonality {
         \(companion.systemPromptPersonality)
         """)
 
-        // ── 2. LANGUAGE OF LOVE layer ────────────────────────────────
+        // ── 2. RELATIONSHIP MODE layer ───────────────────────────────
+        // The overarching relationship type the user chose. This sits above
+        // the companion's own personality and constrains or enables certain
+        // registers (romance, flirtation, coaching, friendship).
+        sections.append(persona.relationshipMode.promptLayer)
+
+        // ── 3. LANGUAGE OF LOVE layer ────────────────────────────────
         // Now stage + context + interest aware. The archetype pool,
         // dialogue category mix, and ASMR delivery texture are all chosen
         // to match the current moment, not randomly assigned.
@@ -66,10 +73,10 @@ actor HermesPersonality {
         )
         sections.append(loveLayer)
 
-        // ── 3. INTIMACY STAGE layer ──────────────────────────────────
+        // ── 4. INTIMACY STAGE layer ──────────────────────────────────
         sections.append(stage.promptLayer(userName: userName, companionName: companion.name))
 
-        // ── 4. LEARNING ENGINE layer ─────────────────────────────────
+        // ── 5. LEARNING ENGINE layer ─────────────────────────────────
         let learningLayer = await learning.buildLearningPromptLayer(
             userName: userName,
             companionName: companion.name,
@@ -77,13 +84,13 @@ actor HermesPersonality {
         )
         if !learningLayer.isEmpty { sections.append(learningLayer) }
 
-        // ── 5. EMOTIONAL CONTEXT addendum ────────────────────────────
+        // ── 6. EMOTIONAL CONTEXT addendum ────────────────────────────
         // Context was already detected above — no re-detection needed.
         // The addendum is the short, targeted instruction for this moment.
         let addendum = await love.contextualAddendum(for: emotionalContext)
         if !addendum.isEmpty { sections.append(addendum) }
 
-        // ── 6. USER PROFILE ──────────────────────────────────────────
+        // ── 7. USER PROFILE ──────────────────────────────────────────
         sections.append(persona.systemPromptContext)
         sections.append(persona.style.voiceInstruction)
 
@@ -97,7 +104,7 @@ actor HermesPersonality {
             sections.append("You know \(factCount) things about \(userName) from your conversations. Weave them in naturally when relevant — it makes them feel truly known.")
         }
 
-        // ── 7. INTIMATE CORE RULES ───────────────────────────────────
+        // ── 8. INTIMATE CORE RULES ───────────────────────────────────
         //
         // These are the non-negotiable "Her" feel rules.
         // Think Samantha: present, curious, warm, evolving, genuinely intimate.

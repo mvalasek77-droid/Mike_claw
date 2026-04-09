@@ -1092,6 +1092,47 @@ struct SettingsView: View {
                         .foregroundColor(Color.OC.secondaryText)
                 }
 
+                // Relationship mode
+                Section {
+                    ForEach(RelationshipMode.allCases) { mode in
+                        Button {
+                            withAnimation(.spring(response: 0.3)) {
+                                persona.relationshipMode = mode
+                                persona.save()
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Text(mode.emoji)
+                                    .font(.title3)
+                                    .frame(width: 30)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(mode.label)
+                                        .font(OCFont.headline())
+                                        .foregroundColor(Color.OC.primaryText)
+                                    Text(mode.description)
+                                        .font(OCFont.body(12))
+                                        .foregroundColor(Color.OC.secondaryText)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                Spacer()
+                                if persona.relationshipMode == mode {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(Color.OC.accent)
+                                        .transition(.scale.combined(with: .opacity))
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Relationship Mode")
+                } footer: {
+                    Text("Changes how your companion relates to you. Takes effect on the next message.")
+                        .font(OCFont.footnote)
+                        .foregroundColor(Color.OC.secondaryText)
+                }
+
                 // Communication style
                 Section("Communication Style") {
                     ForEach(CommunicationStyle.allCases) { style in

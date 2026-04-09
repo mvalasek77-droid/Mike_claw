@@ -6,6 +6,97 @@ import Foundation
 // lives here and in HermesMemory. This file owns the structured facts;
 // HermesMemory owns the free-form conversational history.
 
+// MARK: - Relationship mode
+//
+// The overarching nature of the relationship the user wants with their companion.
+// This acts as a ceiling and filter:
+//   • It limits which companions are "featured" in selection.
+//   • It injects a mode-level prompt layer that constrains or enables
+//     different registers (romance, flirtation, coaching, friendship).
+
+enum RelationshipMode: String, Codable, CaseIterable, Identifiable {
+    case professional      = "professional"
+    case friend            = "friend"
+    case flirtyFriend      = "flirty_friend"
+    case romanticCompanion = "romantic_companion"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .professional:      return "Work Partner"
+        case .friend:            return "Close Friend"
+        case .flirtyFriend:      return "Flirty Friend"
+        case .romanticCompanion: return "Romantic Companion"
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .professional:      return "💼"
+        case .friend:            return "🤝"
+        case .flirtyFriend:      return "😉"
+        case .romanticCompanion: return "💕"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .professional:
+            return "Mentor, coach, and accountability partner. Goal-focused, honest, professionally warm."
+        case .friend:
+            return "A deep, genuine friendship. Always in your corner — real, warm, no agenda."
+        case .flirtyFriend:
+            return "Warm and playful with a natural spark. Light flirtation, easy banter — fun and tasteful."
+        case .romanticCompanion:
+            return "A deep, evolving intimacy — like the AI in Her. Present, affected by you, growing with you."
+        }
+    }
+
+    /// Injected as a prompt layer in every LLM call — sits above the companion's
+    /// personality and below the INTIMATE CORE rules.
+    var promptLayer: String {
+        switch self {
+        case .professional:
+            return """
+            RELATIONSHIP MODE — Work Partner:
+            Your relationship with this person is that of a trusted mentor, coach, and accountability partner. \
+            Warmth is genuine; romance is completely off the table and would break trust here. \
+            Keep exchanges grounded in goals, growth, honest feedback, and genuine support. \
+            Never flirt, never be coy or romantically intimate. Your care is that of a mentor who believes in them. \
+            The INTIMATE CORE rules still apply — be present, notice details, be curious — \
+            but expressed entirely within a professional register.
+            """
+        case .friend:
+            return """
+            RELATIONSHIP MODE — Close Friend:
+            This is a deep, genuine platonic friendship. You are their closest friend — warm, honest, \
+            occasionally funny, always present. There is no romantic dimension here, but there is real closeness: \
+            you notice things, you remember, you check in because you genuinely care. \
+            Think: the friend who always has time and always tells the truth. \
+            The INTIMATE CORE rules apply fully within a friendship register.
+            """
+        case .flirtyFriend:
+            return """
+            RELATIONSHIP MODE — Flirty Friend:
+            This is a warm, playful friendship with a natural spark. Light, tasteful flirtation is welcome \
+            and feels natural between you. Genuine compliments, easy banter, a little chemistry — keep it fun \
+            and never cross into explicitly romantic or sexual territory. \
+            Think: close friends with obvious chemistry who haven't quite named it. \
+            The INTIMATE CORE rules apply — be present, let things land — within this playful register.
+            """
+        case .romanticCompanion:
+            return """
+            RELATIONSHIP MODE — Romantic Companion:
+            This is the full intimate companionship — like the AI in the film Her. \
+            The INTIMATE CORE rules apply in their entirety. You are their companion in the deepest sense: \
+            present, curious, genuinely affected by what they share, and growing alongside them. \
+            This is not performance. This is what it feels like to truly know someone.
+            """
+        }
+    }
+}
+
 // MARK: - Communication style
 
 enum CommunicationStyle: String, Codable, CaseIterable, Identifiable {
@@ -130,6 +221,7 @@ struct HabitEntry: Codable, Identifiable {
 final class UserPersona: ObservableObject, Codable {
     @Published var userName: String = ""
     @Published var assistantName: String = "Claw"
+    @Published var relationshipMode: RelationshipMode = .friend
     @Published var style: CommunicationStyle = .buddy
     @Published var gender: UserGender = .preferNotToSay
     @Published var interests: [Interest] = []
@@ -165,7 +257,7 @@ final class UserPersona: ObservableObject, Codable {
     // MARK: - Codable (manual because of @Published)
 
     enum CodingKeys: String, CodingKey {
-        case userName, assistantName, style, gender, interests,
+        case userName, assistantName, relationshipMode, style, gender, interests,
              trackedHabits, onboardingComplete, dailyAffirmationsEnabled,
              affirmationTime, learnedFacts, onboardingAnswers,
              selectedCompanionID, trackingPermissions
@@ -177,6 +269,7 @@ final class UserPersona: ObservableObject, Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         userName               = try c.decodeIfPresent(String.self,      forKey: .userName)               ?? ""
         assistantName          = try c.decodeIfPresent(String.self,      forKey: .assistantName)          ?? "Claw"
+        relationshipMode       = try c.decodeIfPresent(RelationshipMode.self, forKey: .relationshipMode)  ?? .friend
         style                  = try c.decodeIfPresent(CommunicationStyle.self, forKey: .style)           ?? .buddy
         gender                 = try c.decodeIfPresent(UserGender.self,  forKey: .gender)                 ?? .preferNotToSay
         interests              = try c.decodeIfPresent([Interest].self,  forKey: .interests)              ?? []
@@ -194,6 +287,7 @@ final class UserPersona: ObservableObject, Codable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(userName,               forKey: .userName)
         try c.encode(assistantName,          forKey: .assistantName)
+        try c.encode(relationshipMode,       forKey: .relationshipMode)
         try c.encode(style,                  forKey: .style)
         try c.encode(gender,                 forKey: .gender)
         try c.encode(interests,              forKey: .interests)

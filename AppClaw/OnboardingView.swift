@@ -17,7 +17,7 @@ struct CompanionOnboardingView: View {
     @StateObject private var persona = UserPersona.load()
     @State private var step: Int = 0
 
-    private let totalSteps = 7   // 0…6 (provider is last)
+    private let totalSteps = 8   // 0…7 (provider is last)
 
     var body: some View {
         ZStack {
@@ -41,10 +41,11 @@ struct CompanionOnboardingView: View {
                     switch step {
                     case 0: WelcomeStep()
                     case 1: NamingStep(persona: persona)
-                    case 2: StyleStep(persona: persona)
-                    case 3: CompanionSelectionView(persona: persona)
-                    case 4: InterestsStep(persona: persona)
-                    case 5: DataPermissionsView(persona: persona) { advance() }
+                    case 2: RelationshipModeStep(persona: persona)
+                    case 3: StyleStep(persona: persona)
+                    case 4: CompanionSelectionView(persona: persona)
+                    case 5: InterestsStep(persona: persona)
+                    case 6: DataPermissionsView(persona: persona) { advance() }
                     default: ProviderStep(persona: persona, onComplete: finish)
                     }
                 }
@@ -55,7 +56,7 @@ struct CompanionOnboardingView: View {
                 .id(step)
 
                 // Navigation button (hidden on steps with their own CTA: 5, 6)
-                if step < 5 {
+                if step < 6 {
                     Button(action: advance) {
                         HStack {
                             Text(nextButtonLabel)
@@ -80,7 +81,7 @@ struct CompanionOnboardingView: View {
     private var nextButtonLabel: String {
         switch step {
         case 0: return "Let's go! 🐾"
-        case 3: return persona.selectedCompanionID.isEmpty ? "Choose a companion first" : "Meet \(persona.selectedCompanion.name) →"
+        case 4: return persona.selectedCompanionID.isEmpty ? "Choose a companion first" : "Meet \(persona.selectedCompanion.name) →"
         default: return "Next"
         }
     }
@@ -187,7 +188,82 @@ private struct NamingStep: View {
     }
 }
 
-// MARK: - Step 2: Communication style
+// MARK: - Step 2: Relationship mode
+
+private struct RelationshipModeStep: View {
+    @ObservedObject var persona: UserPersona
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: OCSizing.spacingMD) {
+            Spacer()
+
+            VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
+                Text("💕 What kind of connection?")
+                    .font(OCFont.caption())
+                    .foregroundColor(.OC.accent)
+                Text("Set the vibe")
+                    .font(OCFont.title())
+                    .foregroundColor(.OC.textPrimary)
+                Text("This shapes how your companion relates to you — and which personalities are the best fit.")
+                    .font(OCFont.body())
+                    .foregroundColor(.OC.textSecondary)
+            }
+            .padding(.horizontal, OCSizing.spacingLG)
+
+            ForEach(RelationshipMode.allCases) { mode in
+                RelationshipModeCard(mode: mode, selected: persona.relationshipMode == mode) {
+                    withAnimation(.spring(response: 0.3)) {
+                        persona.relationshipMode = mode
+                        persona.save()
+                    }
+                }
+                .padding(.horizontal, OCSizing.spacingLG)
+            }
+
+            Spacer()
+        }
+    }
+}
+
+private struct RelationshipModeCard: View {
+    let mode: RelationshipMode
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: OCSizing.spacingMD) {
+                Text(mode.emoji)
+                    .font(.title2)
+                    .frame(width: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(mode.label)
+                        .font(OCFont.headline())
+                        .foregroundColor(.OC.textPrimary)
+                    Text(mode.description)
+                        .font(OCFont.body(13))
+                        .foregroundColor(.OC.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.OC.accent)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .padding(OCSizing.spacingMD)
+            .background(selected ? Color.OC.accent.opacity(0.12) : Color.OC.surfaceRaised)
+            .cornerRadius(OCSizing.radiusMD)
+            .overlay(
+                RoundedRectangle(cornerRadius: OCSizing.radiusMD)
+                    .strokeBorder(selected ? Color.OC.accent : Color.OC.border, lineWidth: selected ? 1.5 : 1)
+            )
+        }
+    }
+}
+
+// MARK: - Step 3: Communication style
 
 private struct StyleStep: View {
     @ObservedObject var persona: UserPersona
@@ -248,7 +324,7 @@ private struct StyleCard: View {
     }
 }
 
-// MARK: - Step 4: Interests
+// MARK: - Step 5: Interests
 
 private struct InterestsStep: View {
     @ObservedObject var persona: UserPersona
@@ -326,7 +402,7 @@ private struct InterestsStep: View {
     }
 }
 
-// MARK: - Step 6: Provider setup
+// MARK: - Step 7: Provider setup
 
 private struct ProviderStep: View {
     @ObservedObject var persona: UserPersona
