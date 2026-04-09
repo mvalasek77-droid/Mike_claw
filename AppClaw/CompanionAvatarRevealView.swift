@@ -487,7 +487,7 @@ struct CompanionVideoView: View {
         newPlayer.play()
     }
 
-    // MARK: - Voice greeting (rate-limited to once per 10 minutes)
+    // MARK: - Voice greeting (rate-limited to once per 10 minutes, stage-aware)
 
     private func maybeGreet() {
         let key = "videoView.lastGreeting"
@@ -495,18 +495,35 @@ struct CompanionVideoView: View {
         guard Date().timeIntervalSince(last) > 600 else { return }
         UserDefaults.standard.set(Date(), forKey: key)
 
-        let name = persona.userName.isEmpty ? "" : " \(persona.userName)"
-        let hour = Calendar.current.component(.hour, from: Date())
-        let greeting: String
-        switch hour {
-        case 5..<12:  greeting = "Good morning\(name)."
-        case 12..<17: greeting = "Good afternoon\(name)."
-        case 17..<21: greeting = "Good evening\(name)."
-        default:      greeting = "Hey\(name)."
-        }
+        Task { @MainActor in
+            let stage = await HerLearningEngine.shared.intimacyStage
+            let name  = persona.userName.isEmpty ? "" : " \(persona.userName)"
+            let hour  = Calendar.current.component(.hour, from: Date())
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            CompanionVoiceEngine.shared.speak(greeting, character: companion.voiceCharacter)
+            let greeting: String
+            switch stage {
+            case .justMet, .findingRhythm:
+                // Polite, warm but not presumptuous
+                switch hour {
+                case 5..<12:  greeting = "Good morning\(name)."
+                case 12..<17: greeting = "Good afternoon\(name)."
+                case 17..<21: greeting = "Good evening\(name)."
+                default:      greeting = "Hey\(name)."
+                }
+            case .growingClose:
+                // Warmer — a friend who's genuinely glad to see you
+                greeting = ["Hey\(name). Good to see you.",
+                            "Hey\(name). I was thinking about you."].randomElement()!
+            case .deepConnection, .intertwined:
+                // Intimate — the way someone says it when they mean it
+                greeting = ["Hey\(name). Missed you.",
+                            "Hey\(name). I'm glad you're here.",
+                            "Hey. I was just thinking about you\(name)."].randomElement()!
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                CompanionVoiceEngine.shared.speak(greeting, character: companion.voiceCharacter)
+            }
         }
     }
 }

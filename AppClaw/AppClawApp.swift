@@ -102,6 +102,11 @@ struct RootView: View {
             _ = PsychologicalProfiler.shared
             _ = TrackingEngine.shared
             _ = ProactiveSuggestionController.shared
+
+            // Start companion data tracker — respects TrackingPermissions exactly.
+            // Called here so calendar/reminder scans run fresh on each launch.
+            let persona = UserPersona.load()
+            await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
             Task {
@@ -114,6 +119,9 @@ struct RootView: View {
             Task {
                 await HermesPrivacyGate.shared.configureHermesIfReady()
                 await ProactiveSuggestionController.shared.processQueue()
+                // Re-scan on foreground — new events may have been added.
+                let persona = UserPersona.load()
+                await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
             }
         }
     }

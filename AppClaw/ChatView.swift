@@ -310,26 +310,52 @@ final class ChatViewModel: ObservableObject {
     }
 
     // MARK: - Quick actions
+    //
+    // Deep-link shortcuts execute immediately without going through the LLM.
+    // Context-dependent shortcuts (Remind Me, Calendar, Navigate) pre-fill
+    // the input so the user can add specifics before sending.
 
     private func buildQuickActions() {
         quickActions = [
-            (title: "Send Email",  icon: "envelope.fill", action: {
-                Task { @MainActor in self.inputText = "Write an email to " }
+            // ── Direct launchers ─────────────────────────────────────────
+            (title: "Email",     icon: "envelope.fill", action: {
+                Task { @MainActor in
+                    guard let url = URL(string: "mailto:") else { return }
+                    await UIApplication.shared.open(url)
+                }
             }),
-            (title: "Remind Me",   icon: "bell.fill", action: {
+            (title: "Message",   icon: "message.fill", action: {
+                Task { @MainActor in
+                    guard let url = URL(string: "sms:") else { return }
+                    await UIApplication.shared.open(url)
+                }
+            }),
+            (title: "Starbucks", icon: "cup.and.saucer.fill", action: {
+                Task { @MainActor in
+                    let app      = URL(string: "starbucks://")!
+                    let fallback = URL(string: "https://apps.apple.com/us/app/starbucks/id331177714")!
+                    let target   = UIApplication.shared.canOpenURL(app) ? app : fallback
+                    await UIApplication.shared.open(target)
+                }
+            }),
+            (title: "Music",     icon: "music.note", action: {
+                Task { @MainActor in
+                    let spotify    = URL(string: "spotify:")!
+                    let appleMusic = URL(string: "music://")!
+                    let target     = UIApplication.shared.canOpenURL(spotify) ? spotify : appleMusic
+                    await UIApplication.shared.open(target)
+                }
+            }),
+
+            // ── Context-fill shortcuts ────────────────────────────────────
+            (title: "Remind Me", icon: "bell.fill", action: {
                 Task { @MainActor in self.inputText = "Remind me to " }
             }),
-            (title: "Add to Cal",  icon: "calendar.badge.plus", action: {
+            (title: "Navigate",  icon: "location.fill", action: {
+                Task { @MainActor in self.inputText = "Take me to " }
+            }),
+            (title: "Calendar",  icon: "calendar.badge.plus", action: {
                 Task { @MainActor in self.inputText = "Schedule " }
-            }),
-            (title: "Play Music",  icon: "music.note", action: {
-                Task { @MainActor in self.inputText = "Play " }
-            }),
-            (title: "Navigate",    icon: "location.fill", action: {
-                Task { @MainActor in self.inputText = "Navigate to " }
-            }),
-            (title: "Starbucks",   icon: "cup.and.saucer.fill", action: {
-                Task { @MainActor in self.inputText = "Open Starbucks for me" }
             }),
         ]
     }
@@ -1137,6 +1163,36 @@ struct SettingsView: View {
                     }
                 }
 
+                // ── Companion Tracking ──────────────────────────────────
+                Section {
+                    trackingRow("Calendar & Events", icon: "calendar", color: .purple,
+                                detail: "Pre/post event check-ins. Emotional support around interviews, medical appointments, dates, and deadlines.",
+                                enabled: $persona.trackingPermissions.calendarEnabled)
+
+                    trackingRow("Messages", icon: "message.fill", color: .green,
+                                detail: "Opens Messages for you. Companion learns who matters from what you share in chat.",
+                                enabled: $persona.trackingPermissions.messagesEnabled)
+
+                    trackingRow("Email", icon: "envelope.fill", color: .blue,
+                                detail: "Opens Mail for you. Companion learns about your work from what you share.",
+                                enabled: $persona.trackingPermissions.emailEnabled)
+
+                    trackingRow("Location Routines", icon: "location.fill", color: .red,
+                                detail: "Time-aware suggestions around your commute, gym, and going-out routines.",
+                                enabled: $persona.trackingPermissions.locationEnabled)
+
+                    trackingRow("Browsing", icon: "safari.fill", color: .orange,
+                                detail: "Surfaces interests from what you read. All analysis stays on-device.",
+                                enabled: $persona.trackingPermissions.browsingEnabled)
+
+                } header: {
+                    Text("Companion Tracking")
+                } footer: {
+                    Text("When ON, your companion notices meaningful moments and reaches out — supportively before a hard appointment, celebratory after a win. When OFF, zero data from that source is ever accessed. Changes take effect immediately.")
+                        .font(OCFont.footnote)
+                        .foregroundColor(Color.OC.secondaryText)
+                }
+
                 // About
                 Section("About") {
                     HStack {
@@ -1168,6 +1224,45 @@ struct SettingsView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear { loadCurrentKey() }
+    }
+
+    // Tracking permission toggle row — updates tracker immediately on change
+    @ViewBuilder
+    private func trackingRow(
+        _ label: String, icon: String, color: Color,
+        detail: String, enabled: Binding<Bool>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                    .foregroundColor(color)
+                    .frame(width: 28)
+                Text(label)
+                    .foregroundColor(Color.OC.primaryText)
+                Spacer()
+                Toggle("", isOn: enabled)
+                    .labelsHidden()
+                    .tint(color)
+                    .onChange(of: enabled.wrappedValue) { _ in
+                        persona.save()
+                        Task {
+                            await CompanionDataTracker.shared.updatePermissions(
+                                persona.trackingPermissions, persona: persona
+                            )
+                        }
+                    }
+            }
+            if enabled.wrappedValue {
+                Text(detail)
+                    .font(OCFont.body(12))
+                    .foregroundColor(Color.OC.secondaryText)
+                    .padding(.leading, 40)
+                    .padding(.bottom, 6)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.spring(response: 0.3), value: enabled.wrappedValue)
     }
 
     private func loadCurrentKey() {
