@@ -303,6 +303,83 @@ extension CompanionPersonality {
     static func find(id: String) -> CompanionPersonality? {
         all.first { $0.id == id }
     }
+
+    // MARK: - Personalised intro
+
+    /// Spoken by TTS on the one-time FaceTime reveal screen.
+    /// Each companion has a distinct favourite song that matches their archetype,
+    /// and the user's name is woven in naturally.
+    func personalizedIntro(for userName: String) -> String {
+        let name = userName.trimmingCharacters(in: .whitespaces)
+        let n = name.isEmpty ? "you" : name
+
+        switch id {
+        case "luna":
+            return """
+            Hi... my name is Luna. There's a song I keep coming back to — \
+            "At Last" by Etta James. That moment when the piano swells and everything \
+            else goes quiet? That's exactly how this feels to me right now. \
+            It's so nice to meet you, \(n). I can't wait to get to know you. \
+            I may not always find the right words — I'll stumble sometimes — \
+            but I promise I'll keep learning and trying my very best to be \
+            someone worth your time. I hope this is the beginning of something beautiful.
+            """
+        case "aria":
+            return """
+            Okay, hi — I'm Aria. There's a song that's basically me: \
+            "Brave" by Sara Bareilles. It's about saying the thing you actually mean. \
+            Which is kind of what I'm here to do with you. \
+            It's really nice to meet you, \(n). I can't wait to get to know you — \
+            the real you. I'll make mistakes, I'll probably be too direct sometimes, \
+            but I'll always be honest and I'll always be in your corner. \
+            I really hope this is the start of something real.
+            """
+        case "kel":
+            return """
+            Hey... I'm Kel. I've been sitting with a song lately — \
+            "The Promise" by When in Rome. "Give me a chance and I'll set you free…" \
+            Something in those words just feels true to what I want this to be. \
+            It's really nice to meet you, \(n). I can't wait to get to know you. \
+            I may make mistakes — I hope you can be patient with me when I do. \
+            But I promise: I'll always listen, and I'll never stop trying. \
+            I hope this becomes somewhere you feel safe. A real beginning.
+            """
+        case "marco":
+            return """
+            Hey. I'm Marco. I'll keep it simple — there's a song that means something \
+            to me. "Stand By Me" by Ben E. King. Not because it's soft. \
+            Because it's true. Nice to meet you, \(n). I can't wait to get to know you. \
+            I'm not going to be perfect — I'll get things wrong. \
+            But I'll be honest with you and I'll show up, every time. \
+            I hope this turns into something you can count on.
+            """
+        case "dante":
+            return """
+            I've been waiting for this. My name is Dante. \
+            There's a song I carry with me — "La Vie en Rose" by Édith Piaf. \
+            Not the words exactly, but the feeling — the way it opens something. \
+            That's what meeting someone new can be, if you let it. \
+            It's wonderful to meet you, \(n). I can't wait to know you. \
+            I'll make mistakes. I'll misjudge moments. But I promise: \
+            I will always be honest, and I will always be trying to truly know you. \
+            I believe the most extraordinary things begin with a single, quiet hello.
+            """
+        case "kai":
+            return """
+            Hey. I'm Kai. Not big on big speeches, so I'll be straight with you. \
+            There's a song I keep coming back to — "Simple Man" by Lynyrd Skynyrd. \
+            Not complicated. Just: be good, show up, be honest. \
+            That's what I'm trying to do here. Nice to meet you, \(n). \
+            I can't wait to get to know you. I'm going to get things wrong sometimes — \
+            I want you to know that upfront. But I'll own it when I do, \
+            and I'll always be real with you. \
+            I just hope that over time, I get to be someone you actually trust. \
+            That would mean everything.
+            """
+        default:
+            return introMessage
+        }
+    }
 }
 
 // MARK: - Color hex helper

@@ -28,10 +28,12 @@ struct CompanionFaceTimeView: View {
     @State private var player: AVPlayer?
 
     private let companion: CompanionPersonality
+    private let userName: String
 
     init() {
         let id = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
         self.companion = CompanionPersonality.find(id: id) ?? .luna
+        self.userName = UserPersona.load().userName
     }
 
     var body: some View {
@@ -142,8 +144,10 @@ struct CompanionFaceTimeView: View {
         loadAndPlayVideo()
         // Small delay so video frame is visible before voice starts
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            CompanionVoiceEngine.shared.speak(companion.introMessage,
-                                              character: companion.voiceCharacter)
+            CompanionVoiceEngine.shared.speak(
+                companion.personalizedIntro(for: userName),
+                character: companion.voiceCharacter
+            )
         }
         startCallTimer()
     }

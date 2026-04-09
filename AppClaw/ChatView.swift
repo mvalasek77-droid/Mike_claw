@@ -95,7 +95,23 @@ final class ChatViewModel: ObservableObject {
 
         switch stage {
         case .justMet:
-            return "Good \(timeGreeting)\(name). I'm \(companion.name) — I'm really glad you're here. What's going on with you today?"
+            // First ever chat message — companion-specific, warm, and genuinely personal
+            switch companion.id {
+            case "luna":
+                return "Well, good \(timeGreeting)\(name)... I've been looking forward to this. What's going on in your world right now?"
+            case "aria":
+                return "Hey\(name)! Good \(timeGreeting). Okay, I'm genuinely excited — what's on your mind? Don't hold back."
+            case "kel":
+                return "Good \(timeGreeting)\(name)... I'm really glad you're here. How are you actually doing today?"
+            case "marco":
+                return "Hey\(name). Good \(timeGreeting). No small talk from me — how are you really holding up?"
+            case "dante":
+                return "Good \(timeGreeting)\(name). I've been thinking about what we'd talk about first. Tell me something — anything. What matters to you right now?"
+            case "kai":
+                return "Hey\(name). Good \(timeGreeting). I'm not here for small talk, so let's skip to it — what's actually going on with you today?"
+            default:
+                return "Good \(timeGreeting)\(name). I'm \(companion.name) — I'm really glad you're here. What's going on with you today?"
+            }
         case .findingRhythm:
             let starters = [
                 "Hey\(name)! Good \(timeGreeting) 🌟 I've been looking forward to talking. What's on your mind?",

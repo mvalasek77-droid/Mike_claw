@@ -99,7 +99,17 @@ struct CompanionOnboardingView: View {
     private func finish() {
         persona.onboardingComplete = true
         persona.save()
+        let nameToSave = persona.userName.trimmingCharacters(in: .whitespaces)
         Task {
+            // Burn the user's name into memory at the highest importance level so
+            // it is never evicted and is always available to personalise responses.
+            if !nameToSave.isEmpty {
+                try? await HermesMemory.shared.observe(
+                    category: "core_identity",
+                    content: ["key": "name", "value": nameToSave],
+                    metadata: ["importance": 10, "permanent": true, "source": "onboarding"]
+                )
+            }
             await HermesInterestEngine.shared.scheduleInterestNotifications(for: persona)
             await HermesPersonality.shared.scheduleDailyAffirmation(for: persona)
             await HermesIntegration.shared.logSessionStart(conversationId: UUID().uuidString)
