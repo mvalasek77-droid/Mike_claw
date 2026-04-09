@@ -980,6 +980,8 @@ struct SettingsView: View {
     @State private var providerLabel: String = "Checking…"
     @State private var showAddInterests: Bool = false
     @State private var customInterestText: String = ""
+    @State private var editingName: String = ""
+    @State private var nameSaved: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -1055,14 +1057,26 @@ struct SettingsView: View {
                 }
 
                 // Profile
-                Section("Profile") {
-                    HStack {
-                        Text("Your Name")
+                Section {
+                    // Editable name row
+                    HStack(spacing: 10) {
+                        Image(systemName: "person.fill")
+                            .foregroundColor(Color.OC.accent)
+                            .frame(width: 22)
+                        TextField("Your name", text: $editingName)
                             .foregroundColor(Color.OC.primaryText)
-                        Spacer()
-                        Text(persona.userName.isEmpty ? "Not set" : persona.userName)
-                            .foregroundColor(Color.OC.secondaryText)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.words)
+                            .onSubmit { saveName() }
+                        if editingName != persona.userName && !editingName.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button(action: saveName) {
+                                Image(systemName: nameSaved ? "checkmark.circle.fill" : "checkmark.circle")
+                                    .foregroundColor(nameSaved ? Color.OC.success : Color.OC.accent)
+                            }
+                            .transition(.opacity.combined(with: .scale))
+                        }
                     }
+                    .animation(.spring(response: 0.25), value: editingName)
                     HStack {
                         Text("Assistant Name")
                             .foregroundColor(Color.OC.primaryText)
@@ -1070,6 +1084,12 @@ struct SettingsView: View {
                         Text(persona.assistantName.isEmpty ? "Claw" : persona.assistantName)
                             .foregroundColor(Color.OC.secondaryText)
                     }
+                } header: {
+                    Text("Profile")
+                } footer: {
+                    Text("Type a new name and tap ✓ or press Return to save. Your companion will use it immediately.")
+                        .font(OCFont.footnote)
+                        .foregroundColor(Color.OC.secondaryText)
                 }
 
                 // Communication style
@@ -1281,7 +1301,31 @@ struct SettingsView: View {
         .animation(.spring(response: 0.3), value: enabled.wrappedValue)
     }
 
+    private func saveName() {
+        let trimmed = editingName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != persona.userName else { return }
+        persona.userName = trimmed
+        persona.save()
+        // Burn the updated name into memory at highest importance so it
+        // propagates into every future LLM system prompt immediately.
+        Task {
+            try? await HermesMemory.shared.observe(
+                category: "core_identity",
+                content: ["key": "name", "value": trimmed],
+                metadata: ["importance": 10, "permanent": true, "source": "settings_edit"]
+            )
+        }
+        withAnimation {
+            nameSaved = true
+            editingName = trimmed
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation { nameSaved = false }
+        }
+    }
+
     private func loadCurrentKey() {
+        editingName = persona.userName
         // Show masked existing key if present
         if let existing = KeychainHelper.read(service: "com.openclaw.appclaw",
                                                key: "anthropic_api_key"), !existing.isEmpty {
