@@ -287,9 +287,18 @@ struct PrivacyStatusBanner: View {
 extension HermesPrivacyGate {
     /// Configure Hermes based on current consent state.
     /// Safe to call on every app launch — no-ops if already configured.
+    ///
+    /// IMPORTANT: configure() is called unconditionally so its auto-bootstrap
+    /// logic runs. If the user previously entered an API key (e.g. via Settings)
+    /// without going through the onboarding consent screen, configure() detects
+    /// the key in Keychain and silently grants consent — preventing a state where
+    /// the key exists but the provider is stuck at .none.
     func configureHermesIfReady() async {
-        guard consentGiven else { return }
+        // Always run configure — it handles the "key exists, consent not yet set"
+        // auto-bootstrap case that would be blocked by a guard on consentGiven.
         await HermesLLMClient.shared.configure()
+        // Kairos only starts once we know AI is actually available.
+        guard consentGiven else { return }
         await HermesKairos.shared.start()
     }
 }

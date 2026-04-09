@@ -104,30 +104,30 @@ actor HerLearningEngine {
                                     interests: [Interest] = []) -> String {
         var layers: [String] = []
 
-        // 1. Intimacy stage
-        layers.append(intimacyStage.promptLayer(userName: userName, companionName: companionName))
+        // NOTE: Intimacy stage prompt is injected by HermesPersonality (section 3).
+        // Do NOT add it here — it would appear twice in every system prompt.
 
-        // 2. Emotional pattern
+        // 1. Emotional pattern (time-of-day + day-of-week baseline)
         if let pattern = currentEmotionalPattern() {
             layers.append(pattern)
         }
 
-        // 3. Relationship history
+        // 2. Relationship history (after 10+ messages)
         if state.totalMessages > 10 {
             layers.append(relationshipHistoryPrompt(userName: userName))
         }
 
-        // 4. Interests — what this person loves, made actionable for the companion
+        // 3. Interests — what this person loves, made actionable for the companion
         if !interests.isEmpty {
             layers.append(interestsPromptLayer(interests: interests, userName: userName))
         }
 
-        // 5. Prompt adaptation (self-healing)
+        // 4. Prompt adaptation (self-healing — adjusts tone based on engagement quality)
         if let adaptation = state.currentAdaptation {
             layers.append(adaptation.promptAddendum)
         }
 
-        // 6. Pending Samantha thought
+        // 5. Pending Samantha thought (consume once, deliver organically)
         if let thought = state.pendingSamanthaThought {
             layers.append("""
             PENDING THOUGHT: You've been meaning to tell \(userName): "\(thought)". \
