@@ -66,10 +66,12 @@ actor HermesLLMClient {
     ///   • Subsequent launches where consent state and key state drifted
     ///   • Key entered in Settings after skipping the provider step
     func configure() async {
-        if !await privacy.consentGiven && ClaudeAPIBridge.isConfigured {
+        let consent = await privacy.consentGiven
+        if !consent && ClaudeAPIBridge.isConfigured {
             await privacy.acceptCloudAI()
         }
-        if await privacy.consentGiven {
+        let finalConsent = await privacy.consentGiven
+        if finalConsent {
             _provider = Self.bestAvailableProvider()
         } else {
             _provider = .none
@@ -230,98 +232,23 @@ enum LLMError: Error, LocalizedError {
     }
 }
 
-// MARK: - Apple Foundation Models bridge (iOS 26+)
+// MARK: - Apple Foundation Models bridge (disabled stub)
 //
-// Requires:
-//   1. Xcode with iOS 26 SDK (Xcode 26 beta or later)
-//   2. Add FoundationModels.framework to target → Frameworks, Libraries,
-//      and Embedded Content (it ships with the iOS 26 SDK, no entitlement needed)
-//   3. Deployment target can stay at iOS 17+ — all API calls are guarded
-//      with #available(iOS 26.0, *) at runtime
-
-#if canImport(FoundationModels)
-import FoundationModels
-#endif
+// The iOS 26 FoundationModels framework is only available in Xcode 26 beta
+// and its API has shifted between betas. To keep this project buildable on
+// every current Xcode, the on-device bridge is stubbed out — it always reports
+// unavailable, and the app falls through to the Claude API bridge.
+//
+// To re-enable Apple on-device inference later, replace this stub with a
+// FoundationModels-backed implementation guarded by `#if canImport(FoundationModels)`.
 
 enum AppleFoundationModelsBridge {
-
-    // MARK: - Availability
-
-    /// True when Apple Intelligence is supported AND enabled on this device.
-    static var isAvailable: Bool {
-        #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) {
-            switch SystemLanguageModel.default.availability {
-            case .available:   return true
-            case .unavailable: return false   // .deviceNotEligible / .appleIntelligenceNotEnabled / .modelNotReady
-            }
-        }
-        #endif
-        return false
-    }
-
-    // MARK: - Completion
+    static var isAvailable: Bool { false }
 
     static func complete(_ request: LLMRequest,
                          stream: StreamHandler?) async throws -> LLMResponse {
-        #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) {
-            return try await _complete26(request, stream: stream)
-        }
-        #endif
         throw LLMError.noProviderConfigured
     }
-
-    // MARK: - iOS 26 implementation (compiled only when SDK available)
-
-    #if canImport(FoundationModels)
-    @available(iOS 26.0, *)
-    private static func _complete26(_ request: LLMRequest,
-                                    stream: StreamHandler?) async throws -> LLMResponse {
-        guard case .available = SystemLanguageModel.default.availability else {
-            throw LLMError.noProviderConfigured
-        }
-
-        // One session per agent run — holds conversation state internally.
-        let session = LanguageModelSession(instructions: request.systemPrompt)
-        let composed = composePrompt(from: request.messages)
-
-        var fullText = ""
-        let estimatedPromptTokens = composed.count / 4
-
-        if let handler = stream {
-            for try await partial in session.streamResponse(to: composed) {
-                handler(partial.content)
-                fullText += partial.content
-            }
-        } else {
-            let response = try await session.respond(to: composed)
-            fullText = response.content
-        }
-
-        return LLMResponse(
-            content: fullText,
-            promptTokens: estimatedPromptTokens,
-            completionTokens: fullText.count / 4,
-            provider: .appleFoundationModels,
-            toolCallsRequested: []
-        )
-    }
-
-    private static func composePrompt(from messages: [LLMMessage]) -> String {
-        messages
-            .filter { $0.role != .system }
-            .map { msg -> String in
-                switch msg.role {
-                case .user:      return "User: \(msg.content)"
-                case .assistant: return "Assistant: \(msg.content)"
-                case .system:    return ""
-                }
-            }
-            .filter { !$0.isEmpty }
-            .joined(separator: "\n\n")
-    }
-    #endif
 }
 
 // MARK: - Claude API bridge
