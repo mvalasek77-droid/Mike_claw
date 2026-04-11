@@ -56,8 +56,8 @@ struct AnyCodable: Codable {
         if let v = try? c.decode(Int.self)                   { value = v; return }
         if let v = try? c.decode(Double.self)                { value = v; return }
         if let v = try? c.decode(String.self)                { value = v; return }
-        if let v = try? c.decode([AnyCodable].self)          { value = v.map(\.value); return }
-        if let v = try? c.decode([String: AnyCodable].self)  { value = v.mapValues(\.value); return }
+        if let v = try? c.decode([AnyCodable].self)          { value = v.map { $0.value }; return }
+        if let v = try? c.decode([String: AnyCodable].self)  { value = v.mapValues { $0.value }; return }
         value = NSNull()
     }
 

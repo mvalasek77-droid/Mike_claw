@@ -257,7 +257,7 @@ final class HermesDreamEngine {
                         id: entry.id, timestamp: entry.timestamp,
                         category: entry.category,
                         content: entry.content.value,
-                        metadata: entry.metadata.mapValues(\.value),
+                        metadata: entry.metadata.mapValues { $0.value },
                         importance: 1,    // will be pruned next consolidation
                         tier: entry.tier
                     )

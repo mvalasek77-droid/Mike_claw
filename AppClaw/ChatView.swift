@@ -470,12 +470,12 @@ struct ChatView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
                         }
-                        .onChange(of: vm.messages.count) { _ in
+                        .onChange(of: vm.messages.count) {
                             withAnimation(.easeOut(duration: 0.25)) {
                                 proxy.scrollTo("bottom", anchor: .bottom)
                             }
                         }
-                        .onChange(of: vm.isTyping) { _ in
+                        .onChange(of: vm.isTyping) {
                             withAnimation(.easeOut(duration: 0.25)) {
                                 proxy.scrollTo("bottom", anchor: .bottom)
                             }
@@ -1320,7 +1320,7 @@ struct SettingsView: View {
                 Toggle("", isOn: enabled)
                     .labelsHidden()
                     .tint(color)
-                    .onChange(of: enabled.wrappedValue) { _ in
+                    .onChange(of: enabled.wrappedValue) {
                         persona.save()
                         Task {
                             await CompanionDataTracker.shared.updatePermissions(
