@@ -175,7 +175,7 @@ final class HermesDreamEngine {
         report.insights.append(insight)
         report.phases.append("Topic insight: \(insight)")
 
-        try? await memory.observe(
+        _ = try? await memory.observe(
             category: "dream_insight",
             content: ["insight": insight, "basedOn": recentMessages.count, "topWords": topWords],
             metadata: ["importance": 4]
@@ -209,7 +209,7 @@ final class HermesDreamEngine {
         report.improvements.append(note)
         report.phases.append("Self-improvement note written.")
 
-        try? await memory.observe(
+        _ = try? await memory.observe(
             category: "self_improvement",
             content: ["note": note, "errorCount": errors.count],
             metadata: ["importance": 5]
@@ -289,7 +289,7 @@ final class HermesDreamEngine {
 
     private func saveDreamReport(_ report: DreamReport) async {
         let duration = report.finishedAt.map { $0.timeIntervalSince(report.startedAt) } ?? 0
-        try? await memory.observe(
+        _ = try? await memory.observe(
             category: "dream_report",
             content: [
                 "duration_s": Int(duration),

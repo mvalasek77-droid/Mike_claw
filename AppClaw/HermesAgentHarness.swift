@@ -158,7 +158,7 @@ actor HermesAgentHarness {
             maxTokens: min(4096, budget.remaining),
             role: role
         )
-        let llmResponse = try await HermesLLMClient.shared.complete(llmRequest)
+        let llmResponse = try await HermesLLMClient.shared.complete(request: llmRequest)
         let response = llmResponse.content
         append(message: TranscriptMessage(role: .assistant, content: response))
 
@@ -225,7 +225,7 @@ actor HermesAgentHarness {
         if summarised.isEmpty { return }
 
         let summary = "[Compacted \(summarised.count) earlier messages. " +
-                      "Topics covered: \(topicSummary(of: summarised))]"
+                      "Topics covered: \(topicSummary(of: Array(summarised)))]"
         let placeholder = TranscriptMessage(role: .system, content: summary)
 
         transcript = pinned + [placeholder] + keep

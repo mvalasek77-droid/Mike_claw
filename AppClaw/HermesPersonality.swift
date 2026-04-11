@@ -273,7 +273,7 @@ private struct AffirmationPools {
     func today(for persona: UserPersona) -> String {
         let score  = UserDefaults.standard.double(forKey: "her.intimacyScore")
         let name   = persona.userName.isEmpty ? "" : " \(persona.userName)"
-        let hour   = Calendar.current.component(.hour, from: Date())
+        _ = Calendar.current.component(.hour, from: Date())
         let day    = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
 
         let pool: [String]
