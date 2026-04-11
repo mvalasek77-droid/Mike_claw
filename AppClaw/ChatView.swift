@@ -155,7 +155,7 @@ final class ChatViewModel: ObservableObject {
 
         // Log to memory
         await HermesIntegration.shared.logUserMessage(text, in: sessionId)
-        Kairos.shared.userDidAct()
+        await Kairos.shared.userDidAct()
 
         // Learn facts and interests from this message
         learnFromMessage(text)
@@ -575,9 +575,7 @@ struct MessageBubble: View {
         if message.isSamanthaThought {
             SamanthaThoughtBubble(text: message.text, companion: persona.selectedCompanion)
                 .padding(.vertical, 4)
-            return
-        }
-
+        } else {
         HStack(alignment: .bottom, spacing: 8) {
             if message.role == .user { Spacer(minLength: 60) }
 
@@ -610,6 +608,7 @@ struct MessageBubble: View {
 
             if message.role == .assistant { Spacer(minLength: 60) }
         }
+        } // end else
     }
 
     @ViewBuilder
@@ -1222,7 +1221,7 @@ struct SettingsView: View {
                 Section("Daily Affirmation") {
                     Toggle("Enabled", isOn: $persona.dailyAffirmationsEnabled)
                         .tint(Color.OC.primary)
-                        .onChange(of: persona.dailyAffirmationsEnabled) { _ in
+                        .onChange(of: persona.dailyAffirmationsEnabled) {
                             persona.save()
                             Task {
                                 await HermesPersonality.shared.scheduleDailyAffirmation(for: persona)
@@ -1231,7 +1230,7 @@ struct SettingsView: View {
                     if persona.dailyAffirmationsEnabled {
                         DatePicker("Time", selection: $persona.affirmationTime, displayedComponents: .hourAndMinute)
                             .foregroundColor(Color.OC.primaryText)
-                            .onChange(of: persona.affirmationTime) { _ in
+                            .onChange(of: persona.affirmationTime) {
                                 persona.save()
                                 Task {
                                     await HermesPersonality.shared.scheduleDailyAffirmation(for: persona)

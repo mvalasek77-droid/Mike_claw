@@ -114,7 +114,7 @@ final class HermesDreamEngine {
                 e = MemoryEntry(
                     id: e.id, timestamp: e.timestamp, category: e.category,
                     content: e.content.value,
-                    metadata: e.metadata.mapValues(\.value),
+                    metadata: e.metadata.mapValues { $0.value },
                     importance: min(e.importance + 1, 5),
                     tier: e.tier
                 )

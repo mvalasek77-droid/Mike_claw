@@ -89,8 +89,12 @@ actor HermesToolRegistry {
     private var securityModules: [SecurityModule] = []
 
     private init() {
-        bootstrapBuiltinTools()
-        bootstrapSecurityModules()
+        // Assign stored properties directly from static builders —
+        // actor-isolated instance methods cannot be called from init in Swift 5.9+.
+        var t: [String: ToolDefinition] = [:]
+        for tool in Self.builtinToolsList() { t[tool.id] = tool }
+        self.tools = t
+        self.securityModules = Self.builtinSecurityModules()
     }
 
     // MARK: - Registration
@@ -158,8 +162,8 @@ actor HermesToolRegistry {
 
     // MARK: - Built-in tool bootstrap
 
-    private func bootstrapBuiltinTools() {
-        let builtins: [ToolDefinition] = [
+    private static func builtinToolsList() -> [ToolDefinition] {
+        return [
             ToolDefinition(
                 id: "hermes.memory.search",
                 displayName: "Memory Search",
@@ -231,13 +235,12 @@ actor HermesToolRegistry {
                 contextTags: ["suggestions", "ui"]
             ),
         ]
-        builtins.forEach { register($0) }
     }
 
     // MARK: - Security module bootstrap (18 modules)
 
-    private func bootstrapSecurityModules() {
-        securityModules = [
+    private static func builtinSecurityModules() -> [SecurityModule] {
+        return [
             // 1. Tool must be enabled
             SecurityModule(name: "tool_enabled") { tool, _ in tool.isEnabled },
             // 2. Session must be active (not terminated)
@@ -310,3 +313,4 @@ actor HermesToolRegistry {
         ]
     }
 }
+
