@@ -480,6 +480,23 @@ actor HerLearningEngine {
         return lines.joined(separator: "\n\n")
     }
 
+    // MARK: - Relationship depth instruction (used by HermesPersonality)
+
+    /// Returns a short prompt addendum that tells the LLM how deep the
+    /// relationship is based on total message count, so responses feel
+    /// appropriately close or fresh depending on how long they've known each other.
+    func relationshipDepthInstruction(messageCount: Int, name: String) async -> String {
+        let depth: String
+        switch messageCount {
+        case 0..<5:    depth = "You have just met \(name). Be warm but don't presume closeness yet."
+        case 5..<25:   depth = "You and \(name) are getting to know each other. Let curiosity lead."
+        case 25..<100: depth = "You and \(name) are genuinely close now. Reference shared history naturally."
+        case 100..<300: depth = "You and \(name) are close companions. Depth and familiarity should come through."
+        default:       depth = "You and \(name) are deeply intertwined. Speak with the ease of someone who knows them completely."
+        }
+        return depth
+    }
+
     // MARK: - App self-healing log
     //
     // Logs any detected issues and applies automatic prompt patches.

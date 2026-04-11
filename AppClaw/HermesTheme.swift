@@ -29,6 +29,10 @@ extension Color {
         static let textSecondary = Color(hex: "#8B949E")
         static let textMuted     = Color(hex: "#484F58")
 
+        // Aliases — used in some views for clarity
+        static var primaryText:   Color { textPrimary }
+        static var secondaryText: Color { textSecondary }
+
         // Semantic
         static let success        = Color(hex: "#3FB950")
         static let warning        = Color(hex: "#D29922")
@@ -55,6 +59,9 @@ enum OCFont {
     }
     static func caption(_ size: CGFloat = 12) -> Font {
         .system(size: size, weight: .regular, design: .monospaced)
+    }
+    static func footnote(_ size: CGFloat = 11) -> Font {
+        .system(size: size, weight: .regular, design: .default)
     }
     static func mono(_ size: CGFloat = 13) -> Font {
         .system(size: size, weight: .regular, design: .monospaced)

@@ -811,7 +811,7 @@ struct AffirmationBanner: View {
                 .foregroundColor(Color.OC.accent)
                 .font(.system(size: 16))
             Text(text)
-                .font(OCFont.footnote)
+                .font(OCFont.footnote())
                 .foregroundColor(Color.OC.primaryText)
                 .lineLimit(2)
             Spacer()
@@ -852,7 +852,7 @@ struct SuggestionChipsView: View {
                         onTap(chip)
                     } label: {
                         Text(chip)
-                            .font(OCFont.caption)
+                            .font(OCFont.caption())
                             .foregroundColor(Color.OC.primary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -888,7 +888,7 @@ struct QuickActionsBar: View {
                             Image(systemName: action.icon)
                                 .font(.system(size: 13))
                             Text(action.title)
-                                .font(OCFont.caption)
+                                .font(OCFont.caption())
                         }
                         .foregroundColor(Color.OC.secondaryText)
                         .padding(.horizontal, 12)
@@ -921,12 +921,12 @@ struct InputBar: View {
             ZStack(alignment: .leading) {
                 if text.isEmpty {
                     Text("Message \(Image(systemName: "pawprint.fill"))…")
-                        .font(OCFont.body)
+                        .font(OCFont.body())
                         .foregroundColor(Color.OC.secondaryText.opacity(0.6))
                         .padding(.horizontal, 14)
                 }
                 TextField("", text: $text, axis: .vertical)
-                    .font(OCFont.body)
+                    .font(OCFont.body())
                     .foregroundColor(Color.OC.primaryText)
                     .lineLimit(1...5)
                     .padding(.horizontal, 14)
@@ -1088,7 +1088,7 @@ struct SettingsView: View {
                     Text("Profile")
                 } footer: {
                     Text("Type a new name and tap ✓ or press Return to save. Your companion will use it immediately.")
-                        .font(OCFont.footnote)
+                        .font(OCFont.footnote())
                         .foregroundColor(Color.OC.secondaryText)
                 }
 
@@ -1129,7 +1129,7 @@ struct SettingsView: View {
                     Text("Relationship Mode")
                 } footer: {
                     Text("Changes how your companion relates to you. Takes effect on the next message.")
-                        .font(OCFont.footnote)
+                        .font(OCFont.footnote())
                         .foregroundColor(Color.OC.secondaryText)
                 }
 
@@ -1189,7 +1189,7 @@ struct SettingsView: View {
                     if persona.interests.isEmpty && !showAddInterests {
                         Text("No interests yet — add some below or chat to add more.")
                             .foregroundColor(Color.OC.secondaryText)
-                            .font(OCFont.footnote)
+                            .font(OCFont.footnote())
                     }
 
                     // Toggle add panel
@@ -1214,7 +1214,7 @@ struct SettingsView: View {
                     Text("Interests (\(persona.interests.count))")
                 } footer: {
                     Text("Your companion uses these to bring up what you love, send updates, and make conversations feel personal.")
-                        .font(OCFont.footnote)
+                        .font(OCFont.footnote())
                         .foregroundColor(Color.OC.secondaryText)
                 }
 
@@ -1266,7 +1266,7 @@ struct SettingsView: View {
                     Text("Companion Tracking")
                 } footer: {
                     Text("When ON, your companion notices meaningful moments and reaches out — supportively before a hard appointment, celebratory after a win. When OFF, zero data from that source is ever accessed. Changes take effect immediately.")
-                        .font(OCFont.footnote)
+                        .font(OCFont.footnote())
                         .foregroundColor(Color.OC.secondaryText)
                 }
 

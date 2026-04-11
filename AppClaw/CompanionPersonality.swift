@@ -57,7 +57,7 @@ struct CompanionPersonality: Identifiable, Codable {
     // MARK: - Computed helpers
 
     var accentColor: Color {
-        Color(hex: accentColorHex) ?? .pink
+        Color(hex: accentColorHex)
     }
 
     var genderLabel: String {
@@ -402,16 +402,4 @@ extension CompanionPersonality {
     }
 }
 
-// MARK: - Color hex helper
-
-extension Color {
-    init?(hex: String) {
-        var h = hex.trimmingCharacters(in: .whitespaces)
-        if h.hasPrefix("#") { h.removeFirst() }
-        guard h.count == 6, let value = UInt64(h, radix: 16) else { return nil }
-        let r = Double((value >> 16) & 0xFF) / 255
-        let g = Double((value >>  8) & 0xFF) / 255
-        let b = Double( value        & 0xFF) / 255
-        self.init(red: r, green: g, blue: b)
-    }
-}
+// Color(hex:) is defined in HermesTheme.swift
