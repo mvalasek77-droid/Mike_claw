@@ -20,11 +20,11 @@ struct BearLogoView: View {
             if showBackground {
                 RoundedRectangle(cornerRadius: s * 0.22)
                     .fill(LinearGradient(
-                        colors: [Color(hex: "#1C2438") ?? .black,
-                                 Color(hex: "#0D1117") ?? .black],
+                        colors: [Color(hex: "#1C2438"),
+                                 Color(hex: "#0D1117")],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
-                    .shadow(color: (Color(hex: "#FF9F0A") ?? .orange).opacity(0.28),
+                    .shadow(color: (Color(hex: "#FF9F0A")).opacity(0.28),
                             radius: s * 0.14, y: s * 0.05)
             }
 
@@ -52,9 +52,9 @@ struct BearLogoView: View {
         let faceY = h * 0.17
 
         let furGrad = Gradient(colors: [
-            Color(hex: "#E8A84A") ?? .orange,
-            Color(hex: "#D4862A") ?? .brown,
-            Color(hex: "#C07020") ?? .brown
+            Color(hex: "#E8A84A"),
+            Color(hex: "#D4862A"),
+            Color(hex: "#C07020")
         ])
         let furFill = GraphicsContext.Shading.linearGradient(
             furGrad,
@@ -68,7 +68,7 @@ struct BearLogoView: View {
 
         // 2. Inner ears (soft rose-pink)
         let iEarR = earR * 0.58
-        let iEarFill = GraphicsContext.Shading.color(Color(hex: "#F0A0A8") ?? .pink)
+        let iEarFill = GraphicsContext.Shading.color(Color(hex: "#F0A0A8"))
         ctx.fill(Path(ellipseIn: CGRect(
             x: earLX + (earR - iEarR), y: earY + (earR - iEarR) + earR * 0.08,
             width: iEarR*2, height: iEarR*2)), with: iEarFill)
@@ -83,12 +83,12 @@ struct BearLogoView: View {
         let snoutW = faceR * 0.72, snoutH = faceR * 0.44
         let snoutX = w/2 - snoutW/2, snoutY = h * 0.575
         ctx.fill(Path(ellipseIn: CGRect(x: snoutX, y: snoutY, width: snoutW, height: snoutH)),
-                 with: .color(Color(hex: "#F5DFA8") ?? .yellow))
+                 with: .color(Color(hex: "#F5DFA8")))
 
         // 5. Blush circles (rose, semi-transparent)
         let blushR = faceR * 0.28
         let blushY = h * 0.545
-        let blushFill = GraphicsContext.Shading.color((Color(hex: "#F07080") ?? .red).opacity(0.30))
+        let blushFill = GraphicsContext.Shading.color((Color(hex: "#F07080")).opacity(0.30))
         ctx.fill(Path(ellipseIn: CGRect(x: w * 0.155, y: blushY, width: blushR*2, height: blushR*0.7)), with: blushFill)
         ctx.fill(Path(ellipseIn: CGRect(x: w * 0.645, y: blushY, width: blushR*2, height: blushR*0.7)), with: blushFill)
 
@@ -105,11 +105,11 @@ struct BearLogoView: View {
                                          width: eyeW*1.08, height: eyeH*1.08)), with: .color(.white))
 
         // Irises — warm brown
-        let irisGrad = Gradient(colors: [Color(hex: "#5C3010") ?? .brown, Color(hex: "#3A1C08") ?? .brown])
+        let irisGrad = Gradient(colors: [Color(hex: "#5C3010"), Color(hex: "#3A1C08")])
         let irisFill = GraphicsContext.Shading.radialGradient(
             irisGrad, center: CGPoint(x: w*0.285, y: eyeY + eyeH*0.46),
             startRadius: 0, endRadius: eyeW * 0.5)
-        let irisGrad2 = Gradient(colors: [Color(hex: "#5C3010") ?? .brown, Color(hex: "#3A1C08") ?? .brown])
+        let irisGrad2 = Gradient(colors: [Color(hex: "#5C3010"), Color(hex: "#3A1C08")])
         let irisFill2 = GraphicsContext.Shading.radialGradient(
             irisGrad2, center: CGPoint(x: w*0.715, y: eyeY + eyeH*0.46),
             startRadius: 0, endRadius: eyeW * 0.5)
@@ -120,10 +120,10 @@ struct BearLogoView: View {
         let pupW = eyeW * 0.55, pupH = eyeH * 0.62
         ctx.fill(Path(ellipseIn: CGRect(x: eyeLX + (eyeW-pupW)/2, y: eyeY + (eyeH-pupH)/2,
                                          width: pupW, height: pupH)),
-                 with: .color(Color(hex: "#120808") ?? .black))
+                 with: .color(Color(hex: "#120808")))
         ctx.fill(Path(ellipseIn: CGRect(x: eyeRX + (eyeW-pupW)/2, y: eyeY + (eyeH-pupH)/2,
                                          width: pupW, height: pupH)),
-                 with: .color(Color(hex: "#120808") ?? .black))
+                 with: .color(Color(hex: "#120808")))
 
         // Sparkle highlights
         let spkW = eyeW * 0.28
@@ -142,7 +142,7 @@ struct BearLogoView: View {
         let nosW = snoutW * 0.32, nosH = nosW * 0.58
         ctx.fill(Path(ellipseIn: CGRect(x: w/2 - nosW/2, y: snoutY + snoutH*0.14,
                                          width: nosW, height: nosH)),
-                 with: .color(Color(hex: "#2A1008") ?? .black))
+                 with: .color(Color(hex: "#2A1008")))
 
         // 8. Smile — two short curved strokes from nose base
         var smile = Path()
@@ -161,7 +161,7 @@ struct BearLogoView: View {
             control2: CGPoint(x: w/2 + snoutW*0.22, y: snoutY + snoutH*0.60)
         )
         ctx.stroke(smile,
-                   with: .color(Color(hex: "#2A1008") ?? .black),
+                   with: .color(Color(hex: "#2A1008")),
                    style: StrokeStyle(lineWidth: w * 0.025, lineCap: .round))
     }
 }
@@ -182,14 +182,14 @@ struct BearIconView: View {
             // Icon background — deep midnight gradient
             RoundedRectangle(cornerRadius: s * 0.2237)
                 .fill(LinearGradient(
-                    colors: [Color(hex: "#141C2E") ?? .black,
-                             Color(hex: "#0A0E18") ?? .black],
+                    colors: [Color(hex: "#141C2E"),
+                             Color(hex: "#0A0E18")],
                     startPoint: .top, endPoint: .bottom
                 ))
 
             // Subtle radial glow behind paw
             RadialGradient(
-                colors: [(Color(hex: "#E8A040") ?? .orange).opacity(0.22), .clear],
+                colors: [(Color(hex: "#E8A040")).opacity(0.22), .clear],
                 center: .center,
                 startRadius: 0, endRadius: s * 0.42
             )
@@ -214,9 +214,9 @@ struct BearIconView: View {
         let w = size.width, h = size.height
 
         let pawGrad = Gradient(stops: [
-            .init(color: Color(hex: "#E8A84A") ?? .orange, location: 0.0),
-            .init(color: Color(hex: "#C87020") ?? .brown,  location: 0.6),
-            .init(color: Color(hex: "#A05818") ?? .brown,  location: 1.0),
+            .init(color: Color(hex: "#E8A84A"), location: 0.0),
+            .init(color: Color(hex: "#C87020"),  location: 0.6),
+            .init(color: Color(hex: "#A05818"),  location: 1.0),
         ])
         let pawFill = GraphicsContext.Shading.linearGradient(
             pawGrad,
@@ -225,8 +225,8 @@ struct BearIconView: View {
         )
 
         let clawGrad = Gradient(colors: [
-            Color(hex: "#F0C060") ?? .yellow,
-            Color(hex: "#C88020") ?? .orange,
+            Color(hex: "#F0C060"),
+            Color(hex: "#C88020"),
         ])
         let clawFill = GraphicsContext.Shading.linearGradient(
             clawGrad,
@@ -291,7 +291,7 @@ struct BearIconView: View {
         let innerW = palmW * 0.80, innerH = palmH * 0.80
         let innerX = (w - innerW) / 2, innerY = palmY + palmH * 0.12
         ctx.fill(Path(ellipseIn: CGRect(x: innerX, y: innerY, width: innerW, height: innerH)),
-                 with: .color((Color(hex: "#E0982A") ?? .orange).opacity(0.35)))
+                 with: .color((Color(hex: "#E0982A")).opacity(0.35)))
     }
 }
 
@@ -305,18 +305,18 @@ struct BearIconView: View {
         }
     }
     .padding(24)
-    .background(Color(hex: "#0D1117") ?? .black)
+    .background(Color(hex: "#0D1117"))
 }
 
 #Preview("App icon") {
     BearIconView(size: 300)
         .padding(20)
-        .background(Color(hex: "#0D1117") ?? .black)
+        .background(Color(hex: "#0D1117"))
 }
 
 #Preview("Bear logo no bg") {
     BearLogoView(size: 120, showBackground: false)
         .padding(20)
-        .background(Color(hex: "#0D1117") ?? .black)
+        .background(Color(hex: "#0D1117"))
 }
 #endif
