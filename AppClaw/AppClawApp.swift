@@ -8,9 +8,6 @@ struct AppClawApp: App {
 
     init() {
         HermesDreamEngine.shared.registerBackgroundTask()
-        // Reset avatar-seen on each launch so you always get the reveal on first run post-onboarding
-        // (Comment out to disable reset during development)
-        // UserDefaults.standard.removeObject(forKey: "claw.seenAvatar")
     }
 
     var body: some Scene {
@@ -32,29 +29,17 @@ enum AppMode { case video, chat }
 final class AppState: ObservableObject {
     @Published var onboardingComplete: Bool
     @Published var notificationsEnabled: Bool = false
-    @Published var companionSeenAvatar: Bool
-    /// Toggles between the persistent video view and the chat view.
+    /// Toggles between the persistent TikTok companion view and the text chat view.
     @Published var currentMode: AppMode = .video
 
     init() {
-        onboardingComplete   = UserDefaults.standard.bool(forKey: "onboardingComplete")
-        companionSeenAvatar  = UserDefaults.standard.bool(forKey: "claw.seenAvatar")
+        onboardingComplete = UserDefaults.standard.bool(forKey: "onboardingComplete")
     }
 
     /// Called at the end of the onboarding flow.
     func completeOnboarding() {
-        companionSeenAvatar = false
-        UserDefaults.standard.removeObject(forKey: "claw.seenAvatar")
         onboardingComplete = true
         UserDefaults.standard.set(true, forKey: "onboardingComplete")
-    }
-
-    /// Called after the user dismisses the one-time FaceTime reveal screen.
-    /// Routes to video mode (the persistent companion screen), not directly to chat.
-    func markAvatarSeen() {
-        companionSeenAvatar = true
-        currentMode = .video
-        UserDefaults.standard.set(true, forKey: "claw.seenAvatar")
     }
 }
 

@@ -74,7 +74,8 @@ actor HermesMemoryAgent {
     // MARK: - .recent mode
 
     private func buildRecentContext(count: Int) async -> String {
-        let entries = await memory.entries(for: "chat_exchange").suffix(count)
+        // entries(for:) returns newest-first; .prefix gives the most recent `count`
+        let entries = await memory.entries(for: "chat_exchange").prefix(count)
         guard !entries.isEmpty else { return "No recent messages." }
 
         let emotion = await learning.currentEmotionTag
@@ -128,8 +129,8 @@ actor HermesMemoryAgent {
             sections.append("## Emotional State\nCurrent: \(emotion.rawValue)")
         }
 
-        // 4. Emotional arc (last 5 emotion records)
-        let emotionEntries = await memory.entries(for: "emotion_state").suffix(5)
+        // 4. Emotional arc (last 5 emotion records) — newest-first, so .prefix(5)
+        let emotionEntries = await memory.entries(for: "emotion_state").prefix(5)
         if !emotionEntries.isEmpty {
             let arc = emotionEntries.compactMap { entry -> String? in
                 (entry.content.value as? [String: Any])?["emotion"] as? String

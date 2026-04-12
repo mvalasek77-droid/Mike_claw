@@ -42,6 +42,8 @@ final class ChatViewModel: ObservableObject {
     private let persona: UserPersona
     private let sessionId: String = UUID().uuidString
     private var lastUserMessage: String = ""
+    /// True until the first LLM call this session; triggers full memory context injection.
+    private var isFirstMessageOfSession = true
 
     init(persona: UserPersona) {
         self.persona = persona
@@ -132,6 +134,7 @@ final class ChatViewModel: ObservableObject {
     func reloadForCompanionChange() async {
         streamingID = nil
         isTyping = false
+        isFirstMessageOfSession = true   // new companion gets full context on their first reply
         CompanionVoiceEngine.shared.stopSpeaking()
         let saved = loadSavedMessages()
         if !saved.isEmpty {
@@ -350,11 +353,23 @@ final class ChatViewModel: ObservableObject {
             for: persona,
             lastUserMessage: lastUserMessage
         )
-        // Inject live emotional state so the companion responds to how the user feels right now
+
+        // Inject live emotional state so companion adjusts tone to how user feels right now
         let emotion = await HerLearningEngine.shared.currentEmotionTag
         if emotion != .neutral {
             prompt += "\n\n## Live emotional state\nThe user appears to be feeling \(emotion.rawValue) right now. Adjust your tone and response accordingly — don't ignore it."
         }
+
+        // On the first LLM call of this session, inject the full memory context so the
+        // companion walks in with complete awareness — who this person is, where the
+        // relationship stands, what they've been feeling, what they've shared.
+        if isFirstMessageOfSession {
+            isFirstMessageOfSession = false
+            if let fullCtx = await HermesMemoryAgent.shared.run(.fullContext) {
+                prompt += "\n\n## Memory context (start of session)\n\(fullCtx)"
+            }
+        }
+
         return prompt
     }
 
