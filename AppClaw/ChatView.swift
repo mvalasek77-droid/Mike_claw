@@ -323,10 +323,16 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func buildPersonaSystemPrompt() async -> String {
-        await HermesPersonality.shared.buildPersonaPrompt(
+        var prompt = await HermesPersonality.shared.buildPersonaPrompt(
             for: persona,
             lastUserMessage: lastUserMessage
         )
+        // Inject live emotional state so the companion responds to how the user feels right now
+        let emotion = await HerLearningEngine.shared.currentEmotionTag
+        if emotion != .neutral {
+            prompt += "\n\n## Live emotional state\nThe user appears to be feeling \(emotion.rawValue) right now. Adjust your tone and response accordingly — don't ignore it."
+        }
+        return prompt
     }
 
     private func buildHistory() -> [(role: String, content: String)] {
@@ -605,6 +611,7 @@ struct ChatView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onDisappear { vm.saveMessages() }
     }
 }
 
