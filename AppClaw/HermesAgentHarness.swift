@@ -204,6 +204,13 @@ actor HermesAgentHarness {
         case "hermes.suggestions.refresh":
             await HermesProactiveEngine.shared.refresh()
             return ToolResult(success: true, value: "suggestions_refreshed")
+        case "hermes.session.read":
+            let snap = await session.currentSnapshot
+            let summary = "Session: \(snap.conversation.id) | msgs: \(snap.conversation.messageCount) | tokens used: \(snap.tokenBudget.used)/\(snap.tokenBudget.sessionLimit)"
+            return ToolResult(success: true, value: summary)
+        case "hermes.session.write":
+            try? await session.saveToDisk()
+            return ToolResult(success: true, value: "session_saved")
         default:
             return ToolResult(success: false, value: nil)
         }

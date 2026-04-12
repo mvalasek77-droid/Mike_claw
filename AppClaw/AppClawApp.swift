@@ -84,6 +84,15 @@ struct RootView: View {
             // Called here so calendar/reminder scans run fresh on each launch.
             let persona = UserPersona.load()
             await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
+
+            // Log session start so metrics (duration, message count) are tracked.
+            // Only start Kairos if onboarding is complete — no point running it
+            // before the companion is chosen.
+            let sessionId = UUID().uuidString
+            await HermesIntegration.shared.logSessionStart(conversationId: sessionId)
+            if UserDefaults.standard.bool(forKey: "onboardingComplete") {
+                await HermesKairos.shared.start()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
             Task {
@@ -101,6 +110,10 @@ struct RootView: View {
                 // Re-scan on foreground — new events may have been added.
                 let persona = UserPersona.load()
                 await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
+                // Resume session tracking and Kairos on foreground
+                let sessionId = UUID().uuidString
+                await HermesIntegration.shared.logSessionStart(conversationId: sessionId)
+                await HermesKairos.shared.start()
             }
         }
     }
