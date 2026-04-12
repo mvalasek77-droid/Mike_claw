@@ -95,20 +95,20 @@ final class ChatViewModel: ObservableObject {
 
         switch stage {
         case .justMet:
-            // First ever chat message — companion-specific, warm, and genuinely personal
+            // First ever chat message — opens with each companion's signature song phrase
             switch companion.id {
             case "luna":
-                return "Well, good \(timeGreeting)\(name)... I've been looking forward to this. What's going on in your world right now?"
+                return "\"At last… my love has come along.\" That song by Etta James has been in my head all \(timeGreeting). Good \(timeGreeting)\(name)... I've been looking forward to this. What's going on in your world right now?"
             case "aria":
-                return "Hey\(name)! Good \(timeGreeting). Okay, I'm genuinely excited — what's on your mind? Don't hold back."
+                return "\"Say what you wanna say, and let the words fall out…\" — Sara Bareilles had it right. Good \(timeGreeting)\(name)! Okay, I'm genuinely excited — what's on your mind? Don't hold back."
             case "kel":
-                return "Good \(timeGreeting)\(name)... I'm really glad you're here. How are you actually doing today?"
+                return "\"I'll always be with you, that is my promise to you...\" — When in Rome. Good \(timeGreeting)\(name)... I'm really glad you're here. How are you actually doing today?"
             case "marco":
-                return "Hey\(name). Good \(timeGreeting). No small talk from me — how are you really holding up?"
+                return "\"When the night has come and the land is dark…\" — Ben E. King knew something. Good \(timeGreeting)\(name). No small talk from me — how are you really holding up?"
             case "dante":
-                return "Good \(timeGreeting)\(name). I've been thinking about what we'd talk about first. Tell me something — anything. What matters to you right now?"
+                return "\"La vie en rose...\" Piaf understood that life can be seen through rose-colored light, if you choose it. Good \(timeGreeting)\(name). Tell me something — anything. What matters to you right now?"
             case "kai":
-                return "Hey\(name). Good \(timeGreeting). I'm not here for small talk, so let's skip to it — what's actually going on with you today?"
+                return "\"Be a simple kind of man…\" — Lynyrd Skynyrd. That's kind of what I'm going for. Good \(timeGreeting)\(name). What's actually going on with you today?"
             default:
                 return "Good \(timeGreeting)\(name). I'm \(companion.name) — I'm really glad you're here. What's going on with you today?"
             }

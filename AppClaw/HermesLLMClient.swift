@@ -398,6 +398,11 @@ enum ClaudeAPIBridge {
 // MARK: - Keychain helper
 
 enum KeychainHelper {
+    // UserDefaults fallback key prefix (simulator-safe)
+    private static func udKey(_ service: String, _ key: String) -> String {
+        "kc.\(service).\(key)"
+    }
+
     static func read(service: String, key: String) -> String? {
         let query: [CFString: Any] = [
             kSecClass:            kSecClassGenericPassword,
@@ -408,11 +413,13 @@ enum KeychainHelper {
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let string = String(data: data, encoding: .utf8)
-        else { return nil }
-        return string
+        if status == errSecSuccess,
+           let data = result as? Data,
+           let string = String(data: data, encoding: .utf8) {
+            return string
+        }
+        // Fallback: UserDefaults (simulator workaround)
+        return UserDefaults.standard.string(forKey: udKey(service, key))
     }
 
     static func write(service: String, key: String, value: String) {
@@ -432,6 +439,13 @@ enum KeychainHelper {
             kSecValueData:        data,
             kSecAttrAccessible:   kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
-        SecItemAdd(addQuery as CFDictionary, nil)
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
+        if status != errSecSuccess {
+            // Keychain unavailable (simulator) — fall back to UserDefaults
+            UserDefaults.standard.set(value, forKey: udKey(service, key))
+        } else {
+            // Mirror to UserDefaults so read() always has a fallback
+            UserDefaults.standard.set(value, forKey: udKey(service, key))
+        }
     }
 }

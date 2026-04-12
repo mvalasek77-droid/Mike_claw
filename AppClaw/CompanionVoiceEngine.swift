@@ -206,7 +206,7 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     static let shared = CompanionVoiceEngine()
 
     @Published var isSpeaking:   Bool = false
-    @Published var voiceEnabled: Bool = UserDefaults.standard.bool(forKey: "companion.voiceEnabled")
+    @Published var voiceEnabled: Bool = UserDefaults.standard.object(forKey: "companion.voiceEnabled") as? Bool ?? true
 
     // MARK: - Audio graph nodes
 

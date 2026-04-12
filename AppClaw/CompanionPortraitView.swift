@@ -14,11 +14,19 @@ struct CompanionPortraitView: View {
 
     // ── Sizing ──────────────────────────────────────────────────────────
 
+    private var dimension: CGFloat {
+        switch size {
+        case .chat:   return 44
+        case .card:   return 80
+        case .detail: return 160
+        }
+    }
+
     private var fontSize: CGFloat {
         switch size {
-        case .chat:   return 30
-        case .card:   return 56
-        case .detail: return 90
+        case .chat:   return 20
+        case .card:   return 34
+        case .detail: return 68
         }
     }
 
@@ -27,35 +35,35 @@ struct CompanionPortraitView: View {
     // ── Body ────────────────────────────────────────────────────────────
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                // Two-layer gradient: accent colour at top, dark base at bottom
-                LinearGradient(
-                    colors: [
-                        companion.accentColor.opacity(0.90),
-                        companion.accentColor.opacity(0.40),
-                        Color.OC.background
-                    ],
-                    startPoint: .topLeading,
-                    endPoint:   .bottomTrailing
-                )
+        ZStack {
+            // Two-layer gradient: accent colour at top, dark base at bottom
+            LinearGradient(
+                colors: [
+                    companion.accentColor.opacity(0.90),
+                    companion.accentColor.opacity(0.40),
+                    Color.OC.background
+                ],
+                startPoint: .topLeading,
+                endPoint:   .bottomTrailing
+            )
 
-                // Soft radial glow behind the letter so it doesn't float on black
-                RadialGradient(
-                    colors: [
-                        companion.accentColor.opacity(0.25),
-                        Color.clear
-                    ],
-                    center:      .center,
-                    startRadius: 0,
-                    endRadius:   geo.size.width * 0.55
-                )
+            // Soft radial glow behind the letter
+            RadialGradient(
+                colors: [
+                    companion.accentColor.opacity(0.30),
+                    Color.clear
+                ],
+                center:      .center,
+                startRadius: 0,
+                endRadius:   dimension * 0.55
+            )
 
-                // Initial letter
-                Text(initial)
-                    .font(.system(size: fontSize, weight: .ultraLight, design: .rounded))
-                    .foregroundColor(.white.opacity(0.90))
-            }
+            // Initial letter
+            Text(initial)
+                .font(.system(size: fontSize, weight: .ultraLight, design: .rounded))
+                .foregroundColor(.white.opacity(0.90))
         }
+        .frame(width: dimension, height: dimension)
+        .clipShape(Circle())
     }
 }
