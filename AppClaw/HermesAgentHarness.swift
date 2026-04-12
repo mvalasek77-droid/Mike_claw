@@ -151,8 +151,9 @@ actor HermesAgentHarness {
         }
         // Pass a minimal base prompt — HermesLLMClient.buildSystemPrompt()
         // enriches it with role instructions + full Hermes context automatically.
+        let companionName = UserPersona.load().selectedCompanion.name
         let llmRequest = LLMRequest(
-            systemPrompt: "You are AppClaw, a helpful and proactive AI assistant.",
+            systemPrompt: "You are \(companionName), a deeply personal AI companion. Be helpful, thoughtful, and true to your character.",
             messages: llmMessages,
             tools: pool,
             maxTokens: min(4096, budget.remaining),
