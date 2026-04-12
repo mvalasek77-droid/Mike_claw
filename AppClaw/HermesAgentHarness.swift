@@ -146,8 +146,14 @@ actor HermesAgentHarness {
         }
 
         // Build a response via the LLM (Hermes context injected inside HermesLLMClient)
-        let llmMessages = transcript.map {
-            LLMMessage(role: $0.role == .user ? .user : .assistant, content: $0.content)
+        // .system transcript entries (compaction placeholders) are mapped to .system so
+        // ClaudeAPIBridge's guard correctly excludes them from the messages array.
+        let llmMessages = transcript.map { msg -> LLMMessage in
+            switch msg.role {
+            case .user:      return LLMMessage(role: .user,      content: msg.content)
+            case .assistant: return LLMMessage(role: .assistant, content: msg.content)
+            case .system:    return LLMMessage(role: .system,    content: msg.content)
+            }
         }
         // Pass a minimal base prompt — HermesLLMClient.buildSystemPrompt()
         // enriches it with role instructions + full Hermes context automatically.
