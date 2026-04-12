@@ -89,6 +89,7 @@ struct CompanionOnboardingView: View {
     private var canAdvance: Bool {
         switch step {
         case 1: return !persona.userName.trimmingCharacters(in: .whitespaces).isEmpty
+        case 4: return !persona.selectedCompanionID.isEmpty
         default: return true
         }
     }

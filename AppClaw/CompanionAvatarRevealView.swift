@@ -23,6 +23,7 @@ struct CompanionTikTokView: View {
     @State private var liked          = false
     @State private var likeScale: CGFloat = 1.0
     @State private var intimacyLabel  = ""
+    @State private var captionTimer: Timer? = nil
 
     private let companion: CompanionPersonality
     private let persona:   UserPersona
@@ -140,6 +141,10 @@ struct CompanionTikTokView: View {
             greetOnAppear()
             startCaptionRotation()
             Task { intimacyLabel = await HerLearningEngine.shared.intimacyStage.label }
+        }
+        .onDisappear {
+            captionTimer?.invalidate()
+            captionTimer = nil
         }
         .ignoresSafeArea(edges: .bottom)
     }
@@ -282,7 +287,7 @@ struct CompanionTikTokView: View {
     // MARK: - Caption rotation (every 5 s)
 
     private func startCaptionRotation() {
-        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+        captionTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
             withAnimation(.easeInOut(duration: 0.3)) { captionVisible = false }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 captionIndex = (captionIndex + 1) % captions.count

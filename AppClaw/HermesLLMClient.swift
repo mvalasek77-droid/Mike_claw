@@ -220,14 +220,16 @@ enum LLMError: Error, LocalizedError {
     case apiKeyMissing
     case rateLimited
     case contextTooLong
+    case serverError(Int)   // unexpected HTTP status or malformed response body
 
     var errorDescription: String? {
         switch self {
-        case .noProviderConfigured: return "No AI provider configured. Please check Settings."
-        case .consentNotGiven:      return "AI features require your consent. See Settings → Privacy."
-        case .apiKeyMissing:        return "Claude API key not set. Add it in Settings."
-        case .rateLimited:          return "Too many requests. Please wait a moment."
-        case .contextTooLong:       return "Conversation too long. Starting a new session."
+        case .noProviderConfigured:  return "No AI provider configured. Please check Settings."
+        case .consentNotGiven:       return "AI features require your consent. See Settings → Privacy."
+        case .apiKeyMissing:         return "Claude API key not set. Add it in Settings."
+        case .rateLimited:           return "Too many requests. Please wait a moment."
+        case .contextTooLong:        return "Conversation too long. Starting a new session."
+        case .serverError(let code): return "Server error (\(code)). Please try again."
         }
     }
 }
@@ -360,7 +362,7 @@ enum ClaudeAPIBridge {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = (json["content"] as? [[String: Any]])?.first,
               let text = content["text"] as? String
-        else { throw LLMError.noProviderConfigured }
+        else { throw LLMError.serverError(0) }
 
         let usage = json["usage"] as? [String: Any]
         let input  = usage?["input_tokens"]  as? Int ?? 0
@@ -380,8 +382,9 @@ enum ClaudeAPIBridge {
         guard let http = response as? HTTPURLResponse else { return }
         switch http.statusCode {
         case 200...299: return
-        case 429: throw LLMError.rateLimited
-        default: throw LLMError.noProviderConfigured
+        case 401:       throw LLMError.apiKeyMissing
+        case 429:       throw LLMError.rateLimited
+        default:        throw LLMError.serverError(http.statusCode)
         }
     }
 
