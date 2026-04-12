@@ -43,19 +43,21 @@ final class ChatViewModel: ObservableObject {
     private let sessionId: String = UUID().uuidString
     private var lastUserMessage: String = ""
 
-    private static let chatSaveURL: URL = {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("hermes")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("chat_history.json")
-    }()
-
     init(persona: UserPersona) {
         self.persona = persona
         Task { await setup() }
     }
 
-    // MARK: - Chat history persistence
+    // MARK: - Chat history persistence (per-companion)
+
+    /// Each companion keeps its own history file so switching companions
+    /// never bleeds chat history from one relationship into another.
+    private var chatSaveURL: URL {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("hermes")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("chat_\(persona.selectedCompanionID)_history.json")
+    }
 
     func saveMessages() {
         let toSave = messages.filter { !$0.isStreaming }
@@ -63,20 +65,18 @@ final class ChatViewModel: ObservableObject {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         if let data = try? encoder.encode(toSave) {
-            try? data.write(to: Self.chatSaveURL, options: .atomic)
+            try? data.write(to: chatSaveURL, options: .atomic)
         }
     }
 
-    private static func loadSavedMessages() -> [ChatMessage] {
+    private func loadSavedMessages() -> [ChatMessage] {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let data = try? Data(contentsOf: chatSaveURL),
               let msgs = try? decoder.decode([ChatMessage].self, from: data)
         else { return [] }
         // Never restore streaming state
-        return msgs.map {
-            var m = $0; m.isStreaming = false; return m
-        }
+        return msgs.map { var m = $0; m.isStreaming = false; return m }
     }
 
     // MARK: - Setup
@@ -95,8 +95,8 @@ final class ChatViewModel: ObservableObject {
             showAffirmation = true
         }
 
-        // Restore persisted chat history from disk
-        let saved = Self.loadSavedMessages()
+        // Restore persisted chat history from disk (per-companion file)
+        let saved = loadSavedMessages()
         if !saved.isEmpty {
             messages = saved
         }
@@ -107,18 +107,41 @@ final class ChatViewModel: ObservableObject {
             saveMessages()
         }
 
-        // Greeting only when there's no history at all (first-ever launch)
+        // Greeting only when there's no history at all (first-ever launch or new companion)
         if messages.isEmpty {
-            let companion = persona.selectedCompanion
-            let name = persona.userName.isEmpty ? "" : " \(persona.userName)"
-            let hour = Calendar.current.component(.hour, from: Date())
-            let stage = await HerLearningEngine.shared.intimacyStage
-            let greeting = stageAwareGreeting(name: name, hour: hour, stage: stage, companion: companion)
-            messages.append(ChatMessage(role: .assistant, text: greeting))
-            saveMessages()
+            await appendGreeting()
         }
 
         // Load suggestions
+        await refreshSuggestions()
+        buildQuickActions()
+    }
+
+    /// Append a fresh greeting for the current companion and save.
+    private func appendGreeting() async {
+        let companion = persona.selectedCompanion
+        let name = persona.userName.isEmpty ? "" : " \(persona.userName)"
+        let hour = Calendar.current.component(.hour, from: Date())
+        let stage = await HerLearningEngine.shared.intimacyStage
+        let greeting = stageAwareGreeting(name: name, hour: hour, stage: stage, companion: companion)
+        messages.append(ChatMessage(role: .assistant, text: greeting))
+        saveMessages()
+    }
+
+    /// Reload history when the user switches companions mid-session.
+    func reloadForCompanionChange() async {
+        streamingID = nil
+        isTyping = false
+        CompanionVoiceEngine.shared.stopSpeaking()
+        let saved = loadSavedMessages()
+        if !saved.isEmpty {
+            messages = saved
+        } else {
+            messages = []
+            await appendGreeting()
+        }
+        intimacyScore = await HerLearningEngine.shared.intimacyScore
+        intimacyStage = await HerLearningEngine.shared.intimacyStage.label
         await refreshSuggestions()
         buildQuickActions()
     }
@@ -612,6 +635,9 @@ struct ChatView: View {
         }
         .preferredColorScheme(.dark)
         .onDisappear { vm.saveMessages() }
+        .onChange(of: persona.selectedCompanionID) { _, _ in
+            Task { await vm.reloadForCompanionChange() }
+        }
     }
 }
 
@@ -1033,6 +1059,7 @@ struct SettingsView: View {
     @State private var customInterestText: String = ""
     @State private var editingName: String = ""
     @State private var nameSaved: Bool = false
+    @State private var showCompanionPicker: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -1143,6 +1170,44 @@ struct SettingsView: View {
                         .foregroundColor(Color.OC.secondaryText)
                 }
 
+                // ── Companion ─────────────────────────────────────────────
+                Section {
+                    Button {
+                        showCompanionPicker = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(persona.selectedCompanion.accentColor.opacity(0.2))
+                                    .frame(width: 36, height: 36)
+                                Text(String(persona.selectedCompanion.name.prefix(1)))
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundColor(persona.selectedCompanion.accentColor)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(persona.selectedCompanion.name)
+                                    .font(OCFont.headline())
+                                    .foregroundColor(Color.OC.primaryText)
+                                Text(persona.selectedCompanion.tagline)
+                                    .font(OCFont.body(12))
+                                    .foregroundColor(Color.OC.secondaryText)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(Color.OC.secondaryText.opacity(0.6))
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    Text("Companion")
+                } footer: {
+                    Text("Switching companion starts a fresh conversation with your new companion. Your history with each companion is saved separately.")
+                        .font(OCFont.footnote())
+                        .foregroundColor(Color.OC.secondaryText)
+                }
                 // Relationship mode
                 Section {
                     ForEach(RelationshipMode.allCases) { mode in
@@ -1352,6 +1417,20 @@ struct SettingsView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear { loadCurrentKey() }
+        .sheet(isPresented: $showCompanionPicker) {
+            NavigationStack {
+                CompanionSelectionView(persona: persona)
+                    .navigationTitle("Choose Companion")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") { showCompanionPicker = false }
+                                .foregroundColor(Color.OC.primary)
+                        }
+                    }
+            }
+            .preferredColorScheme(.dark)
+        }
     }
 
     // Tracking permission toggle row — updates tracker immediately on change

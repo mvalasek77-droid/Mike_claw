@@ -268,7 +268,10 @@ final class UserPersona: ObservableObject, Codable {
     required init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         userName               = try c.decodeIfPresent(String.self,      forKey: .userName)               ?? ""
-        assistantName          = try c.decodeIfPresent(String.self,      forKey: .assistantName)          ?? ""
+        let rawAssistantName   = try c.decodeIfPresent(String.self,      forKey: .assistantName)          ?? ""
+        // "Claw" was the old hard-coded placeholder — migrate to empty so the
+        // companion's real name shows everywhere.
+        assistantName          = rawAssistantName == "Claw" ? "" : rawAssistantName
         relationshipMode       = try c.decodeIfPresent(RelationshipMode.self, forKey: .relationshipMode)  ?? .friend
         style                  = try c.decodeIfPresent(CommunicationStyle.self, forKey: .style)           ?? .buddy
         gender                 = try c.decodeIfPresent(UserGender.self,  forKey: .gender)                 ?? .preferNotToSay
