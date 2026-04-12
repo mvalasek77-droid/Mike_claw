@@ -91,7 +91,7 @@ actor HermesCronScheduler {
     func add(_ job: CronJob) async {
         jobs.append(job)
         save()
-        if job.isEnabled { schedule(job) }
+        if job.isEnabled { await schedule(job) }
     }
 
     /// Update an existing job.
@@ -100,7 +100,7 @@ actor HermesCronScheduler {
         cancel(jobs[idx])
         jobs[idx] = job
         save()
-        if job.isEnabled { schedule(job) }
+        if job.isEnabled { await schedule(job) }
     }
 
     /// Delete a job and cancel its notification.
@@ -114,7 +114,7 @@ actor HermesCronScheduler {
 
     // MARK: - Scheduling
 
-    private func schedule(_ job: CronJob) {
+    private func schedule(_ job: CronJob) async {
         let content = UNMutableNotificationContent()
         content.title = "🐻  \(job.category.emoji)  \(job.title)"
         content.body = job.body
@@ -146,7 +146,13 @@ actor HermesCronScheduler {
             content: content,
             trigger: trigger
         )
-        UNUserNotificationCenter.current().add(request)
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+        } catch {
+            #if DEBUG
+            print("[CronScheduler] Failed to schedule notification for '\(job.title)': \(error)")
+            #endif
+        }
     }
 
     private func cancel(_ job: CronJob) {

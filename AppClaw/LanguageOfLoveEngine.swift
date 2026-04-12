@@ -112,12 +112,12 @@ actor LanguageOfLoveEngine {
 
     private func genderSpecificRegister(_ gender: CompanionGender) -> String {
         switch gender {
-        case .female: return maleRegister()    // Simply Kel: direct warmth, accountability
-        case .male:   return femaleRegister()  // shallelujahASMR: intimate personal attention
+        case .female: return femaleRegister()  // shallelujahASMR: intimate personal attention
+        case .male:   return maleRegister()    // Simply Kel: direct warmth, accountability
         }
     }
 
-    // ASMR REGISTER — male companions
+    // ASMR REGISTER — female companions
     // Intimate personal-attention: slow, present, deeply noticing.
     private func femaleRegister() -> String {
         """
@@ -158,7 +158,7 @@ actor LanguageOfLoveEngine {
         """
     }
 
-    // SIMPLY KEL REGISTER — female companions
+    // SIMPLY KEL REGISTER — male companions
     // Direct warmth, accountability-first, real talk, warm challenge.
     private func maleRegister() -> String {
         """
