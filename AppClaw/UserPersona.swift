@@ -220,7 +220,7 @@ struct HabitEntry: Codable, Identifiable {
 
 final class UserPersona: ObservableObject, Codable {
     @Published var userName: String = ""
-    @Published var assistantName: String = "Claw"
+    @Published var assistantName: String = ""   // empty = use companion's name
     @Published var relationshipMode: RelationshipMode = .friend
     @Published var style: CommunicationStyle = .buddy
     @Published var gender: UserGender = .preferNotToSay
@@ -268,7 +268,7 @@ final class UserPersona: ObservableObject, Codable {
     required init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         userName               = try c.decodeIfPresent(String.self,      forKey: .userName)               ?? ""
-        assistantName          = try c.decodeIfPresent(String.self,      forKey: .assistantName)          ?? "Claw"
+        assistantName          = try c.decodeIfPresent(String.self,      forKey: .assistantName)          ?? ""
         relationshipMode       = try c.decodeIfPresent(RelationshipMode.self, forKey: .relationshipMode)  ?? .friend
         style                  = try c.decodeIfPresent(CommunicationStyle.self, forKey: .style)           ?? .buddy
         gender                 = try c.decodeIfPresent(UserGender.self,  forKey: .gender)                 ?? .preferNotToSay

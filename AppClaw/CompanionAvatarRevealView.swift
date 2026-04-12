@@ -27,6 +27,9 @@ struct CompanionTikTokView: View {
     private let companion: CompanionPersonality
     private let persona:   UserPersona
 
+    /// UserDefaults key for the last caption index shown (per-companion)
+    private var captionIndexKey: String { "tiktok.captionIndex.\(companion.id)" }
+
     init() {
         let p = UserPersona.load()
         persona   = p
@@ -131,6 +134,9 @@ struct CompanionTikTokView: View {
         }
         .onAppear {
             configureAudio()
+            // Restore caption from last session (song intro style only on first launch)
+            let savedIndex = UserDefaults.standard.integer(forKey: captionIndexKey)
+            captionIndex = min(savedIndex, max(0, captions.count - 1))
             greetOnAppear()
             startCaptionRotation()
             Task { intimacyLabel = await HerLearningEngine.shared.intimacyStage.label }
@@ -280,6 +286,8 @@ struct CompanionTikTokView: View {
             withAnimation(.easeInOut(duration: 0.3)) { captionVisible = false }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 captionIndex = (captionIndex + 1) % captions.count
+                // Persist last-seen caption so next launch resumes here
+                UserDefaults.standard.set(captionIndex, forKey: captionIndexKey)
                 withAnimation(.easeInOut(duration: 0.3)) { captionVisible = true }
             }
         }

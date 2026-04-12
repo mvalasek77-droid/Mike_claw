@@ -3,7 +3,7 @@ import Combine
 
 // MARK: - ChatMessage
 
-struct ChatMessage: Identifiable, Equatable {
+struct ChatMessage: Identifiable, Equatable, Codable {
     let id: UUID
     let role: MessageRole
     var text: String
@@ -11,7 +11,7 @@ struct ChatMessage: Identifiable, Equatable {
     var isStreaming: Bool
     var isSamanthaThought: Bool   // proactive thought from companion
 
-    enum MessageRole { case user, assistant, system }
+    enum MessageRole: String, Codable { case user, assistant, system }
 
     init(id: UUID = UUID(), role: MessageRole, text: String,
          timestamp: Date = Date(), isStreaming: Bool = false,
@@ -43,9 +43,40 @@ final class ChatViewModel: ObservableObject {
     private let sessionId: String = UUID().uuidString
     private var lastUserMessage: String = ""
 
+    private static let chatSaveURL: URL = {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("hermes")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("chat_history.json")
+    }()
+
     init(persona: UserPersona) {
         self.persona = persona
         Task { await setup() }
+    }
+
+    // MARK: - Chat history persistence
+
+    func saveMessages() {
+        let toSave = messages.filter { !$0.isStreaming }
+        guard !toSave.isEmpty else { return }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        if let data = try? encoder.encode(toSave) {
+            try? data.write(to: Self.chatSaveURL, options: .atomic)
+        }
+    }
+
+    private static func loadSavedMessages() -> [ChatMessage] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let data = try? Data(contentsOf: chatSaveURL),
+              let msgs = try? decoder.decode([ChatMessage].self, from: data)
+        else { return [] }
+        // Never restore streaming state
+        return msgs.map {
+            var m = $0; m.isStreaming = false; return m
+        }
     }
 
     // MARK: - Setup
@@ -64,12 +95,19 @@ final class ChatViewModel: ObservableObject {
             showAffirmation = true
         }
 
-        // Check for a pending Samantha thought (proactive companion message)
-        if let thought = await HerLearningEngine.shared.consumeSamanthaThought() {
-            messages.append(ChatMessage(role: .assistant, text: thought, isSamanthaThought: true))
+        // Restore persisted chat history from disk
+        let saved = Self.loadSavedMessages()
+        if !saved.isEmpty {
+            messages = saved
         }
 
-        // Greeting if no pending Samantha thought and first launch today
+        // Check for a pending Samantha thought (always append regardless of history)
+        if let thought = await HerLearningEngine.shared.consumeSamanthaThought() {
+            messages.append(ChatMessage(role: .assistant, text: thought, isSamanthaThought: true))
+            saveMessages()
+        }
+
+        // Greeting only when there's no history at all (first-ever launch)
         if messages.isEmpty {
             let companion = persona.selectedCompanion
             let name = persona.userName.isEmpty ? "" : " \(persona.userName)"
@@ -77,6 +115,7 @@ final class ChatViewModel: ObservableObject {
             let stage = await HerLearningEngine.shared.intimacyStage
             let greeting = stageAwareGreeting(name: name, hour: hour, stage: stage, companion: companion)
             messages.append(ChatMessage(role: .assistant, text: greeting))
+            saveMessages()
         }
 
         // Load suggestions
@@ -268,6 +307,12 @@ final class ChatViewModel: ObservableObject {
             responseText: finalText,
             interests: persona.interests
         )
+
+        // Memory agent: save this exchange + detect emotion
+        await HermesMemoryAgent.shared.run(.message(user: lastUserMessage, assistant: finalText))
+
+        // Persist chat history to disk
+        saveMessages()
 
         // Speak response aloud
         CompanionVoiceEngine.shared.speakWithCurrentCompanion(finalText)
@@ -1080,7 +1125,7 @@ struct SettingsView: View {
                         Text("Assistant Name")
                             .foregroundColor(Color.OC.primaryText)
                         Spacer()
-                        Text(persona.assistantName.isEmpty ? "Claw" : persona.assistantName)
+                        Text(persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName)
                             .foregroundColor(Color.OC.secondaryText)
                     }
                 } header: {

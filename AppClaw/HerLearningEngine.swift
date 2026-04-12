@@ -66,6 +66,16 @@ actor HerLearningEngine {
     var totalMessages: Int { state.totalMessages }
     var milestones: [RelationshipMilestone] { state.milestones }
 
+    // MARK: - Current emotion (saved state)
+
+    var currentEmotionTag: EmotionTag { state.currentEmotion }
+
+    func updateCurrentEmotion(_ emotion: EmotionTag) async {
+        state.currentEmotion = emotion
+        state.currentEmotionUpdatedAt = Date()
+        await save()
+    }
+
     // MARK: - After every user message
 
     func processUserMessage(_ text: String, responseText: String, interests: [Interest] = []) async {
@@ -304,6 +314,11 @@ actor HerLearningEngine {
         let record = EmotionRecord(emotion: emotion, hour: hour, weekday: weekday)
         state.emotionHistory.append(record)
         if state.emotionHistory.count > 500 { state.emotionHistory.removeFirst(100) }
+        // Persist current emotion so it survives app restarts
+        if emotion != .neutral {
+            state.currentEmotion = emotion
+            state.currentEmotionUpdatedAt = Date()
+        }
     }
 
     private func currentEmotionalPattern() -> String? {
@@ -683,6 +698,8 @@ private struct LearningState: Codable {
     var pendingSamanthaThought: String? = nil
     var lastSamanthaMoment: Date? = nil
     var knownIssues: [AppIssue] = []
+    var currentEmotion: EmotionTag = .neutral
+    var currentEmotionUpdatedAt: Date? = nil
 }
 
 // MARK: - String helper
