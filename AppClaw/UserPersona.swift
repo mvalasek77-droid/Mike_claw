@@ -243,7 +243,10 @@ final class UserPersona: ObservableObject, Codable {
     // MARK: - Companion selection
     /// ID of the chosen companion (e.g. "luna", "dante").
     @Published var selectedCompanionID: String = "luna" {
-        didSet { UserDefaults.standard.set(selectedCompanionID, forKey: "selectedCompanionID") }
+        didSet {
+            UserDefaults.standard.set(selectedCompanionID, forKey: "selectedCompanionID")
+            save()  // keep JSON in sync so UserPersona.load() always returns the current companion
+        }
     }
 
     // MARK: - Tracking permissions

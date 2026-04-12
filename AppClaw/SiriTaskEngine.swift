@@ -307,7 +307,7 @@ actor SiriTaskEngine {
         let spotifyURL = URL(string: "spotify:search:\(encoded)")
         let musicURL   = URL(string: "music://music.apple.com/search?term=\(encoded)")
 
-        let url = UIApplication.shared.canOpenURL(spotifyURL!) ? spotifyURL : musicURL
+        let url = spotifyURL.flatMap { UIApplication.shared.canOpenURL($0) ? $0 : nil } ?? musicURL
         return TaskResult(
             kind: .deepLink,
             title: "Play \(query)",
