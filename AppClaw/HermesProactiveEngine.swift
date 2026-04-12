@@ -193,13 +193,14 @@ actor HermesProactiveEngine {
             .contains { $0.timestamp >= todayStart }
         guard !alreadyEncouraged else { return [] }
 
-        Task {
-            try? await memory.observe(
-                category: "encouragement_sent",
-                content: ["count": todayMessages.count],
-                metadata: ["importance": 1]
-            )
-        }
+        // Await directly: checkEncouragement is already async, and writing inside
+        // a detached Task would allow a second evaluate() to race past the guard
+        // before the flag is persisted, causing duplicate encouragement suggestions.
+        try? await memory.observe(
+            category: "encouragement_sent",
+            content: ["count": todayMessages.count],
+            metadata: ["importance": 1]
+        )
 
         return [HermesSuggestion(
             id: UUID(),

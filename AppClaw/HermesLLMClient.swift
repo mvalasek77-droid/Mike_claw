@@ -336,6 +336,16 @@ enum ClaudeAPIBridge {
                   let event = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { continue }
 
+            // Anthropic error event (e.g. context_length_exceeded, overloaded)
+            if event["type"] as? String == "error",
+               let errObj = event["error"] as? [String: Any] {
+                let errType = errObj["type"] as? String ?? ""
+                if errType == "invalid_request_error" {
+                    throw LLMError.contextTooLong
+                }
+                throw LLMError.serverError(0)
+            }
+
             // Text delta
             if let delta = (event["delta"] as? [String: Any])?["text"] as? String {
                 handler(delta)
