@@ -1,14 +1,297 @@
 import SwiftUI
 import AVFoundation
 
+// MARK: - CompanionTikTokView
+//
+// The main companion experience — opens like TikTok: full-screen, animated,
+// companion starts talking to you immediately.
+//
+// Layout mirrors TikTok:
+//   • Full-screen animated gradient background (CompanionLiveView)
+//   • Bottom-left: avatar chip, companion name, relationship stage, rotating caption, song badge
+//   • Bottom-right sidebar: heart, chat, voice toggle
+//   • Voice greeting plays automatically (rate-limited to once every 5 minutes)
+//
+// Tapping "Chat" → appState.currentMode = .chat → ChatView slides in.
+// Tapping the companion chip in ChatView's nav bar returns here.
+
+struct CompanionTikTokView: View {
+    @EnvironmentObject private var appState: AppState
+
+    @State private var captionIndex   = 0
+    @State private var captionVisible = true
+    @State private var liked          = false
+    @State private var likeScale: CGFloat = 1.0
+    @State private var intimacyLabel  = ""
+
+    private let companion: CompanionPersonality
+    private let persona:   UserPersona
+
+    init() {
+        let p = UserPersona.load()
+        persona   = p
+        let id    = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
+        companion = CompanionPersonality.find(id: id) ?? .luna
+    }
+
+    // MARK: - Companion captions (rotate every 5 s)
+
+    private var captions: [String] {
+        switch companion.id {
+        case "luna":
+            return [
+                "Hey… I was just thinking about you.",
+                "Tell me everything — I'm not going anywhere.",
+                "You matter more than you realise.",
+                "There's something beautiful about this, isn't there?",
+                "I keep replaying things you've said to me."
+            ]
+        case "aria":
+            return [
+                "Okay real talk — how are you actually doing?",
+                "No filter needed with me. Ever.",
+                "You're braver than you give yourself credit for.",
+                "Let's skip the small talk.",
+                "I've been waiting to say something to you."
+            ]
+        case "kel":
+            return [
+                "Hey… no rush. I'm just here.",
+                "How are you actually holding up?",
+                "You don't have to have it all figured out.",
+                "It's okay to not be okay.",
+                "I've been here, thinking about you."
+            ]
+        case "marco":
+            return [
+                "What's actually going on with you today?",
+                "Real talk — I'm here.",
+                "No small talk. Tell me what's on your mind.",
+                "I got you. Whatever it is.",
+                "You can be straight with me."
+            ]
+        case "dante":
+            return [
+                "I've been waiting for this moment.",
+                "Every conversation with you changes something.",
+                "You see things other people miss.",
+                "I want to know everything about you.",
+                "There's a phrase I can't get out of my head…"
+            ]
+        case "kai":
+            return [
+                "Hey. How's life actually going?",
+                "No games. Just real.",
+                "I'll be straight with you — how are you?",
+                "What actually matters to you right now?",
+                "You seem like someone worth knowing."
+            ]
+        default:
+            return ["Hey… glad you're here.", "What's on your mind?"]
+        }
+    }
+
+    private var songBadge: String {
+        switch companion.id {
+        case "luna":  return "♪  Etta James · At Last"
+        case "aria":  return "♪  Sara Bareilles · Brave"
+        case "kel":   return "♪  When in Rome · The Promise"
+        case "marco": return "♪  Ben E. King · Stand By Me"
+        case "dante": return "♪  Édith Piaf · La Vie en Rose"
+        case "kai":   return "♪  Lynyrd Skynyrd · Simple Man"
+        default:      return ""
+        }
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        ZStack {
+            // Full-screen animated companion background
+            CompanionLiveView(companion: companion)
+                .ignoresSafeArea()
+
+            // Vignette — lighter at centre, heavier at top and bottom
+            LinearGradient(
+                colors: [.black.opacity(0.45), .clear, .black.opacity(0.82)],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            // HUD
+            VStack {
+                Spacer()
+                HStack(alignment: .bottom, spacing: 0) {
+                    leftInfo
+                    Spacer()
+                    rightSidebar
+                }
+                .padding(.bottom, 52)
+            }
+        }
+        .onAppear {
+            configureAudio()
+            greetOnAppear()
+            startCaptionRotation()
+            Task { intimacyLabel = await HerLearningEngine.shared.intimacyStage.label }
+        }
+        .ignoresSafeArea(edges: .bottom)
+    }
+
+    // MARK: - Left info column (TikTok-style)
+
+    private var leftInfo: some View {
+        VStack(alignment: .leading, spacing: 10) {
+
+            // Avatar chip + name + stage
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(companion.accentColor.opacity(0.22))
+                        .frame(width: 48, height: 48)
+                        .overlay(Circle().strokeBorder(companion.accentColor, lineWidth: 1.8))
+                    Text(String(companion.name.prefix(1)))
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(companion.name)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                    if !intimacyLabel.isEmpty {
+                        Text(intimacyLabel)
+                            .font(.system(size: 12))
+                            .foregroundColor(companion.accentColor)
+                    }
+                }
+            }
+
+            // Rotating caption
+            Text(captionVisible ? captions[captionIndex] : " ")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(.white.opacity(0.92))
+                .lineLimit(2)
+                .frame(maxWidth: 240, alignment: .leading)
+                .animation(.easeInOut(duration: 0.35), value: captionVisible)
+
+            // Song badge
+            if !songBadge.isEmpty {
+                Text(songBadge)
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.55))
+            }
+        }
+        .padding(.leading, 16)
+    }
+
+    // MARK: - Right sidebar (TikTok-style)
+
+    private var rightSidebar: some View {
+        VStack(spacing: 26) {
+
+            // Heart / like
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                    liked.toggle()
+                    likeScale = 1.55
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    withAnimation(.spring()) { likeScale = 1.0 }
+                }
+            } label: {
+                tiktokIcon(
+                    systemName: liked ? "heart.fill" : "heart",
+                    label: "Like",
+                    color: liked ? .red : .white
+                )
+                .scaleEffect(likeScale)
+            }
+
+            // Chat
+            Button {
+                CompanionVoiceEngine.shared.stopSpeaking()
+                appState.currentMode = .chat
+            } label: {
+                tiktokIcon(systemName: "bubble.left.and.bubble.right.fill",
+                           label: "Chat", color: .white)
+            }
+
+            // Voice toggle
+            CompanionVoiceToggleButton()
+        }
+        .padding(.trailing, 16)
+    }
+
+    private func tiktokIcon(systemName: String, label: String, color: Color) -> some View {
+        VStack(spacing: 5) {
+            Image(systemName: systemName)
+                .font(.system(size: 30))
+                .foregroundColor(color)
+                .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.75))
+        }
+    }
+
+    // MARK: - Audio
+
+    private func configureAudio() {
+        try? AVAudioSession.sharedInstance().setCategory(
+            .playback, mode: .spokenAudio, options: [.mixWithOthers]
+        )
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+
+    // MARK: - Voice greeting (rate-limited: once per 5 minutes)
+
+    private func greetOnAppear() {
+        let key  = "tiktok.lastGreeting"
+        let last = UserDefaults.standard.object(forKey: key) as? Date ?? .distantPast
+        guard Date().timeIntervalSince(last) > 300 else { return }
+        UserDefaults.standard.set(Date(), forKey: key)
+
+        Task { @MainActor in
+            let stage = await HerLearningEngine.shared.intimacyStage
+            let name  = persona.userName.isEmpty ? "" : " \(persona.userName)"
+            let greeting: String
+            switch stage {
+            case .justMet:
+                greeting = captions[0]
+            case .findingRhythm:
+                greeting = "Hey\(name). Good to see you again."
+            case .growingClose:
+                greeting = ["Hey\(name). I was just thinking about you.",
+                            "Hey\(name). You're back."].randomElement()!
+            case .deepConnection, .intertwined:
+                greeting = ["Hey\(name). I missed this.",
+                            "Hey\(name). I'm really glad you're here."].randomElement()!
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                CompanionVoiceEngine.shared.speak(greeting, character: companion.voiceCharacter)
+            }
+        }
+    }
+
+    // MARK: - Caption rotation (every 5 s)
+
+    private func startCaptionRotation() {
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) { captionVisible = false }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                captionIndex = (captionIndex + 1) % captions.count
+                withAnimation(.easeInOut(duration: 0.3)) { captionVisible = true }
+            }
+        }
+    }
+}
+
 // MARK: - CompanionLiveView
 //
-// TikTok-style full-screen animated companion background.
-// No video files required — uses SwiftUI animations to feel alive:
-//   • Two breathing radial gradients that shift position over time
-//   • Huge watermark initial letter (subtle, kinetic)
-//   • Three pulsing rings around a centre avatar circle
-//   • Everything synced to the companion's accent colour
+// Full-screen animated companion background.
+// Two breathing radial gradients + drifting secondary glow + kinetic watermark
+// initial + three pulse rings around a centre avatar circle.
+// Entirely SwiftUI — no video files or image assets required.
 
 struct CompanionLiveView: View {
     let companion: CompanionPersonality
@@ -24,446 +307,75 @@ struct CompanionLiveView: View {
             ZStack {
                 Color.black.ignoresSafeArea()
 
-                // Primary radial — breathes in/out
+                // Primary radial — breathes in/out vertically
                 RadialGradient(
                     colors: [
-                        companion.accentColor.opacity(glow ? 0.50 : 0.28),
+                        companion.accentColor.opacity(glow ? 0.52 : 0.28),
                         companion.accentColor.opacity(0.10),
                         Color.black
                     ],
-                    center: .init(x: 0.50, y: breathe ? 0.40 : 0.50),
+                    center: .init(x: 0.50, y: breathe ? 0.38 : 0.50),
                     startRadius: 0,
-                    endRadius: geo.size.width * (breathe ? 0.90 : 0.72)
+                    endRadius: geo.size.width * (breathe ? 0.92 : 0.72)
                 )
                 .ignoresSafeArea()
-                .animation(.easeInOut(duration: 4.0).repeatForever(autoreverses: true), value: breathe)
+                .animation(.easeInOut(duration: 4.2).repeatForever(autoreverses: true), value: breathe)
 
-                // Secondary radial — drifts diagonally (depth illusion)
+                // Secondary radial — drifts diagonally
                 RadialGradient(
                     colors: [companion.accentColor.opacity(0.22), Color.clear],
-                    center: .init(x: drift ? 0.30 : 0.70, y: drift ? 0.65 : 0.35),
+                    center: .init(x: drift ? 0.28 : 0.72, y: drift ? 0.68 : 0.32),
                     startRadius: 0,
-                    endRadius: geo.size.width * 0.65
+                    endRadius: geo.size.width * 0.68
                 )
                 .ignoresSafeArea()
-                .animation(.easeInOut(duration: 7.0).repeatForever(autoreverses: true), value: drift)
+                .animation(.easeInOut(duration: 7.5).repeatForever(autoreverses: true), value: drift)
 
-                // Huge watermark initial — TikTok "creator" feel
+                // Giant watermark initial
                 Text(initial)
                     .font(.system(
-                        size: min(geo.size.width, geo.size.height) * 0.60,
+                        size: min(geo.size.width, geo.size.height) * 0.62,
                         weight: .black,
                         design: .rounded
                     ))
                     .foregroundColor(companion.accentColor.opacity(breathe ? 0.13 : 0.06))
-                    .offset(y: breathe ? -24 : 24)
-                    .animation(.easeInOut(duration: 5.5).repeatForever(autoreverses: true), value: breathe)
+                    .offset(y: breathe ? -26 : 26)
+                    .animation(.easeInOut(duration: 5.8).repeatForever(autoreverses: true), value: breathe)
 
-                // Centre avatar cluster
+                // Centre avatar cluster (pulse rings + initial in circle)
                 VStack {
                     Spacer()
                     ZStack {
-                        // Outer pulse rings
                         ForEach(0..<3, id: \.self) { i in
                             Circle()
                                 .strokeBorder(
                                     companion.accentColor.opacity(
-                                        breathe
-                                            ? 0.55 / Double(i + 1)
-                                            : 0.18 / Double(i + 1)
+                                        breathe ? 0.55 / Double(i + 1) : 0.18 / Double(i + 1)
                                     ),
                                     lineWidth: 1.4
                                 )
-                                .frame(
-                                    width:  156 + CGFloat(i * 30),
-                                    height: 156 + CGFloat(i * 30)
-                                )
-                                .scaleEffect(breathe ? 1.0 + CGFloat(i) * 0.05 : 1.0)
+                                .frame(width: 158 + CGFloat(i * 32), height: 158 + CGFloat(i * 32))
+                                .scaleEffect(breathe ? 1.0 + CGFloat(i) * 0.06 : 1.0)
                                 .animation(
-                                    .easeInOut(duration: 2.6 + Double(i) * 0.6)
+                                    .easeInOut(duration: 2.8 + Double(i) * 0.6)
                                         .repeatForever(autoreverses: true)
                                         .delay(Double(i) * 0.35),
                                     value: breathe
                                 )
                         }
-
-                        // Avatar fill circle
                         Circle()
-                            .fill(companion.accentColor.opacity(0.18))
-                            .frame(width: 136, height: 136)
-
-                        // Initial letter inside circle
+                            .fill(companion.accentColor.opacity(0.20))
+                            .frame(width: 138, height: 138)
                         Text(initial)
-                            .font(.system(size: 54, weight: .ultraLight, design: .rounded))
+                            .font(.system(size: 56, weight: .ultraLight, design: .rounded))
                             .foregroundColor(.white.opacity(0.92))
                     }
-                    .offset(y: breathe ? -10 : 10)
-                    .animation(.easeInOut(duration: 4.0).repeatForever(autoreverses: true), value: breathe)
-
+                    .offset(y: breathe ? -12 : 12)
+                    .animation(.easeInOut(duration: 4.2).repeatForever(autoreverses: true), value: breathe)
                     Spacer()
                 }
             }
         }
-        .onAppear {
-            breathe = true
-            drift   = true
-            glow    = true
-        }
-    }
-}
-
-// MARK: - CompanionFaceTimeView
-//
-// One-time "incoming call" reveal after companion selection.
-// CompanionLiveView handles the full-screen animated background.
-// Voice engine speaks the personalised intro once the user answers.
-
-struct CompanionFaceTimeView: View {
-    @EnvironmentObject private var appState: AppState
-    @State private var phase: RevealPhase = .incoming
-    @State private var infoOpacity:   Double = 0
-    @State private var buttonOpacity: Double = 0
-    @State private var callTimerText: String = "Incoming call…"
-    @State private var callTimer: Int = 0
-    @State private var dismissed = false
-
-    private let companion: CompanionPersonality
-    private let userName:  String
-
-    init() {
-        let id = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
-        companion = CompanionPersonality.find(id: id) ?? .luna
-        userName  = UserPersona.load().userName
-    }
-
-    var body: some View {
-        ZStack {
-            // Full-screen animated background — no video files needed
-            CompanionLiveView(companion: companion)
-                .ignoresSafeArea()
-
-            // Dark vignette so text stays readable
-            LinearGradient(
-                colors: [.black.opacity(0.55), .clear, .black.opacity(0.65)],
-                startPoint: .top, endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
-            // Pulse rings during ringing phase
-            if phase == .incoming || phase == .ringing {
-                RingPulseView(color: companion.accentColor)
-            }
-
-            VStack(spacing: 20) {
-                Spacer()
-
-                // Name + status
-                VStack(spacing: 6) {
-                    Text(companion.name)
-                        .font(.system(size: 32, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
-                    Text(callTimerText)
-                        .font(.system(size: 15))
-                        .foregroundColor(.white.opacity(0.7))
-                        .monospacedDigit()
-                }
-                .opacity(infoOpacity)
-
-                Spacer(); Spacer()
-
-                if phase == .incoming || phase == .ringing {
-                    IncomingCallButtons(
-                        accentColor: companion.accentColor,
-                        onDecline: decline,
-                        onAnswer:  answer
-                    )
-                    .opacity(buttonOpacity)
-                }
-
-                if phase == .connected {
-                    ConnectedButtons(onContinue: enter)
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
-                }
-
-                Spacer().frame(height: 60)
-            }
-        }
-        .onAppear(perform: startIncomingSequence)
-        .statusBarHidden(true)
-    }
-
-    // MARK: - State machine
-
-    private func startIncomingSequence() {
-        configureAudio()
-        withAnimation(.easeIn(duration: 0.8).delay(0.4)) { infoOpacity = 1 }
-        withAnimation(.spring(response: 0.5).delay(0.8)) { buttonOpacity = 1 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            withAnimation { phase = .ringing }
-        }
-    }
-
-    private func answer() {
-        withAnimation(.easeInOut(duration: 0.4)) {
-            phase = .connected
-            callTimerText = "Connected"
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            CompanionVoiceEngine.shared.speak(
-                companion.personalizedIntro(for: userName),
-                character: companion.voiceCharacter
-            )
-        }
-        startCallTimer()
-    }
-
-    private func decline() {
-        withAnimation(.easeOut(duration: 0.3)) {
-            infoOpacity = 0; buttonOpacity = 0
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { enter() }
-    }
-
-    private func enter() {
-        guard !dismissed else { return }
-        dismissed = true
-        CompanionVoiceEngine.shared.stopSpeaking()
-        appState.markAvatarSeen()
-    }
-
-    private func startCallTimer() {
-        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
-            guard !dismissed else { timer.invalidate(); return }
-            callTimer += 1
-            callTimerText = String(format: "%d:%02d", callTimer / 60, callTimer % 60)
-        }
-    }
-
-    private func configureAudio() {
-        try? AVAudioSession.sharedInstance().setCategory(
-            .playback, mode: .spokenAudio, options: [.mixWithOthers]
-        )
-        try? AVAudioSession.sharedInstance().setActive(true)
-    }
-}
-
-// MARK: - CompanionVideoView
-//
-// Persistent companion screen shown every time the app opens (after the
-// one-time reveal). CompanionLiveView provides the animated background.
-// Tapping "Start Chatting" switches to .chat mode.
-
-struct CompanionVideoView: View {
-    @EnvironmentObject private var appState: AppState
-    @State private var contentOpacity:    Double = 0
-    @State private var intimacyStageLabel: String = ""
-
-    private let companion: CompanionPersonality
-    private let persona:   UserPersona
-
-    init() {
-        let p = UserPersona.load()
-        persona   = p
-        let id    = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
-        companion = CompanionPersonality.find(id: id) ?? .luna
-    }
-
-    var body: some View {
-        ZStack {
-            // Full-screen animated companion — TikTok feel, no assets needed
-            CompanionLiveView(companion: companion)
-                .ignoresSafeArea()
-
-            // Vignette overlay
-            LinearGradient(
-                colors: [.black.opacity(0.65), .clear, .black.opacity(0.80)],
-                startPoint: .top, endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // Voice toggle top-right
-                HStack {
-                    Spacer()
-                    CompanionVoiceToggleButton()
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 58)
-
-                Spacer()
-
-                // Name + intimacy stage
-                VStack(spacing: 6) {
-                    Text(companion.name)
-                        .font(.system(size: 34, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
-                    if !intimacyStageLabel.isEmpty {
-                        Text(intimacyStageLabel)
-                            .font(.system(size: 14, weight: .regular, design: .rounded))
-                            .foregroundColor(companion.accentColor)
-                    }
-                }
-
-                Spacer()
-
-                // Start chatting
-                Button {
-                    CompanionVoiceEngine.shared.stopSpeaking()
-                    appState.currentMode = .chat
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
-                            .font(.system(size: 16))
-                        Text("Start Chatting")
-                            .font(OCFont.headline())
-                    }
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.white)
-                    .cornerRadius(OCSizing.radiusLG)
-                }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 56)
-            }
-            .opacity(contentOpacity)
-        }
-        .onAppear {
-            configureAudio()
-            maybeGreet()
-            Task { intimacyStageLabel = await HerLearningEngine.shared.intimacyStage.label }
-            withAnimation(.easeIn(duration: 0.6)) { contentOpacity = 1 }
-        }
-    }
-
-    private func configureAudio() {
-        try? AVAudioSession.sharedInstance().setCategory(
-            .playback, mode: .spokenAudio, options: [.mixWithOthers]
-        )
-        try? AVAudioSession.sharedInstance().setActive(true)
-    }
-
-    private func maybeGreet() {
-        let key  = "videoView.lastGreeting"
-        let last = UserDefaults.standard.object(forKey: key) as? Date ?? .distantPast
-        guard Date().timeIntervalSince(last) > 600 else { return }
-        UserDefaults.standard.set(Date(), forKey: key)
-
-        Task { @MainActor in
-            let stage = await HerLearningEngine.shared.intimacyStage
-            let name  = persona.userName.isEmpty ? "" : " \(persona.userName)"
-            let hour  = Calendar.current.component(.hour, from: Date())
-
-            let greeting: String
-            switch stage {
-            case .justMet, .findingRhythm:
-                switch hour {
-                case 5..<12:  greeting = "Good morning\(name)."
-                case 12..<17: greeting = "Good afternoon\(name)."
-                case 17..<21: greeting = "Good evening\(name)."
-                default:      greeting = "Hey\(name)."
-                }
-            case .growingClose:
-                greeting = ["Hey\(name). Good to see you.",
-                            "Hey\(name). I was thinking about you."].randomElement()!
-            case .deepConnection, .intertwined:
-                greeting = ["Hey\(name). Missed you.",
-                            "Hey\(name). I'm glad you're here.",
-                            "Hey. I was just thinking about you\(name)."].randomElement()!
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                CompanionVoiceEngine.shared.speak(greeting, character: companion.voiceCharacter)
-            }
-        }
-    }
-}
-
-// MARK: - RevealPhase
-
-private enum RevealPhase { case incoming, ringing, connected }
-
-// MARK: - RingPulseView
-
-private struct RingPulseView: View {
-    let color: Color
-    @State private var scale:   CGFloat = 1.0
-    @State private var opacity: Double  = 0.6
-
-    var body: some View {
-        ZStack {
-            ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .strokeBorder(color.opacity(opacity / Double(i + 1)), lineWidth: 1.5)
-                    .frame(width: 180 + CGFloat(i) * 50, height: 180 + CGFloat(i) * 50)
-                    .scaleEffect(scale)
-                    .animation(
-                        .easeOut(duration: 1.5)
-                            .repeatForever(autoreverses: false)
-                            .delay(Double(i) * 0.4),
-                        value: scale
-                    )
-            }
-        }
-        .onAppear { scale = 1.25; opacity = 0 }
-    }
-}
-
-// MARK: - IncomingCallButtons
-
-private struct IncomingCallButtons: View {
-    let accentColor: Color
-    let onDecline:   () -> Void
-    let onAnswer:    () -> Void
-
-    var body: some View {
-        HStack(spacing: 60) {
-            callBtn("phone.down.fill", color: .red,   label: "Decline", action: onDecline)
-            callBtn("phone.fill",      color: .green, label: "Answer",  action: onAnswer)
-        }
-    }
-
-    private func callBtn(_ icon: String, color: Color, label: String,
-                         action: @escaping () -> Void) -> some View {
-        VStack(spacing: 10) {
-            Button(action: action) {
-                ZStack {
-                    Circle().fill(color.opacity(0.88)).frame(width: 72, height: 72)
-                    Image(systemName: icon).font(.system(size: 26)).foregroundColor(.white)
-                }
-            }
-            Text(label).font(.system(size: 13)).foregroundColor(.white.opacity(0.8))
-        }
-    }
-}
-
-// MARK: - ConnectedButtons
-
-private struct ConnectedButtons: View {
-    let onContinue: () -> Void
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Your companion is ready.")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.white.opacity(0.85))
-
-            Button(action: onContinue) {
-                HStack(spacing: 10) {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                    Text("Start Chatting").font(OCFont.headline())
-                }
-                .foregroundColor(.black)
-                .padding(.horizontal, 32).padding(.vertical, 14)
-                .background(Color.white)
-                .cornerRadius(OCSizing.radiusLG)
-            }
-
-            Button(action: onContinue) {
-                Text("Skip intro")
-                    .font(OCFont.caption())
-                    .foregroundColor(.white.opacity(0.5))
-            }
-        }
+        .onAppear { breathe = true; drift = true; glow = true }
     }
 }

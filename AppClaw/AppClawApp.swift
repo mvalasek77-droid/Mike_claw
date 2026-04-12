@@ -61,12 +61,9 @@ final class AppState: ObservableObject {
 // MARK: - RootView
 //
 // State machine:
-//   onboardingComplete == false      → OnboardingView         (pick name, companion, permissions)
-//   onboardingComplete == true
-//     companionSeenAvatar == false   → CompanionFaceTimeView  (one-time FaceTime-style reveal)
-//     companionSeenAvatar == true
-//       currentMode == .video        → CompanionVideoView     (persistent companion screen)
-//       currentMode == .chat         → ChatView               (text chat)
+//   onboardingComplete == false  → OnboardingView   (pick name, companion, permissions)
+//   currentMode == .chat         → ChatView          (text chat)
+//   currentMode == .video        → CompanionTikTokView (full-screen TikTok-style companion)
 
 struct RootView: View {
     @EnvironmentObject private var appState: AppState
@@ -77,21 +74,16 @@ struct RootView: View {
                 CompanionOnboardingView()
                     .environmentObject(appState)
                     .transition(.opacity)
-            } else if !appState.companionSeenAvatar {
-                CompanionFaceTimeView()
-                    .environmentObject(appState)
-                    .transition(.opacity)
-            } else if appState.currentMode == .video {
-                CompanionVideoView()
-                    .environmentObject(appState)
+            } else if appState.currentMode == .chat {
+                ChatView()
                     .transition(.opacity)
             } else {
-                ChatView()
+                CompanionTikTokView()
+                    .environmentObject(appState)
                     .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.35), value: appState.currentMode)
-        .animation(.easeInOut(duration: 0.4), value: appState.companionSeenAvatar)
         .animation(.easeInOut(duration: 0.4), value: appState.onboardingComplete)
         .task {
             await HermesSessionState.shared.loadFromDisk()
