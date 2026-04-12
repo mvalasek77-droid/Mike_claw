@@ -248,25 +248,9 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         guard !clean.isEmpty else { return }
 
         isSpeaking = true
-        startEngine(character: character)
-
-        guard engineReady else { return }
-
-        let utterance = buildUtterance(clean, character: character)
-
-        // Capture node refs before entering the synth callback.
-        // AVAudioPlayerNode.scheduleBuffer() is thread-safe — calling it
-        // directly from the synth callback avoids the main-thread round-trip
-        // that was causing buffers to arrive late and voice to cut out.
-        let capturedPlayer = player
-        let capturedEngine = engine
-
-        synth.write(utterance) { buffer in
-            guard let pcm = buffer as? AVAudioPCMBuffer,
-                  pcm.frameLength > 0,
-                  capturedEngine.isRunning else { return }
-            capturedPlayer.scheduleBuffer(pcm)
-        }
+        // Direct synthesis — works on simulator and device without AVAudioEngine setup.
+        // Character personality is preserved via pitch, rate, and voice identifier.
+        synth.speak(buildUtterance(clean, character: character))
     }
 
     func speakWithCurrentCompanion(_ text: String) {
@@ -277,11 +261,7 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
 
     func stopSpeaking() {
         synth.stopSpeaking(at: .immediate)
-        if player.isPlaying   { player.stop() }
-        if engine.isRunning   { engine.stop() }
-        engine.reset()
-        engineReady = false
-        isSpeaking  = false
+        isSpeaking = false
     }
 
     func toggleVoice() {
@@ -386,21 +366,12 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
 extension CompanionVoiceEngine: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
                                         didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in
-            // Let the engine drain its buffer ring before marking done
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            isSpeaking  = false
-            engineReady = false
-            if engine.isRunning { engine.stop() }
-        }
+        Task { @MainActor in isSpeaking = false }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
                                         didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in
-            isSpeaking  = false
-            engineReady = false
-        }
+        Task { @MainActor in isSpeaking = false }
     }
 }
 
