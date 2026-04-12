@@ -48,7 +48,8 @@ actor HermesInterestEngine {
 
     private func scheduleNotification(for interest: Interest, persona: UserPersona) async {
         let content = UNMutableNotificationContent()
-        content.title = "\(persona.assistantName) 🐻"
+        let displayName = persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName
+        content.title = "\(displayName) 🐻"
         content.sound = .default
 
         // Build body based on category — try to fetch real content, fall back to prompt

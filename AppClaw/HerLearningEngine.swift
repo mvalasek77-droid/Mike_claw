@@ -208,6 +208,10 @@ actor HerLearningEngine {
         let thought = generateSamanthaThought(interests: interests)
         state.pendingSamanthaThought = thought
         await save()
+
+        // Fire the push notification so the user is drawn back in
+        let companionName = UserPersona.load().selectedCompanion.name
+        await scheduleSamanthaNotification(thought, companionName: companionName)
     }
 
     private func generateSamanthaThought(interests: [Interest] = []) -> String {

@@ -386,7 +386,7 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Learning
 
     private func learnFromMessage(_ text: String) {
-        let facts = HermesPersonality.shared.extractFactsSync(from: text, persona: persona)
+        let facts = HermesPersonality.shared.extractFacts(from: text, persona: persona)
         for (key, value) in facts {
             persona.learn(key: key, value: value)
         }
@@ -403,7 +403,7 @@ final class ChatViewModel: ObservableObject {
 
     private func learnFromAssistantMessage(_ text: String) {
         // Extract facts the assistant may have stated about the user
-        let facts = HermesPersonality.shared.extractFactsSync(from: text, persona: persona)
+        let facts = HermesPersonality.shared.extractFacts(from: text, persona: persona)
         for (key, value) in facts { persona.learn(key: key, value: value) }
     }
 
@@ -473,26 +473,6 @@ final class ChatViewModel: ObservableObject {
     }
 }
 
-// MARK: - HermesPersonality sync helper (for use on MainActor)
-
-extension HermesPersonality {
-    /// Synchronous wrapper — safe to call from non-async context on MainActor.
-    nonisolated func extractFactsSync(from text: String, persona: UserPersona) -> [String: String] {
-        // We can't call actor methods synchronously, so replicate the logic here
-        var facts: [String: String] = [:]
-        let lower = text.lowercased()
-        let nbaTeams = ["lakers","celtics","warriors","bulls","nets","knicks","heat","spurs","bucks"]
-        let nflTeams = ["chiefs","patriots","cowboys","packers","eagles","49ers","ravens","broncos"]
-        for team in nbaTeams where lower.contains(team) { facts["favorite_nba_team"] = team.capitalized }
-        for team in nflTeams where lower.contains(team) { facts["favorite_nfl_team"] = team.capitalized }
-        if lower.contains("starbucks")  { facts["likes_starbucks"] = "true" }
-        if lower.contains("pizza")      { facts["likes_pizza"]     = "true" }
-        if lower.contains("gym") || lower.contains("workout") { facts["is_active"] = "true" }
-        if lower.contains("work from home") || lower.contains("wfh") { facts["works_from_home"] = "true" }
-        return facts
-    }
-}
-
 // MARK: - ChatView
 
 struct ChatView: View {
@@ -552,7 +532,7 @@ struct ChatView: View {
                                         .id(msg.id)
                                 }
                                 if vm.isTyping {
-                                    TypingIndicator(name: persona.assistantName)
+                                    TypingIndicator(name: persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName)
                                 }
                                 Color.clear.frame(height: 1).id("bottom")
                             }

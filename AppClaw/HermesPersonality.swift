@@ -182,9 +182,9 @@ actor HermesPersonality {
         }
     }
 
-    // MARK: - Interest extraction
+    // MARK: - Fact extraction (nonisolated — pure function, no actor state)
 
-    func extractFacts(from text: String, persona: UserPersona) -> [String: String] {
+    nonisolated func extractFacts(from text: String, persona: UserPersona) -> [String: String] {
         var facts: [String: String] = [:]
         let lower = text.lowercased()
 
