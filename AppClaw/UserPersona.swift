@@ -315,9 +315,10 @@ final class UserPersona: ObservableObject, Codable {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = .prettyPrinted
-        if let data = try? encoder.encode(self) {
-            try? data.write(to: Self.saveURL, options: .atomic)
-        }
+        guard let data = try? encoder.encode(self) else { return }
+        let dir = Self.saveURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? data.write(to: Self.saveURL, options: .atomic)
     }
 
     static func load() -> UserPersona {
