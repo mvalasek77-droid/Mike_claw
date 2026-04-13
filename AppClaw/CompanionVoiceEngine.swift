@@ -391,10 +391,10 @@ struct CompanionVoiceSpeakButton: View {
         } label: {
             Image(systemName: engine.isSpeaking ? "speaker.wave.3.fill" : "speaker.wave.1")
                 .font(.system(size: 12))
-                .foregroundColor(engine.isSpeaking ? .OC.accent : .OC.textMuted)
+                .foregroundColor(engine.isSpeaking ? .BC.accent : .BC.textMuted)
                 .symbolEffect(.variableColor, isActive: engine.isSpeaking)
                 .padding(6)
-                .background(Color.OC.surface)
+                .background(Color.BC.surface)
                 .cornerRadius(8)
         }
     }

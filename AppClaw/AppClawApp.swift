@@ -3,7 +3,7 @@ import BackgroundTasks
 import UserNotifications
 
 @main
-struct AppClawApp: App {
+struct BareClawApp: App {
     @StateObject private var appState = AppState()
 
     init() {

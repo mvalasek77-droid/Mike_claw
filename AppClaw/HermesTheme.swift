@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - OpenClaw Theme
+// MARK: - BareClaw Theme
 //
 // Dark, focused aesthetic inspired by a terminal / IDE feel.
 // Primary brand colour: Electric Blue  (#0A84FF → system)
@@ -47,7 +47,7 @@ extension Color {
 
 // MARK: - Typography
 
-enum OCFont {
+enum BCFont {
     static func title(_ size: CGFloat = 22) -> Font {
         .system(size: size, weight: .bold, design: .rounded)
     }
@@ -70,7 +70,7 @@ enum OCFont {
 
 // MARK: - Spacing & radius
 
-enum OCSizing {
+enum BCSizing {
     static let radiusSM: CGFloat  = 6
     static let radiusMD: CGFloat  = 10
     static let radiusLG: CGFloat  = 16
@@ -85,34 +85,34 @@ enum OCSizing {
 
 // MARK: - Common view modifiers
 
-struct OCCardStyle: ViewModifier {
+struct BCCardStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(Color.OC.surfaceRaised)
-            .cornerRadius(OCSizing.radiusMD)
+            .background(Color.BC.surfaceRaised)
+            .cornerRadius(BCSizing.radiusMD)
             .overlay(
-                RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                    .strokeBorder(Color.OC.border, lineWidth: 1)
+                RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                    .strokeBorder(Color.BC.border, lineWidth: 1)
             )
     }
 }
 
-struct OCAccentBadge: ViewModifier {
+struct BCAccentBadge: ViewModifier {
     let color: Color
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, OCSizing.spacingSM)
-            .padding(.vertical, OCSizing.spacingXS)
+            .padding(.horizontal, BCSizing.spacingSM)
+            .padding(.vertical, BCSizing.spacingXS)
             .background(color.opacity(0.15))
             .foregroundColor(color)
-            .cornerRadius(OCSizing.radiusSM)
-            .font(OCFont.caption())
+            .cornerRadius(BCSizing.radiusSM)
+            .font(BCFont.caption())
     }
 }
 
 extension View {
-    func ocCard() -> some View { modifier(OCCardStyle()) }
-    func ocBadge(_ color: Color = .OC.accent) -> some View { modifier(OCAccentBadge(color: color)) }
+    func bcCard() -> some View { modifier(BCCardStyle()) }
+    func bcBadge(_ color: Color = .BC.accent) -> some View { modifier(BCAccentBadge(color: color)) }
 }
 
 // MARK: - Hex colour convenience

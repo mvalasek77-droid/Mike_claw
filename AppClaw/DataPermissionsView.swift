@@ -17,26 +17,26 @@ struct DataPermissionsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: OCSizing.spacingLG) {
+            VStack(alignment: .leading, spacing: BCSizing.spacingLG) {
 
                 // Header
                 VStack(alignment: .leading, spacing: 6) {
                     Text("🔒 Your privacy matters")
-                        .font(OCFont.caption())
-                        .foregroundColor(.OC.accent)
+                        .font(BCFont.caption())
+                        .foregroundColor(.BC.accent)
                     Text("Help \(companionName) know you better")
-                        .font(OCFont.title())
-                        .foregroundColor(.OC.textPrimary)
+                        .font(BCFont.title())
+                        .foregroundColor(.BC.textPrimary)
                     Text("""
                     The more \(companionName) understands your life, the better they can support you. \
                     All of this is optional — turn on only what you're comfortable with. \
                     You can change these settings anytime.
                     """)
-                        .font(OCFont.body())
-                        .foregroundColor(.OC.textSecondary)
+                        .font(BCFont.body())
+                        .foregroundColor(.BC.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
 
                 // Permission cards
                 VStack(spacing: 12) {
@@ -85,33 +85,33 @@ struct DataPermissionsView: View {
                         enabled: $persona.trackingPermissions.calendarEnabled
                     )
                 }
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
 
                 // Privacy note
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Image(systemName: "lock.shield.fill")
-                            .foregroundColor(.OC.success)
+                            .foregroundColor(.BC.success)
                         Text("Your data stays on your device")
-                            .font(OCFont.headline())
-                            .foregroundColor(.OC.textPrimary)
+                            .font(BCFont.headline())
+                            .foregroundColor(.BC.textPrimary)
                     }
                     Text("""
                     All processing happens locally. Nothing is sent to external servers without your \
                     explicit knowledge. You can revoke any permission at any time in Settings.
                     """)
-                        .font(OCFont.body(13))
-                        .foregroundColor(.OC.textSecondary)
+                        .font(BCFont.body(13))
+                        .foregroundColor(.BC.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(OCSizing.spacingMD)
-                .background(Color.OC.success.opacity(0.08))
-                .cornerRadius(OCSizing.radiusMD)
+                .padding(BCSizing.spacingMD)
+                .background(Color.BC.success.opacity(0.08))
+                .cornerRadius(BCSizing.radiusMD)
                 .overlay(
-                    RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                        .strokeBorder(Color.OC.success.opacity(0.2), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                        .strokeBorder(Color.BC.success.opacity(0.2), lineWidth: 1)
                 )
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
 
                 // Continue button
                 Button(action: {
@@ -120,19 +120,19 @@ struct DataPermissionsView: View {
                 }) {
                     HStack {
                         Text("All set — let's go!")
-                            .font(OCFont.headline())
+                            .font(BCFont.headline())
                         Image(systemName: "arrow.right")
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color.OC.accent)
+                    .background(Color.BC.accent)
                     .foregroundColor(.black)
-                    .cornerRadius(OCSizing.radiusLG)
-                    .padding(.horizontal, OCSizing.spacingLG)
+                    .cornerRadius(BCSizing.radiusLG)
+                    .padding(.horizontal, BCSizing.spacingLG)
                 }
-                .padding(.bottom, OCSizing.spacingXL)
+                .padding(.bottom, BCSizing.spacingXL)
             }
-            .padding(.top, OCSizing.spacingLG)
+            .padding(.top, BCSizing.spacingLG)
         }
     }
 }
@@ -149,7 +149,7 @@ private struct PermissionCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: OCSizing.spacingMD) {
+            HStack(alignment: .center, spacing: BCSizing.spacingMD) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(iconColor.opacity(0.15))
@@ -161,34 +161,34 @@ private struct PermissionCard: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(OCFont.headline())
-                        .foregroundColor(.OC.textPrimary)
+                        .font(BCFont.headline())
+                        .foregroundColor(.BC.textPrimary)
                     Text(benefit)
-                        .font(OCFont.body(12))
-                        .foregroundColor(.OC.textMuted)
+                        .font(BCFont.body(12))
+                        .foregroundColor(.BC.textMuted)
                 }
                 Spacer()
                 Toggle("", isOn: $enabled)
                     .labelsHidden()
                     .tint(iconColor)
             }
-            .padding(OCSizing.spacingMD)
+            .padding(BCSizing.spacingMD)
 
             if enabled {
                 Text(subtitle)
-                    .font(OCFont.body(13))
-                    .foregroundColor(.OC.textSecondary)
-                    .padding(.horizontal, OCSizing.spacingMD)
-                    .padding(.bottom, OCSizing.spacingMD)
+                    .font(BCFont.body(13))
+                    .foregroundColor(.BC.textSecondary)
+                    .padding(.horizontal, BCSizing.spacingMD)
+                    .padding(.bottom, BCSizing.spacingMD)
                     .fixedSize(horizontal: false, vertical: true)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .background(enabled ? iconColor.opacity(0.05) : Color.OC.surfaceRaised)
-        .cornerRadius(OCSizing.radiusMD)
+        .background(enabled ? iconColor.opacity(0.05) : Color.BC.surfaceRaised)
+        .cornerRadius(BCSizing.radiusMD)
         .overlay(
-            RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                .strokeBorder(enabled ? iconColor.opacity(0.3) : Color.OC.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                .strokeBorder(enabled ? iconColor.opacity(0.3) : Color.BC.border, lineWidth: 1)
         )
         .animation(.spring(response: 0.3), value: enabled)
     }

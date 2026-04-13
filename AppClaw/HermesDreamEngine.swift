@@ -16,7 +16,7 @@ import BackgroundTasks
 final class HermesDreamEngine {
     static let shared = HermesDreamEngine()
 
-    private let taskIdentifier = "com.openclaw.hermes.dream"
+    private let taskIdentifier = "com.bareclaw.hermes.dream"
     private let memory = HermesMemory.shared
 
     private init() {}

@@ -268,7 +268,7 @@ enum ClaudeAPIBridge {
 
     private static var apiKey: String? {
         // Read from Keychain — never hardcode
-        KeychainHelper.read(service: "com.openclaw.appclaw", key: "anthropic_api_key")
+        KeychainHelper.read(service: "com.bareclaw.bareclaw", key: "anthropic_api_key")
     }
 
     static func complete(_ request: LLMRequest,

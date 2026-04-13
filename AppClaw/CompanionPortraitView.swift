@@ -41,7 +41,7 @@ struct CompanionPortraitView: View {
                 colors: [
                     companion.accentColor.opacity(0.90),
                     companion.accentColor.opacity(0.40),
-                    Color.OC.background
+                    Color.BC.background
                 ],
                 startPoint: .topLeading,
                 endPoint:   .bottomTrailing

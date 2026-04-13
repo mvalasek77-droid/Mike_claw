@@ -500,7 +500,7 @@ struct ChatView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.OC.background.ignoresSafeArea()
+                Color.BC.background.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     // API key required banner (shown when no provider is configured)
@@ -579,15 +579,15 @@ struct ChatView: View {
 
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(persona.selectedCompanion.name)
-                                    .font(OCFont.headline())
-                                    .foregroundColor(.OC.textPrimary)
+                                    .font(BCFont.headline())
+                                    .foregroundColor(.BC.textPrimary)
                                 // Intimacy stage label — grows over time
                                 HStack(spacing: 4) {
                                     Image(systemName: "video.fill")
                                         .font(.system(size: 9))
                                         .foregroundColor(persona.selectedCompanion.accentColor.opacity(0.7))
                                     Text(vm.intimacyStage.isEmpty ? "Just getting started" : vm.intimacyStage)
-                                        .font(OCFont.caption(11))
+                                        .font(BCFont.caption(11))
                                         .foregroundColor(persona.selectedCompanion.accentColor)
                                 }
                             }
@@ -602,7 +602,7 @@ struct ChatView: View {
                         // Settings
                         Button { showSettings = true } label: {
                             Image(systemName: "gearshape.fill")
-                                .foregroundColor(.OC.textMuted)
+                                .foregroundColor(.BC.textMuted)
                                 .font(.system(size: 16))
                         }
                     }
@@ -661,8 +661,8 @@ struct MessageBubble: View {
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
                 Text(message.text.isEmpty && message.isStreaming ? "   " : message.text)
-                    .font(OCFont.body())
-                    .foregroundColor(message.role == .user ? .black : .OC.textPrimary)
+                    .font(BCFont.body())
+                    .foregroundColor(message.role == .user ? .black : .BC.textPrimary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(bubbleBackground)
@@ -670,8 +670,8 @@ struct MessageBubble: View {
 
                 HStack(spacing: 8) {
                     Text(timeString(message.timestamp))
-                        .font(OCFont.caption(11))
-                        .foregroundColor(.OC.textMuted)
+                        .font(BCFont.caption(11))
+                        .foregroundColor(.BC.textMuted)
                     if message.role == .assistant && !message.isStreaming {
                         CompanionVoiceSpeakButton(message: message.text)
                     }
@@ -689,7 +689,7 @@ struct MessageBubble: View {
         if message.role == .user {
             persona.selectedCompanion.accentColor.opacity(0.85)
         } else {
-            Color.OC.surfaceRaised
+            Color.BC.surfaceRaised
         }
     }
 
@@ -721,12 +721,12 @@ struct SamanthaThoughtBubble: View {
                         .font(.system(size: 10))
                         .foregroundColor(companion.accentColor)
                     Text("\(companion.name) was thinking of you")
-                        .font(OCFont.caption(11))
+                        .font(BCFont.caption(11))
                         .foregroundColor(companion.accentColor)
                 }
                 Text(text)
-                    .font(OCFont.body().italic())
-                    .foregroundColor(.OC.textPrimary)
+                    .font(BCFont.body().italic())
+                    .foregroundColor(.BC.textPrimary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(companion.accentColor.opacity(0.08))
@@ -786,7 +786,7 @@ struct CompanionVoiceToggleButton: View {
         Button { engine.toggleVoice() } label: {
             Image(systemName: engine.voiceEnabled ? "speaker.wave.2.fill" : "speaker.slash")
                 .font(.system(size: 15))
-                .foregroundColor(engine.voiceEnabled ? .OC.accent : .OC.textMuted)
+                .foregroundColor(engine.voiceEnabled ? .BC.accent : .BC.textMuted)
         }
     }
 }
@@ -803,7 +803,7 @@ struct TypingIndicator: View {
             HStack(spacing: 5) {
                 ForEach(0..<3, id: \.self) { i in
                     Circle()
-                        .fill(Color.OC.secondaryText)
+                        .fill(Color.BC.secondaryText)
                         .frame(width: 7, height: 7)
                         .scaleEffect(phase == i ? 1.3 : 0.85)
                         .animation(
@@ -816,7 +816,7 @@ struct TypingIndicator: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(Color.OC.surface)
+            .background(Color.BC.surface)
             .clipShape(Capsule())
             Spacer(minLength: 60)
         }
@@ -842,22 +842,22 @@ private struct APIKeyBanner: View {
                     .font(.system(size: 15))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("API key needed")
-                        .font(OCFont.headline())
-                        .foregroundColor(Color.OC.primaryText)
+                        .font(BCFont.headline())
+                        .foregroundColor(Color.BC.primaryText)
                     Text("Tap here to add your Claude API key in Settings.")
-                        .font(OCFont.body(12))
-                        .foregroundColor(Color.OC.secondaryText)
+                        .font(BCFont.body(12))
+                        .foregroundColor(Color.BC.secondaryText)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(Color.OC.secondaryText)
+                    .foregroundColor(Color.BC.secondaryText)
                     .font(.system(size: 12, weight: .semibold))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(
                 LinearGradient(
-                    colors: [Color.orange.opacity(0.15), Color.OC.surface],
+                    colors: [Color.orange.opacity(0.15), Color.BC.surface],
                     startPoint: .leading, endPoint: .trailing
                 )
             )
@@ -880,16 +880,16 @@ struct AffirmationBanner: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "heart.fill")
-                .foregroundColor(Color.OC.accent)
+                .foregroundColor(Color.BC.accent)
                 .font(.system(size: 16))
             Text(text)
-                .font(OCFont.footnote())
-                .foregroundColor(Color.OC.primaryText)
+                .font(BCFont.footnote())
+                .foregroundColor(Color.BC.primaryText)
                 .lineLimit(2)
             Spacer()
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .foregroundColor(Color.OC.secondaryText)
+                    .foregroundColor(Color.BC.secondaryText)
                     .font(.system(size: 12, weight: .semibold))
             }
         }
@@ -897,14 +897,14 @@ struct AffirmationBanner: View {
         .padding(.vertical, 10)
         .background(
             LinearGradient(
-                colors: [Color.OC.accent.opacity(0.18), Color.OC.surface],
+                colors: [Color.BC.accent.opacity(0.18), Color.BC.surface],
                 startPoint: .leading, endPoint: .trailing
             )
         )
         .overlay(
             Rectangle()
                 .frame(width: 3)
-                .foregroundColor(Color.OC.accent),
+                .foregroundColor(Color.BC.accent),
             alignment: .leading
         )
     }
@@ -924,15 +924,15 @@ struct SuggestionChipsView: View {
                         onTap(chip)
                     } label: {
                         Text(chip)
-                            .font(OCFont.caption())
-                            .foregroundColor(Color.OC.primary)
+                            .font(BCFont.caption())
+                            .foregroundColor(Color.BC.primary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color.OC.primary.opacity(0.12))
+                            .background(Color.BC.primary.opacity(0.12))
                             .clipShape(Capsule())
                             .overlay(
                                 Capsule()
-                                    .strokeBorder(Color.OC.primary.opacity(0.3), lineWidth: 1)
+                                    .strokeBorder(Color.BC.primary.opacity(0.3), lineWidth: 1)
                             )
                     }
                 }
@@ -960,16 +960,16 @@ struct QuickActionsBar: View {
                             Image(systemName: action.icon)
                                 .font(.system(size: 13))
                             Text(action.title)
-                                .font(OCFont.caption())
+                                .font(BCFont.caption())
                         }
-                        .foregroundColor(Color.OC.secondaryText)
+                        .foregroundColor(Color.BC.secondaryText)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .background(Color.OC.surface)
+                        .background(Color.BC.surface)
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
-                                .strokeBorder(Color.OC.border, lineWidth: 1)
+                                .strokeBorder(Color.BC.border, lineWidth: 1)
                         )
                     }
                 }
@@ -977,7 +977,7 @@ struct QuickActionsBar: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
         }
-        .background(Color.OC.background)
+        .background(Color.BC.background)
     }
 }
 
@@ -993,13 +993,13 @@ struct InputBar: View {
             ZStack(alignment: .leading) {
                 if text.isEmpty {
                     Text("Message \(Image(systemName: "pawprint.fill"))…")
-                        .font(OCFont.body())
-                        .foregroundColor(Color.OC.secondaryText.opacity(0.6))
+                        .font(BCFont.body())
+                        .foregroundColor(Color.BC.secondaryText.opacity(0.6))
                         .padding(.horizontal, 14)
                 }
                 TextField("", text: $text, axis: .vertical)
-                    .font(OCFont.body())
-                    .foregroundColor(Color.OC.primaryText)
+                    .font(BCFont.body())
+                    .foregroundColor(Color.BC.primaryText)
                     .lineLimit(1...5)
                     .padding(.horizontal, 14)
                     .focused($focused)
@@ -1011,23 +1011,23 @@ struct InputBar: View {
                     }
             }
             .frame(minHeight: 44)
-            .background(Color.OC.surface)
+            .background(Color.BC.surface)
             .clipShape(RoundedRectangle(cornerRadius: 22))
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
-                    .strokeBorder(focused ? Color.OC.primary.opacity(0.5) : Color.OC.border, lineWidth: 1)
+                    .strokeBorder(focused ? Color.BC.primary.opacity(0.5) : Color.BC.border, lineWidth: 1)
             )
 
             Button(action: onSend) {
                 Image(systemName: "arrow.up")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                     ? Color.OC.secondaryText : Color.OC.background)
+                                     ? Color.BC.secondaryText : Color.BC.background)
                     .frame(width: 40, height: 40)
                     .background(
                         text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.OC.surface
-                        : Color.OC.primary
+                        ? Color.BC.surface
+                        : Color.BC.primary
                     )
                     .clipShape(Circle())
             }
@@ -1036,7 +1036,7 @@ struct InputBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color.OC.background)
+        .background(Color.BC.background)
     }
 }
 
@@ -1065,22 +1065,22 @@ struct SettingsView: View {
                     // Status row
                     HStack {
                         Image(systemName: "brain.head.profile")
-                            .foregroundColor(.OC.accent)
+                            .foregroundColor(.BC.accent)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("AI Engine")
-                                .font(OCFont.headline())
-                                .foregroundColor(Color.OC.primaryText)
+                                .font(BCFont.headline())
+                                .foregroundColor(Color.BC.primaryText)
                             Text(providerLabel)
-                                .font(OCFont.body(13))
-                                .foregroundColor(Color.OC.secondaryText)
+                                .font(BCFont.body(13))
+                                .foregroundColor(Color.BC.secondaryText)
                         }
                     }
 
                     // API key field
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Claude API Key")
-                            .font(OCFont.body(13))
-                            .foregroundColor(Color.OC.secondaryText)
+                            .font(BCFont.body(13))
+                            .foregroundColor(Color.BC.secondaryText)
 
                         HStack {
                             Group {
@@ -1091,20 +1091,20 @@ struct SettingsView: View {
                                 }
                             }
                             .font(.system(.footnote, design: .monospaced))
-                            .foregroundColor(Color.OC.primaryText)
+                            .foregroundColor(Color.BC.primaryText)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
 
                             Button { showKey.toggle() } label: {
                                 Image(systemName: showKey ? "eye.slash" : "eye")
-                                    .foregroundColor(Color.OC.secondaryText)
+                                    .foregroundColor(Color.BC.secondaryText)
                             }
                         }
                         .padding(10)
-                        .background(Color.OC.surface)
+                        .background(Color.BC.surface)
                         .cornerRadius(10)
                         .overlay(RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(apiKey.count > 20 ? Color.OC.accent : Color.OC.border, lineWidth: 1))
+                            .strokeBorder(apiKey.count > 20 ? Color.BC.accent : Color.BC.border, lineWidth: 1))
 
                         Button(action: saveAPIKey) {
                             HStack {
@@ -1113,16 +1113,16 @@ struct SettingsView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
-                            .background(apiKey.count > 20 ? Color.OC.accent : Color.OC.border)
-                            .foregroundColor(apiKey.count > 20 ? .black : Color.OC.textMuted)
+                            .background(apiKey.count > 20 ? Color.BC.accent : Color.BC.border)
+                            .foregroundColor(apiKey.count > 20 ? .black : Color.BC.textMuted)
                             .cornerRadius(10)
                         }
                         .disabled(apiKey.count < 20)
 
                         Link("→ Get a free API key at console.anthropic.com",
                              destination: URL(string: "https://console.anthropic.com")!)
-                            .font(OCFont.body(12))
-                            .foregroundColor(Color.OC.accent)
+                            .font(BCFont.body(12))
+                            .foregroundColor(Color.BC.accent)
                     }
                     .padding(.vertical, 4)
                 } header: {
@@ -1134,17 +1134,17 @@ struct SettingsView: View {
                     // Editable name row
                     HStack(spacing: 10) {
                         Image(systemName: "person.fill")
-                            .foregroundColor(Color.OC.accent)
+                            .foregroundColor(Color.BC.accent)
                             .frame(width: 22)
                         TextField("Your name", text: $editingName)
-                            .foregroundColor(Color.OC.primaryText)
+                            .foregroundColor(Color.BC.primaryText)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.words)
                             .onSubmit { saveName() }
                         if editingName != persona.userName && !editingName.trimmingCharacters(in: .whitespaces).isEmpty {
                             Button(action: saveName) {
                                 Image(systemName: nameSaved ? "checkmark.circle.fill" : "checkmark.circle")
-                                    .foregroundColor(nameSaved ? Color.OC.success : Color.OC.accent)
+                                    .foregroundColor(nameSaved ? Color.BC.success : Color.BC.accent)
                             }
                             .transition(.opacity.combined(with: .scale))
                         }
@@ -1152,17 +1152,17 @@ struct SettingsView: View {
                     .animation(.spring(response: 0.25), value: editingName)
                     HStack {
                         Text("Assistant Name")
-                            .foregroundColor(Color.OC.primaryText)
+                            .foregroundColor(Color.BC.primaryText)
                         Spacer()
                         Text(persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName)
-                            .foregroundColor(Color.OC.secondaryText)
+                            .foregroundColor(Color.BC.secondaryText)
                     }
                 } header: {
                     Text("Profile")
                 } footer: {
                     Text("Type a new name and tap ✓ or press Return to save. Your companion will use it immediately.")
-                        .font(OCFont.footnote())
-                        .foregroundColor(Color.OC.secondaryText)
+                        .font(BCFont.footnote())
+                        .foregroundColor(Color.BC.secondaryText)
                 }
 
                 // ── Companion ─────────────────────────────────────────────
@@ -1181,17 +1181,17 @@ struct SettingsView: View {
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(persona.selectedCompanion.name)
-                                    .font(OCFont.headline())
-                                    .foregroundColor(Color.OC.primaryText)
+                                    .font(BCFont.headline())
+                                    .foregroundColor(Color.BC.primaryText)
                                 Text(persona.selectedCompanion.tagline)
-                                    .font(OCFont.body(12))
-                                    .foregroundColor(Color.OC.secondaryText)
+                                    .font(BCFont.body(12))
+                                    .foregroundColor(Color.BC.secondaryText)
                                     .lineLimit(1)
                             }
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(Color.OC.secondaryText.opacity(0.6))
+                                .foregroundColor(Color.BC.secondaryText.opacity(0.6))
                         }
                         .contentShape(Rectangle())
                     }
@@ -1200,8 +1200,8 @@ struct SettingsView: View {
                     Text("Companion")
                 } footer: {
                     Text("Switching companion starts a fresh conversation with your new companion. Your history with each companion is saved separately.")
-                        .font(OCFont.footnote())
-                        .foregroundColor(Color.OC.secondaryText)
+                        .font(BCFont.footnote())
+                        .foregroundColor(Color.BC.secondaryText)
                 }
                 // Relationship mode
                 Section {
@@ -1218,17 +1218,17 @@ struct SettingsView: View {
                                     .frame(width: 30)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(mode.label)
-                                        .font(OCFont.headline())
-                                        .foregroundColor(Color.OC.primaryText)
+                                        .font(BCFont.headline())
+                                        .foregroundColor(Color.BC.primaryText)
                                     Text(mode.description)
-                                        .font(OCFont.body(12))
-                                        .foregroundColor(Color.OC.secondaryText)
+                                        .font(BCFont.body(12))
+                                        .foregroundColor(Color.BC.secondaryText)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                                 Spacer()
                                 if persona.relationshipMode == mode {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(Color.OC.accent)
+                                        .foregroundColor(Color.BC.accent)
                                         .transition(.scale.combined(with: .opacity))
                                 }
                             }
@@ -1240,8 +1240,8 @@ struct SettingsView: View {
                     Text("Relationship Mode")
                 } footer: {
                     Text("Changes how your companion relates to you. Takes effect on the next message.")
-                        .font(OCFont.footnote())
-                        .foregroundColor(Color.OC.secondaryText)
+                        .font(BCFont.footnote())
+                        .foregroundColor(Color.BC.secondaryText)
                 }
 
                 // Communication style
@@ -1249,11 +1249,11 @@ struct SettingsView: View {
                     ForEach(CommunicationStyle.allCases) { style in
                         HStack {
                             Text(style.rawValue.capitalized)
-                                .foregroundColor(Color.OC.primaryText)
+                                .foregroundColor(Color.BC.primaryText)
                             Spacer()
                             if persona.style == style {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(Color.OC.primary)
+                                    .foregroundColor(Color.BC.primary)
                             }
                         }
                         .contentShape(Rectangle())
@@ -1268,7 +1268,7 @@ struct SettingsView: View {
                         HStack(spacing: 10) {
                             Text(interest.emoji).font(.system(size: 18))
                             Text(interest.label)
-                                .foregroundColor(Color.OC.primaryText)
+                                .foregroundColor(Color.BC.primaryText)
                             Spacer()
                             Toggle("", isOn: Binding(
                                 get: { interest.notificationsEnabled },
@@ -1284,7 +1284,7 @@ struct SettingsView: View {
                                 }
                             ))
                             .labelsHidden()
-                            .tint(Color.OC.primary)
+                            .tint(Color.BC.primary)
 
                             Button(role: .destructive) {
                                 withAnimation { persona.removeInterest(id: interest.id); persona.save() }
@@ -1299,8 +1299,8 @@ struct SettingsView: View {
 
                     if persona.interests.isEmpty && !showAddInterests {
                         Text("No interests yet — add some below or chat to add more.")
-                            .foregroundColor(Color.OC.secondaryText)
-                            .font(OCFont.footnote())
+                            .foregroundColor(Color.BC.secondaryText)
+                            .font(BCFont.footnote())
                     }
 
                     // Toggle add panel
@@ -1311,9 +1311,9 @@ struct SettingsView: View {
                             Image(systemName: showAddInterests ? "minus" : "plus")
                                 .font(.system(size: 13, weight: .semibold))
                             Text(showAddInterests ? "Done adding" : "Add an interest")
-                                .font(OCFont.body(13))
+                                .font(BCFont.body(13))
                         }
-                        .foregroundColor(Color.OC.accent)
+                        .foregroundColor(Color.BC.accent)
                     }
 
                     // Expandable add-interest panel
@@ -1325,14 +1325,14 @@ struct SettingsView: View {
                     Text("Interests (\(persona.interests.count))")
                 } footer: {
                     Text("Your companion uses these to bring up what you love, send updates, and make conversations feel personal.")
-                        .font(OCFont.footnote())
-                        .foregroundColor(Color.OC.secondaryText)
+                        .font(BCFont.footnote())
+                        .foregroundColor(Color.BC.secondaryText)
                 }
 
                 // Affirmations
                 Section("Daily Affirmation") {
                     Toggle("Enabled", isOn: $persona.dailyAffirmationsEnabled)
-                        .tint(Color.OC.primary)
+                        .tint(Color.BC.primary)
                         .onChange(of: persona.dailyAffirmationsEnabled) {
                             persona.save()
                             Task {
@@ -1341,7 +1341,7 @@ struct SettingsView: View {
                         }
                     if persona.dailyAffirmationsEnabled {
                         DatePicker("Time", selection: $persona.affirmationTime, displayedComponents: .hourAndMinute)
-                            .foregroundColor(Color.OC.primaryText)
+                            .foregroundColor(Color.BC.primaryText)
                             .onChange(of: persona.affirmationTime) {
                                 persona.save()
                                 Task {
@@ -1377,36 +1377,36 @@ struct SettingsView: View {
                     Text("Companion Tracking")
                 } footer: {
                     Text("When ON, your companion notices meaningful moments and reaches out — supportively before a hard appointment, celebratory after a win. When OFF, zero data from that source is ever accessed. Changes take effect immediately.")
-                        .font(OCFont.footnote())
-                        .foregroundColor(Color.OC.secondaryText)
+                        .font(BCFont.footnote())
+                        .foregroundColor(Color.BC.secondaryText)
                 }
 
                 // About
                 Section("About") {
                     HStack {
                         Text("Version")
-                            .foregroundColor(Color.OC.primaryText)
+                            .foregroundColor(Color.BC.primaryText)
                         Spacer()
                         Text("1.0.0")
-                            .foregroundColor(Color.OC.secondaryText)
+                            .foregroundColor(Color.BC.secondaryText)
                     }
                     HStack {
                         Text("Memory entries")
-                            .foregroundColor(Color.OC.primaryText)
+                            .foregroundColor(Color.BC.primaryText)
                         Spacer()
                         MemoryCountBadge()
                     }
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.OC.background)
-            .listRowBackground(Color.OC.surface)
+            .background(Color.BC.background)
+            .listRowBackground(Color.BC.surface)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
-                        .foregroundColor(Color.OC.primary)
+                        .foregroundColor(Color.BC.primary)
                 }
             }
         }
@@ -1420,7 +1420,7 @@ struct SettingsView: View {
                     .toolbar {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button("Done") { showCompanionPicker = false }
-                                .foregroundColor(Color.OC.primary)
+                                .foregroundColor(Color.BC.primary)
                         }
                     }
             }
@@ -1441,7 +1441,7 @@ struct SettingsView: View {
                     .foregroundColor(color)
                     .frame(width: 28)
                 Text(label)
-                    .foregroundColor(Color.OC.primaryText)
+                    .foregroundColor(Color.BC.primaryText)
                 Spacer()
                 Toggle("", isOn: enabled)
                     .labelsHidden()
@@ -1457,8 +1457,8 @@ struct SettingsView: View {
             }
             if enabled.wrappedValue {
                 Text(detail)
-                    .font(OCFont.body(12))
-                    .foregroundColor(Color.OC.secondaryText)
+                    .font(BCFont.body(12))
+                    .foregroundColor(Color.BC.secondaryText)
                     .padding(.leading, 40)
                     .padding(.bottom, 6)
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -1493,7 +1493,7 @@ struct SettingsView: View {
     private func loadCurrentKey() {
         editingName = persona.userName
         // Show masked existing key if present
-        if let existing = KeychainHelper.read(service: "com.openclaw.appclaw",
+        if let existing = KeychainHelper.read(service: "com.bareclaw.bareclaw",
                                                key: "anthropic_api_key"), !existing.isEmpty {
             apiKey = existing
         }
@@ -1512,7 +1512,7 @@ struct SettingsView: View {
     private func saveAPIKey() {
         let trimmed = apiKey.trimmingCharacters(in: .whitespaces)
         guard trimmed.count > 20 else { return }
-        KeychainHelper.write(service: "com.openclaw.appclaw",
+        KeychainHelper.write(service: "com.bareclaw.bareclaw",
                              key: "anthropic_api_key",
                              value: trimmed)
         Task {
@@ -1573,18 +1573,18 @@ private struct InterestPickerPanel: View {
                         VStack(spacing: 3) {
                             Text(preset.emoji).font(.title3)
                             Text(preset.label)
-                                .font(OCFont.caption(10))
-                                .foregroundColor(already ? Color.OC.textMuted : Color.OC.textPrimary)
+                                .font(BCFont.caption(10))
+                                .foregroundColor(already ? Color.BC.textMuted : Color.BC.textPrimary)
                                 .lineLimit(1)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(already ? Color.OC.surface.opacity(0.4) : Color.OC.accentSoft)
-                        .cornerRadius(OCSizing.radiusMD)
+                        .background(already ? Color.BC.surface.opacity(0.4) : Color.BC.accentSoft)
+                        .cornerRadius(BCSizing.radiusMD)
                         .overlay(
-                            RoundedRectangle(cornerRadius: OCSizing.radiusMD)
+                            RoundedRectangle(cornerRadius: BCSizing.radiusMD)
                                 .strokeBorder(
-                                    already ? Color.OC.border.opacity(0.4) : Color.OC.accent,
+                                    already ? Color.BC.border.opacity(0.4) : Color.BC.accent,
                                     lineWidth: already ? 0.5 : 1.5
                                 )
                         )
@@ -1597,8 +1597,8 @@ private struct InterestPickerPanel: View {
             // Custom interest field
             HStack(spacing: 8) {
                 TextField("Add your own (e.g. Marvel, Arsenal...)", text: $customText)
-                    .font(OCFont.body(13))
-                    .foregroundColor(Color.OC.textPrimary)
+                    .font(BCFont.body(13))
+                    .foregroundColor(Color.BC.textPrimary)
                     .autocorrectionDisabled()
 
                 Button {
@@ -1620,13 +1620,13 @@ private struct InterestPickerPanel: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
-                        .foregroundColor(customText.count > 1 ? Color.OC.accent : Color.OC.border)
+                        .foregroundColor(customText.count > 1 ? Color.BC.accent : Color.BC.border)
                 }
                 .disabled(customText.count < 2)
             }
             .padding(10)
-            .background(Color.OC.surface)
-            .cornerRadius(OCSizing.radiusMD)
+            .background(Color.BC.surface)
+            .cornerRadius(BCSizing.radiusMD)
         }
         .padding(.vertical, 4)
     }
@@ -1639,7 +1639,7 @@ struct MemoryCountBadge: View {
 
     var body: some View {
         Text("\(count)")
-            .foregroundColor(Color.OC.secondaryText)
+            .foregroundColor(Color.BC.secondaryText)
             .task {
                 let entries = await HermesMemory.shared.allEntries()
                 count = entries.count

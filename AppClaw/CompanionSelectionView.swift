@@ -34,23 +34,23 @@ struct CompanionSelectionView: View {
             // Header
             VStack(alignment: .leading, spacing: 6) {
                 Text("💛 Choose your companion")
-                    .font(OCFont.caption())
-                    .foregroundColor(.OC.accent)
+                    .font(BCFont.caption())
+                    .foregroundColor(.BC.accent)
                 Text("Who do you want by your side?")
-                    .font(OCFont.title())
-                    .foregroundColor(.OC.textPrimary)
+                    .font(BCFont.title())
+                    .foregroundColor(.BC.textPrimary)
 
                 // Mode-aware subtitle
                 HStack(spacing: 6) {
                     Text(mode.emoji)
                     Text("\(mode.label) mode — best matches shown first.")
-                        .font(OCFont.body(13))
-                        .foregroundColor(.OC.textSecondary)
+                        .font(BCFont.body(13))
+                        .foregroundColor(.BC.textSecondary)
                 }
             }
-            .padding(.horizontal, OCSizing.spacingLG)
-            .padding(.top, OCSizing.spacingMD)
-            .padding(.bottom, OCSizing.spacingMD)
+            .padding(.horizontal, BCSizing.spacingLG)
+            .padding(.top, BCSizing.spacingMD)
+            .padding(.bottom, BCSizing.spacingMD)
 
             // Gender filter pills
             HStack(spacing: 10) {
@@ -58,8 +58,8 @@ struct CompanionSelectionView: View {
                 FilterPill(label: "Female", selected: genderFilter == .female) { genderFilter = .female }
                 FilterPill(label: "Male",   selected: genderFilter == .male)   { genderFilter = .male }
             }
-            .padding(.horizontal, OCSizing.spacingLG)
-            .padding(.bottom, OCSizing.spacingMD)
+            .padding(.horizontal, BCSizing.spacingLG)
+            .padding(.bottom, BCSizing.spacingMD)
 
             // Companion cards grid
             ScrollView(.vertical, showsIndicators: false) {
@@ -80,8 +80,8 @@ struct CompanionSelectionView: View {
                         }
                     }
                 }
-                .padding(.horizontal, OCSizing.spacingLG)
-                .padding(.bottom, OCSizing.spacingXL)
+                .padding(.horizontal, BCSizing.spacingLG)
+                .padding(.bottom, BCSizing.spacingXL)
                 .animation(.spring(response: 0.35), value: genderFilter)
             }
         }
@@ -106,15 +106,15 @@ private struct FilterPill: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(OCFont.caption(13))
-                .foregroundColor(selected ? .black : .OC.textSecondary)
+                .font(BCFont.caption(13))
+                .foregroundColor(selected ? .black : .BC.textSecondary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(selected ? Color.OC.accent : Color.OC.surfaceRaised)
+                .background(selected ? Color.BC.accent : Color.BC.surfaceRaised)
                 .cornerRadius(20)
                 .overlay(
                     Capsule()
-                        .strokeBorder(selected ? Color.clear : Color.OC.border, lineWidth: 1)
+                        .strokeBorder(selected ? Color.clear : Color.BC.border, lineWidth: 1)
                 )
         }
     }
@@ -141,7 +141,7 @@ private struct CompanionCard: View {
 
                     // Gender badge
                     Text(companion.genderLabel)
-                        .font(OCFont.caption(10))
+                        .font(BCFont.caption(10))
                         .foregroundColor(.white.opacity(0.85))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -155,7 +155,7 @@ private struct CompanionCard: View {
                             HStack {
                                 Spacer()
                                 Text("★ Best match")
-                                    .font(OCFont.caption(9))
+                                    .font(BCFont.caption(9))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 7)
                                     .padding(.vertical, 3)
@@ -172,8 +172,8 @@ private struct CompanionCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(companion.name)
-                            .font(OCFont.headline())
-                            .foregroundColor(.OC.textPrimary)
+                            .font(BCFont.headline())
+                            .foregroundColor(.BC.textPrimary)
                         Spacer()
                         if isSelected {
                             Image(systemName: "checkmark.circle.fill")
@@ -182,8 +182,8 @@ private struct CompanionCard: View {
                         }
                     }
                     Text(companion.tagline)
-                        .font(OCFont.body(12))
-                        .foregroundColor(.OC.textSecondary)
+                        .font(BCFont.body(12))
+                        .foregroundColor(.BC.textSecondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -191,7 +191,7 @@ private struct CompanionCard: View {
                     HStack(spacing: 4) {
                         ForEach(companion.personalityTags.prefix(2), id: \.self) { tag in
                             Text(tag)
-                                .font(OCFont.caption(10))
+                                .font(BCFont.caption(10))
                                 .foregroundColor(companion.accentColor)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 3)
@@ -202,13 +202,13 @@ private struct CompanionCard: View {
                     .padding(.top, 2)
                 }
                 .padding(12)
-                .background(Color.OC.surfaceRaised)
+                .background(Color.BC.surfaceRaised)
             }
-            .cornerRadius(OCSizing.radiusMD)
+            .cornerRadius(BCSizing.radiusMD)
             .overlay(
-                RoundedRectangle(cornerRadius: OCSizing.radiusMD)
+                RoundedRectangle(cornerRadius: BCSizing.radiusMD)
                     .strokeBorder(
-                        isSelected ? companion.accentColor : Color.OC.border,
+                        isSelected ? companion.accentColor : Color.BC.border,
                         lineWidth: isSelected ? 2 : 1
                     )
             )
@@ -229,7 +229,7 @@ struct CompanionDetailSheet: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.OC.background.ignoresSafeArea()
+                Color.BC.background.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: 0) {
@@ -249,17 +249,17 @@ struct CompanionDetailSheet: View {
                         .frame(height: 100)
                         .offset(y: -100)
 
-                        VStack(alignment: .leading, spacing: OCSizing.spacingLG) {
+                        VStack(alignment: .leading, spacing: BCSizing.spacingLG) {
 
                             // Name + tags
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text(companion.name)
-                                        .font(OCFont.title(28))
-                                        .foregroundColor(.OC.textPrimary)
+                                        .font(BCFont.title(28))
+                                        .foregroundColor(.BC.textPrimary)
                                     Spacer()
                                     Text(companion.genderLabel)
-                                        .font(OCFont.caption(12))
+                                        .font(BCFont.caption(12))
                                         .foregroundColor(companion.accentColor)
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 5)
@@ -267,15 +267,15 @@ struct CompanionDetailSheet: View {
                                         .cornerRadius(8)
                                 }
                                 Text(companion.tagline)
-                                    .font(OCFont.headline())
-                                    .foregroundColor(.OC.textSecondary)
+                                    .font(BCFont.headline())
+                                    .foregroundColor(.BC.textSecondary)
                                     .italic()
                             }
 
                             // Bio
                             Text(companion.bioLong)
-                                .font(OCFont.body())
-                                .foregroundColor(.OC.textSecondary)
+                                .font(BCFont.body())
+                                .foregroundColor(.BC.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
 
                             // Love language badge
@@ -284,28 +284,28 @@ struct CompanionDetailSheet: View {
                                     .foregroundColor(companion.accentColor)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Love Language")
-                                        .font(OCFont.caption(11))
-                                        .foregroundColor(.OC.textMuted)
+                                        .font(BCFont.caption(11))
+                                        .foregroundColor(.BC.textMuted)
                                     Text(companion.dominantLoveLanguage.displayName)
-                                        .font(OCFont.headline())
-                                        .foregroundColor(.OC.textPrimary)
+                                        .font(BCFont.headline())
+                                        .foregroundColor(.BC.textPrimary)
                                 }
                             }
-                            .padding(OCSizing.spacingMD)
-                            .background(Color.OC.surfaceRaised)
-                            .cornerRadius(OCSizing.radiusMD)
+                            .padding(BCSizing.spacingMD)
+                            .background(Color.BC.surfaceRaised)
+                            .cornerRadius(BCSizing.radiusMD)
 
                             // All personality tags
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Personality")
-                                    .font(OCFont.caption(12))
-                                    .foregroundColor(.OC.textMuted)
+                                    .font(BCFont.caption(12))
+                                    .foregroundColor(.BC.textMuted)
                                     .textCase(.uppercase)
                                     .tracking(0.8)
                                 FlowLayout(spacing: 8) {
                                     ForEach(companion.personalityTags, id: \.self) { tag in
                                         Text(tag)
-                                            .font(OCFont.body(13))
+                                            .font(BCFont.body(13))
                                             .foregroundColor(companion.accentColor)
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 6)
@@ -318,19 +318,19 @@ struct CompanionDetailSheet: View {
                             // First message preview
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("First thing \(companion.gender == .female ? "she'll" : "he'll") say to you")
-                                    .font(OCFont.caption(12))
-                                    .foregroundColor(.OC.textMuted)
+                                    .font(BCFont.caption(12))
+                                    .foregroundColor(.BC.textMuted)
                                     .textCase(.uppercase)
                                     .tracking(0.8)
                                 Text("\"\(companion.introMessage)\"")
-                                    .font(OCFont.body())
-                                    .foregroundColor(.OC.textPrimary)
+                                    .font(BCFont.body())
+                                    .foregroundColor(.BC.textPrimary)
                                     .italic()
-                                    .padding(OCSizing.spacingMD)
+                                    .padding(BCSizing.spacingMD)
                                     .background(companion.accentColor.opacity(0.08))
-                                    .cornerRadius(OCSizing.radiusMD)
+                                    .cornerRadius(BCSizing.radiusMD)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: OCSizing.radiusMD)
+                                        RoundedRectangle(cornerRadius: BCSizing.radiusMD)
                                             .strokeBorder(companion.accentColor.opacity(0.3), lineWidth: 1)
                                     )
                             }
@@ -343,17 +343,17 @@ struct CompanionDetailSheet: View {
                                 HStack {
                                     Image(systemName: isSelected ? "checkmark.circle.fill" : "heart.fill")
                                     Text(isSelected ? "Selected ✓" : "Choose \(companion.name)")
-                                        .font(OCFont.headline())
+                                        .font(BCFont.headline())
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
-                                .background(isSelected ? Color.OC.success : companion.accentColor)
+                                .background(isSelected ? Color.BC.success : companion.accentColor)
                                 .foregroundColor(.white)
-                                .cornerRadius(OCSizing.radiusLG)
+                                .cornerRadius(BCSizing.radiusLG)
                             }
-                            .padding(.top, OCSizing.spacingSM)
+                            .padding(.top, BCSizing.spacingSM)
                         }
-                        .padding(OCSizing.spacingLG)
+                        .padding(BCSizing.spacingLG)
                         .offset(y: -60)
                     }
                 }
@@ -363,7 +363,7 @@ struct CompanionDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Back") { dismiss() }
-                        .foregroundColor(.OC.textSecondary)
+                        .foregroundColor(.BC.textSecondary)
                 }
             }
         }

@@ -28,7 +28,7 @@ enum PrivacyConsentState: String {
 actor HermesPrivacyGate {
     static let shared = HermesPrivacyGate()
 
-    private let defaultsKey = "com.openclaw.hermes.privacyConsent"
+    private let defaultsKey = "com.bareclaw.hermes.privacyConsent"
 
     private(set) var state: PrivacyConsentState = .notAsked
 
@@ -95,35 +95,35 @@ struct PrivacyConsentSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.OC.background.ignoresSafeArea()
-                VStack(spacing: OCSizing.spacingLG) {
+                Color.BC.background.ignoresSafeArea()
+                VStack(spacing: BCSizing.spacingLG) {
                     // Logo + headline
-                    VStack(spacing: OCSizing.spacingMD) {
+                    VStack(spacing: BCSizing.spacingMD) {
                         BearLogoView(size: 72)
-                        Text("OpenClaw AI")
-                            .font(OCFont.title())
-                            .foregroundColor(.OC.accent)
+                        Text("BareClaw")
+                            .font(BCFont.title())
+                            .foregroundColor(.BC.accent)
                         Text("Before we begin, choose how your data is handled.")
-                            .font(OCFont.body())
-                            .foregroundColor(.OC.textSecondary)
+                            .font(BCFont.body())
+                            .foregroundColor(.BC.textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                     }
-                    .padding(.top, OCSizing.spacingXL)
+                    .padding(.top, BCSizing.spacingXL)
 
-                    Divider().background(Color.OC.border)
+                    Divider().background(Color.BC.border)
 
                     // Options
-                    VStack(spacing: OCSizing.spacingMD) {
+                    VStack(spacing: BCSizing.spacingMD) {
 
                         // On-device option (always shown)
                         ConsentOptionCard(
                             icon: "lock.shield.fill",
-                            iconColor: .OC.success,
+                            iconColor: .BC.success,
                             title: "On-Device Only",
                             subtitle: "Uses Apple Intelligence (iOS 26+ required). No data leaves your device. Conversations stay private.",
                             badge: "Most Private",
-                            badgeColor: .OC.success
+                            badgeColor: .BC.success
                         ) {
                             Task { await HermesPrivacyGate.shared.acceptOnDeviceOnly() }
                             onChoice(.onDeviceOnly)
@@ -133,11 +133,11 @@ struct PrivacyConsentSheet: View {
                         // Cloud option
                         ConsentOptionCard(
                             icon: "cloud.fill",
-                            iconColor: .OC.primary,
+                            iconColor: .BC.primary,
                             title: "Cloud AI (Claude)",
                             subtitle: "Uses Anthropic's Claude API. Your messages are sent to Anthropic's servers to generate responses. Anthropic's privacy policy applies.",
                             badge: "More Capable",
-                            badgeColor: .OC.primary
+                            badgeColor: .BC.primary
                         ) {
                             Task { await HermesPrivacyGate.shared.acceptCloudAI() }
                             onChoice(.cloudConsented)
@@ -154,15 +154,15 @@ struct PrivacyConsentSheet: View {
                         onChoice(.declined)
                         dismiss()
                     }
-                    .font(OCFont.caption())
-                    .foregroundColor(.OC.textMuted)
+                    .font(BCFont.caption())
+                    .foregroundColor(.BC.textMuted)
                     .padding(.bottom)
 
                     // Privacy policy link
-                    Link("Privacy Policy", destination: URL(string: "https://openclaw.app/privacy")!)
-                        .font(OCFont.caption())
-                        .foregroundColor(.OC.textSecondary)
-                        .padding(.bottom, OCSizing.spacingLG)
+                    Link("Privacy Policy", destination: URL(string: "https://bareclaw.app/privacy")!)
+                        .font(BCFont.caption())
+                        .foregroundColor(.BC.textSecondary)
+                        .padding(.bottom, BCSizing.spacingLG)
                 }
             }
             .navigationBarHidden(true)
@@ -183,32 +183,32 @@ private struct ConsentOptionCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .top, spacing: OCSizing.spacingMD) {
+            HStack(alignment: .top, spacing: BCSizing.spacingMD) {
                 Image(systemName: icon)
                     .font(.system(size: 26))
                     .foregroundColor(iconColor)
                     .frame(width: 36)
 
-                VStack(alignment: .leading, spacing: OCSizing.spacingXS) {
+                VStack(alignment: .leading, spacing: BCSizing.spacingXS) {
                     HStack {
                         Text(title)
-                            .font(OCFont.headline())
-                            .foregroundColor(.OC.textPrimary)
+                            .font(BCFont.headline())
+                            .foregroundColor(.BC.textPrimary)
                         Text(badge)
-                            .ocBadge(badgeColor)
+                            .bcBadge(badgeColor)
                     }
                     Text(subtitle)
-                        .font(OCFont.body(13))
-                        .foregroundColor(.OC.textSecondary)
+                        .font(BCFont.body(13))
+                        .foregroundColor(.BC.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.OC.textMuted)
+                    .foregroundColor(.BC.textMuted)
             }
-            .padding(OCSizing.spacingMD)
+            .padding(BCSizing.spacingMD)
         }
-        .ocCard()
+        .bcCard()
     }
 }
 
@@ -224,19 +224,19 @@ struct PrivacyStatusBanner: View {
                 .foregroundColor(iconColor)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(OCFont.headline(13))
-                    .foregroundColor(.OC.textPrimary)
+                    .font(BCFont.headline(13))
+                    .foregroundColor(.BC.textPrimary)
                 Text(subtitle)
-                    .font(OCFont.caption())
-                    .foregroundColor(.OC.textSecondary)
+                    .font(BCFont.caption())
+                    .foregroundColor(.BC.textSecondary)
             }
             Spacer()
             Button("Reset", action: onReset)
-                .font(OCFont.caption())
-                .foregroundColor(.OC.accent)
+                .font(BCFont.caption())
+                .foregroundColor(.BC.accent)
         }
-        .padding(OCSizing.spacingMD)
-        .ocCard()
+        .padding(BCSizing.spacingMD)
+        .bcCard()
     }
 
     private var iconName: String {
@@ -250,10 +250,10 @@ struct PrivacyStatusBanner: View {
 
     private var iconColor: Color {
         switch state {
-        case .onDeviceOnly:   return .OC.success
-        case .cloudConsented: return .OC.primary
-        case .declined:       return .OC.danger
-        default:              return .OC.textMuted
+        case .onDeviceOnly:   return .BC.success
+        case .cloudConsented: return .BC.primary
+        case .declined:       return .BC.danger
+        default:              return .BC.textMuted
         }
     }
 

@@ -21,20 +21,20 @@ struct CompanionOnboardingView: View {
 
     var body: some View {
         ZStack {
-            Color.OC.background.ignoresSafeArea()
+            Color.BC.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Progress dots
                 HStack(spacing: 8) {
                     ForEach(0..<totalSteps, id: \.self) { i in
                         Capsule()
-                            .fill(i <= step ? Color.OC.accent : Color.OC.border)
+                            .fill(i <= step ? Color.BC.accent : Color.BC.border)
                             .frame(width: i == step ? 24 : 8, height: 8)
                             .animation(.spring(response: 0.4), value: step)
                     }
                 }
-                .padding(.top, OCSizing.spacingLG)
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.top, BCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
 
                 // Step content
                 Group {
@@ -60,17 +60,17 @@ struct CompanionOnboardingView: View {
                     Button(action: advance) {
                         HStack {
                             Text(nextButtonLabel)
-                                .font(OCFont.headline())
+                                .font(BCFont.headline())
                             Image(systemName: "arrow.right")
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(canAdvance ? Color.OC.accent : Color.OC.border)
-                        .foregroundColor(canAdvance ? .black : .OC.textMuted)
-                        .cornerRadius(OCSizing.radiusLG)
-                        .padding(.horizontal, OCSizing.spacingLG)
+                        .background(canAdvance ? Color.BC.accent : Color.BC.border)
+                        .foregroundColor(canAdvance ? .black : .BC.textMuted)
+                        .cornerRadius(BCSizing.radiusLG)
+                        .padding(.horizontal, BCSizing.spacingLG)
                     }
-                    .padding(.bottom, OCSizing.spacingXL)
+                    .padding(.bottom, BCSizing.spacingXL)
                     .disabled(!canAdvance)
                 }
             }
@@ -127,7 +127,7 @@ private struct WelcomeStep: View {
     @State private var bearOpacity: Double = 0
 
     var body: some View {
-        VStack(spacing: OCSizing.spacingLG) {
+        VStack(spacing: BCSizing.spacingLG) {
             Spacer()
             BearLogoView(size: 120)
                 .scaleEffect(bearScale)
@@ -139,15 +139,15 @@ private struct WelcomeStep: View {
                 }
 
             Text("Meet your\npersonal companion")
-                .font(OCFont.title(30))
-                .foregroundColor(.OC.textPrimary)
+                .font(BCFont.title(30))
+                .foregroundColor(.BC.textPrimary)
                 .multilineTextAlignment(.center)
 
             Text("Someone who listens, remembers, and grows with you.\nLet's set things up — it takes under 2 minutes.")
-                .font(OCFont.body())
-                .foregroundColor(.OC.textSecondary)
+                .font(BCFont.body())
+                .foregroundColor(.BC.textSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
 
             Spacer()
             Spacer()
@@ -162,25 +162,25 @@ private struct NamingStep: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OCSizing.spacingLG) {
+        VStack(alignment: .leading, spacing: BCSizing.spacingLG) {
             Spacer()
 
-            VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
+            VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
                 Text("👋 First things first")
-                    .font(OCFont.caption())
-                    .foregroundColor(.OC.accent)
+                    .font(BCFont.caption())
+                    .foregroundColor(.BC.accent)
                 Text("What's your name?")
-                    .font(OCFont.title())
-                    .foregroundColor(.OC.textPrimary)
+                    .font(BCFont.title())
+                    .foregroundColor(.BC.textPrimary)
                 Text("Your companion will use it to make things feel personal.")
-                    .font(OCFont.body())
-                    .foregroundColor(.OC.textSecondary)
+                    .font(BCFont.body())
+                    .foregroundColor(.BC.textSecondary)
             }
-            .padding(.horizontal, OCSizing.spacingLG)
+            .padding(.horizontal, BCSizing.spacingLG)
 
             OCTextField("Your first name", text: $persona.userName)
                 .focused($focused)
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
                 .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { focused = true } }
 
             Spacer()
@@ -195,21 +195,21 @@ private struct RelationshipModeStep: View {
     @ObservedObject var persona: UserPersona
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OCSizing.spacingMD) {
+        VStack(alignment: .leading, spacing: BCSizing.spacingMD) {
             Spacer()
 
-            VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
+            VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
                 Text("💕 What kind of connection?")
-                    .font(OCFont.caption())
-                    .foregroundColor(.OC.accent)
+                    .font(BCFont.caption())
+                    .foregroundColor(.BC.accent)
                 Text("Set the vibe")
-                    .font(OCFont.title())
-                    .foregroundColor(.OC.textPrimary)
+                    .font(BCFont.title())
+                    .foregroundColor(.BC.textPrimary)
                 Text("This shapes how your companion relates to you — and which personalities are the best fit.")
-                    .font(OCFont.body())
-                    .foregroundColor(.OC.textSecondary)
+                    .font(BCFont.body())
+                    .foregroundColor(.BC.textSecondary)
             }
-            .padding(.horizontal, OCSizing.spacingLG)
+            .padding(.horizontal, BCSizing.spacingLG)
 
             ForEach(RelationshipMode.allCases) { mode in
                 RelationshipModeCard(mode: mode, selected: persona.relationshipMode == mode) {
@@ -218,7 +218,7 @@ private struct RelationshipModeStep: View {
                         persona.save()
                     }
                 }
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
             }
 
             Spacer()
@@ -233,32 +233,32 @@ private struct RelationshipModeCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: OCSizing.spacingMD) {
+            HStack(spacing: BCSizing.spacingMD) {
                 Text(mode.emoji)
                     .font(.title2)
                     .frame(width: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(mode.label)
-                        .font(OCFont.headline())
-                        .foregroundColor(.OC.textPrimary)
+                        .font(BCFont.headline())
+                        .foregroundColor(.BC.textPrimary)
                     Text(mode.description)
-                        .font(OCFont.body(13))
-                        .foregroundColor(.OC.textSecondary)
+                        .font(BCFont.body(13))
+                        .foregroundColor(.BC.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 if selected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.OC.accent)
+                        .foregroundColor(.BC.accent)
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(OCSizing.spacingMD)
-            .background(selected ? Color.OC.accent.opacity(0.12) : Color.OC.surfaceRaised)
-            .cornerRadius(OCSizing.radiusMD)
+            .padding(BCSizing.spacingMD)
+            .background(selected ? Color.BC.accent.opacity(0.12) : Color.BC.surfaceRaised)
+            .cornerRadius(BCSizing.radiusMD)
             .overlay(
-                RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                    .strokeBorder(selected ? Color.OC.accent : Color.OC.border, lineWidth: selected ? 1.5 : 1)
+                RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                    .strokeBorder(selected ? Color.BC.accent : Color.BC.border, lineWidth: selected ? 1.5 : 1)
             )
         }
     }
@@ -270,23 +270,23 @@ private struct StyleStep: View {
     @ObservedObject var persona: UserPersona
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OCSizing.spacingMD) {
+        VStack(alignment: .leading, spacing: BCSizing.spacingMD) {
             Spacer()
-            VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
+            VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
                 Text("🗣 How should I talk to you?")
-                    .font(OCFont.caption())
-                    .foregroundColor(.OC.accent)
+                    .font(BCFont.caption())
+                    .foregroundColor(.BC.accent)
                 Text("Pick your vibe")
-                    .font(OCFont.title())
-                    .foregroundColor(.OC.textPrimary)
+                    .font(BCFont.title())
+                    .foregroundColor(.BC.textPrimary)
             }
-            .padding(.horizontal, OCSizing.spacingLG)
+            .padding(.horizontal, BCSizing.spacingLG)
 
             ForEach(CommunicationStyle.allCases) { style in
                 StyleCard(style: style, selected: persona.style == style) {
                     withAnimation(.spring(response: 0.3)) { persona.style = style }
                 }
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
             }
             Spacer()
         }
@@ -300,26 +300,26 @@ private struct StyleCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: OCSizing.spacingMD) {
+            HStack(spacing: BCSizing.spacingMD) {
                 Text(style.emoji).font(.title2)
                     .frame(width: 44)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(style.label).font(OCFont.headline()).foregroundColor(.OC.textPrimary)
-                    Text(style.description).font(OCFont.body(13)).foregroundColor(.OC.textSecondary)
+                    Text(style.label).font(BCFont.headline()).foregroundColor(.BC.textPrimary)
+                    Text(style.description).font(BCFont.body(13)).foregroundColor(.BC.textSecondary)
                 }
                 Spacer()
                 if selected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.OC.accent)
+                        .foregroundColor(.BC.accent)
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(OCSizing.spacingMD)
-            .background(selected ? Color.OC.accent.opacity(0.12) : Color.OC.surfaceRaised)
-            .cornerRadius(OCSizing.radiusMD)
+            .padding(BCSizing.spacingMD)
+            .background(selected ? Color.BC.accent.opacity(0.12) : Color.BC.surfaceRaised)
+            .cornerRadius(BCSizing.radiusMD)
             .overlay(
-                RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                    .strokeBorder(selected ? Color.OC.accent : Color.OC.border, lineWidth: selected ? 1.5 : 1)
+                RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                    .strokeBorder(selected ? Color.BC.accent : Color.BC.border, lineWidth: selected ? 1.5 : 1)
             )
         }
     }
@@ -347,16 +347,16 @@ private struct InterestsStep: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OCSizing.spacingMD) {
-            VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
+        VStack(alignment: .leading, spacing: BCSizing.spacingMD) {
+            VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
                 Text("🌟 What are you into?")
-                    .font(OCFont.caption()).foregroundColor(.OC.accent)
+                    .font(BCFont.caption()).foregroundColor(.BC.accent)
                 Text("Pick your interests")
-                    .font(OCFont.title()).foregroundColor(.OC.textPrimary)
+                    .font(BCFont.title()).foregroundColor(.BC.textPrimary)
                 Text("Your companion will bring these up and send relevant updates.")
-                    .font(OCFont.body()).foregroundColor(.OC.textSecondary)
+                    .font(BCFont.body()).foregroundColor(.BC.textSecondary)
             }
-            .padding(.horizontal, OCSizing.spacingLG)
+            .padding(.horizontal, BCSizing.spacingLG)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 ForEach(suggestions) { interest in
@@ -369,21 +369,21 @@ private struct InterestsStep: View {
                     } label: {
                         VStack(spacing: 4) {
                             Text(interest.emoji).font(.title2)
-                            Text(interest.label).font(OCFont.caption(11)).foregroundColor(.OC.textPrimary)
+                            Text(interest.label).font(BCFont.caption(11)).foregroundColor(.BC.textPrimary)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(selected ? Color.OC.accentSoft : Color.OC.surfaceRaised)
-                        .cornerRadius(OCSizing.radiusMD)
+                        .background(selected ? Color.BC.accentSoft : Color.BC.surfaceRaised)
+                        .cornerRadius(BCSizing.radiusMD)
                         .overlay(
-                            RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                                .strokeBorder(selected ? Color.OC.accent : Color.OC.border, lineWidth: selected ? 1.5 : 1)
+                            RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                                .strokeBorder(selected ? Color.BC.accent : Color.BC.border, lineWidth: selected ? 1.5 : 1)
                         )
                         .scaleEffect(selected ? 1.04 : 1)
                     }
                 }
             }
-            .padding(.horizontal, OCSizing.spacingLG)
+            .padding(.horizontal, BCSizing.spacingLG)
 
             HStack {
                 OCTextField("Add your own (e.g. Marvel, Lakers...)", text: $customText)
@@ -395,10 +395,10 @@ private struct InterestsStep: View {
                     customText = ""
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.title2).foregroundColor(.OC.accent)
+                        .font(.title2).foregroundColor(.BC.accent)
                 }
             }
-            .padding(.horizontal, OCSizing.spacingLG)
+            .padding(.horizontal, BCSizing.spacingLG)
         }
     }
 }
@@ -416,24 +416,24 @@ private struct ProviderStep: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: OCSizing.spacingLG) {
-                VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
+            VStack(alignment: .leading, spacing: BCSizing.spacingLG) {
+                VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
                     Text("🧠 Power up your AI")
-                        .font(OCFont.caption()).foregroundColor(.OC.accent)
+                        .font(BCFont.caption()).foregroundColor(.BC.accent)
                     Text("Choose your AI engine")
-                        .font(OCFont.title()).foregroundColor(.OC.textPrimary)
+                        .font(BCFont.title()).foregroundColor(.BC.textPrimary)
                     Text("\(persona.selectedCompanion.name) runs on the engine you choose.")
-                        .font(OCFont.body()).foregroundColor(.OC.textSecondary)
+                        .font(BCFont.body()).foregroundColor(.BC.textSecondary)
                 }
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
 
                 ProviderCard(
                     icon: "applelogo",
-                    iconColor: .OC.success,
+                    iconColor: .BC.success,
                     title: "Apple Intelligence",
                     subtitle: "On-device. Free. Private. Requires iPhone 15 Pro or later with iOS 26+.",
                     badge: appleAvailable ? "Available ✓" : "Not available on this device",
-                    badgeColor: appleAvailable ? .OC.success : .OC.textMuted,
+                    badgeColor: appleAvailable ? .BC.success : .BC.textMuted,
                     isAvailable: appleAvailable
                 ) {
                     Task {
@@ -442,34 +442,34 @@ private struct ProviderStep: View {
                     }
                     onComplete()
                 }
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
 
                 HStack {
-                    Rectangle().fill(Color.OC.border).frame(height: 1)
-                    Text("or").font(OCFont.caption()).foregroundColor(.OC.textMuted)
-                    Rectangle().fill(Color.OC.border).frame(height: 1)
+                    Rectangle().fill(Color.BC.border).frame(height: 1)
+                    Text("or").font(BCFont.caption()).foregroundColor(.BC.textMuted)
+                    Rectangle().fill(Color.BC.border).frame(height: 1)
                 }
-                .padding(.horizontal, OCSizing.spacingLG)
+                .padding(.horizontal, BCSizing.spacingLG)
 
-                VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
+                VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
                     ProviderCard(
                         icon: "cloud.fill",
-                        iconColor: .OC.primary,
+                        iconColor: .BC.primary,
                         title: "Claude AI",
                         subtitle: "Works on all iPhones right now. Requires a free API key from Anthropic.",
                         badge: "Recommended for Day 1",
-                        badgeColor: .OC.primary,
+                        badgeColor: .BC.primary,
                         isAvailable: true,
                         action: nil
                     )
-                    .padding(.horizontal, OCSizing.spacingLG)
+                    .padding(.horizontal, BCSizing.spacingLG)
 
-                    VStack(alignment: .leading, spacing: OCSizing.spacingSM) {
+                    VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
                         if let consoleURL = URL(string: "https://console.anthropic.com") {
                             Link("→ Get your free API key at console.anthropic.com",
                                  destination: consoleURL)
-                                .font(OCFont.caption())
-                                .foregroundColor(.OC.primary)
+                                .font(BCFont.caption())
+                                .foregroundColor(.BC.primary)
                         }
 
                         HStack {
@@ -480,20 +480,20 @@ private struct ProviderStep: View {
                                     SecureField("Paste your API key here", text: $apiKey)
                                 }
                             }
-                            .font(OCFont.mono())
-                            .foregroundColor(.OC.textPrimary)
+                            .font(BCFont.mono())
+                            .foregroundColor(.BC.textPrimary)
 
                             Button { showKey.toggle() } label: {
                                 Image(systemName: showKey ? "eye.slash" : "eye")
-                                    .foregroundColor(.OC.textMuted)
+                                    .foregroundColor(.BC.textMuted)
                             }
                         }
-                        .padding(OCSizing.spacingMD)
-                        .background(Color.OC.surface)
-                        .cornerRadius(OCSizing.radiusMD)
+                        .padding(BCSizing.spacingMD)
+                        .background(Color.BC.surface)
+                        .cornerRadius(BCSizing.radiusMD)
                         .overlay(
-                            RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                                .strokeBorder(apiKey.isEmpty ? Color.OC.border : Color.OC.primary, lineWidth: 1)
+                            RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                                .strokeBorder(apiKey.isEmpty ? Color.BC.border : Color.BC.primary, lineWidth: 1)
                         )
 
                         Button(action: saveAndContinue) {
@@ -502,36 +502,36 @@ private struct ProviderStep: View {
                                     ProgressView().tint(.black).scaleEffect(0.8)
                                 } else {
                                     Text("Save & Meet \(persona.selectedCompanion.name)")
-                                        .font(OCFont.headline())
+                                        .font(BCFont.headline())
                                 }
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(apiKey.count > 20 ? Color.OC.primary : Color.OC.border)
-                            .foregroundColor(apiKey.count > 20 ? .white : .OC.textMuted)
-                            .cornerRadius(OCSizing.radiusLG)
+                            .background(apiKey.count > 20 ? Color.BC.primary : Color.BC.border)
+                            .foregroundColor(apiKey.count > 20 ? .white : .BC.textMuted)
+                            .cornerRadius(BCSizing.radiusLG)
                         }
                         .disabled(apiKey.count < 20 || checking)
 
                         // Skip option — user can add the key later in Settings
                         Button(action: onComplete) {
                             Text("Skip for now — I'll add it in Settings later")
-                                .font(OCFont.body(13))
-                                .foregroundColor(.OC.textMuted)
+                                .font(BCFont.body(13))
+                                .foregroundColor(.BC.textMuted)
                                 .underline()
                         }
                         .padding(.top, 4)
                     }
-                    .padding(.horizontal, OCSizing.spacingLG)
+                    .padding(.horizontal, BCSizing.spacingLG)
                 }
             }
-            .padding(.vertical, OCSizing.spacingLG)
+            .padding(.vertical, BCSizing.spacingLG)
         }
     }
 
     private func saveAndContinue() {
         checking = true
-        KeychainHelper.write(service: "com.openclaw.appclaw",
+        KeychainHelper.write(service: "com.bareclaw.bareclaw",
                              key: "anthropic_api_key",
                              value: apiKey.trimmingCharacters(in: .whitespaces))
         Task {
@@ -556,31 +556,31 @@ private struct ProviderCard: View {
 
     var body: some View {
         Button(action: { action?() }) {
-            HStack(alignment: .top, spacing: OCSizing.spacingMD) {
+            HStack(alignment: .top, spacing: BCSizing.spacingMD) {
                 Image(systemName: icon)
                     .font(.system(size: 24))
-                    .foregroundColor(isAvailable ? iconColor : .OC.textMuted)
+                    .foregroundColor(isAvailable ? iconColor : .BC.textMuted)
                     .frame(width: 36)
 
-                VStack(alignment: .leading, spacing: OCSizing.spacingXS) {
+                VStack(alignment: .leading, spacing: BCSizing.spacingXS) {
                     HStack {
-                        Text(title).font(OCFont.headline()).foregroundColor(isAvailable ? .OC.textPrimary : .OC.textMuted)
-                        Text(badge).ocBadge(badgeColor)
+                        Text(title).font(BCFont.headline()).foregroundColor(isAvailable ? .BC.textPrimary : .BC.textMuted)
+                        Text(badge).bcBadge(badgeColor)
                     }
-                    Text(subtitle).font(OCFont.body(13)).foregroundColor(.OC.textSecondary)
+                    Text(subtitle).font(BCFont.body(13)).foregroundColor(.BC.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 if action != nil && isAvailable {
-                    Image(systemName: "arrow.right").foregroundColor(.OC.textMuted)
+                    Image(systemName: "arrow.right").foregroundColor(.BC.textMuted)
                 }
             }
-            .padding(OCSizing.spacingMD)
-            .background(isAvailable ? Color.OC.surfaceRaised : Color.OC.surface.opacity(0.5))
-            .cornerRadius(OCSizing.radiusMD)
+            .padding(BCSizing.spacingMD)
+            .background(isAvailable ? Color.BC.surfaceRaised : Color.BC.surface.opacity(0.5))
+            .cornerRadius(BCSizing.radiusMD)
             .overlay(
-                RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                    .strokeBorder(Color.OC.border, lineWidth: 1)
+                RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                    .strokeBorder(Color.BC.border, lineWidth: 1)
             )
         }
         .disabled(!isAvailable || action == nil)
@@ -600,14 +600,14 @@ struct OCTextField: View {
 
     var body: some View {
         TextField(placeholder, text: $text)
-            .font(OCFont.body())
-            .foregroundColor(.OC.textPrimary)
-            .padding(OCSizing.spacingMD)
-            .background(Color.OC.surface)
-            .cornerRadius(OCSizing.radiusMD)
+            .font(BCFont.body())
+            .foregroundColor(.BC.textPrimary)
+            .padding(BCSizing.spacingMD)
+            .background(Color.BC.surface)
+            .cornerRadius(BCSizing.radiusMD)
             .overlay(
-                RoundedRectangle(cornerRadius: OCSizing.radiusMD)
-                    .strokeBorder(text.isEmpty ? Color.OC.border : Color.OC.primary, lineWidth: 1)
+                RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                    .strokeBorder(text.isEmpty ? Color.BC.border : Color.BC.primary, lineWidth: 1)
             )
     }
 }

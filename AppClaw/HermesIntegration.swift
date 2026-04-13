@@ -12,7 +12,7 @@ struct HermesSession {
 
 // MARK: - HermesIntegration
 //
-// High-level API for the rest of AppClaw.
+// High-level API for the rest of BareClaw.
 // Fully local — no HTTP, no server, no network permission needed.
 //
 // Additions over v1:
