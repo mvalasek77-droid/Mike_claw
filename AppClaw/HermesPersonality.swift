@@ -221,12 +221,16 @@ actor HermesPersonality {
     func scheduleDailyAffirmation(for persona: UserPersona) {
         guard persona.dailyAffirmationsEnabled else { return }
 
+        // Pre-capture affirmation text on the actor's executor to avoid a
+        // data race when the completion handler runs on an arbitrary thread.
+        let affirmationBody = _pools.today(for: persona)
+
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }
 
             let content = UNMutableNotificationContent()
             content.title = persona.selectedCompanion.name
-            content.body  = self._pools.today(for: persona)
+            content.body  = affirmationBody
             content.sound = .default
 
             var comps = Calendar.current.dateComponents([.hour, .minute], from: persona.affirmationTime)

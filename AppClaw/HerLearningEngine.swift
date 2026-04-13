@@ -89,6 +89,9 @@ actor HerLearningEngine {
         // Grow intimacy — interest-aware bonus
         let gain = intimacyGain(quality: quality, text: text, interests: interests)
         state.intimacyScore = min(100, state.intimacyScore + gain)
+        // Keep UserDefaults in sync so AffirmationPools can read the score
+        // synchronously without an async actor hop.
+        UserDefaults.standard.set(state.intimacyScore, forKey: "her.intimacyScore")
 
         // Check for milestone moments
         await checkMilestones(text: text, response: responseText)
