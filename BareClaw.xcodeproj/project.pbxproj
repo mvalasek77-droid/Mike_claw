@@ -28,6 +28,9 @@
 		34D60FA62E75130606192B6F /* HermesKairos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0A49A9C82EE11D7308F4FC /* HermesKairos.swift */; };
 		60BAF271E83206C46795D6F3 /* HermesLLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D184753A8C4240CAFB9BC1 /* HermesLLMClient.swift */; };
 		D546DA4E3B710CDEE4136A05 /* HermesMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AAFA576E973B4B43580A987 /* HermesMemory.swift */; };
+		AA11BB22CC33DD44EE55FF66 /* HermesMemoryAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF67 /* HermesMemoryAgent.swift */; };
+		BB22CC33DD44EE55FF6600AA /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC33DD44EE55FF6600AB /* HomeView.swift */; };
+		CC33DD44EE55FF6600AABB11 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC33DD44EE55FF6600AABB12 /* MainTabView.swift */; };
 		FE55461A0513DA513E49CC1A /* HermesPersonality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */; };
 		A5255985EFC67DE7C4FA042B /* HermesPrivacyGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00337844437E2A977CD9A885 /* HermesPrivacyGate.swift */; };
 		B692943A6DFD1A8C2E05CB6F /* HermesProactiveEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8AF12D4EF54085E662ABB8 /* HermesProactiveEngine.swift */; };
@@ -63,6 +66,9 @@
 		1A0A49A9C82EE11D7308F4FC /* HermesKairos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesKairos.swift; sourceTree = "<group>"; };
 		40D184753A8C4240CAFB9BC1 /* HermesLLMClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesLLMClient.swift; sourceTree = "<group>"; };
 		8AAFA576E973B4B43580A987 /* HermesMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesMemory.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF67 /* HermesMemoryAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesMemoryAgent.swift; sourceTree = "<group>"; };
+		BB22CC33DD44EE55FF6600AB /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		CC33DD44EE55FF6600AABB12 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesPersonality.swift; sourceTree = "<group>"; };
 		00337844437E2A977CD9A885 /* HermesPrivacyGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesPrivacyGate.swift; sourceTree = "<group>"; };
 		DA8AF12D4EF54085E662ABB8 /* HermesProactiveEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesProactiveEngine.swift; sourceTree = "<group>"; };
@@ -129,6 +135,9 @@
 				1A0A49A9C82EE11D7308F4FC /* HermesKairos.swift */,
 				40D184753A8C4240CAFB9BC1 /* HermesLLMClient.swift */,
 				8AAFA576E973B4B43580A987 /* HermesMemory.swift */,
+				AA11BB22CC33DD44EE55FF67 /* HermesMemoryAgent.swift */,
+				BB22CC33DD44EE55FF6600AB /* HomeView.swift */,
+				CC33DD44EE55FF6600AABB12 /* MainTabView.swift */,
 				01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */,
 				00337844437E2A977CD9A885 /* HermesPrivacyGate.swift */,
 				DA8AF12D4EF54085E662ABB8 /* HermesProactiveEngine.swift */,
@@ -237,6 +246,9 @@
 				34D60FA62E75130606192B6F /* HermesKairos.swift in Sources */,
 				60BAF271E83206C46795D6F3 /* HermesLLMClient.swift in Sources */,
 				D546DA4E3B710CDEE4136A05 /* HermesMemory.swift in Sources */,
+				AA11BB22CC33DD44EE55FF66 /* HermesMemoryAgent.swift in Sources */,
+				BB22CC33DD44EE55FF6600AA /* HomeView.swift in Sources */,
+				CC33DD44EE55FF6600AABB11 /* MainTabView.swift in Sources */,
 				FE55461A0513DA513E49CC1A /* HermesPersonality.swift in Sources */,
 				A5255985EFC67DE7C4FA042B /* HermesPrivacyGate.swift in Sources */,
 				B692943A6DFD1A8C2E05CB6F /* HermesProactiveEngine.swift in Sources */,
