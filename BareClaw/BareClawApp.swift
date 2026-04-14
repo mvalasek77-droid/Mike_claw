@@ -66,8 +66,6 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.4), value: appState.onboardingComplete)
         // ── Floating Her Mode bear ball ──────────────────────────────
-        // Rendered above all content when Her Mode is unlocked.
-        // Visibility and position are fully managed by HerModeBallView.
         .overlay(alignment: .topLeading) {
             if herMode.isUnlocked {
                 HerModeBallView()
@@ -76,6 +74,13 @@ struct RootView: View {
                     .animation(.spring(response: 0.4, dampingFraction: 0.7),
                                value: herMode.isUnlocked)
             }
+        }
+        // ── Stress offer banner (slides up from bottom) ───────────────
+        .overlay(alignment: .bottom) {
+            StressOfferBanner()
+                .animation(.spring(response: 0.45, dampingFraction: 0.72),
+                           value: StressLearningEngine.shared.currentOffer == nil)
+                .padding(.bottom, 12)
         }
         .task {
             await HermesSessionState.shared.loadFromDisk()
@@ -86,6 +91,13 @@ struct RootView: View {
             _ = PsychologicalProfiler.shared
             _ = TrackingEngine.shared
             _ = ProactiveSuggestionController.shared
+            _ = SelfHealingEngine.shared
+
+            // Stress monitoring starts independently of Her Mode
+            // so stress relief offers work even before Her Mode is unlocked.
+            if appState.onboardingComplete {
+                StressLearningEngine.shared.startMonitoring()
+            }
 
             // Start companion data tracker — respects TrackingPermissions exactly.
             // Called here so calendar/reminder scans run fresh on each launch.

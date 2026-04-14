@@ -229,6 +229,10 @@ final class ChatViewModel: ObservableObject {
         let isBugReport = await SelfHealingEngine.shared.scan(userMessage: text)
         if isBugReport { return }   // engine already replied — skip normal LLM call
 
+        // ── StressLearningEngine: learn relief habits from chat ───────
+        // e.g. "I always watch Netflix when I'm stressed" → teach the engine
+        StressLearningEngine.shared.learnFromChat(text)
+
         // ── SiriTaskEngine: detect and execute real tasks ────────────
         if let taskResult = await SiriTaskEngine.shared.parseAndExecute(text) {
             pendingTaskResult = taskResult

@@ -301,13 +301,65 @@ final class StressLearningEngine: ObservableObject {
         currentOffer = nil
     }
 
-    // MARK: - Teach the engine a new relief action
+    // MARK: - Learn relief habits from chat messages
 
-    /// Call this when the user mentions something they do when stressed
-    /// e.g. "I always watch Narcos when I'm stressed"
+    /// Parses a user chat message for patterns like:
+    ///   "I always watch Netflix when I'm stressed"
+    ///   "When I'm stressed I order Chipotle"
+    ///   "listening to music helps me relax"
+    /// Boosts acceptance score for matching actions or adds new ones.
+    func learnFromChat(_ message: String) {
+        let lower = message.lowercased()
+        guard lower.contains("stress") || lower.contains("relax") ||
+              lower.contains("unwind") || lower.contains("anxious") ||
+              lower.contains("tired") || lower.contains("rough day") else { return }
+
+        // Map keyword fragments to existing catalogue IDs and categories
+        let signals: [(fragment: String, id: String?, label: String, link: String?, cat: StressReliefAction.Category)] = [
+            ("netflix",      "netflix",      "Watch Netflix",        "nflx://",      .streaming),
+            ("youtube",      "youtube",      "Open YouTube",         "youtube://",   .streaming),
+            ("hulu",         nil,            "Watch Hulu",           "hulu://",      .streaming),
+            ("disney",       nil,            "Open Disney+",         "disneyplus://", .streaming),
+            ("spotify",      "spotify",      "Play Spotify",         "spotify:",     .music),
+            ("apple music",  "apple_music",  "Play Apple Music",     "music://",     .music),
+            ("music",        "apple_music",  "Play some music",      "music://",     .music),
+            ("chipotle",     "chipotle",     "Order from Chipotle",  "chipotle://",  .food),
+            ("doordash",     "doordash",     "Order delivery",       "doordash://",  .food),
+            ("uber eats",    "doordash",     "Order on Uber Eats",   "ubereats://",  .food),
+            ("food",         "doordash",     "Order comfort food",   "doordash://",  .food),
+            ("walk",         "walk",         "Go for a walk",        nil,            .movement),
+            ("gym",          nil,            "Hit the gym",          nil,            .movement),
+            ("breath",       "breathe",      "Do a breathing exercise", nil,         .breathing),
+            ("meditat",      nil,            "Try a short meditation", nil,          .breathing),
+        ]
+
+        for signal in signals {
+            guard lower.contains(signal.fragment) else { continue }
+
+            if let existingID = signal.id,
+               let idx = catalogue.firstIndex(where: { $0.id == existingID }) {
+                // Boost acceptance score on existing action (user mentioned it = implicit endorsement)
+                catalogue[idx].acceptCount += 2
+            } else if catalogue.first(where: { $0.label.lowercased().contains(signal.fragment) }) == nil {
+                // New action — add to catalogue with a head-start acceptance count
+                var newAction = StressReliefAction(
+                    id: signal.id ?? UUID().uuidString,
+                    label: signal.label,
+                    deepLink: signal.link,
+                    category: signal.cat
+                )
+                newAction.acceptCount = 2   // mentioned = likely preferred
+                catalogue.append(newAction)
+            }
+        }
+        saveCatalogue()
+    }
+
+    // MARK: - Explicit teach
+
     func learnAction(label: String, deepLink: String?, category: StressReliefAction.Category) {
         let existing = catalogue.first { $0.label.lowercased() == label.lowercased() }
-        guard existing == nil else { return }   // already known
+        guard existing == nil else { return }
         let action = StressReliefAction(
             id: UUID().uuidString, label: label,
             deepLink: deepLink, category: category

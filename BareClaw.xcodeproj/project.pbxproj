@@ -36,6 +36,7 @@
 		FA0011223344556677889900 /* HerModeBallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0011223344556677889901 /* HerModeBallView.swift */; };
 		FB0011223344556677889900 /* StressLearningEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0011223344556677889901 /* StressLearningEngine.swift */; };
 		FC0011223344556677889900 /* SelfHealingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0011223344556677889901 /* SelfHealingEngine.swift */; };
+		FD0011223344556677889900 /* StressOfferBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0011223344556677889901 /* StressOfferBanner.swift */; };
 		FF6600AABB11CC22DD33EE44 /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF6600AABB11CC22DD33EE45 /* Speech.framework */; };
 		FE55461A0513DA513E49CC1A /* HermesPersonality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */; };
 		A5255985EFC67DE7C4FA042B /* HermesPrivacyGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00337844437E2A977CD9A885 /* HermesPrivacyGate.swift */; };
@@ -80,6 +81,7 @@
 		FA0011223344556677889901 /* HerModeBallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerModeBallView.swift; sourceTree = "<group>"; };
 		FB0011223344556677889901 /* StressLearningEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StressLearningEngine.swift; sourceTree = "<group>"; };
 		FC0011223344556677889901 /* SelfHealingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfHealingEngine.swift; sourceTree = "<group>"; };
+		FD0011223344556677889901 /* StressOfferBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StressOfferBanner.swift; sourceTree = "<group>"; };
 		FF6600AABB11CC22DD33EE45 /* Speech.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesPersonality.swift; sourceTree = "<group>"; };
 		00337844437E2A977CD9A885 /* HermesPrivacyGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesPrivacyGate.swift; sourceTree = "<group>"; };
@@ -156,6 +158,7 @@
 				FA0011223344556677889901 /* HerModeBallView.swift */,
 				FB0011223344556677889901 /* StressLearningEngine.swift */,
 				FC0011223344556677889901 /* SelfHealingEngine.swift */,
+				FD0011223344556677889901 /* StressOfferBanner.swift */,
 				01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */,
 				00337844437E2A977CD9A885 /* HermesPrivacyGate.swift */,
 				DA8AF12D4EF54085E662ABB8 /* HermesProactiveEngine.swift */,
@@ -272,6 +275,7 @@
 				FA0011223344556677889900 /* HerModeBallView.swift in Sources */,
 				FB0011223344556677889900 /* StressLearningEngine.swift in Sources */,
 				FC0011223344556677889900 /* SelfHealingEngine.swift in Sources */,
+				FD0011223344556677889900 /* StressOfferBanner.swift in Sources */,
 				FE55461A0513DA513E49CC1A /* HermesPersonality.swift in Sources */,
 				A5255985EFC67DE7C4FA042B /* HermesPrivacyGate.swift in Sources */,
 				B692943A6DFD1A8C2E05CB6F /* HermesProactiveEngine.swift in Sources */,
