@@ -31,6 +31,9 @@
 		AA11BB22CC33DD44EE55FF66 /* HermesMemoryAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF67 /* HermesMemoryAgent.swift */; };
 		BB22CC33DD44EE55FF6600AA /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC33DD44EE55FF6600AB /* HomeView.swift */; };
 		CC33DD44EE55FF6600AABB11 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC33DD44EE55FF6600AABB12 /* MainTabView.swift */; };
+		DD44EE55FF6600AABB11CC22 /* HerModeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE55FF6600AABB11CC23 /* HerModeEngine.swift */; };
+		EE55FF6600AABB11CC22DD33 /* HerModeUnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FF6600AABB11CC22DD34 /* HerModeUnlockView.swift */; };
+		FF6600AABB11CC22DD33EE44 /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF6600AABB11CC22DD33EE45 /* Speech.framework */; };
 		FE55461A0513DA513E49CC1A /* HermesPersonality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */; };
 		A5255985EFC67DE7C4FA042B /* HermesPrivacyGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00337844437E2A977CD9A885 /* HermesPrivacyGate.swift */; };
 		B692943A6DFD1A8C2E05CB6F /* HermesProactiveEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8AF12D4EF54085E662ABB8 /* HermesProactiveEngine.swift */; };
@@ -69,6 +72,9 @@
 		AA11BB22CC33DD44EE55FF67 /* HermesMemoryAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesMemoryAgent.swift; sourceTree = "<group>"; };
 		BB22CC33DD44EE55FF6600AB /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		CC33DD44EE55FF6600AABB12 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		DD44EE55FF6600AABB11CC23 /* HerModeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerModeEngine.swift; sourceTree = "<group>"; };
+		EE55FF6600AABB11CC22DD34 /* HerModeUnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerModeUnlockView.swift; sourceTree = "<group>"; };
+		FF6600AABB11CC22DD33EE45 /* Speech.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesPersonality.swift; sourceTree = "<group>"; };
 		00337844437E2A977CD9A885 /* HermesPrivacyGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesPrivacyGate.swift; sourceTree = "<group>"; };
 		DA8AF12D4EF54085E662ABB8 /* HermesProactiveEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesProactiveEngine.swift; sourceTree = "<group>"; };
@@ -89,6 +95,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FF6600AABB11CC22DD33EE44 /* Speech.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -138,6 +145,8 @@
 				AA11BB22CC33DD44EE55FF67 /* HermesMemoryAgent.swift */,
 				BB22CC33DD44EE55FF6600AB /* HomeView.swift */,
 				CC33DD44EE55FF6600AABB12 /* MainTabView.swift */,
+				DD44EE55FF6600AABB11CC23 /* HerModeEngine.swift */,
+				EE55FF6600AABB11CC22DD34 /* HerModeUnlockView.swift */,
 				01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */,
 				00337844437E2A977CD9A885 /* HermesPrivacyGate.swift */,
 				DA8AF12D4EF54085E662ABB8 /* HermesProactiveEngine.swift */,
@@ -249,6 +258,8 @@
 				AA11BB22CC33DD44EE55FF66 /* HermesMemoryAgent.swift in Sources */,
 				BB22CC33DD44EE55FF6600AA /* HomeView.swift in Sources */,
 				CC33DD44EE55FF6600AABB11 /* MainTabView.swift in Sources */,
+				DD44EE55FF6600AABB11CC22 /* HerModeEngine.swift in Sources */,
+				EE55FF6600AABB11CC22DD33 /* HerModeUnlockView.swift in Sources */,
 				FE55461A0513DA513E49CC1A /* HermesPersonality.swift in Sources */,
 				A5255985EFC67DE7C4FA042B /* HermesPrivacyGate.swift in Sources */,
 				B692943A6DFD1A8C2E05CB6F /* HermesProactiveEngine.swift in Sources */,

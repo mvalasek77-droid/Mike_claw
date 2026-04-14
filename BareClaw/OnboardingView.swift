@@ -57,21 +57,38 @@ struct CompanionOnboardingView: View {
 
                 // Navigation button (hidden on steps with their own CTA: 5, 6)
                 if step < 6 {
-                    Button(action: advance) {
-                        HStack {
-                            Text(nextButtonLabel)
-                                .font(BCFont.headline())
-                            Image(systemName: "arrow.right")
+                    VStack(spacing: 10) {
+                        // Pulsing hint arrow on companion step so user knows to scroll up and tap Next
+                        if step == 4 && !persona.selectedCompanionID.isEmpty {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(Color.BC.accent)
+                                    .font(.system(size: 14))
+                                Text("\(persona.selectedCompanion.name) is ready for you")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundColor(Color.BC.accent)
+                            }
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(canAdvance ? Color.BC.accent : Color.BC.border)
-                        .foregroundColor(canAdvance ? .black : .BC.textMuted)
-                        .cornerRadius(BCSizing.radiusLG)
-                        .padding(.horizontal, BCSizing.spacingLG)
+                        Button(action: advance) {
+                            HStack {
+                                Text(nextButtonLabel)
+                                    .font(BCFont.headline())
+                                Image(systemName: "arrow.right")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(canAdvance ? Color.BC.accent : Color.BC.border)
+                            .foregroundColor(canAdvance ? .black : .BC.textMuted)
+                            .cornerRadius(BCSizing.radiusLG)
+                            .padding(.horizontal, BCSizing.spacingLG)
+                            .scaleEffect(canAdvance && step == 4 ? 1.03 : 1.0)
+                            .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true),
+                                       value: canAdvance && step == 4)
+                        }
+                        .padding(.bottom, BCSizing.spacingXL)
+                        .disabled(!canAdvance)
                     }
-                    .padding(.bottom, BCSizing.spacingXL)
-                    .disabled(!canAdvance)
                 }
             }
         }

@@ -96,6 +96,11 @@ struct HomeView: View {
                         quickActionsGrid
                             .padding(.horizontal, 16)
                             .padding(.top, 14)
+                        // Her Mode progress / status
+                        HerModeProgressView(score: vm.intimacyScore,
+                                            isUnlocked: HerModeEngine.shared.isUnlocked)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 14)
                             .padding(.bottom, 40)
                     }
                 }
@@ -108,9 +113,20 @@ struct HomeView: View {
             }
             .navigationBarHidden(true)
             .preferredColorScheme(.light)
+            // Her Mode unlock celebration
+            .fullScreenCover(isPresented: .init(
+                get: { HerModeEngine.shared.showUnlockCelebration },
+                set: { if !$0 { HerModeEngine.shared.dismissCelebration() } }
+            )) {
+                HerModeUnlockView()
+            }
         }
         .navigationViewStyle(.stack)
-        .task { await vm.load() }
+        .task {
+            await vm.load()
+            // Check if Her Mode should be unlocked based on current score
+            HerModeEngine.shared.checkUnlock(score: vm.intimacyScore)
+        }
     }
 
     // MARK: - Navigation Bar

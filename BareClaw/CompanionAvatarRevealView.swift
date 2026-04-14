@@ -248,10 +248,15 @@ struct CompanionTikTokView: View {
     // MARK: - Audio
 
     private func configureAudio() {
+        // Use duckOthers so background music is softened when the voice speaks.
+        // Do NOT call setActive here — CompanionVoiceEngine owns the session.
+        // Simply configure the category so the session is ready when the engine
+        // calls setActive(true) before speaking.
         try? AVAudioSession.sharedInstance().setCategory(
-            .playback, mode: .spokenAudio, options: [.mixWithOthers]
+            .playback,
+            mode: .spokenAudio,
+            options: [.duckOthers, .allowBluetooth, .allowBluetoothA2DP]
         )
-        try? AVAudioSession.sharedInstance().setActive(true)
     }
 
     // MARK: - Voice greeting (rate-limited: once per 5 minutes)

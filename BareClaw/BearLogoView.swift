@@ -39,9 +39,13 @@ struct BearLogoView: View {
             endPoint:   CGPoint(x: w * 0.80, y: h)
         )
 
-        // Ears
-        let earR = w * 0.195
-        for (ex, ey): (CGFloat, CGFloat) in [(w*0.13, h*0.045), (w*0.675, h*0.045)] {
+        // Ears — perfectly symmetric around w*0.5
+        // Each ear centre is 0.265w from the face centre horizontally.
+        let earR     = w * 0.195
+        let earCentreOffset: CGFloat = 0.265
+        for earCentreX: CGFloat in [w*(0.5 - earCentreOffset), w*(0.5 + earCentreOffset)] {
+            let ex = earCentreX - earR
+            let ey: CGFloat = h * 0.045
             ctx.fill(Path(ellipseIn: CGRect(x: ex, y: ey, width: earR*2, height: earR*2)),
                      with: furGrad)
             let iR = earR * 0.58
@@ -61,10 +65,11 @@ struct BearLogoView: View {
         ctx.fill(Path(ellipseIn: CGRect(x: sX, y: sY, width: sW, height: sH)),
                  with: .color(Color(hex: "#F5DFA8")))
 
-        // Blush
+        // Blush — symmetric, centred under each eye (eyes at 0.285 / 0.715)
         let bR = fR * 0.28, bY = h * 0.548
-        for bX: CGFloat in [w*0.155, w*0.645] {
-            ctx.fill(Path(ellipseIn: CGRect(x: bX, y: bY, width: bR*2, height: bR*0.70)),
+        let blushOffset: CGFloat = 0.230
+        for bCentreX: CGFloat in [w*(0.5 - blushOffset), w*(0.5 + blushOffset)] {
+            ctx.fill(Path(ellipseIn: CGRect(x: bCentreX - bR, y: bY, width: bR*2, height: bR*0.70)),
                      with: .color(Color(hex: "#F07080").opacity(0.28)))
         }
 

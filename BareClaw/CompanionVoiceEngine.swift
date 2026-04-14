@@ -61,14 +61,14 @@ extension VoiceCharacter {
             "com.apple.ttsbundle.Samantha-compact"
         ],
         fallbackLanguage: "en-US",
-        pitchMultiplier: 1.14,
-        rate: 0.42,
-        preDelay: 0.35, postDelay: 0.25,
-        timePitchRate: 1.0, timePitchCents: +150,   // +1.5 st: luminous, lighter
-        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 20,
-        eqLowShelfFreq: 220,  eqLowShelfGain: +2.0,
-        eqMidFreq: 900,       eqMidGain: +1.5,   eqMidBW: 1.2,
-        eqHighShelfFreq: 5500, eqHighShelfGain: -2.5,
+        pitchMultiplier: 1.10,
+        rate: 0.44,              // human conversational pace
+        preDelay: 0.18, postDelay: 0.12,
+        timePitchRate: 1.0, timePitchCents: +100,   // subtle warmth lift
+        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 14,
+        eqLowShelfFreq: 200,  eqLowShelfGain: +1.5,
+        eqMidFreq: 900,       eqMidGain: +1.0,   eqMidBW: 1.0,
+        eqHighShelfFreq: 5500, eqHighShelfGain: -1.5,
         characterName: "Luna"
     )
 
@@ -230,26 +230,52 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     // MARK: - Audio session
 
     private func configureAudioSession() {
-        // .mixWithOthers lets the voice engine coexist with a muted AVPlayer
-        // (e.g. the companion reveal video) without either one evicting the other.
-        try? AVAudioSession.sharedInstance().setCategory(
-            .playback, mode: .spokenAudio, options: [.mixWithOthers]
-        )
-        try? AVAudioSession.sharedInstance().setActive(true)
+        // .duckOthers ensures our voice is the loudest in the mix.
+        // .allowBluetooth routes to AirPods / BT headsets automatically.
+        do {
+            try AVAudioSession.sharedInstance().setCategory(
+                .playback,
+                mode: .spokenAudio,
+                options: [.duckOthers, .allowBluetooth, .allowBluetoothA2DP]
+            )
+            try AVAudioSession.sharedInstance().setActive(true,
+                options: .notifyOthersOnDeactivation)
+        } catch {}
+
+        // Re-activate after any interruption (phone call, Siri, etc.)
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object:  nil, queue: .main
+        ) { [weak self] notification in
+            guard let type = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: type) == .ended
+            else { return }
+            try? AVAudioSession.sharedInstance().setActive(true)
+            // If we were mid-sentence when the interruption hit, nothing to resume —
+            // the delegate already cleared isSpeaking.
+            _ = self   // suppress capture warning
+        }
     }
 
     // MARK: - Public speak
 
     func speak(_ text: String, character: VoiceCharacter) {
         guard voiceEnabled else { return }
-        stopSpeaking()
+
+        // Stop the current utterance cleanly, then give the session a moment
+        // to settle before queuing the new one. This prevents the "1 word then cut"
+        // symptom caused by the session being in an inconsistent state.
+        if synth.isSpeaking {
+            synth.stopSpeaking(at: .immediate)
+        }
 
         let clean = stripMarkdown(text)
         guard !clean.isEmpty else { return }
 
+        // Ensure audio session is active before speaking
+        try? AVAudioSession.sharedInstance().setActive(true)
+
         isSpeaking = true
-        // Direct synthesis — works on simulator and device without AVAudioEngine setup.
-        // Character personality is preserved via pitch, rate, and voice identifier.
         synth.speak(buildUtterance(clean, character: character))
     }
 
