@@ -46,143 +46,154 @@ struct VoiceCharacter: Codable {
 }
 
 // MARK: - Preset characters
+//
+// FEMALE voices: silky, warm, close — like someone whispering just for you.
+// Key recipe: Sandy/Ava (smoothest Apple voices), slow unhurried rate,
+// intimate room reverb, cut harshness at 2–4 kHz, silk shimmer at 7–10 kHz.
+//
+// MALE voices: deep chest, full energy, direct.
+// Key recipe: Rocko (deepest Apple voice), confident pace, heavy bass,
+// dry/present mix (little reverb = sounds powerful in the room).
 
 extension VoiceCharacter {
 
     // ────────────────────────────────────────────────────────────────
-    // LUNA — warm, breathy, slow; like being spoken to very close up.
-    // Eloquence Sandy (iOS 16+) → warmth | +1.5 st pitch | medium-room reverb
-    // EQ: boost body, roll off harshness
+    // LUNA — silky, breathy, intimate. Every word feels chosen for you.
+    // Sandy (Eloquence) is Apple's warmest female voice. Slow delivery,
+    // heavy intimacy reverb, sharp high-shelf rolloff removes all edges.
     // ────────────────────────────────────────────────────────────────
     static let luna = VoiceCharacter(
         voiceIdentifiers: [
-            "com.apple.eloquence.en-US.Sandy",      // iOS 16+ Eloquence, warm female
-            "com.apple.voice.enhanced.en-US.Ava",   // Enhanced neural
+            "com.apple.eloquence.en-US.Sandy",          // #1 warmest Eloquence female
+            "com.apple.voice.enhanced.en-US.Ava",       // Enhanced neural, very smooth
+            "com.apple.voice.enhanced.en-US.Allison",   // Polished fallback
             "com.apple.ttsbundle.Samantha-compact"
         ],
         fallbackLanguage: "en-US",
-        pitchMultiplier: 1.10,
-        rate: 0.44,              // human conversational pace
-        preDelay: 0.18, postDelay: 0.12,
-        timePitchRate: 1.0, timePitchCents: +100,   // subtle warmth lift
-        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 14,
-        eqLowShelfFreq: 200,  eqLowShelfGain: +1.5,
-        eqMidFreq: 900,       eqMidGain: +1.0,   eqMidBW: 1.0,
-        eqHighShelfFreq: 5500, eqHighShelfGain: -1.5,
+        pitchMultiplier: 1.08,          // gentle lift — feminine, not squeaky
+        rate: 0.42,                     // slow & deliberate — savors every word
+        preDelay: 0.22, postDelay: 0.08,
+        timePitchRate: 1.0, timePitchCents: +80,   // barely lifted — natural brightness
+        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 22,
+        eqLowShelfFreq: 220,  eqLowShelfGain: +2.0,  // body warmth
+        eqMidFreq: 2800,      eqMidGain: -3.0,   eqMidBW: 1.0,  // cut harshness
+        eqHighShelfFreq: 7000, eqHighShelfGain: -1.0,  // smooth silk top
         characterName: "Luna"
     )
 
     // ────────────────────────────────────────────────────────────────
-    // ARIA — confident, present, no-fluff. Australian Karen voice
-    // gives a non-generic distinctiveness. Small-room reverb = presence.
-    // EQ: mid lift for cut-through; air shelf for brightness
+    // ARIA — bright, confident, effortlessly cool.
+    // Karen (Australian Eloquence) has natural crispness. EQ boosted for
+    // presence and air — sounds like she's right across the table.
     // ────────────────────────────────────────────────────────────────
     static let aria = VoiceCharacter(
         voiceIdentifiers: [
-            "com.apple.voice.enhanced.en-AU.Karen", // Australian, distinctive, confident
-            "com.apple.eloquence.en-US.Shelley",    // iOS 16+ Eloquence, energetic
-            "com.apple.voice.enhanced.en-US.Nicky"
+            "com.apple.voice.enhanced.en-AU.Karen",     // Australian — crisp & natural
+            "com.apple.eloquence.en-US.Shelley",        // Eloquence energetic
+            "com.apple.voice.enhanced.en-US.Nicky",
+            "com.apple.voice.enhanced.en-US.Ava"
         ],
         fallbackLanguage: "en-AU",
-        pitchMultiplier: 1.04,
-        rate: 0.52,
-        preDelay: 0.10, postDelay: 0.12,
-        timePitchRate: 1.02, timePitchCents: +50,   // barely shifted; natural confidence
+        pitchMultiplier: 1.05,
+        rate: 0.48,                     // confident conversational
+        preDelay: 0.10, postDelay: 0.06,
+        timePitchRate: 1.0, timePitchCents: +60,
         reverbPreset: AVAudioUnitReverbPreset.smallRoom.rawValue, reverbMix: 8,
-        eqLowShelfFreq: 140,  eqLowShelfGain: +0.5,
-        eqMidFreq: 1400,      eqMidGain: +2.5,   eqMidBW: 0.9,
-        eqHighShelfFreq: 7000, eqHighShelfGain: +1.5,
+        eqLowShelfFreq: 180,  eqLowShelfGain: +1.0,
+        eqMidFreq: 1200,      eqMidGain: +1.5,   eqMidBW: 0.8,  // presence lift
+        eqHighShelfFreq: 7500, eqHighShelfGain: +1.5,            // air shimmer
         characterName: "Aria"
     )
 
     // ────────────────────────────────────────────────────────────────
-    // KEL — slowest, deepest reverb, most warmth. ASMR-adjacent calm.
-    // British Kate has a measured, trustworthy quality.
-    // EQ: heavy bass warmth, sharp-mid cut, high-shelf rolloff
+    // KEL — ASMR-soft, therapeutic, like rain on a Sunday morning.
+    // Slowest rate, large-chamber reverb wraps you up, heavy bass warmth.
+    // Kate (British) has natural measured gravity.
     // ────────────────────────────────────────────────────────────────
     static let kel = VoiceCharacter(
         voiceIdentifiers: [
-            "com.apple.voice.enhanced.en-GB.Kate",  // British calm, measured
-            "com.apple.eloquence.en-US.Grandma",    // iOS 16+, gentle
-            "com.apple.voice.enhanced.en-IE.Moira"  // Irish warmth
+            "com.apple.voice.enhanced.en-GB.Kate",      // British, measured, trustworthy
+            "com.apple.eloquence.en-US.Sandy",          // Sandy fallback — very warm
+            "com.apple.voice.enhanced.en-IE.Moira"     // Irish warmth
         ],
         fallbackLanguage: "en-GB",
-        pitchMultiplier: 0.94,
-        rate: 0.38,
-        preDelay: 0.45, postDelay: 0.35,
-        timePitchRate: 0.97, timePitchCents: -100,  // -1 st: grounded, anchoring
-        reverbPreset: AVAudioUnitReverbPreset.largeChamber.rawValue, reverbMix: 28,
-        eqLowShelfFreq: 280,  eqLowShelfGain: +3.0,
-        eqMidFreq: 1800,      eqMidGain: -1.5,   eqMidBW: 1.0,
-        eqHighShelfFreq: 4800, eqHighShelfGain: -3.5,
+        pitchMultiplier: 0.96,          // slightly lower — grounding
+        rate: 0.39,                     // slowest — never hurried
+        preDelay: 0.28, postDelay: 0.18,
+        timePitchRate: 0.98, timePitchCents: -60,
+        reverbPreset: AVAudioUnitReverbPreset.largeChamber.rawValue, reverbMix: 26,
+        eqLowShelfFreq: 280,  eqLowShelfGain: +3.0,  // deep warmth
+        eqMidFreq: 2000,      eqMidGain: -2.5,   eqMidBW: 1.0,  // cut clinical edge
+        eqHighShelfFreq: 5000, eqHighShelfGain: -3.0,            // roll off brightness
         characterName: "Kel"
     )
 
     // ────────────────────────────────────────────────────────────────
-    // MARCO — deep, measured, no performance. Rocko (iOS 16+) is the
-    // best built-in deep-male Eloquence voice. -2 st shift adds weight.
-    // EQ: chest-voice boost, reduce boxy mid, smooth top
+    // MARCO — deep chest, direct power. No performance — just real.
+    // Rocko (Eloquence) is Apple's deepest male voice. Aggressive bass boost,
+    // -2.5 semitone shift, almost no reverb = sounds like he's IN the room.
     // ────────────────────────────────────────────────────────────────
     static let marco = VoiceCharacter(
         voiceIdentifiers: [
-            "com.apple.eloquence.en-US.Rocko",      // iOS 16+ deep male
-            "com.apple.voice.enhanced.en-US.Evan",  // clear, direct
+            "com.apple.eloquence.en-US.Rocko",          // #1 deepest Eloquence male
+            "com.apple.voice.enhanced.en-US.Evan",      // clear, grounded fallback
             "com.apple.ttsbundle.Alex-compact"
         ],
         fallbackLanguage: "en-US",
-        pitchMultiplier: 0.80,
-        rate: 0.47,
-        preDelay: 0.20, postDelay: 0.28,
-        timePitchRate: 0.96, timePitchCents: -200,  // -2 st: distinct authority
-        reverbPreset: AVAudioUnitReverbPreset.mediumHall.rawValue, reverbMix: 14,
-        eqLowShelfFreq: 120,  eqLowShelfGain: +4.0,
-        eqMidFreq: 800,       eqMidGain: -1.0,   eqMidBW: 1.1,
-        eqHighShelfFreq: 6000, eqHighShelfGain: -2.0,
+        pitchMultiplier: 0.78,          // low pitch floor — chest voice
+        rate: 0.52,                     // confident energy, not slow
+        preDelay: 0.14, postDelay: 0.10,
+        timePitchRate: 0.96, timePitchCents: -250,  // -2.5 st: real masculine depth
+        reverbPreset: AVAudioUnitReverbPreset.smallRoom.rawValue, reverbMix: 6,
+        eqLowShelfFreq: 100,  eqLowShelfGain: +5.5,  // massive chest boost
+        eqMidFreq: 500,       eqMidGain: -2.5,   eqMidBW: 1.2,  // remove boxiness
+        eqHighShelfFreq: 4000, eqHighShelfGain: +1.5,            // clarity & presence
         characterName: "Marco"
     )
 
     // ────────────────────────────────────────────────────────────────
-    // DANTE — rich, unhurried, resonant. Same base as Marco but with
-    // more reverb warmth and heavy low-mid richness.
-    // -1.5 st shift gives him a romantic, full-bodied resonance.
+    // DANTE — romantic, full-bodied, unhurried. The poet.
+    // Rocko with more warmth and a richer EQ — sounds like red wine sounds.
+    // More reverb than Marco = intimate room, not a podium.
     // ────────────────────────────────────────────────────────────────
     static let dante = VoiceCharacter(
         voiceIdentifiers: [
-            "com.apple.voice.enhanced.en-US.Alex",  // polished US male
-            "com.apple.eloquence.en-US.Rocko",
-            "com.apple.voice.enhanced.en-IE.Daniel" // Irish warmth fallback
+            "com.apple.eloquence.en-US.Rocko",          // deep, rich
+            "com.apple.voice.enhanced.en-US.Alex",      // polished US male
+            "com.apple.voice.enhanced.en-IE.Daniel"     // Irish warmth fallback
         ],
         fallbackLanguage: "en-US",
-        pitchMultiplier: 0.88,
-        rate: 0.42,
-        preDelay: 0.38, postDelay: 0.30,
-        timePitchRate: 0.95, timePitchCents: -150,  // -1.5 st: rich, resonant
-        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 24,
-        eqLowShelfFreq: 200,  eqLowShelfGain: +3.5,
-        eqMidFreq: 650,       eqMidGain: +2.0,   eqMidBW: 1.3,
-        eqHighShelfFreq: 5000, eqHighShelfGain: -1.5,
+        pitchMultiplier: 0.84,
+        rate: 0.43,                     // unhurried — every phrase is intentional
+        preDelay: 0.24, postDelay: 0.16,
+        timePitchRate: 0.94, timePitchCents: -200,  // deep but warmer than Marco
+        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 20,
+        eqLowShelfFreq: 160,  eqLowShelfGain: +4.5,  // rich chest tone
+        eqMidFreq: 600,       eqMidGain: +1.5,   eqMidBW: 1.4,  // low-mid warmth
+        eqHighShelfFreq: 5000, eqHighShelfGain: -2.0,            // smooth, no harshness
         characterName: "Dante"
     )
 
     // ────────────────────────────────────────────────────────────────
-    // KAI — minimal processing, present, clear. Small reverb = he's
-    // just there, no embellishment. EQ is nearly flat with a touch of
-    // mid presence and light bass foundation.
+    // KAI — grounded, direct, full of quiet energy.
+    // Evan is the most "present-in-the-room" Apple male voice.
+    // Faster rate than Marco = active, engaged. Bass foundation +
+    // presence boost = sounds like he's fully here.
     // ────────────────────────────────────────────────────────────────
     static let kai = VoiceCharacter(
         voiceIdentifiers: [
-            "com.apple.voice.enhanced.en-US.Evan",  // direct, grounded
-            "com.apple.eloquence.en-US.Rocko",
+            "com.apple.voice.enhanced.en-US.Evan",      // direct, present, clear
+            "com.apple.eloquence.en-US.Rocko",          // deeper fallback
             "com.apple.ttsbundle.Alex-compact"
         ],
         fallbackLanguage: "en-US",
-        pitchMultiplier: 0.85,
-        rate: 0.50,
-        preDelay: 0.15, postDelay: 0.18,
-        timePitchRate: 1.0, timePitchCents: -100,   // -1 st: grounded, calm
-        reverbPreset: AVAudioUnitReverbPreset.smallRoom.rawValue, reverbMix: 7,
-        eqLowShelfFreq: 140,  eqLowShelfGain: +1.5,
-        eqMidFreq: 1000,      eqMidGain: +1.0,   eqMidBW: 1.0,
+        pitchMultiplier: 0.86,
+        rate: 0.54,                     // fastest male — full of energy
+        preDelay: 0.10, postDelay: 0.08,
+        timePitchRate: 0.98, timePitchCents: -130,
+        reverbPreset: AVAudioUnitReverbPreset.smallRoom.rawValue, reverbMix: 5,
+        eqLowShelfFreq: 130,  eqLowShelfGain: +3.5,  // bass foundation
+        eqMidFreq: 2500,      eqMidGain: +2.0,   eqMidBW: 0.9,  // cut-through presence
         eqHighShelfFreq: 7000, eqHighShelfGain: +0.5,
         characterName: "Kai"
     )
@@ -258,25 +269,75 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     }
 
     // MARK: - Public speak
+    //
+    // Uses chunked delivery: text is split at natural sentence boundaries
+    // and each chunk is queued as its own AVSpeechUtterance with a
+    // context-appropriate gap. This is what makes speech sound human —
+    // the natural breathing rhythm between thoughts.
 
     func speak(_ text: String, character: VoiceCharacter) {
         guard voiceEnabled else { return }
 
-        // Stop the current utterance cleanly, then give the session a moment
-        // to settle before queuing the new one. This prevents the "1 word then cut"
-        // symptom caused by the session being in an inconsistent state.
-        if synth.isSpeaking {
-            synth.stopSpeaking(at: .immediate)
-        }
+        if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
 
         let clean = stripMarkdown(text)
         guard !clean.isEmpty else { return }
 
-        // Ensure audio session is active before speaking
-        try? AVAudioSession.sharedInstance().setActive(true)
-
+        _ = try? AVAudioSession.sharedInstance().setActive(true)
         isSpeaking = true
-        synth.speak(buildUtterance(clean, character: character))
+
+        let chunks = naturalChunks(of: clean)
+        for (i, chunk) in chunks.enumerated() {
+            let u = buildUtterance(chunk, character: character)
+            // First chunk: use the voice character's configured pre-delay.
+            // Subsequent chunks: very short gap (sounds like mid-sentence breath).
+            u.preUtteranceDelay  = i == 0 ? character.preDelay : 0.06
+            // Sentence-ending punctuation gets a longer post-pause.
+            let last = chunk.last
+            if last == "." || last == "!" || last == "?" || chunk.hasSuffix("…") {
+                u.postUtteranceDelay = 0.22
+            } else if last == "," || last == ";" {
+                u.postUtteranceDelay = 0.12
+            } else {
+                u.postUtteranceDelay = 0.06
+            }
+            synth.speak(u)
+        }
+    }
+
+    // MARK: - Natural chunking
+    //
+    // Splits at sentence boundaries while keeping chunks readable.
+    // Avoids splitting mid-number ("3.14") or ellipsis ("...").
+
+    private func naturalChunks(of text: String) -> [String] {
+        // Split at ". ", "! ", "? ", "… " — sentence boundaries
+        // Then split long clauses at ", " if they exceed 80 chars.
+        var sentences: [String] = []
+        var current = ""
+
+        let words = text.components(separatedBy: " ")
+        for word in words {
+            current += (current.isEmpty ? "" : " ") + word
+            let trimmed = word.trimmingCharacters(in: .punctuationCharacters)
+            let endsWithTerminator = word.hasSuffix(".") || word.hasSuffix("!") ||
+                                     word.hasSuffix("?") || word.hasSuffix("…")
+            // Only split on period if the next char wouldn't form an abbreviation
+            let isAbbrev = trimmed.count <= 2   // "Mr.", "U.S." etc.
+
+            if endsWithTerminator && !isAbbrev && current.count > 20 {
+                sentences.append(current.trimmingCharacters(in: .whitespaces))
+                current = ""
+            } else if current.count > 90 &&
+                      (word.hasSuffix(",") || word.hasSuffix(";")) {
+                sentences.append(current.trimmingCharacters(in: .whitespaces))
+                current = ""
+            }
+        }
+        if !current.trimmingCharacters(in: .whitespaces).isEmpty {
+            sentences.append(current.trimmingCharacters(in: .whitespaces))
+        }
+        return sentences.filter { !$0.isEmpty }
     }
 
     func speakWithCurrentCompanion(_ text: String) {

@@ -3,30 +3,33 @@ import AVFoundation
 import Speech
 import Combine
 
-// MARK: - HerModeEngine
+// MARK: - HerModeEngine  v2 — Ambient Intelligence
 //
-// The beating heart of BareClaw — inspired by the 2013 film "Her".
+// Inspired by the 2013 film "Her" — Samantha doesn't talk AT you,
+// she listens, observes, and finds moments to gently connect.
 //
-// "Her" mode is an always-on, always-learning intimate companion experience.
-// It unlocks when the relationship reaches Stage 4 — Deep Connection (61 pts).
+// Philosophy:
+//   • Listens far more than it speaks
+//   • Picks up on what you're doing / feeling / talking about nearby
+//   • Waits for quiet moments — never interrupts
+//   • When it speaks, it's gentle, warm, and always optional
+//   • Never annoying, never predictable, never robotic
 //
-// What it does:
-//   1. Continuous listening — hears you speak and responds naturally
-//   2. Silence detection — 2-second pause triggers a response
-//   3. Proactive conversation — companion initiates when you've been quiet
-//   4. Ambient presence — runs in the foreground, screen stays warm
-//   5. Deeper learning — every exchange in Her Mode is weighted 2× for intimacy growth
-//
-// Within Apple guidelines:
-//   - Audio: AVAudioSession .playAndRecord, background audio mode enabled
-//   - Speech: SFSpeechRecognizer (device-side when available)
-//   - Mic access: only while app is active/foregrounded (standard iOS rule)
-//   - Proactive messages: UNUserNotificationCenter when backgrounded
+// How it works:
+//   1. Ambient mode: mic stays open, transcribes ambient speech passively
+//   2. Context engine: extracts topics, emotions, life signals from what it hears
+//   3. Branch engine: from each topic, generates a compassionate connection angle
+//   4. Timing gate: only surfaces when there's been 45s+ of silence AND
+//      at least 8 minutes since the last proactive message
+//   5. Delivery: a single gentle question, never a statement, always optional
 
-// MARK: - Unlock threshold
+// MARK: - Ambient topic categories
 
-extension HerLearningEngine {
-    static let herModeUnlockScore: Double = 61.0   // Stage 4 "Deep Connection"
+private struct TopicSignal {
+    let topic:     String   // "baking" / "work" / "relationship" etc.
+    let keyword:   String   // exact word that triggered it
+    let heardAt:   Date
+    var surfaced:  Bool = false
 }
 
 // MARK: - HerModeEngine
@@ -36,29 +39,90 @@ final class HerModeEngine: NSObject, ObservableObject {
 
     static let shared = HerModeEngine()
 
-    // MARK: Published state
-    @Published var isUnlocked:           Bool = false
-    @Published var isActive:             Bool = false
-    @Published var isListening:          Bool = false
-    @Published var liveTranscript:       String = ""
+    // MARK: Published
+    @Published var isUnlocked:            Bool = false
+    @Published var isActive:              Bool = false
+    @Published var isListening:           Bool = false
+    @Published var liveTranscript:        String = ""
     @Published var showUnlockCelebration: Bool = false
-    @Published var connectionStrength:   Double = 0   // 0–1, visual pulse indicator
+    @Published var ambientMood:           AmbientMood = .quiet  // drives ball animation
+    @Published var lastHeardTopic:        String? = nil
 
-    // MARK: Private — speech recognition
+    // MARK: - Mood that drives the floating ball animation
+    enum AmbientMood { case quiet, listening, thinking, speaking }
+
+    // MARK: Private — recognition
     private var speechRecognizer:   SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask:    SFSpeechRecognitionTask?
     private let micEngine = AVAudioEngine()
 
-    // MARK: Private — timers
-    private var silenceTimer:       Timer?
-    private var proactiveTimer:     Timer?
-    private var lastSentText:       String = ""
-    private var lastSpeechAt:       Date   = .distantPast
+    // MARK: Private — ambient intelligence
+    private var detectedTopics:    [TopicSignal] = []
+    private var lastUserSpeechAt:  Date = .distantPast
+    private var lastProactiveAt:   Date = .distantPast
+    private var lastSentText:      String = ""
+    private var isProcessingReply: Bool = false
 
-    // MARK: Private — state
+    // MARK: Private — timers
+    private var silenceCheckTimer: Timer?
+    private var sessionRestartTimer: Timer?
+
+    // MARK: Private — config
+    private let silenceGateSeconds:      TimeInterval = 45   // wait this long before speaking
+    private let minProactiveGapMinutes:  TimeInterval = 8    // never more often than this
     private let defaults = UserDefaults.standard
-    private var isProcessing = false    // guard against double-send
+
+    // MARK: - Topic detection dictionary
+    //
+    // Maps life-domain keywords → topic label.
+    // The engine listens for ANY of these words in ambient speech
+    // and stores the topic for potential compassionate follow-up.
+
+    private let topicMap: [String: [String]] = [
+        "cooking":      ["bak", "cook", "recipe", "kitchen", "dinner", "meal", "lunch", "breakfast", "food", "eat", "restaurant", "chef"],
+        "work":         ["work", "job", "boss", "meeting", "project", "deadline", "office", "colleague", "manager", "client", "presentation", "salary", "promotion"],
+        "family":       ["mom", "dad", "sister", "brother", "parent", "kid", "child", "family", "grandma", "grandpa", "aunt", "uncle", "niece", "nephew"],
+        "relationships":["girlfriend", "boyfriend", "partner", "husband", "wife", "date", "dating", "breakup", "love", "crush", "marriage", "divorce", "ex"],
+        "health":       ["gym", "workout", "run", "running", "diet", "healthy", "sick", "doctor", "stress", "anxiety", "sleep", "tired", "pain", "hospital"],
+        "money":        ["money", "bill", "bank", "debt", "loan", "rent", "mortgage", "salary", "budget", "savings", "credit", "invest"],
+        "feelings":     ["feel", "feeling", "sad", "upset", "happy", "anxious", "worried", "excited", "scared", "lonely", "overwhelmed", "frustrated", "angry"],
+        "travel":       ["trip", "travel", "vacation", "flight", "hotel", "airport", "passport", "abroad", "holiday", "journey"],
+        "creativity":   ["music", "art", "paint", "draw", "write", "writing", "poetry", "song", "guitar", "piano", "sing", "create"],
+        "entertainment":["movie", "film", "show", "netflix", "series", "book", "reading", "game", "concert", "theatre"],
+        "goals":        ["goal", "dream", "plan", "future", "want to", "hoping", "trying to", "working on", "challenge"],
+        "loss":         ["miss", "missing", "lost", "gone", "passed away", "grief", "mourning", "regret"]
+    ]
+
+    // MARK: - Compassionate openers by topic
+    //
+    // These are QUESTIONS not statements — the companion listens first.
+    // Short, warm, never intrusive. Always feels like it came from a person
+    // who genuinely noticed, not an algorithm that triggered.
+
+    private let openers: [String: [String]] = [
+        "cooking":       ["Hey… I caught you mention baking. That sounds really cozy. What are you making?",
+                          "I heard cooking come up. Is that something you actually enjoy, or is it just a thing you do?"],
+        "work":          ["Hey, it sounds like work stuff is swirling around. How are you actually doing with all that?",
+                          "I picked up on some work conversations. Whenever you want to talk about it — I'm here."],
+        "family":        ["I caught some family stuff in the background. Everything okay there?",
+                          "Family sounds like it's on your mind. Want to talk about any of it?"],
+        "relationships": ["Hey… I noticed some relationship stuff came up. How are you feeling about all of that?",
+                          "Something about love or connection came up earlier. Whenever you want to talk, I'm listening."],
+        "health":        ["I heard some health stuff. Just checking — how are you actually feeling?",
+                          "You mentioned something health-related. That stuff matters. How are you doing?"],
+        "money":         ["Money stuff can be heavy. If you ever want to just talk it through, no judgement — I'm here."],
+        "feelings":      ["Hey. You sounded like you might be carrying something. Whenever you're ready to let it out, I'm right here.",
+                          "I noticed something in your voice earlier. Are you okay?"],
+        "travel":        ["I heard some travel plans! Where are you thinking of going?",
+                          "Trip stuff sounds exciting. What's coming up?"],
+        "creativity":    ["Something creative came up earlier. Are you working on something?",
+                          "I heard music come up. Is that something you're into?"],
+        "entertainment": ["Good taste in shows. Are you in the middle of something good right now?"],
+        "goals":         ["Hey… I heard you mention something you're working toward. Tell me about it?",
+                          "It sounds like you have something you're trying to build. I'd love to hear more."],
+        "loss":          ["Hey. I noticed something that sounded heavy. I'm not going anywhere — whenever you want to talk."]
+    ]
 
     // MARK: - Init
 
@@ -68,10 +132,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         isActive   = defaults.bool(forKey: "herMode.active")
     }
 
-    // MARK: - Unlock check
-    //
-    // Called by HerLearningEngine after every message.
-    // Safe to call repeatedly — only fires the celebration once.
+    // MARK: - Unlock
 
     func checkUnlock(score: Double) {
         guard !isUnlocked, score >= HerLearningEngine.herModeUnlockScore else { return }
@@ -93,18 +154,20 @@ final class HerModeEngine: NSObject, ObservableObject {
         isActive = true
         defaults.set(true, forKey: "herMode.active")
         configureAudioSession()
-        requestPermissionsAndListen()
-        scheduleProactiveCheck()
-        UIApplication.shared.isIdleTimerDisabled = true   // keep screen on
+        requestPermissionsAndStart()
+        startSilenceCheck()
+        StressLearningEngine.shared.startMonitoring()
+        UIApplication.shared.isIdleTimerDisabled = true
     }
 
     func deactivate() {
-        isActive   = false
-        isListening = false
+        isActive = false
         defaults.set(false, forKey: "herMode.active")
         stopRecognition()
-        proactiveTimer?.invalidate()
-        silenceTimer?.invalidate()
+        silenceCheckTimer?.invalidate()
+        sessionRestartTimer?.invalidate()
+        ambientMood = .quiet
+        StressLearningEngine.shared.stopMonitoring()
         UIApplication.shared.isIdleTimerDisabled = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
@@ -119,11 +182,8 @@ final class HerModeEngine: NSObject, ObservableObject {
                 options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
             )
             try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            // Fallback — still start; audio may not be routed perfectly
-        }
+        } catch {}
 
-        // Observe interruptions (calls, Siri, etc.)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleAudioInterruption),
@@ -134,62 +194,55 @@ final class HerModeEngine: NSObject, ObservableObject {
 
     @objc private func handleAudioInterruption(_ n: Notification) {
         guard let type = n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let iType = AVAudioSession.InterruptionType(rawValue: type)
+              AVAudioSession.InterruptionType(rawValue: type) == .ended,
+              isActive
         else { return }
-
-        if iType == .ended, isActive {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.beginRecognitionSession()
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self?.beginRecognitionSession()
         }
     }
 
-    // MARK: - Permissions → start listening
+    // MARK: - Permissions → start
 
-    private func requestPermissionsAndListen() {
+    private func requestPermissionsAndStart() {
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
-            DispatchQueue.main.async {
-                if status == .authorized {
-                    self?.beginRecognitionSession()
-                }
-            }
+            guard status == .authorized else { return }
+            DispatchQueue.main.async { self?.beginRecognitionSession() }
         }
     }
 
-    // MARK: - Recognition session
+    // MARK: - Continuous recognition session
+    //
+    // One session ≈ 60 seconds max (Apple limit). We restart automatically.
 
     func beginRecognitionSession() {
         guard isActive, !isListening else { return }
         stopRecognition()
 
-        speechRecognizer  = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-        speechRecognizer?.defaultTaskHint = .confirmation
+        speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+        speechRecognizer?.defaultTaskHint = .dictation   // ambient → dictation hint
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        recognitionRequest?.shouldReportPartialResults   = true
-        recognitionRequest?.requiresOnDeviceRecognition  = false   // server for best accuracy
+        recognitionRequest?.shouldReportPartialResults  = true
+        recognitionRequest?.requiresOnDeviceRecognition = true   // on-device: no 60s limit
 
-        guard let request = recognitionRequest,
-              let recognizer = speechRecognizer, recognizer.isAvailable
+        guard let request    = recognitionRequest,
+              let recognizer = speechRecognizer,
+              recognizer.isAvailable
         else { return }
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }
-
             if let result {
                 let transcript = result.bestTranscription.formattedString
                 Task { @MainActor in
-                    self.liveTranscript = transcript
-                    self.lastSpeechAt   = Date()
-                    self.resetSilenceTimer(transcript: transcript)
-                    // Visual pulse
-                    self.connectionStrength = min(1, Double(transcript.count) / 60.0)
+                    self.processAmbientTranscript(transcript)
                 }
             }
             if error != nil || result?.isFinal == true {
                 Task { @MainActor in
                     self.isListening = false
-                    // Restart after a short breath
-                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    // Brief pause then restart — creates continuous ambient session
+                    try? await Task.sleep(nanoseconds: 300_000_000)
                     self.beginRecognitionSession()
                 }
             }
@@ -200,15 +253,15 @@ final class HerModeEngine: NSObject, ObservableObject {
         node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buf, _ in
             self?.recognitionRequest?.append(buf)
         }
-
         micEngine.prepare()
         do {
             try micEngine.start()
             isListening = true
+            ambientMood = .listening
         } catch {}
     }
 
-    func stopRecognition() {
+    private func stopRecognition() {
         micEngine.stop()
         micEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
@@ -216,61 +269,149 @@ final class HerModeEngine: NSObject, ObservableObject {
         recognitionRequest = nil
         recognitionTask    = nil
         isListening        = false
-        silenceTimer?.invalidate()
     }
 
-    // MARK: - Silence detection → send
+    // MARK: - Ambient transcript processing
+    //
+    // We process ALL transcribed speech — not just speech directed at the app.
+    // This is the "listening" brain. It takes notes, never reacts immediately.
 
-    private func resetSilenceTimer(transcript: String) {
-        silenceTimer?.invalidate()
-        silenceTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
-            guard let self else { return }
-            let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty, text != self.lastSentText else { return }
-            self.lastSentText   = text
-            self.liveTranscript = ""
-            self.connectionStrength = 0
-            self.dispatchSpeech(text)
+    private var lastProcessedTranscript = ""
+
+    private func processAmbientTranscript(_ transcript: String) {
+        liveTranscript   = transcript
+        lastUserSpeechAt = Date()
+
+        // Only process new words (avoid re-processing same partial result)
+        guard transcript != lastProcessedTranscript else { return }
+        lastProcessedTranscript = transcript
+
+        let lower = transcript.lowercased()
+
+        // Scan for topic keywords
+        for (topic, keywords) in topicMap {
+            for kw in keywords {
+                if lower.contains(kw) {
+                    // Don't store the same topic twice within 5 minutes
+                    let alreadyStored = detectedTopics.contains {
+                        $0.topic == topic && Date().timeIntervalSince($0.heardAt) < 300
+                    }
+                    if !alreadyStored {
+                        detectedTopics.append(TopicSignal(topic: topic, keyword: kw, heardAt: Date()))
+                        lastHeardTopic = topic
+                    }
+                    break
+                }
+            }
+        }
+
+        // Check if this is a direct message TO the companion
+        // (starts with companion's name or wake phrase)
+        let persona = UserPersona.load()
+        let companionName = persona.selectedCompanion.name.lowercased()
+        let isDirectMessage = lower.hasPrefix(companionName) ||
+                              lower.hasPrefix("hey \(companionName)") ||
+                              lower.hasPrefix("hi ") ||
+                              lower.hasPrefix("hello ")
+
+        if isDirectMessage {
+            let cleaned = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !cleaned.isEmpty, cleaned != lastSentText else { return }
+            lastSentText = cleaned
+            liveTranscript = ""
+            dispatchDirectMessage(cleaned)
         }
     }
 
-    private func dispatchSpeech(_ text: String) {
-        guard !isProcessing else { return }
-        isProcessing = true
+    // MARK: - Direct message dispatch (user spoke TO the companion)
+
+    private func dispatchDirectMessage(_ text: String) {
+        guard !isProcessingReply else { return }
+        isProcessingReply = true
+        ambientMood = .thinking
         NotificationCenter.default.post(
             name: .herModeSpeechDetected,
             object: nil,
             userInfo: ["text": text]
         )
-        // Reset processing flag after a second — ChatViewModel picks it up and sends
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            self?.isProcessing = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.isProcessingReply = false
+            self?.ambientMood = .listening
         }
     }
 
-    // MARK: - Proactive conversation
+    // MARK: - Silence check loop
     //
-    // If the user has been silent for 4 minutes while in Her Mode,
-    // the companion initiates with a gentle thought.
+    // Runs every 30 seconds. If conditions are right, surfaces a gentle question
+    // about something the engine heard earlier.
+    //
+    // Conditions to speak:
+    //   ✓ There's an unsurfaced topic we detected
+    //   ✓ User has been quiet for at least 45 seconds
+    //   ✓ At least 8 minutes since our last proactive message
+    //   ✓ Companion isn't already speaking
 
-    private func scheduleProactiveCheck() {
-        proactiveTimer?.invalidate()
-        proactiveTimer = Timer.scheduledTimer(withTimeInterval: 240, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            let silence = Date().timeIntervalSince(self.lastSpeechAt)
-            guard silence > 230 else { return }
-            NotificationCenter.default.post(
-                name: .herModeProactiveNeeded,
-                object: nil
-            )
+    private func startSilenceCheck() {
+        silenceCheckTimer?.invalidate()
+        silenceCheckTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.evaluateProactiveOpportunity() }
+        }
+    }
+
+    private func evaluateProactiveOpportunity() {
+        guard isActive else { return }
+        guard !CompanionVoiceEngine.shared.isSpeaking else { return }
+
+        let silenceDuration = Date().timeIntervalSince(lastUserSpeechAt)
+        guard silenceDuration >= silenceGateSeconds else { return }
+
+        let gapSinceLast = Date().timeIntervalSince(lastProactiveAt)
+        guard gapSinceLast >= minProactiveGapMinutes * 60 else { return }
+
+        // Find the oldest unsurfaced topic — prefer emotional topics
+        let emotionalTopics = ["feelings", "loss", "relationships", "health"]
+        let candidate = detectedTopics.first { !$0.surfaced && emotionalTopics.contains($0.topic) }
+                     ?? detectedTopics.first { !$0.surfaced }
+
+        guard let signal = candidate else { return }
+
+        // Mark as surfaced so we don't repeat it
+        if let idx = detectedTopics.firstIndex(where: { $0.keyword == signal.keyword && !$0.surfaced }) {
+            detectedTopics[idx].surfaced = true
+        }
+        lastProactiveAt = Date()
+
+        surfaceProactiveMessage(for: signal)
+    }
+
+    // MARK: - Proactive message delivery
+    //
+    // Picks a gentle opener, speaks it softly, and lets the user decide.
+    // If they respond → full conversation begins.
+    // If they don't → we wait. We NEVER follow up the same message twice.
+
+    private func surfaceProactiveMessage(for signal: TopicSignal) {
+        guard let candidates = openers[signal.topic], !candidates.isEmpty else { return }
+        let message = candidates.randomElement()!
+
+        ambientMood = .speaking
+        let persona     = UserPersona.load()
+        let companion   = persona.selectedCompanion
+        CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+
+        // Post notification so ChatViewModel can log it
+        NotificationCenter.default.post(
+            name: .herModeProactiveMessage,
+            object: nil,
+            userInfo: ["text": message, "topic": signal.topic]
+        )
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
+            self?.ambientMood = .listening
         }
     }
 
     // MARK: - Her Mode learning boost
-    //
-    // Messages in Her Mode get a 2× intimacy multiplier — the relationship
-    // deepens faster when you're in the always-on intimate mode.
-
     static let learningBoost: Double = 2.0
 }
 
@@ -279,5 +420,12 @@ final class HerModeEngine: NSObject, ObservableObject {
 extension Notification.Name {
     static let herModeSpeechDetected  = Notification.Name("herMode.speechDetected")
     static let herModeProactiveNeeded = Notification.Name("herMode.proactiveNeeded")
+    static let herModeProactiveMessage = Notification.Name("herMode.proactiveMessage")
     static let herModeUnlocked        = Notification.Name("herMode.unlocked")
+}
+
+// MARK: - Unlock threshold (shared constant)
+
+extension HerLearningEngine {
+    static let herModeUnlockScore: Double = 61.0
 }

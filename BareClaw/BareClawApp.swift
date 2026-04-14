@@ -50,6 +50,7 @@ final class AppState: ObservableObject {
 
 struct RootView: View {
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var herMode = HerModeEngine.shared
 
     var body: some View {
         Group {
@@ -64,6 +65,18 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.4), value: appState.onboardingComplete)
+        // ── Floating Her Mode bear ball ──────────────────────────────
+        // Rendered above all content when Her Mode is unlocked.
+        // Visibility and position are fully managed by HerModeBallView.
+        .overlay(alignment: .topLeading) {
+            if herMode.isUnlocked {
+                HerModeBallView()
+                    .ignoresSafeArea()
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
+                    .animation(.spring(response: 0.4, dampingFraction: 0.7),
+                               value: herMode.isUnlocked)
+            }
+        }
         .task {
             await HermesSessionState.shared.loadFromDisk()
             await HermesPrivacyGate.shared.configureHermesIfReady()
