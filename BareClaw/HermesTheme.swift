@@ -113,6 +113,12 @@ struct BCAccentBadge: ViewModifier {
 extension View {
     func bcCard() -> some View { modifier(BCCardStyle()) }
     func bcBadge(_ color: Color = .BC.accent) -> some View { modifier(BCAccentBadge(color: color)) }
+
+    /// Conditionally applies a transform — used to toggle clipShape and other modifiers.
+    @ViewBuilder
+    func applyIf<T: View>(_ condition: Bool, transform: (Self) -> T) -> some View {
+        if condition { transform(self) } else { self }
+    }
 }
 
 // MARK: - Hex colour convenience

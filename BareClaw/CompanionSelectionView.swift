@@ -121,6 +121,9 @@ private struct FilterPill: View {
 }
 
 // MARK: - CompanionCard
+//
+// Full-portrait photo-card design. The illustrated portrait fills the
+// entire card; name, tagline and tags overlay a bottom gradient.
 
 private struct CompanionCard: View {
     let companion: CompanionPersonality
@@ -130,91 +133,104 @@ private struct CompanionCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 0) {
+            ZStack(alignment: .bottom) {
 
-                // Avatar area
-                ZStack(alignment: .bottomLeading) {
-                    CompanionAvatarView(companion: companion, size: .card)
-                        .frame(height: 160)
-                        .clipped()
-                        .opacity(isFeaturedForMode ? 1 : 0.72)
+                // ── Full-card portrait ─────────────────────────────────
+                IllustratedPortraitView(
+                    gender:       companion.gender,
+                    companionId:  companion.id,
+                    accentColor:  companion.accentColor,
+                    size:         220,
+                    clipToCircle: false
+                )
+                .frame(height: 240)
+                .clipped()
+                .opacity(isFeaturedForMode ? 1.0 : 0.88)
 
-                    // Gender badge
-                    Text(companion.genderLabel)
-                        .font(BCFont.caption(10))
-                        .foregroundColor(.white.opacity(0.85))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.black.opacity(0.45))
-                        .cornerRadius(6)
-                        .padding(8)
+                // ── Bottom info gradient overlay ───────────────────────
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.72)],
+                    startPoint: .center,
+                    endPoint:   .bottom
+                )
+                .frame(height: 240)
 
-                    // Featured badge (top-right)
-                    if isFeaturedForMode {
-                        VStack {
-                            HStack {
-                                Spacer()
-                                Text("★ Best match")
-                                    .font(BCFont.caption(9))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 3)
-                                    .background(companion.accentColor.opacity(0.9))
-                                    .cornerRadius(5)
-                                    .padding(6)
-                            }
-                            Spacer()
-                        }
-                    }
-                }
-
-                // Info area
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
+                // ── Info text ─────────────────────────────────────────
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline) {
                         Text(companion.name)
-                            .font(BCFont.headline())
-                            .foregroundColor(.BC.textPrimary)
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
                         Spacer()
                         if isSelected {
                             Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16))
                                 .foregroundColor(companion.accentColor)
                                 .transition(.scale.combined(with: .opacity))
                         }
                     }
-                    Text(companion.tagline)
-                        .font(BCFont.body(12))
-                        .foregroundColor(.BC.textSecondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
 
-                    // Personality tags
+                    Text(companion.tagline)
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundColor(.white.opacity(0.82))
+                        .lineLimit(2)
+
                     HStack(spacing: 4) {
                         ForEach(companion.personalityTags.prefix(2), id: \.self) { tag in
                             Text(tag)
-                                .font(BCFont.caption(10))
+                                .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(companion.accentColor)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 3)
-                                .background(companion.accentColor.opacity(0.15))
+                                .background(companion.accentColor.opacity(0.22))
                                 .cornerRadius(4)
                         }
                     }
-                    .padding(.top, 2)
                 }
                 .padding(12)
-                .background(Color.BC.surfaceRaised)
+
+                // ── Top badges ────────────────────────────────────────
+                VStack {
+                    HStack {
+                        Text(companion.genderLabel)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.88))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(6)
+                        Spacer()
+                        if isFeaturedForMode {
+                            Text("★ Best match")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(companion.accentColor.opacity(0.88))
+                                .cornerRadius(6)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(8)
             }
-            .cornerRadius(BCSizing.radiusMD)
+            .frame(height: 240)
+            .cornerRadius(BCSizing.radiusLG)
             .overlay(
-                RoundedRectangle(cornerRadius: BCSizing.radiusMD)
+                RoundedRectangle(cornerRadius: BCSizing.radiusLG)
                     .strokeBorder(
-                        isSelected ? companion.accentColor : Color.BC.border,
-                        lineWidth: isSelected ? 2 : 1
+                        isSelected ? companion.accentColor : Color.clear,
+                        lineWidth: 2.5
                     )
             )
-            .scaleEffect(isSelected ? 1.02 : 1)
-            .shadow(color: isSelected ? companion.accentColor.opacity(0.25) : .clear, radius: 8, y: 4)
+            .scaleEffect(isSelected ? 1.02 : 1.0)
+            .shadow(
+                color: isSelected ? companion.accentColor.opacity(0.35) : .black.opacity(0.22),
+                radius: isSelected ? 10 : 5, y: 4
+            )
+            .animation(.spring(response: 0.28), value: isSelected)
         }
+        .buttonStyle(.plain)
     }
 }
 

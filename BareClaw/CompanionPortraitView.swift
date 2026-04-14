@@ -159,10 +159,11 @@ struct CompanionPortraitView: View {
 // MARK: - IllustratedPortraitView
 
 struct IllustratedPortraitView: View {
-    let gender:      CompanionGender
-    let companionId: String
-    let accentColor: Color
-    let size:        CGFloat
+    let gender:       CompanionGender
+    let companionId:  String
+    let accentColor:  Color
+    let size:         CGFloat
+    var clipToCircle: Bool = true
 
     private var style: PortraitStyle { PortraitStyle.style(for: companionId) }
 
@@ -193,7 +194,7 @@ struct IllustratedPortraitView: View {
             .frame(width: size, height: size)
         }
         .frame(width: size, height: size)
-        .clipShape(Circle())
+        .applyIf(clipToCircle) { $0.clipShape(Circle()) }
     }
 
     // ─────────────────────────────────────────────────────────────────
