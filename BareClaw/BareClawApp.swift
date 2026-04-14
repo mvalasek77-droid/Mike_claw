@@ -14,7 +14,6 @@ struct BareClawApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(appState)
-                .preferredColorScheme(.dark)
         }
     }
 }
@@ -46,9 +45,8 @@ final class AppState: ObservableObject {
 // MARK: - RootView
 //
 // State machine:
-//   onboardingComplete == false  → OnboardingView   (pick name, companion, permissions)
-//   currentMode == .chat         → ChatView          (text chat)
-//   currentMode == .video        → CompanionTikTokView (full-screen TikTok-style companion)
+//   onboardingComplete == false  → CompanionOnboardingView
+//   onboardingComplete == true   → MainTabView (Home | Chat | Vibes | You)
 
 struct RootView: View {
     @EnvironmentObject private var appState: AppState
@@ -59,16 +57,12 @@ struct RootView: View {
                 CompanionOnboardingView()
                     .environmentObject(appState)
                     .transition(.opacity)
-            } else if appState.currentMode == .chat {
-                ChatView()
-                    .transition(.opacity)
             } else {
-                CompanionTikTokView()
+                MainTabView()
                     .environmentObject(appState)
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.35), value: appState.currentMode)
         .animation(.easeInOut(duration: 0.4), value: appState.onboardingComplete)
         .task {
             await HermesSessionState.shared.loadFromDisk()
