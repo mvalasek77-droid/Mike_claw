@@ -106,7 +106,7 @@ struct CompanionOnboardingView: View {
             // Burn the user's name into memory at the highest importance level so
             // it is never evicted and is always available to personalise responses.
             if !nameToSave.isEmpty {
-                try? await HermesMemory.shared.observe(
+                _ = try? await HermesMemory.shared.observe(
                     category: "core_identity",
                     content: ["key": "name", "value": nameToSave],
                     metadata: ["importance": 10, "permanent": true, "source": "onboarding"]

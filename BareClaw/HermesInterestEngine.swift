@@ -66,7 +66,7 @@ actor HermesInterestEngine {
             content: content,
             trigger: trigger
         )
-        try? await UNUserNotificationCenter.current().add(request)
+        _ = try? await UNUserNotificationCenter.current().add(request)
     }
 
     private func notificationHour(for category: Interest.Category) -> Int {

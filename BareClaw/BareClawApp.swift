@@ -90,7 +90,7 @@ struct RootView: View {
                 HermesDreamEngine.shared.scheduleNextDream()
                 await HermesKairos.shared.pause()
                 // Flush all memory to disk before the app is suspended
-                try? await HermesMemory.shared.persistNow()
+                _ = try? await HermesMemory.shared.persistNow()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in

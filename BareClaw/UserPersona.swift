@@ -342,7 +342,7 @@ final class UserPersona: ObservableObject, Codable {
         save()
         // Also write to Hermes long-term memory
         Task {
-            try? await HermesMemory.shared.observe(
+            _ = try? await HermesMemory.shared.observe(
                 category: "user_fact",
                 content: ["key": key, "value": value],
                 metadata: ["importance": 5]

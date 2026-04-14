@@ -358,9 +358,9 @@ actor HermesMemory {
     private func schedulePersist() {
         pendingPersistTask?.cancel()
         pendingPersistTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(2_000_000_000))
+            _ = try? await Task.sleep(nanoseconds: UInt64(2_000_000_000))
             guard !Task.isCancelled, let self else { return }
-            try? await self.persistNow()
+            _ = try? await self.persistNow()
         }
     }
 

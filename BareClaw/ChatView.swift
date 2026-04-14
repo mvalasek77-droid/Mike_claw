@@ -260,7 +260,7 @@ final class ChatViewModel: ObservableObject {
         // Refresh suggestions in background
         suggestionTask?.cancel()
         suggestionTask = Task {
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            _ = try? await Task.sleep(nanoseconds: 1_000_000_000)
             await refreshSuggestions()
         }
     }
@@ -1490,7 +1490,7 @@ struct SettingsView: View {
         // Burn the updated name into memory at highest importance so it
         // propagates into every future LLM system prompt immediately.
         Task {
-            try? await HermesMemory.shared.observe(
+            _ = try? await HermesMemory.shared.observe(
                 category: "core_identity",
                 content: ["key": "name", "value": trimmed],
                 metadata: ["importance": 10, "permanent": true, "source": "settings_edit"]

@@ -294,7 +294,7 @@ actor HerLearningEngine {
             content: content,
             trigger: trigger
         )
-        try? await UNUserNotificationCenter.current().add(request)
+        _ = try? await UNUserNotificationCenter.current().add(request)
     }
 
     // MARK: - Emotional pattern detection

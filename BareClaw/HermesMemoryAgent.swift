@@ -52,7 +52,7 @@ actor HermesMemoryAgent {
         // 2. Persist detected emotion to LearningEngine
         if emotion != .neutral {
             await learning.updateCurrentEmotion(emotion)
-            try? await memory.observe(
+            _ = try? await memory.observe(
                 category: "emotion_state",
                 content: ["emotion": emotion.rawValue,
                           "trigger": String(user.prefix(120))],
@@ -61,14 +61,14 @@ actor HermesMemoryAgent {
         }
 
         // 3. Save the exchange itself
-        try? await memory.observe(
+        _ = try? await memory.observe(
             category: "chat_exchange",
             content: ["user": user, "assistant": String(assistant.prefix(400))],
             metadata: ["importance": 2]
         )
 
         // 4. Flush to disk immediately so state survives a crash
-        try? await memory.persistNow()
+        _ = try? await memory.persistNow()
     }
 
     // MARK: - .recent mode

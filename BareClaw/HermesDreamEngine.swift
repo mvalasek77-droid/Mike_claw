@@ -264,7 +264,7 @@ final class HermesDreamEngine {
                 }
 
                 if !superseded.isEmpty {
-                    try? await memory.updateBatch(superseded)
+                    _ = try? await memory.updateBatch(superseded)
                     resolved += superseded.count
                 }
             }

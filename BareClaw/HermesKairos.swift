@@ -110,7 +110,7 @@ actor HermesKairos {
         // Bug fix #3: store the task so pause() can cancel it.
         loopTask = Task { [weak self] in
             // Poll every 5 s; fire the full observation when idle budget is met
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            _ = try? await Task.sleep(nanoseconds: 5_000_000_000)
             guard !Task.isCancelled, let self, await self.isRunning else { return }
             await self.tick()
             await self.scheduleNextCheck()

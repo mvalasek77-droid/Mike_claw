@@ -93,11 +93,13 @@ actor HermesAutomation {
         saveSpending()
 
         // Also write to Hermes memory so AI can reference it
-        try? await HermesMemory.shared.observe(
-            category: "spending",
-            content: ["amount": amount, "category": category.rawValue, "merchant": merchant],
-            metadata: ["importance": 2]
-        )
+        do {
+            try await HermesMemory.shared.observe(
+                category: "spending",
+                content: ["amount": amount, "category": category.rawValue, "merchant": merchant],
+                metadata: ["importance": 2]
+            )
+        } catch {}
     }
 
     /// Summary for the LLM to reference — totals by category for the current month.
@@ -166,7 +168,7 @@ actor HermesAutomation {
                 content: content,
                 trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
             )
-            try? await UNUserNotificationCenter.current().add(req)
+            _ = try? await UNUserNotificationCenter.current().add(req)
         case .customPrompt:
             break // handled in ChatViewModel
         }
