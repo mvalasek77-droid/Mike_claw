@@ -988,55 +988,70 @@ struct InputBar: View {
     let onSend: () -> Void
     @FocusState private var focused: Bool
 
+    private let green  = Color(hex: "#1E3932")
+    private let gold   = Color(hex: "#CBA258")
+    private let cream  = Color(hex: "#F2F0EB")
+    private let border = Color(hex: "#D5CFC6")
+
+    private var isEmpty: Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
+            // ── Text field ────────────────────────────────────────────
             ZStack(alignment: .leading) {
                 if text.isEmpty {
                     Text("Message \(Image(systemName: "pawprint.fill"))…")
                         .font(BCFont.body())
-                        .foregroundColor(Color.BC.secondaryText.opacity(0.6))
+                        .foregroundColor(Color(hex: "#9A9288"))
                         .padding(.horizontal, 14)
                 }
                 TextField("", text: $text, axis: .vertical)
                     .font(BCFont.body())
-                    .foregroundColor(Color.BC.primaryText)
+                    .foregroundColor(green)
                     .lineLimit(1...5)
                     .padding(.horizontal, 14)
                     .focused($focused)
                     .submitLabel(.send)
                     .onSubmit {
-                        if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            onSend()
-                        }
+                        if !isEmpty { onSend() }
                     }
             }
             .frame(minHeight: 44)
-            .background(Color.BC.surface)
+            .background(cream)
             .clipShape(RoundedRectangle(cornerRadius: 22))
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
-                    .strokeBorder(focused ? Color.BC.primary.opacity(0.5) : Color.BC.border, lineWidth: 1)
+                    .strokeBorder(
+                        focused ? green.opacity(0.45) : border,
+                        lineWidth: 1.5
+                    )
             )
 
+            // ── Send button ───────────────────────────────────────────
             Button(action: onSend) {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                     ? Color.BC.secondaryText : Color.BC.background)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.BC.surface
-                        : Color.BC.primary
-                    )
-                    .clipShape(Circle())
+                ZStack {
+                    Circle()
+                        .fill(isEmpty ? Color(hex: "#D5CFC6") : green)
+                        .frame(width: 42, height: 42)
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(isEmpty ? Color(hex: "#9A9288") : gold)
+                }
             }
-            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .animation(.easeInOut(duration: 0.15), value: text)
+            .disabled(isEmpty)
+            .animation(.easeInOut(duration: 0.18), value: isEmpty)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color.BC.background)
+        .background(
+            // Cream bar background with a thin top separator
+            VStack(spacing: 0) {
+                Color(hex: "#D5CFC6").frame(height: 0.5)
+                cream
+            }
+        )
     }
 }
 

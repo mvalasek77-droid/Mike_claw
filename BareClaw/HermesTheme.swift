@@ -12,7 +12,7 @@ import SwiftUI
 // MARK: - Colour palette
 
 extension Color {
-    enum OC {
+    enum BC {
         // Backgrounds
         static let background    = Color(hex: "#0D1117")   // Midnight Navy
         static let surface       = Color(hex: "#161B22")   // Deep Slate
