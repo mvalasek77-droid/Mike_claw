@@ -2,302 +2,318 @@ import SwiftUI
 
 // MARK: - BearLogoView
 //
-// Cute, refined geometric bear head — entirely SwiftUI, no assets.
-// Scales from 24 pt (nav bar) to 512 pt (splash).
-//
-// Design language: soft rounded proportions, big expressive eyes,
-// rose blush, gentle smile — think quality plush toy, not cartoon.
+// Refined geometric bear head. Scales 24 pt → 512 pt.
+// Design: warm golden fur, expressive eyes, rose blush, gentle smile.
 
 struct BearLogoView: View {
     var size: CGFloat = 64
     var showBackground: Bool = true
 
-    // Derived scale helpers
-    private var s: CGFloat { size }
-
     var body: some View {
         ZStack {
             if showBackground {
-                RoundedRectangle(cornerRadius: s * 0.22)
+                RoundedRectangle(cornerRadius: size * 0.22)
                     .fill(LinearGradient(
-                        colors: [Color(hex: "#1C2438"),
-                                 Color(hex: "#0D1117")],
+                        colors: [Color(hex: "#1C2438"), Color(hex: "#0D1117")],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
-                    .shadow(color: (Color(hex: "#FF9F0A")).opacity(0.28),
-                            radius: s * 0.14, y: s * 0.05)
+                    .shadow(color: Color(hex: "#FF9F0A").opacity(0.25),
+                            radius: size * 0.14, y: size * 0.05)
             }
-
-            Canvas { ctx, cs in
-                drawBear(ctx: ctx, size: cs)
-            }
-            .frame(width: s * 0.88, height: s * 0.88)
+            Canvas { ctx, cs in drawBear(ctx: ctx, size: cs) }
+                .frame(width: size * 0.88, height: size * 0.88)
         }
-        .frame(width: s, height: s)
+        .frame(width: size, height: size)
     }
-
-    // MARK: - Bear drawing
 
     private func drawBear(ctx: GraphicsContext, size: CGSize) {
         let w = size.width, h = size.height
 
-        // ── Ear positions ─────────────────────────────────────────────
-        let earR  = w * 0.195
-        let earLX = w * 0.13,  earRX = w * 0.675
-        let earY  = h * 0.045
-
-        // ── Face center ───────────────────────────────────────────────
-        let faceR = w * 0.415
-        let faceX = w * 0.5 - faceR
-        let faceY = h * 0.17
-
-        let furGrad = Gradient(colors: [
-            Color(hex: "#E8A84A"),
-            Color(hex: "#D4862A"),
-            Color(hex: "#C07020")
-        ])
-        let furFill = GraphicsContext.Shading.linearGradient(
-            furGrad,
-            startPoint: CGPoint(x: w * 0.2, y: 0),
-            endPoint:   CGPoint(x: w * 0.8, y: h)
+        let furGrad = GraphicsContext.Shading.linearGradient(
+            Gradient(stops: [
+                .init(color: Color(hex: "#F0B050"), location: 0.0),
+                .init(color: Color(hex: "#D8882C"), location: 0.55),
+                .init(color: Color(hex: "#B86818"), location: 1.0)
+            ]),
+            startPoint: CGPoint(x: w * 0.20, y: 0),
+            endPoint:   CGPoint(x: w * 0.80, y: h)
         )
 
-        // 1. Outer ears (fur)
-        ctx.fill(Path(ellipseIn: CGRect(x: earLX, y: earY, width: earR*2, height: earR*2)), with: furFill)
-        ctx.fill(Path(ellipseIn: CGRect(x: earRX, y: earY, width: earR*2, height: earR*2)), with: furFill)
+        // Ears
+        let earR = w * 0.195
+        for (ex, ey): (CGFloat, CGFloat) in [(w*0.13, h*0.045), (w*0.675, h*0.045)] {
+            ctx.fill(Path(ellipseIn: CGRect(x: ex, y: ey, width: earR*2, height: earR*2)),
+                     with: furGrad)
+            let iR = earR * 0.58
+            ctx.fill(Path(ellipseIn: CGRect(x: ex + (earR - iR), y: ey + (earR - iR) + earR*0.08,
+                                             width: iR*2, height: iR*2)),
+                     with: .color(Color(hex: "#F0A0A8")))
+        }
 
-        // 2. Inner ears (soft rose-pink)
-        let iEarR = earR * 0.58
-        let iEarFill = GraphicsContext.Shading.color(Color(hex: "#F0A0A8"))
-        ctx.fill(Path(ellipseIn: CGRect(
-            x: earLX + (earR - iEarR), y: earY + (earR - iEarR) + earR * 0.08,
-            width: iEarR*2, height: iEarR*2)), with: iEarFill)
-        ctx.fill(Path(ellipseIn: CGRect(
-            x: earRX + (earR - iEarR), y: earY + (earR - iEarR) + earR * 0.08,
-            width: iEarR*2, height: iEarR*2)), with: iEarFill)
+        // Face
+        let fR = w * 0.415, fX = w * 0.5 - fR, fY = h * 0.17
+        ctx.fill(Path(ellipseIn: CGRect(x: fX, y: fY, width: fR*2, height: fR*2)),
+                 with: furGrad)
 
-        // 3. Face circle
-        ctx.fill(Path(ellipseIn: CGRect(x: faceX, y: faceY, width: faceR*2, height: faceR*2)), with: furFill)
-
-        // 4. Snout — creamy oval
-        let snoutW = faceR * 0.72, snoutH = faceR * 0.44
-        let snoutX = w/2 - snoutW/2, snoutY = h * 0.575
-        ctx.fill(Path(ellipseIn: CGRect(x: snoutX, y: snoutY, width: snoutW, height: snoutH)),
+        // Snout
+        let sW = fR * 0.72, sH = fR * 0.44
+        let sX = w/2 - sW/2, sY = h * 0.575
+        ctx.fill(Path(ellipseIn: CGRect(x: sX, y: sY, width: sW, height: sH)),
                  with: .color(Color(hex: "#F5DFA8")))
 
-        // 5. Blush circles (rose, semi-transparent)
-        let blushR = faceR * 0.28
-        let blushY = h * 0.545
-        let blushFill = GraphicsContext.Shading.color((Color(hex: "#F07080")).opacity(0.30))
-        ctx.fill(Path(ellipseIn: CGRect(x: w * 0.155, y: blushY, width: blushR*2, height: blushR*0.7)), with: blushFill)
-        ctx.fill(Path(ellipseIn: CGRect(x: w * 0.645, y: blushY, width: blushR*2, height: blushR*0.7)), with: blushFill)
+        // Blush
+        let bR = fR * 0.28, bY = h * 0.548
+        for bX: CGFloat in [w*0.155, w*0.645] {
+            ctx.fill(Path(ellipseIn: CGRect(x: bX, y: bY, width: bR*2, height: bR*0.70)),
+                     with: .color(Color(hex: "#F07080").opacity(0.28)))
+        }
 
-        // 6. Eyes
-        let eyeW  = faceR * 0.30, eyeH = eyeW * 1.12
-        let eyeY  = h * 0.385
-        let eyeLX = w * 0.285 - eyeW/2
-        let eyeRX = w * 0.715 - eyeW/2
+        // Eyes
+        let eW = fR * 0.30, eH = eW * 1.12, eY = h * 0.388
+        for eX: CGFloat in [w*0.285 - eW/2, w*0.715 - eW/2] {
+            ctx.fill(Path(ellipseIn: CGRect(x: eX - eW*0.04, y: eY - eH*0.04,
+                                             width: eW*1.08, height: eH*1.08)),
+                     with: .color(.white))
+            let irisGrad = GraphicsContext.Shading.radialGradient(
+                Gradient(colors: [Color(hex: "#5C3010"), Color(hex: "#2A1006")]),
+                center: CGPoint(x: eX + eW/2, y: eY + eH*0.46),
+                startRadius: 0, endRadius: eW * 0.50)
+            ctx.fill(Path(ellipseIn: CGRect(x: eX, y: eY, width: eW, height: eH)),
+                     with: irisGrad)
+            let pW = eW * 0.55, pH = eH * 0.62
+            ctx.fill(Path(ellipseIn: CGRect(x: eX + (eW-pW)/2, y: eY + (eH-pH)/2,
+                                             width: pW, height: pH)),
+                     with: .color(Color(hex: "#0E0606")))
+            // sparkle
+            let spk = eW * 0.28
+            ctx.fill(Path(ellipseIn: CGRect(x: eX + eW*0.55, y: eY + eH*0.10,
+                                             width: spk, height: spk)),
+                     with: .color(.white.opacity(0.85)))
+            ctx.fill(Path(ellipseIn: CGRect(x: eX + eW*0.25, y: eY + eH*0.52,
+                                             width: spk*0.44, height: spk*0.44)),
+                     with: .color(.white.opacity(0.48)))
+        }
 
-        // Whites
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeLX - eyeW*0.04, y: eyeY - eyeH*0.04,
-                                         width: eyeW*1.08, height: eyeH*1.08)), with: .color(.white))
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeRX - eyeW*0.04, y: eyeY - eyeH*0.04,
-                                         width: eyeW*1.08, height: eyeH*1.08)), with: .color(.white))
+        // Nose
+        let nW = sW * 0.32, nH = nW * 0.58
+        ctx.fill(Path(ellipseIn: CGRect(x: w/2 - nW/2, y: sY + sH*0.13,
+                                         width: nW, height: nH)),
+                 with: .color(Color(hex: "#200C04")))
 
-        // Irises — warm brown
-        let irisGrad = Gradient(colors: [Color(hex: "#5C3010"), Color(hex: "#3A1C08")])
-        let irisFill = GraphicsContext.Shading.radialGradient(
-            irisGrad, center: CGPoint(x: w*0.285, y: eyeY + eyeH*0.46),
-            startRadius: 0, endRadius: eyeW * 0.5)
-        let irisGrad2 = Gradient(colors: [Color(hex: "#5C3010"), Color(hex: "#3A1C08")])
-        let irisFill2 = GraphicsContext.Shading.radialGradient(
-            irisGrad2, center: CGPoint(x: w*0.715, y: eyeY + eyeH*0.46),
-            startRadius: 0, endRadius: eyeW * 0.5)
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeLX, y: eyeY, width: eyeW, height: eyeH)), with: irisFill)
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeRX, y: eyeY, width: eyeW, height: eyeH)), with: irisFill2)
-
-        // Pupils — deep dark
-        let pupW = eyeW * 0.55, pupH = eyeH * 0.62
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeLX + (eyeW-pupW)/2, y: eyeY + (eyeH-pupH)/2,
-                                         width: pupW, height: pupH)),
-                 with: .color(Color(hex: "#120808")))
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeRX + (eyeW-pupW)/2, y: eyeY + (eyeH-pupH)/2,
-                                         width: pupW, height: pupH)),
-                 with: .color(Color(hex: "#120808")))
-
-        // Sparkle highlights
-        let spkW = eyeW * 0.28
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeLX + eyeW*0.55, y: eyeY + eyeH*0.10, width: spkW, height: spkW)),
-                 with: .color(.white.opacity(0.85)))
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeRX + eyeW*0.55, y: eyeY + eyeH*0.10, width: spkW, height: spkW)),
-                 with: .color(.white.opacity(0.85)))
-        // Tiny second sparkle
-        let spk2 = spkW * 0.45
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeLX + eyeW*0.25, y: eyeY + eyeH*0.52, width: spk2, height: spk2)),
-                 with: .color(.white.opacity(0.50)))
-        ctx.fill(Path(ellipseIn: CGRect(x: eyeRX + eyeW*0.25, y: eyeY + eyeH*0.52, width: spk2, height: spk2)),
-                 with: .color(.white.opacity(0.50)))
-
-        // 7. Nose — cute wide rounded oval
-        let nosW = snoutW * 0.32, nosH = nosW * 0.58
-        ctx.fill(Path(ellipseIn: CGRect(x: w/2 - nosW/2, y: snoutY + snoutH*0.14,
-                                         width: nosW, height: nosH)),
-                 with: .color(Color(hex: "#2A1008")))
-
-        // 8. Smile — two short curved strokes from nose base
+        // Smile
         var smile = Path()
-        // Left curve
-        smile.move(to:    CGPoint(x: w/2 - nosW*0.5, y: snoutY + snoutH*0.40))
-        smile.addCurve(
-            to:       CGPoint(x: w/2 - snoutW*0.28, y: snoutY + snoutH*0.72),
-            control1: CGPoint(x: w/2 - nosW*0.6,    y: snoutY + snoutH*0.60),
-            control2: CGPoint(x: w/2 - snoutW*0.22, y: snoutY + snoutH*0.60)
-        )
-        // Right curve
-        smile.move(to:    CGPoint(x: w/2 + nosW*0.5, y: snoutY + snoutH*0.40))
-        smile.addCurve(
-            to:       CGPoint(x: w/2 + snoutW*0.28, y: snoutY + snoutH*0.72),
-            control1: CGPoint(x: w/2 + nosW*0.6,    y: snoutY + snoutH*0.60),
-            control2: CGPoint(x: w/2 + snoutW*0.22, y: snoutY + snoutH*0.60)
-        )
-        ctx.stroke(smile,
-                   with: .color(Color(hex: "#2A1008")),
-                   style: StrokeStyle(lineWidth: w * 0.025, lineCap: .round))
+        for sign: CGFloat in [-1, 1] {
+            smile.move(to: CGPoint(x: w/2 + sign * nW*0.48, y: sY + sH*0.40))
+            smile.addCurve(
+                to:       CGPoint(x: w/2 + sign * sW*0.28, y: sY + sH*0.72),
+                control1: CGPoint(x: w/2 + sign * nW*0.58, y: sY + sH*0.60),
+                control2: CGPoint(x: w/2 + sign * sW*0.22, y: sY + sH*0.60)
+            )
+        }
+        ctx.stroke(smile, with: .color(Color(hex: "#200C04")),
+                   style: StrokeStyle(lineWidth: w * 0.024, lineCap: .round))
     }
 }
 
-// MARK: - BearClawAppIcon
+// MARK: - BearBadgeView
 //
-// App icon: bear paw / claw as the main element, cute bear face centered
-// inside the palm pad.  Paw = 1 large palm oval + 4 toe ovals + 4 claw tips.
-// Used for Assets.xcassets (render at 1024×1024 and export).
+// Circular Starbucks-siren-style badge. Dark forest-green circle,
+// gold outer ring, "BARECLAW" arced across the top, bear face centred.
+// Use on the home screen or splash as the primary brand mark.
+
+struct BearBadgeView: View {
+    var size: CGFloat = 120
+
+    private let forest = Color(hex: "#1E3932")
+    private let gold   = Color(hex: "#CBA258")
+
+    var body: some View {
+        ZStack {
+            // ── Background circle ──────────────────────────────────────
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color(hex: "#2A4A42"), forest],
+                        center: .init(x: 0.42, y: 0.36),
+                        startRadius: size * 0.05,
+                        endRadius:   size * 0.52
+                    )
+                )
+
+            // ── Outer gold ring ────────────────────────────────────────
+            Circle()
+                .strokeBorder(gold, lineWidth: size * 0.022)
+
+            // ── Inner ring (subtle) ────────────────────────────────────
+            Circle()
+                .strokeBorder(gold.opacity(0.35), lineWidth: size * 0.010)
+                .padding(size * 0.088)
+
+            // ── Decorative side stars ──────────────────────────────────
+            ForEach([(-1.0, 1.0), (1.0, 1.0)], id: \.0) { (sx, _) in
+                Text("✦")
+                    .font(.system(size: size * 0.075, weight: .black))
+                    .foregroundColor(gold.opacity(0.75))
+                    .offset(x: sx * size * 0.34, y: -size * 0.26)
+            }
+
+            // ── "BARECLAW" arc across the top ─────────────────────────
+            arcText("BARECLAW",
+                    radius:   size * 0.355,
+                    spanDeg:  148,
+                    centerDeg: -90,
+                    fontSize: size * 0.092)
+
+            // ── Bear face ──────────────────────────────────────────────
+            BearLogoView(size: size * 0.56, showBackground: false)
+                .offset(y: size * 0.05)
+
+            // ── Bottom paw print dividers ──────────────────────────────
+            HStack(spacing: size * 0.048) {
+                ForEach(0..<3, id: \.self) { _ in
+                    Circle()
+                        .fill(gold.opacity(0.55))
+                        .frame(width: size * 0.030, height: size * 0.030)
+                }
+            }
+            .offset(y: size * 0.38)
+        }
+        .frame(width: size, height: size)
+        .shadow(color: forest.opacity(0.50), radius: size * 0.12, y: size * 0.04)
+    }
+
+    /// Renders each character of `text` along a circular arc.
+    private func arcText(_ text: String,
+                         radius: CGFloat,
+                         spanDeg: Double,
+                         centerDeg: Double,
+                         fontSize: CGFloat) -> some View {
+        let chars = Array(text)
+        let half  = spanDeg / 2
+        let step  = chars.count > 1 ? spanDeg / Double(chars.count - 1) : 0
+        return ZStack {
+            ForEach(0..<chars.count, id: \.self) { i in
+                let deg = centerDeg - half + step * Double(i)
+                Text(String(chars[i]))
+                    .font(.system(size: fontSize, weight: .black, design: .rounded))
+                    .foregroundColor(gold)
+                    .kerning(0.5)
+                    .offset(y: -radius)
+                    .rotationEffect(.degrees(deg + 90))
+            }
+        }
+    }
+}
+
+// MARK: - BearIconView
+//
+// 1024×1024 app icon: bear paw with bear face centred in the palm.
 
 struct BearIconView: View {
     var size: CGFloat = 1024
 
-    private var s: CGFloat { size }
-
     var body: some View {
         ZStack {
-            // Icon background — deep midnight gradient
-            RoundedRectangle(cornerRadius: s * 0.2237)
+            RoundedRectangle(cornerRadius: size * 0.2237)
                 .fill(LinearGradient(
-                    colors: [Color(hex: "#141C2E"),
-                             Color(hex: "#0A0E18")],
+                    colors: [Color(hex: "#141C2E"), Color(hex: "#0A0E18")],
                     startPoint: .top, endPoint: .bottom
                 ))
 
-            // Subtle radial glow behind paw
             RadialGradient(
-                colors: [(Color(hex: "#E8A040")).opacity(0.22), .clear],
+                colors: [Color(hex: "#E8A040").opacity(0.22), .clear],
                 center: .center,
-                startRadius: 0, endRadius: s * 0.42
+                startRadius: 0, endRadius: size * 0.42
             )
-            .clipShape(RoundedRectangle(cornerRadius: s * 0.2237))
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.2237))
 
-            // Paw claw
-            Canvas { ctx, cs in
-                drawPaw(ctx: ctx, size: cs)
-            }
-            .frame(width: s * 0.82, height: s * 0.82)
+            Canvas { ctx, cs in drawPaw(ctx: ctx, size: cs) }
+                .frame(width: size * 0.82, height: size * 0.82)
 
-            // Cute bear face centered in the palm
-            BearLogoView(size: s * 0.33, showBackground: false)
-                .offset(y: s * 0.065)
+            BearLogoView(size: size * 0.33, showBackground: false)
+                .offset(y: size * 0.065)
         }
-        .frame(width: s, height: s)
+        .frame(width: size, height: size)
     }
-
-    // MARK: - Paw drawing
 
     private func drawPaw(ctx: GraphicsContext, size: CGSize) {
         let w = size.width, h = size.height
 
-        let pawGrad = Gradient(stops: [
-            .init(color: Color(hex: "#E8A84A"), location: 0.0),
-            .init(color: Color(hex: "#C87020"),  location: 0.6),
-            .init(color: Color(hex: "#A05818"),  location: 1.0),
-        ])
-        let pawFill = GraphicsContext.Shading.linearGradient(
-            pawGrad,
-            startPoint: CGPoint(x: w * 0.3, y: 0),
-            endPoint:   CGPoint(x: w * 0.7, y: h)
+        let pawGrad = GraphicsContext.Shading.linearGradient(
+            Gradient(stops: [
+                .init(color: Color(hex: "#E8A84A"), location: 0.0),
+                .init(color: Color(hex: "#C87020"), location: 0.6),
+                .init(color: Color(hex: "#A05818"), location: 1.0)
+            ]),
+            startPoint: CGPoint(x: w*0.3, y: 0),
+            endPoint:   CGPoint(x: w*0.7, y: h)
         )
-
-        let clawGrad = Gradient(colors: [
-            Color(hex: "#F0C060"),
-            Color(hex: "#C88020"),
-        ])
-        let clawFill = GraphicsContext.Shading.linearGradient(
-            clawGrad,
+        let clawGrad = GraphicsContext.Shading.linearGradient(
+            Gradient(colors: [Color(hex: "#F0C060"), Color(hex: "#C88020")]),
             startPoint: CGPoint(x: w*0.4, y: 0),
             endPoint:   CGPoint(x: w*0.6, y: h*0.4)
         )
 
-        // ── Toe parameters ─────────────────────────────────────────────
-        // 4 toes arranged in a gentle arc above the palm
-        let toeW  = w * 0.155
-        let toeH  = toeW * 1.15
-        let toeY  = h * 0.095
-
-        // X centres of 4 toes
+        let toeW = w * 0.155, toeH = toeW * 1.15, toeY = h * 0.095
         let toeXs: [CGFloat] = [w*0.195, w*0.370, w*0.630, w*0.805]
-        // Gentle vertical arc: outer toes slightly lower
-        let toeYOffsets: [CGFloat] = [h*0.042, 0, 0, h*0.042]
-
-        // ── Claw tips ──────────────────────────────────────────────────
-        let clawLen = h * 0.115
-        let clawW   = toeW * 0.36
-
-        // Claw angles (outward fan): left, center-left, center-right, right
-        let clawAngles: [Double] = [-38, -14, 14, 38]  // degrees from vertical
+        let toeYO: [CGFloat] = [h*0.042, 0, 0, h*0.042]
+        let clawAngles: [Double] = [-38, -14, 14, 38]
+        let clawLen = h * 0.115, clawW = toeW * 0.36
 
         for (i, cx) in toeXs.enumerated() {
-            let cy = toeY + toeYOffsets[i]
-            let angle = clawAngles[i] * .pi / 180
-            let tipX = cx + CGFloat(sin(angle)) * clawLen
-            let tipY = cy - CGFloat(cos(angle)) * clawLen
-
+            let cy = toeY + toeYO[i]
+            let ang = clawAngles[i] * .pi / 180
+            let tipX = cx + CGFloat(sin(ang)) * clawLen
+            let tipY = cy - CGFloat(cos(ang)) * clawLen
+            let bOX = CGFloat(cos(ang)) * clawW * 0.5
+            let bOY = CGFloat(sin(ang)) * clawW * 0.5
             var claw = Path()
-            let baseOffX = CGFloat(cos(angle)) * clawW * 0.5
-            let baseOffY = CGFloat(sin(angle)) * clawW * 0.5
-            claw.move(to: CGPoint(x: cx - baseOffX, y: cy - baseOffY))
+            claw.move(to: CGPoint(x: cx - bOX, y: cy - bOY))
             claw.addQuadCurve(
                 to: CGPoint(x: tipX, y: tipY),
-                control: CGPoint(
-                    x: cx + CGFloat(sin(angle)) * clawLen * 0.55 - baseOffX * 0.3,
-                    y: cy - CGFloat(cos(angle)) * clawLen * 0.55
-                )
-            )
-            claw.addLine(to: CGPoint(x: cx + baseOffX, y: cy + baseOffY))
+                control: CGPoint(x: cx + CGFloat(sin(ang))*clawLen*0.55 - bOX*0.3,
+                                 y: cy - CGFloat(cos(ang))*clawLen*0.55))
+            claw.addLine(to: CGPoint(x: cx + bOX, y: cy + bOY))
             claw.closeSubpath()
-            ctx.fill(claw, with: clawFill)
+            ctx.fill(claw, with: clawGrad)
         }
-
-        // ── Toe pads ───────────────────────────────────────────────────
         for (i, cx) in toeXs.enumerated() {
-            let cy = toeY + toeYOffsets[i]
+            let cy = toeY + toeYO[i]
             ctx.fill(Path(ellipseIn: CGRect(x: cx - toeW/2, y: cy,
-                                             width: toeW, height: toeH)), with: pawFill)
+                                             width: toeW, height: toeH)),
+                     with: pawGrad)
         }
 
-        // ── Palm pad ───────────────────────────────────────────────────
         let palmW = w * 0.72, palmH = h * 0.60
         let palmX = (w - palmW) / 2, palmY = h * 0.35
         ctx.fill(Path(ellipseIn: CGRect(x: palmX, y: palmY, width: palmW, height: palmH)),
-                 with: pawFill)
-
-        // Palm inner shadow / depth
-        let innerW = palmW * 0.80, innerH = palmH * 0.80
-        let innerX = (w - innerW) / 2, innerY = palmY + palmH * 0.12
-        ctx.fill(Path(ellipseIn: CGRect(x: innerX, y: innerY, width: innerW, height: innerH)),
-                 with: .color((Color(hex: "#E0982A")).opacity(0.35)))
+                 with: pawGrad)
+        let iW = palmW * 0.80, iH = palmH * 0.80
+        ctx.fill(Path(ellipseIn: CGRect(x: (w-iW)/2, y: palmY + palmH*0.12,
+                                         width: iW, height: iH)),
+                 with: .color(Color(hex: "#E0982A").opacity(0.32)))
     }
 }
 
-// MARK: - Preview
+// MARK: - Previews
 
 #if DEBUG
+#Preview("Badge — sizes") {
+    HStack(spacing: 24) {
+        BearBadgeView(size: 80)
+        BearBadgeView(size: 120)
+        BearBadgeView(size: 180)
+    }
+    .padding(32)
+    .background(Color(hex: "#F2F0EB"))
+}
+
+#Preview("Badge — dark bg") {
+    BearBadgeView(size: 200)
+        .padding(40)
+        .background(Color(hex: "#0D1117"))
+}
+
 #Preview("Bear logo sizes") {
     HStack(spacing: 16) {
         ForEach([24, 44, 64, 96, 128], id: \.self) { sz in
@@ -310,12 +326,6 @@ struct BearIconView: View {
 
 #Preview("App icon") {
     BearIconView(size: 300)
-        .padding(20)
-        .background(Color(hex: "#0D1117"))
-}
-
-#Preview("Bear logo no bg") {
-    BearLogoView(size: 120, showBackground: false)
         .padding(20)
         .background(Color(hex: "#0D1117"))
 }

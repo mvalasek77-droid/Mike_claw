@@ -117,7 +117,7 @@ struct HomeView: View {
 
     private var navBar: some View {
         HStack(spacing: 0) {
-            BearLogoView(size: 34, showBackground: false)
+            BearBadgeView(size: 34)
                 .padding(.leading, 16)
 
             Spacer()
@@ -201,11 +201,11 @@ struct HomeView: View {
                     )
                 )
 
-            // Bear icon watermark — right-aligned, very low opacity
-            BearIconView(size: 120)
-                .opacity(0.07)
+            // Badge watermark — right-aligned, very low opacity
+            BearBadgeView(size: 130)
+                .opacity(0.08)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                .offset(x: 10)
+                .offset(x: 14)
                 .clipped()
 
             // Content row
