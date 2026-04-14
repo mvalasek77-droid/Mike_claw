@@ -199,7 +199,7 @@ actor HermesAgentHarness {
                              context: PermissionContext) async -> ToolResult {
         switch tool.id {
         case "hermes.memory.search":
-            let recentCtx = await HermesMemoryAgent.shared.run(.recent(count: 5)) ?? "No memory found."
+            let recentCtx = await HermesMemoryAgent.shared.run(MemoryAgentMode.recent(count: 5)) ?? "No memory found."
             return ToolResult(success: true, value: recentCtx)
         case "hermes.context.topic":
             let topic = await self.context.currentTopic() ?? "unknown"
