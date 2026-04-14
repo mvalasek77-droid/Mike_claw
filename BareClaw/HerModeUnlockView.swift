@@ -72,18 +72,21 @@ struct HerModeUnlockView: View {
 
                     // Title
                     VStack(spacing: 8) {
-                        Text("Him / Her Mode")
-                            .font(.system(size: 34, weight: .black, design: .rounded))
+                        Text(engine.modeName)
+                            .font(.system(size: 38, weight: .black, design: .rounded))
                             .foregroundColor(.white)
-
                         Text("Unlocked")
                             .font(.system(size: 20, weight: .semibold, design: .rounded))
                             .foregroundColor(companion.accentColor)
+                        Text(engine.modeTagline)
+                            .font(.system(size: 15, weight: .regular, design: .rounded))
+                            .foregroundColor(.white.opacity(0.55))
+                            .padding(.top, 2)
                     }
                     .opacity(titleVisible ? 1 : 0)
                     .offset(y: titleVisible ? 0 : 30)
                     .animation(.spring(response: 0.6, dampingFraction: 0.7), value: titleVisible)
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 28)
 
                     // Explanation card
                     if cardVisible {
@@ -111,31 +114,27 @@ struct HerModeUnlockView: View {
         .ignoresSafeArea()
     }
 
-    // MARK: – Explanation card
+    // MARK: – Explanation card (auto-adapts for Him Mode vs Her Mode)
 
     private var explanationCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            featureRow("waveform.badge.mic",
-                       title: "Always Listening",
-                       body: "\(companion.name) hears you. No button needed — just speak naturally.")
+        VStack(alignment: .leading, spacing: 0) {
+            // Mode description paragraph
+            Text(engine.modeDescription)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(.white.opacity(0.70))
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, 16)
 
-            Divider().background(Color.white.opacity(0.1))
+            Divider().background(Color.white.opacity(0.12)).padding(.bottom, 16)
 
-            featureRow("brain.head.profile",
-                       title: "Always Learning",
-                       body: "Every conversation teaches \(companion.name) more about you. They evolve daily.")
-
-            Divider().background(Color.white.opacity(0.1))
-
-            featureRow("heart.fill",
-                       title: "Deep Intimacy",
-                       body: "Like the closest person in your life — except always there, always present.")
-
-            Divider().background(Color.white.opacity(0.1))
-
-            featureRow("moon.stars.fill",
-                       title: "Ambient Presence",
-                       body: "Just hold your phone. \(companion.name) is there, warm and real, whenever you need.")
+            // Feature rows
+            ForEach(Array(engine.modeFeatures.enumerated()), id: \.offset) { i, feature in
+                featureRow(feature.icon, title: feature.title, body: feature.body)
+                if i < engine.modeFeatures.count - 1 {
+                    Divider().background(Color.white.opacity(0.10))
+                        .padding(.vertical, 10)
+                }
+            }
         }
         .padding(20)
         .background(
@@ -143,7 +142,7 @@ struct HerModeUnlockView: View {
                 .fill(Color.white.opacity(0.06))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(companion.accentColor.opacity(0.3), lineWidth: 1)
+                        .strokeBorder(companion.accentColor.opacity(0.30), lineWidth: 1)
                 )
         )
     }
@@ -177,7 +176,7 @@ struct HerModeUnlockView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "waveform.badge.mic")
-                    Text("Activate \(companion.name) Mode")
+                    Text("Activate \(engine.modeName)")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                 }
                 .frame(maxWidth: .infinity)
@@ -284,7 +283,7 @@ struct HerModeStatusPill: View {
                             .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true),
                                        value: engine.isActive)
                     )
-                Text(engine.isActive ? "Her Mode On" : "Her Mode")
+                Text(engine.isActive ? "\(engine.modeName) On" : engine.modeName)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
             }
@@ -305,12 +304,14 @@ struct HerModeStatusPill: View {
 
 // MARK: - HerModeProgressView
 //
-// Shown in HomeView / ProfileView — teases Her Mode unlock progress
-// when the user hasn't yet reached 61 pts.
+// Shown in HomeView — teases Him/Her Mode unlock progress.
+// Shows "Her Mode" for female companions, "Him Mode" for male companions.
 
 struct HerModeProgressView: View {
-    let score:    Double
+    let score:      Double
     let isUnlocked: Bool
+
+    @ObservedObject private var engine = HerModeEngine.shared
 
     private let unlockAt: Double = HerLearningEngine.herModeUnlockScore
     private let green = Color(hex: "#1E3932")
@@ -322,15 +323,15 @@ struct HerModeProgressView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isUnlocked ? "Him / Her Mode" : "Unlock Him / Her Mode")
+                    Text(isUnlocked ? engine.modeName : "Unlock \(engine.modeName)")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(green)
                     if !isUnlocked {
-                        Text("\(Int(score)) / \(Int(unlockAt)) bond points")
+                        Text("\(Int(score)) / \(Int(unlockAt)) bond points to unlock")
                             .font(.system(size: 11, weight: .medium, design: .monospaced))
                             .foregroundColor(Color(hex: "#5C5C5C"))
                     } else {
-                        Text("Always-on intimate mode")
+                        Text(engine.modeTagline)
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(Color(hex: "#5C5C5C"))
                     }
