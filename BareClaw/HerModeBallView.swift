@@ -104,21 +104,23 @@ struct HerModeBallView: View {
 
     private var ballLayer: some View {
         ZStack {
-            // Outer glow rings — mood-reactive
-            ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .strokeBorder(ringColor.opacity(
-                        glowPulse ? 0.55 / Double(i + 1) : 0.15 / Double(i + 1)
-                    ), lineWidth: 1.5)
-                    .frame(
-                        width:  ballSize + CGFloat(i) * 14,
-                        height: ballSize + CGFloat(i) * 14
-                    )
-                    .scaleEffect(glowPulse ? 1.0 + CGFloat(i) * 0.04 : 1.0)
-                    .animation(
-                        ringAnimation.delay(Double(i) * 0.25),
-                        value: glowPulse
-                    )
+            // Outer glow rings — suppressed when inactive, mood-reactive when active
+            if herMode.isActive {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .strokeBorder(ringColor.opacity(
+                            glowPulse ? 0.55 / Double(i + 1) : 0.15 / Double(i + 1)
+                        ), lineWidth: 1.5)
+                        .frame(
+                            width:  ballSize + CGFloat(i) * 14,
+                            height: ballSize + CGFloat(i) * 14
+                        )
+                        .scaleEffect(glowPulse ? 1.0 + CGFloat(i) * 0.04 : 1.0)
+                        .animation(
+                            ringAnimation.delay(Double(i) * 0.25),
+                            value: glowPulse
+                        )
+                }
             }
 
             // Ball background
@@ -130,19 +132,27 @@ struct HerModeBallView: View {
             // Bear logo — no background (circle IS the background)
             BearLogoView(size: ballSize * 0.72, showBackground: false)
 
-            // Mode indicator dot (top-right)
-            if herMode.isListening {
+            // Status indicator dot (top-right)
+            // Green pulse = listening | grey = unlocked but paused
+            if herMode.isActive {
                 Circle()
-                    .fill(Color(hex: "#30D158"))
+                    .fill(herMode.isListening ? Color(hex: "#30D158") : Color(hex: "#FF9F0A"))
                     .frame(width: 9, height: 9)
-                    .overlay(
-                        Circle().stroke(Color.black.opacity(0.5), lineWidth: 1)
-                    )
+                    .overlay(Circle().stroke(Color.black.opacity(0.5), lineWidth: 1))
+                    .offset(x: ballSize * 0.32, y: -ballSize * 0.32)
+            } else {
+                // Inactive state — small grey dot so user knows it's paused
+                Circle()
+                    .fill(Color.white.opacity(0.30))
+                    .frame(width: 9, height: 9)
+                    .overlay(Circle().stroke(Color.black.opacity(0.3), lineWidth: 1))
                     .offset(x: ballSize * 0.32, y: -ballSize * 0.32)
             }
         }
+        .opacity(herMode.isActive ? 1.0 : 0.45)   // dim when paused — clearly inactive
         .scaleEffect(isDragging ? 1.12 : 1.0)
         .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isDragging)
+        .animation(.easeInOut(duration: 0.3), value: herMode.isActive)
     }
 
     // MARK: - Transcript pill

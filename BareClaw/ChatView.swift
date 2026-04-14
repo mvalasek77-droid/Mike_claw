@@ -641,6 +641,20 @@ struct ChatView: View {
         .onChange(of: persona.selectedCompanionID) { _, _ in
             Task { await vm.reloadForCompanionChange() }
         }
+        // ── Her/Him Mode proactive messages land in chat ──────────────
+        // HerModeEngine and SelfHealingEngine post this notification when
+        // the companion speaks proactively. We log it here so the user can
+        // see what was said even if they missed the voice — and so the LLM
+        // has conversation context for the next user reply.
+        .onReceive(NotificationCenter.default.publisher(for: .herModeProactiveMessage)) { note in
+            let text = note.userInfo?["text"] as? String
+                    ?? note.userInfo?["message"] as? String
+                    ?? ""
+            guard !text.isEmpty else { return }
+            let msg = ChatMessage(role: .assistant, text: text, isSamanthaThought: true)
+            vm.messages.append(msg)
+            vm.saveMessages()
+        }
     }
 }
 

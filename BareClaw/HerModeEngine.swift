@@ -25,7 +25,7 @@ import Combine
 
 // MARK: - Ambient topic categories
 
-private struct TopicSignal {
+private struct TopicSignal: Codable {
     let topic:     String   // "baking" / "work" / "relationship" etc.
     let keyword:   String   // exact word that triggered it
     let heardAt:   Date
@@ -113,17 +113,21 @@ final class HerModeEngine: NSObject, ObservableObject {
     // MARK: Private — ambient intelligence
     private var detectedTopics:    [TopicSignal] = []
     private var lastUserSpeechAt:  Date = .distantPast
-    private var lastProactiveAt:   Date = .distantPast
+    private var lastProactiveAt:   Date = .distantPast   // persisted
     private var lastSentText:      String = ""
     private var isProcessingReply: Bool = false
+
+    // MARK: - Persistence keys
+    private let topicsKey      = "herMode.detectedTopics"
+    private let lastProactiveKey = "herMode.lastProactiveAt"
 
     // MARK: Private — timers
     private var silenceCheckTimer: Timer?
     private var sessionRestartTimer: Timer?
 
     // MARK: Private — config
-    private let silenceGateSeconds:      TimeInterval = 45   // wait this long before speaking
-    private let minProactiveGapMinutes:  TimeInterval = 8    // never more often than this
+    private let silenceGateSeconds:      TimeInterval = 22   // natural pause in conversation
+    private let minProactiveGapMinutes:  TimeInterval = 5    // never more often than this
     private let defaults = UserDefaults.standard
 
     // MARK: - Topic detection dictionary
@@ -183,6 +187,29 @@ final class HerModeEngine: NSObject, ObservableObject {
         super.init()
         isUnlocked = defaults.bool(forKey: "herMode.unlocked")
         isActive   = defaults.bool(forKey: "herMode.active")
+        loadPersistedTopics()
+        if let saved = defaults.object(forKey: lastProactiveKey) as? Date {
+            lastProactiveAt = saved
+        }
+    }
+
+    // MARK: - Topic persistence
+
+    private func loadPersistedTopics() {
+        guard let data    = defaults.data(forKey: topicsKey),
+              let decoded = try? JSONDecoder().decode([TopicSignal].self, from: data)
+        else { return }
+        // Only restore topics from the last 24 hours that haven't been surfaced yet
+        let cutoff = Date().addingTimeInterval(-86400)
+        detectedTopics = decoded.filter { !$0.surfaced && $0.heardAt > cutoff }
+    }
+
+    private func saveTopics() {
+        let unsurfaced = detectedTopics.filter { !$0.surfaced }
+        if let data = try? JSONEncoder().encode(unsurfaced) {
+            defaults.set(data, forKey: topicsKey)
+        }
+        defaults.set(lastProactiveAt, forKey: lastProactiveKey)
     }
 
     // MARK: - Unlock
@@ -352,6 +379,7 @@ final class HerModeEngine: NSObject, ObservableObject {
                     if !alreadyStored {
                         detectedTopics.append(TopicSignal(topic: topic, keyword: kw, heardAt: Date()))
                         lastHeardTopic = topic
+                        saveTopics()   // persist immediately — survives app restart
                     }
                     break
                 }
@@ -452,7 +480,10 @@ final class HerModeEngine: NSObject, ObservableObject {
         let companion   = persona.selectedCompanion
         CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
 
-        // Post notification so ChatViewModel can log it
+        // Persist timing state so cooldown survives app restart
+        saveTopics()
+
+        // Post notification — ChatView observer logs this to the conversation
         NotificationCenter.default.post(
             name: .herModeProactiveMessage,
             object: nil,

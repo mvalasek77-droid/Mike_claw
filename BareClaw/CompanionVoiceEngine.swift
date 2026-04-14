@@ -277,6 +277,8 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
 
     func speak(_ text: String, character: VoiceCharacter) {
         guard voiceEnabled else { return }
+        // If audio graph isn't ready (engine failed to start), attempt a restart
+        if !engineReady { startEngine(character: character) }
 
         if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
 
