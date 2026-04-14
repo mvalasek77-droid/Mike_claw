@@ -207,92 +207,41 @@ struct BearBadgeView: View {
 
 // MARK: - BearIconView
 //
-// 1024×1024 app icon: bear paw with bear face centred in the palm.
+// App icon: badge logo on a deep forest-green rounded square.
+// Render at 1024×1024 and export to Assets.xcassets.
 
 struct BearIconView: View {
     var size: CGFloat = 1024
 
     var body: some View {
         ZStack {
+            // Rounded-square background — deep forest green
             RoundedRectangle(cornerRadius: size * 0.2237)
-                .fill(LinearGradient(
-                    colors: [Color(hex: "#141C2E"), Color(hex: "#0A0E18")],
-                    startPoint: .top, endPoint: .bottom
-                ))
+                .fill(
+                    LinearGradient(
+                        colors: [Color(hex: "#1E3932"), Color(hex: "#0C1E18")],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                )
 
+            // Warm gold glow behind the badge
             RadialGradient(
-                colors: [Color(hex: "#E8A040").opacity(0.22), .clear],
+                colors: [Color(hex: "#CBA258").opacity(0.18), .clear],
                 center: .center,
-                startRadius: 0, endRadius: size * 0.42
+                startRadius: 0, endRadius: size * 0.44
             )
             .clipShape(RoundedRectangle(cornerRadius: size * 0.2237))
 
-            Canvas { ctx, cs in drawPaw(ctx: ctx, size: cs) }
-                .frame(width: size * 0.82, height: size * 0.82)
-
-            BearLogoView(size: size * 0.33, showBackground: false)
-                .offset(y: size * 0.065)
+            // Badge — the main icon element
+            BearBadgeView(size: size * 0.80)
         }
         .frame(width: size, height: size)
     }
 
-    private func drawPaw(ctx: GraphicsContext, size: CGSize) {
-        let w = size.width, h = size.height
+    // drawPaw is kept below for reference / alternative icon builds.
+    @available(*, deprecated, message: "Not used in current icon design.")
+    private func _drawPaw_unused(ctx: GraphicsContext, size: CGSize) {}
 
-        let pawGrad = GraphicsContext.Shading.linearGradient(
-            Gradient(stops: [
-                .init(color: Color(hex: "#E8A84A"), location: 0.0),
-                .init(color: Color(hex: "#C87020"), location: 0.6),
-                .init(color: Color(hex: "#A05818"), location: 1.0)
-            ]),
-            startPoint: CGPoint(x: w*0.3, y: 0),
-            endPoint:   CGPoint(x: w*0.7, y: h)
-        )
-        let clawGrad = GraphicsContext.Shading.linearGradient(
-            Gradient(colors: [Color(hex: "#F0C060"), Color(hex: "#C88020")]),
-            startPoint: CGPoint(x: w*0.4, y: 0),
-            endPoint:   CGPoint(x: w*0.6, y: h*0.4)
-        )
-
-        let toeW = w * 0.155, toeH = toeW * 1.15, toeY = h * 0.095
-        let toeXs: [CGFloat] = [w*0.195, w*0.370, w*0.630, w*0.805]
-        let toeYO: [CGFloat] = [h*0.042, 0, 0, h*0.042]
-        let clawAngles: [Double] = [-38, -14, 14, 38]
-        let clawLen = h * 0.115, clawW = toeW * 0.36
-
-        for (i, cx) in toeXs.enumerated() {
-            let cy = toeY + toeYO[i]
-            let ang = clawAngles[i] * .pi / 180
-            let tipX = cx + CGFloat(sin(ang)) * clawLen
-            let tipY = cy - CGFloat(cos(ang)) * clawLen
-            let bOX = CGFloat(cos(ang)) * clawW * 0.5
-            let bOY = CGFloat(sin(ang)) * clawW * 0.5
-            var claw = Path()
-            claw.move(to: CGPoint(x: cx - bOX, y: cy - bOY))
-            claw.addQuadCurve(
-                to: CGPoint(x: tipX, y: tipY),
-                control: CGPoint(x: cx + CGFloat(sin(ang))*clawLen*0.55 - bOX*0.3,
-                                 y: cy - CGFloat(cos(ang))*clawLen*0.55))
-            claw.addLine(to: CGPoint(x: cx + bOX, y: cy + bOY))
-            claw.closeSubpath()
-            ctx.fill(claw, with: clawGrad)
-        }
-        for (i, cx) in toeXs.enumerated() {
-            let cy = toeY + toeYO[i]
-            ctx.fill(Path(ellipseIn: CGRect(x: cx - toeW/2, y: cy,
-                                             width: toeW, height: toeH)),
-                     with: pawGrad)
-        }
-
-        let palmW = w * 0.72, palmH = h * 0.60
-        let palmX = (w - palmW) / 2, palmY = h * 0.35
-        ctx.fill(Path(ellipseIn: CGRect(x: palmX, y: palmY, width: palmW, height: palmH)),
-                 with: pawGrad)
-        let iW = palmW * 0.80, iH = palmH * 0.80
-        ctx.fill(Path(ellipseIn: CGRect(x: (w-iW)/2, y: palmY + palmH*0.12,
-                                         width: iW, height: iH)),
-                 with: .color(Color(hex: "#E0982A").opacity(0.32)))
-    }
 }
 
 // MARK: - Previews
@@ -325,8 +274,11 @@ struct BearIconView: View {
 }
 
 #Preview("App icon") {
-    BearIconView(size: 300)
-        .padding(20)
-        .background(Color(hex: "#0D1117"))
+    HStack(spacing: 20) {
+        BearIconView(size: 120)
+        BearIconView(size: 200)
+    }
+    .padding(28)
+    .background(Color(hex: "#F2F0EB"))
 }
 #endif
