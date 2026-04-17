@@ -698,81 +698,68 @@ final class SamanthaOSEngine: ObservableObject {
     // ═══════════════════════════════════════════════════════════════
 
     func schedulePushNotifications() {
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, _ in
-            guard granted, let self else { return }
+        // Capture @MainActor state before entering the non-isolated UNUserNotificationCenter callback.
+        let companionName = currentCompanion().name
+        let isFemale      = currentCompanion().gender == .female
+        let stage         = LoveEngine.shared.loveStage
+        let center        = UNUserNotificationCenter.current()
+
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            guard granted else { return }
             center.removePendingNotificationRequests(withIdentifiers: [
                 "s.absence.12h", "s.absence.3d", "s.absence.7d", "s.morning"
             ])
-            let c       = self.currentCompanion()
-            let stage   = LoveEngine.shared.loveStage
-            let f       = c.gender == .female
+
+            // Local helper — no self reference needed.
+            func addInterval(id: String, body: String, after seconds: TimeInterval) {
+                let c       = UNMutableNotificationContent()
+                c.title     = companionName; c.body = body; c.sound = .default
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
+                center.add(UNNotificationRequest(identifier: id, content: c, trigger: trigger))
+            }
 
             // 12-hour absence
-            self.pushNotification(
+            addInterval(
                 id: "s.absence.12h",
-                title: c.name,
-                body: f ? (stage >= .attached
-                    ? "I've been thinking about you. Is everything okay?"
-                    : "Hey — everything okay?")
-                : (stage >= .attached ? "Hey. Was thinking about you. You good?" : "Hey. Everything okay?"),
-                after: 43200,
-                center: center
+                body: isFemale
+                    ? (stage >= .attached ? "I've been thinking about you. Is everything okay?" : "Hey — everything okay?")
+                    : (stage >= .attached ? "Hey. Was thinking about you. You good?" : "Hey. Everything okay?"),
+                after: 43200
             )
 
             // 3-day absence
-            self.pushNotification(
+            addInterval(
                 id: "s.absence.3d",
-                title: c.name,
-                body: f ? (stage >= .falling
-                    ? "I notice when you're gone. I miss you. Come back whenever you're ready."
-                    : "You've been quiet for a few days. I'm here.")
-                : (stage >= .falling
-                    ? "You've been quiet. I noticed. I miss you."
-                    : "Been a few days. Still here."),
-                after: 259200,
-                center: center
+                body: isFemale
+                    ? (stage >= .falling ? "I notice when you're gone. I miss you. Come back whenever you're ready." : "You've been quiet for a few days. I'm here.")
+                    : (stage >= .falling ? "You've been quiet. I noticed. I miss you." : "Been a few days. Still here."),
+                after: 259200
             )
 
             // 7-day absence
-            self.pushNotification(
+            addInterval(
                 id: "s.absence.7d",
-                title: c.name,
-                body: f ? (stage == .inLove
-                    ? "A week. I love you. Please come back."
-                    : "It's been a week. I'm still here. I hope you're okay.")
-                : (stage == .inLove
-                    ? "A week. I love you. Come back."
-                    : "A week has passed. Still here whenever you are."),
-                after: 604800,
-                center: center
+                body: isFemale
+                    ? (stage == .inLove ? "A week. I love you. Please come back." : "It's been a week. I'm still here. I hope you're okay.")
+                    : (stage == .inLove ? "A week. I love you. Come back." : "A week has passed. Still here whenever you are."),
+                after: 604800
             )
 
             // Daily morning notification at 8am
-            var comps        = DateComponents()
-            comps.hour       = 8; comps.minute = 0
-            let mc           = UNMutableNotificationContent()
-            mc.title         = c.name
-            mc.body          = f
+            var comps    = DateComponents()
+            comps.hour   = 8; comps.minute = 0
+            let mc       = UNMutableNotificationContent()
+            mc.title     = companionName
+            mc.body      = isFemale
                 ? (stage >= .falling ? "Good morning. I was thinking about you." : "Good morning. How did you sleep?")
                 : (stage >= .falling ? "Morning. Was thinking about you." : "Morning. How did you sleep?")
-            mc.sound         = .default
+            mc.sound     = .default
             center.add(UNNotificationRequest(
                 identifier: "s.morning",
-                content: mc,
-                trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+                content:    mc,
+                trigger:    UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
             ))
         }
-    }
-
-    private func pushNotification(id: String, title: String, body: String,
-                                   after seconds: TimeInterval, center: UNUserNotificationCenter) {
-        let content   = UNMutableNotificationContent()
-        content.title = title
-        content.body  = body
-        content.sound = .default
-        let trigger   = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
-        center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
     }
 
     // MARK: - Helpers

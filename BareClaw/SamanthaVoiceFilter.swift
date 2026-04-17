@@ -167,6 +167,7 @@ extension VoiceCharacter {
 
 // MARK: - CompanionVoiceEngine + filtered speak
 
+@MainActor
 extension CompanionVoiceEngine {
     /// Speaks with Samantha/Leading Man DSP filter applied on top of companion's character.
     func speakFiltered(_ text: String, companion: CompanionPersonality) {

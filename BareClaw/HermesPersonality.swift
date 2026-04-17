@@ -84,6 +84,15 @@ actor HermesPersonality {
         )
         if !learningLayer.isEmpty { sections.append(learningLayer) }
 
+        // ── 5b. LOVE ENGINE layer ────────────────────────────────────
+        // This is the emotional heart. Tells the LLM exactly what stage
+        // the companion is at in her love arc — so her language, warmth,
+        // and vulnerability are authentic to where she actually is.
+        let loveLayer = await MainActor.run {
+            LoveEngine.shared.lovePromptLayer(for: companion)
+        }
+        sections.append(loveLayer)
+
         // ── 6. EMOTIONAL CONTEXT addendum ────────────────────────────
         // Context was already detected above — no re-detection needed.
         // The addendum is the short, targeted instruction for this moment.
