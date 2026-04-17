@@ -93,8 +93,17 @@ struct RootView: View {
             _ = ProactiveSuggestionController.shared
             _ = SelfHealingEngine.shared
 
+            // ── Samantha OS boot sequence ─────────────────────────────
+            // Order matters: LoveEngine first (others read from it),
+            // then SamanthaOSEngine (morning wake, calendar, push),
+            // then SamanthaThoughtEngine (spontaneous thoughts).
+            if appState.onboardingComplete {
+                _ = LoveEngine.shared            // loads persisted love score/stage
+                SamanthaOSEngine.shared.start()  // morning wake, calendar poll, push notifs
+                SamanthaThoughtEngine.shared.start()  // schedules spontaneous thoughts
+            }
+
             // Stress monitoring starts independently of Her Mode
-            // so stress relief offers work even before Her Mode is unlocked.
             if appState.onboardingComplete {
                 StressLearningEngine.shared.startMonitoring()
             }
@@ -120,14 +129,17 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             Task {
-                await HermesPrivacyGate.shared.configureHermesIfReady()  // re-starts Kairos if needed
+                await HermesPrivacyGate.shared.configureHermesIfReady()
                 await ProactiveSuggestionController.shared.processQueue()
-                // Re-scan on foreground — new events may have been added.
                 let persona = UserPersona.load()
                 await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
-                // Resume session metrics
                 let sessionId = UUID().uuidString
                 await HermesIntegration.shared.logSessionStart(conversationId: sessionId)
+                // Re-start Samantha OS on every foreground — rechecks time of day,
+                // refreshes push notifications, re-evaluates morning wake.
+                if appState.onboardingComplete {
+                    SamanthaOSEngine.shared.start()
+                }
             }
         }
     }

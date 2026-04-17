@@ -6,6 +6,8 @@ import Foundation
 enum LLMProvider {
     case appleFoundationModels   // on-device, iOS 26+, no privacy policy needed
     case claudeAPI               // remote Anthropic API, requires user consent
+    case ollamaGLM               // Ollama server running GLM 5.1 (or any GLM variant)
+    case ollamaClaude            // Claude models served via Ollama
     case none                    // no provider available / consent not given
 }
 
@@ -87,10 +89,12 @@ actor HermesLLMClient {
                 return .appleFoundationModels
             }
         }
-        // Fall back to Claude API (requires API key configured)
-        if ClaudeAPIBridge.isConfigured {
-            return .claudeAPI
-        }
+        // Ollama GLM 5.1 — user has configured a local/remote Ollama server
+        if OllamaLLMBridge.isGLMConfigured { return .ollamaGLM }
+        // Claude via Ollama (model name starting with "claude-")
+        if OllamaLLMBridge.isClaudeConfigured { return .ollamaClaude }
+        // Fall back to direct Claude API
+        if ClaudeAPIBridge.isConfigured { return .claudeAPI }
         return .none
     }
 
@@ -126,6 +130,8 @@ actor HermesLLMClient {
             response = try await AppleFoundationModelsBridge.complete(enrichedRequest, stream: stream)
         case .claudeAPI:
             response = try await ClaudeAPIBridge.complete(enrichedRequest, stream: stream)
+        case .ollamaGLM, .ollamaClaude:
+            response = try await OllamaLLMBridge.complete(enrichedRequest, stream: stream)
         case .none:
             throw LLMError.noProviderConfigured
         }
@@ -405,6 +411,156 @@ enum ClaudeAPIBridge {
         case .execute:  return "claude-sonnet-4-6"            // reliable for writes
         case .verify:   return "claude-opus-4-6"              // highest scrutiny
         }
+    }
+}
+
+// MARK: - Ollama LLM Bridge
+//
+// Supports any Ollama-served model over the OpenAI-compatible API.
+// Primary targets:
+//   • GLM 5.1  (THUDM/GLM-4 family) — model name "glm4" or "glm4:latest"
+//   • Claude   (Anthropic models via Ollama) — model name "claude-3-5-haiku-20241022" etc.
+//
+// Configuration (stored in UserDefaults):
+//   "ollama.baseURL"  — e.g. "http://192.168.1.10:11434" (LAN server)
+//                        or   "https://my-ollama.example.com"
+//   "ollama.model"    — e.g. "glm4", "glm4:latest", "claude-3-5-haiku-20241022"
+//
+// The bridge uses /v1/chat/completions (OpenAI-compatible endpoint)
+// which Ollama exposes at /v1/chat/completions since v0.1.24.
+
+enum OllamaLLMBridge {
+
+    private static var baseURL: URL? {
+        guard let raw = UserDefaults.standard.string(forKey: "ollama.baseURL"),
+              !raw.isEmpty,
+              let url = URL(string: raw.hasSuffix("/") ? String(raw.dropLast()) : raw)
+        else { return nil }
+        return url
+    }
+
+    private static var modelName: String {
+        UserDefaults.standard.string(forKey: "ollama.model") ?? "glm4"
+    }
+
+    static var isGLMConfigured: Bool {
+        guard baseURL != nil else { return false }
+        return !modelName.lowercased().hasPrefix("claude")
+    }
+
+    static var isClaudeConfigured: Bool {
+        guard baseURL != nil else { return false }
+        return modelName.lowercased().hasPrefix("claude")
+    }
+
+    // MARK: - Main call
+
+    static func complete(_ request: LLMRequest,
+                         stream: StreamHandler?) async throws -> LLMResponse {
+        guard let base = baseURL else { throw LLMError.noProviderConfigured }
+        let endpoint = base.appendingPathComponent("/v1/chat/completions")
+
+        // Build messages — system prompt as a "system" role message
+        var messages: [[String: Any]] = [
+            ["role": "system", "content": request.systemPrompt]
+        ]
+        messages += request.messages.compactMap { msg -> [String: Any]? in
+            guard msg.role != .system else { return nil }
+            return ["role": msg.role == .user ? "user" : "assistant",
+                    "content": msg.content]
+        }
+
+        let body: [String: Any] = [
+            "model":       modelName,
+            "messages":    messages,
+            "max_tokens":  request.maxTokens,
+            "stream":      stream != nil,
+            "temperature": 0.85,   // slightly warmer — more natural, less robotic
+        ]
+
+        var urlRequest        = URLRequest(url: endpoint)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpBody   = try JSONSerialization.data(withJSONObject: body)
+        urlRequest.timeoutInterval = 60
+
+        if let handler = stream {
+            return try await streamResponse(urlRequest, handler: handler)
+        } else {
+            return try await blockingResponse(urlRequest)
+        }
+    }
+
+    // MARK: - Streaming (SSE)
+
+    private static func streamResponse(_ request: URLRequest,
+                                        handler: @escaping StreamHandler) async throws -> LLMResponse {
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        try validateHTTP(response)
+
+        var fullText = ""
+        for try await line in bytes.lines {
+            guard line.hasPrefix("data: ") else { continue }
+            let jsonStr = String(line.dropFirst(6))
+            guard jsonStr != "[DONE]",
+                  let data  = jsonStr.data(using: .utf8),
+                  let event = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = event["choices"] as? [[String: Any]],
+                  let delta   = choices.first?["delta"] as? [String: Any],
+                  let token   = delta["content"] as? String
+            else { continue }
+            handler(token)
+            fullText += token
+        }
+        return LLMResponse(content: fullText, promptTokens: 0, completionTokens: 0,
+                           provider: .ollamaGLM, toolCallsRequested: [])
+    }
+
+    // MARK: - Blocking
+
+    private static func blockingResponse(_ request: URLRequest) async throws -> LLMResponse {
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateHTTP(response)
+
+        guard let json    = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any],
+              let text    = message["content"] as? String
+        else { throw LLMError.serverError(0) }
+
+        let usage  = json["usage"] as? [String: Any]
+        let input  = usage?["prompt_tokens"]     as? Int ?? 0
+        let output = usage?["completion_tokens"] as? Int ?? 0
+
+        return LLMResponse(content: text, promptTokens: input, completionTokens: output,
+                           provider: .ollamaGLM, toolCallsRequested: [])
+    }
+
+    private static func validateHTTP(_ response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else { return }
+        switch http.statusCode {
+        case 200...299: return
+        case 429:       throw LLMError.rateLimited
+        default:        throw LLMError.serverError(http.statusCode)
+        }
+    }
+
+    // MARK: - Settings helpers
+
+    static func saveSettings(baseURL: String, model: String) {
+        UserDefaults.standard.set(baseURL, forKey: "ollama.baseURL")
+        UserDefaults.standard.set(model,   forKey: "ollama.model")
+    }
+
+    /// Pings the Ollama server to verify it's reachable.
+    /// Returns true if /api/tags responds with 200.
+    static func ping() async -> Bool {
+        guard let base = baseURL else { return false }
+        let url = base.appendingPathComponent("/api/tags")
+        guard let (_, response) = try? await URLSession.shared.data(from: url),
+              let http = response as? HTTPURLResponse
+        else { return false }
+        return http.statusCode == 200
     }
 }
 
