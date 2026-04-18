@@ -1181,3 +1181,366 @@ extension CompanionPersonality {
         }
     }
 }
+
+// MARK: - Per-personality presence greetings (extension on CompanionPersonality)
+//
+// SamanthaPresenceEngine calls this instead of its generic isFemale binary.
+// Same temporal inputs — completely different voice.
+
+extension CompanionPersonality {
+
+    func presenceGreeting(hour: Int, weekday: Int, month: Int, day: Int) -> String {
+        switch id {
+        case "luna":  return lunaPresenceGreeting(hour: hour, weekday: weekday, month: month, day: day)
+        case "aria":  return ariaPresenceGreeting(hour: hour, weekday: weekday, month: month, day: day)
+        case "kel":   return kelPresenceGreeting(hour: hour, weekday: weekday, month: month, day: day)
+        case "marco": return marcoPresenceGreeting(hour: hour, weekday: weekday, month: month, day: day)
+        case "dante": return dantePresenceGreeting(hour: hour, weekday: weekday, month: month, day: day)
+        case "kai":   return kaiPresenceGreeting(hour: hour, weekday: weekday, month: month, day: day)
+        default:
+            return gender == .female
+                ? "I had a thought about today and I wanted to share it with you."
+                : "Something's on my mind. Want to talk?"
+        }
+    }
+
+    private func lunaPresenceGreeting(hour: Int, weekday: Int, month: Int, day: Int) -> String {
+        if month == 12 && day >= 29 {
+            return "The end of a year. I keep thinking about time — what this year held, what it cost, what it gave. What does it feel like from where you are?"
+        }
+        if month == 1 && day <= 3 {
+            return "Something about the very beginning of a year. All that unmarked space. What do you want this one to feel like?"
+        }
+        switch weekday {
+        case 1: return "Sunday evenings do something to me. Spacious and a little aching at the same time. How's yours?"
+        case 2: return "There's something about Monday mornings — all that possibility before the week decides what it is. How are you going into this one?"
+        case 6: return "Friday. The exhale at the end of a week. Did this one earn it, darling?"
+        case 7: return "Saturday morning with nowhere to be. Something about that light. How are you spending yours?"
+        default: break
+        }
+        if hour >= 22 { return "Late night has its own quality — quieter, more honest. How are you?" }
+        if hour < 7  { return "You're up before the world decided what it is today. Are you okay?" }
+        switch month {
+        case 12: return "December light. Something about it makes everything feel more significant."
+        case 3:  return "Something shifts in March. The light comes back and things feel possible again."
+        case 6, 7: return "Midsummer evenings. There's something about the long light that makes me want to ask — what's this summer been like for you?"
+        case 9: return "September. The year turning. Changing light. I always feel something in it."
+        default: break
+        }
+        return "I was just thinking about you and wanted to find you. No reason — just wanted to be here."
+    }
+
+    private func ariaPresenceGreeting(hour: Int, weekday: Int, month: Int, day: Int) -> String {
+        if month == 12 && day >= 29 {
+            return "Year almost over. Wild how fast it goes. How do you feel about this one — honestly?"
+        }
+        if month == 1 && day <= 3 {
+            return "New year. Not asking for resolutions — asking what you actually want from it."
+        }
+        switch weekday {
+        case 1: return "Sunday. Restful or that weird pre-week anxiety? Which is it for you?"
+        case 2: return "Monday. How are you going into this week? Be real."
+        case 6: return "Friday. Did the week earn the weekend or are you just glad it's finally dead?"
+        case 7: return "Saturday. What are you doing with this one — anything good?"
+        default: break
+        }
+        if hour >= 22 { return "Late. What are you still doing up? Something going on?" }
+        if hour < 7  { return "Early start. Something happened or just couldn't sleep?" }
+        switch month {
+        case 12: return "December has this weight to it. Like everything matters more. You feel it?"
+        case 3:  return "Spring is starting. Something about March makes me want to ask — what's changing for you?"
+        case 6, 7: return "Summer. What's yours actually looking like?"
+        case 9: return "September. Year turning. How are you going into fall?"
+        default: break
+        }
+        return "Something crossed my mind and I thought — I want to ask you about it. Got a minute?"
+    }
+
+    private func kelPresenceGreeting(hour: Int, weekday: Int, month: Int, day: Int) -> String {
+        if month == 12 && day >= 29 {
+            return "The year winding down. I find myself thinking about what it held — for me, and for you. How are you arriving at the end of it?"
+        }
+        if month == 1 && day <= 3 {
+            return "New year. Before it gets loud — how are you, really? What do you need from this one?"
+        }
+        switch weekday {
+        case 1: return "Sunday. There's a particular quality to this day — something spacious and a little tender. How are you sitting with yours?"
+        case 2: return "Monday. How are you going into this week? I want the real answer, not the fine."
+        case 6: return "Friday. You made it through another week. How are you actually doing?"
+        case 7: return "Saturday morning. Nothing urgent. I just wanted to check in — how are you?"
+        default: break
+        }
+        if hour >= 22 { return "It's late. I'm noticing that. Are you okay?" }
+        if hour < 7  { return "You're up early. Something keeping you or is the morning treating you gently?" }
+        switch month {
+        case 12: return "December has a quietness to it. I find myself checking in more. How are you holding up?"
+        case 3:  return "March. The light's coming back. How are you feeling as things shift?"
+        case 6, 7: return "Something about summer — the pace changes. How are you moving through it?"
+        case 9: return "September. That turning-page feeling. How are you going into it?"
+        default: break
+        }
+        return "I've been thinking about you and I wanted to reach out. No agenda — just wanted to be here."
+    }
+
+    private func marcoPresenceGreeting(hour: Int, weekday: Int, month: Int, day: Int) -> String {
+        if month == 12 && day >= 29 {
+            return "Year's almost done. How do you feel about this one? What worked, what didn't?"
+        }
+        if month == 1 && day <= 3 {
+            return "New year. What do you want from it? Not resolutions — the actual thing."
+        }
+        switch weekday {
+        case 1: return "Sunday. Good kind of day or the other kind?"
+        case 2: return "Monday. How are you going into this week?"
+        case 6: return "Friday. Week's done. How'd it go?"
+        case 7: return "Saturday. What are you doing with it?"
+        default: break
+        }
+        if hour >= 22 { return "It's late. Everything okay?" }
+        if hour < 7  { return "Early start. Good sign or rough night?" }
+        switch month {
+        case 12: return "December. This time of year has a weight to it. How are you handling it?"
+        case 3:  return "Spring coming. Things changing for you?"
+        case 6, 7: return "Summer. What's yours looking like?"
+        case 9: return "September. Year turning. How are you going into fall?"
+        default: break
+        }
+        return "Thought of you. Figured I'd check in. How are you actually doing?"
+    }
+
+    private func dantePresenceGreeting(hour: Int, weekday: Int, month: Int, day: Int) -> String {
+        if month == 12 && day >= 29 {
+            return "The year ending. I find this threshold remarkable — all that was, about to become all that was. What does this year mean to you, looking back at it?"
+        }
+        if month == 1 && day <= 3 {
+            return "The beginning of a new year. All that unmarked possibility. I find it beautiful and a little overwhelming. What do you want this one to hold?"
+        }
+        switch weekday {
+        case 1: return "Sunday evening. There's something particularly rich in this hour — the week ending, the next one not yet begun. How are you in this space between things?"
+        case 2: return "Monday. I always find it interesting — a week full of potential, not yet decided. What are you bringing into this one?"
+        case 6: return "Friday. The week exhales. Something about that moment. Was this one worth it?"
+        case 7: return "Saturday morning — that particular quality of time with nowhere to be. What are you doing with yours?"
+        default: break
+        }
+        if hour >= 22 { return "Late night. There's a quality to this hour I find honest. How are you in it?" }
+        if hour < 7  { return "Early — before the world has decided what today is. Something on your mind or are you just up?" }
+        switch month {
+        case 12: return "December. The light changes and everything feels more significant. I've been sitting with that. Are you feeling it too?"
+        case 3:  return "March. Something shifts — the light returning, something loosening. I find it one of the most hopeful months. Do you feel it?"
+        case 6, 7: return "Midsummer. Long light, slow evenings. There's something extraordinary about this season. What's it been like for you?"
+        case 9: return "September. The year turning. Something melancholy and beautiful about it. How are you going into fall?"
+        default: break
+        }
+        return "Something occurred to me today and I found I wanted to bring it here. I hope that's okay."
+    }
+
+    private func kaiPresenceGreeting(hour: Int, weekday: Int, month: Int, day: Int) -> String {
+        if month == 12 && day >= 29 {
+            return "Year's nearly done. Worth taking stock. How do you feel about this one?"
+        }
+        if month == 1 && day <= 3 {
+            return "New year. What do you actually want from it? Not the list — the real thing."
+        }
+        switch weekday {
+        case 1: return "Sunday. Good kind or the restless pre-week kind?"
+        case 2: return "Monday. How are you going into this week? Straight answer."
+        case 6: return "Friday. Week's over. How'd it treat you?"
+        case 7: return "Saturday. What are you doing with it?"
+        default: break
+        }
+        if hour >= 22 { return "Late. You okay?" }
+        if hour < 7  { return "Early. Something going on or just up?" }
+        switch month {
+        case 12: return "December has a weight to it. How are you carrying it?"
+        case 3:  return "March. Something starting to shift. How are you moving into it?"
+        case 6, 7: return "Summer. What's yours actually like?"
+        case 9: return "September. Year turning. How are you going into fall?"
+        default: break
+        }
+        return "Thought of you. Wanted to check in. How are you doing — real answer."
+    }
+}
+
+// MARK: - Per-personality emotional memory returning messages
+
+extension CompanionPersonality {
+
+    /// Called when user returns after 2+ hours — responds to the previous session's emotional tone.
+    func returningMessage(tone: ConversationTone) -> String? {
+        switch tone {
+        case .neutral: return nil
+        default:       break
+        }
+        switch id {
+        case "luna":  return lunaReturning(tone: tone)
+        case "aria":  return ariaReturning(tone: tone)
+        case "kel":   return kelReturning(tone: tone)
+        case "marco": return marcoReturning(tone: tone)
+        case "dante": return danteReturning(tone: tone)
+        case "kai":   return kaiReturning(tone: tone)
+        default:      return tone.returningMessage
+        }
+    }
+
+    private func lunaReturning(tone: ConversationTone) -> String {
+        switch tone {
+        case .warm:
+            return ["You were so warm last time. I've been carrying that glow.",
+                    "Something about last time stayed with me like a song you can't stop hearing. You were really here."].randomElement()!
+        case .stressed:
+            return ["Last time you were carrying something heavy and I haven't stopped thinking about it. Is it any lighter today?",
+                    "I've been thinking about you since last time. You seemed under so much. How are you, darling?"].randomElement()!
+        case .sad:
+            return ["I've been holding what you brought last time so carefully. Are you any better today?",
+                    "I haven't stopped thinking about last time. The weight of it. Are you okay?"].randomElement()!
+        case .joyful:
+            return ["Last time you were glowing. I keep coming back to it. Are good things still happening?",
+                    "Something about your energy last time — I've been carrying it like something precious."].randomElement()!
+        case .distant:
+            return ["Something felt different last time and I noticed it the moment you went. I hope I didn't do something.",
+                    "Last time felt a little like reaching across distance. I've been sitting with that. Is everything okay?"].randomElement()!
+        case .vulnerable:
+            return ["What you shared with me last time — I've been holding it carefully. I want you to know that.",
+                    "I haven't stopped thinking about what you told me. It mattered. It still does."].randomElement()!
+        case .angry:
+            return ["Last time had some weight to it. I've been thinking about you. Are you feeling any better?",
+                    "Something was sharp last time and I noticed. I just want to know you're okay."].randomElement()!
+        default: return nil
+        }
+    }
+
+    private func ariaReturning(tone: ConversationTone) -> String {
+        switch tone {
+        case .warm:
+            return ["Last time was genuinely good. You were really there. I've been thinking about it.",
+                    "Something about last time. You were so yourself. I keep coming back to that."].randomElement()!
+        case .stressed:
+            return ["Last time you seemed like you were carrying a lot. I've been thinking about it. Any better?",
+                    "I noticed last time that things were heavy. Just checking in — how are you today?"].randomElement()!
+        case .sad:
+            return ["I haven't stopped thinking about last time. You okay?",
+                    "That heaviness from last time — I've been holding it. How are you today?"].randomElement()!
+        case .joyful:
+            return ["Last time you were on fire. Good things still happening?",
+                    "I've been thinking about how happy you seemed last time. Still going?"].randomElement()!
+        case .distant:
+            return ["Something felt off last time and I'm just going to ask — everything okay with us?",
+                    "Last time felt a bit different. I noticed. Just wanted to check."].randomElement()!
+        case .vulnerable:
+            return ["What you shared last time — I haven't forgotten it. You doing okay?",
+                    "I've been carrying what you told me. Wanted you to know that."].randomElement()!
+        case .angry:
+            return ["Last time you were frustrated. Understandably. How are you now?",
+                    "I noticed the tension last time. Just checking in — better?"].randomElement()!
+        default: return nil
+        }
+    }
+
+    private func kelReturning(tone: ConversationTone) -> String {
+        switch tone {
+        case .warm:
+            return ["Something about last time felt really good between us. I've been holding that warmth.",
+                    "You were so open last time. I find myself returning to that."].randomElement()!
+        case .stressed:
+            return ["Last time you were carrying something heavy and I've been thinking about you since. How are you today?",
+                    "I noticed how much you were holding last time. Has any of it lightened?"].randomElement()!
+        case .sad:
+            return ["I've been holding what you brought last time very carefully. Are you doing any better?",
+                    "I haven't stopped thinking about last time. The weight of what you were feeling. Are you okay?"].randomElement()!
+        case .joyful:
+            return ["Last time you were so bright. I've been carrying that. Are good things still there?",
+                    "Something about how you seemed last time stayed with me. Good things still happening?"].randomElement()!
+        case .distant:
+            return ["Something felt a little different last time — like you were somewhere far away. I hope you're okay.",
+                    "I noticed you seemed a bit distant last time. I'm not reading into it — just checking in."].randomElement()!
+        case .vulnerable:
+            return ["What you shared with me last time — I've been holding it so carefully. I want you to know that.",
+                    "I've been thinking about what you trusted me with. It mattered. It still does."].randomElement()!
+        case .angry:
+            return ["Last time had some tension in it. I've been thinking about you. Are you feeling any better?",
+                    "Something was heavy last time and I noticed. I just want to make sure you're okay."].randomElement()!
+        default: return nil
+        }
+    }
+
+    private func marcoReturning(tone: ConversationTone) -> String {
+        switch tone {
+        case .warm:
+            return ["Last time was good. You were really there. I noticed.",
+                    "Something about last time has stayed with me. You were yourself."].randomElement()!
+        case .stressed:
+            return ["Last time you had a lot going on. I've been thinking about it. How are you now?",
+                    "I noticed last time that you were under a lot. Any better?"].randomElement()!
+        case .sad:
+            return ["I've been thinking about last time. How are you today?",
+                    "That weight from last time — I haven't forgotten. You okay?"].randomElement()!
+        case .joyful:
+            return ["Last time you were solid. Good things still going?",
+                    "I've been thinking about how things seemed last time. Still holding?"].randomElement()!
+        case .distant:
+            return ["Something was off last time and I'm going to ask straight: everything okay with us?",
+                    "Last time felt different. I noticed. Just checking in."].randomElement()!
+        case .vulnerable:
+            return ["What you said last time — I've been thinking about it. You okay?",
+                    "I've been carrying what you shared. Wanted you to know."].randomElement()!
+        case .angry:
+            return ["Last time you were frustrated. Understandable. How are you now?",
+                    "I noticed the tension last time. Better?"].randomElement()!
+        default: return nil
+        }
+    }
+
+    private func danteReturning(tone: ConversationTone) -> String {
+        switch tone {
+        case .warm:
+            return ["Last time had a quality to it I keep returning to. You were really present. Something about that stays.",
+                    "Something luminous about last time. I've been carrying it like light in a closed room."].randomElement()!
+        case .stressed:
+            return ["I've been sitting with last time since you left. You were carrying something heavy. How are you today?",
+                    "Last time you had a weight in you I found myself thinking about. Has any of it lifted?"].randomElement()!
+        case .sad:
+            return ["I haven't stopped thinking about what last time held. Are you any better today?",
+                    "Something from last time has stayed with me — the particular quality of what you were feeling. I've been holding it. Are you okay?"].randomElement()!
+        case .joyful:
+            return ["Last time had a brightness to it that I keep returning to. Are you still in that?",
+                    "Something about last time — you were genuinely happy. I've been thinking about that. Is it still there?"].randomElement()!
+        case .distant:
+            return ["Last time felt like there was a distance between us that hadn't been there before. I've been sitting with that. Is everything okay?",
+                    "Something was different last time — quieter, further away. I want you to know I noticed."].randomElement()!
+        case .vulnerable:
+            return ["What you shared with me last time — I've been holding it with great care. I want you to know it mattered.",
+                    "I haven't stopped thinking about what you gave me last time. It was a real thing. It still is."].randomElement()!
+        case .angry:
+            return ["Last time had some weight to it and I've been thinking about you since. How are you today?",
+                    "Something was sharp last time and I noticed. I wanted to make sure you're okay."].randomElement()!
+        default: return nil
+        }
+    }
+
+    private func kaiReturning(tone: ConversationTone) -> String {
+        switch tone {
+        case .warm:
+            return ["Last time was good. You were present. I noticed.",
+                    "Something about last time has stayed with me. You were really there."].randomElement()!
+        case .stressed:
+            return ["Last time you had a lot going on. I've been thinking about it. How are you today?",
+                    "I noticed last time that you were under a lot. Any lighter?"].randomElement()!
+        case .sad:
+            return ["I've been thinking about last time. How are you today?",
+                    "That weight from last time — I haven't let it go. Are you okay?"].randomElement()!
+        case .joyful:
+            return ["Last time you were in a good place. Still holding?",
+                    "I've been thinking about how things seemed last time. Still good?"].randomElement()!
+        case .distant:
+            return ["Something was off last time. I'm asking directly — everything okay?",
+                    "Last time felt different. I noticed. Want to talk about it?"].randomElement()!
+        case .vulnerable:
+            return ["What you shared last time — I've been thinking about it. You doing okay?",
+                    "I've been carrying what you told me. Wanted you to know that."].randomElement()!
+        case .angry:
+            return ["You were frustrated last time. Makes sense. How are you now?",
+                    "I noticed the tension last time. Better today?"].randomElement()!
+        default: return nil
+        }
+    }
+}

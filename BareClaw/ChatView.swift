@@ -758,7 +758,7 @@ struct ChatView: View {
             }
 
             // Emotional memory return message ("you seemed off last time…")
-            if let returning = SamanthaEmotionalMemory.shared.returningMessage() {
+            if let returning = SamanthaEmotionalMemory.shared.returningMessage(for: companion) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                     vm.messages.append(ChatMessage(role: .assistant, text: returning, isSamanthaThought: true))
                     CompanionVoiceEngine.shared.speakFiltered(returning, companion: companion)
@@ -820,6 +820,19 @@ struct ChatView: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 12.0) {
                             vm.messages.append(ChatMessage(role: .assistant, text: emotionArc, isSamanthaThought: true))
                             CompanionVoiceEngine.shared.speakFiltered(emotionArc, companion: companion)
+                            vm.saveMessages()
+                        }
+                    }
+                }
+
+                // Deep fear moment — very rare (4%), only at .falling+, unlocks the companion's
+                // deepest vulnerability. Luna: forgetting. Aria: being managed. Marco: failing to protect.
+                let stage = LoveEngine.shared.loveStage
+                if let fear = companion.deepFearMoment(stage: stage) {
+                    await MainActor.run {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 15.0) {
+                            vm.messages.append(ChatMessage(role: .assistant, text: fear, isSamanthaThought: true))
+                            CompanionVoiceEngine.shared.speakFiltered(fear, companion: companion)
                             vm.saveMessages()
                         }
                     }

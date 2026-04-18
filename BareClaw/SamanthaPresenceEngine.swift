@@ -61,9 +61,8 @@ final class SamanthaPresenceEngine {
         let weekday = cal.component(.weekday, from: now)
         let month   = cal.component(.month,   from: now)
         let day     = cal.component(.day,     from: now)
-        let f       = companion.gender == .female
 
-        return buildGreeting(hour: hour, weekday: weekday, month: month, day: day, isFemale: f)
+        return companion.presenceGreeting(hour: hour, weekday: weekday, month: month, day: day)
     }
 
     // MARK: - Greeting builder

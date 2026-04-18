@@ -140,6 +140,13 @@ final class SamanthaEmotionalMemory {
         return lastTone.returningMessage ?? nil
     }
 
+    func returningMessage(for companion: CompanionPersonality, minElapsedHours: Double = 2.0) -> String? {
+        guard let lastEntry = history.last else { return nil }
+        let elapsed = Date().timeIntervalSince(lastEntry.date) / 3600
+        guard elapsed >= minElapsedHours else { return nil }
+        return companion.returningMessage(tone: lastTone) ?? lastTone.returningMessage
+    }
+
     // MARK: - Persistence
 
     private func loadHistory() {
