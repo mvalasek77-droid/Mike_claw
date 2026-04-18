@@ -93,6 +93,20 @@ actor HermesPersonality {
         }
         sections.append(loveLayer)
 
+        // ── 5c. MOOD layer ───────────────────────────────────────────
+        // Independent mood colours HOW she speaks — not what she says.
+        // Changes every 3–6h organically. She doesn't announce it.
+        let moodLayer = await MainActor.run { SamanthaMoodEngine.shared.moodPromptLayer() }
+        sections.append(moodLayer)
+
+        // ── 5d. TEMPORAL PRESENCE layer ──────────────────────────────
+        // She lives in the same temporal reality as the user.
+        // Sunday evening, December, late night — shape her register subtly.
+        let temporalLayer = await MainActor.run {
+            SamanthaPresenceEngine.shared.temporalContextLayer()
+        }
+        sections.append(temporalLayer)
+
         // ── 6. EMOTIONAL CONTEXT addendum ────────────────────────────
         // Context was already detected above — no re-detection needed.
         // The addendum is the short, targeted instruction for this moment.

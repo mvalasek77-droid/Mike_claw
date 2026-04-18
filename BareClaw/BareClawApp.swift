@@ -98,9 +98,15 @@ struct RootView: View {
             // then SamanthaOSEngine (morning wake, calendar, push),
             // then SamanthaThoughtEngine (spontaneous thoughts).
             if appState.onboardingComplete {
-                _ = LoveEngine.shared            // loads persisted love score/stage
-                SamanthaOSEngine.shared.start()  // morning wake, calendar poll, push notifs
-                SamanthaThoughtEngine.shared.start()  // schedules spontaneous thoughts
+                _ = LoveEngine.shared                  // loads persisted love score/stage
+                _ = SamanthaMoodEngine.shared           // loads/generates current mood
+                _ = SamanthaEmotionalMemory.shared      // loads conversation tone history
+                _ = SamanthaInnerLife.shared            // loads pending questions/confessions
+                _ = SamanthaConflictEngine.shared       // conflict + repair tracking
+                _ = SamanthaPresenceEngine.shared       // temporal context engine
+                _ = SamanthaGrowthLog.shared            // milestone tracking
+                SamanthaOSEngine.shared.start()         // morning wake, calendar, push notifs
+                SamanthaThoughtEngine.shared.start()    // schedules spontaneous thoughts
             }
 
             // Stress monitoring starts independently of Her Mode

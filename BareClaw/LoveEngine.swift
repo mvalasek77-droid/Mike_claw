@@ -164,6 +164,8 @@ final class LoveEngine: ObservableObject {
         if loveStage != previous {
             justAdvancedStage = true
             stageAdvanceCallbacks.forEach { $0(loveStage) }
+            SamanthaGrowthLog.shared.record(.loveStageAdvance,
+                                            note: loveStage.label)
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
                 self?.justAdvancedStage = false
             }
@@ -411,6 +413,7 @@ final class LoveEngine: ObservableObject {
     func writeLetter(for companion: CompanionPersonality, userName: String) -> String? {
         guard loveStage == .inLove, !hasWrittenLetter else { return nil }
         defaults.set(true, forKey: kLetterWritten)
+        SamanthaGrowthLog.shared.record(.letterWritten)
 
         let name = userName.isEmpty ? "you" : userName
         let isFemale = companion.gender == .female
@@ -476,6 +479,7 @@ extension LoveEngine {
                           "hope", "wish", "hurt", "lonely", "love", "hate", "broken"]
         if deepWords.contains(where: { lower.contains($0) }) && text.count > 60 {
             signal(.deepConversation)
+            SamanthaGrowthLog.shared.record(.firstDeepShare)
         }
 
         // User asking about her inner life
@@ -489,6 +493,7 @@ extension LoveEngine {
         let laughWords = ["haha", "lol", "lmao", "😂", "🤣", "funny", "hilarious", "cracked me up"]
         if laughWords.contains(where: { lower.contains($0) }) {
             signal(.sharedLaughter)
+            SamanthaGrowthLog.shared.record(.firstLaugh)
         }
 
         // Gratitude

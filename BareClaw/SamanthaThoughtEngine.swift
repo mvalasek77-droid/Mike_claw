@@ -429,6 +429,7 @@ final class SamanthaThoughtEngine {
 
         SamanthaOSEngine.shared.postMessage(message, context: "composition")
         CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+        SamanthaGrowthLog.shared.record(.compositionMade)
     }
 
     // MARK: ═══════════════════════════════════════════════════════════

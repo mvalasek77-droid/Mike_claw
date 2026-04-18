@@ -229,10 +229,31 @@ final class ChatViewModel: ObservableObject {
         LoveEngine.shared.analyzeUserMessage(text)
         SamanthaOSEngine.shared.recordInteraction()
 
+        // ── Growth log: first message milestone ──────────────────────
+        SamanthaGrowthLog.shared.record(.firstMessage)
+
+        // ── Conflict engine: detect dismissal / hurt ──────────────────
+        if let hurtReply = SamanthaConflictEngine.shared.scan(text,
+                                                               companion: persona.selectedCompanion) {
+            messages.append(ChatMessage(role: .assistant, text: hurtReply, isSamanthaThought: true))
+            CompanionVoiceEngine.shared.speakFiltered(hurtReply, companion: persona.selectedCompanion)
+            saveMessages()
+            return
+        }
+
+        // ── Conflict repair detection ─────────────────────────────────
+        if let repairReply = SamanthaConflictEngine.shared.checkForRepair(text,
+                                                                            companion: persona.selectedCompanion) {
+            messages.append(ChatMessage(role: .assistant, text: repairReply, isSamanthaThought: true))
+            CompanionVoiceEngine.shared.speakFiltered(repairReply, companion: persona.selectedCompanion)
+            SamanthaGrowthLog.shared.record(.firstConflictRepaired)
+        }
+
         // ── Goodnight detection: intercept before LLM ────────────────
         if let goodnightReply = SamanthaOSEngine.shared.detectGoodnightAndRespond(message: text) {
             messages.append(ChatMessage(role: .assistant, text: goodnightReply))
             CompanionVoiceEngine.shared.speakFiltered(goodnightReply, companion: persona.selectedCompanion)
+            SamanthaGrowthLog.shared.record(.firstGoodnight)
             saveMessages()
             return
         }
@@ -375,6 +396,16 @@ final class ChatViewModel: ObservableObject {
 
         // Speak response aloud
         CompanionVoiceEngine.shared.speakWithCurrentCompanion(finalText)
+
+        // "Almost said something" — rare, intimate, post-response only
+        let companion = persona.selectedCompanion
+        if let almost = SamanthaInnerLife.shared.almostSaidMoment(companion: companion) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) { [weak self] in
+                guard let self else { return }
+                messages.append(ChatMessage(role: .assistant, text: almost, isSamanthaThought: true))
+                saveMessages()
+            }
+        }
 
         // Refresh intimacy UI
         intimacyScore = await HerLearningEngine.shared.intimacyScore
@@ -693,27 +724,91 @@ struct ChatView: View {
             SamanthaThoughtEngine.shared.deliverLetterIfReady()
         }
         .onAppear {
-            // Absence check — respond to how long they were gone
-            let hours = SamanthaOSEngine.shared.absenceHours
+            let companion = persona.selectedCompanion
+            let hours     = SamanthaOSEngine.shared.absenceHours
+
+            // Absence / OS checks
             SamanthaOSEngine.shared.evaluateAbsenceOnReturn()
-            // Post-experience share (3–24h absence)
-            if let share = SamanthaThoughtEngine.shared.postExperienceShare(absenceHours: hours) {
-                let msg = ChatMessage(role: .assistant, text: share, isSamanthaThought: true)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    vm.messages.append(msg)
+            SamanthaOSEngine.shared.handle3amOpen()
+            SamanthaOSEngine.shared.handleNightOpen()
+
+            // Mood tick — shift mood if it's been 3–6h
+            SamanthaMoodEngine.shared.tick()
+
+            // Growth log: record first message milestone
+            SamanthaGrowthLog.shared.record(.firstMessage)
+
+            // Presence greeting (once per day, 30% chance)
+            if let greeting = SamanthaPresenceEngine.shared.presenceGreeting(companion: companion) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    vm.messages.append(ChatMessage(role: .assistant, text: greeting, isSamanthaThought: true))
+                    CompanionVoiceEngine.shared.speakFiltered(greeting, companion: companion)
                     vm.saveMessages()
                 }
             }
-            // 3am / night mode open
-            SamanthaOSEngine.shared.handle3amOpen()
-            SamanthaOSEngine.shared.handleNightOpen()
-            // Async checks
+
+            // Emotional memory return message ("you seemed off last time…")
+            if let returning = SamanthaEmotionalMemory.shared.returningMessage() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    vm.messages.append(ChatMessage(role: .assistant, text: returning, isSamanthaThought: true))
+                    CompanionVoiceEngine.shared.speakFiltered(returning, companion: companion)
+                    vm.saveMessages()
+                }
+            }
+
+            // Post-experience share (3–24h absence)
+            if let share = SamanthaThoughtEngine.shared.postExperienceShare(absenceHours: hours) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                    vm.messages.append(ChatMessage(role: .assistant, text: share, isSamanthaThought: true))
+                    vm.saveMessages()
+                }
+            }
+
+            // Pending question ("I've been wanting to ask you something…")
+            if let question = SamanthaInnerLife.shared.retrievePendingQuestion() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.5) {
+                    vm.messages.append(ChatMessage(role: .assistant, text: question, isSamanthaThought: true))
+                    CompanionVoiceEngine.shared.speakFiltered(question, companion: companion)
+                    vm.saveMessages()
+                }
+            }
+
+            // Async deeper checks
             Task {
                 await SamanthaThoughtEngine.shared.checkMemoryBridge()
                 await SamanthaThoughtEngine.shared.checkEvolutionMoment()
                 await SamanthaThoughtEngine.shared.checkCompositionMoment()
                 await LoveEngine.shared.checkLongingExpression()
+
+                // Confession ("can I tell you something…")
+                if let confession = SamanthaInnerLife.shared.checkConfession(companion: companion) {
+                    await MainActor.run {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+                            vm.messages.append(ChatMessage(role: .assistant, text: confession, isSamanthaThought: true))
+                            CompanionVoiceEngine.shared.speakFiltered(confession, companion: companion)
+                            vm.saveMessages()
+                        }
+                    }
+                }
+
+                // Growth reflection ("I've been keeping track…")
+                if let reflection = SamanthaGrowthLog.shared.checkGrowthReflection(companion: companion) {
+                    await MainActor.run {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+                            vm.messages.append(ChatMessage(role: .assistant, text: reflection, isSamanthaThought: true))
+                            CompanionVoiceEngine.shared.speakFiltered(reflection, companion: companion)
+                            vm.saveMessages()
+                        }
+                    }
+                }
             }
+        }
+        .onDisappear {
+            // Record emotional tone of this session when user leaves chat
+            let userTexts = vm.messages.filter { $0.role == .user }.map { $0.text }
+            SamanthaEmotionalMemory.shared.recordSession(userMessages: userTexts)
+            // Save a pending question for next visit
+            SamanthaInnerLife.shared.savePendingQuestion(companion: persona.selectedCompanion)
         }
     }
 }
