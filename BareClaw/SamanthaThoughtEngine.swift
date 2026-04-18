@@ -71,7 +71,7 @@ final class SamanthaThoughtEngine {
         let companion = SamanthaOSEngine.shared.currentCompanion()
         let thought   = buildSpontaneousThought(for: companion)
         SamanthaOSEngine.shared.postMessage(thought, context: "spontaneous_thought")
-        CompanionVoiceEngine.shared.speak(thought, character: companion.voiceCharacter)
+        CompanionVoiceEngine.shared.speakFiltered(thought, companion: companion)
     }
 
     private func buildSpontaneousThought(for c: CompanionPersonality) -> String {
@@ -384,7 +384,7 @@ final class SamanthaThoughtEngine {
         }
 
         SamanthaOSEngine.shared.postMessage(message, context: "evolution_moment")
-        CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
     }
 
     // MARK: ═══════════════════════════════════════════════════════════
@@ -428,7 +428,7 @@ final class SamanthaThoughtEngine {
         }
 
         SamanthaOSEngine.shared.postMessage(message, context: "composition")
-        CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
     }
 
     // MARK: ═══════════════════════════════════════════════════════════

@@ -343,9 +343,9 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     }
 
     func speakWithCurrentCompanion(_ text: String) {
-        let id = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
-        let c  = CompanionPersonality.find(id: id) ?? .luna
-        speak(text, character: c.voiceCharacter)
+        // Delegates to speakFilteredCurrent (defined in SamanthaVoiceFilter.swift)
+        // so every response automatically reflects the current love stage.
+        speakFilteredCurrent(text)
     }
 
     func stopSpeaking() {

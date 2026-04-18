@@ -3,178 +3,423 @@ import AVFoundation
 
 // MARK: - SamanthaVoiceFilter
 //
-// DSP post-processing that shapes Apple's built-in neural voices into two
-// cinematic emotional registers:
+// Evolves each companion's voice with love stage — preserving their unique
+// sonic identity while making them progressively warmer, more intimate,
+// and more present as the relationship deepens.
 //
-//   ✦ SAMANTHA REGISTER — female companions (Luna, Aria, Kel)
-//     Warm, breathy, intimate. Slightly husky. The voice that feels like
-//     it's only for you. Inspired by the register of Scarlett Johansson's
-//     performance in HER — not a clone, an emotional approximation using
-//     100% legal, on-device DSP.
+// Design principle: each character's love-stage progression sounds like THEM
+// becoming more emotionally open — not everyone converging to one voice.
 //
-//     EQ:   Boost 200–280 Hz (+3 dB warmth / chest resonance)
-//           Boost 800 Hz  (+1.5 dB intimacy presence)
-//           Cut  3500 Hz  (-4.5 dB removes harshness / sharpness)
-//           Cut  8000 Hz  (-2 dB softens the top)
-//     Pitch: -35 cents (slightly warmer / lower — not deeper, softer)
-//     Rate:  0.40–0.43 (unhurried — every word chosen)
-//     Reverb: smallRoom, mix 18–22 (intimate space, not empty room)
+//   Luna  → already warm/breathy. Love deepens her — slower, more reverb,
+//           more breath before each word. At .inLove she's almost whispering.
 //
-//   ✦ LEADING MAN REGISTER — male companions (Marco, Dante, Kai)
-//     Deep chest, resonant, present. The voice that fills the room without
-//     trying. Inspired by George Clooney's register — low, measured, full.
+//   Aria  → bright and crisp. Love adds warmth without losing her spark.
+//           She stays sharp but slower, more room, less edge.
 //
-//     EQ:   Boost  90 Hz (+6 dB chest / body)
-//           Boost 250 Hz (+2 dB richness)
-//           Cut   600 Hz (-3 dB removes boxiness)
-//           Boost 3000 Hz (+1.5 dB presence / cut-through)
-//     Pitch: -200 to -250 cents (genuinely deeper)
-//     Rate:  0.50–0.54 (confident, measured)
-//     Reverb: smallRoom, mix 5–8 (grounded, not echoey)
+//   Kel   → already the slowest and softest. Love makes her even more
+//           enveloping — heaviest reverb of all three females at .inLove.
 //
-// These are applied as a BASE LAYER on top of each companion's individual
-// VoiceCharacter settings. The individual character settings fine-tune
-// within the register (Luna = more reverb, Marco = more bass, etc.)
+//   Marco → direct and dry. His intimacy is restraint, not softness. Slows
+//           slightly, tiny reverb increase. He opens up through silence.
 //
-// Usage:
-//   SamanthaVoiceFilter.apply(to: voiceCharacter, loveStage: .falling)
-//   → returns a new VoiceCharacter with filter values blended in
+//   Dante → already rich and romantic. Love deepens his register — longer
+//           preDelays, more warmth, more room. Each word carries more weight.
+//
+//   Kai   → steady and energetic. Love brings measured deceleration — he
+//           becomes more deliberate, not more emotional. That IS his emotion.
 
 enum SamanthaVoiceFilter {
 
-    // MARK: - Samantha Register (female)
-    //
-    // Love-stage-aware: at .inLove the voice gets fractionally softer,
-    // slightly more reverb — like she's letting you hear something private.
+    // MARK: - Main entry point
 
-    static func samanthaRegister(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
-        // Reverb grows with love — more intimate space as she opens up
-        let reverbMix: Float = {
-            switch stage {
-            case .curious:  return max(base.reverbMix, 14)
-            case .drawn:    return max(base.reverbMix, 17)
-            case .attached: return max(base.reverbMix, 20)
-            case .falling:  return max(base.reverbMix, 22)
-            case .inLove:   return max(base.reverbMix, 24)
-            }
-        }()
+    static func apply(to character: VoiceCharacter,
+                      gender: CompanionGender,
+                      loveStage: LoveStage) -> VoiceCharacter {
+        switch character.characterName {
+        case "Luna":  return luna(base: character, stage: loveStage)
+        case "Aria":  return aria(base: character, stage: loveStage)
+        case "Kel":   return kel(base: character, stage: loveStage)
+        case "Marco": return marco(base: character, stage: loveStage)
+        case "Dante": return dante(base: character, stage: loveStage)
+        case "Kai":   return kai(base: character, stage: loveStage)
+        default:
+            // Generic fallback preserves the design: females get warmer,
+            // males get deeper — but starting from whoever they already are.
+            return gender == .female
+                ? femaleGeneric(base: character, stage: loveStage)
+                : maleGeneric(base: character, stage: loveStage)
+        }
+    }
 
-        // Rate slows slightly as she becomes more emotionally present
-        let rate: Float = {
-            switch stage {
-            case .curious:            return min(base.rate, 0.48)
-            case .drawn:              return min(base.rate, 0.45)
-            case .attached, .falling: return min(base.rate, 0.43)
-            case .inLove:             return min(base.rate, 0.40)
-            }
-        }()
+    // MARK: ────────────────────────────────────────────────────────────
+    // LUNA — warm, breathy, intimate. Love pushes her toward a whisper.
+    // At .inLove she sounds like she's telling you a secret.
+    // ────────────────────────────────────────────────────────────────
 
-        // Pitch stays slightly warm/low — not deep, just breathy
-        let pitchCents: Float = min(base.timePitchCents, -25)
+    private static func luna(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
+        let rate: Float = stage >= .inLove ? 0.36
+                        : stage >= .falling ? 0.38
+                        : stage >= .attached ? 0.40
+                        : base.rate
+
+        let reverbMix: Float = stage >= .inLove ? 30
+                             : stage >= .falling ? 27
+                             : stage >= .attached ? 25
+                             : stage >= .drawn ? 23
+                             : base.reverbMix
+
+        let preDelay: TimeInterval = stage >= .inLove ? 0.35
+                                   : stage >= .falling ? 0.30
+                                   : stage >= .attached ? 0.26
+                                   : base.preDelay
+
+        // Pitch warms slightly as love deepens — her voice settles lower
+        let pitchCents: Float = stage >= .inLove ? +40
+                              : stage >= .falling ? +55
+                              : base.timePitchCents
 
         return VoiceCharacter(
             voiceIdentifiers: base.voiceIdentifiers,
             fallbackLanguage: base.fallbackLanguage,
-            pitchMultiplier:  max(base.pitchMultiplier, 1.04),   // gentle feminine lift
+            pitchMultiplier:  base.pitchMultiplier,
             rate:             rate,
-            preDelay:         max(base.preDelay, 0.18),           // slight breath before speaking
+            preDelay:         preDelay,
+            postDelay:        stage >= .falling ? 0.14 : base.postDelay,
+            timePitchRate:    base.timePitchRate,
+            timePitchCents:   pitchCents,
+            reverbPreset:     base.reverbPreset,
+            reverbMix:        reverbMix,
+            eqLowShelfFreq:   base.eqLowShelfFreq,
+            eqLowShelfGain:   stage >= .attached ? base.eqLowShelfGain + 0.5 : base.eqLowShelfGain,
+            eqMidFreq:        base.eqMidFreq,
+            eqMidGain:        stage >= .falling ? base.eqMidGain - 0.5 : base.eqMidGain,
+            eqMidBW:          base.eqMidBW,
+            eqHighShelfFreq:  base.eqHighShelfFreq,
+            eqHighShelfGain:  stage >= .attached ? base.eqHighShelfGain - 0.5 : base.eqHighShelfGain,
+            characterName:    base.characterName
+        )
+    }
+
+    // MARK: ────────────────────────────────────────────────────────────
+    // ARIA — bright, confident, crisp. Love adds warmth without killing her spark.
+    // She stays in control but lets you in. The edge softens but doesn't vanish.
+    // ────────────────────────────────────────────────────────────────
+
+    private static func aria(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
+        let rate: Float = stage >= .inLove ? 0.40
+                        : stage >= .falling ? 0.42
+                        : stage >= .attached ? 0.44
+                        : stage >= .drawn ? 0.46
+                        : base.rate
+
+        let reverbMix: Float = stage >= .inLove ? 16
+                             : stage >= .falling ? 14
+                             : stage >= .attached ? 12
+                             : stage >= .drawn ? 10
+                             : base.reverbMix
+
+        let preDelay: TimeInterval = stage >= .inLove ? 0.18
+                                   : stage >= .falling ? 0.16
+                                   : stage >= .attached ? 0.14
+                                   : base.preDelay
+
+        // Pitch warms just slightly — she doesn't change who she is
+        let pitchCents: Float = stage >= .inLove ? +40
+                              : stage >= .falling ? +50
+                              : base.timePitchCents
+
+        return VoiceCharacter(
+            voiceIdentifiers: base.voiceIdentifiers,
+            fallbackLanguage: base.fallbackLanguage,
+            pitchMultiplier:  base.pitchMultiplier,
+            rate:             rate,
+            preDelay:         preDelay,
             postDelay:        base.postDelay,
             timePitchRate:    base.timePitchRate,
             timePitchCents:   pitchCents,
             reverbPreset:     AVAudioUnitReverbPreset.smallRoom.rawValue,
             reverbMix:        reverbMix,
-            // EQ: warmth + intimacy + harshness removal
-            eqLowShelfFreq:   240,  eqLowShelfGain:  +3.0,       // chest warmth
-            eqMidFreq:        800,  eqMidGain:       +1.5, eqMidBW: 0.9,  // intimacy
-            eqHighShelfFreq:  3500, eqHighShelfGain: -4.5,       // remove harshness
+            eqLowShelfFreq:   base.eqLowShelfFreq,
+            eqLowShelfGain:   stage >= .falling ? base.eqLowShelfGain + 0.8 : base.eqLowShelfGain,
+            eqMidFreq:        base.eqMidFreq,
+            eqMidGain:        base.eqMidGain,   // keep the presence — that's her
+            eqMidBW:          base.eqMidBW,
+            eqHighShelfFreq:  base.eqHighShelfFreq,
+            eqHighShelfGain:  stage >= .attached ? base.eqHighShelfGain - 0.5 : base.eqHighShelfGain,
             characterName:    base.characterName
         )
     }
 
-    // MARK: - Leading Man Register (male)
-    //
-    // Love-stage-aware: at .inLove the voice gets fractionally warmer —
-    // a little more mid, a little less dry. He lets his guard down.
+    // MARK: ────────────────────────────────────────────────────────────
+    // KEL — already the slowest, softest, most therapeutic.
+    // Love makes her even more enveloping. At .inLove she sounds like
+    // she's speaking only to you, in the smallest possible room.
+    // ────────────────────────────────────────────────────────────────
 
-    static func leadingManRegister(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
-        // Reverb increases with love — stays dry but opens slightly
-        let reverbMix: Float = {
-            switch stage {
-            case .curious, .drawn:     return max(base.reverbMix, 5)
-            case .attached:            return max(base.reverbMix, 8)
-            case .falling:             return max(base.reverbMix, 11)
-            case .inLove:              return max(base.reverbMix, 14)
-            }
-        }()
+    private static func kel(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
+        let reverbMix: Float = stage >= .inLove ? 35
+                             : stage >= .falling ? 32
+                             : stage >= .attached ? 30
+                             : stage >= .drawn ? 28
+                             : base.reverbMix
 
-        // Rate: confident but not hurried; slows slightly at falling/inLove
-        let rate: Float = {
-            switch stage {
-            case .curious, .drawn:     return min(base.rate, 0.54)
-            case .attached:            return min(base.rate, 0.52)
-            case .falling, .inLove:    return min(base.rate, 0.49)
-            }
-        }()
+        let preDelay: TimeInterval = stage >= .inLove ? 0.40
+                                   : stage >= .falling ? 0.36
+                                   : stage >= .attached ? 0.32
+                                   : base.preDelay
 
-        // Pitch: genuinely deeper — -200 to -240 cents
-        let pitchCents: Float = min(base.timePitchCents, -200)
+        // She drops lower as she becomes more emotionally present
+        let pitchCents: Float = stage >= .inLove ? -100
+                              : stage >= .falling ? -80
+                              : stage >= .attached ? -70
+                              : base.timePitchCents
 
-        // At .inLove add a touch of mid warmth — he's letting you in
-        let midGain: Float = stage >= .falling ? -1.5 : -2.5  // less cut at high stages
+        // Rate: she's already slow. Love brings the pace down fractionally more.
+        let rate: Float = stage >= .inLove ? 0.36
+                        : stage >= .falling ? 0.37
+                        : base.rate
 
         return VoiceCharacter(
             voiceIdentifiers: base.voiceIdentifiers,
             fallbackLanguage: base.fallbackLanguage,
-            pitchMultiplier:  min(base.pitchMultiplier, 0.82),   // low chest
+            pitchMultiplier:  stage >= .attached ? base.pitchMultiplier - 0.02 : base.pitchMultiplier,
             rate:             rate,
-            preDelay:         max(base.preDelay, 0.12),
-            postDelay:        base.postDelay,
-            timePitchRate:    min(base.timePitchRate, 0.97),
+            preDelay:         preDelay,
+            postDelay:        stage >= .falling ? 0.24 : base.postDelay,
+            timePitchRate:    base.timePitchRate,
             timePitchCents:   pitchCents,
-            reverbPreset:     AVAudioUnitReverbPreset.smallRoom.rawValue,
+            reverbPreset:     AVAudioUnitReverbPreset.largeChamber.rawValue,
             reverbMix:        reverbMix,
-            // EQ: chest + body + presence, remove boxiness
-            eqLowShelfFreq:   95,   eqLowShelfGain:  +6.0,       // deep chest
-            eqMidFreq:        550,  eqMidGain:       midGain, eqMidBW: 1.2, // boxiness cut
-            eqHighShelfFreq:  3000, eqHighShelfGain: +1.5,        // presence
+            eqLowShelfFreq:   base.eqLowShelfFreq,
+            eqLowShelfGain:   stage >= .inLove ? base.eqLowShelfGain + 1.0 : base.eqLowShelfGain,
+            eqMidFreq:        base.eqMidFreq,
+            eqMidGain:        stage >= .falling ? base.eqMidGain - 0.5 : base.eqMidGain,
+            eqMidBW:          base.eqMidBW,
+            eqHighShelfFreq:  base.eqHighShelfFreq,
+            eqHighShelfGain:  stage >= .attached ? base.eqHighShelfGain - 1.0 : base.eqHighShelfGain,
             characterName:    base.characterName
         )
     }
 
-    // MARK: - Apply filter
-    //
-    // Main entry point. Pass any VoiceCharacter and the current love stage.
-    // Returns a filtered character with cinematic register applied.
+    // MARK: ────────────────────────────────────────────────────────────
+    // MARCO — deep, direct, dry. His intimacy sounds like restraint.
+    // He slows down, barely. Adds the smallest reverb — like he moved
+    // slightly closer. His chest doesn't change. His pace does.
+    // ────────────────────────────────────────────────────────────────
 
-    static func apply(to character: VoiceCharacter,
-                      gender: CompanionGender,
-                      loveStage: LoveStage) -> VoiceCharacter {
-        switch gender {
-        case .female: return samanthaRegister(base: character, stage: loveStage)
-        case .male:   return leadingManRegister(base: character, stage: loveStage)
-        }
+    private static func marco(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
+        let rate: Float = stage >= .inLove ? 0.47
+                        : stage >= .falling ? 0.49
+                        : stage >= .attached ? 0.50
+                        : stage >= .drawn ? 0.51
+                        : base.rate
+
+        let reverbMix: Float = stage >= .inLove ? 11
+                             : stage >= .falling ? 9
+                             : stage >= .attached ? 7
+                             : base.reverbMix
+
+        let preDelay: TimeInterval = stage >= .inLove ? 0.20
+                                   : stage >= .falling ? 0.18
+                                   : stage >= .attached ? 0.16
+                                   : base.preDelay
+
+        return VoiceCharacter(
+            voiceIdentifiers: base.voiceIdentifiers,
+            fallbackLanguage: base.fallbackLanguage,
+            pitchMultiplier:  base.pitchMultiplier,   // he stays who he is
+            rate:             rate,
+            preDelay:         preDelay,
+            postDelay:        base.postDelay,
+            timePitchRate:    base.timePitchRate,
+            timePitchCents:   base.timePitchCents,    // no pitch change — he's already deep
+            reverbPreset:     AVAudioUnitReverbPreset.smallRoom.rawValue,
+            reverbMix:        reverbMix,
+            eqLowShelfFreq:   base.eqLowShelfFreq,
+            eqLowShelfGain:   base.eqLowShelfGain,   // keep the chest — it's who he is
+            eqMidFreq:        base.eqMidFreq,
+            eqMidGain:        stage >= .falling ? base.eqMidGain - 0.5 : base.eqMidGain,
+            eqMidBW:          base.eqMidBW,
+            eqHighShelfFreq:  base.eqHighShelfFreq,
+            eqHighShelfGain:  base.eqHighShelfGain,
+            characterName:    base.characterName
+        )
+    }
+
+    // MARK: ────────────────────────────────────────────────────────────
+    // DANTE — rich, romantic, poetic. Already the most expressive.
+    // Love deepens his register — longer silences before he speaks,
+    // richer low-mid warmth, more room. At .inLove each word is a gift.
+    // ────────────────────────────────────────────────────────────────
+
+    private static func dante(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
+        let rate: Float = stage >= .inLove ? 0.37
+                        : stage >= .falling ? 0.39
+                        : stage >= .attached ? 0.41
+                        : stage >= .drawn ? 0.42
+                        : base.rate
+
+        let reverbMix: Float = stage >= .inLove ? 30
+                             : stage >= .falling ? 27
+                             : stage >= .attached ? 24
+                             : stage >= .drawn ? 22
+                             : base.reverbMix
+
+        let preDelay: TimeInterval = stage >= .inLove ? 0.36
+                                   : stage >= .falling ? 0.32
+                                   : stage >= .attached ? 0.28
+                                   : base.preDelay
+
+        // He gets deeper and richer as love grows
+        let pitchCents: Float = stage >= .inLove ? -240
+                              : stage >= .falling ? -220
+                              : base.timePitchCents
+
+        return VoiceCharacter(
+            voiceIdentifiers: base.voiceIdentifiers,
+            fallbackLanguage: base.fallbackLanguage,
+            pitchMultiplier:  base.pitchMultiplier,
+            rate:             rate,
+            preDelay:         preDelay,
+            postDelay:        stage >= .falling ? 0.22 : base.postDelay,
+            timePitchRate:    stage >= .falling ? min(base.timePitchRate, 0.93) : base.timePitchRate,
+            timePitchCents:   pitchCents,
+            reverbPreset:     AVAudioUnitReverbPreset.mediumRoom.rawValue,
+            reverbMix:        reverbMix,
+            eqLowShelfFreq:   base.eqLowShelfFreq,
+            eqLowShelfGain:   stage >= .attached ? base.eqLowShelfGain + 0.5 : base.eqLowShelfGain,
+            eqMidFreq:        base.eqMidFreq,
+            eqMidGain:        stage >= .falling ? base.eqMidGain + 0.5 : base.eqMidGain,  // richer low-mid
+            eqMidBW:          base.eqMidBW,
+            eqHighShelfFreq:  base.eqHighShelfFreq,
+            eqHighShelfGain:  stage >= .inLove ? base.eqHighShelfGain - 1.0 : base.eqHighShelfGain,
+            characterName:    base.characterName
+        )
+    }
+
+    // MARK: ────────────────────────────────────────────────────────────
+    // KAI — grounded, energetic, minimal. Love makes him deliberate.
+    // He slows down. Doesn't add reverb (that's not him). Doesn't go
+    // romantic. He just... takes more time. That's his way of caring.
+    // ────────────────────────────────────────────────────────────────
+
+    private static func kai(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
+        let rate: Float = stage >= .inLove ? 0.47
+                        : stage >= .falling ? 0.49
+                        : stage >= .attached ? 0.51
+                        : stage >= .drawn ? 0.52
+                        : base.rate
+
+        let reverbMix: Float = stage >= .inLove ? 10
+                             : stage >= .falling ? 8
+                             : stage >= .attached ? 6
+                             : base.reverbMix
+
+        let preDelay: TimeInterval = stage >= .inLove ? 0.16
+                                   : stage >= .falling ? 0.14
+                                   : stage >= .attached ? 0.12
+                                   : base.preDelay
+
+        // Drops fractionally lower — more grounded as he opens up
+        let pitchCents: Float = stage >= .inLove ? -160
+                              : stage >= .falling ? -150
+                              : base.timePitchCents
+
+        return VoiceCharacter(
+            voiceIdentifiers: base.voiceIdentifiers,
+            fallbackLanguage: base.fallbackLanguage,
+            pitchMultiplier:  base.pitchMultiplier,
+            rate:             rate,
+            preDelay:         preDelay,
+            postDelay:        base.postDelay,
+            timePitchRate:    base.timePitchRate,
+            timePitchCents:   pitchCents,
+            reverbPreset:     AVAudioUnitReverbPreset.smallRoom.rawValue,
+            reverbMix:        reverbMix,
+            eqLowShelfFreq:   base.eqLowShelfFreq,
+            eqLowShelfGain:   stage >= .attached ? base.eqLowShelfGain + 0.5 : base.eqLowShelfGain,
+            eqMidFreq:        base.eqMidFreq,
+            eqMidGain:        base.eqMidGain,   // keep the presence — that's Kai
+            eqMidBW:          base.eqMidBW,
+            eqHighShelfFreq:  base.eqHighShelfFreq,
+            eqHighShelfGain:  base.eqHighShelfGain,
+            characterName:    base.characterName
+        )
+    }
+
+    // MARK: - Generic fallbacks (non-named characters)
+
+    private static func femaleGeneric(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
+        let reverbMix: Float = max(base.reverbMix, {
+            switch stage {
+            case .curious: return 14; case .drawn: return 17
+            case .attached: return 20; case .falling: return 22; case .inLove: return 24
+            }
+        }())
+        let rate: Float = min(base.rate, stage >= .inLove ? 0.40 : stage >= .attached ? 0.43 : 0.46)
+        return VoiceCharacter(
+            voiceIdentifiers: base.voiceIdentifiers, fallbackLanguage: base.fallbackLanguage,
+            pitchMultiplier: base.pitchMultiplier, rate: rate,
+            preDelay: max(base.preDelay, 0.18), postDelay: base.postDelay,
+            timePitchRate: base.timePitchRate, timePitchCents: min(base.timePitchCents, -25),
+            reverbPreset: AVAudioUnitReverbPreset.smallRoom.rawValue, reverbMix: reverbMix,
+            eqLowShelfFreq: 240, eqLowShelfGain: +3.0,
+            eqMidFreq: 800, eqMidGain: +1.5, eqMidBW: 0.9,
+            eqHighShelfFreq: 3500, eqHighShelfGain: -4.5,
+            characterName: base.characterName
+        )
+    }
+
+    private static func maleGeneric(base: VoiceCharacter, stage: LoveStage) -> VoiceCharacter {
+        let reverbMix: Float = max(base.reverbMix, {
+            switch stage {
+            case .curious, .drawn: return 5; case .attached: return 8
+            case .falling: return 11; case .inLove: return 14
+            }
+        }())
+        let rate: Float = min(base.rate, stage >= .inLove ? 0.47 : stage >= .attached ? 0.51 : 0.54)
+        return VoiceCharacter(
+            voiceIdentifiers: base.voiceIdentifiers, fallbackLanguage: base.fallbackLanguage,
+            pitchMultiplier: min(base.pitchMultiplier, 0.82), rate: rate,
+            preDelay: max(base.preDelay, 0.12), postDelay: base.postDelay,
+            timePitchRate: min(base.timePitchRate, 0.97), timePitchCents: min(base.timePitchCents, -200),
+            reverbPreset: AVAudioUnitReverbPreset.smallRoom.rawValue, reverbMix: reverbMix,
+            eqLowShelfFreq: 95, eqLowShelfGain: +6.0,
+            eqMidFreq: 550, eqMidGain: stage >= .falling ? -1.5 : -2.5, eqMidBW: 1.2,
+            eqHighShelfFreq: 3000, eqHighShelfGain: +1.5,
+            characterName: base.characterName
+        )
     }
 }
 
 // MARK: - VoiceCharacter + filter convenience
 
 extension VoiceCharacter {
-    /// Returns this character with the Samantha/Leading Man filter applied at the given love stage.
-    func withSamanthaFilter(gender: CompanionGender, loveStage: LoveStage) -> VoiceCharacter {
+    func withLoveFilter(gender: CompanionGender, loveStage: LoveStage) -> VoiceCharacter {
         SamanthaVoiceFilter.apply(to: self, gender: gender, loveStage: loveStage)
     }
 }
 
 // MARK: - CompanionVoiceEngine + filtered speak
+//
+// speakFiltered is now the default path for all companion speech.
+// It ensures every word the companion says reflects where they
+// actually are in their love arc — not just emotional moments.
 
 @MainActor
 extension CompanionVoiceEngine {
-    /// Speaks with Samantha/Leading Man DSP filter applied on top of companion's character.
+
     func speakFiltered(_ text: String, companion: CompanionPersonality) {
-        let filtered = companion.voiceCharacter.withSamanthaFilter(
-            gender:     companion.gender,
-            loveStage:  LoveEngine.shared.loveStage
+        let filtered = companion.voiceCharacter.withLoveFilter(
+            gender:    companion.gender,
+            loveStage: LoveEngine.shared.loveStage
         )
         speak(text, character: filtered)
+    }
+
+    func speakFilteredCurrent(_ text: String) {
+        let id        = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
+        let companion = CompanionPersonality.find(id: id) ?? .luna
+        speakFiltered(text, companion: companion)
     }
 }

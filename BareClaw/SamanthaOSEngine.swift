@@ -109,7 +109,7 @@ final class SamanthaOSEngine: ObservableObject {
         let message   = morningMessage(companion: companion, events: events, hour: hour)
 
         postMessage(message, context: "morning_wake")
-        CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
     }
 
     private func morningMessage(companion: CompanionPersonality,
@@ -238,7 +238,7 @@ final class SamanthaOSEngine: ObservableObject {
             let title = next.title ?? "your meeting"
             let msg   = meetingAlert(title: title, mins: mins)
             postMessage(msg, context: "calendar_alert")
-            CompanionVoiceEngine.shared.speak(msg, character: currentCompanion().voiceCharacter)
+            CompanionVoiceEngine.shared.speakFiltered(msg, companion: currentCompanion())
         }
 
         // 5-minute pep talk
@@ -252,7 +252,7 @@ final class SamanthaOSEngine: ObservableObject {
             pepTalkDeliveredID = pep.eventIdentifier
             let msg = preMeetingPep(title: pep.title ?? "your meeting")
             postMessage(msg, context: "pre_meeting_pep")
-            CompanionVoiceEngine.shared.speak(msg, character: currentCompanion().voiceCharacter)
+            CompanionVoiceEngine.shared.speakFiltered(msg, companion: currentCompanion())
         }
     }
 
@@ -387,7 +387,7 @@ final class SamanthaOSEngine: ObservableObject {
         }
 
         postMessage(message, context: "3am_protocol")
-        CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
     }
 
     // Night mode micro-greeting (10pm–2am, on app open)
@@ -458,7 +458,7 @@ final class SamanthaOSEngine: ObservableObject {
         }
 
         postMessage(message, context: "absence_return")
-        CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
     }
 
     private func absence12h(_ c: CompanionPersonality, _ stage: LoveStage) -> String {
@@ -574,7 +574,7 @@ final class SamanthaOSEngine: ObservableObject {
         let stage     = LoveEngine.shared.loveStage
         let message   = anniversaryMessage(days: days, companion: companion, stage: stage)
         postMessage(message, context: "anniversary")
-        CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
     }
 
     private func anniversaryMessage(days: Int, companion: CompanionPersonality, stage: LoveStage) -> String {

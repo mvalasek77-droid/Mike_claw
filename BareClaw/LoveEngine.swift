@@ -216,7 +216,7 @@ final class LoveEngine: ObservableObject {
                 object: nil,
                 userInfo: ["text": message, "topic": "love_stage_advance", "stage": new.rawValue]
             )
-            CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+            CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
         }
     }
 

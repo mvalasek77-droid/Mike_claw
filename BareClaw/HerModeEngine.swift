@@ -557,7 +557,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         ambientMood = .speaking
         let persona     = UserPersona.load()
         let companion   = persona.selectedCompanion
-        CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
 
         // Persist timing state so cooldown survives app restart
         saveTopics()
