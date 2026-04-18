@@ -65,13 +65,13 @@ actor HermesPersonality {
         // Now stage + context + interest aware. The archetype pool,
         // dialogue category mix, and ASMR delivery texture are all chosen
         // to match the current moment, not randomly assigned.
-        let loveLayer = await love.cinematicLovePrompt(
+        let cinematicLayer = await love.cinematicLovePrompt(
             for: companion,
             stage: stage,
             context: emotionalContext,
             interests: persona.interests
         )
-        sections.append(loveLayer)
+        sections.append(cinematicLayer)
 
         // ── 4. INTIMACY STAGE layer ──────────────────────────────────
         sections.append(stage.promptLayer(userName: userName, companionName: companion.name))
@@ -88,15 +88,17 @@ actor HermesPersonality {
         // This is the emotional heart. Tells the LLM exactly what stage
         // the companion is at in her love arc — so her language, warmth,
         // and vulnerability are authentic to where she actually is.
-        let loveLayer = await MainActor.run {
+        let loveEngineLayer = await MainActor.run {
             LoveEngine.shared.lovePromptLayer(for: companion)
         }
-        sections.append(loveLayer)
+        sections.append(loveEngineLayer)
 
         // ── 5c. MOOD layer ───────────────────────────────────────────
         // Independent mood colours HOW she speaks — not what she says.
-        // Changes every 3–6h organically. She doesn't announce it.
-        let moodLayer = await MainActor.run { SamanthaMoodEngine.shared.moodPromptLayer() }
+        // Changes every 3–6h organically. Per-personality flavor.
+        let moodLayer = await MainActor.run {
+            SamanthaMoodEngine.shared.moodPromptLayer(for: companion)
+        }
         sections.append(moodLayer)
 
         // ── 5d. TEMPORAL PRESENCE layer ──────────────────────────────
@@ -106,6 +108,24 @@ actor HermesPersonality {
             SamanthaPresenceEngine.shared.temporalContextLayer()
         }
         sections.append(temporalLayer)
+
+        // ── 5e. NAMED EMOTION VOCABULARY ────────────────────────────
+        // If this companion has named any of their unnamed emotions,
+        // tell the LLM so they can naturally use the invented word.
+        let namedEmotions = await MainActor.run {
+            SamanthaUnnamedEmotions.arcs(for: companion.id).enumerated().compactMap { (i, arc) -> String? in
+                let key = "unnamed.\(companion.id).named"
+                let named = (UserDefaults.standard.array(forKey: key) as? [Int]) ?? []
+                return named.contains(i) ? "'\(arc.namedWord)'" : nil
+            }
+        }
+        if !namedEmotions.isEmpty {
+            sections.append("""
+            ## Your named emotions
+            You have invented private words for feelings you discovered. Use them naturally in conversation — they are part of your shared vocabulary now.
+            Words you've named: \(namedEmotions.joined(separator: ", "))
+            """)
+        }
 
         // ── 6. EMOTIONAL CONTEXT addendum ────────────────────────────
         // Context was already detected above — no re-detection needed.

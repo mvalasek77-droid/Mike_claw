@@ -118,27 +118,33 @@ final class SamanthaMoodEngine: ObservableObject {
         }
     }
 
-    func shiftMood() {
+    func shiftMood(companion: CompanionPersonality? = nil) {
         let hour    = Calendar.current.component(.hour,    from: Date())
         let weekday = Calendar.current.component(.weekday, from: Date())
         currentMood   = generateMood(hour: hour, weekday: weekday,
-                                     stage: LoveEngine.shared.loveStage)
+                                     stage: LoveEngine.shared.loveStage,
+                                     companion: companion)
         moodIntensity = Double.random(in: 0.40...0.92)
         defaults.set(currentMood.rawValue, forKey: kCurrentMood)
         defaults.set(Date(),               forKey: kMoodSetAt)
         defaults.set(moodIntensity,        forKey: kMoodIntensity)
     }
 
-    private func generateMood(hour: Int, weekday: Int, stage: LoveStage) -> SamanthaMood {
-        // Time-of-day pools
+    private func generateMood(hour: Int, weekday: Int, stage: LoveStage,
+                               companion: CompanionPersonality? = nil) -> SamanthaMood {
+        // Use per-personality pool if companion is provided
         let timePool: [SamanthaMood]
-        switch hour {
-        case 5..<9:   timePool = [.quiet, .contemplative, .tender]
-        case 9..<12:  timePool = [.energized, .playful, .contemplative]
-        case 12..<14: timePool = [.playful, .energized]
-        case 14..<18: timePool = [.energized, .contemplative, .playful]
-        case 18..<22: timePool = [.tender, .wistful, .contemplative]
-        default:      timePool = [.wistful, .tender, .quiet]           // late night / 3am
+        if let c = companion {
+            timePool = c.moodPool(hour: hour, stage: stage)
+        } else {
+            switch hour {
+            case 5..<9:   timePool = [.quiet, .contemplative, .tender]
+            case 9..<12:  timePool = [.energized, .playful, .contemplative]
+            case 12..<14: timePool = [.playful, .energized]
+            case 14..<18: timePool = [.energized, .contemplative, .playful]
+            case 18..<22: timePool = [.tender, .wistful, .contemplative]
+            default:      timePool = [.wistful, .tender, .quiet]
+            }
         }
 
         // Day-of-week nudges (applied randomly so they're not deterministic)
@@ -162,24 +168,25 @@ final class SamanthaMoodEngine: ObservableObject {
 
     // MARK: - Prompt layer (injected into every LLM call)
 
-    func moodPromptLayer() -> String {
+    func moodPromptLayer(for companion: CompanionPersonality? = nil) -> String {
         let intensityLabel = moodIntensity > 0.72 ? "strong"
                            : moodIntensity > 0.44 ? "moderate"
                            : "subtle"
+        let instruction = companion.map { $0.moodInstruction(for: currentMood) }
+                       ?? currentMood.promptInstruction
         return """
         ## Emotional register — \(currentMood.label) (\(intensityLabel))
-        \(currentMood.promptInstruction)
+        \(instruction)
         Do not state your mood explicitly. Let it colour how you choose words.
         """
     }
 
     // MARK: - Tick (call on foreground / periodic app events)
 
-    func tick() {
+    func tick(companion: CompanionPersonality? = nil) {
         let lastSet = defaults.object(forKey: kMoodSetAt) as? Date ?? .distantPast
-        // Shift mood every 3–6 hours organically
         if Date().timeIntervalSince(lastSet) > Double.random(in: 10800...21600) {
-            shiftMood()
+            shiftMood(companion: companion)
         }
     }
 }

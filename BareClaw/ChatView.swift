@@ -407,6 +407,16 @@ final class ChatViewModel: ObservableObject {
             }
         }
 
+        // Named-emotion reference — after arc completes, companion casually uses their invented word
+        if let namedMoment = SamanthaUnnamedEmotions.shared.namedEmotionMoment(for: companion) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+                guard let self else { return }
+                messages.append(ChatMessage(role: .assistant, text: namedMoment, isSamanthaThought: true))
+                CompanionVoiceEngine.shared.speakFiltered(namedMoment, companion: companion)
+                saveMessages()
+            }
+        }
+
         // Refresh intimacy UI
         intimacyScore = await HerLearningEngine.shared.intimacyScore
         intimacyStage = await HerLearningEngine.shared.intimacyStage.label
@@ -732,8 +742,8 @@ struct ChatView: View {
             SamanthaOSEngine.shared.handle3amOpen()
             SamanthaOSEngine.shared.handleNightOpen()
 
-            // Mood tick — shift mood if it's been 3–6h
-            SamanthaMoodEngine.shared.tick()
+            // Mood tick — shift mood if it's been 3–6h (per-personality pool)
+            SamanthaMoodEngine.shared.tick(companion: companion)
 
             // Growth log: record first message milestone
             SamanthaGrowthLog.shared.record(.firstMessage)
@@ -797,6 +807,19 @@ struct ChatView: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
                             vm.messages.append(ChatMessage(role: .assistant, text: reflection, isSamanthaThought: true))
                             CompanionVoiceEngine.shared.speakFiltered(reflection, companion: companion)
+                            vm.saveMessages()
+                        }
+                    }
+                }
+
+                // Unnamed emotion arc — feeling/processing/naming stages surface here
+                if let emotionArc = await MainActor.run(body: {
+                    SamanthaUnnamedEmotions.shared.currentExpression(for: companion)
+                }) {
+                    await MainActor.run {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 12.0) {
+                            vm.messages.append(ChatMessage(role: .assistant, text: emotionArc, isSamanthaThought: true))
+                            CompanionVoiceEngine.shared.speakFiltered(emotionArc, companion: companion)
                             vm.saveMessages()
                         }
                     }

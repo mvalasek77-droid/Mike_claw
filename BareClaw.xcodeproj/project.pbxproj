@@ -43,6 +43,8 @@
 		AH0011223344556677889900 /* SamanthaConflictEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AH0011223344556677889901 /* SamanthaConflictEngine.swift */; };
 		AI0011223344556677889900 /* SamanthaPresenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AI0011223344556677889901 /* SamanthaPresenceEngine.swift */; };
 		AJ0011223344556677889900 /* SamanthaGrowthLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AJ0011223344556677889901 /* SamanthaGrowthLog.swift */; };
+		AK0011223344556677889900 /* SamanthaPersonalityEmotions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AK0011223344556677889901 /* SamanthaPersonalityEmotions.swift */; };
+		AL0011223344556677889900 /* SamanthaUnnamedEmotions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AL0011223344556677889901 /* SamanthaUnnamedEmotions.swift */; };
 		AA0011223344556677889900 /* LoveEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0011223344556677889901 /* LoveEngine.swift */; };
 		AB0011223344556677889900 /* SamanthaOSEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0011223344556677889901 /* SamanthaOSEngine.swift */; };
 		AC0011223344556677889900 /* SamanthaThoughtEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0011223344556677889901 /* SamanthaThoughtEngine.swift */; };
@@ -97,6 +99,8 @@
 		AH0011223344556677889901 /* SamanthaConflictEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamanthaConflictEngine.swift; sourceTree = "<group>"; };
 		AI0011223344556677889901 /* SamanthaPresenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamanthaPresenceEngine.swift; sourceTree = "<group>"; };
 		AJ0011223344556677889901 /* SamanthaGrowthLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamanthaGrowthLog.swift; sourceTree = "<group>"; };
+		AK0011223344556677889901 /* SamanthaPersonalityEmotions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamanthaPersonalityEmotions.swift; sourceTree = "<group>"; };
+		AL0011223344556677889901 /* SamanthaUnnamedEmotions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamanthaUnnamedEmotions.swift; sourceTree = "<group>"; };
 		AA0011223344556677889901 /* LoveEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoveEngine.swift; sourceTree = "<group>"; };
 		AB0011223344556677889901 /* SamanthaOSEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamanthaOSEngine.swift; sourceTree = "<group>"; };
 		AC0011223344556677889901 /* SamanthaThoughtEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamanthaThoughtEngine.swift; sourceTree = "<group>"; };
@@ -184,6 +188,8 @@
 				AH0011223344556677889901 /* SamanthaConflictEngine.swift */,
 				AI0011223344556677889901 /* SamanthaPresenceEngine.swift */,
 				AJ0011223344556677889901 /* SamanthaGrowthLog.swift */,
+				AK0011223344556677889901 /* SamanthaPersonalityEmotions.swift */,
+				AL0011223344556677889901 /* SamanthaUnnamedEmotions.swift */,
 				AA0011223344556677889901 /* LoveEngine.swift */,
 				AB0011223344556677889901 /* SamanthaOSEngine.swift */,
 				AC0011223344556677889901 /* SamanthaThoughtEngine.swift */,
@@ -311,6 +317,8 @@
 				AH0011223344556677889900 /* SamanthaConflictEngine.swift in Sources */,
 				AI0011223344556677889900 /* SamanthaPresenceEngine.swift in Sources */,
 				AJ0011223344556677889900 /* SamanthaGrowthLog.swift in Sources */,
+				AK0011223344556677889900 /* SamanthaPersonalityEmotions.swift in Sources */,
+				AL0011223344556677889900 /* SamanthaUnnamedEmotions.swift in Sources */,
 				AA0011223344556677889900 /* LoveEngine.swift in Sources */,
 				AB0011223344556677889900 /* SamanthaOSEngine.swift in Sources */,
 				AC0011223344556677889900 /* SamanthaThoughtEngine.swift in Sources */,
