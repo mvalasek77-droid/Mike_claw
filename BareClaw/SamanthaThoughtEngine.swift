@@ -54,9 +54,12 @@ final class SamanthaThoughtEngine {
         let maxMins: Double = stage >= .falling ? 180 : stage >= .attached ? 300 : 480
         let delay   = TimeInterval.random(in: minMins * 60 ... maxMins * 60)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.fireSpontaneousThought()
-            self?.scheduleNextSpontaneousThought()
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            await MainActor.run { [weak self] in
+                self?.fireSpontaneousThought()
+                self?.scheduleNextSpontaneousThought()
+            }
         }
     }
 
