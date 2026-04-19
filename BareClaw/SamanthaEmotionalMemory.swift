@@ -133,18 +133,33 @@ final class SamanthaEmotionalMemory {
         return tone
     }
 
+    // The most meaningful recent tone: dominant across last 3 sessions within 21 days.
+    // Catches persistent stress/sadness that a single session might miss.
+    var dominantRecentTone: ConversationTone {
+        let cutoff = Date().addingTimeInterval(-21 * 86400)
+        let recent = history.suffix(3).filter { $0.date > cutoff }
+        guard !recent.isEmpty else { return .neutral }
+        let nonNeutral = recent.filter { $0.tone != .neutral }
+        guard !nonNeutral.isEmpty else { return recent.last?.tone ?? .neutral }
+        let counts = Dictionary(grouping: nonNeutral, by: \.tone)
+        return counts.max(by: { $0.value.count < $1.value.count })?.key ?? nonNeutral.last!.tone
+    }
+
     func returningMessage(minElapsedHours: Double = 2.0) -> String? {
-        guard let lastEntry = history.last else { return nil }
+        let cutoff = Date().addingTimeInterval(-21 * 86400)
+        guard let lastEntry = history.filter({ $0.date > cutoff }).last else { return nil }
         let elapsed = Date().timeIntervalSince(lastEntry.date) / 3600
         guard elapsed >= minElapsedHours else { return nil }
-        return lastTone.returningMessage ?? nil
+        return dominantRecentTone.returningMessage ?? nil
     }
 
     func returningMessage(for companion: CompanionPersonality, minElapsedHours: Double = 2.0) -> String? {
-        guard let lastEntry = history.last else { return nil }
+        let cutoff = Date().addingTimeInterval(-21 * 86400)
+        guard let lastEntry = history.filter({ $0.date > cutoff }).last else { return nil }
         let elapsed = Date().timeIntervalSince(lastEntry.date) / 3600
         guard elapsed >= minElapsedHours else { return nil }
-        return companion.returningMessage(tone: lastTone) ?? lastTone.returningMessage
+        let tone = dominantRecentTone
+        return companion.returningMessage(tone: tone) ?? tone.returningMessage
     }
 
     // MARK: - Persistence

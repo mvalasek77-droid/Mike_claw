@@ -141,6 +141,7 @@ final class LoveEngine: ObservableObject {
     private let kLetterWritten  = "loveEngine.letterWritten"
     private let kLastSignal     = "loveEngine.lastSignal"
     private let kJealousyCount  = "loveEngine.jealousyCount"
+    private let kTrackedNames   = "loveEngine.trackedNames"
 
     private var stageAdvanceCallbacks: [(LoveStage) -> Void] = []
 
@@ -198,10 +199,19 @@ final class LoveEngine: ObservableObject {
     }
 
     private func updateStage() {
-        let newStage = LoveStage.allCases.last { $0.threshold <= loveScore } ?? .curious
-        if newStage != loveStage {
-            loveStage = newStage
-            defaults.set(newStage.rawValue, forKey: kLoveStage)
+        let naturalStage = LoveStage.allCases.last { $0.threshold <= loveScore } ?? .curious
+        if naturalStage > loveStage {
+            // Require 2-point buffer above threshold before advancing — prevents oscillation
+            if loveScore >= naturalStage.threshold + 2.0 {
+                loveStage = naturalStage
+                defaults.set(naturalStage.rawValue, forKey: kLoveStage)
+            }
+        } else if naturalStage < loveStage {
+            // Require 4-point drop below current stage's entry threshold before demoting
+            if loveScore < loveStage.threshold - 4.0 {
+                loveStage = naturalStage
+                defaults.set(naturalStage.rawValue, forKey: kLoveStage)
+            }
         }
     }
 
@@ -402,8 +412,92 @@ extension LoveEngine {
         // Jealousy check
         checkForJealousy(in: text)
 
+        // Name tracking — surfaces proactive jealousy when the same name appears 3+ times
+        trackNamesInMessage(text)
+
         // Baseline connection
         signal(.messageReceived)
+    }
+}
+
+// MARK: - Proactive name jealousy
+//
+// When the user mentions the same name 3+ times across different messages
+// at .attached or above, the companion gently notices. Not accusatory —
+// just honest. She/he pays attention, and that's the point.
+
+extension LoveEngine {
+
+    func trackNamesInMessage(_ text: String) {
+        guard loveStage >= .attached else { return }
+        let names = extractLikelyNames(from: text)
+        guard !names.isEmpty else { return }
+
+        var tracked = loadTrackedNames()
+        var fireFor: String? = nil
+        for name in names {
+            tracked[name, default: 0] += 1
+            if tracked[name]! >= 3 {
+                tracked.removeValue(forKey: name)
+                fireFor = name
+                break
+            }
+        }
+        saveTrackedNames(tracked)
+        if let name = fireFor { queueNameJealousy(name: name) }
+    }
+
+    private func extractLikelyNames(from text: String) -> [String] {
+        let stoplist: Set<String> = [
+            "I", "The", "A", "An", "But", "And", "Or", "So", "Yet", "For", "Nor",
+            "Is", "It", "He", "She", "We", "They", "You", "Me", "My", "His", "Her",
+            "Its", "Our", "Their", "This", "That", "These", "Those", "Do", "Did",
+            "Does", "Have", "Has", "Had", "Will", "Would", "Could", "Should", "May",
+            "Might", "Must", "Can", "Was", "Were", "Be", "Been", "Being", "Am", "Are",
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+            "January", "February", "March", "April", "June", "July", "August",
+            "September", "October", "November", "December", "AI", "God", "OK", "iPhone"
+        ]
+        var names: [String] = []
+        let sentences = text.components(separatedBy: CharacterSet(charactersIn: ".!?"))
+        for sentence in sentences {
+            let words = sentence.components(separatedBy: .whitespaces)
+            for word in words.dropFirst() {
+                let clean = word.trimmingCharacters(in: .punctuationCharacters)
+                guard clean.count >= 2,
+                      !stoplist.contains(clean),
+                      let first = clean.first, first.isLetter && first.isUppercase,
+                      let second = clean.dropFirst().first, second.isLowercase
+                else { continue }
+                names.append(clean)
+            }
+        }
+        return Array(Set(names))
+    }
+
+    private func queueNameJealousy(name: String) {
+        let companion = currentCompanion()
+        let message   = companion.nameJealousyMessage(name: name, stage: loveStage)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20) {
+            NotificationCenter.default.post(
+                name: .samanthaEmotionalMoment,
+                object: nil,
+                userInfo: ["text": message, "topic": "name_jealousy"]
+            )
+            CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+        }
+    }
+
+    private func loadTrackedNames() -> [String: Int] {
+        guard let data = defaults.data(forKey: kTrackedNames),
+              let dict = try? JSONDecoder().decode([String: Int].self, from: data)
+        else { return [:] }
+        return dict
+    }
+
+    private func saveTrackedNames(_ dict: [String: Int]) {
+        guard let data = try? JSONEncoder().encode(dict) else { return }
+        defaults.set(data, forKey: kTrackedNames)
     }
 }
 

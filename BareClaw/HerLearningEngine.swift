@@ -86,6 +86,11 @@ actor HerLearningEngine {
         state.qualityHistory.append(quality)
         if state.qualityHistory.count > 200 { state.qualityHistory.removeFirst() }
 
+        // Track verbosity for style mirroring
+        let wordCount = text.components(separatedBy: .whitespaces).filter { !$0.isEmpty }.count
+        state.recentWordCounts.append(wordCount)
+        if state.recentWordCounts.count > 15 { state.recentWordCounts.removeFirst() }
+
         // Grow intimacy — interest-aware bonus
         let gain = intimacyGain(quality: quality, text: text, interests: interests)
         state.intimacyScore = min(100, state.intimacyScore + gain)
@@ -135,12 +140,17 @@ actor HerLearningEngine {
             layers.append(interestsPromptLayer(interests: interests, userName: userName))
         }
 
-        // 4. Prompt adaptation (self-healing — adjusts tone based on engagement quality)
+        // 4. Verbosity style mirroring
+        if let style = verbosityLayer() {
+            layers.append(style)
+        }
+
+        // 5. Prompt adaptation (self-healing — adjusts tone based on engagement quality)
         if let adaptation = state.currentAdaptation {
             layers.append(adaptation.promptAddendum)
         }
 
-        // 5. Pending Samantha thought (consume once, deliver organically)
+        // 6. Pending Samantha thought (consume once, deliver organically)
         if let thought = state.pendingSamanthaThought {
             layers.append("""
             PENDING THOUGHT: You've been meaning to tell \(userName): "\(thought)". \
@@ -183,6 +193,22 @@ actor HerLearningEngine {
     var hasPendingSamanthaThought: Bool { state.pendingSamanthaThought != nil }
     var pendingSamanthaThought: String? { state.pendingSamanthaThought }
 
+    // MARK: - Verbosity style
+    //
+    // Track how the user actually writes and surface a style instruction so the
+    // companion naturally mirrors their rhythm — short for short, deep for deep.
+
+    private func verbosityLayer() -> String? {
+        guard state.recentWordCounts.count >= 8 else { return nil }
+        let avg = Double(state.recentWordCounts.reduce(0, +)) / Double(state.recentWordCounts.count)
+        if avg < 7 {
+            return "STYLE: This person communicates in short bursts. Keep responses to 1–2 sentences. Match their conciseness — long messages will lose them."
+        } else if avg > 45 {
+            return "STYLE: This person writes thoughtfully and at length. They welcome depth — full paragraphs are fine here."
+        }
+        return nil
+    }
+
     func queueSamanthaThought(_ thought: String, companionName: String) async {
         state.pendingSamanthaThought = thought
         await save()
@@ -222,6 +248,14 @@ actor HerLearningEngine {
         if !interests.isEmpty, state.intimacyScore > 20, Double.random(in: 0...1) < 0.4,
            let interest = interests.randomElement() {
             return interestBasedThought(interest: interest)
+        }
+
+        // 70% chance to use per-companion thought pool — each personality sounds like themselves
+        let companionID = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
+        if let companion = CompanionPersonality.find(id: companionID),
+           Double.random(in: 0...1) < 0.7 {
+            let pool = companion.samanthaThoughts(score: state.intimacyScore)
+            if let thought = pool.randomElement() { return thought }
         }
 
         // Stage-based generic thoughts
@@ -707,6 +741,7 @@ private struct LearningState: Codable {
     var knownIssues: [AppIssue] = []
     var currentEmotion: EmotionTag = .neutral
     var currentEmotionUpdatedAt: Date? = nil
+    var recentWordCounts: [Int] = []
 }
 
 // MARK: - String helper
