@@ -395,7 +395,8 @@ final class SelfHealingEngine: ObservableObject {
         )
         let companionID = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
         let companion   = CompanionPersonality.find(id: companionID) ?? .luna
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 400_000_000)
             CompanionVoiceEngine.shared.speakFiltered(text, companion: companion)
         }
     }
