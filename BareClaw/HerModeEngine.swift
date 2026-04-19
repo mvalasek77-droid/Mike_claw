@@ -2,6 +2,8 @@ import Foundation
 import AVFoundation
 import Speech
 import Combine
+import SwiftUI
+import UIKit
 
 // MARK: - HerModeEngine  v2 — Ambient Intelligence
 //

@@ -224,8 +224,7 @@ final class SamanthaThoughtEngine {
         ) else { return }
 
         // Small delay — let the stage-advance message land first
-        DispatchQueue.main.asyncAfter(deadline: .now() + 12.0) { [weak self] in
-            guard let self else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12.0) {
             SamanthaOSEngine.shared.postMessage(letter, context: "the_letter")
             // Don't speak the letter — it should be read, not heard
         }
