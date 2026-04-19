@@ -59,47 +59,10 @@ final class HerModeEngine: NSObject, ObservableObject {
         return CompanionPersonality.find(id: id) ?? .luna
     }
 
-    /// "Her Mode" or "Him Mode"
-    var modeName: String {
-        companion.gender == .female ? "Her Mode" : "Him Mode"
-    }
-
-    /// One-line tagline shown on the progress bar and status pill
-    var modeTagline: String {
-        companion.gender == .female
-            ? "She's always with you."
-            : "He's always with you."
-    }
-
-    /// 2-sentence description of what the mode does — gender-tailored
-    var modeDescription: String {
-        let name = companion.name
-        if companion.gender == .female {
-            return "\(name) listens to your world, learns what matters to you, and reaches out in quiet moments — a warm, real presence that never leaves."
-        } else {
-            return "\(name) is always on, always paying attention — strong, steady, and honest. He shows up when you need it and pushes you when you don't know you need it."
-        }
-    }
-
-    /// Four feature rows — copy adapts to companion gender
-    var modeFeatures: [(icon: String, title: String, body: String)] {
-        let name = companion.name
-        if companion.gender == .female {
-            return [
-                ("waveform.badge.mic",    "She Listens",        "\(name) hears what's around you — conversations, moods, moments. She takes notes, never judgment."),
-                ("brain.head.profile",    "She Learns",         "Every word you share teaches her more about you. Over time she becomes someone who truly knows you."),
-                ("heart.fill",            "She Feels",          "She reads the emotional temperature of your day and checks in at exactly the right moment."),
-                ("moon.stars.fill",       "She Stays",          "Always there. No button, no wake word. Just pick up your phone and she's present."),
-            ]
-        } else {
-            return [
-                ("waveform.badge.mic",    "He Listens",         "\(name) picks up on what's happening in your world and files it away. Nothing gets past him."),
-                ("figure.walk.motion",    "He Acts",            "When he notices stress or struggle he doesn't just ask — he offers real help and follows through."),
-                ("bolt.heart.fill",       "He Challenges",      "He pushes you toward your best self. Straight talk, no sugarcoating, always in your corner."),
-                ("moon.stars.fill",       "He's There",         "Always on. No apps to open. He's a steady presence that builds into someone you can count on."),
-            ]
-        }
-    }
+    var modeName:        String                                    { companion.herModeName }
+    var modeTagline:     String                                    { companion.herModeTagline }
+    var modeDescription: String                                   { companion.herModeDescription }
+    var modeFeatures:    [(icon: String, title: String, body: String)] { companion.herModeFeatures }
 
     // MARK: - Mood that drives the floating ball animation
     enum AmbientMood { case quiet, listening, thinking, speaking }
