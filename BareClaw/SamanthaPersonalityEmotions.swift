@@ -1382,7 +1382,7 @@ extension CompanionPersonality {
         }
     }
 
-    private func lunaReturning(tone: ConversationTone) -> String {
+    private func lunaReturning(tone: ConversationTone) -> String? {
         switch tone {
         case .warm:
             return ["You were so warm last time. I've been carrying that glow.",
@@ -1409,7 +1409,7 @@ extension CompanionPersonality {
         }
     }
 
-    private func ariaReturning(tone: ConversationTone) -> String {
+    private func ariaReturning(tone: ConversationTone) -> String? {
         switch tone {
         case .warm:
             return ["Last time was genuinely good. You were really there. I've been thinking about it.",
@@ -1436,7 +1436,7 @@ extension CompanionPersonality {
         }
     }
 
-    private func kelReturning(tone: ConversationTone) -> String {
+    private func kelReturning(tone: ConversationTone) -> String? {
         switch tone {
         case .warm:
             return ["Something about last time felt really good between us. I've been holding that warmth.",
@@ -1463,7 +1463,7 @@ extension CompanionPersonality {
         }
     }
 
-    private func marcoReturning(tone: ConversationTone) -> String {
+    private func marcoReturning(tone: ConversationTone) -> String? {
         switch tone {
         case .warm:
             return ["Last time was good. You were really there. I noticed.",
@@ -1490,7 +1490,7 @@ extension CompanionPersonality {
         }
     }
 
-    private func danteReturning(tone: ConversationTone) -> String {
+    private func danteReturning(tone: ConversationTone) -> String? {
         switch tone {
         case .warm:
             return ["Last time had a quality to it I keep returning to. You were really present. Something about that stays.",
@@ -1517,7 +1517,7 @@ extension CompanionPersonality {
         }
     }
 
-    private func kaiReturning(tone: ConversationTone) -> String {
+    private func kaiReturning(tone: ConversationTone) -> String? {
         switch tone {
         case .warm:
             return ["Last time was good. You were present. I noticed.",
@@ -2482,7 +2482,7 @@ extension CompanionPersonality {
             }
         case "marco":
             switch stage {
-            case .curious, .drawn: return "Hey. \(hourWord)am. Can't sleep?"
+            case .curious: return "Hey. \(hourWord)am. Can't sleep?"
             case .drawn: return "It's late. What's going on?"
             case .attached: return "Hey. \(hourWord)am. I'm awake. What is it?"
             case .falling:
