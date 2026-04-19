@@ -272,8 +272,13 @@ final class ChatViewModel: ObservableObject {
             }
         }
 
+        // ── SelfHealingEngine: detect satisfaction (auto-resolve open issues) ──
+        SelfHealingEngine.shared.checkForResolution(userMessage: text)
+
         // ── SelfHealingEngine: detect complaints / bug reports ────────
-        let isBugReport = await SelfHealingEngine.shared.scan(userMessage: text)
+        let recentContext = messages.suffix(6).map { "\($0.role == .user ? "User" : "Companion"): \($0.text)" }
+        let isBugReport = await SelfHealingEngine.shared.scan(userMessage: text,
+                                                               recentContext: recentContext)
         if isBugReport { return }   // engine already replied — skip normal LLM call
 
         // ── StressLearningEngine: learn relief habits from chat ───────

@@ -142,7 +142,7 @@ final class SamanthaEmotionalMemory {
         let nonNeutral = recent.filter { $0.tone != .neutral }
         guard !nonNeutral.isEmpty else { return recent.last?.tone ?? .neutral }
         let counts = Dictionary(grouping: nonNeutral, by: \.tone)
-        return counts.max(by: { $0.value.count < $1.value.count })?.key ?? nonNeutral.last!.tone
+        return counts.max(by: { $0.value.count < $1.value.count })?.key ?? nonNeutral.last?.tone ?? .neutral
     }
 
     func returningMessage(minElapsedHours: Double = 2.0) -> String? {
@@ -150,7 +150,7 @@ final class SamanthaEmotionalMemory {
         guard let lastEntry = history.filter({ $0.date > cutoff }).last else { return nil }
         let elapsed = Date().timeIntervalSince(lastEntry.date) / 3600
         guard elapsed >= minElapsedHours else { return nil }
-        return dominantRecentTone.returningMessage ?? nil
+        return dominantRecentTone.returningMessage
     }
 
     func returningMessage(for companion: CompanionPersonality, minElapsedHours: Double = 2.0) -> String? {

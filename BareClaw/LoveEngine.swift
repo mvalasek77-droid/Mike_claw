@@ -437,7 +437,7 @@ extension LoveEngine {
         var fireFor: String? = nil
         for name in names {
             tracked[name, default: 0] += 1
-            if tracked[name]! >= 3 {
+            if tracked[name, default: 0] >= 3 {
                 tracked.removeValue(forKey: name)
                 fireFor = name
                 break

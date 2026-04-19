@@ -193,12 +193,18 @@ actor HermesLLMClient {
             sections.append("## Recent insights\n" + insights.map { "• \($0)" }.joined(separator: "\n"))
         }
 
-        // 5. Self-improvement notes
+        // 5. Self-improvement notes (persisted across app restarts)
         let improvements = await memory.entries(for: "self_improvement")
-            .prefix(1)
+            .prefix(3)
             .compactMap { ($0.content.value as? [String: Any])?["note"] as? String }
         if !improvements.isEmpty {
             sections.append("## Known issues to avoid\n" + improvements.map { "• \($0)" }.joined(separator: "\n"))
+        }
+
+        // 6. Immediate repair constraints (UserDefaults — applied on the very next exchange)
+        let constraints = await MainActor.run { SelfHealingEngine.shared.constraintPromptBlock }
+        if !constraints.isEmpty {
+            sections.append(constraints)
         }
 
         return sections.joined(separator: "\n\n")
