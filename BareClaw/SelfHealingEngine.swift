@@ -40,14 +40,23 @@ enum IssueCategory: String, Codable {
 // MARK: - Repair record
 
 struct RepairRecord: Identifiable, Codable {
-    let id          = UUID()
-    let timestamp   = Date()
+    let id:         UUID
+    let timestamp:  Date
     let complaint:  String
     let issue:      String
     let response:   String
     let category:   IssueCategory
-    var resolved:   Bool = false
-    var resolvedAt: Date? = nil
+    var resolved:   Bool    = false
+    var resolvedAt: Date?   = nil
+
+    init(complaint: String, issue: String, response: String, category: IssueCategory) {
+        self.id        = UUID()
+        self.timestamp = Date()
+        self.complaint = complaint
+        self.issue     = issue
+        self.response  = response
+        self.category  = category
+    }
 }
 
 // MARK: - SelfHealingEngine
