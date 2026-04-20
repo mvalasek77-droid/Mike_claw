@@ -37,7 +37,7 @@ struct VoiceCharacter: Codable {
     let reverbPreset: Int          // AVAudioUnitReverbPreset.rawValue
     let reverbMix: Float           // 0–100 dry/wet
 
-    // AVAudioUnitEQ — 3-band tonal shaping
+    // AVAudioUnitEQ — 3-band tonal shaping (4th band is a constant anti-robot cut applied globally)
     let eqLowShelfFreq: Float;  let eqLowShelfGain: Float
     let eqMidFreq: Float;       let eqMidGain: Float;   let eqMidBW: Float
     let eqHighShelfFreq: Float; let eqHighShelfGain: Float
@@ -70,14 +70,14 @@ extension VoiceCharacter {
             "com.apple.ttsbundle.Samantha-compact"
         ],
         fallbackLanguage: "en-US",
-        pitchMultiplier: 1.08,          // gentle lift — feminine, not squeaky
-        rate: 0.42,                     // slow & deliberate — savors every word
-        preDelay: 0.22, postDelay: 0.08,
-        timePitchRate: 1.0, timePitchCents: +80,   // barely lifted — natural brightness
-        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 22,
-        eqLowShelfFreq: 220,  eqLowShelfGain: +2.0,  // body warmth
-        eqMidFreq: 2800,      eqMidGain: -3.0,   eqMidBW: 1.0,  // cut harshness
-        eqHighShelfFreq: 7000, eqHighShelfGain: -1.0,  // smooth silk top
+        pitchMultiplier: 1.04,          // subtle lift — feminine, never squeaky
+        rate: 0.41,                     // slow & deliberate — savors every word
+        preDelay: 0.24, postDelay: 0.10,
+        timePitchRate: 1.0, timePitchCents: +60,   // modest lift — avoids artifacts
+        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 24,
+        eqLowShelfFreq: 220,  eqLowShelfGain: +2.5,  // body warmth
+        eqMidFreq: 2200,      eqMidGain: -4.5,   eqMidBW: 1.2,  // deep harshness cut
+        eqHighShelfFreq: 6500, eqHighShelfGain: -2.0,  // smooth silk top
         characterName: "Luna"
     )
 
@@ -140,14 +140,14 @@ extension VoiceCharacter {
             "com.apple.ttsbundle.Alex-compact"
         ],
         fallbackLanguage: "en-US",
-        pitchMultiplier: 0.78,          // low pitch floor — chest voice
-        rate: 0.52,                     // confident energy, not slow
-        preDelay: 0.14, postDelay: 0.10,
-        timePitchRate: 0.96, timePitchCents: -250,  // -2.5 st: real masculine depth
-        reverbPreset: AVAudioUnitReverbPreset.smallRoom.rawValue, reverbMix: 6,
-        eqLowShelfFreq: 100,  eqLowShelfGain: +5.5,  // massive chest boost
-        eqMidFreq: 500,       eqMidGain: -2.5,   eqMidBW: 1.2,  // remove boxiness
-        eqHighShelfFreq: 4000, eqHighShelfGain: +1.5,            // clarity & presence
+        pitchMultiplier: 0.82,          // chest voice — not so extreme it distorts
+        rate: 0.50,                     // confident, measured — not rushed
+        preDelay: 0.16, postDelay: 0.12,
+        timePitchRate: 0.97, timePitchCents: -190,  // deep without artifact distortion
+        reverbPreset: AVAudioUnitReverbPreset.smallRoom.rawValue, reverbMix: 8,
+        eqLowShelfFreq: 100,  eqLowShelfGain: +5.0,  // chest presence
+        eqMidFreq: 480,       eqMidGain: -2.0,   eqMidBW: 1.2,  // remove boxiness
+        eqHighShelfFreq: 4000, eqHighShelfGain: +1.0,            // clarity, not harshness
         characterName: "Marco"
     )
 
@@ -163,14 +163,14 @@ extension VoiceCharacter {
             "com.apple.voice.enhanced.en-IE.Daniel"     // Irish warmth fallback
         ],
         fallbackLanguage: "en-US",
-        pitchMultiplier: 0.84,
-        rate: 0.43,                     // unhurried — every phrase is intentional
-        preDelay: 0.24, postDelay: 0.16,
-        timePitchRate: 0.94, timePitchCents: -200,  // deep but warmer than Marco
-        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 20,
-        eqLowShelfFreq: 160,  eqLowShelfGain: +4.5,  // rich chest tone
-        eqMidFreq: 600,       eqMidGain: +1.5,   eqMidBW: 1.4,  // low-mid warmth
-        eqHighShelfFreq: 5000, eqHighShelfGain: -2.0,            // smooth, no harshness
+        pitchMultiplier: 0.86,          // rich, not over-processed
+        rate: 0.42,                     // unhurried — every phrase is intentional
+        preDelay: 0.26, postDelay: 0.18,
+        timePitchRate: 0.95, timePitchCents: -170,  // warm depth, clean signal
+        reverbPreset: AVAudioUnitReverbPreset.mediumRoom.rawValue, reverbMix: 22,
+        eqLowShelfFreq: 160,  eqLowShelfGain: +4.0,  // rich chest tone
+        eqMidFreq: 580,       eqMidGain: +1.0,   eqMidBW: 1.4,  // low-mid warmth
+        eqHighShelfFreq: 5000, eqHighShelfGain: -2.5,            // smooth, no harshness
         characterName: "Dante"
     )
 
@@ -224,7 +224,7 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     private let engine     = AVAudioEngine()
     private let player     = AVAudioPlayerNode()
     private let pitchUnit  = AVAudioUnitTimePitch()
-    private let eqUnit     = AVAudioUnitEQ(numberOfBands: 3)
+    private let eqUnit     = AVAudioUnitEQ(numberOfBands: 4)
     private let reverbUnit = AVAudioUnitReverb()
 
     // MARK: - Synthesizer
@@ -401,7 +401,7 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     }
 
     private func applyEQ(_ c: VoiceCharacter) {
-        guard eqUnit.bands.count >= 3 else { return }
+        guard eqUnit.bands.count >= 4 else { return }
 
         eqUnit.bands[0].filterType = .lowShelf
         eqUnit.bands[0].frequency  = c.eqLowShelfFreq
@@ -418,6 +418,15 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         eqUnit.bands[2].frequency  = c.eqHighShelfFreq
         eqUnit.bands[2].gain       = c.eqHighShelfGain
         eqUnit.bands[2].bypass     = false
+
+        // Band 3: constant anti-robot cut — always applied regardless of character.
+        // TTS synthesizers peak at 3–3.5 kHz, creating that harsh "scary" sound.
+        // A -6dB parametric cut here is the single biggest naturalness improvement.
+        eqUnit.bands[3].filterType = .parametric
+        eqUnit.bands[3].frequency  = 3200
+        eqUnit.bands[3].gain       = -6.0
+        eqUnit.bands[3].bandwidth  = 1.5
+        eqUnit.bands[3].bypass     = false
     }
 
     private func buildUtterance(_ text: String, character: VoiceCharacter) -> AVSpeechUtterance {

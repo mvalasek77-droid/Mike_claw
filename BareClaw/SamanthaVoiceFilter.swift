@@ -410,11 +410,17 @@ extension VoiceCharacter {
 extension CompanionVoiceEngine {
 
     func speakFiltered(_ text: String, companion: CompanionPersonality) {
+        let stage    = LoveEngine.shared.loveStage
         let filtered = companion.voiceCharacter.withLoveFilter(
             gender:    companion.gender,
-            loveStage: LoveEngine.shared.loveStage
+            loveStage: stage
         )
-        speak(text, character: filtered)
+        // ASMR layer: final text pass before synthesis — adds breath pauses,
+        // strips formatting artifacts, softens stiff connectors
+        let asmrText = ASMRTextProcessor.process(text,
+                                                  gender:     companion.gender,
+                                                  loveStage:  stage)
+        speak(asmrText, character: filtered)
     }
 
     func speakFilteredCurrent(_ text: String) {
