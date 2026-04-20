@@ -127,6 +127,18 @@ actor HermesPersonality {
             """)
         }
 
+        // ── 5f. HUMOR & FLIRT layer ──────────────────────────────────
+        // Tells the LLM exactly how this companion is funny — with concrete
+        // patterns and explicit permission to use humor freely.
+        let humorLayer = await MainActor.run {
+            HumorEngine.shared.humorPromptLayer(
+                for:      companion,
+                stage:    LoveEngine.shared.loveStage,
+                userName: userName
+            )
+        }
+        sections.append(humorLayer)
+
         // ── 6. EMOTIONAL CONTEXT addendum ────────────────────────────
         // Context was already detected above — no re-detection needed.
         // The addendum is the short, targeted instruction for this moment.
