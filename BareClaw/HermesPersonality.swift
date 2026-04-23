@@ -55,6 +55,18 @@ actor HermesPersonality {
         \(companion.systemPromptPersonality)
         """)
 
+        // ── 1b. SPEECH SCORE ─────────────────────────────────────────
+        // The foundational "sheet music" for how this companion speaks.
+        // Tempo, dynamics, phrasing, motifs, rests — placed first so every
+        // subsequent layer plays inside this rhythm, not on top of it.
+        let speechScore = await MainActor.run {
+            SamanthaSpeechScore.shared.speechPromptLayer(
+                for:   companion,
+                stage: LoveEngine.shared.loveStage
+            )
+        }
+        sections.append(speechScore)
+
         // ── 2. RELATIONSHIP MODE layer ───────────────────────────────
         // The overarching relationship type the user chose. This sits above
         // the companion's own personality and constrains or enables certain
