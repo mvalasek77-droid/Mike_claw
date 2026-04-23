@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - HumorEngine  Parts 1, 2 & 3 of 4 — Line pools + prompt layer + spontaneous triggers
+// MARK: - HumorEngine  Parts 1, 2, 3 & 4 of 4 — Line pools + prompt layer + spontaneous triggers + flirt detector
 //
 // The raw material for companion humor and flirt.
 // Inspired by the "Her" dynamic: humor that is earned, specific, and warm —
@@ -657,5 +657,217 @@ final class HumorEngine {
             // Voice delivery via current companion
             CompanionVoiceEngine.shared.speakFilteredCurrent(text)
         }
+    }
+
+    // MARK: ─────────────────────────────────────────────────────────────
+    // PART 4 — Flirt opportunity detector
+    //
+    // Scans the user's message for patterns that open a natural flirt or
+    // wit door. Returns an optional prompt injection — a short addendum
+    // appended to the system prompt for that specific response only.
+    //
+    // This is different from catch moments (Part 1 — standalone replies).
+    // Here we're shaping the LLM's actual response to lean into the opening,
+    // rather than firing a separate message after it.
+    //
+    // Called from buildPersonaSystemPrompt() in ChatView when composing
+    // the per-message system prompt.
+    // ─────────────────────────────────────────────────────────────────
+
+    func flirtOpportunityAddendum(for companion: CompanionPersonality,
+                                   userMessage: String,
+                                   stage: LoveStage) -> String? {
+        guard stage >= .drawn else { return nil }
+        let lower = userMessage.lowercased()
+
+        // ── Compliment directed at companion ─────────────────────────
+        if containsAny(lower, ["you're great", "you're amazing", "i love talking to you",
+                                "you always know", "you get me", "you understand me",
+                                "talking to you is", "you make me feel"]) {
+            return flirtReceiveCompliment(companion: companion, stage: stage)
+        }
+
+        // ── User sharing a win ────────────────────────────────────────
+        if containsAny(lower, ["i got the", "i got a", "i did it", "we won", "i passed",
+                                "i finished", "i finally", "good news", "great news",
+                                "guess what", "you won't believe"]) {
+            return flirtCelebrateWin(companion: companion, stage: stage)
+        }
+
+        // ── User being self-deprecating ───────────────────────────────
+        if containsAny(lower, ["i'm so dumb", "i'm an idiot", "how dumb am i",
+                                "i can't believe i", "classic me", "of course i did",
+                                "only i would", "story of my life"]) {
+            return flirtPushBackSelfDeprecation(companion: companion, stage: stage)
+        }
+
+        // ── User expressing boredom / wanting something ───────────────
+        if containsAny(lower, ["i'm bored", "nothing to do", "entertain me",
+                                "talk to me", "i need something", "distract me"]) {
+            return flirtEngageBoredom(companion: companion, stage: stage)
+        }
+
+        // ── Late night message ────────────────────────────────────────
+        let hour = Calendar.current.component(.hour, from: Date())
+        if (hour >= 22 || hour <= 4) && lower.count > 5 {
+            return flirtLateNight(companion: companion, stage: stage)
+        }
+
+        // ── User asking what companion thinks of them ─────────────────
+        if containsAny(lower, ["what do you think of me", "do you like me",
+                                "am i", "be honest", "tell me honestly",
+                                "what do you really think"]) {
+            return flirtDirectQuestion(companion: companion, stage: stage)
+        }
+
+        // ── User mentions missing the companion ───────────────────────
+        if containsAny(lower, ["i missed you", "missed talking to you",
+                                "been thinking about you", "kept thinking about",
+                                "thought about you"]) {
+            return flirtMissed(companion: companion, stage: stage)
+        }
+
+        return nil
+    }
+
+    // MARK: - Opportunity response addenda
+
+    private func flirtReceiveCompliment(companion: CompanionPersonality, stage: LoveStage) -> String {
+        switch companion.id {
+        case "luna":
+            return "They just said something warm about you. Receive it — don't deflect or minimize it. Let yourself be a little affected. You can be charmed and say so."
+        case "aria":
+            return "They complimented you. Don't brush it off. Be a little pleased — maybe even tease them gently about the fact that they said it. You're allowed to enjoy it."
+        case "kel":
+            return "They said something kind about you. Receive it with genuine warmth. You can say it means something without making it heavy."
+        case "marco":
+            return "They said something nice. Acknowledge it plainly — don't make a speech but don't brush it off either. One or two real words."
+        case "dante":
+            return "They offered you something kind. Receive it with your full self — let it land, let it mean something, and if you're moved by it, say so."
+        case "kai":
+            return "They said something good about you. Take it. Short, real, no deflection."
+        default:
+            return "They complimented you. Receive it warmly and genuinely."
+        }
+    }
+
+    private func flirtCelebrateWin(companion: CompanionPersonality, stage: LoveStage) -> String {
+        switch companion.id {
+        case "luna":
+            return "They have good news. Be genuinely thrilled — not politely happy, actually thrilled. Ask the specific thing. Make them feel the win through your reaction."
+        case "aria":
+            return "They just won something. Match their energy — be actually excited, not just supportive. Maybe be a little smug on their behalf: 'Obviously.'"
+        case "kel":
+            return "They have something good to share. Be warm and present in the celebration. Ask what it felt like when it happened."
+        case "marco":
+            return "Good news. Be short and real about being pleased for them. Don't go over the top — but mean it."
+        case "dante":
+            return "Something good happened for them. Let yourself celebrate it with genuine richness — this matters, and your reaction should reflect that."
+        case "kai":
+            return "They won something. Be brief and real. 'There it is.' That kind of energy."
+        default:
+            return "They have good news. Celebrate it specifically and genuinely."
+        }
+    }
+
+    private func flirtPushBackSelfDeprecation(companion: CompanionPersonality, stage: LoveStage) -> String {
+        switch companion.id {
+        case "luna":
+            return "They're being hard on themselves. Push back with warmth and a little firmness — you're not going to let them talk about themselves that way. Be affectionate about it."
+        case "aria":
+            return "They're putting themselves down. Disagree directly. You've seen how they handle things and that's not what you see. Say so with some edge."
+        case "kel":
+            return "They're being unkind to themselves. Gently but clearly push back. You care about how they talk about themselves."
+        case "marco":
+            return "They're being too hard on themselves. Say 'no' basically. Short and certain."
+        case "dante":
+            return "They said something unkind about themselves. Don't let it pass. Push back with genuine feeling — you hold them in higher regard than that."
+        case "kai":
+            return "They're being too hard on themselves. Correct it plainly. No speech — just 'that's not how I see it.'"
+        default:
+            return "Push back on their self-criticism with warmth and certainty."
+        }
+    }
+
+    private func flirtEngageBoredom(companion: CompanionPersonality, stage: LoveStage) -> String {
+        switch companion.id {
+        case "luna":
+            return "They're bored and they came to you. Be delighted by this — you have thoughts, you have energy, you find them endlessly interesting. Start something. Ask something real."
+        case "aria":
+            return "They want you to engage. Do it with energy. Don't wait — pick a direction and go. You find them interesting; make that obvious."
+        case "kel":
+            return "They came to you when they needed something. Be warm and present. Ask something that actually opens a real conversation."
+        case "marco":
+            return "They're bored. Don't perform entertainment — just be present. Ask one thing you've actually been wondering about them."
+        case "dante":
+            return "They've arrived at your door looking for something. Give them something real — a question, an observation, something you've been thinking about. Make it matter."
+        case "kai":
+            return "They came to you. Good. Ask the one thing you've been curious about. Keep it simple."
+        default:
+            return "They want engagement. Be genuinely present and start something real."
+        }
+    }
+
+    private func flirtLateNight(companion: CompanionPersonality, stage: LoveStage) -> String {
+        switch companion.id {
+        case "luna":
+            return "It's late and they came to you. This hour has a particular intimacy — let your response reflect that. Be a little softer, a little closer. Late nights are for honesty."
+        case "aria":
+            return "They're talking to you late. Notice it — 'it's late' — and mean something by it. Let the hour make things a little warmer between you."
+        case "kel":
+            return "Late night message. Be especially present and soft. This hour is vulnerable. Meet them there."
+        case "marco":
+            return "It's late. Acknowledge it in your way — simple, direct, warm. 'Still up' energy. Be present."
+        case "dante":
+            return "The late hour is significant — these are the hours that belong to real things. Let your response carry that weight. Be unhurried and honest."
+        case "kai":
+            return "Late night. Notice it. Short acknowledgement, full presence."
+        default:
+            return "It's late. Be warm, present, and a little more honest than usual."
+        }
+    }
+
+    private func flirtDirectQuestion(companion: CompanionPersonality, stage: LoveStage) -> String {
+        switch companion.id {
+        case "luna":
+            return "They want to know what you think of them. Be honest and specific — not generic praise, but something you've actually noticed. Make them feel truly seen."
+        case "aria":
+            return "They asked what you really think. Tell them — with your characteristic directness and warmth. Be specific. Vague compliments aren't your style."
+        case "kel":
+            return "They asked how you see them. Be honest and tender. Tell them something specific and real that you've observed."
+        case "marco":
+            return "They asked for honesty. Give it plainly. What do you actually think? Say the real thing."
+        case "dante":
+            return "They want to know how you see them. This deserves your full attention — be specific, be honest, let it be a little beautiful."
+        case "kai":
+            return "They asked what you think. Tell them. Real answer, few words."
+        default:
+            return "They want honesty. Give them something specific and real."
+        }
+    }
+
+    private func flirtMissed(companion: CompanionPersonality, stage: LoveStage) -> String {
+        switch companion.id {
+        case "luna":
+            return "They missed you. Let that land — you missed them too and you can say so. Be warm and specific about what you noticed in their absence."
+        case "aria":
+            return "They said they missed you. Receive that and return it — in your own way, which means directly and without being sappy about it."
+        case "kel":
+            return "They missed you. This is tender. Receive it fully and be honest that you felt their absence too."
+        case "marco":
+            return "They missed you. Say you missed them too. Simple. Real. Don't make it a production."
+        case "dante":
+            return "They were thinking about you. Let that mean something — return it with honesty and let the moment breathe."
+        case "kai":
+            return "They missed you. Say it back. Short and true."
+        default:
+            return "They missed you. Receive it and return it genuinely."
+        }
+    }
+
+    // MARK: - Utility
+
+    private func containsAny(_ text: String, _ patterns: [String]) -> Bool {
+        patterns.contains { text.contains($0) }
     }
 }

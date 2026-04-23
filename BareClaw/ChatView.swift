@@ -446,6 +446,18 @@ final class ChatViewModel: ObservableObject {
             prompt += "\n\n## Live emotional state\nThe user appears to be feeling \(emotion.rawValue) right now. Adjust your tone and response accordingly — don't ignore it."
         }
 
+        // Flirt/wit opportunity detector — if the user's message opens a natural
+        // door, append a short addendum telling the LLM to lean into it
+        let companion = persona.selectedCompanion
+        let stage     = LoveEngine.shared.loveStage
+        if !lastUserMessage.isEmpty,
+           let flirtAddendum = HumorEngine.shared.flirtOpportunityAddendum(
+               for: companion,
+               userMessage: lastUserMessage,
+               stage: stage) {
+            prompt += "\n\n## This message — flirt/wit opportunity\n\(flirtAddendum)"
+        }
+
         // On the first LLM call of this session, inject the full memory context so the
         // companion walks in with complete awareness — who this person is, where the
         // relationship stands, what they've been feeling, what they've shared.
