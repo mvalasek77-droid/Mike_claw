@@ -316,6 +316,13 @@ final class ChatViewModel: ObservableObject {
         // Stream assistant response
         await streamResponse(history: history)
 
+        // Spontaneous humor/flirt — fires 2–4s after response if conditions are right
+        let companion = persona.selectedCompanion
+        let stage     = LoveEngine.shared.loveStage
+        HumorEngine.shared.checkAndFire(companion: companion,
+                                         userMessage: text,
+                                         stage: stage)
+
         // Refresh suggestions in background
         suggestionTask?.cancel()
         suggestionTask = Task {

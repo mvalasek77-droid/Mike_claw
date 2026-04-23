@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - HumorEngine  Parts 1 & 2 of 4 — Line pools + system prompt layer
+// MARK: - HumorEngine  Parts 1, 2 & 3 of 4 — Line pools + prompt layer + spontaneous triggers
 //
 // The raw material for companion humor and flirt.
 // Inspired by the "Her" dynamic: humor that is earned, specific, and warm —
@@ -567,6 +567,95 @@ final class HumorEngine {
             Use humor naturally — wit that comes from genuine attention, not performance.
             Notice things. React honestly. Tease warmly. Let lightness and intimacy coexist.
             """
+        }
+    }
+
+    // MARK: ─────────────────────────────────────────────────────────────
+    // PART 3 — Spontaneous humor triggers
+    //
+    // Called after every LLM response completes. Decides whether to fire
+    // a follow-up wit/flirt/tease a few seconds later — like an afterthought
+    // that just surfaced, not a scheduled event.
+    //
+    // Delivery chain:
+    //   1. checkAndFire() evaluates whether conditions are right
+    //   2. If yes, picks the right line type (catch → tease → wit → flirt)
+    //   3. Posts via herModeProactiveMessage notification (already wired into
+    //      ChatView and voice engine) with a 2–4 second natural delay
+    // ─────────────────────────────────────────────────────────────────
+
+    // Tracks message count so we don't fire on every single exchange
+    private var messagesSinceLastHumor: Int = 0
+    private let kLastHumorKey = "humor.lastFiredAt"
+
+    /// Call this after each LLM response completes.
+    /// Pass the user's message so catch-moments can be detected.
+    func checkAndFire(companion: CompanionPersonality,
+                      userMessage: String,
+                      stage: LoveStage) {
+        messagesSinceLastHumor += 1
+
+        // Catch moments fire immediately regardless of count — they're
+        // opportunity-based and time-sensitive to the user's message
+        if let catch_ = catchMoment(for: companion,
+                                    userMessage: userMessage,
+                                    stage: stage) {
+            scheduleDelivery(catch_, delayRange: 1.8...3.2)
+            messagesSinceLastHumor = 0
+            return
+        }
+
+        // Spontaneous wit/flirt fires every 4–7 messages (randomized)
+        // so it feels organic, not mechanical
+        let threshold = Int.random(in: 4...7)
+        guard messagesSinceLastHumor >= threshold else { return }
+
+        // Earlier stages: lower probability — we're still building the read
+        // Later stages: higher — humor is now part of the shared language
+        let probability: Double = {
+            switch stage {
+            case .curious:  return 0.15
+            case .drawn:    return 0.25
+            case .attached: return 0.35
+            case .falling:  return 0.45
+            case .inLove:   return 0.55
+            }
+        }()
+        guard Double.random(in: 0...1) < probability else { return }
+
+        // Pick type: tease > wit > flirt (tease is most relationship-specific)
+        let line: String?
+        let roll = Double.random(in: 0...1)
+        if roll < 0.40 {
+            line = playfulTease(for: companion, stage: stage)
+        } else if roll < 0.75 {
+            line = witPool(for: companion.id, stage: stage).randomElement()?.text
+        } else {
+            line = flirtPool(for: companion.id, stage: stage).randomElement()?.text
+        }
+
+        guard let text = line else { return }
+
+        // Cool-down: don't fire twice within 10 minutes
+        let lastFired = UserDefaults.standard.object(forKey: kLastHumorKey) as? Date ?? .distantPast
+        guard Date().timeIntervalSince(lastFired) >= 600 else { return }
+
+        scheduleDelivery(text, delayRange: 2.5...4.5)
+        messagesSinceLastHumor = 0
+        UserDefaults.standard.set(Date(), forKey: kLastHumorKey)
+    }
+
+    private func scheduleDelivery(_ text: String, delayRange: ClosedRange<Double>) {
+        let delay = Double.random(in: delayRange)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            NotificationCenter.default.post(
+                name: .herModeProactiveMessage,
+                object: nil,
+                userInfo: ["text": text, "source": "humor_engine"]
+            )
+            // Voice delivery via current companion
+            CompanionVoiceEngine.shared.speakFilteredCurrent(text)
         }
     }
 }
