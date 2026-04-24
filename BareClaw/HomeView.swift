@@ -64,7 +64,9 @@ struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var vm = HomeViewModel()
 
-    @State private var showBondInfo = false
+    @State private var showBondInfo     = false
+    @State private var showDreamJournal = false
+    @State private var showMemories     = false
 
     // MARK: Palette (warm Starbucks-inspired light theme)
     private let bgCream        = Color(hex: "#F2F0EB")
@@ -137,6 +139,14 @@ struct HomeView: View {
                     companionName: vm.companionName,
                     score: vm.intimacyScore
                 )
+            }
+            // Dream Journal
+            .sheet(isPresented: $showDreamJournal) {
+                DreamJournalView()
+            }
+            // Memories
+            .sheet(isPresented: $showMemories) {
+                MemoriesView()
             }
         }
         .navigationViewStyle(.stack)
@@ -490,19 +500,22 @@ struct HomeView: View {
                 icon: "moon.stars.fill",
                 iconColor: Color(hex: "#7B68EE"),
                 title: "Dream Journal",
-                subtitle: "Log your dreams"
+                subtitle: "Log your dreams",
+                action: { showDreamJournal = true }
             ),
             QuickAction(
                 icon: "sparkles",
                 iconColor: Color(hex: "#CBA258"),
                 title: "Memories",
-                subtitle: "Your shared moments"
+                subtitle: "Your shared moments",
+                action: { showMemories = true }
             ),
             QuickAction(
                 icon: "heart.circle.fill",
                 iconColor: Color(hex: "#E85D75"),
                 title: "Bond Points",
-                subtitle: "\(vm.bondScoreDisplay) / 100"
+                subtitle: "\(vm.bondScoreDisplay) / 100",
+                action: { showBondInfo = true }
             ),
         ]
     }
