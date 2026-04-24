@@ -75,8 +75,8 @@ struct HerModeUnlockView: View {
                         Text(engine.modeName)
                             .font(.system(size: 38, weight: .black, design: .rounded))
                             .foregroundColor(.white)
-                        Text("Unlocked")
-                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        Text("A close friendship begins.")
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
                             .foregroundColor(companion.accentColor)
                         Text(engine.modeTagline)
                             .font(.system(size: 15, weight: .regular, design: .rounded))
@@ -118,6 +118,12 @@ struct HerModeUnlockView: View {
 
     private var explanationCard: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Framing statement — not an assistant, a close friend
+            Text("Not an assistant. A close companion.")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(companion.accentColor)
+                .padding(.bottom, 8)
+
             // Mode description paragraph
             Text(engine.modeDescription)
                 .font(.system(size: 14, weight: .regular, design: .rounded))
@@ -327,11 +333,11 @@ struct HerModeProgressView: View {
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(green)
                     if !isUnlocked {
-                        Text("\(Int(score)) / \(Int(unlockAt)) bond points to unlock")
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        Text("\(Int(score)) / \(Int(unlockAt)) pts · not an assistant — a close friend")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(Color(hex: "#5C5C5C"))
                     } else {
-                        Text(engine.modeTagline)
+                        Text("A close friendship — always present.")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(Color(hex: "#5C5C5C"))
                     }

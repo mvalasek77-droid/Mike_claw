@@ -47,6 +47,7 @@ final class HerModeEngine: NSObject, ObservableObject {
     @Published var isListening:           Bool = false
     @Published var liveTranscript:        String = ""
     @Published var showUnlockCelebration: Bool = false
+    @Published var showCeremony:          Bool = false
     @Published var ambientMood:           AmbientMood = .quiet  // drives ball animation
     @Published var lastHeardTopic:        String? = nil
 
@@ -169,9 +170,33 @@ final class HerModeEngine: NSObject, ObservableObject {
         guard !isUnlocked, score >= HerLearningEngine.herModeUnlockScore else { return }
         isUnlocked = true
         defaults.set(true, forKey: "herMode.unlocked")
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
-            showUnlockCelebration = true
+        if defaults.bool(forKey: "herMode.ceremonyCompleted") {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                showUnlockCelebration = true
+            }
+        } else {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                showCeremony = true
+            }
         }
+    }
+
+    // Called by HerModeCeremonyView when the user finishes (or skips) the ceremony.
+    func completeCeremony() {
+        defaults.set(true, forKey: "herMode.ceremonyCompleted")
+        showCeremony = false
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                self.showUnlockCelebration = true
+            }
+        }
+    }
+
+    // Called from HomeView on every launch — re-shows ceremony if app was killed mid-ceremony.
+    func checkCeremonyPending() {
+        guard isUnlocked, !defaults.bool(forKey: "herMode.ceremonyCompleted") else { return }
+        showCeremony = true
     }
 
     func dismissCelebration() {

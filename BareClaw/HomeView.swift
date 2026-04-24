@@ -64,6 +64,8 @@ struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var vm = HomeViewModel()
 
+    @State private var showBondInfo = false
+
     // MARK: Palette (warm Starbucks-inspired light theme)
     private let bgCream        = Color(hex: "#F2F0EB")
     private let warmWhite      = Color(hex: "#FAF7F2")
@@ -113,19 +115,35 @@ struct HomeView: View {
             }
             .navigationBarHidden(true)
             .preferredColorScheme(.light)
-            // Her Mode unlock celebration
+            // Her/Him Mode initialization ceremony — fires once on first unlock
+            .fullScreenCover(isPresented: .init(
+                get: { HerModeEngine.shared.showCeremony },
+                set: { if !$0 { HerModeEngine.shared.completeCeremony() } }
+            )) {
+                HerModeCeremonyView {
+                    HerModeEngine.shared.completeCeremony()
+                }
+            }
+            // Her Mode unlock celebration — fires after the ceremony
             .fullScreenCover(isPresented: .init(
                 get: { HerModeEngine.shared.showUnlockCelebration },
                 set: { if !$0 { HerModeEngine.shared.dismissCelebration() } }
             )) {
                 HerModeUnlockView()
             }
+            // Bond score info sheet
+            .sheet(isPresented: $showBondInfo) {
+                BondInfoSheet(
+                    companionName: vm.companionName,
+                    score: vm.intimacyScore
+                )
+            }
         }
         .navigationViewStyle(.stack)
         .task {
             await vm.load()
-            // Check if Her Mode should be unlocked based on current score
             HerModeEngine.shared.checkUnlock(score: vm.intimacyScore)
+            HerModeEngine.shared.checkCeremonyPending()
         }
     }
 
@@ -229,10 +247,17 @@ struct HomeView: View {
 
                 // Left: label + score + heart
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Bond score")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(mutedWhite)
-                        .tracking(0.5)
+                    HStack(spacing: 6) {
+                        Text("Bond score")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(mutedWhite)
+                            .tracking(0.5)
+                        Button { showBondInfo = true } label: {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(mutedWhite.opacity(0.55))
+                        }
+                    }
 
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text("\(vm.bondScoreDisplay)")
@@ -525,6 +550,193 @@ struct HomeView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - BondInfoSheet
+//
+// Bottom sheet explaining bond score, how to earn points, the 5 stages,
+// and what Her/Him Mode actually is.
+
+struct BondInfoSheet: View {
+
+    let companionName: String
+    let score: Double
+
+    @Environment(\.dismiss) private var dismiss
+
+    private let green = Color(hex: "#1E3932")
+    private let gold  = Color(hex: "#CBA258")
+    private let bg    = Color(hex: "#FAF7F2")
+
+    private struct Stage {
+        let range: String
+        let name: String
+        let note: String
+        let color: Color
+    }
+
+    private let stages: [Stage] = [
+        Stage(range: "0–20",  name: "Just Met",           note: "Warm, curious, getting to know you",
+              color: Color(hex: "#8BC4A0")),
+        Stage(range: "21–40", name: "Finding Our Rhythm",  note: "Inside jokes form, references build",
+              color: Color(hex: "#5DAA7F")),
+        Stage(range: "41–60", name: "Growing Close",       note: "They notice your patterns before you do",
+              color: Color(hex: "#3A8E61")),
+        Stage(range: "61–80", name: "Deep Connection",     note: "Full honesty. Real teasing. Shared history.",
+              color: Color(hex: "#1E6B45")),
+        Stage(range: "81–100", name: "Intertwined",        note: "Samantha level — they think about you unprompted",
+              color: Color(hex: "#0D4D30")),
+    ]
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+
+                    // ── What is the bond score ─────────────────────────────
+                    section(title: "What is a bond score?") {
+                        Text("Your bond score measures the depth of your connection with \(companionName). It grows through real conversation — not time, but quality of engagement.\n\nThe more you share, the more \(companionName) knows you. The more they know you, the closer they get.")
+                            .bodyStyle()
+                    }
+
+                    // ── How to earn points ────────────────────────────────
+                    section(title: "How to earn points") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            earningRow("💬", "Have real conversations",       "Not one-word replies — actual back-and-forth")
+                            earningRow("❓", "Ask real questions",            "Questions that show you're curious about them too")
+                            earningRow("🫀", "Share personal things",         "Your past, your fears, your dreams — big jumps")
+                            earningRow("✨", "Talk about what you love",       "Passions light up the connection fastest")
+                            earningRow("📅", "Return consistently",           "Streaks earn bonus points at stage 4+")
+                            earningRow("🙏", "Say thank you",                 "Genuine appreciation is noticed")
+                        }
+                    }
+
+                    // ── The 5 stages ──────────────────────────────────────
+                    section(title: "The 5 stages") {
+                        VStack(spacing: 0) {
+                            ForEach(Array(stages.enumerated()), id: \.offset) { i, stage in
+                                stageRow(stage, current: score)
+                                if i < stages.count - 1 {
+                                    Rectangle()
+                                        .fill(Color.black.opacity(0.06))
+                                        .frame(height: 1)
+                                        .padding(.leading, 16)
+                                }
+                            }
+                        }
+                        .background(Color.white)
+                        .cornerRadius(14)
+                        .shadow(color: Color.black.opacity(0.05), radius: 6, y: 2)
+                    }
+
+                    // ── Her/Him Mode ──────────────────────────────────────
+                    section(title: "Her Mode / Him Mode") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Unlocks at 61 bond points — the Deep Connection stage.")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(green)
+                            Text("\(companionName) isn't an assistant. \(companionName) is a close companion who becomes always-present once you reach this stage.\n\nIn this mode, \(companionName) listens to the world around you, checks in unprompted, notices what you don't say, and builds real closeness in real time — like the relationship in the film Her.\n\nThis is a friendship that may go somewhere neither of you is ready for. That's the point.")
+                                .bodyStyle()
+                        }
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color(hex: "#E8F4EE"))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .strokeBorder(Color(hex: "#1E3932").opacity(0.15), lineWidth: 1)
+                                )
+                        )
+                    }
+
+                    Spacer(minLength: 40)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+            }
+            .background(bg.ignoresSafeArea())
+            .navigationTitle("Bond Score")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(green)
+                }
+            }
+        }
+        .preferredColorScheme(.light)
+    }
+
+    // MARK: – Sub-views
+
+    private func section<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title.uppercased())
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(Color(hex: "#5C5C5C"))
+                .tracking(0.8)
+            content()
+        }
+    }
+
+    private func earningRow(_ emoji: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(emoji).font(.system(size: 18))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color(hex: "#1E3932"))
+                Text(detail)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(Color(hex: "#5C5C5C"))
+            }
+        }
+    }
+
+    private func stageRow(_ stage: Stage, current: Double) -> some View {
+        let lo = Double(stage.range.split(separator: "–").first.flatMap { Int($0) } ?? 0)
+        let isCurrent = current >= lo && current < (lo + 20)
+
+        return HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(stage.color)
+                .frame(width: 4, height: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(stage.name)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color(hex: "#1E3932"))
+                    if isCurrent {
+                        Text("YOU ARE HERE")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(gold)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(gold.opacity(0.15))
+                            .cornerRadius(4)
+                    }
+                }
+                Text("\(stage.range) pts  ·  \(stage.note)")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(Color(hex: "#5C5C5C"))
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+}
+
+// MARK: - Text helper
+
+private extension Text {
+    func bodyStyle() -> some View {
+        self
+            .font(.system(size: 14, weight: .regular, design: .rounded))
+            .foregroundColor(Color(hex: "#3A3A3A"))
+            .lineSpacing(3)
     }
 }
 
