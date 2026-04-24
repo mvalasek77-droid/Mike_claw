@@ -90,9 +90,14 @@ final class HerModeEngine: NSObject, ObservableObject {
     private var silenceCheckTimer: Timer?
     private var sessionRestartTimer: Timer?
 
+    // MARK: Private — restart loop guard
+    private var restartAttempts:    Int  = 0
+    private let maxRestartAttempts: Int  = 4
+    private var isRestarting:       Bool = false
+
     // MARK: Private — config
-    private let silenceGateSeconds:      TimeInterval = 22   // natural pause in conversation
-    private let minProactiveGapMinutes:  TimeInterval = 5    // never more often than this
+    private let silenceGateSeconds:     TimeInterval = 22
+    private let minProactiveGapMinutes: TimeInterval = 5
     private let defaults = UserDefaults.standard
 
     // MARK: - Topic detection dictionary
@@ -210,6 +215,9 @@ final class HerModeEngine: NSObject, ObservableObject {
             try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
         } catch {}
 
+        // Remove before adding — prevents duplicate observers on repeated activate() calls
+        NotificationCenter.default.removeObserver(self,
+            name: AVAudioSession.interruptionNotification, object: nil)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleAudioInterruption),
@@ -242,19 +250,37 @@ final class HerModeEngine: NSObject, ObservableObject {
     // One session ≈ 60 seconds max (Apple limit). We restart automatically.
 
     func beginRecognitionSession() {
-        guard isActive, !isListening else { return }
+        guard isActive, !isListening, !isRestarting else { return }
+
+        // Exponential backoff: 0.5s, 1s, 2s, 4s — then give up until next user action
+        guard restartAttempts < maxRestartAttempts else {
+            // Hit the cap — wait 30s then reset the counter and try once more
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                guard self.isActive else { return }
+                self.restartAttempts = 0
+                self.isRestarting    = false
+                self.beginRecognitionSession()
+            }
+            return
+        }
+
+        isRestarting = true
         stopRecognition()
 
         speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-        speechRecognizer?.defaultTaskHint = .dictation   // ambient → dictation hint
+        speechRecognizer?.defaultTaskHint = .dictation
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         recognitionRequest?.shouldReportPartialResults  = true
-        recognitionRequest?.requiresOnDeviceRecognition = true   // on-device: no 60s limit
+        recognitionRequest?.requiresOnDeviceRecognition = true
 
         guard let request    = recognitionRequest,
               let recognizer = speechRecognizer,
               recognizer.isAvailable
-        else { return }
+        else {
+            isRestarting = false
+            return
+        }
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }
@@ -266,9 +292,21 @@ final class HerModeEngine: NSObject, ObservableObject {
             }
             if error != nil || result?.isFinal == true {
                 Task { @MainActor in
-                    self.isListening = false
-                    // Brief pause then restart — creates continuous ambient session
-                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    self.isListening  = false
+                    self.isRestarting = false
+                    guard self.isActive else { return }
+
+                    // isFinal with no error = normal 60s Apple limit rolling over — restart quickly
+                    // error = something went wrong — back off exponentially
+                    let isNormalRollover = (error == nil && result?.isFinal == true)
+                    if isNormalRollover {
+                        self.restartAttempts = 0
+                        try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
+                    } else {
+                        self.restartAttempts += 1
+                        let backoff = UInt64(pow(2.0, Double(self.restartAttempts)) * 500_000_000)
+                        try? await Task.sleep(nanoseconds: min(backoff, 8_000_000_000))
+                    }
                     self.beginRecognitionSession()
                 }
             }
@@ -282,9 +320,14 @@ final class HerModeEngine: NSObject, ObservableObject {
         micEngine.prepare()
         do {
             try micEngine.start()
-            isListening = true
-            ambientMood = .listening
-        } catch {}
+            isListening      = true
+            isRestarting     = false
+            restartAttempts  = 0   // reset on successful start
+            ambientMood      = .listening
+        } catch {
+            isRestarting = false
+            restartAttempts += 1
+        }
     }
 
     private func stopRecognition() {
