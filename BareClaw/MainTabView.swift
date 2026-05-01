@@ -839,13 +839,19 @@ struct ProfileView: View {
         .task { await vm.load() }
     }
 
-    // MARK: – Header
+    // MARK: – Hero portrait (full-width banner)
 
-    private var headerSection: some View {
-        VStack(spacing: 0) {
-            // Portrait + username
-            ZStack(alignment: .bottom) {
-                // Companion portrait — tall, full-width
+    @ObservedObject private var photoStore = CompanionPhotoStore.shared
+
+    @ViewBuilder
+    private var companionHeroPortrait: some View {
+        ZStack(alignment: .topTrailing) {
+            if let photo = photoStore.photo(for: vm.companionId) {
+                Image(uiImage: photo)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+            } else {
                 IllustratedPortraitView(
                     gender:      vm.companionGender,
                     companionId: vm.companionId,
@@ -853,8 +859,40 @@ struct ProfileView: View {
                     size:        UIScreen.main.bounds.width,
                     clipToCircle: false
                 )
-                .frame(height: 320)
-                .clipped()
+            }
+            // Edit button — top-right corner
+            Menu {
+                CompanionPhotoPicker(companionId: vm.companionId) {
+                    AnyView(Label("Choose Photo", systemImage: "photo.on.rectangle"))
+                }
+                if photoStore.hasPhoto(for: vm.companionId) {
+                    Button(role: .destructive) {
+                        CompanionPhotoStore.shared.remove(for: vm.companionId)
+                    } label: {
+                        Label("Remove Photo", systemImage: "trash")
+                    }
+                }
+            } label: {
+                Image(systemName: "camera.circle.fill")
+                    .font(.system(size: 32))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, vm.accentColor)
+                    .shadow(radius: 4)
+                    .padding(14)
+            }
+        }
+    }
+
+    // MARK: – Header
+
+    private var headerSection: some View {
+        VStack(spacing: 0) {
+            // Portrait + username
+            ZStack(alignment: .bottom) {
+                // Companion portrait — user photo takes priority over illustrated
+                companionHeroPortrait
+                    .frame(height: 320)
+                    .clipped()
 
                 // Gradient fade to bg
                 LinearGradient(

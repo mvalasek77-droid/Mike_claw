@@ -114,13 +114,16 @@ struct PortraitStyle {
 
 // MARK: - CompanionPortraitView
 //
-// Renders a gender-appropriate illustrated portrait for each companion.
-// Shows a real asset-catalog photo when present; otherwise draws fully
-// in SwiftUI Canvas — no image assets required.
+// Portrait priority: user photo → asset catalog → illustrated (canvas).
+// Pass editable: true to show a camera button overlay for photo picking.
 
 struct CompanionPortraitView: View {
     let companion: CompanionPersonality
     let size: AvatarSize
+    var editable: Bool = false
+
+    @ObservedObject private var photoStore = CompanionPhotoStore.shared
+    @State private var showRemoveConfirm = false
 
     private var dimension: CGFloat {
         switch size {
@@ -131,28 +134,75 @@ struct CompanionPortraitView: View {
     }
 
     var body: some View {
-        Group {
-            if UIImage(named: companion.avatarImageName) != nil {
-                Image(companion.avatarImageName)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                IllustratedPortraitView(
-                    gender:      companion.gender,
-                    companionId: companion.id,
-                    accentColor: companion.accentColor,
-                    size:        dimension
+        ZStack(alignment: .bottomTrailing) {
+            portraitImage
+                .frame(width: dimension, height: dimension)
+                .clipShape(Circle())
+                .overlay(
+                    Circle().strokeBorder(
+                        companion.accentColor.opacity(0.45),
+                        lineWidth: max(1.5, dimension * 0.018)
+                    )
                 )
+
+            if editable {
+                cameraButton
             }
         }
-        .frame(width: dimension, height: dimension)
-        .clipShape(Circle())
-        .overlay(
-            Circle().strokeBorder(
-                companion.accentColor.opacity(0.45),
-                lineWidth: max(1.5, dimension * 0.018)
+        .confirmationDialog("Remove photo?", isPresented: $showRemoveConfirm) {
+            Button("Remove Photo", role: .destructive) {
+                CompanionPhotoStore.shared.remove(for: companion.id)
+            }
+        }
+    }
+
+    // MARK: - Portrait layers
+
+    @ViewBuilder
+    private var portraitImage: some View {
+        // 1. User-supplied photo
+        if let photo = photoStore.photo(for: companion.id) {
+            Image(uiImage: photo)
+                .resizable()
+                .scaledToFill()
+        // 2. Asset-catalog image
+        } else if UIImage(named: companion.avatarImageName) != nil {
+            Image(companion.avatarImageName)
+                .resizable()
+                .scaledToFill()
+        // 3. Illustrated canvas fallback
+        } else {
+            IllustratedPortraitView(
+                gender:      companion.gender,
+                companionId: companion.id,
+                accentColor: companion.accentColor,
+                size:        dimension
             )
-        )
+        }
+    }
+
+    // MARK: - Camera overlay button
+
+    private var cameraButton: some View {
+        Menu {
+            CompanionPhotoPicker(companionId: companion.id) {
+                AnyView(Label("Choose Photo", systemImage: "photo.on.rectangle"))
+            }
+            if photoStore.hasPhoto(for: companion.id) {
+                Button(role: .destructive) {
+                    showRemoveConfirm = true
+                } label: {
+                    Label("Remove Photo", systemImage: "trash")
+                }
+            }
+        } label: {
+            Image(systemName: "camera.circle.fill")
+                .font(.system(size: dimension * 0.28))
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white, companion.accentColor)
+                .shadow(radius: 2)
+                .offset(x: 2, y: 2)
+        }
     }
 }
 
