@@ -264,7 +264,7 @@ final class HerModeEngine: NSObject, ObservableObject {
     func completeCeremony() {
         let shouldActivate = isUnlocked && !isActive
         defaults.set(true, forKey: "herMode.ceremonyCompleted")
-        withAnimation(.easeInOut(duration: 0.25)) {
+        withAnimation(BCMotion.snappy) {
             showCeremony = false
         }
         debugLog("ceremony completed; activating \(modeName)")

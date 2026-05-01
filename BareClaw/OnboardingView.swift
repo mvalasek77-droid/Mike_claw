@@ -80,7 +80,10 @@ struct CompanionOnboardingView: View {
                                 }
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                             }
-                            Button(action: advance) {
+                            Button {
+                                if canAdvance { BCHaptic.medium() }
+                                advance()
+                            } label: {
                                 HStack {
                                     Text(nextButtonLabel)
                                         .font(BCFont.headline())
@@ -96,6 +99,8 @@ struct CompanionOnboardingView: View {
                                 .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true),
                                            value: canAdvance && step == 4)
                             }
+                            .buttonStyle(BCButtonStyle(haptic: .none))
+                            .accessibilityLabel(nextButtonLabel)
                             .padding(.bottom, BCSizing.spacingXL)
                             .disabled(!canAdvance)
                         }
@@ -397,6 +402,7 @@ private struct InterestsStep: View {
                 ForEach(suggestions) { interest in
                     let selected = persona.interests.contains(where: { $0.id == interest.id })
                     Button {
+                        BCHaptic.light()
                         withAnimation(.spring(response: 0.25)) {
                             if selected { persona.removeInterest(id: interest.id) }
                             else        { persona.addInterest(interest) }
@@ -541,7 +547,10 @@ private struct ProviderStep: View {
                                 .strokeBorder(apiKey.isEmpty ? Color.BC.border : Color.BC.primary, lineWidth: 1)
                         )
 
-                        Button(action: saveAndContinue) {
+                        Button {
+                            BCHaptic.medium()
+                            saveAndContinue()
+                        } label: {
                             HStack {
                                 if checking {
                                     ProgressView().tint(.black).scaleEffect(0.8)
@@ -556,15 +565,21 @@ private struct ProviderStep: View {
                             .foregroundColor(apiKey.count > 20 ? .white : .BC.textMuted)
                             .cornerRadius(BCSizing.radiusLG)
                         }
+                        .buttonStyle(BCButtonStyle(haptic: .none))
+                        .accessibilityLabel("Save API key and meet \(persona.selectedCompanion.name)")
                         .disabled(apiKey.count < 20 || checking)
 
                         // Skip option — user can add the key later in Settings
-                        Button(action: onComplete) {
+                        Button {
+                            BCHaptic.soft()
+                            onComplete()
+                        } label: {
                             Text("Skip for now — I'll add it in Settings later")
                                 .font(BCFont.body(13))
                                 .foregroundColor(.BC.textMuted)
                                 .underline()
                         }
+                        .accessibilityLabel("Skip API key setup")
                         .padding(.top, 4)
                     }
                     .padding(.horizontal, BCSizing.spacingLG)

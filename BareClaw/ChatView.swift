@@ -1234,6 +1234,7 @@ struct ChatView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     // Tapping the companion's avatar/name returns to video mode
                     Button {
+                        BCHaptic.light()
                         CompanionVoiceEngine.shared.stopSpeaking()
                         appState.currentMode = .video
                     } label: {
@@ -1269,11 +1270,15 @@ struct ChatView: View {
                         // Voice toggle
                         CompanionVoiceToggleButton()
                         // Settings
-                        Button { showSettings = true } label: {
+                        Button {
+                            BCHaptic.light()
+                            showSettings = true
+                        } label: {
                             Image(systemName: "gearshape.fill")
                                 .foregroundColor(.BC.textMuted)
                                 .font(.system(size: 16))
                         }
+                        .accessibilityLabel("Settings")
                     }
                 }
             }
@@ -1299,7 +1304,6 @@ struct ChatView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .onDisappear { vm.saveMessages() }
         .onChange(of: persona.selectedCompanionID) { _, _ in
             Task { await vm.reloadForCompanionChange() }
@@ -1604,11 +1608,16 @@ struct CompanionVoiceToggleButton: View {
     @ObservedObject private var engine = CompanionVoiceEngine.shared
 
     var body: some View {
-        Button { engine.toggleVoice() } label: {
+        Button {
+            BCHaptic.selection()
+            engine.toggleVoice()
+        } label: {
             Image(systemName: engine.voiceEnabled ? "speaker.wave.2.fill" : "speaker.slash")
                 .font(.system(size: 15))
                 .foregroundColor(engine.voiceEnabled ? .BC.accent : .BC.textMuted)
+                .animation(BCMotion.snappy, value: engine.voiceEnabled)
         }
+        .accessibilityLabel(engine.voiceEnabled ? "Disable voice" : "Enable voice")
     }
 }
 
@@ -1708,11 +1717,15 @@ struct AffirmationBanner: View {
                 .foregroundColor(Color.BC.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer()
-            Button(action: onDismiss) {
+            Button {
+                BCHaptic.soft()
+                onDismiss()
+            } label: {
                 Image(systemName: "xmark")
                     .foregroundColor(Color.BC.secondaryText)
                     .font(.system(size: 12, weight: .semibold))
             }
+            .accessibilityLabel("Dismiss")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -1742,6 +1755,7 @@ struct SuggestionChipsView: View {
             HStack(spacing: 8) {
                 ForEach(suggestions, id: \.self) { chip in
                     Button {
+                        BCHaptic.light()
                         onTap(chip)
                     } label: {
                         Text(chip)
@@ -1756,6 +1770,8 @@ struct SuggestionChipsView: View {
                                     .strokeBorder(Color.BC.primary.opacity(0.3), lineWidth: 1)
                             )
                     }
+                    .buttonStyle(BCButtonStyle(haptic: .none))
+                    .accessibilityLabel("Suggest: \(chip)")
                 }
             }
             .padding(.horizontal, 16)
@@ -1775,6 +1791,7 @@ struct QuickActionsBar: View {
                 ForEach(actions.indices, id: \.self) { i in
                     let action = actions[i]
                     Button {
+                        BCHaptic.light()
                         action.action()
                     } label: {
                         HStack(spacing: 6) {
@@ -1793,6 +1810,8 @@ struct QuickActionsBar: View {
                                 .strokeBorder(Color.BC.border, lineWidth: 1)
                         )
                     }
+                    .buttonStyle(BCButtonStyle(haptic: .none))
+                    .accessibilityLabel(action.title)
                 }
             }
             .padding(.horizontal, 16)
@@ -1855,6 +1874,7 @@ struct InputBar: View {
 
             if focused {
                 Button {
+                    BCHaptic.soft()
                     focused = false
                 } label: {
                     ZStack {
@@ -1872,6 +1892,7 @@ struct InputBar: View {
 
             // ── Send button ───────────────────────────────────────────
             Button {
+                BCHaptic.medium()
                 focused = false
                 onSend()
             } label: {
@@ -1885,7 +1906,8 @@ struct InputBar: View {
                 }
             }
             .disabled(isEmpty)
-            .animation(.easeInOut(duration: 0.18), value: isEmpty)
+            .accessibilityLabel("Send message")
+            .animation(BCMotion.snappy, value: isEmpty)
         }
         .animation(.spring(response: 0.24, dampingFraction: 0.82), value: focused)
         .padding(.horizontal, 12)
@@ -2515,7 +2537,6 @@ struct SettingsView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .onAppear { loadCurrentKey() }
         .sheet(isPresented: $showCompanionPicker) {
             NavigationStack {
@@ -2529,15 +2550,12 @@ struct SettingsView: View {
                         }
                     }
             }
-            .preferredColorScheme(.dark)
         }
         .sheet(isPresented: $showBugReporter) {
             BugReportView()
-                .preferredColorScheme(.dark)
         }
         .sheet(isPresented: $showDiagnosticsLog) {
             DiagnosticsLogView()
-                .preferredColorScheme(.dark)
         }
         .sheet(isPresented: $showHelpCenter) {
             LegalTextView(
@@ -2545,7 +2563,6 @@ struct SettingsView: View {
                 intro: "Fast answers for setting up BareClaw and keeping the companion connected.",
                 sections: BareClawLegalContent.helpSections
             )
-            .preferredColorScheme(.dark)
         }
         .sheet(isPresented: $showTerms) {
             LegalTextView(
@@ -2553,7 +2570,6 @@ struct SettingsView: View {
                 intro: "These terms are intentionally broad and plain-language. By using BareClaw, you agree to use it responsibly and understand its limits.",
                 sections: BareClawLegalContent.termsSections
             )
-            .preferredColorScheme(.dark)
         }
         .sheet(isPresented: $showPrivacy) {
             LegalTextView(
@@ -2561,7 +2577,6 @@ struct SettingsView: View {
                 intro: "BareClaw is built to keep personal data on your device unless you choose to connect outside services.",
                 sections: BareClawLegalContent.privacySections
             )
-            .preferredColorScheme(.dark)
         }
     }
 

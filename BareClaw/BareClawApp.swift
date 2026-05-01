@@ -416,8 +416,8 @@ struct RootView: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.4), value: appState.onboardingComplete)
-        .animation(.easeInOut(duration: 0.4), value: appState.termsAccepted)
+        .animation(BCMotion.expansive, value: appState.onboardingComplete)
+        .animation(BCMotion.expansive, value: appState.termsAccepted)
         // ── Floating Her Mode bear ball ──────────────────────────────
         .overlay(alignment: .topLeading) {
             if appState.termsAccepted && herMode.isUnlocked {
@@ -657,7 +657,6 @@ private struct TermsAcceptanceView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 
     private func headerCard(isWide: Bool) -> some View {
@@ -719,12 +718,14 @@ private struct TermsAcceptanceView: View {
     private func acceptBar(isWide: Bool, contentWidth: CGFloat, sideInset: CGFloat) -> some View {
         VStack(spacing: 12) {
             Button {
+                BCHaptic.selection()
                 confirmed.toggle()
             } label: {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: confirmed ? "checkmark.square.fill" : "square")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(confirmed ? Color.BC.accent : Color.BC.secondaryText)
+                        .animation(BCMotion.snappy, value: confirmed)
                     Text("I have read and agree to the Terms of Use and Privacy Policy.")
                         .font(BCFont.body(isWide ? 15 : 14))
                         .foregroundColor(Color.BC.primaryText)
@@ -734,8 +735,12 @@ private struct TermsAcceptanceView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(confirmed ? "Agreed to terms — checked" : "Agree to Terms of Use and Privacy Policy")
 
-            Button(action: onAccept) {
+            Button {
+                BCHaptic.medium()
+                onAccept()
+            } label: {
                 Text("Accept and Continue")
                     .font(BCFont.headline(isWide ? 17 : 16))
                     .frame(maxWidth: .infinity)
@@ -744,6 +749,8 @@ private struct TermsAcceptanceView: View {
                     .foregroundColor(confirmed ? .black : Color.BC.textMuted)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
             }
+            .buttonStyle(BCButtonStyle(haptic: .none))
+            .accessibilityLabel("Accept and Continue")
             .disabled(!confirmed)
         }
         .frame(maxWidth: contentWidth)

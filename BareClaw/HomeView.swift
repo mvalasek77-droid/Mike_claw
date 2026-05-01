@@ -109,7 +109,6 @@ struct HomeView: View {
                     .frame(maxHeight: .infinity, alignment: .top)
             }
             .navigationBarHidden(true)
-            .preferredColorScheme(.light)
             // Her/Him Mode initialization ceremony — fires once on first unlock
             .fullScreenCover(isPresented: .init(
                 get: { herMode.showCeremony },
@@ -240,11 +239,15 @@ struct HomeView: View {
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .foregroundColor(mutedWhite)
                             .tracking(0.5)
-                        Button { showBondInfo = true } label: {
+                        Button {
+                            BCHaptic.selection()
+                            showBondInfo = true
+                        } label: {
                             Image(systemName: "info.circle")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(mutedWhite.opacity(0.55))
                         }
+                        .accessibilityLabel("Bond score info")
                     }
 
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -268,6 +271,7 @@ struct HomeView: View {
 
                 // Right: stage label + chevron — taps into chat
                 Button {
+                    BCHaptic.medium()
                     appState.requestChat()
                 } label: {
                     VStack(alignment: .trailing, spacing: 8) {
@@ -464,7 +468,8 @@ struct HomeView: View {
 
     private func quickActionCard(_ action: QuickAction) -> some View {
         Button {
-            action.action?()
+            BCHaptic.light()
+            withAnimation(BCMotion.interactive) { action.action?() }
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: action.icon)
@@ -486,12 +491,14 @@ struct HomeView: View {
             .padding(16)
             .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.white)
                     .shadow(color: Color.black.opacity(0.07), radius: 10, x: 0, y: 4)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(BCButtonStyle(haptic: .none)) // haptic handled above with custom timing
+        .accessibilityLabel(action.title)
+        .accessibilityHint(action.subtitle)
     }
 }
 
@@ -614,7 +621,6 @@ struct BondInfoSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.light)
     }
 
     // MARK: – Sub-views

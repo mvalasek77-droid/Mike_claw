@@ -45,7 +45,6 @@ struct MemoriesView: View {
                 }
             }
         }
-        .preferredColorScheme(.light)
         .task {
             entries = await HermesMemory.shared.recentEntries(limit: 80)
                 .filter { !($0.content.value is NSNull) }

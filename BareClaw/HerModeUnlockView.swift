@@ -176,6 +176,7 @@ struct HerModeUnlockView: View {
     private var ctaButtons: some View {
         VStack(spacing: 12) {
             Button {
+                BCHaptic.success()
                 activated = true
                 engine.activate()
                 engine.dismissCelebration()
@@ -196,8 +197,11 @@ struct HerModeUnlockView: View {
                 .foregroundColor(.black)
                 .cornerRadius(16)
             }
+            .buttonStyle(BCButtonStyle(haptic: .none))
+            .accessibilityLabel("Activate \(engine.modeName)")
 
             Button {
+                BCHaptic.soft()
                 engine.dismissCelebration()
             } label: {
                 Text("Maybe Later")
@@ -205,6 +209,7 @@ struct HerModeUnlockView: View {
                     .foregroundColor(.white.opacity(0.45))
                     .padding(.vertical, 10)
             }
+            .accessibilityLabel("Dismiss, activate later")
         }
         .padding(.bottom, 8)
     }
@@ -252,7 +257,7 @@ struct HerModeUnlockView: View {
         }
         // 4. CTAs fade in
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
-            withAnimation(.easeInOut(duration: 0.4)) {
+            withAnimation(BCMotion.gentle) {
                 showActivate = true
             }
         }
@@ -367,7 +372,7 @@ struct HerModeProgressView: View {
                                 )
                             )
                             .frame(width: geo.size.width * progress, height: 6)
-                            .animation(.easeInOut(duration: 0.6), value: progress)
+                            .animation(BCMotion.gentle, value: progress)
                     }
                 }
                 .frame(height: 6)

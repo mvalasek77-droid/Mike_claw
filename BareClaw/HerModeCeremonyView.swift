@@ -303,12 +303,16 @@ struct HerModeCeremonyView: View {
 
                 // Continue button
                 if ctrl.continueVisible && ctrl.questionVisible {
-                    Button { ctrl.advance() } label: {
+                    Button {
+                        BCHaptic.light()
+                        ctrl.advance()
+                    } label: {
                         Text("continue")
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
                             .foregroundColor(.white.opacity(0.42))
                             .tracking(2.5)
                     }
+                    .accessibilityLabel("Continue to next question")
                     .transition(.opacity.animation(.easeIn(duration: 0.35)))
                 }
 
@@ -348,6 +352,7 @@ struct HerModeCeremonyView: View {
                 HStack {
                     Spacer()
                     Button {
+                        BCHaptic.medium()
                         ctrl.skipCeremony()
                         completeOnce()
                     } label: {
@@ -360,6 +365,7 @@ struct HerModeCeremonyView: View {
                             .background(Color.black.opacity(0.22))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
+                    .accessibilityLabel(ctrl.congratsVisible ? "Enter app" : "Skip ceremony")
                     .contentShape(Rectangle())
                     .padding(.trailing, 20)
                     .padding(.top, 54)

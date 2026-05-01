@@ -42,7 +42,7 @@ struct HerModeBallView: View {
                 ballLayer
                     .position(effectivePosition(in: geo))
                     .opacity(herMode.ambientMood == .speaking ? 0 : 1)
-                    .animation(.easeInOut(duration: 0.35), value: herMode.ambientMood)
+                    .animation(BCMotion.gentle, value: herMode.ambientMood)
                     .gesture(
                         DragGesture(minimumDistance: 4)
                             .onChanged { v in
@@ -62,14 +62,17 @@ struct HerModeBallView: View {
                     )
                     .simultaneousGesture(
                         TapGesture().onEnded {
+                            BCHaptic.light()
                             showGuide = true
                         }
                     )
                     .onLongPressGesture(minimumDuration: 0.6) {
-                        // Long-press: toggle Her Mode active/inactive
+                        BCHaptic.medium()
                         if herMode.isActive { herMode.deactivate() }
                         else { herMode.activate() }
                     }
+                    .accessibilityLabel(herMode.isActive ? "\(herMode.modeName) active — tap for guide" : "\(herMode.modeName) paused — tap for guide")
+                    .accessibilityHint("Hold to toggle \(herMode.modeName)")
                     .onAppear {
                         position = defaultPosition(in: geo)
                     }
@@ -142,7 +145,7 @@ struct HerModeBallView: View {
         .opacity(herMode.isActive ? 1.0 : 0.45)   // dim when paused — clearly inactive
         .scaleEffect(isDragging ? 1.12 : 1.0)
         .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isDragging)
-        .animation(.easeInOut(duration: 0.3), value: herMode.isActive)
+        .animation(BCMotion.gentle, value: herMode.isActive)
     }
 
     // MARK: - Mood-reactive colours / animations
@@ -258,6 +261,7 @@ private struct HerModeBallGuideSheet: View {
                         body: "If it hears words about a song, music, or a show, it can ask whether you like it. It does not identify media like Shazam."
                     )
                     Button {
+                        BCHaptic.medium()
                         if herMode.isActive { herMode.deactivate() }
                         else { herMode.activate() }
                     } label: {
@@ -270,6 +274,7 @@ private struct HerModeBallGuideSheet: View {
                     .buttonStyle(.borderedProminent)
                     .tint(companion.accentColor)
                     .padding(.top, 4)
+                    .accessibilityLabel(herMode.isActive ? "Pause \(herMode.modeName)" : "Activate \(herMode.modeName)")
                 }
                 .padding(20)
             }

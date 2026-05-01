@@ -55,12 +55,12 @@ struct MainTabView: View {
         .toolbarBackground(.visible, for: .tabBar)
         // React to mode changes driven from anywhere in the app
         .onChange(of: appState.currentMode) { _, newMode in
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(BCMotion.snappy) {
                 selectedTab = newMode == .chat ? 1 : 0
             }
         }
         .onChange(of: appState.chatNavigationRequestID) { _, _ in
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(BCMotion.snappy) {
                 selectedTab = 1
             }
         }
@@ -72,13 +72,13 @@ struct MainTabView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .herModeSpeechDetected)) { _ in
             appState.requestChat()
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(BCMotion.snappy) {
                 selectedTab = 1
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .companionHandoffRequested)) { _ in
             appState.requestChat()
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(BCMotion.snappy) {
                 selectedTab = 1
             }
         }
@@ -141,7 +141,6 @@ private struct CompanionVibesView: View {
             .navigationBarHidden(true)
         }
         .navigationViewStyle(.stack)
-        .preferredColorScheme(.light)
         .onAppear {
             refreshDailyState(force: true)
         }
@@ -835,7 +834,6 @@ struct ProfileView: View {
                 }
             }
         }
-        .preferredColorScheme(.light)
         .task { await vm.load() }
     }
 

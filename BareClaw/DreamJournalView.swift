@@ -139,7 +139,6 @@ struct DreamJournalView: View {
                 }
             }
         }
-        .preferredColorScheme(.light)
     }
 
     // MARK: – Empty state

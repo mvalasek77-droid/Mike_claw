@@ -119,11 +119,12 @@ struct DataPermissionsView: View {
                 .padding(.horizontal, BCSizing.spacingLG)
 
                 // Continue button
-                Button(action: {
+                Button {
+                    BCHaptic.success()
                     persona.save()
                     syncTrackingPermissions()
                     onComplete()
-                }) {
+                } label: {
                     HStack {
                         Text("All set — let's go!")
                             .font(BCFont.headline())
@@ -136,6 +137,8 @@ struct DataPermissionsView: View {
                     .cornerRadius(BCSizing.radiusLG)
                     .padding(.horizontal, BCSizing.spacingLG)
                 }
+                .buttonStyle(BCButtonStyle(haptic: .none))
+                .accessibilityLabel("All set, continue to app")
                 .padding(.bottom, BCSizing.spacingXL)
             }
             .padding(.top, BCSizing.spacingLG)

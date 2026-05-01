@@ -101,7 +101,10 @@ private struct FilterPill: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            BCHaptic.light()
+            action()
+        } label: {
             Text(label)
                 .font(BCFont.caption(13))
                 .foregroundColor(selected ? .black : .BC.textSecondary)
@@ -114,6 +117,8 @@ private struct FilterPill: View {
                         .strokeBorder(selected ? Color.clear : Color.BC.border, lineWidth: 1)
                 )
         }
+        .buttonStyle(BCButtonStyle(haptic: .none))
+        .accessibilityLabel(selected ? "\(label), selected" : label)
     }
 }
 
@@ -129,7 +134,10 @@ private struct CompanionCard: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            BCHaptic.light()
+            action()
+        } label: {
             ZStack(alignment: .bottom) {
 
                 // ── Full-card portrait ─────────────────────────────────
@@ -228,7 +236,9 @@ private struct CompanionCard: View {
             )
             .animation(.spring(response: 0.28), value: isSelected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(BCButtonStyle(haptic: .none))
+        .accessibilityLabel("\(companion.name), \(companion.tagline)\(isSelected ? ", currently selected" : "")")
+        .accessibilityHint("Double-tap to view details")
     }
 }
 
@@ -350,10 +360,11 @@ struct CompanionDetailSheet: View {
                             }
 
                             // Select button
-                            Button(action: {
+                            Button {
+                                BCHaptic.success()
                                 onSelect()
                                 dismiss()
-                            }) {
+                            } label: {
                                 HStack {
                                     Image(systemName: "person.crop.circle.badge.plus")
                                     Text(isSelected ? "Keep \(companion.name)" : "Choose \(companion.name)")
