@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let userPersonaCompanionDidChange = Notification.Name("userPersona.companionDidChange")
+}
+
 // MARK: - UserPersona
 //
 // The user's persistent profile. Everything Hermes learns about the user
@@ -21,6 +25,14 @@ enum RelationshipMode: String, Codable, CaseIterable, Identifiable {
     case romanticCompanion = "romantic_companion"
 
     var id: String { rawValue }
+
+    static var displayOrder: [RelationshipMode] {
+        [.romanticCompanion, .flirtyFriend, .friend, .professional]
+    }
+
+    var allowsRomanticLoveArc: Bool {
+        self == .romanticCompanion
+    }
 
     var label: String {
         switch self {
@@ -140,11 +152,11 @@ enum CommunicationStyle: String, Codable, CaseIterable, Identifiable {
         case .professional:
             return "Communicate clearly and concisely. Use proper grammar. Be direct and efficient. Avoid slang."
         case .buddy:
-            return "Talk like a close friend — warm, honest, occasionally funny. Use casual language. Show genuine care. Use the user's name sometimes."
+            return "Talk like a close friend — warm, honest, occasionally funny. Use casual language. Show genuine care. Use the user's name sparingly, only when it genuinely lands."
         case .relaxed:
             return "Keep it super chill. Short sentences, relaxed tone, no pressure. Use emojis occasionally. Never be formal."
         case .flirty:
-            return "Be playful, warm, and a little flirty — like someone with a crush. Use the user's name often. Compliment them genuinely. Keep it fun and light, never inappropriate."
+            return "Be playful, warm, and a little flirty — like someone with a crush. Compliment them genuinely. Keep it fun and light, never inappropriate. Use the user's name sparingly so it feels intimate rather than repetitive."
         }
     }
 }
@@ -219,9 +231,15 @@ struct HabitEntry: Codable, Identifiable {
 // MARK: - UserPersona (main model)
 
 final class UserPersona: ObservableObject, Codable {
+    private static let defaultsBackupKey = "userPersona.backup"
+    private static let onboardingDefaultsKey = "onboardingComplete"
+    private static let selectedCompanionDefaultsKey = "selectedCompanionID"
+    private static let relationshipModeMigrationKey = "userPersona.relationshipModeDefaultMigrated"
+    private var suppressCompanionSelectionSideEffects = false
+
     @Published var userName: String = ""
     @Published var assistantName: String = ""   // empty = use companion's name
-    @Published var relationshipMode: RelationshipMode = .friend
+    @Published var relationshipMode: RelationshipMode = .romanticCompanion
     @Published var style: CommunicationStyle = .buddy
     @Published var gender: UserGender = .preferNotToSay
     @Published var interests: [Interest] = []
@@ -244,8 +262,15 @@ final class UserPersona: ObservableObject, Codable {
     /// ID of the chosen companion (e.g. "luna", "dante").
     @Published var selectedCompanionID: String = "luna" {
         didSet {
-            UserDefaults.standard.set(selectedCompanionID, forKey: "selectedCompanionID")
+            guard selectedCompanionID != oldValue else { return }
+            guard !suppressCompanionSelectionSideEffects else { return }
+            UserDefaults.standard.set(selectedCompanionID, forKey: Self.selectedCompanionDefaultsKey)
             save()  // keep JSON in sync so UserPersona.load() always returns the current companion
+            NotificationCenter.default.post(
+                name: .userPersonaCompanionDidChange,
+                object: nil,
+                userInfo: ["selectedCompanionID": selectedCompanionID]
+            )
         }
     }
 
@@ -275,7 +300,7 @@ final class UserPersona: ObservableObject, Codable {
         // "Claw" was the old hard-coded placeholder — migrate to empty so the
         // companion's real name shows everywhere.
         assistantName          = rawAssistantName == "Claw" ? "" : rawAssistantName
-        relationshipMode       = try c.decodeIfPresent(RelationshipMode.self, forKey: .relationshipMode)  ?? .friend
+        relationshipMode       = try c.decodeIfPresent(RelationshipMode.self, forKey: .relationshipMode)  ?? .romanticCompanion
         style                  = try c.decodeIfPresent(CommunicationStyle.self, forKey: .style)           ?? .buddy
         gender                 = try c.decodeIfPresent(UserGender.self,  forKey: .gender)                 ?? .preferNotToSay
         interests              = try c.decodeIfPresent([Interest].self,  forKey: .interests)              ?? []
@@ -285,7 +310,8 @@ final class UserPersona: ObservableObject, Codable {
         affirmationTime        = try c.decodeIfPresent(Date.self,        forKey: .affirmationTime)        ?? Date()
         learnedFacts           = try c.decodeIfPresent([String: String].self, forKey: .learnedFacts)      ?? [:]
         onboardingAnswers      = try c.decodeIfPresent([String].self,    forKey: .onboardingAnswers)      ?? []
-        selectedCompanionID    = try c.decodeIfPresent(String.self,      forKey: .selectedCompanionID)    ?? "luna"
+        let decodedCompanionID = try c.decodeIfPresent(String.self,       forKey: .selectedCompanionID)    ?? "luna"
+        _selectedCompanionID   = Published(initialValue: decodedCompanionID)
         trackingPermissions    = try c.decodeIfPresent(TrackingPermissions.self, forKey: .trackingPermissions) ?? TrackingPermissions()
     }
 
@@ -322,6 +348,10 @@ final class UserPersona: ObservableObject, Codable {
         let dir = Self.saveURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try? data.write(to: Self.saveURL, options: .atomic)
+        UserDefaults.standard.set(data, forKey: Self.defaultsBackupKey)
+        UserDefaults.standard.set(onboardingComplete, forKey: Self.onboardingDefaultsKey)
+        UserDefaults.standard.set(selectedCompanionID, forKey: Self.selectedCompanionDefaultsKey)
+        UserDefaults.standard.set(true, forKey: Self.relationshipModeMigrationKey)
     }
 
     static func load() -> UserPersona {
@@ -329,9 +359,43 @@ final class UserPersona: ObservableObject, Codable {
         decoder.dateDecodingStrategy = .iso8601
         if let data = try? Data(contentsOf: saveURL),
            let persona = try? decoder.decode(UserPersona.self, from: data) {
-            return persona
+            return mergedWithLegacyDefaults(persona)
         }
-        return UserPersona()
+        if let backup = UserDefaults.standard.data(forKey: defaultsBackupKey),
+           let persona = try? decoder.decode(UserPersona.self, from: backup) {
+            let merged = mergedWithLegacyDefaults(persona)
+            merged.save()
+            return merged
+        }
+        return mergedWithLegacyDefaults(UserPersona())
+    }
+
+    private static func mergedWithLegacyDefaults(_ persona: UserPersona) -> UserPersona {
+        let defaults = UserDefaults.standard
+        let onboarding = defaults.bool(forKey: onboardingDefaultsKey)
+        if onboarding && !persona.onboardingComplete {
+            persona.onboardingComplete = true
+        }
+
+        if let selected = defaults.string(forKey: selectedCompanionDefaultsKey),
+           !selected.isEmpty,
+           persona.selectedCompanionID != selected {
+            persona.setSelectedCompanionIDSilently(selected)
+        }
+
+        if !defaults.bool(forKey: relationshipModeMigrationKey),
+           persona.relationshipMode == .friend {
+            persona.relationshipMode = .romanticCompanion
+            defaults.set(true, forKey: relationshipModeMigrationKey)
+        }
+
+        return persona
+    }
+
+    private func setSelectedCompanionIDSilently(_ id: String) {
+        suppressCompanionSelectionSideEffects = true
+        selectedCompanionID = id
+        suppressCompanionSelectionSideEffects = false
     }
 
     // MARK: - Helpers
@@ -368,6 +432,28 @@ final class UserPersona: ObservableObject, Codable {
         guard let idx = trackedHabits.firstIndex(where: { $0.id == id }) else { return }
         trackedHabits[idx].entries.append(HabitEntry(value: value, note: note))
         save()
+    }
+
+    /// Pulls the latest persisted persona into this live object so open screens
+    /// don't keep rendering a stale companion after the user switches elsewhere.
+    func refreshFromDisk() {
+        let snapshot = Self.load()
+        userName = snapshot.userName
+        assistantName = snapshot.assistantName
+        relationshipMode = snapshot.relationshipMode
+        style = snapshot.style
+        gender = snapshot.gender
+        interests = snapshot.interests
+        trackedHabits = snapshot.trackedHabits
+        onboardingComplete = snapshot.onboardingComplete
+        dailyAffirmationsEnabled = snapshot.dailyAffirmationsEnabled
+        affirmationTime = snapshot.affirmationTime
+        learnedFacts = snapshot.learnedFacts
+        onboardingAnswers = snapshot.onboardingAnswers
+        trackingPermissions = snapshot.trackingPermissions
+        if selectedCompanionID != snapshot.selectedCompanionID {
+            setSelectedCompanionIDSilently(snapshot.selectedCompanionID)
+        }
     }
 
     /// Full system-prompt context block about this user.

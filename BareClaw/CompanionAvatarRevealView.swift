@@ -221,7 +221,7 @@ struct CompanionTikTokView: View {
             // Chat
             Button {
                 CompanionVoiceEngine.shared.stopSpeaking()
-                appState.currentMode = .chat
+                appState.requestChat()
             } label: {
                 tiktokIcon(systemName: "bubble.left.and.bubble.right.fill",
                            label: "Chat", color: .white)
@@ -249,14 +249,13 @@ struct CompanionTikTokView: View {
 
     private func configureAudio() {
         // Use duckOthers so background music is softened when the voice speaks.
-        // Do NOT call setActive here — CompanionVoiceEngine owns the session.
-        // Simply configure the category so the session is ready when the engine
-        // calls setActive(true) before speaking.
-        try? AVAudioSession.sharedInstance().setCategory(
-            .playback,
-            mode: .spokenAudio,
-            options: [.duckOthers, .allowBluetooth, .allowBluetoothA2DP]
-        )
+        // Do not touch AVAudioSession from the view thread.
+        Task.detached(priority: .utility) {
+            await BareClawAudioSessionController.shared.prepare(
+                .companionPlayback,
+                source: "CompanionAvatarRevealView"
+            )
+        }
     }
 
     // MARK: - Voice greeting (rate-limited: once per 5 minutes)
@@ -284,7 +283,7 @@ struct CompanionTikTokView: View {
                             "Hey\(name). I'm really glad you're here."].randomElement()!
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                CompanionVoiceEngine.shared.speak(greeting, character: companion.voiceCharacter)
+                CompanionVoiceEngine.shared.speak(greeting, character: companion.voiceCharacter, context: .ceremony)
             }
         }
     }

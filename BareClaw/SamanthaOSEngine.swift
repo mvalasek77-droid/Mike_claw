@@ -72,6 +72,7 @@ final class SamanthaOSEngine: ObservableObject {
 
     func recordInteraction() {
         defaults.set(Date(), forKey: kLastInteraction)
+        guard UserPersona.load().relationshipMode.allowsRomanticLoveArc else { return }
         // Each real interaction earns a love signal
         LoveEngine.shared.signal(.messageReceived)
     }
@@ -108,8 +109,7 @@ final class SamanthaOSEngine: ObservableObject {
         let events    = calendarGranted ? await fetchTodaysEvents() : []
         let message   = morningMessage(companion: companion, events: events, hour: hour)
 
-        postMessage(message, context: "morning_wake")
-        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+        postMessage(message, context: "morning_wake", shouldSpeak: true, companion: companion)
     }
 
     private func morningMessage(companion: CompanionPersonality,
@@ -180,8 +180,7 @@ final class SamanthaOSEngine: ObservableObject {
             let mins  = max(1, Int(next.startDate.timeIntervalSince(now) / 60))
             let title = next.title ?? "your meeting"
             let msg   = meetingAlert(title: title, mins: mins)
-            postMessage(msg, context: "calendar_alert")
-            CompanionVoiceEngine.shared.speakFiltered(msg, companion: currentCompanion())
+            postMessage(msg, context: "calendar_alert", shouldSpeak: true, companion: currentCompanion())
         }
 
         // 5-minute pep talk
@@ -194,8 +193,7 @@ final class SamanthaOSEngine: ObservableObject {
            pep.eventIdentifier != pepTalkDeliveredID {
             pepTalkDeliveredID = pep.eventIdentifier
             let msg = preMeetingPep(title: pep.title ?? "your meeting")
-            postMessage(msg, context: "pre_meeting_pep")
-            CompanionVoiceEngine.shared.speakFiltered(msg, companion: currentCompanion())
+            postMessage(msg, context: "pre_meeting_pep", shouldSpeak: true, companion: currentCompanion())
         }
     }
 
@@ -235,8 +233,7 @@ final class SamanthaOSEngine: ObservableObject {
         let companion = currentCompanion()
         let stage     = LoveEngine.shared.loveStage
         let message   = companion.nightMessage3am(hourWord: hourWord, stage: stage)
-        postMessage(message, context: "3am_protocol")
-        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+        postMessage(message, context: "3am_protocol", shouldSpeak: true, companion: companion)
     }
 
     // Night mode micro-greeting (10pm–2am, on app open)
@@ -285,8 +282,7 @@ final class SamanthaOSEngine: ObservableObject {
             message = absenceBeyond(companion, stage)
         }
 
-        postMessage(message, context: "absence_return")
-        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+        postMessage(message, context: "absence_return", shouldSpeak: true, companion: companion)
     }
 
     private func absence12h(_ c: CompanionPersonality, _ stage: LoveStage) -> String {
@@ -326,8 +322,7 @@ final class SamanthaOSEngine: ObservableObject {
         let companion = currentCompanion()
         let stage     = LoveEngine.shared.loveStage
         let message   = anniversaryMessage(days: days, companion: companion, stage: stage)
-        postMessage(message, context: "anniversary")
-        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+        postMessage(message, context: "anniversary", shouldSpeak: true, companion: companion)
     }
 
     private func anniversaryMessage(days: Int, companion: CompanionPersonality, stage: LoveStage) -> String {
@@ -365,6 +360,12 @@ final class SamanthaOSEngine: ObservableObject {
     // ═══════════════════════════════════════════════════════════════
 
     func schedulePushNotifications() {
+#if DEBUG
+        if ProcessInfo.processInfo.environment["BARECLAW_DEBUG_SEED_HERMODE"] == "1" {
+            print("SamanthaOSEngine: skipped push notification authorization for Him/Her simulator test")
+            return
+        }
+#endif
         let companion     = currentCompanion()
         let companionName = companion.name
         let stage         = LoveEngine.shared.loveStage
@@ -414,11 +415,19 @@ final class SamanthaOSEngine: ObservableObject {
         return CompanionPersonality.find(id: id) ?? .luna
     }
 
-    func postMessage(_ text: String, context: String) {
+    func postMessage(_ text: String,
+                     context: String,
+                     shouldSpeak: Bool = false,
+                     companion: CompanionPersonality? = nil) {
+        let deferSpeech = shouldSpeak && CompanionThoughtFlow.shouldDeferProactiveDelivery
         NotificationCenter.default.post(
             name: .herModeProactiveMessage,
             object: nil,
-            userInfo: ["text": text, "topic": context]
+            userInfo: ["text": text, "topic": context, "shouldSpeak": deferSpeech]
         )
+
+        if shouldSpeak && !deferSpeech {
+            CompanionVoiceEngine.shared.speakFiltered(text, companion: companion ?? currentCompanion())
+        }
     }
 }

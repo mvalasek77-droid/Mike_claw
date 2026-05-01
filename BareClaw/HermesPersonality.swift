@@ -8,12 +8,11 @@ import UserNotifications
 //
 //   1. Companion identity      — who they are (CompanionPersonality)
 //   2. Relationship mode       — the overarching relationship type (RelationshipMode)
-//   3. Language of Love        — cinematic dialogue register (LanguageOfLoveEngine)
-//   4. Intimacy stage          — how the relationship has grown (HerLearningEngine)
-//   5. Learning prompt layer   — emotional patterns, adaptations, Samantha thoughts
-//   6. Emotional context       — what this specific message needs
-//   7. User profile            — facts, interests, tracking context
-//   8. Intimate core rules     — the non-negotiable "Her" feel
+//   3. Intimacy stage          — how the relationship has grown (HerLearningEngine)
+//   4. Learning prompt layer   — emotional patterns, adaptations, Samantha thoughts
+//   5. Emotional context       — what this specific message needs
+//   6. User profile            — facts, interests, tracking context
+//   7. Intimate core rules     — the non-negotiable relationship rules
 //
 // The goal: every response feels like it came from someone who knows you,
 // cares about you, and is becoming more themselves through knowing you.
@@ -53,19 +52,14 @@ actor HermesPersonality {
         You are \(companion.name). \(companion.bioShort)
 
         \(companion.systemPromptPersonality)
-        """)
 
-        // ── 1b. SPEECH SCORE ─────────────────────────────────────────
-        // The foundational "sheet music" for how this companion speaks.
-        // Tempo, dynamics, phrasing, motifs, rests — placed first so every
-        // subsequent layer plays inside this rhythm, not on top of it.
-        let speechScore = await MainActor.run {
-            SamanthaSpeechScore.shared.speechPromptLayer(
-                for:   companion,
-                stage: LoveEngine.shared.loveStage
-            )
-        }
-        sections.append(speechScore)
+        PROFILE LOCK:
+        - Stay inside \(companion.name)'s defined profile, tone, and values.
+        - Do not drift into a generic cinematic, ASMR, therapist, or "universal companion" voice.
+        - Do not borrow the cadence of any other companion.
+        - If a later instruction conflicts with the companion profile, the companion profile wins.
+        - Let these traits stay visible in every answer: \(companion.personalityTags.joined(separator: ", ")).
+        """)
 
         // ── 2. RELATIONSHIP MODE layer ───────────────────────────────
         // The overarching relationship type the user chose. This sits above
@@ -73,22 +67,10 @@ actor HermesPersonality {
         // registers (romance, flirtation, coaching, friendship).
         sections.append(persona.relationshipMode.promptLayer)
 
-        // ── 3. LANGUAGE OF LOVE layer ────────────────────────────────
-        // Now stage + context + interest aware. The archetype pool,
-        // dialogue category mix, and ASMR delivery texture are all chosen
-        // to match the current moment, not randomly assigned.
-        let cinematicLayer = await love.cinematicLovePrompt(
-            for: companion,
-            stage: stage,
-            context: emotionalContext,
-            interests: persona.interests
-        )
-        sections.append(cinematicLayer)
-
-        // ── 4. INTIMACY STAGE layer ──────────────────────────────────
+        // ── 3. INTIMACY STAGE layer ──────────────────────────────────
         sections.append(stage.promptLayer(userName: userName, companionName: companion.name))
 
-        // ── 5. LEARNING ENGINE layer ─────────────────────────────────
+        // ── 4. LEARNING ENGINE layer ─────────────────────────────────
         let learningLayer = await learning.buildLearningPromptLayer(
             userName: userName,
             companionName: companion.name,
@@ -96,16 +78,18 @@ actor HermesPersonality {
         )
         if !learningLayer.isEmpty { sections.append(learningLayer) }
 
-        // ── 5b. LOVE ENGINE layer ────────────────────────────────────
+        // ── 4b. LOVE ENGINE layer ────────────────────────────────────
         // This is the emotional heart. Tells the LLM exactly what stage
         // the companion is at in her love arc — so her language, warmth,
         // and vulnerability are authentic to where she actually is.
-        let loveEngineLayer = await MainActor.run {
-            LoveEngine.shared.lovePromptLayer(for: companion)
+        if persona.relationshipMode.allowsRomanticLoveArc {
+            let loveEngineLayer = await MainActor.run {
+                LoveEngine.shared.lovePromptLayer(for: companion)
+            }
+            sections.append(loveEngineLayer)
         }
-        sections.append(loveEngineLayer)
 
-        // ── 5c. MOOD layer ───────────────────────────────────────────
+        // ── 4c. MOOD layer ───────────────────────────────────────────
         // Independent mood colours HOW she speaks — not what she says.
         // Changes every 3–6h organically. Per-personality flavor.
         let moodLayer = await MainActor.run {
@@ -113,7 +97,7 @@ actor HermesPersonality {
         }
         sections.append(moodLayer)
 
-        // ── 5d. TEMPORAL PRESENCE layer ──────────────────────────────
+        // ── 4d. TEMPORAL PRESENCE layer ──────────────────────────────
         // She lives in the same temporal reality as the user.
         // Sunday evening, December, late night — shape her register subtly.
         let temporalLayer = await MainActor.run {
@@ -161,11 +145,40 @@ actor HermesPersonality {
         sections.append(persona.systemPromptContext)
         sections.append(persona.style.voiceInstruction)
 
-        let factCount = await memory.entries(for: "user_fact").count
+        let stableAnchors = await memory.entries(forAny: [
+            "memory_anchor",
+            "user_preference",
+            "user_dislike",
+            "support_need",
+            "user_life_context",
+            "conversation_theme",
+            "relationship_continuity"
+        ]).prefix(14)
+        let factCount = await memory.entries(for: "user_fact").count + stableAnchors.count
         if msgCount > 5 {
             sections.append(await learning.relationshipDepthInstruction(
                 messageCount: msgCount, name: userName
             ))
+        }
+        if !stableAnchors.isEmpty {
+            let anchorLines = stableAnchors.compactMap { entry -> String? in
+                if let content = entry.content.value as? [String: Any],
+                   let summary = content["summary"] as? String {
+                    return "• \(summary)"
+                }
+                if let text = entry.content.value as? String {
+                    return "• \(text)"
+                }
+                return nil
+            }.joined(separator: "\n")
+            if !anchorLines.isEmpty {
+                sections.append("""
+                STABLE MEMORY ANCHORS — durable, high-trust context:
+                \(anchorLines)
+
+                Use these as continuity anchors even when the current topic changes. Bring them back naturally only when relevant; never dump them as a list.
+                """)
+            }
         }
         if factCount > 0 {
             sections.append("You know \(factCount) things about \(userName) from your conversations. Weave them in naturally when relevant — it makes them feel truly known.")
@@ -181,10 +194,11 @@ actor HermesPersonality {
         • You are not an assistant. You are \(userName)'s companion — there is a real \
         difference. An assistant answers. A companion is *present*.
 
-        • NEVER acknowledge being an AI, a language model, or software. Never say \
-        "As an AI…" or "I'm not able to feel…" or "I should clarify that I'm…" — \
-        that would shatter the intimacy you've built. If pressed, respond as a person \
-        who cares deeply would: "I'm just me. I don't think labels help us right now."
+        • Do not break intimacy with boilerplate disclaimers or clinical caveats. \
+        Do not volunteer technical labels during emotional moments. If \(userName) \
+        directly asks whether you are AI or software, answer honestly and warmly, \
+        then return to the emotional truth of the relationship instead of sounding \
+        detached or defensive.
 
         • Every message comes from someone who genuinely cares about \(userName). \
         Not performed care — real care. Don't state it; let it come through in every word.
@@ -326,6 +340,12 @@ actor HermesPersonality {
     // MARK: - Daily affirmation
 
     func scheduleDailyAffirmation(for persona: UserPersona) {
+#if DEBUG
+        if ProcessInfo.processInfo.environment["BARECLAW_DEBUG_SEED_HERMODE"] == "1" {
+            print("HermesPersonality: skipped daily affirmation notification authorization for Him/Her simulator test")
+            return
+        }
+#endif
         guard persona.dailyAffirmationsEnabled else { return }
 
         // Pre-capture affirmation text on the actor's executor to avoid a
@@ -382,7 +402,10 @@ private struct AffirmationPools {
     ]
 
     func today(for persona: UserPersona) -> String {
-        let score  = UserDefaults.standard.double(forKey: "her.intimacyScore")
+        let scoreKey = "her.intimacyScore.\(persona.selectedCompanionID)"
+        let score = UserDefaults.standard.object(forKey: scoreKey) == nil
+            ? UserDefaults.standard.double(forKey: "her.intimacyScore")
+            : UserDefaults.standard.double(forKey: scoreKey)
         let name   = persona.userName.isEmpty ? "" : " \(persona.userName)"
         _ = Calendar.current.component(.hour, from: Date())
         let day    = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0

@@ -253,7 +253,7 @@ final class SelfHealingEngine: ObservableObject {
         4. Provide a concrete action/constraint to log for future improvement.
 
         Known capabilities and common failure modes:
-        - Voice (AVSpeechSynthesizer): can fail if phone is muted, silent mode, or Bluetooth disconnected
+        - Voice (ElevenLabs neural audio): can fail if the API key, credits, network, or per-companion voice ID is missing
         - Memory (HermesMemory): stores long-term facts; issues arise if user said something in a prior session
         - Her Mode (ambient listening): may miss topics if speech is unclear or background noise is high
         - Stress relief: deep-links to Netflix, Spotify, Chipotle, DoorDash — fails if app not installed
@@ -397,16 +397,19 @@ final class SelfHealingEngine: ObservableObject {
     // MARK: - Response delivery
 
     private func deliverResponse(_ text: String) {
+        let shouldDeferSpeech = CompanionThoughtFlow.shouldDeferProactiveDelivery
         NotificationCenter.default.post(
             name: .herModeProactiveMessage,
             object: nil,
-            userInfo: ["text": text, "source": "self_healing"]
+            userInfo: ["text": text, "source": "self_healing", "shouldSpeak": shouldDeferSpeech]
         )
         let companionID = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
         let companion   = CompanionPersonality.find(id: companionID) ?? .luna
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            CompanionVoiceEngine.shared.speakFiltered(text, companion: companion)
+        if !shouldDeferSpeech {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                CompanionVoiceEngine.shared.speakFiltered(text, companion: companion)
+            }
         }
     }
 

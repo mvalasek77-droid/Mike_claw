@@ -48,11 +48,13 @@ final class DreamStore: ObservableObject {
         save()
         Task {
             // Feed into companion memory so it can reference dreams organically
-            try? await HermesMemory.shared.observe(
+            _ = try? await HermesMemory.shared.observe(
                 category: "dream",
                 content: text,
                 metadata: ["date": ISO8601DateFormatter().string(from: entry.date)]
             )
+            let persona = UserPersona.load()
+            persona.learn(key: "dream_journal.last_entry", value: text)
             // Count as a meaningful personal share in the learning engine
             // — triggers emotional pattern detection + intimacy gain.
             // Dreams that contain emotional language ("scared", "afraid", "love")
@@ -60,10 +62,12 @@ final class DreamStore: ObservableObject {
             await HerLearningEngine.shared.processUserMessage(
                 text,
                 responseText: "I love that you shared that with me.",
-                interests: UserPersona.load().interests
+                interests: persona.interests
             )
-            // Signal a deep conversation to the love stage engine
-            LoveEngine.shared.signal(.deepConversation)
+            // Dreams deepen the romantic arc only when the user chose that mode.
+            if persona.relationshipMode.allowsRomanticLoveArc {
+                LoveEngine.shared.signal(.deepConversation)
+            }
         }
     }
 

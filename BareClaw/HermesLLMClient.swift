@@ -3,12 +3,47 @@ import Foundation
 // MARK: - LLM Provider
 
 /// Which backend is being used for this session.
-enum LLMProvider {
+enum LLMProvider: Equatable, Sendable {
     case appleFoundationModels   // on-device, iOS 26+, no privacy policy needed
     case claudeAPI               // remote Anthropic API, requires user consent
     case ollamaGLM               // Ollama server running GLM 5.1 (or any GLM variant)
     case ollamaClaude            // Claude models served via Ollama
     case none                    // no provider available / consent not given
+}
+
+enum LLMAPIStatus: Equatable, Sendable {
+    case unknown
+    case notConfigured
+    case active(LLMProvider)
+    case creditsExhausted
+    case invalidKey
+    case rateLimited
+    case serverError(String)
+
+    var settingsLabel: String {
+        switch self {
+        case .unknown:
+            return "Checking…"
+        case .notConfigured:
+            return "Not configured — add your API key below"
+        case .active(.appleFoundationModels):
+            return "Apple Intelligence (on-device)"
+        case .active(.claudeAPI):
+            return "Claude API — active ✓"
+        case .active(.ollamaGLM), .active(.ollamaClaude):
+            return "Ollama — active ✓"
+        case .active(.none):
+            return "Not configured — add your API key below"
+        case .creditsExhausted:
+            return "Claude API needs credits from Anthropic"
+        case .invalidKey:
+            return "Claude API key was rejected — check Settings"
+        case .rateLimited:
+            return "Claude API is rate limited — try again shortly"
+        case .serverError(let message):
+            return message.isEmpty ? "Claude API could not be checked" : "Claude API check failed — \(message)"
+        }
+    }
 }
 
 // MARK: - LLM Request / Response
@@ -54,6 +89,7 @@ actor HermesLLMClient {
     private let privacy     = HermesPrivacyGate.shared
 
     private var _provider: LLMProvider = .none
+    private var _apiStatus: LLMAPIStatus = .unknown
 
     private init() {}
 
@@ -78,9 +114,62 @@ actor HermesLLMClient {
         } else {
             _provider = .none
         }
+        updateLocalProviderStatus()
+        DiagnosticsLog.info(
+            "llm",
+            "LLM provider configured.",
+            details: [
+                "provider": "\(_provider)",
+                "apiStatus": "\(_apiStatus)",
+                "hasClaudeKey": "\(ClaudeAPIBridge.isConfigured)"
+            ]
+        )
     }
 
     var provider: LLMProvider { _provider }
+    var apiStatus: LLMAPIStatus { _apiStatus }
+
+    /// Re-reads local key/provider state and performs a tiny Claude request.
+    /// Use this after the user changes the key or tops up Anthropic credits.
+    @discardableResult
+    func refreshAPIKeyInformation() async -> LLMAPIStatus {
+        DiagnosticsLog.info("llm", "Refreshing Claude API key information.")
+        await configure()
+
+        guard ClaudeAPIBridge.isConfigured else {
+            _provider = Self.bestAvailableProvider()
+            _apiStatus = _provider == .none ? .notConfigured : .active(_provider)
+            DiagnosticsLog.warning(
+                "llm",
+                "Claude refresh finished with no configured key.",
+                details: ["provider": "\(_provider)", "apiStatus": "\(_apiStatus)"]
+            )
+            return _apiStatus
+        }
+
+        do {
+            try await ClaudeAPIBridge.validateConnection()
+            if !(await privacy.consentGiven) {
+                await privacy.acceptCloudAI()
+            }
+            _provider = Self.bestAvailableProvider()
+            _apiStatus = .active(.claudeAPI)
+            DiagnosticsLog.info("llm", "Claude API validation succeeded.")
+        } catch let error as LLMError {
+            recordClaudeStatus(for: error)
+            DiagnosticsLog.error(
+                "llm",
+                "Claude API validation failed.",
+                error: error,
+                details: ["apiStatus": "\(_apiStatus)"]
+            )
+        } catch {
+            _apiStatus = .serverError(error.localizedDescription)
+            DiagnosticsLog.error("llm", "Claude API validation failed with non-LLM error.", error: error)
+        }
+
+        return _apiStatus
+    }
 
     private static func bestAvailableProvider() -> LLMProvider {
         // iOS 26+ with Apple Intelligence available → prefer on-device
@@ -98,18 +187,59 @@ actor HermesLLMClient {
         return .none
     }
 
+    private func updateLocalProviderStatus() {
+        if _provider == .none {
+            _apiStatus = .notConfigured
+            return
+        }
+
+        switch _apiStatus {
+        case .unknown, .notConfigured, .active(_):
+            _apiStatus = .active(_provider)
+        case .creditsExhausted, .invalidKey, .rateLimited, .serverError(_):
+            break
+        }
+    }
+
     // MARK: - Main call (with full Hermes context injection)
 
     /// Complete an LLM turn.  Hermes memory and session context are
     /// automatically injected into the system prompt before sending.
     func complete(request: LLMRequest,
                   stream: StreamHandler? = nil) async throws -> LLMResponse {
+        if _provider == .none {
+            await configure()
+        }
         guard _provider != .none else {
+            DiagnosticsLog.error("llm", "LLM request blocked because no provider is configured.")
             throw LLMError.noProviderConfigured
         }
+        DiagnosticsLog.info(
+            "llm",
+            "LLM request started.",
+            details: [
+                "provider": "\(_provider)",
+                "role": "\(request.role)",
+                "messageCount": "\(request.messages.count)",
+                "maxTokens": "\(request.maxTokens)",
+                "stream": "\(stream != nil)"
+            ]
+        )
 
-        // Pre-turn budget check
-        try await session.checkBudget(estimatedCost: request.maxTokens)
+        // Pre-turn budget check. If the runtime budget is exhausted, reset the
+        // transient session budget instead of permanently locking chat.
+        do {
+            try await session.checkBudget(estimatedCost: request.maxTokens)
+        } catch SessionError.tokenBudgetExhausted(let used, let limit) {
+            print("[HermesLLMClient] Session token budget exhausted: \(used)/\(limit). Resetting runtime session budget.")
+            DiagnosticsLog.warning(
+                "llm",
+                "Runtime token budget exhausted; resetting session budget.",
+                details: ["used": "\(used)", "limit": "\(limit)"]
+            )
+            try await session.startConversation(id: UUID().uuidString)
+            try await session.checkBudget(estimatedCost: request.maxTokens)
+        }
 
         // Build Hermes-enriched system prompt
         let enrichedSystem = await buildSystemPrompt(base: request.systemPrompt,
@@ -125,20 +255,45 @@ actor HermesLLMClient {
 
         // Route to provider
         let response: LLMResponse
-        switch _provider {
-        case .appleFoundationModels:
-            response = try await AppleFoundationModelsBridge.complete(enrichedRequest, stream: stream)
-        case .claudeAPI:
-            response = try await ClaudeAPIBridge.complete(enrichedRequest, stream: stream)
-        case .ollamaGLM, .ollamaClaude:
-            response = try await OllamaLLMBridge.complete(enrichedRequest, stream: stream)
-        case .none:
-            throw LLMError.noProviderConfigured
+        do {
+            switch _provider {
+            case .appleFoundationModels:
+                response = try await AppleFoundationModelsBridge.complete(enrichedRequest, stream: stream)
+            case .claudeAPI:
+                response = try await ClaudeAPIBridge.complete(enrichedRequest, stream: stream)
+                _apiStatus = .active(.claudeAPI)
+            case .ollamaGLM, .ollamaClaude:
+                response = try await OllamaLLMBridge.complete(enrichedRequest, stream: stream)
+            case .none:
+                throw LLMError.noProviderConfigured
+            }
+        } catch let error as LLMError {
+            if _provider == .claudeAPI {
+                recordClaudeStatus(for: error)
+            }
+            DiagnosticsLog.error(
+                "llm",
+                "LLM request failed.",
+                error: error,
+                details: ["provider": "\(_provider)", "apiStatus": "\(_apiStatus)"]
+            )
+            throw error
         }
 
         // Record token usage (strict write discipline: only on success)
         try await session.recordTokenUsage(prompt: response.promptTokens,
                                            completion: response.completionTokens)
+        DiagnosticsLog.info(
+            "llm",
+            "LLM request succeeded.",
+            details: [
+                "provider": "\(response.provider)",
+                "promptTokens": "\(response.promptTokens)",
+                "completionTokens": "\(response.completionTokens)",
+                "toolCalls": "\(response.toolCallsRequested.count)",
+                "responseLength": "\(response.content.count)"
+            ]
+        )
         return response
     }
 
@@ -222,6 +377,28 @@ actor HermesLLMClient {
             return "## Role: Verifier\nCritically review the executor's output. Flag any discrepancies, incomplete steps, or potential issues. Be thorough."
         }
     }
+
+    private func recordClaudeStatus(for error: LLMError) {
+        switch error {
+        case .noProviderConfigured:
+            _apiStatus = .notConfigured
+        case .apiKeyMissing, .consentNotGiven:
+            _apiStatus = .invalidKey
+        case .apiCreditsExhausted:
+            _apiStatus = .creditsExhausted
+        case .rateLimited:
+            _apiStatus = .rateLimited
+        case .contextTooLong:
+            _apiStatus = .active(.claudeAPI)
+        case .serverError(let code):
+            _apiStatus = .serverError("server error \(code)")
+        }
+        DiagnosticsLog.warning(
+            "llm",
+            "Claude API status updated from error.",
+            details: ["apiStatus": "\(_apiStatus)", "error": error.localizedDescription]
+        )
+    }
 }
 
 // MARK: - Error
@@ -230,6 +407,7 @@ enum LLMError: Error, LocalizedError {
     case noProviderConfigured
     case consentNotGiven
     case apiKeyMissing
+    case apiCreditsExhausted
     case rateLimited
     case contextTooLong
     case serverError(Int)   // unexpected HTTP status or malformed response body
@@ -239,6 +417,7 @@ enum LLMError: Error, LocalizedError {
         case .noProviderConfigured:  return "No AI provider configured. Please check Settings."
         case .consentNotGiven:       return "AI features require your consent. See Settings → Privacy."
         case .apiKeyMissing:         return "Claude API key not set. Add it in Settings."
+        case .apiCreditsExhausted:   return "The API may need to be recharged from Anthropic. Refresh Claude Status after credits are available."
         case .rateLimited:           return "Too many requests. Please wait a moment."
         case .contextTooLong:        return "Conversation too long. Starting a new session."
         case .serverError(let code): return "Server error (\(code)). Please try again."
@@ -273,6 +452,13 @@ enum ClaudeAPIBridge {
 
     private static let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     private static let apiVersion = "2023-06-01"
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 16
+        config.timeoutIntervalForResource = 24
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
 
     static var isConfigured: Bool {
         apiKey != nil
@@ -289,6 +475,16 @@ enum ClaudeAPIBridge {
 
         // Select model per agent role
         let model = modelForRole(request.role)
+        DiagnosticsLog.info(
+            "claude",
+            "Claude request prepared.",
+            details: [
+                "model": model,
+                "role": "\(request.role)",
+                "messageCount": "\(request.messages.count)",
+                "stream": "\(stream != nil)"
+            ]
+        )
 
         // Build Anthropic messages array from transcript
         let messages: [[String: Any]] = request.messages.compactMap { msg in
@@ -306,34 +502,114 @@ enum ClaudeAPIBridge {
             ]
         }
 
-        var body: [String: Any] = [
+        let body: [String: Any] = [
             "model":      model,
             "max_tokens": request.maxTokens,
             "system":     request.systemPrompt,
             "messages":   messages,
         ]
-        if !tools.isEmpty { body["tools"] = tools }
-        if stream != nil  { body["stream"] = true }
-
-        var urlRequest = URLRequest(url: endpoint)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json",  forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue(key,                 forHTTPHeaderField: "x-api-key")
-        urlRequest.setValue(apiVersion,          forHTTPHeaderField: "anthropic-version")
-        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         if let handler = stream {
-            return try await streamResponse(urlRequest, handler: handler)
+            var streamingBody = body
+            if !tools.isEmpty { streamingBody["tools"] = tools }
+            streamingBody["stream"] = true
+            let streamingRequest = try makeRequest(body: streamingBody, key: key)
+
+            do {
+                return try await streamResponse(streamingRequest, handler: handler)
+            } catch {
+                guard shouldRetryWithoutStreaming(error) else { throw error }
+                #if DEBUG
+                print("[ClaudeAPIBridge] Streaming failed with \(error.localizedDescription). Retrying with blocking response.")
+                #endif
+                DiagnosticsLog.warning(
+                    "claude",
+                    "Streaming failed; retrying with blocking response.",
+                    details: ["error": error.localizedDescription]
+                )
+                await HermesIntegration.shared.logSystemStatus(
+                    "Claude streaming failed; retrying with the non-streaming backup path.",
+                    details: ["error": error.localizedDescription],
+                    importance: 4
+                )
+
+                var fallbackBody = body
+                if !tools.isEmpty { fallbackBody["tools"] = tools }
+                let fallbackRequest = try makeRequest(body: fallbackBody, key: key)
+                return try await blockingResponse(fallbackRequest)
+            }
         } else {
+            var blockingBody = body
+            if !tools.isEmpty { blockingBody["tools"] = tools }
+            let urlRequest = try makeRequest(body: blockingBody, key: key)
             return try await blockingResponse(urlRequest)
         }
     }
 
+    static func validateConnection() async throws {
+        guard let key = apiKey else { throw LLMError.apiKeyMissing }
+        DiagnosticsLog.info("claude", "Claude validation request started.")
+
+        let body: [String: Any] = [
+            "model": modelForRole(.explore),
+            "max_tokens": 1,
+            "messages": [
+                ["role": "user", "content": "Reply OK."]
+            ]
+        ]
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(key, forHTTPHeaderField: "x-api-key")
+        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
+        request.timeoutInterval = 10
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await session.data(for: request)
+        try validateHTTP(response, body: data)
+        DiagnosticsLog.info("claude", "Claude validation request succeeded.")
+    }
+
     // MARK: Streaming
+
+    private static func makeRequest(body: [String: Any], key: String) throws -> URLRequest {
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(key, forHTTPHeaderField: "x-api-key")
+        request.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
+        request.timeoutInterval = 16
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
+    private static func shouldRetryWithoutStreaming(_ error: Error) -> Bool {
+        if let llmError = error as? LLMError {
+            switch llmError {
+            case .serverError(let code):
+                return code == 0 || [500, 502, 503, 504, 529].contains(code)
+            case .noProviderConfigured, .consentNotGiven, .apiKeyMissing, .apiCreditsExhausted, .rateLimited, .contextTooLong:
+                return false
+            }
+        }
+
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .networkConnectionLost, .timedOut, .cannotParseResponse, .badServerResponse:
+                return true
+            default:
+                return false
+            }
+        }
+
+        return false
+    }
 
     private static func streamResponse(_ request: URLRequest,
                                        handler: @escaping StreamHandler) async throws -> LLMResponse {
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        DiagnosticsLog.info("claude", "Claude streaming request started.")
+        let (bytes, response) = try await session.bytes(for: request)
         try validateHTTP(response)
 
         var fullText = ""
@@ -352,9 +628,28 @@ enum ClaudeAPIBridge {
             if event["type"] as? String == "error",
                let errObj = event["error"] as? [String: Any] {
                 let errType = errObj["type"] as? String ?? ""
+                let errMessage = errObj["message"] as? String ?? ""
+                if isCreditExhaustion(statusCode: nil, errorType: errType, message: errMessage) {
+                    DiagnosticsLog.error(
+                        "claude",
+                        "Claude streaming error reported exhausted credits.",
+                        details: ["errorType": errType, "message": errMessage]
+                    )
+                    throw LLMError.apiCreditsExhausted
+                }
                 if errType == "invalid_request_error" {
+                    DiagnosticsLog.error(
+                        "claude",
+                        "Claude streaming context error.",
+                        details: ["errorType": errType, "message": errMessage]
+                    )
                     throw LLMError.contextTooLong
                 }
+                DiagnosticsLog.error(
+                    "claude",
+                    "Claude streaming error event.",
+                    details: ["errorType": errType, "message": errMessage]
+                )
                 throw LLMError.serverError(0)
             }
 
@@ -370,6 +665,15 @@ enum ClaudeAPIBridge {
             }
         }
 
+        DiagnosticsLog.info(
+            "claude",
+            "Claude streaming request completed.",
+            details: [
+                "responseLength": "\(fullText.count)",
+                "inputTokens": "\(inputTokens)",
+                "outputTokens": "\(outputTokens)"
+            ]
+        )
         return LLMResponse(content: fullText, promptTokens: inputTokens,
                            completionTokens: outputTokens,
                            provider: .claudeAPI, toolCallsRequested: [])
@@ -378,8 +682,9 @@ enum ClaudeAPIBridge {
     // MARK: Blocking
 
     private static func blockingResponse(_ request: URLRequest) async throws -> LLMResponse {
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateHTTP(response)
+        DiagnosticsLog.info("claude", "Claude blocking request started.")
+        let (data, response) = try await session.data(for: request)
+        try validateHTTP(response, body: data)
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = (json["content"] as? [[String: Any]])?.first,
@@ -395,19 +700,103 @@ enum ClaudeAPIBridge {
             .filter { $0["type"] as? String == "tool_use" }
             .compactMap { $0["name"] as? String }
 
+        DiagnosticsLog.info(
+            "claude",
+            "Claude blocking request completed.",
+            details: [
+                "responseLength": "\(text.count)",
+                "inputTokens": "\(input)",
+                "outputTokens": "\(output)",
+                "toolCalls": "\(toolCalls.count)"
+            ]
+        )
         return LLMResponse(content: text, promptTokens: input,
                            completionTokens: output,
                            provider: .claudeAPI, toolCallsRequested: toolCalls)
     }
 
-    private static func validateHTTP(_ response: URLResponse) throws {
+    private static func validateHTTP(_ response: URLResponse, body: Data? = nil) throws {
         guard let http = response as? HTTPURLResponse else { return }
         switch http.statusCode {
         case 200...299: return
-        case 401:       throw LLMError.apiKeyMissing
-        case 429:       throw LLMError.rateLimited
-        default:        throw LLMError.serverError(http.statusCode)
+        case 401:
+            DiagnosticsLog.error("claude", "Claude HTTP 401 - API key missing or rejected.")
+            throw LLMError.apiKeyMissing
+        default:
+            let details = errorDetails(from: body)
+            if isCreditExhaustion(statusCode: http.statusCode,
+                                  errorType: details.type,
+                                  message: details.message) {
+                DiagnosticsLog.error(
+                    "claude",
+                    "Claude HTTP response indicates exhausted credits.",
+                    details: [
+                        "status": "\(http.statusCode)",
+                        "errorType": details.type,
+                        "message": details.message
+                    ]
+                )
+                throw LLMError.apiCreditsExhausted
+            }
+            if http.statusCode == 429 {
+                DiagnosticsLog.error("claude", "Claude HTTP 429 - rate limited.")
+                throw LLMError.rateLimited
+            }
+            if details.type == "invalid_request_error",
+               details.message.localizedCaseInsensitiveContains("context") {
+                DiagnosticsLog.error(
+                    "claude",
+                    "Claude HTTP response indicates context too long.",
+                    details: ["status": "\(http.statusCode)", "message": details.message]
+                )
+                throw LLMError.contextTooLong
+            }
+            DiagnosticsLog.error(
+                "claude",
+                "Claude HTTP request failed.",
+                details: [
+                    "status": "\(http.statusCode)",
+                    "errorType": details.type,
+                    "message": details.message
+                ]
+            )
+            throw LLMError.serverError(http.statusCode)
         }
+    }
+
+    private static func errorDetails(from body: Data?) -> (type: String, message: String) {
+        guard let body,
+              let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any]
+        else { return ("", "") }
+
+        if let error = json["error"] as? [String: Any] {
+            return (
+                error["type"] as? String ?? "",
+                error["message"] as? String ?? ""
+            )
+        }
+
+        return (
+            json["type"] as? String ?? "",
+            json["message"] as? String ?? ""
+        )
+    }
+
+    private static func isCreditExhaustion(statusCode: Int?, errorType: String, message: String) -> Bool {
+        if statusCode == 402 { return true }
+        let haystack = "\(errorType) \(message)".lowercased()
+        return [
+            "credit",
+            "credits",
+            "balance",
+            "billing",
+            "payment",
+            "insufficient_quota",
+            "quota_exceeded",
+            "quota exceeded",
+            "usage limit",
+            "spend limit"
+        ].contains { haystack.contains($0) }
     }
 
     private static func modelForRole(_ role: AgentRole) -> String {

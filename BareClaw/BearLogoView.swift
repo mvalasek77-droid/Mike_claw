@@ -277,7 +277,7 @@ struct BearIconView: View {
 
 // MARK: - Previews
 
-#if DEBUG
+#if DEBUG_PREVIEWS
 #Preview("Badge — light bg") {
     HStack(spacing: 24) {
         BearBadgeView(size: 80)

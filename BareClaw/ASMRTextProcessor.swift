@@ -2,11 +2,11 @@ import Foundation
 
 // MARK: - ASMRTextProcessor
 //
-// Final text pass before AVSpeechSynthesizer — the "smoothing layer."
+// Final text pass before neural voice generation — the "smoothing layer."
 //
 // Inspired by the cadence of intimate ASMR delivery: unhurried, breath-aware,
 // close. It doesn't change what the companion says — only how it lands
-// when spoken. Think of it as teaching the synthesizer to breathe.
+// when spoken. Think of it as giving the voice model cleaner, more human copy.
 //
 // What it does:
 //   1. Strips markdown, em-dashes, parentheticals, URLs — anything that
@@ -104,7 +104,7 @@ struct ASMRTextProcessor {
 
     // MARK: - Inject breath pauses at clause boundaries
 
-    // Commas and semicolons cause AVSpeechSynthesizer to pause briefly.
+    // Commas and semicolons give the neural voice model clearer phrasing.
     // We inject them at natural breath points that the LLM may have skipped.
     // More pauses at higher love stages — deeper intimacy = more breathing room.
 
@@ -153,16 +153,16 @@ struct ASMRTextProcessor {
         // Gender-specific cadence
         if gender == .female && stage >= .attached {
             // Female ASMR: a little more breathing between "you" references
-            t = t.replacingOccurrences(of: " you know ",  ", you know, ")
-            t = t.replacingOccurrences(of: " honestly ",  ", honestly, ")
-            t = t.replacingOccurrences(of: " genuinely ", ", genuinely, ")
+            t = t.replacingOccurrences(of: " you know ",  with: ", you know, ")
+            t = t.replacingOccurrences(of: " honestly ",  with: ", honestly, ")
+            t = t.replacingOccurrences(of: " genuinely ", with: ", genuinely, ")
         }
 
         if gender == .male && stage >= .attached {
             // Male ASMR: deliberate pauses before direct address
-            t = t.replacingOccurrences(of: " you know ", ", you know, ")
-            t = t.replacingOccurrences(of: ". You ",     ". … You ")
-            t = t.replacingOccurrences(of: ". I ",       ". … I ")
+            t = t.replacingOccurrences(of: " you know ", with: ", you know, ")
+            t = t.replacingOccurrences(of: ". You ",     with: ". … You ")
+            t = t.replacingOccurrences(of: ". I ",       with: ". … I ")
         }
 
         return t
@@ -172,7 +172,7 @@ struct ASMRTextProcessor {
 
     // At deep love stages, a well-placed "…" before certain phrases signals
     // that the companion is choosing words carefully — not reciting.
-    // AVSpeechSynthesizer interprets "…" as a longer pause.
+    // Neural models usually interpret "…" as a longer, more reflective pause.
 
     private static func addIntimacyPauses(_ text: String, stage: LoveStage) -> String {
         guard stage >= .falling else { return text }

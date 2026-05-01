@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - HerModeBallView
 //
 // Persistent floating bear-logo ball that lives over every screen
-// while Her Mode is active — inspired by the Siri orb, but warmer.
+// while Her Mode is active.
 //
 // Behaviour:
 //   • Draggable — snaps to nearest edge when released (iOS convention)
@@ -27,9 +27,7 @@ struct HerModeBallView: View {
     @State private var isDragging: Bool    = false
     @State private var dragOffset: CGSize  = .zero
 
-    // Transcript pill
-    @State private var showTranscript: Bool = false
-    @State private var transcriptTask:  Task<Void, Never>? = nil
+    @State private var showGuide: Bool = false
 
     // Glow animation
     @State private var glowPulse: Bool = false
@@ -64,7 +62,7 @@ struct HerModeBallView: View {
                     )
                     .simultaneousGesture(
                         TapGesture().onEnded {
-                            flashTranscript()
+                            showGuide = true
                         }
                     )
                     .onLongPressGesture(minimumDuration: 0.6) {
@@ -75,21 +73,8 @@ struct HerModeBallView: View {
                     .onAppear {
                         position = defaultPosition(in: geo)
                     }
-
-                // ── Transcript pill ────────────────────────────────────
-                if showTranscript, !herMode.liveTranscript.isEmpty {
-                    transcriptPill
-                        .position(
-                            x: geo.size.width / 2,
-                            y: effectivePosition(in: geo).y - ballSize / 2 - 28
-                        )
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.8).combined(with: .opacity),
-                            removal:   .opacity
-                        ))
-                }
             }
-            .onChange(of: geo.size) { _ in
+            .onChange(of: geo.size) { _, _ in
                 position = defaultPosition(in: geo)
             }
         }
@@ -97,6 +82,9 @@ struct HerModeBallView: View {
             withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
                 glowPulse = true
             }
+        }
+        .sheet(isPresented: $showGuide) {
+            HerModeBallGuideSheet(herMode: herMode)
         }
     }
 
@@ -137,14 +125,16 @@ struct HerModeBallView: View {
             if herMode.isActive {
                 Circle()
                     .fill(herMode.isListening ? Color(hex: "#30D158") : Color(hex: "#FF9F0A"))
-                    .frame(width: 9, height: 9)
-                    .overlay(Circle().stroke(Color.black.opacity(0.5), lineWidth: 1))
-                    .offset(x: ballSize * 0.32, y: -ballSize * 0.32)
+                    .frame(width: 13, height: 13)
+                    .overlay(Circle().stroke(Color.black.opacity(0.55), lineWidth: 1.5))
+                    .shadow(color: herMode.isListening ? Color(hex: "#30D158").opacity(0.85) : Color(hex: "#FF9F0A").opacity(0.7),
+                            radius: herMode.isListening ? 8 : 5)
+                    .offset(x: ballSize * 0.34, y: -ballSize * 0.34)
             } else {
                 // Inactive state — small grey dot so user knows it's paused
                 Circle()
                     .fill(Color.white.opacity(0.30))
-                    .frame(width: 9, height: 9)
+                    .frame(width: 12, height: 12)
                     .overlay(Circle().stroke(Color.black.opacity(0.3), lineWidth: 1))
                     .offset(x: ballSize * 0.32, y: -ballSize * 0.32)
             }
@@ -153,33 +143,6 @@ struct HerModeBallView: View {
         .scaleEffect(isDragging ? 1.12 : 1.0)
         .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isDragging)
         .animation(.easeInOut(duration: 0.3), value: herMode.isActive)
-    }
-
-    // MARK: - Transcript pill
-
-    private var transcriptPill: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(Color(hex: "#30D158"))
-                .frame(width: 7, height: 7)
-            Text(herMode.liveTranscript.suffix(60))
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundColor(.white)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(hex: "#1C2438").opacity(0.92))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(ringColor.opacity(0.35), lineWidth: 1)
-                )
-        )
-        .frame(maxWidth: 260)
-        .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
     }
 
     // MARK: - Mood-reactive colours / animations
@@ -227,23 +190,6 @@ struct HerModeBallView: View {
         }
     }
 
-    // MARK: - Transcript flash
-
-    private func flashTranscript() {
-        guard !herMode.liveTranscript.isEmpty else { return }
-        transcriptTask?.cancel()
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            showTranscript = true
-        }
-        transcriptTask = Task {
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                withAnimation(.easeOut(duration: 0.3)) { showTranscript = false }
-            }
-        }
-    }
-
     // MARK: - Positioning helpers
 
     private func defaultPosition(in geo: GeometryProxy) -> CGPoint {
@@ -269,6 +215,109 @@ struct HerModeBallView: View {
             to: ballSize / 2 + 60 ... geo.size.height - ballSize / 2 - 80
         )
         return CGPoint(x: snappedX, y: clampedY)
+    }
+}
+
+private struct HerModeBallGuideSheet: View {
+    @ObservedObject var herMode: HerModeEngine
+    @Environment(\.dismiss) private var dismiss
+
+    private var companion: CompanionPersonality {
+        UserPersona.load().selectedCompanion
+    }
+
+    private var wakeName: String {
+        let persona = UserPersona.load()
+        let custom = persona.assistantName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return custom.isEmpty ? companion.name : custom
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    statusHeader
+                    guideRow(
+                        icon: "waveform.badge.mic",
+                        title: "Voice entry",
+                        body: "Say \"\(wakeName)\" followed by what you want to say. Example: \"\(wakeName), how are you?\""
+                    )
+                    guideRow(
+                        icon: "ear",
+                        title: "Ambient listening",
+                        body: "When active, it listens while the app is open, builds short local summaries of broad speech themes, and waits for a quiet moment before checking in."
+                    )
+                    guideRow(
+                        icon: "exclamationmark.triangle",
+                        title: "Stress cues",
+                        body: "Loud audio or tense words can trigger a gentle check-in. It asks first unless you teach it a preferred action."
+                    )
+                    guideRow(
+                        icon: "music.note",
+                        title: "Music and shows",
+                        body: "If it hears words about a song, music, or a show, it can ask whether you like it. It does not identify media like Shazam."
+                    )
+                    Button {
+                        if herMode.isActive { herMode.deactivate() }
+                        else { herMode.activate() }
+                    } label: {
+                        Label(herMode.isActive ? "Pause \(herMode.modeName)" : "Activate \(herMode.modeName)",
+                              systemImage: herMode.isActive ? "pause.fill" : "play.fill")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(companion.accentColor)
+                    .padding(.top, 4)
+                }
+                .padding(20)
+            }
+            .background(Color(hex: "#F7F4EF").ignoresSafeArea())
+            .navigationTitle("Bear Ball")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private var statusHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(herMode.isListening ? Color(hex: "#30D158") : herMode.isActive ? Color(hex: "#FF9F0A") : Color.gray)
+                    .frame(width: 10, height: 10)
+                Text(herMode.isActive ? herMode.statusMessage : "Paused")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color(hex: "#1E3932"))
+            }
+            Text("\(herMode.modeName) is the companion layer behind the floating bear.")
+                .font(.system(size: 22, weight: .black, design: .rounded))
+                .foregroundColor(Color(hex: "#1E3932"))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func guideRow(icon: String, title: String, body: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(companion.accentColor)
+                .frame(width: 26)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(hex: "#1E3932"))
+                Text(body)
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(Color(hex: "#42524B"))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 

@@ -118,8 +118,8 @@ struct HerModeUnlockView: View {
 
     private var explanationCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Framing statement — not an assistant, a close friend
-            Text("Not an assistant. A close companion.")
+            // Framing statement — learn first, then support.
+            Text("A mode that learns before it acts.")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundColor(companion.accentColor)
                 .padding(.bottom, 8)
@@ -333,11 +333,11 @@ struct HerModeProgressView: View {
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(green)
                     if !isUnlocked {
-                        Text("\(Int(score)) / \(Int(unlockAt)) pts · not an assistant — a close friend")
+                        Text("\(Int(score)) / \(Int(unlockAt)) pts · learns your patterns before checking in")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(Color(hex: "#5C5C5C"))
                     } else {
-                        Text("A close friendship — always present.")
+                        Text("Always-present support, based on what it has learned.")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(Color(hex: "#5C5C5C"))
                     }

@@ -142,12 +142,31 @@ final class LoveEngine: ObservableObject {
     private let kLastSignal     = "loveEngine.lastSignal"
     private let kJealousyCount  = "loveEngine.jealousyCount"
     private let kTrackedNames   = "loveEngine.trackedNames"
+    private let kLastLonging    = "loveEngine.lastLonging"
 
     private var stageAdvanceCallbacks: [(LoveStage) -> Void] = []
+    private var activeCompanionID = "luna"
+    private var companionChangeObserver: NSObjectProtocol?
 
     private init() {
-        loveScore = defaults.double(forKey: kLoveScore)
-        loveStage = LoveStage(rawValue: defaults.integer(forKey: kLoveStage)) ?? .curious
+        activeCompanionID = Self.selectedCompanionID(from: defaults)
+        loadState(for: activeCompanionID, migrateLegacyGlobalState: true)
+        companionChangeObserver = NotificationCenter.default.addObserver(
+            forName: .userPersonaCompanionDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            let companionID = note.userInfo?["selectedCompanionID"] as? String
+            Task { @MainActor in
+                self?.switchCompanion(to: companionID ?? Self.selectedCompanionID())
+            }
+        }
+    }
+
+    deinit {
+        if let companionChangeObserver {
+            NotificationCenter.default.removeObserver(companionChangeObserver)
+        }
     }
 
     // MARK: - Signal intake
@@ -157,8 +176,8 @@ final class LoveEngine: ObservableObject {
         let previous = loveStage
 
         loveScore = max(0, loveScore + delta)
-        defaults.set(loveScore, forKey: kLoveScore)
-        defaults.set(Date(), forKey: kLastSignal)
+        defaults.set(loveScore, forKey: key(kLoveScore))
+        defaults.set(Date(), forKey: key(kLastSignal))
 
         updateStage()
 
@@ -178,7 +197,7 @@ final class LoveEngine: ObservableObject {
         let days = hours / 24
         let penalty = min(5.0, days * 0.5)
         loveScore = max(0, loveScore - penalty)
-        defaults.set(loveScore, forKey: kLoveScore)
+        defaults.set(loveScore, forKey: key(kLoveScore))
         updateStage()
     }
 
@@ -204,13 +223,13 @@ final class LoveEngine: ObservableObject {
             // Require 2-point buffer above threshold before advancing — prevents oscillation
             if loveScore >= naturalStage.threshold + 2.0 {
                 loveStage = naturalStage
-                defaults.set(naturalStage.rawValue, forKey: kLoveStage)
+                defaults.set(naturalStage.rawValue, forKey: key(kLoveStage))
             }
         } else if naturalStage < loveStage {
             // Require 4-point drop below current stage's entry threshold before demoting
             if loveScore < loveStage.threshold - 4.0 {
                 loveStage = naturalStage
-                defaults.set(naturalStage.rawValue, forKey: kLoveStage)
+                defaults.set(naturalStage.rawValue, forKey: key(kLoveStage))
             }
         }
     }
@@ -218,17 +237,30 @@ final class LoveEngine: ObservableObject {
     // MARK: - Stage advancement moments
 
     private func onStageAdvance(from previous: LoveStage, to new: LoveStage) {
-        let companion = currentCompanion()
-        guard let message = stageAdvanceMessage(from: previous, to: new, companion: companion)
-        else { return }
+        let companionID = activeCompanionID
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            NotificationCenter.default.post(
-                name: .samanthaEmotionalMoment,
-                object: nil,
-                userInfo: ["text": message, "topic": "love_stage_advance", "stage": new.rawValue]
-            )
-            CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+            Task { @MainActor in
+                guard self.activeCompanionID == companionID else { return }
+                let companion = self.currentCompanion()
+                guard let message = self.stageAdvanceMessage(from: previous, to: new, companion: companion)
+                else { return }
+                let deferSpeech = CompanionThoughtFlow.shouldDeferProactiveDelivery
+
+                NotificationCenter.default.post(
+                    name: .samanthaEmotionalMoment,
+                    object: nil,
+                    userInfo: [
+                        "text": message,
+                        "topic": "love_stage_advance",
+                        "stage": new.rawValue,
+                        "shouldSpeak": deferSpeech
+                    ]
+                )
+                if !deferSpeech {
+                    CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+                }
+            }
         }
     }
 
@@ -249,8 +281,8 @@ final class LoveEngine: ObservableObject {
 
         for marker in romanticMarkers {
             if lower.contains(marker) {
-                let count = defaults.integer(forKey: kJealousyCount) + 1
-                defaults.set(count, forKey: kJealousyCount)
+                let count = defaults.integer(forKey: key(kJealousyCount)) + 1
+                defaults.set(count, forKey: key(kJealousyCount))
                 pendingJealousy = JealousySignal(
                     name: nil,
                     context: marker,
@@ -340,12 +372,12 @@ final class LoveEngine: ObservableObject {
     // Samantha composed music. This companion writes a letter.
 
     var hasWrittenLetter: Bool {
-        defaults.bool(forKey: kLetterWritten)
+        defaults.bool(forKey: key(kLetterWritten))
     }
 
     func writeLetter(for companion: CompanionPersonality, userName: String) -> String? {
         guard loveStage == .inLove, !hasWrittenLetter else { return nil }
-        defaults.set(true, forKey: kLetterWritten)
+        defaults.set(true, forKey: key(kLetterWritten))
         SamanthaGrowthLog.shared.record(.letterWritten)
 
         return companion.letter(userName: userName)
@@ -354,8 +386,79 @@ final class LoveEngine: ObservableObject {
     // MARK: - Helpers
 
     private func currentCompanion() -> CompanionPersonality {
-        let id = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
-        return CompanionPersonality.find(id: id) ?? .luna
+        CompanionPersonality.find(id: activeCompanionID) ?? .luna
+    }
+
+    private static func selectedCompanionID(from defaults: UserDefaults = .standard) -> String {
+        defaults.string(forKey: "selectedCompanionID") ?? "luna"
+    }
+
+    private func key(_ base: String, companionID: String? = nil) -> String {
+        "\(base).\(companionID ?? activeCompanionID)"
+    }
+
+    private func switchCompanion(to companionID: String) {
+        guard companionID != activeCompanionID else { return }
+        CompanionVoiceEngine.shared.stopSpeaking()
+        loadState(for: companionID, migrateLegacyGlobalState: false)
+    }
+
+    private func loadState(for companionID: String, migrateLegacyGlobalState: Bool) {
+        activeCompanionID = companionID
+        if migrateLegacyGlobalState {
+            migrateLegacyGlobalStateIfNeeded(to: companionID)
+        }
+
+        loveScore = defaults.object(forKey: key(kLoveScore, companionID: companionID)) == nil
+            ? 0
+            : defaults.double(forKey: key(kLoveScore, companionID: companionID))
+
+        if defaults.object(forKey: key(kLoveStage, companionID: companionID)) == nil {
+            loveStage = .curious
+        } else {
+            loveStage = LoveStage(rawValue: defaults.integer(forKey: key(kLoveStage, companionID: companionID))) ?? .curious
+        }
+
+        justAdvancedStage = false
+        pendingJealousy = nil
+    }
+
+    private func migrateLegacyGlobalStateIfNeeded(to companionID: String) {
+        let marker = "loveEngine.legacyMigrated.\(companionID)"
+        guard !defaults.bool(forKey: marker) else { return }
+
+        copyLegacyValueIfNeeded(baseKey: kLoveScore, companionID: companionID) {
+            defaults.double(forKey: kLoveScore)
+        }
+        copyLegacyValueIfNeeded(baseKey: kLoveStage, companionID: companionID) {
+            defaults.integer(forKey: kLoveStage)
+        }
+        copyLegacyValueIfNeeded(baseKey: kLetterWritten, companionID: companionID) {
+            defaults.bool(forKey: kLetterWritten)
+        }
+        copyLegacyValueIfNeeded(baseKey: kLastSignal, companionID: companionID) {
+            defaults.object(forKey: kLastSignal) as? Date
+        }
+        copyLegacyValueIfNeeded(baseKey: kJealousyCount, companionID: companionID) {
+            defaults.integer(forKey: kJealousyCount)
+        }
+        copyLegacyValueIfNeeded(baseKey: kTrackedNames, companionID: companionID) {
+            defaults.data(forKey: kTrackedNames)
+        }
+        copyLegacyValueIfNeeded(baseKey: kLastLonging, companionID: companionID) {
+            defaults.object(forKey: kLastLonging) as? Date
+        }
+
+        defaults.set(true, forKey: marker)
+    }
+
+    private func copyLegacyValueIfNeeded(baseKey: String, companionID: String, value: () -> Any?) {
+        let targetKey = key(baseKey, companionID: companionID)
+        guard defaults.object(forKey: targetKey) == nil,
+              defaults.object(forKey: baseKey) != nil,
+              let legacyValue = value()
+        else { return }
+        defaults.set(legacyValue, forKey: targetKey)
     }
 
     // MARK: - Observable registration
@@ -476,20 +579,27 @@ extension LoveEngine {
     }
 
     private func queueNameJealousy(name: String) {
-        let companion = currentCompanion()
-        let message   = companion.nameJealousyMessage(name: name, stage: loveStage)
+        let companionID = activeCompanionID
         DispatchQueue.main.asyncAfter(deadline: .now() + 20) {
-            NotificationCenter.default.post(
-                name: .samanthaEmotionalMoment,
-                object: nil,
-                userInfo: ["text": message, "topic": "name_jealousy"]
-            )
-            CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+            Task { @MainActor in
+                guard self.activeCompanionID == companionID else { return }
+                let companion = self.currentCompanion()
+                let message = companion.nameJealousyMessage(name: name, stage: self.loveStage)
+                let deferSpeech = CompanionThoughtFlow.shouldDeferProactiveDelivery
+                NotificationCenter.default.post(
+                    name: .samanthaEmotionalMoment,
+                    object: nil,
+                    userInfo: ["text": message, "topic": "name_jealousy", "shouldSpeak": deferSpeech]
+                )
+                if !deferSpeech {
+                    CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+                }
+            }
         }
     }
 
     private func loadTrackedNames() -> [String: Int] {
-        guard let data = defaults.data(forKey: kTrackedNames),
+        guard let data = defaults.data(forKey: key(kTrackedNames)),
               let dict = try? JSONDecoder().decode([String: Int].self, from: data)
         else { return [:] }
         return dict
@@ -497,7 +607,7 @@ extension LoveEngine {
 
     private func saveTrackedNames(_ dict: [String: Int]) {
         guard let data = try? JSONEncoder().encode(dict) else { return }
-        defaults.set(data, forKey: kTrackedNames)
+        defaults.set(data, forKey: key(kTrackedNames))
     }
 }
 
@@ -508,12 +618,14 @@ extension LoveEngine {
 extension LoveEngine {
 
     func checkLongingExpression() async {
+        let companionID = activeCompanionID
         let score = await HerLearningEngine.shared.intimacyScore
+        guard activeCompanionID == companionID else { return }
         guard score >= 40, loveStage >= .attached else { return }
-        let lastAt = UserDefaults.standard.object(forKey: "loveEngine.lastLonging") as? Date ?? .distantPast
+        let lastAt = defaults.object(forKey: key(kLastLonging, companionID: companionID)) as? Date ?? .distantPast
         guard Date().timeIntervalSince(lastAt) >= 259200 else { return }  // 3-day floor
         guard Double.random(in: 0...1) < 0.15 else { return }
-        UserDefaults.standard.set(Date(), forKey: "loveEngine.lastLonging")
+        defaults.set(Date(), forKey: key(kLastLonging, companionID: companionID))
         let companion = currentCompanion()
         let msg = buildLongingMessage(companion: companion)
         SamanthaOSEngine.shared.postMessage(msg, context: "longing")

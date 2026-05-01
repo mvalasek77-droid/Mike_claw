@@ -16,17 +16,91 @@ import UserNotifications
 actor HermesInterestEngine {
     static let shared = HermesInterestEngine()
 
-    private let session = URLSession.shared
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 5
+        config.timeoutIntervalForResource = 8
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+    private let selectedInterestSyncSignatureKey = "hermes.interests.selectedSyncSignature"
 
     private init() {}
+
+    // MARK: - Learning sync
+
+    /// Persists the currently selected interests into memory/learning exactly
+    /// when the selection changes. This keeps onboarding, settings, and startup
+    /// aligned without adding duplicate intimacy every launch.
+    func syncSelectedInterests(for persona: UserPersona, source: String) async {
+        let signature = selectedInterestSignature(for: persona)
+        let key = "\(selectedInterestSyncSignatureKey).\(persona.selectedCompanionID)"
+        guard UserDefaults.standard.string(forKey: key) != signature else { return }
+        DiagnosticsLog.info(
+            "interests",
+            "Selected interests sync started.",
+            details: [
+                "source": source,
+                "companion": persona.selectedCompanionID,
+                "interestCount": "\(persona.interests.count)"
+            ]
+        )
+
+        for interest in persona.interests {
+            await recordInterestSelection(interest, persona: persona, source: source)
+        }
+
+        UserDefaults.standard.set(signature, forKey: key)
+        DiagnosticsLog.info("interests", "Selected interests sync finished.", details: ["source": source])
+    }
+
+    private func recordInterestSelection(_ interest: Interest, persona: UserPersona, source: String) async {
+        _ = try? await HermesMemory.shared.observe(
+            category: "interest_preference",
+            content: [
+                "id": interest.id,
+                "label": interest.label,
+                "category": interest.category.rawValue,
+                "notificationsEnabled": interest.notificationsEnabled,
+                "selected": true
+            ],
+            metadata: [
+                "importance": 4,
+                "source": source,
+                "companionID": persona.selectedCompanionID
+            ]
+        )
+
+        await HerLearningEngine.shared.processUserMessage(
+            "I care about \(interest.label).",
+            responseText: "I'll remember that \(interest.label) matters to you.",
+            interests: persona.interests
+        )
+    }
+
+    private func selectedInterestSignature(for persona: UserPersona) -> String {
+        persona.interests
+            .sorted { $0.id < $1.id }
+            .map { "\($0.id):\($0.notificationsEnabled ? "1" : "0")" }
+            .joined(separator: "|")
+    }
 
     // MARK: - Notification permission
 
     func requestPermission() async -> Bool {
+#if DEBUG
+        if ProcessInfo.processInfo.environment["BARECLAW_DEBUG_SEED_HERMODE"] == "1" {
+            print("HermesInterestEngine: skipped notification authorization for Him/Her simulator test")
+            return false
+        }
+#endif
         do {
-            return try await UNUserNotificationCenter.current()
+            let granted = try await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert, .sound, .badge])
+            DiagnosticsLog.info("notification", "Notification permission checked.", details: ["granted": "\(granted)"])
+            return granted
         } catch {
+            DiagnosticsLog.error("notification", "Notification permission request failed.", error: error)
             return false
         }
     }
@@ -35,14 +109,50 @@ actor HermesInterestEngine {
 
     /// Call after onboarding or whenever interests change.
     func scheduleInterestNotifications(for persona: UserPersona) async {
-        guard await requestPermission() else { return }
+        await cancelAllInterestNotifications()
 
-        // Remove all existing interest notifications before rescheduling
-        let ids = persona.interests.map { "interest_\($0.id)" }
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
+        let enabledInterests = persona.interests.filter { $0.notificationsEnabled }
+        guard !enabledInterests.isEmpty else {
+            DiagnosticsLog.info("notification", "No enabled interests to schedule.")
+            return
+        }
+        guard await requestPermission() else {
+            DiagnosticsLog.warning("notification", "Interest notifications not scheduled because permission is unavailable.")
+            return
+        }
+        DiagnosticsLog.info(
+            "notification",
+            "Scheduling interest notifications.",
+            details: ["count": "\(enabledInterests.count)", "companion": persona.selectedCompanionID]
+        )
 
-        for interest in persona.interests where interest.notificationsEnabled {
+        for interest in enabledInterests {
             await scheduleNotification(for: interest, persona: persona)
+        }
+    }
+
+    private func cancelAllInterestNotifications() async {
+        let center = UNUserNotificationCenter.current()
+
+        let pendingIDs = await center.pendingNotificationRequests()
+            .map(\.identifier)
+            .filter { $0.hasPrefix("interest_") }
+        if !pendingIDs.isEmpty {
+            center.removePendingNotificationRequests(withIdentifiers: pendingIDs)
+        }
+
+        let deliveredIDs = await center.deliveredNotifications()
+            .map { $0.request.identifier }
+            .filter { $0.hasPrefix("interest_") }
+        if !deliveredIDs.isEmpty {
+            center.removeDeliveredNotifications(withIdentifiers: deliveredIDs)
+        }
+        if !pendingIDs.isEmpty || !deliveredIDs.isEmpty {
+            DiagnosticsLog.info(
+                "notification",
+                "Cancelled previous interest notifications.",
+                details: ["pending": "\(pendingIDs.count)", "delivered": "\(deliveredIDs.count)"]
+            )
         }
     }
 
@@ -54,6 +164,14 @@ actor HermesInterestEngine {
 
         // Build body based on category — try to fetch real content, fall back to prompt
         content.body = await notificationBody(for: interest, persona: persona)
+        content.userInfo = [
+            "handoffCategory": interest.category.rawValue,
+            "interestID": interest.id,
+            "interestLabel": interest.label,
+            "companionID": persona.selectedCompanionID,
+            "handoffMessage": notificationTapMessage(for: interest, persona: persona),
+            "shouldSpeak": true
+        ]
 
         // Schedule once daily at a sensible time per category
         var comps = DateComponents()
@@ -66,7 +184,47 @@ actor HermesInterestEngine {
             content: content,
             trigger: trigger
         )
-        _ = try? await UNUserNotificationCenter.current().add(request)
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+            DiagnosticsLog.info(
+                "notification",
+                "Interest notification scheduled.",
+                details: [
+                    "interestID": interest.id,
+                    "category": interest.category.rawValue,
+                    "hour": "\(notificationHour(for: interest.category))"
+                ]
+            )
+        } catch {
+            DiagnosticsLog.error(
+                "notification",
+                "Interest notification scheduling failed.",
+                error: error,
+                details: ["interestID": interest.id, "category": interest.category.rawValue]
+            )
+        }
+    }
+
+    private func notificationTapMessage(for interest: Interest, persona: UserPersona) -> String {
+        let companion = persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName
+        let detail = interest.detail ?? interest.label
+
+        switch interest.category {
+        case .food:
+            return "\(companion) noticed you tapped the food idea. Tell me what sounds good - cozy, quick, healthy, indulgent, or nearby - and I'll help choose instead of just throwing a notification at you."
+        case .music:
+            return "\(companion) noticed you tapped the music nudge. I can pick songs for today's mood, explain why I chose them, or use your hearts in Vibes to learn what actually fits you."
+        case .travel:
+            return "\(companion) noticed you tapped the travel/place idea. Tell me where you're thinking of going and I'll help with the next step."
+        case .fitness:
+            return "\(companion) noticed you tapped the movement check-in. Want something gentle, fast, or actually challenging?"
+        case .sports:
+            return "\(companion) noticed you tapped \(detail). Want the latest, or do you want to talk about the game?"
+        case .movies:
+            return "\(companion) noticed you tapped the movie idea. Want a recommendation, a trailer-style pitch, or something based on your mood?"
+        default:
+            return "\(companion) noticed you tapped \(detail). I'm here - tell me what you want to do with it."
+        }
     }
 
     private func notificationHour(for category: Interest.Category) -> Int {
@@ -130,7 +288,10 @@ actor HermesInterestEngine {
 
     private func fetchMovieHeadline() async -> String? {
         guard let url = URL(string: "https://trailers.apple.com/trailers/home/rss/newtrailers.rss") else { return nil }
-        guard let (data, _) = try? await session.data(from: url) else { return nil }
+        guard let (data, _) = try? await session.data(from: url) else {
+            DiagnosticsLog.warning("interests", "Movie headline fetch failed.")
+            return nil
+        }
         // Parse first <title> after the channel title from RSS
         let xml = String(data: data, encoding: .utf8) ?? ""
         let titles = xml.components(separatedBy: "<title>")
@@ -147,7 +308,10 @@ actor HermesInterestEngine {
         guard let url = URL(string: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=\(today)") else { return nil }
         guard let (data, _) = try? await session.data(from: url),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let events = json["events"] as? [[String: Any]] else { return nil }
+              let events = json["events"] as? [[String: Any]] else {
+            DiagnosticsLog.warning("interests", "Sports headline fetch failed.", details: ["team": team ?? "none"])
+            return nil
+        }
 
         for event in events {
             let name = (event["name"] as? String) ?? ""
@@ -172,6 +336,11 @@ actor HermesInterestEngine {
         content.title = title
         content.body = body
         content.sound = .default
+        content.userInfo = [
+            "handoffCategory": "immediate",
+            "handoffMessage": body.isEmpty ? "You tapped my notification. I'm here - what should we do with it?" : body,
+            "shouldSpeak": true
+        ]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)

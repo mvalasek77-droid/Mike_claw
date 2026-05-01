@@ -36,12 +36,17 @@ actor HerLearningEngine {
     // MARK: - Persistent state
 
     private var state = LearningState()
-    private let saveURL: URL = {
+    private var activeCompanionID = "luna"
+    private var companionChangeObserver: NSObjectProtocol?
+
+    private static let storageDirectory: URL = {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("hermes")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("her_learning_state.json")
+        return dir
     }()
+
+    private static let legacySaveURL = storageDirectory.appendingPathComponent("her_learning_state.json")
 
     private let encoder: JSONEncoder = {
         let e = JSONEncoder()
@@ -56,7 +61,25 @@ actor HerLearningEngine {
     }()
 
     private init() {
-        Task { await load() }
+        activeCompanionID = Self.selectedCompanionID()
+        companionChangeObserver = NotificationCenter.default.addObserver(
+            forName: .userPersonaCompanionDidChange,
+            object: nil,
+            queue: .main
+        ) { note in
+            let companionID = note.userInfo?["selectedCompanionID"] as? String
+            Task {
+                await HerLearningEngine.shared.switchCompanion(to: companionID ?? Self.selectedCompanionID())
+            }
+        }
+        let initialCompanionID = activeCompanionID
+        Task { await load(companionID: initialCompanionID, migrateLegacyGlobalState: true) }
+    }
+
+    deinit {
+        if let companionChangeObserver {
+            NotificationCenter.default.removeObserver(companionChangeObserver)
+        }
     }
 
     // MARK: - Intimacy score
@@ -96,7 +119,7 @@ actor HerLearningEngine {
         state.intimacyScore = min(100, state.intimacyScore + gain)
         // Keep UserDefaults in sync so AffirmationPools can read the score
         // synchronously without an async actor hop.
-        UserDefaults.standard.set(state.intimacyScore, forKey: "her.intimacyScore")
+        syncActiveScoreToDefaults()
 
         // Check for milestone moments
         await checkMilestones(text: text, response: responseText)
@@ -239,7 +262,7 @@ actor HerLearningEngine {
         await save()
 
         // Fire the push notification so the user is drawn back in
-        let companionName = UserPersona.load().selectedCompanion.name
+        let companionName = currentCompanion().name
         await scheduleSamanthaNotification(thought, companionName: companionName)
     }
 
@@ -251,8 +274,7 @@ actor HerLearningEngine {
         }
 
         // 70% chance to use per-companion thought pool — each personality sounds like themselves
-        let companionID = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
-        if let companion = CompanionPersonality.find(id: companionID),
+        if let companion = CompanionPersonality.find(id: activeCompanionID),
            Double.random(in: 0...1) < 0.7 {
             let pool = companion.samanthaThoughts(score: state.intimacyScore)
             if let thought = pool.randomElement() { return thought }
@@ -568,17 +590,104 @@ actor HerLearningEngine {
     // MARK: - Persistence
 
     func load() async {
-        guard let data = try? Data(contentsOf: saveURL),
-              let decoded = try? decoder.decode(LearningState.self, from: data) else { return }
-        state = decoded
+        await load(companionID: Self.selectedCompanionID(), migrateLegacyGlobalState: true)
     }
 
     private func save() async {
         if let data = try? encoder.encode(state) {
-            try? data.write(to: saveURL, options: .atomic)
+            try? data.write(to: saveURL(for: activeCompanionID), options: .atomic)
         }
+        syncActiveScoreToDefaults()
+    }
+
+    private func load(companionID: String, migrateLegacyGlobalState: Bool) async {
+        activeCompanionID = companionID
+        if migrateLegacyGlobalState {
+            migrateLegacyGlobalStateIfNeeded(to: companionID)
+        }
+
+        guard let data = try? Data(contentsOf: saveURL(for: companionID)),
+              let decoded = try? decoder.decode(LearningState.self, from: data) else {
+            state = LearningState()
+            syncActiveScoreToDefaults()
+            return
+        }
+
+        state = decoded
+        syncActiveScoreToDefaults()
+    }
+
+    private func switchCompanion(to companionID: String) async {
+        guard companionID != activeCompanionID else { return }
+        await save()
+        await load(companionID: companionID, migrateLegacyGlobalState: true)
+    }
+
+    private static func selectedCompanionID() -> String {
+        UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
+    }
+
+    private func currentCompanion() -> CompanionPersonality {
+        CompanionPersonality.find(id: activeCompanionID) ?? .luna
+    }
+
+    private func saveURL(for companionID: String) -> URL {
+        let safeID = companionID.replacingOccurrences(of: "/", with: "_")
+        return Self.storageDirectory.appendingPathComponent("her_learning_state_\(safeID).json")
+    }
+
+    private func migrateLegacyGlobalStateIfNeeded(to companionID: String) {
+        let marker = "herLearning.legacyMigrated.\(companionID)"
+        guard !UserDefaults.standard.bool(forKey: marker) else { return }
+
+        let targetURL = saveURL(for: companionID)
+        if FileManager.default.fileExists(atPath: Self.legacySaveURL.path),
+           !FileManager.default.fileExists(atPath: targetURL.path) {
+            try? FileManager.default.copyItem(at: Self.legacySaveURL, to: targetURL)
+        }
+
+        let scoreKey = namespacedScoreKey(companionID: companionID)
+        if UserDefaults.standard.object(forKey: scoreKey) == nil,
+           UserDefaults.standard.object(forKey: "her.intimacyScore") != nil {
+            UserDefaults.standard.set(UserDefaults.standard.double(forKey: "her.intimacyScore"), forKey: scoreKey)
+        }
+
+        UserDefaults.standard.set(true, forKey: marker)
+    }
+
+    private func syncActiveScoreToDefaults() {
+        UserDefaults.standard.set(state.intimacyScore, forKey: namespacedScoreKey(companionID: activeCompanionID))
+        UserDefaults.standard.set(state.intimacyScore, forKey: "her.intimacyScore")
+    }
+
+    private func namespacedScoreKey(companionID: String) -> String {
+        "her.intimacyScore.\(companionID)"
     }
 }
+
+#if DEBUG
+extension HerLearningEngine {
+    static func debugSeedPreHerModeUnlock(companionID: String, score: Double) {
+        var seededState = LearningState()
+        seededState.intimacyScore = score
+
+        let safeID = companionID.replacingOccurrences(of: "/", with: "_")
+        let seededURL = storageDirectory.appendingPathComponent("her_learning_state_\(safeID).json")
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = .prettyPrinted
+
+        if let data = try? encoder.encode(seededState) {
+            try? data.write(to: seededURL, options: .atomic)
+        }
+
+        UserDefaults.standard.set(score, forKey: "her.intimacyScore.\(companionID)")
+        UserDefaults.standard.set(score, forKey: "her.intimacyScore")
+        UserDefaults.standard.set(true, forKey: "herLearning.legacyMigrated.\(companionID)")
+    }
+}
+#endif
 
 // MARK: - IntimacyStage
 

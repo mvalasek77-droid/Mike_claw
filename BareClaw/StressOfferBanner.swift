@@ -18,11 +18,6 @@ struct StressOfferBanner: View {
     @State private var dismissTask:  Task<Void, Never>? = nil
     @State private var appeared:     Bool = false
 
-    private let companion: CompanionPersonality = {
-        let id = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
-        return CompanionPersonality.find(id: id) ?? .luna
-    }()
-
     var body: some View {
         if let offer = engine.currentOffer {
             banner(offer: offer)
@@ -57,7 +52,9 @@ struct StressOfferBanner: View {
     // MARK: - Banner card
 
     private func banner(offer: StressOffer) -> some View {
-        VStack(spacing: 0) {
+        let companion = companion(for: offer)
+
+        return VStack(spacing: 0) {
             // Drag handle
             RoundedRectangle(cornerRadius: 2)
                 .fill(Color.white.opacity(0.25))
@@ -178,6 +175,10 @@ struct StressOfferBanner: View {
     }
 
     // MARK: - Helpers
+
+    private func companion(for offer: StressOffer) -> CompanionPersonality {
+        CompanionPersonality.find(id: offer.companionID) ?? .luna
+    }
 
     private func shortLabel(for action: StressReliefAction) -> String {
         switch action.category {

@@ -649,13 +649,16 @@ final class HumorEngine {
         let delay = Double.random(in: delayRange)
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            let deferSpeech = CompanionThoughtFlow.shouldDeferProactiveDelivery
             NotificationCenter.default.post(
                 name: .herModeProactiveMessage,
                 object: nil,
-                userInfo: ["text": text, "source": "humor_engine"]
+                userInfo: ["text": text, "source": "humor_engine", "shouldSpeak": deferSpeech]
             )
             // Voice delivery via current companion
-            CompanionVoiceEngine.shared.speakFilteredCurrent(text)
+            if !deferSpeech {
+                CompanionVoiceEngine.shared.speakFilteredCurrent(text)
+            }
         }
     }
 

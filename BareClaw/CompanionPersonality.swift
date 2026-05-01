@@ -51,7 +51,7 @@ struct CompanionPersonality: Identifiable, Codable {
     let systemPromptPersonality: String  // Injected verbatim into every LLM call
     let introMessage: String        // First message after avatar reveal
 
-    // Voice character — 100% on-device, no API required
+    // Voice character — rhythm and persona metadata for the neural voice engine
     let voiceCharacter: VoiceCharacter
 
     // MARK: - Computed helpers

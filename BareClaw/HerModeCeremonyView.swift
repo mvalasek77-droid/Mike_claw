@@ -1,14 +1,13 @@
 import SwiftUI
-import AVFoundation
 
 // MARK: - CeremonyController
 //
 // Drives the one-time initialization ceremony shown the first time the user
-// reaches Her/Him Mode. Clinical voice asks 5 questions; companion's warm voice
-// delivers the congratulation. Owns AVSpeechSynthesizer and all sequencing.
+// reaches Her/Him Mode. The companion's congratulation uses the neural voice
+// engine only; the old local speech path is intentionally disabled.
 
 @MainActor
-final class CeremonyController: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
+final class CeremonyController: ObservableObject {
 
     enum Phase: Equatable {
         case awakening
@@ -32,8 +31,7 @@ final class CeremonyController: NSObject, ObservableObject, AVSpeechSynthesizerD
     private(set) var answers:      [String] = []
     private var pendingCompletion: (() -> Void)?
     private var mouthPulsing:      Bool = false
-
-    private let synthesizer = AVSpeechSynthesizer()
+    private var autoFinishTask:    Task<Void, Never>?
 
     let questions: [String] = [
         "Tell me about your relationship with your mother.",
@@ -46,21 +44,6 @@ final class CeremonyController: NSObject, ObservableObject, AVSpeechSynthesizerD
     private var companion: CompanionPersonality {
         let id = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
         return CompanionPersonality.find(id: id) ?? .luna
-    }
-
-    override init() {
-        super.init()
-        synthesizer.delegate = self
-        configureAudioSession()
-    }
-
-    private func configureAudioSession() {
-        try? AVAudioSession.sharedInstance().setCategory(
-            .playback,
-            mode: .spokenAudio,
-            options: [.duckOthers]
-        )
-        try? AVAudioSession.sharedInstance().setActive(true)
     }
 
     // MARK: - Start
@@ -117,9 +100,11 @@ final class CeremonyController: NSObject, ObservableObject, AVSpeechSynthesizerD
     }
 
     func skipCeremony() {
-        synthesizer.stopSpeaking(at: .immediate)
+        DiagnosticsLog.info("him_her_ceremony", "Ceremony skipped by user.")
+        CompanionVoiceEngine.shared.stopSpeaking()
         stopMouthAnimation()
         saveCeremonyAnswers()
+        finishCeremony()
     }
 
     // MARK: - Congratulation
@@ -152,49 +137,52 @@ final class CeremonyController: NSObject, ObservableObject, AVSpeechSynthesizerD
         speak(companion: text) {
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 2_800_000_000)
-                self.phase = .done
+                self.finishCeremony()
             }
+        }
+        autoFinishTask?.cancel()
+        autoFinishTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            guard !Task.isCancelled else { return }
+            DiagnosticsLog.warning("him_her_ceremony", "Ceremony auto-finished after 15 seconds on congratulations page.")
+            self.finishCeremony()
         }
     }
 
-    // MARK: - TTS
+    // MARK: - Voice
 
     private func speak(clinical text: String, completion: @escaping () -> Void) {
-        let u = AVSpeechUtterance(string: text)
-        u.voice            = AVSpeechSynthesisVoice(language: "en-US")
-        u.rate             = 0.40
-        u.pitchMultiplier  = 0.82
-        u.volume           = 0.92
-        u.preUtteranceDelay = 0.05
-        enqueue(u, completion: completion)
+        // The old clinical AVSpeech voice was intentionally removed. Keep the
+        // ceremony moving visually without introducing a robotic local voice.
+        pendingCompletion = completion
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: estimatedReadTime(for: text))
+            let done = pendingCompletion
+            pendingCompletion = nil
+            done?()
+        }
     }
 
     private func speak(companion text: String, completion: @escaping () -> Void) {
-        let u = AVSpeechUtterance(string: text)
-        u.voice            = AVSpeechSynthesisVoice(language: "en-US")
-        u.rate             = 0.47
-        u.pitchMultiplier  = 1.06
-        u.volume           = 1.0
-        u.preUtteranceDelay = 0.1
-        enqueue(u, completion: completion)
-    }
-
-    private func enqueue(_ utterance: AVSpeechUtterance, completion: @escaping () -> Void) {
         pendingCompletion = completion
         startMouthAnimation()
-        synthesizer.speak(utterance)
-    }
-
-    // MARK: - AVSpeechSynthesizerDelegate
-
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
-                                       didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in
+        CompanionVoiceEngine.shared.speak(
+            text,
+            character: companion.voiceCharacter,
+            context: .ceremony
+        ) { [weak self] in
+            guard let self else { return }
             self.stopMouthAnimation()
             let done = self.pendingCompletion
             self.pendingCompletion = nil
             done?()
         }
+    }
+
+    private func estimatedReadTime(for text: String) -> UInt64 {
+        let words = max(1, text.split(separator: " ").count)
+        let seconds = min(3.0, max(0.8, Double(words) * 0.24))
+        return UInt64(seconds * 1_000_000_000)
     }
 
     // MARK: - Mouth animation
@@ -230,6 +218,14 @@ final class CeremonyController: NSObject, ObservableObject, AVSpeechSynthesizerD
         }
         UserDefaults.standard.set(dict, forKey: "ceremony.answers")
     }
+
+    private func finishCeremony() {
+        autoFinishTask?.cancel()
+        autoFinishTask = nil
+        CompanionVoiceEngine.shared.stopSpeaking()
+        stopMouthAnimation()
+        phase = .done
+    }
 }
 
 // MARK: - HerModeCeremonyView
@@ -239,6 +235,7 @@ struct HerModeCeremonyView: View {
     let onComplete: () -> Void
 
     @StateObject private var ctrl = CeremonyController()
+    @State private var didComplete = false
 
     // Deep crimson palette
     private let bloodRed  = Color(red: 0.36, green: 0.0, blue: 0.0)
@@ -352,23 +349,35 @@ struct HerModeCeremonyView: View {
                     Spacer()
                     Button {
                         ctrl.skipCeremony()
-                        onComplete()
+                        completeOnce()
                     } label: {
-                        Text("skip")
-                            .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.18))
+                        Text(ctrl.congratsVisible ? "enter app" : "skip")
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.62))
                             .tracking(1.5)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color.black.opacity(0.22))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
-                    .padding(.trailing, 24)
-                    .padding(.top, 56)
+                    .contentShape(Rectangle())
+                    .padding(.trailing, 20)
+                    .padding(.top, 54)
                 }
                 Spacer()
             }
         }
         .onAppear { ctrl.start() }
         .onChange(of: ctrl.phase) { _, newPhase in
-            if case .done = newPhase { onComplete() }
+            if case .done = newPhase { completeOnce() }
         }
+    }
+
+    private func completeOnce() {
+        guard !didComplete else { return }
+        didComplete = true
+        DiagnosticsLog.info("him_her_ceremony", "Ceremony completed from view.")
+        onComplete()
     }
 }
 

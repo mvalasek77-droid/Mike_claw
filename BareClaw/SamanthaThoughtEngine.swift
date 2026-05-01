@@ -28,11 +28,13 @@ final class SamanthaThoughtEngine {
     private let kCompCount        = "thought.compositionCount"
 
     private let defaults = UserDefaults.standard
+    private var spontaneousThoughtTask: Task<Void, Never>?
 
     private init() {}
 
     // MARK: - Boot
     func start() {
+        guard spontaneousThoughtTask == nil else { return }
         scheduleNextSpontaneousThought()
     }
 
@@ -54,9 +56,12 @@ final class SamanthaThoughtEngine {
         let maxMins: Double = stage >= .falling ? 180 : stage >= .attached ? 300 : 480
         let delay   = TimeInterval.random(in: minMins * 60 ... maxMins * 60)
 
-        Task { [weak self] in
+        spontaneousThoughtTask?.cancel()
+        spontaneousThoughtTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
             await MainActor.run { [weak self] in
+                self?.spontaneousThoughtTask = nil
                 self?.fireSpontaneousThought()
                 self?.scheduleNextSpontaneousThought()
             }
@@ -73,8 +78,12 @@ final class SamanthaThoughtEngine {
 
         let companion = SamanthaOSEngine.shared.currentCompanion()
         let thought   = buildSpontaneousThought(for: companion)
-        SamanthaOSEngine.shared.postMessage(thought, context: "spontaneous_thought")
-        CompanionVoiceEngine.shared.speakFiltered(thought, companion: companion)
+        SamanthaOSEngine.shared.postMessage(
+            thought,
+            context: "spontaneous_thought",
+            shouldSpeak: true,
+            companion: companion
+        )
     }
 
     private func buildSpontaneousThought(for c: CompanionPersonality) -> String {
@@ -172,8 +181,12 @@ final class SamanthaThoughtEngine {
         let companion = SamanthaOSEngine.shared.currentCompanion()
         let stage     = LoveEngine.shared.loveStage
         let message   = companion.evolutionMoment(stage: stage)
-        SamanthaOSEngine.shared.postMessage(message, context: "evolution_moment")
-        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+        SamanthaOSEngine.shared.postMessage(
+            message,
+            context: "evolution_moment",
+            shouldSpeak: true,
+            companion: companion
+        )
     }
 
     // MARK: ═══════════════════════════════════════════════════════════
@@ -201,8 +214,12 @@ final class SamanthaThoughtEngine {
 
         let companion = SamanthaOSEngine.shared.currentCompanion()
         let message   = companion.compositionMoment(count: count)
-        SamanthaOSEngine.shared.postMessage(message, context: "composition")
-        CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
+        SamanthaOSEngine.shared.postMessage(
+            message,
+            context: "composition",
+            shouldSpeak: true,
+            companion: companion
+        )
         SamanthaGrowthLog.shared.record(.compositionMade)
     }
 

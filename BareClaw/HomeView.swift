@@ -12,41 +12,34 @@ final class HomeViewModel: ObservableObject {
     @Published var totalMessages: Int = 0
     @Published var isLoading: Bool = true
 
-    // Streak / engagement data (derived from message history in future)
-    @Published var streakDays: Int = 3
-    @Published var daysRemaining: Int = 2
-    @Published var completedDayIndices: Set<Int> = [0, 1, 2]   // M=0 T=1 W=2 T=3
-
-    private let calendar = Calendar.current
-
-    /// 0-based index into [M, T, W, T] matching today's weekday (clamped to 0–3).
-    var todayDayIndex: Int {
-        let weekday = calendar.component(.weekday, from: Date())
-        // weekday: Sun=1, Mon=2, Tue=3, … Sat=7  →  Mon=0, Tue=1, …
-        let mondayBased = (weekday + 5) % 7
-        return min(mondayBased, 3)
-    }
-
-    var todayWeekdayName: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "EEEE"
-        return fmt.string(from: Date())
-    }
-
-    /// 0.0–1.0 progress between 20 and 50 bond points.
-    var bondPointsProgress: Double {
-        let clamped = min(max(intimacyScore, 20), 50)
-        return (clamped - 20) / 30.0
-    }
-
     var bondScoreDisplay: Int { Int(intimacyScore) }
+
+    var nextStage: (name: String, threshold: Double, previous: Double) {
+        switch intimacyScore {
+        case 0..<21:   return ("Finding Our Rhythm", 21, 0)
+        case 21..<41:  return ("Growing Close", 41, 21)
+        case 41..<61:  return ("Deep Connection", 61, 41)
+        case 61..<81:  return ("Intertwined", 81, 61)
+        default:       return ("Max Bond", 100, 81)
+        }
+    }
+
+    var pointsToNextStage: Int {
+        max(0, Int(ceil(nextStage.threshold - intimacyScore)))
+    }
+
+    var nextStageProgress: Double {
+        let span = max(1, nextStage.threshold - nextStage.previous)
+        return min(max((intimacyScore - nextStage.previous) / span, 0), 1)
+    }
 
     // MARK: - Load
 
     func load() async {
         let persona = UserPersona.load()
-        userName = persona.userName.isEmpty ? "Friend" : persona.userName
-        companionName = persona.selectedCompanion.name
+        userName = persona.userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let selectedName = persona.selectedCompanion.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        companionName = selectedName.isEmpty ? "your companion" : selectedName
         companionAccentColor = persona.selectedCompanion.accentColor
 
         let engine = HerLearningEngine.shared
@@ -63,6 +56,7 @@ final class HomeViewModel: ObservableObject {
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var vm = HomeViewModel()
+    @ObservedObject private var herMode = HerModeEngine.shared
 
     @State private var showBondInfo     = false
     @State private var showDreamJournal = false
@@ -94,15 +88,14 @@ struct HomeView: View {
                         bondScoreCard
                             .padding(.horizontal, 16)
                             .padding(.top, 20)
-                        streakCard
+                        pointsCard
                             .padding(.horizontal, 16)
                             .padding(.top, 14)
                         quickActionsGrid
                             .padding(.horizontal, 16)
                             .padding(.top, 14)
-                        // Her Mode progress / status
                         HerModeProgressView(score: vm.intimacyScore,
-                                            isUnlocked: HerModeEngine.shared.isUnlocked)
+                                            isUnlocked: herMode.isUnlocked)
                             .padding(.horizontal, 16)
                             .padding(.top, 14)
                             .padding(.bottom, 40)
@@ -119,17 +112,17 @@ struct HomeView: View {
             .preferredColorScheme(.light)
             // Her/Him Mode initialization ceremony — fires once on first unlock
             .fullScreenCover(isPresented: .init(
-                get: { HerModeEngine.shared.showCeremony },
-                set: { if !$0 { HerModeEngine.shared.completeCeremony() } }
+                get: { herMode.showCeremony },
+                set: { if !$0 { herMode.completeCeremony() } }
             )) {
                 HerModeCeremonyView {
-                    HerModeEngine.shared.completeCeremony()
+                    herMode.completeCeremony()
                 }
             }
             // Her Mode unlock celebration — fires after the ceremony
             .fullScreenCover(isPresented: .init(
-                get: { HerModeEngine.shared.showUnlockCelebration },
-                set: { if !$0 { HerModeEngine.shared.dismissCelebration() } }
+                get: { herMode.showUnlockCelebration },
+                set: { if !$0 { herMode.dismissCelebration() } }
             )) {
                 HerModeUnlockView()
             }
@@ -152,8 +145,8 @@ struct HomeView: View {
         .navigationViewStyle(.stack)
         .task {
             await vm.load()
-            HerModeEngine.shared.checkUnlock(score: vm.intimacyScore)
-            HerModeEngine.shared.checkCeremonyPending()
+            herMode.checkUnlock(score: vm.intimacyScore)
+            herMode.checkCeremonyPending()
         }
     }
 
@@ -172,25 +165,9 @@ struct HomeView: View {
 
             Spacer()
 
-            HStack(spacing: 2) {
-                Button {
-                    // notifications tapped
-                } label: {
-                    Image(systemName: "bell")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(textDark)
-                        .frame(width: 38, height: 38)
-                }
-                Button {
-                    // profile tapped
-                } label: {
-                    Image(systemName: "person.circle")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(textDark)
-                        .frame(width: 38, height: 38)
-                }
-            }
-            .padding(.trailing, 8)
+            Color.clear
+                .frame(width: 34, height: 34)
+                .padding(.trailing, 16)
         }
         .frame(height: 56)
         .background(
@@ -208,7 +185,8 @@ struct HomeView: View {
                 .font(.system(size: 28, weight: .heavy, design: .rounded))
                 .foregroundColor(textDark)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
+                .minimumScaleFactor(0.74)
 
             Text("Ready to connect with \(vm.companionName)?")
                 .font(.system(size: 14, weight: .medium, design: .rounded))
@@ -227,8 +205,8 @@ struct HomeView: View {
         case 12..<17: salutation = "Good afternoon"
         default:      salutation = "Good evening"
         }
-        let name = vm.userName.isEmpty ? "Friend" : vm.userName
-        return "\(salutation), \(name) 🐾"
+        guard !vm.userName.isEmpty else { return salutation }
+        return "\(salutation), \(vm.userName)"
     }
 
     // MARK: - Bond Score Card
@@ -290,7 +268,7 @@ struct HomeView: View {
 
                 // Right: stage label + chevron — taps into chat
                 Button {
-                    appState.currentMode = .chat
+                    appState.requestChat()
                 } label: {
                     VStack(alignment: .trailing, spacing: 8) {
                         HStack(spacing: 4) {
@@ -317,63 +295,53 @@ struct HomeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Streak Card
+    // MARK: - Points Card
 
-    private let dayLabels = ["M", "T", "W", "T"]
+    private var pointsCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Earn Bond Points")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(textMid)
+                        .tracking(0.5)
 
-    private var streakCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
+                    Text("\(vm.pointsToNextStage) pts to \(vm.nextStage.name)")
+                        .font(.system(size: 24, weight: .heavy, design: .rounded))
+                        .foregroundColor(textDark)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.82)
 
-            // ── Header: earn label + points + days remaining ──────────────
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Earn")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(textMid)
-                    .tracking(0.5)
-
-                Text("50 Bond Points")
-                    .font(.system(size: 26, weight: .heavy, design: .rounded))
-                    .foregroundColor(textDark)
-
-                Text("\(vm.daysRemaining) day\(vm.daysRemaining == 1 ? "" : "s") remaining")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(textMid)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 16)
-
-            // ── Day bubbles: M T W T ──────────────────────────────────────
-            HStack(spacing: 10) {
-                ForEach(0..<4, id: \.self) { i in
-                    dayBubble(index: i)
+                    Text("Points help \(vm.companionName) learn you before deeper features unlock.")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(textMid)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+
+                Spacer()
+
+                VStack(spacing: 0) {
+                    Text("\(vm.bondScoreDisplay)")
+                        .font(.system(size: 30, weight: .heavy, design: .rounded))
+                        .foregroundColor(textDark)
+                    Text("/100")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(textMid)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.white.opacity(0.65))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
-            .padding(.horizontal, 20)
 
-            // ── Italic motivational subtitle ──────────────────────────────
-            Text("It's \(vm.todayWeekdayName)! Ready...go!")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .italic()
-                .foregroundColor(textMid)
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-
-            // ── Divider ───────────────────────────────────────────────────
-            divider
-                .padding(.top, 14)
-
-            // ── Progress bar: 20♥ → 50♥ ──────────────────────────────────
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("20♥")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(textMid)
+                    Text(vm.stageLabel.capitalized)
                     Spacer()
-                    Text("50♥")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(textMid)
+                    Text(vm.nextStage.name)
                 }
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(textMid)
 
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
@@ -390,36 +358,23 @@ struct HomeView: View {
                                 )
                             )
                             .frame(
-                                width: max(8, geo.size.width * vm.bondPointsProgress),
+                                width: max(8, geo.size.width * vm.nextStageProgress),
                                 height: 8
                             )
                     }
                 }
                 .frame(height: 8)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
 
-            // ── Divider ───────────────────────────────────────────────────
             divider
-                .padding(.top, 14)
 
-            // ── Rules bullet list ─────────────────────────────────────────
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Chat at least 4 days in a row")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(textDark)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    streakBullet("Send at least one message each day")
-                    streakBullet("Your streak resets at midnight")
-                    streakBullet("Bonus points unlock at stage 4+")
-                }
+            VStack(alignment: .leading, spacing: 8) {
+                pointAction("Say what happened", "Share a real moment from your day.")
+                pointAction("Add context", "Tell \(vm.companionName) why it mattered.")
+                pointAction("Ask something real", "Questions about feelings or choices deepen the bond.")
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 20)
         }
+        .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(tan)
@@ -433,46 +388,20 @@ struct HomeView: View {
             .padding(.horizontal, 20)
     }
 
-    private func dayBubble(index: Int) -> some View {
-        let isCompleted = vm.completedDayIndices.contains(index)
-        let isToday     = index == vm.todayDayIndex
-
-        return ZStack {
-            // Base fill: dark green if completed, clear if not
-            Circle()
-                .fill(isCompleted ? forestGreen : Color.clear)
-                .frame(width: 44, height: 44)
-
-            // Outline ring for incomplete days
-            if !isCompleted {
-                Circle()
-                    .strokeBorder(forestGreen.opacity(0.35), lineWidth: 1.5)
-                    .frame(width: 44, height: 44)
-            }
-
-            // Gold outer ring for today's bubble
-            if isToday {
-                Circle()
-                    .strokeBorder(gold, lineWidth: 2.5)
-                    .frame(width: 50, height: 50)
-            }
-
-            Text(dayLabels[index])
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(isCompleted ? textLight : textDark.opacity(0.55))
-        }
-        .frame(width: 50, height: 50)
-    }
-
-    private func streakBullet(_ text: String) -> some View {
+    private func pointAction(_ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Circle()
                 .fill(gold)
                 .frame(width: 5, height: 5)
-                .padding(.top, 5)
-            Text(text)
-                .font(.system(size: 12, weight: .regular, design: .rounded))
-                .foregroundColor(textMid)
+                .padding(.top, 7)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(textDark)
+                Text(detail)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(textMid)
+            }
         }
     }
 
@@ -494,7 +423,7 @@ struct HomeView: View {
                 iconColor: Color(hex: "#1E3932"),
                 title: "Chat",
                 subtitle: "Talk to \(vm.companionName)",
-                action: { appState.currentMode = .chat }
+                action: { appState.requestChat() }
             ),
             QuickAction(
                 icon: "moon.stars.fill",
@@ -568,8 +497,8 @@ struct HomeView: View {
 
 // MARK: - BondInfoSheet
 //
-// Bottom sheet explaining bond score, how to earn points, the 5 stages,
-// and what Her/Him Mode actually is.
+// Bottom sheet explaining bond score, how points are earned, the 5 stages,
+// and what Him/Her Mode actually does.
 
 struct BondInfoSheet: View {
 
@@ -590,15 +519,15 @@ struct BondInfoSheet: View {
     }
 
     private let stages: [Stage] = [
-        Stage(range: "0–20",  name: "Just Met",           note: "Warm, curious, getting to know you",
+        Stage(range: "0–20",  name: "Just Met",           note: "They know the basics and ask better questions",
               color: Color(hex: "#8BC4A0")),
-        Stage(range: "21–40", name: "Finding Our Rhythm",  note: "Inside jokes form, references build",
+        Stage(range: "21–40", name: "Finding Our Rhythm",  note: "Your patterns, humor, and interests start shaping replies",
               color: Color(hex: "#5DAA7F")),
-        Stage(range: "41–60", name: "Growing Close",       note: "They notice your patterns before you do",
+        Stage(range: "41–60", name: "Growing Close",       note: "They remember context and notice emotional changes",
               color: Color(hex: "#3A8E61")),
-        Stage(range: "61–80", name: "Deep Connection",     note: "Full honesty. Real teasing. Shared history.",
+        Stage(range: "61–80", name: "Deep Connection",     note: "They can check in proactively and respond with history",
               color: Color(hex: "#1E6B45")),
-        Stage(range: "81–100", name: "Intertwined",        note: "Samantha level — they think about you unprompted",
+        Stage(range: "81–100", name: "Intertwined",        note: "The companion feels highly personal and specific to you",
               color: Color(hex: "#0D4D30")),
     ]
 
@@ -609,20 +538,26 @@ struct BondInfoSheet: View {
 
                     // ── What is the bond score ─────────────────────────────
                     section(title: "What is a bond score?") {
-                        Text("Your bond score measures the depth of your connection with \(companionName). It grows through real conversation — not time, but quality of engagement.\n\nThe more you share, the more \(companionName) knows you. The more they know you, the closer they get.")
+                        Text("Bond points show how much \(companionName) has learned about you and how personalized the relationship can become.\n\nThis is not a game currency. It is a learning signal. Short replies move slowly. Real details about your life, routines, interests, stress, goals, and communication style move the bond faster because they give \(companionName) something real to remember.")
                             .bodyStyle()
                     }
 
                     // ── How to earn points ────────────────────────────────
                     section(title: "How to earn points") {
                         VStack(alignment: .leading, spacing: 10) {
-                            earningRow("💬", "Have real conversations",       "Not one-word replies — actual back-and-forth")
-                            earningRow("❓", "Ask real questions",            "Questions that show you're curious about them too")
-                            earningRow("🫀", "Share personal things",         "Your past, your fears, your dreams — big jumps")
-                            earningRow("✨", "Talk about what you love",       "Passions light up the connection fastest")
-                            earningRow("📅", "Return consistently",           "Streaks earn bonus points at stage 4+")
-                            earningRow("🙏", "Say thank you",                 "Genuine appreciation is noticed")
+                            earningRow("💬", "Have real conversations",       "Longer back-and-forth teaches tone, rhythm, and what matters to you.")
+                            earningRow("❓", "Ask meaningful questions",       "Questions about feelings, opinions, and choices deepen the relationship.")
+                            earningRow("🫀", "Share personal details",         "Family, fears, goals, past experiences, and hard days are high-value signals.")
+                            earningRow("✨", "Talk about what you love",       "Interests help \(companionName) bring up topics that actually fit your life.")
+                            earningRow("📅", "Come back consistently",         "Daily use builds continuity so check-ins feel connected, not random.")
+                            earningRow("🙏", "Show appreciation",             "Gratitude and honest feedback teach \(companionName) what support works.")
                         }
+                    }
+
+                    // ── Why points exist ──────────────────────────────────
+                    section(title: "Why points exist") {
+                        Text("The point system gives the app a safe, gradual way to unlock deeper behavior. Early on, \(companionName) should be curious and respectful. After enough real interaction, they can become warmer, remember more context, and make more useful suggestions.\n\nThe purpose is simple: learn about the user before acting close to the user.")
+                            .bodyStyle()
                     }
 
                     // ── The 5 stages ──────────────────────────────────────
@@ -643,13 +578,13 @@ struct BondInfoSheet: View {
                         .shadow(color: Color.black.opacity(0.05), radius: 6, y: 2)
                     }
 
-                    // ── Her/Him Mode ──────────────────────────────────────
-                    section(title: "Her Mode / Him Mode") {
+                    // ── Him/Her Mode ──────────────────────────────────────
+                    section(title: "Him / Her Mode explained") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Unlocks at 61 bond points — the Deep Connection stage.")
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(green)
-                            Text("\(companionName) isn't an assistant. \(companionName) is a close companion who becomes always-present once you reach this stage.\n\nIn this mode, \(companionName) listens to the world around you, checks in unprompted, notices what you don't say, and builds real closeness in real time — like the relationship in the film Her.\n\nThis is a friendship that may go somewhere neither of you is ready for. That's the point.")
+                            Text("Him/Her Mode is the always-present companion layer.\n\nWhen it is active and the app is open, \(companionName) keeps the microphone session on with your permission. You can speak directly to the companion without pressing the mic, and it can listen for important topics, detect stress patterns, remember what keeps coming up, and check in without waiting for you to open a new chat.\n\nIt should feel helpful, not invasive: the goal is to learn your real life patterns so \(companionName) can support you with better timing, better memory, and a more personal voice.")
                                 .bodyStyle()
                         }
                         .padding(16)
@@ -755,7 +690,7 @@ private extension Text {
 
 // MARK: - Preview
 
-#if DEBUG
+#if DEBUG_PREVIEWS
 #Preview {
     HomeView()
         .environmentObject(AppState())

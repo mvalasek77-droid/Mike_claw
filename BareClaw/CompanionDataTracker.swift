@@ -24,6 +24,7 @@ actor CompanionDataTracker {
     /// this before doing any work so a mid-flight permission revocation is
     /// respected without waiting for the next launch.
     private var currentPermissions: TrackingPermissions = TrackingPermissions()
+    private let trackingLearningSignatureKey = "companion.tracking.learningSignature"
 
     /// Event identifiers for which we have already scheduled notifications.
     /// Prevents duplicate scheduling when `updatePermissions` is called
@@ -50,9 +51,24 @@ actor CompanionDataTracker {
     public func updatePermissions(_ permissions: TrackingPermissions, persona: UserPersona) async {
         let previous = currentPermissions
         currentPermissions = permissions
+        DiagnosticsLog.info(
+            "tracking",
+            "Companion tracking permissions updated.",
+            details: [
+                "email": "\(permissions.emailEnabled)",
+                "messages": "\(permissions.messagesEnabled)",
+                "browsing": "\(permissions.browsingEnabled)",
+                "location": "\(permissions.locationEnabled)",
+                "calendar": "\(permissions.calendarEnabled)",
+                "companion": persona.selectedCompanionID
+            ]
+        )
+
+        await syncTrackingPreferencesIfNeeded(permissions, persona: persona)
 
         // ── Calendar permission revoked ──────────────────────────────────
         if previous.calendarEnabled && !permissions.calendarEnabled {
+            DiagnosticsLog.info("tracking", "Calendar tracking disabled; cancelling scheduled notifications.")
             await cancelNotifications(category: "calendar")
             await cancelNotifications(category: "reminder")
             // Clear cached IDs so a re-enable starts fresh.
@@ -61,9 +77,48 @@ actor CompanionDataTracker {
 
         // ── Calendar permission enabled ──────────────────────────────────
         if permissions.calendarEnabled {
+            DiagnosticsLog.info("tracking", "Calendar tracking enabled; scanning calendar and reminders.")
             await scanCalendar(persona: persona)
             await scanReminders(persona: persona)
         }
+    }
+
+    private func syncTrackingPreferencesIfNeeded(_ permissions: TrackingPermissions, persona: UserPersona) async {
+        let key = "\(trackingLearningSignatureKey).\(persona.selectedCompanionID)"
+        guard UserDefaults.standard.string(forKey: key) != permissions.learningSignature else { return }
+        DiagnosticsLog.info("tracking", "Tracking preferences synced into learning engine.", details: ["companion": persona.selectedCompanionID])
+
+        let enabled = permissions.enabledLearningAreas
+        let disabled = permissions.disabledLearningAreas
+
+        _ = try? await HermesMemory.shared.observe(
+            category: "tracking_preferences",
+            content: [
+                "emailEnabled": permissions.emailEnabled,
+                "messagesEnabled": permissions.messagesEnabled,
+                "browsingEnabled": permissions.browsingEnabled,
+                "locationEnabled": permissions.locationEnabled,
+                "calendarEnabled": permissions.calendarEnabled,
+                "enabledAreas": enabled,
+                "disabledAreas": disabled
+            ],
+            metadata: [
+                "importance": 3,
+                "source": "companion_tracking",
+                "companionID": persona.selectedCompanionID
+            ]
+        )
+
+        let userSignal = enabled.isEmpty
+            ? "I turned off companion tracking."
+            : "My companion can personalize from \(enabled.joined(separator: ", "))."
+        await HerLearningEngine.shared.processUserMessage(
+            userSignal,
+            responseText: "I'll respect those choices and only use the areas you allow.",
+            interests: persona.interests
+        )
+
+        UserDefaults.standard.set(permissions.learningSignature, forKey: key)
     }
 
     // MARK: - Calendar Scanning
@@ -76,7 +131,10 @@ actor CompanionDataTracker {
 
         // Request access — API differs between iOS 17+ and earlier versions.
         let granted = await requestCalendarAccess()
-        guard granted else { return }
+        guard granted else {
+            DiagnosticsLog.warning("tracking", "Calendar scan skipped because access was not granted.")
+            return
+        }
 
         let now  = Date()
         let end  = Calendar.current.date(byAdding: .day, value: 7, to: now) ?? now
@@ -270,9 +328,18 @@ actor CompanionDataTracker {
 
         do {
             try await UNUserNotificationCenter.current().add(request)
+            DiagnosticsLog.info(
+                "notification",
+                "Companion tracking notification scheduled.",
+                details: ["id": id, "category": category]
+            )
         } catch {
-            // If we can't schedule (e.g., notification permission denied), fail silently.
-            // The app should separately request UNUserNotification auth during onboarding.
+            DiagnosticsLog.error(
+                "notification",
+                "Companion tracking notification scheduling failed.",
+                error: error,
+                details: ["id": id, "category": category]
+            )
         }
     }
 

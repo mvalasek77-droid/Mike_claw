@@ -49,7 +49,7 @@ struct MemoriesView: View {
         .task {
             entries = await HermesMemory.shared.recentEntries(limit: 80)
                 .filter { !($0.content.value is NSNull) }
-                .sorted { $0.date > $1.date }
+                .sorted { $0.timestamp > $1.timestamp }
             isLoading = false
         }
     }
@@ -117,7 +117,7 @@ struct MemoriesView: View {
                         .foregroundColor(categoryColor(entry.category))
                         .tracking(0.5)
                     Spacer()
-                    Text(entry.date, style: .relative)
+                    Text(entry.timestamp, style: .relative)
                         .font(.system(size: 11, weight: .regular, design: .rounded))
                         .foregroundColor(Color(hex: "#BBBBBB"))
                     Text("ago")

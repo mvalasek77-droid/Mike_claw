@@ -44,36 +44,40 @@ struct DataPermissionsView: View {
                         icon: "envelope.fill",
                         iconColor: .blue,
                         title: "Email",
-                        subtitle: "Lets \(companionName) notice important emails — job offers, appointments, news — and bring them up.",
-                        benefit: "Context about your work and commitments.",
-                        enabled: $persona.trackingPermissions.emailEnabled
+                        subtitle: "Lets \(companionName) help draft and talk through email moments you bring into chat.",
+                        benefit: "Better support around work, commitments, and important messages you share.",
+                        enabled: $persona.trackingPermissions.emailEnabled,
+                        onToggle: { syncTrackingPermissions() }
                     )
 
                     PermissionCard(
                         icon: "message.fill",
                         iconColor: .green,
                         title: "Messages",
-                        subtitle: "Lets \(companionName) detect relationship moments — celebrations, conflicts, stressful texts — and respond.",
-                        benefit: "The app learns who matters to you and how things are going.",
-                        enabled: $persona.trackingPermissions.messagesEnabled
+                        subtitle: "Lets \(companionName) help with texts, replies, conflicts, and celebrations you describe.",
+                        benefit: "Learns who matters to you from what you choose to share.",
+                        enabled: $persona.trackingPermissions.messagesEnabled,
+                        onToggle: { syncTrackingPermissions() }
                     )
 
                     PermissionCard(
                         icon: "safari.fill",
                         iconColor: .orange,
                         title: "Browsing",
-                        subtitle: "Lets \(companionName) learn what you're interested in — articles, products, topics — to personalise conversations.",
-                        benefit: "Better recommendations and more relevant check-ins.",
-                        enabled: $persona.trackingPermissions.browsingEnabled
+                        subtitle: "Lets \(companionName) remember articles, products, and topics you mention in chat.",
+                        benefit: "Better recommendations based on shared interests.",
+                        enabled: $persona.trackingPermissions.browsingEnabled,
+                        onToggle: { syncTrackingPermissions() }
                     )
 
                     PermissionCard(
                         icon: "location.fill",
                         iconColor: .red,
                         title: "Location Context",
-                        subtitle: "Understands your routines — commute, gym, going out — to send timely messages.",
-                        benefit: "Time-aware suggestions like Starbucks runs or gym motivation.",
-                        enabled: $persona.trackingPermissions.locationEnabled
+                        subtitle: "Lets \(companionName) remember routines you describe — commute, gym, going out.",
+                        benefit: "Time-aware suggestions based on routines you share.",
+                        enabled: $persona.trackingPermissions.locationEnabled,
+                        onToggle: { syncTrackingPermissions() }
                     )
 
                     PermissionCard(
@@ -82,7 +86,8 @@ struct DataPermissionsView: View {
                         title: "Calendar",
                         subtitle: "Lets \(companionName) see upcoming events and check in before and after important moments.",
                         benefit: "Proactive support around meetings, dates, and deadlines.",
-                        enabled: $persona.trackingPermissions.calendarEnabled
+                        enabled: $persona.trackingPermissions.calendarEnabled,
+                        onToggle: { syncTrackingPermissions() }
                     )
                 }
                 .padding(.horizontal, BCSizing.spacingLG)
@@ -116,6 +121,7 @@ struct DataPermissionsView: View {
                 // Continue button
                 Button(action: {
                     persona.save()
+                    syncTrackingPermissions()
                     onComplete()
                 }) {
                     HStack {
@@ -135,6 +141,24 @@ struct DataPermissionsView: View {
             .padding(.top, BCSizing.spacingLG)
         }
     }
+
+    private func syncTrackingPermissions() {
+        persona.save()
+        DiagnosticsLog.info(
+            "permissions",
+            "Onboarding tracking permissions synced.",
+            details: [
+                "email": "\(persona.trackingPermissions.emailEnabled)",
+                "messages": "\(persona.trackingPermissions.messagesEnabled)",
+                "browsing": "\(persona.trackingPermissions.browsingEnabled)",
+                "location": "\(persona.trackingPermissions.locationEnabled)",
+                "calendar": "\(persona.trackingPermissions.calendarEnabled)"
+            ]
+        )
+        Task {
+            await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
+        }
+    }
 }
 
 // MARK: - PermissionCard
@@ -146,6 +170,7 @@ private struct PermissionCard: View {
     let subtitle: String
     let benefit: String
     @Binding var enabled: Bool
+    let onToggle: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -190,6 +215,9 @@ private struct PermissionCard: View {
             RoundedRectangle(cornerRadius: BCSizing.radiusMD)
                 .strokeBorder(enabled ? iconColor.opacity(0.3) : Color.BC.border, lineWidth: 1)
         )
+        .onChange(of: enabled) { _, _ in
+            onToggle?()
+        }
         .animation(.spring(response: 0.3), value: enabled)
     }
 }
@@ -203,15 +231,50 @@ struct TrackingPermissions: Codable {
     var locationEnabled: Bool = false
     var calendarEnabled: Bool = false
 
+    var enabledLearningAreas: [String] {
+        var enabled: [String] = []
+        if emailEnabled    { enabled.append("email topics the user brings into chat") }
+        if messagesEnabled { enabled.append("messaging and relationship moments the user describes") }
+        if browsingEnabled { enabled.append("articles, products, and topics the user mentions") }
+        if locationEnabled { enabled.append("routines and places the user shares") }
+        if calendarEnabled { enabled.append("calendar events") }
+        return enabled
+    }
+
+    var disabledLearningAreas: [String] {
+        var disabled: [String] = []
+        if !emailEnabled    { disabled.append("email") }
+        if !messagesEnabled { disabled.append("messages") }
+        if !browsingEnabled { disabled.append("browsing") }
+        if !locationEnabled { disabled.append("location routines") }
+        if !calendarEnabled { disabled.append("calendar") }
+        return disabled
+    }
+
+    var learningSignature: String {
+        [
+            "email:\(emailEnabled ? 1 : 0)",
+            "messages:\(messagesEnabled ? 1 : 0)",
+            "browsing:\(browsingEnabled ? 1 : 0)",
+            "location:\(locationEnabled ? 1 : 0)",
+            "calendar:\(calendarEnabled ? 1 : 0)"
+        ].joined(separator: "|")
+    }
+
     /// Returns a descriptive line for the LLM system prompt.
     var systemPromptSummary: String {
-        var enabled: [String] = []
-        if emailEnabled    { enabled.append("email context") }
-        if messagesEnabled { enabled.append("messaging context") }
-        if browsingEnabled { enabled.append("browsing interests") }
-        if locationEnabled { enabled.append("location routines") }
-        if calendarEnabled { enabled.append("calendar events") }
-        guard !enabled.isEmpty else { return "" }
-        return "The user has shared the following data sources to help you know them better: \(enabled.joined(separator: ", ")). Use this to make conversations feel more personal and timely."
+        let enabled = enabledLearningAreas
+        let disabled = disabledLearningAreas
+
+        guard !enabled.isEmpty else {
+            return "The user has not opted into companion tracking. Do not proactively infer, store, or use email, messages, browsing, location routines, or calendar as personalization sources unless the user explicitly shares something in the current message."
+        }
+
+        var summary = "The user has opted into these personalization areas: \(enabled.joined(separator: ", "))."
+        if !disabled.isEmpty {
+            summary += " Disabled areas: \(disabled.joined(separator: ", ")). Do not infer, store, or proactively use disabled areas."
+        }
+        summary += " Calendar is the only directly accessible app data source; all other enabled areas come from what the user chooses to share in chat."
+        return summary
     }
 }

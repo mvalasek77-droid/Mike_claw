@@ -6,9 +6,9 @@ import ContactsUI
 import MessageUI
 import UserNotifications
 
-// MARK: - SiriTaskEngine
+// MARK: - CompanionTaskEngine
 //
-// Everything Siri can do — with a soft, intimate human touch.
+// Local task helper for calls, reminders, calendar events, and media.
 // The companion doesn't bark commands; she handles things and tells you
 // about it the way a partner would: "I've got that open for you."
 //
@@ -25,8 +25,8 @@ import UserNotifications
 //   App launcher — opens any app by URL scheme
 //   Shortcuts   — triggers user-created Shortcuts
 
-actor SiriTaskEngine {
-    static let shared = SiriTaskEngine()
+actor CompanionTaskEngine {
+    static let shared = CompanionTaskEngine()
 
     private let eventStore = EKEventStore()
     private var calendarAuthorized = false
@@ -43,16 +43,14 @@ actor SiriTaskEngine {
             calendarAuthorized = (try? await eventStore.requestFullAccessToEvents()) ?? false
             reminderAuthorized = (try? await eventStore.requestFullAccessToReminders()) ?? false
         } else {
-            await withCheckedContinuation { cont in
-                eventStore.requestAccess(to: .event) { [weak self] ok, _ in
-                    self?.calendarAuthorized = ok
-                    cont.resume()
+            calendarAuthorized = await withCheckedContinuation { cont in
+                eventStore.requestAccess(to: .event) { ok, _ in
+                    cont.resume(returning: ok)
                 }
             }
-            await withCheckedContinuation { cont in
-                eventStore.requestAccess(to: .reminder) { [weak self] ok, _ in
-                    self?.reminderAuthorized = ok
-                    cont.resume()
+            reminderAuthorized = await withCheckedContinuation { cont in
+                eventStore.requestAccess(to: .reminder) { ok, _ in
+                    cont.resume(returning: ok)
                 }
             }
         }
@@ -108,8 +106,11 @@ actor SiriTaskEngine {
         }
 
         // ── CALL / FACETIME ──────────────────────────────────────────
-        if lower.containsAny(["call", "phone", "ring", "facetime"]) {
+        if isCallIntent(text) {
             let contact = extractContactName(from: text)
+            guard let contact, !contact.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return nil
+            }
             let isFaceTime = lower.contains("facetime")
             return handleCall(contact: contact, facetime: isFaceTime)
         }
@@ -122,9 +123,9 @@ actor SiriTaskEngine {
         }
 
         // ── MUSIC ────────────────────────────────────────────────────
-        if lower.containsAny(["play", "music", "song", "playlist", "put on", "shuffle"]) {
+        if isMusicIntent(text) {
             let query = extractMusicQuery(from: text)
-            return handleMusic(query: query)
+            return await handleMusic(query: query)
         }
 
         // ── WEB SEARCH ───────────────────────────────────────────────
@@ -274,11 +275,18 @@ actor SiriTaskEngine {
     // MARK: - Call handler
 
     private func handleCall(contact: String?, facetime: Bool) -> TaskResult {
+        guard let contact, !contact.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return TaskResult(
+                kind: .permissionNeeded,
+                title: "Call",
+                companionResponse: "Tell me who to call first, and I won't open the phone until the contact is clear.",
+                url: nil
+            )
+        }
         let scheme = facetime ? "facetime:" : "tel:"
-        let number = contact ?? ""
+        let number = contact
         let url    = URL(string: "\(scheme)\(number.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "")")
-        let action = facetime ? "FaceTime" : "call"
-        let name   = contact ?? "them"
+        let name   = contact
         return TaskResult(
             kind: .deepLink,
             title: "\(facetime ? "FaceTime" : "Call") \(name)",
@@ -301,17 +309,21 @@ actor SiriTaskEngine {
 
     // MARK: - Music handler
 
-    private func handleMusic(query: String) -> TaskResult {
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+    private func handleMusic(query: String) async -> TaskResult {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let searchTerm = trimmedQuery.isEmpty ? "music" : trimmedQuery
+        let encoded = searchTerm.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? searchTerm
         // Try Spotify first, fall back to Apple Music
         let spotifyURL = URL(string: "spotify:search:\(encoded)")
         let musicURL   = URL(string: "music://music.apple.com/search?term=\(encoded)")
 
-        let url = spotifyURL.flatMap { UIApplication.shared.canOpenURL($0) ? $0 : nil } ?? musicURL
+        let url = await MainActor.run {
+            spotifyURL.flatMap { UIApplication.shared.canOpenURL($0) ? $0 : nil } ?? musicURL
+        }
         return TaskResult(
             kind: .deepLink,
-            title: "Play \(query)",
-            companionResponse: "Putting on \(query) for you. 🎵",
+            title: "Play \(searchTerm)",
+            companionResponse: "Putting on \(searchTerm) for you. 🎵",
             url: url
         )
     }
@@ -399,13 +411,39 @@ actor SiriTaskEngine {
             #"(?:to|message|text|call|facetime)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)"#
         ]
         for pattern in patterns {
-            if let range = text.range(of: pattern, options: .regularExpression) {
+            if let range = text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) {
                 let match = String(text[range])
                 let parts = match.components(separatedBy: " ")
                 if parts.count > 1 { return parts.dropFirst().joined(separator: " ") }
             }
         }
         return nil
+    }
+
+    private func isCallIntent(_ text: String) -> Bool {
+        let patterns = [
+            #"^\s*(please\s+)?(call|phone|ring|facetime)\s+[A-Za-z]"#,
+            #"\b(can you|could you|would you|please)\s+(call|phone|ring|facetime)\s+[A-Za-z]"#
+        ]
+        return patterns.contains { pattern in
+            text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+        }
+    }
+
+    private func isMusicIntent(_ text: String) -> Bool {
+        let patterns = [
+            #"^\s*(please\s+)?(play|put on|shuffle)\s+(some\s+)?(music|a\s+song|the\s+song|song|a\s+playlist|the\s+playlist|playlist|an\s+album|the\s+album|album)\b"#,
+            #"^\s*(can you|could you|would you)\s+(please\s+)?(play|put on|shuffle)\s+(some\s+)?(music|a\s+song|the\s+song|song|a\s+playlist|the\s+playlist|playlist|an\s+album|the\s+album|album)\b"#,
+            #"^\s*(please\s+)?(play|put on|shuffle)\s+.+\s+(on|in)\s+(spotify|apple music|music)\b"#,
+            #"^\s*(can you|could you|would you)\s+(please\s+)?(play|put on|shuffle)\s+.+\s+(on|in)\s+(spotify|apple music|music)\b"#,
+            #"^\s*(please\s+)?(play|put on)\s+.+\s+by\s+.+$"#,
+            #"^\s*(can you|could you|would you)\s+(please\s+)?(play|put on)\s+.+\s+by\s+.+$"#,
+            #"^\s*(please\s+)?(open|launch)\s+(spotify|apple music|music)\b"#,
+            #"^\s*(can you|could you|would you)\s+(please\s+)?(open|launch)\s+(spotify|apple music|music)\b"#
+        ]
+        return patterns.contains { pattern in
+            text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+        }
     }
 
     private func extractEventTitle(from text: String) -> String {
@@ -442,7 +480,8 @@ actor SiriTaskEngine {
 
     private func extractMusicQuery(from text: String) -> String {
         var clean = text
-        for word in ["play", "put on", "shuffle", "listen to", "music"] {
+        for word in ["can you", "could you", "would you", "please", "play", "put on", "shuffle",
+                     "open", "launch", "listen to", "some music", "music"] {
             clean = clean.replacingOccurrences(of: word, with: "", options: .caseInsensitive)
         }
         return clean.trimmingCharacters(in: .whitespacesAndNewlines)

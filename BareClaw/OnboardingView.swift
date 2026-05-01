@@ -20,76 +20,89 @@ struct CompanionOnboardingView: View {
     private let totalSteps = 8   // 0…7 (provider is last)
 
     var body: some View {
-        ZStack {
-            Color.BC.background.ignoresSafeArea()
+        GeometryReader { geometry in
+            let isWide = geometry.size.width >= 700
+            let availableWidth = max(320, geometry.size.width - (isWide ? 96 : 0))
+            let contentWidth = min(availableWidth, step == 4 ? 940 : 760)
 
-            VStack(spacing: 0) {
-                // Progress dots
-                HStack(spacing: 8) {
-                    ForEach(0..<totalSteps, id: \.self) { i in
-                        Capsule()
-                            .fill(i <= step ? Color.BC.accent : Color.BC.border)
-                            .frame(width: i == step ? 24 : 8, height: 8)
-                            .animation(.spring(response: 0.4), value: step)
-                    }
-                }
-                .padding(.top, BCSizing.spacingLG)
-                .padding(.horizontal, BCSizing.spacingLG)
+            ZStack {
+                LinearGradient(
+                    colors: [Color.BC.background, Color(hex: "#101820"), Color.BC.background],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
 
-                // Step content
-                Group {
-                    switch step {
-                    case 0: WelcomeStep()
-                    case 1: NamingStep(persona: persona)
-                    case 2: RelationshipModeStep(persona: persona)
-                    case 3: StyleStep(persona: persona)
-                    case 4: CompanionSelectionView(persona: persona)
-                    case 5: InterestsStep(persona: persona)
-                    case 6: DataPermissionsView(persona: persona) { advance() }
-                    default: ProviderStep(persona: persona, onComplete: finish)
-                    }
-                }
-                .transition(.asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal:   .move(edge: .leading).combined(with: .opacity)
-                ))
-                .id(step)
-
-                // Navigation button (hidden on steps with their own CTA: 5, 6)
-                if step < 6 {
-                    VStack(spacing: 10) {
-                        // Pulsing hint arrow on companion step so user knows to scroll up and tap Next
-                        if step == 4 && !persona.selectedCompanionID.isEmpty {
-                            HStack(spacing: 6) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(Color.BC.accent)
-                                    .font(.system(size: 14))
-                                Text("\(persona.selectedCompanion.name) is ready for you")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundColor(Color.BC.accent)
-                            }
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                VStack(spacing: 0) {
+                    // Progress dots
+                    HStack(spacing: 8) {
+                        ForEach(0..<totalSteps, id: \.self) { i in
+                            Capsule()
+                                .fill(i <= step ? Color.BC.accent : Color.BC.border)
+                                .frame(width: i == step ? 24 : 8, height: 8)
+                                .animation(.spring(response: 0.4), value: step)
                         }
-                        Button(action: advance) {
-                            HStack {
-                                Text(nextButtonLabel)
-                                    .font(BCFont.headline())
-                                Image(systemName: "arrow.right")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(canAdvance ? Color.BC.accent : Color.BC.border)
-                            .foregroundColor(canAdvance ? .black : .BC.textMuted)
-                            .cornerRadius(BCSizing.radiusLG)
-                            .padding(.horizontal, BCSizing.spacingLG)
-                            .scaleEffect(canAdvance && step == 4 ? 1.03 : 1.0)
-                            .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true),
-                                       value: canAdvance && step == 4)
+                    }
+                    .padding(.top, isWide ? BCSizing.spacingXL : BCSizing.spacingLG)
+                    .padding(.horizontal, BCSizing.spacingLG)
+
+                    // Step content
+                    Group {
+                        switch step {
+                        case 0: WelcomeStep()
+                        case 1: NamingStep(persona: persona)
+                        case 2: RelationshipModeStep(persona: persona)
+                        case 3: StyleStep(persona: persona)
+                        case 4: CompanionSelectionView(persona: persona)
+                        case 5: InterestsStep(persona: persona)
+                        case 6: DataPermissionsView(persona: persona) { advance() }
+                        default: ProviderStep(persona: persona, onComplete: finish)
                         }
-                        .padding(.bottom, BCSizing.spacingXL)
-                        .disabled(!canAdvance)
+                    }
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal:   .move(edge: .leading).combined(with: .opacity)
+                    ))
+                    .id(step)
+
+                    // Navigation button (hidden on steps with their own CTA: 5, 6)
+                    if step < 6 {
+                        VStack(spacing: 10) {
+                            // Pulsing hint arrow on companion step so user knows to scroll up and tap Next
+                            if step == 4 && !persona.selectedCompanionID.isEmpty {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(Color.BC.accent)
+                                        .font(.system(size: 14))
+                                    Text("\(persona.selectedCompanion.name) is ready for you")
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundColor(Color.BC.accent)
+                                }
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                            }
+                            Button(action: advance) {
+                                HStack {
+                                    Text(nextButtonLabel)
+                                        .font(BCFont.headline())
+                                    Image(systemName: "arrow.right")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(canAdvance ? Color.BC.accent : Color.BC.border)
+                                .foregroundColor(canAdvance ? .black : .BC.textMuted)
+                                .cornerRadius(BCSizing.radiusLG)
+                                .padding(.horizontal, BCSizing.spacingLG)
+                                .scaleEffect(canAdvance && step == 4 ? 1.03 : 1.0)
+                                .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true),
+                                           value: canAdvance && step == 4)
+                            }
+                            .padding(.bottom, BCSizing.spacingXL)
+                            .disabled(!canAdvance)
+                        }
                     }
                 }
+                .frame(maxWidth: contentWidth)
+                .frame(maxWidth: .infinity)
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.82), value: step)
@@ -129,6 +142,7 @@ struct CompanionOnboardingView: View {
                     metadata: ["importance": 10, "permanent": true, "source": "onboarding"]
                 )
             }
+            await HermesInterestEngine.shared.syncSelectedInterests(for: persona, source: "onboarding_complete")
             await HermesInterestEngine.shared.scheduleInterestNotifications(for: persona)
             await HermesPersonality.shared.scheduleDailyAffirmation(for: persona)
             await HermesIntegration.shared.logSessionStart(conversationId: UUID().uuidString)
@@ -140,13 +154,16 @@ struct CompanionOnboardingView: View {
 // MARK: - Step 0: Welcome
 
 private struct WelcomeStep: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var bearScale: CGFloat = 0.6
     @State private var bearOpacity: Double = 0
+
+    private var isWide: Bool { horizontalSizeClass == .regular }
 
     var body: some View {
         VStack(spacing: BCSizing.spacingLG) {
             Spacer()
-            BearLogoView(size: 120)
+            BearBadgeView(size: isWide ? 168 : 128)
                 .scaleEffect(bearScale)
                 .opacity(bearOpacity)
                 .onAppear {
@@ -155,16 +172,17 @@ private struct WelcomeStep: View {
                     }
                 }
 
-            Text("Meet your\npersonal companion")
-                .font(BCFont.title(30))
+            Text("Meet BareClaw")
+                .font(BCFont.title(isWide ? 40 : 30))
                 .foregroundColor(.BC.textPrimary)
                 .multilineTextAlignment(.center)
 
-            Text("Someone who listens, remembers, and grows with you.\nLet's set things up — it takes under 2 minutes.")
-                .font(BCFont.body())
+            Text("Your companion learns about you through real conversation: your name, your interests, your routines, and what kind of support actually helps.\nSetup takes under 2 minutes.")
+                .font(BCFont.body(isWide ? 17 : 14))
                 .foregroundColor(.BC.textSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, BCSizing.spacingLG)
+                .lineSpacing(isWide ? 4 : 0)
+                .padding(.horizontal, isWide ? BCSizing.spacingXL : BCSizing.spacingLG)
 
             Spacer()
             Spacer()
@@ -228,7 +246,7 @@ private struct RelationshipModeStep: View {
             }
             .padding(.horizontal, BCSizing.spacingLG)
 
-            ForEach(RelationshipMode.allCases) { mode in
+            ForEach(RelationshipMode.displayOrder) { mode in
                 RelationshipModeCard(mode: mode, selected: persona.relationshipMode == mode) {
                     withAnimation(.spring(response: 0.3)) {
                         persona.relationshipMode = mode
@@ -383,6 +401,7 @@ private struct InterestsStep: View {
                             if selected { persona.removeInterest(id: interest.id) }
                             else        { persona.addInterest(interest) }
                         }
+                        syncInterestLearningAndNotifications(source: selected ? "onboarding_interest_removed" : "onboarding_interest_added")
                     } label: {
                         VStack(spacing: 4) {
                             Text(interest.emoji).font(.title2)
@@ -410,12 +429,21 @@ private struct InterestsStep: View {
                     persona.addInterest(Interest(id: "custom_\(t.lowercased().replacingOccurrences(of: " ", with: "_"))",
                                                   category: .other, label: t, emoji: "⭐️"))
                     customText = ""
+                    syncInterestLearningAndNotifications(source: "onboarding_custom_interest_added")
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2).foregroundColor(.BC.accent)
                 }
             }
             .padding(.horizontal, BCSizing.spacingLG)
+        }
+    }
+
+    private func syncInterestLearningAndNotifications(source: String) {
+        persona.save()
+        Task {
+            await HermesInterestEngine.shared.syncSelectedInterests(for: persona, source: source)
+            await HermesInterestEngine.shared.scheduleInterestNotifications(for: persona)
         }
     }
 }

@@ -531,7 +531,7 @@ struct IllustratedPortraitView: View {
 
 // MARK: - Previews
 
-#if DEBUG
+#if DEBUG_PREVIEWS
 #Preview("Female companions") {
     HStack(spacing: 16) {
         ForEach(["luna", "aria", "kel"], id: \.self) { id in

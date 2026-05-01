@@ -181,7 +181,10 @@ actor HermesSessionState {
     func startConversation(id: String) async throws {
         snapshot.conversation = .fresh(id: id)
         snapshot.workflow = .idle()
-        snapshot.tokenBudget.resetTurnCounter()
+        // A conversation/session budget must not become a permanent app lockout.
+        // Starting a fresh runtime session gives the companion a clean working
+        // budget while long-term memories remain in HermesMemory.
+        snapshot.tokenBudget = .default()
         try await saveToDisk()
     }
 

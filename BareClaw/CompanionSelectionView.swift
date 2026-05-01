@@ -73,9 +73,6 @@ struct CompanionSelectionView: View {
                             isSelected: persona.selectedCompanionID == companion.id,
                             isFeaturedForMode: companion.isFeatured(for: mode)
                         ) {
-                            withAnimation(.spring(response: 0.3)) {
-                                persona.selectedCompanionID = companion.id
-                            }
                             detailCompanion = companion
                         }
                     }
@@ -162,12 +159,13 @@ private struct CompanionCard: View {
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                         Spacer()
-                        if isSelected {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(companion.accentColor)
-                                .transition(.scale.combined(with: .opacity))
-                        }
+                        Text(isSelected ? "Current" : "View")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(isSelected ? companion.accentColor : .white.opacity(0.76))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Color.black.opacity(0.24))
+                            .cornerRadius(10)
                     }
 
                     Text(companion.tagline)
@@ -357,15 +355,31 @@ struct CompanionDetailSheet: View {
                                 dismiss()
                             }) {
                                 HStack {
-                                    Image(systemName: isSelected ? "checkmark.circle.fill" : "heart.fill")
-                                    Text(isSelected ? "Selected ✓" : "Choose \(companion.name)")
+                                    Image(systemName: "person.crop.circle.badge.plus")
+                                    Text(isSelected ? "Keep \(companion.name)" : "Choose \(companion.name)")
                                         .font(BCFont.headline())
                                 }
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(isSelected ? Color.BC.success : companion.accentColor)
+                                .padding(.vertical, 18)
+                                .background(
+                                    LinearGradient(
+                                        colors: [companion.accentColor, companion.accentColor.opacity(0.85)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
                                 .foregroundColor(.white)
                                 .cornerRadius(BCSizing.radiusLG)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: BCSizing.radiusLG)
+                                        .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+                                )
+                                .shadow(
+                                    color: companion.accentColor.opacity(0.28),
+                                    radius: 10,
+                                    x: 0,
+                                    y: 5
+                                )
                             }
                             .padding(.top, BCSizing.spacingSM)
                         }

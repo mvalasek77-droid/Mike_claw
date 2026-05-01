@@ -38,6 +38,8 @@ actor HermesIntegration {
     func logSessionStart(conversationId: String) async {
         let session = HermesSession(id: conversationId, startedAt: Date())
         currentSession = session
+        DiagnosticsLog.info("session", "Session started.", details: ["conversationId": conversationId])
+        try? await HermesSessionState.shared.startConversation(id: conversationId)
         await run {
             try await self.memory.observe(
                 category: "session_start",
@@ -51,6 +53,16 @@ actor HermesIntegration {
     func logSessionEnd() async {
         guard let session = currentSession else { return }
         currentSession = nil
+        DiagnosticsLog.info(
+            "session",
+            "Session ended.",
+            details: [
+                "conversationId": session.id,
+                "durationSeconds": "\(Int(Date().timeIntervalSince(session.startedAt)))",
+                "messageCount": "\(session.messageCount)",
+                "toolCallCount": "\(session.toolCallCount)"
+            ]
+        )
         await run {
             try await self.memory.observe(
                 category: "session_end",
@@ -69,6 +81,11 @@ actor HermesIntegration {
 
     func logUserMessage(_ text: String, in conversationId: String) async {
         currentSession?.messageCount += 1
+        DiagnosticsLog.info(
+            "chat",
+            "User message logged.",
+            details: ["conversationId": conversationId, "length": "\(text.count)"]
+        )
         await contextTracker.ingest(text: text, role: .user)
         await run {
             try await self.memory.observe(
@@ -80,6 +97,11 @@ actor HermesIntegration {
     }
 
     func logAssistantResponse(_ text: String, toolUses: [String] = []) async {
+        DiagnosticsLog.info(
+            "chat",
+            "Assistant response logged.",
+            details: ["length": "\(text.count)", "toolCount": "\(toolUses.count)"]
+        )
         await contextTracker.ingest(text: text, role: .assistant)
         await run {
             try await self.memory.observe(
@@ -91,6 +113,15 @@ actor HermesIntegration {
 
     func logToolExecution(_ toolName: String, success: Bool, duration: TimeInterval) async {
         currentSession?.toolCallCount += 1
+        DiagnosticsLog.info(
+            "tool",
+            "Tool execution logged.",
+            details: [
+                "tool": toolName,
+                "success": "\(success)",
+                "durationMs": "\(Int(duration * 1000))"
+            ]
+        )
         await run {
             try await self.memory.observe(
                 category: "tool_exec",
@@ -101,6 +132,21 @@ actor HermesIntegration {
                 ],
                 // Failures matter more: keep them longer, surface in DreamEngine
                 metadata: ["importance": success ? 1 : 3]
+            )
+        }
+    }
+
+    func logSystemStatus(_ status: String, details: [String: String] = [:], importance: Int = 3) async {
+        var content: [String: Any] = ["status": status]
+        if !details.isEmpty {
+            content["details"] = details
+        }
+        DiagnosticsLog.info("system", status, details: details.merging(["importance": "\(importance)"]) { current, _ in current })
+        await run {
+            try await self.memory.observe(
+                category: "system_status",
+                content: content,
+                metadata: ["importance": importance]
             )
         }
     }
@@ -132,6 +178,7 @@ actor HermesIntegration {
             return true
         } catch {
             self.lastError = error
+            DiagnosticsLog.error("hermes", "Hermes memory/status operation failed.", error: error)
             #if DEBUG
             print("[Hermes] \(error)")
             #endif

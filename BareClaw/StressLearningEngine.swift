@@ -40,6 +40,10 @@ struct StressReliefAction: Codable, Identifiable {
     var lastOffered: Date  = .distantPast
     let autoThreshold: Int = 5        // accepted this many times → act automatically
 
+    private enum CodingKeys: String, CodingKey {
+        case id, label, deepLink, category, acceptCount, rejectCount, lastOffered
+    }
+
     enum Category: String, Codable {
         case streaming, food, music, movement, breathing, social, custom
     }
@@ -61,6 +65,7 @@ struct StressOffer: Identifiable {
     let message:      String
     let action:       StressReliefAction
     let context:      String     // human-readable reason: "sounds like a rough commute"
+    let companionID:  String
 }
 
 // MARK: - Engine
@@ -80,7 +85,11 @@ final class StressLearningEngine: ObservableObject {
 
     // MARK: Private — timing gates
     private var lastOfferAt:      Date = .distantPast
-    private let offerCooldown:    TimeInterval = 1800   // 30 min between offers
+    private var nextOfferAllowedAt: Date = .distantPast
+    private var offerDayStamp: String = ""
+    private var offerCountToday: Int = 0
+    private let offerCooldown:    TimeInterval = 2700   // 45 min between stress offers
+    private let maxOffersPerDay = 4
     private var evaluationTimer:  Timer?
 
     // MARK: Private — ambient noise measurement
@@ -89,20 +98,45 @@ final class StressLearningEngine: ObservableObject {
     private var tapInstalled:    Bool = false
 
     private let defaults = UserDefaults.standard
+    private var activeCompanionID: String
+    private var companionChangeObserver: NSObjectProtocol?
 
     // MARK: - Init
 
     private init() {
+        activeCompanionID = Self.selectedCompanionID()
         loadCatalogue()
         if catalogue.isEmpty { seedDefaultCatalogue() }
+        loadOfferTiming()
+        companionChangeObserver = NotificationCenter.default.addObserver(
+            forName: .userPersonaCompanionDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            let companionID = note.userInfo?["selectedCompanionID"] as? String
+            Task { @MainActor in
+                self?.switchCompanion(to: companionID ?? Self.selectedCompanionID())
+            }
+        }
+    }
+
+    deinit {
+        if let companionChangeObserver {
+            NotificationCenter.default.removeObserver(companionChangeObserver)
+        }
     }
 
     // MARK: - Monitoring lifecycle
 
-    func startMonitoring() {
+    func startMonitoring(useAmbientAudio: Bool = false) {
         guard !isMonitoring else { return }
         isMonitoring = true
-        installNoiseTap()
+        noiseSamples.removeAll()
+        if useAmbientAudio {
+            installNoiseTap()
+        } else {
+            removeNoiseTap()
+        }
         evaluationTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.evaluate() }
         }
@@ -111,8 +145,17 @@ final class StressLearningEngine: ObservableObject {
     func stopMonitoring() {
         isMonitoring = false
         removeNoiseTap()
+        noiseSamples.removeAll()
         evaluationTimer?.invalidate()
         evaluationTimer = nil
+    }
+
+    func observeAmbientNoiseSample(_ rms: Float) {
+        guard isMonitoring else { return }
+        noiseSamples.append(rms)
+        if noiseSamples.count > 90 {
+            noiseSamples.removeFirst(noiseSamples.count - 90)
+        }
     }
 
     // MARK: - Noise tap (ambient stress measurement)
@@ -157,7 +200,10 @@ final class StressLearningEngine: ObservableObject {
         var score = 0.0
 
         // ── Signal 1: ambient noise ──────────────────────────────────
-        score += averageNoise * 0.28
+        score += averageNoise * 0.38
+        if averageNoise > 0.65 {
+            score += 0.28
+        }
 
         // ── Signal 2: time-of-day stress windows ─────────────────────
         let now      = Date()
@@ -189,11 +235,15 @@ final class StressLearningEngine: ObservableObject {
     // MARK: - Pattern history
 
     private func historicalScore(hour: Int, weekday: Int) -> Double {
-        defaults.double(forKey: "stress.hist.\(weekday).\(hour)")
+        let namespaced = stressHistoryKey(hour: hour, weekday: weekday)
+        if defaults.object(forKey: namespaced) == nil {
+            return defaults.double(forKey: legacyStressHistoryKey(hour: hour, weekday: weekday))
+        }
+        return defaults.double(forKey: namespaced)
     }
 
     private func recordStressEvent(hour: Int, weekday: Int) {
-        let key = "stress.hist.\(weekday).\(hour)"
+        let key = stressHistoryKey(hour: hour, weekday: weekday)
         let v   = defaults.double(forKey: key)
         defaults.set(min(v * 0.80 + 0.20, 1.0), forKey: key)   // exponential moving avg
     }
@@ -201,7 +251,10 @@ final class StressLearningEngine: ObservableObject {
     // MARK: - Offer logic
 
     private func considerOffer(hour: Int, weekday: Int) async {
+        resetDailyOfferCounterIfNeeded()
+        guard offerCountToday < maxOffersPerDay else { return }
         guard Date().timeIntervalSince(lastOfferAt) > offerCooldown else { return }
+        guard Date() >= nextOfferAllowedAt else { return }
         guard !CompanionVoiceEngine.shared.isSpeaking else { return }
         guard currentOffer == nil else { return }
 
@@ -212,12 +265,19 @@ final class StressLearningEngine: ObservableObject {
             .first
 
         guard var action = candidate else { return }
+        let offerChance = stressLevel >= 0.75 ? 0.78 : 0.42
+        guard Double.random(in: 0...1) < offerChance else {
+            scheduleNextOfferWindow(minutes: 8...20)
+            return
+        }
 
         let companion = loadCompanion()
         let context   = contextDescription(hour: hour)
         let message   = buildMessage(action: action, context: context, companion: companion)
 
         lastOfferAt = Date()
+        offerCountToday += 1
+        scheduleNextOfferWindow(minutes: stressLevel >= 0.75 ? 45...80 : 75...150)
         recordStressEvent(hour: hour, weekday: weekday)
 
         // Update last-offered timestamp in catalogue
@@ -230,11 +290,11 @@ final class StressLearningEngine: ObservableObject {
             // Learned behaviour: act first, verify after
             openDeepLink(action.deepLink)
             let autoMsg = "I went ahead and \(action.label.lowercased()) — I thought it might help. Was that ok? If you'd rather I ask first next time, just let me know."
-            CompanionVoiceEngine.shared.speak(autoMsg, character: companion.voiceCharacter)
+            CompanionVoiceEngine.shared.speak(autoMsg, character: companion.voiceCharacter, context: .stress)
         } else {
             // First-time or uncertain: ask
-            currentOffer = StressOffer(message: message, action: action, context: context)
-            CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter)
+            currentOffer = StressOffer(message: message, action: action, context: context, companionID: companion.id)
+            CompanionVoiceEngine.shared.speak(message, character: companion.voiceCharacter, context: .stress)
         }
 
         saveCatalogue()
@@ -377,6 +437,41 @@ final class StressLearningEngine: ObservableObject {
         UIApplication.shared.open(url)
     }
 
+    private var nextOfferAllowedKey: String { namespacedKey("stress.nextOfferAllowedAt") }
+    private var offerDayKey: String { namespacedKey("stress.offerDay") }
+    private var offerCountKey: String { namespacedKey("stress.offerCountToday") }
+
+    private func loadOfferTiming() {
+        nextOfferAllowedAt = defaults.object(forKey: nextOfferAllowedKey) as? Date ?? .distantPast
+        offerDayStamp = defaults.string(forKey: offerDayKey) ?? ""
+        offerCountToday = defaults.integer(forKey: offerCountKey)
+        resetDailyOfferCounterIfNeeded()
+    }
+
+    private func resetDailyOfferCounterIfNeeded() {
+        let today = Self.dayStamp(for: Date())
+        guard offerDayStamp != today else { return }
+        offerDayStamp = today
+        offerCountToday = 0
+        persistOfferTiming()
+    }
+
+    private func scheduleNextOfferWindow(minutes range: ClosedRange<Double>) {
+        nextOfferAllowedAt = Date().addingTimeInterval(Double.random(in: range) * 60)
+        persistOfferTiming()
+    }
+
+    private func persistOfferTiming() {
+        defaults.set(nextOfferAllowedAt, forKey: nextOfferAllowedKey)
+        defaults.set(offerDayStamp, forKey: offerDayKey)
+        defaults.set(offerCountToday, forKey: offerCountKey)
+    }
+
+    private static func dayStamp(for date: Date) -> String {
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return "\(parts.year ?? 0)-\(parts.month ?? 0)-\(parts.day ?? 0)"
+    }
+
     // MARK: - Default catalogue
 
     private func seedDefaultCatalogue() {
@@ -404,20 +499,62 @@ final class StressLearningEngine: ObservableObject {
     // MARK: - Persistence
 
     private func loadCatalogue() {
-        guard let data    = defaults.data(forKey: "stress.catalogue"),
+        let targetKey = catalogueKey()
+        let legacyKey = "stress.catalogue"
+        let dataSource = defaults.data(forKey: targetKey) ?? defaults.data(forKey: legacyKey)
+        guard let data = dataSource,
               let decoded = try? JSONDecoder().decode([StressReliefAction].self, from: data)
         else { return }
         catalogue = decoded
+        if defaults.object(forKey: targetKey) == nil {
+            defaults.set(data, forKey: targetKey)
+        }
     }
 
     private func saveCatalogue() {
         if let data = try? JSONEncoder().encode(catalogue) {
-            defaults.set(data, forKey: "stress.catalogue")
+            defaults.set(data, forKey: catalogueKey())
         }
     }
 
     private func loadCompanion() -> CompanionPersonality {
-        let id = defaults.string(forKey: "selectedCompanionID") ?? "luna"
-        return CompanionPersonality.find(id: id) ?? .luna
+        CompanionPersonality.find(id: activeCompanionID) ?? .luna
+    }
+
+    private static func selectedCompanionID() -> String {
+        UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
+    }
+
+    private func switchCompanion(to companionID: String) {
+        guard companionID != activeCompanionID else {
+            currentOffer = nil
+            return
+        }
+
+        saveCatalogue()
+        activeCompanionID = companionID
+        catalogue = []
+        loadCatalogue()
+        if catalogue.isEmpty { seedDefaultCatalogue() }
+        loadOfferTiming()
+        lastOfferAt = .distantPast
+        currentOffer = nil
+        stressLevel = 0
+    }
+
+    private func catalogueKey(companionID: String? = nil) -> String {
+        "stress.catalogue.\(companionID ?? activeCompanionID)"
+    }
+
+    private func namespacedKey(_ key: String, companionID: String? = nil) -> String {
+        "\(key).\(companionID ?? activeCompanionID)"
+    }
+
+    private func stressHistoryKey(hour: Int, weekday: Int, companionID: String? = nil) -> String {
+        "stress.hist.\(companionID ?? activeCompanionID).\(weekday).\(hour)"
+    }
+
+    private func legacyStressHistoryKey(hour: Int, weekday: Int) -> String {
+        "stress.hist.\(weekday).\(hour)"
     }
 }
