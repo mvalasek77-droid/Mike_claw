@@ -280,7 +280,7 @@ final class AppState: ObservableObject {
 #if DEBUG
         Self.applyDebugSeedIfRequested()
 #endif
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         let defaultsValue = UserDefaults.standard.bool(forKey: "onboardingComplete")
         onboardingComplete = persona.onboardingComplete || defaultsValue
         termsAccepted = UserDefaults.standard.bool(forKey: Self.termsAcceptedKey)
@@ -344,7 +344,7 @@ final class AppState: ObservableObject {
         debugLog("completeOnboarding")
         DiagnosticsLog.info("onboarding", "Onboarding completed.")
         UserDefaults.standard.set(true, forKey: "onboardingComplete")
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         if !persona.onboardingComplete {
             persona.onboardingComplete = true
             persona.save()
@@ -366,7 +366,7 @@ final class AppState: ObservableObject {
 
     /// Keeps the root state machine aligned with the persisted persona file.
     func refreshFromDisk() {
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         let resolved = persona.onboardingComplete || UserDefaults.standard.bool(forKey: "onboardingComplete")
         debugLog("refreshFromDisk personaOnboarding=\(persona.onboardingComplete) defaultsOnboarding=\(UserDefaults.standard.bool(forKey: "onboardingComplete")) current=\(onboardingComplete) resolved=\(resolved)")
         DiagnosticsLog.info(
@@ -464,7 +464,7 @@ struct RootView: View {
                 await HermesPrivacyGate.shared.configureHermesIfReady()
                 await ProactiveSuggestionController.shared.processQueue()
                 if RecoveryStartupProfile.shouldUpdateCompanionDataTracker {
-                    let persona = UserPersona.load()
+                    let persona = UserPersona.shared
                     await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
                     await HermesInterestEngine.shared.syncSelectedInterests(for: persona, source: "foreground")
                     await HermesInterestEngine.shared.scheduleInterestNotifications(for: persona)
@@ -593,7 +593,7 @@ struct RootView: View {
         Task.detached(priority: .utility) {
             DiagnosticsLog.info("startup", "Booting companion data tracker.")
             try? await Task.sleep(nanoseconds: 1_800_000_000)
-            let persona = UserPersona.load()
+            let persona = UserPersona.shared
             await CompanionDataTracker.shared.updatePermissions(
                 persona.trackingPermissions,
                 persona: persona

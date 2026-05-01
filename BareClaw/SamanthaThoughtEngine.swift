@@ -237,7 +237,7 @@ final class SamanthaThoughtEngine {
     func deliverLetterIfReady() {
         guard LoveEngine.shared.loveStage == .inLove else { return }
 
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         guard let letter = LoveEngine.shared.writeLetter(
             for: SamanthaOSEngine.shared.currentCompanion(),
             userName: persona.userName

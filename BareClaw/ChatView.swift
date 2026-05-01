@@ -1142,9 +1142,9 @@ struct ChatView: View {
         _vm = StateObject(wrappedValue: ChatViewModel(persona: persona))
     }
 
-    /// Convenience no-arg init used by RootView — loads the stored persona from disk.
+    /// Convenience no-arg init used by RootView — uses the shared persona instance.
     init() {
-        let p = UserPersona.load()
+        let p = UserPersona.shared
         self.persona = p
         _vm = StateObject(wrappedValue: ChatViewModel(persona: p))
     }

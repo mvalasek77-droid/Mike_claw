@@ -53,7 +53,7 @@ final class DreamStore: ObservableObject {
                 content: text,
                 metadata: ["date": ISO8601DateFormatter().string(from: entry.date)]
             )
-            let persona = UserPersona.load()
+            let persona = UserPersona.shared
             persona.learn(key: "dream_journal.last_entry", value: text)
             // Count as a meaningful personal share in the learning engine
             // — triggers emotional pattern detection + intimacy gain.
@@ -62,7 +62,7 @@ final class DreamStore: ObservableObject {
             await HerLearningEngine.shared.processUserMessage(
                 text,
                 responseText: "I love that you shared that with me.",
-                interests: persona.interests
+                interests: UserPersona.shared.interests
             )
             // Dreams deepen the romantic arc only when the user chose that mode.
             if persona.relationshipMode.allowsRomanticLoveArc {

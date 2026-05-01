@@ -223,11 +223,11 @@ private struct HerModeBallGuideSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private var companion: CompanionPersonality {
-        UserPersona.load().selectedCompanion
+        UserPersona.shared.selectedCompanion
     }
 
     private var wakeName: String {
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         let custom = persona.assistantName.trimmingCharacters(in: .whitespacesAndNewlines)
         return custom.isEmpty ? companion.name : custom
     }

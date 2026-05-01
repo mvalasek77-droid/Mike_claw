@@ -105,7 +105,7 @@ actor HermesMemoryAgent {
     // MARK: - .fullContext mode
 
     private func buildFullContext() async -> String {
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         var sections: [String] = []
 
         // 1. User profile

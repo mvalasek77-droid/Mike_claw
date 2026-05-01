@@ -653,7 +653,7 @@ final class HerModeEngine: NSObject, ObservableObject {
             }
         }
 
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         if let directMessage = directAmbientMessage(from: transcript, persona: persona) {
             guard directMessage != lastSentText else { return }
             liveTranscript = ""
@@ -1040,7 +1040,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         debugLog("surfacing proactive message for topic=\(signal.topic)")
         ambientMood = .speaking
         statusMessage = "Reaching out"
-        let persona     = UserPersona.load()
+        let persona     = UserPersona.shared
         let companion   = persona.selectedCompanion
         let deferSpeech = CompanionThoughtFlow.shouldDeferProactiveDelivery
         if !deferSpeech {

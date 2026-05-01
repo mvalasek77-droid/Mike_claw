@@ -36,7 +36,7 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Load
 
     func load() async {
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         userName = persona.userName.trimmingCharacters(in: .whitespacesAndNewlines)
         let selectedName = persona.selectedCompanion.name.trimmingCharacters(in: .whitespacesAndNewlines)
         companionName = selectedName.isEmpty ? "your companion" : selectedName

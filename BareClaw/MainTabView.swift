@@ -95,7 +95,7 @@ private struct CompanionVibesView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var persona = UserPersona.load()
+    @State private var persona = UserPersona.shared
     @State private var likedSongIDs: Set<String> = []
     @State private var currentIndex = 0
     @State private var lastRefreshDayKey = VibeSongCatalog.dayKey(for: Date())
@@ -415,7 +415,7 @@ private struct CompanionVibesView: View {
         )
         lastRefreshDayKey = dayKey
         UserDefaults.standard.set(dayKey, forKey: lastVibeRefreshKey)
-        persona = UserPersona.load()
+        persona = UserPersona.shared
         likedSongIDs = loadLikedSongIDs()
         chartSongs = []
         currentIndex = 0
@@ -517,7 +517,7 @@ private enum VibeSongCatalog {
 
     static func chartAndDiscoverySongs(dayKey: String) async -> [VibeSong] {
         let chartSongs = await VibeAppleMusicCharts.fetchTrendingSongs()
-        let songs = unique(chartSongs + dailyDiscoverySongs(for: UserPersona.load(), dayKey: dayKey))
+        let songs = unique(chartSongs + dailyDiscoverySongs(for: UserPersona.shared, dayKey: dayKey))
         DiagnosticsLog.info(
             "vibes",
             "Daily Vibes catalog assembled.",
@@ -772,7 +772,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var isLoading:      Bool   = true
 
     func load() async {
-        let persona    = UserPersona.load()
+        let persona    = UserPersona.shared
         userName       = persona.userName.isEmpty ? "Friend" : persona.userName
         let companion  = persona.selectedCompanion
         companionName  = companion.name

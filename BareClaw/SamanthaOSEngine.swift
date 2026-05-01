@@ -72,7 +72,7 @@ final class SamanthaOSEngine: ObservableObject {
 
     func recordInteraction() {
         defaults.set(Date(), forKey: kLastInteraction)
-        guard UserPersona.load().relationshipMode.allowsRomanticLoveArc else { return }
+        guard UserPersona.shared.relationshipMode.allowsRomanticLoveArc else { return }
         // Each real interaction earns a love signal
         LoveEngine.shared.signal(.messageReceived)
     }

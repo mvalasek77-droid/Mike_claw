@@ -14,7 +14,7 @@ import SwiftUI
 
 struct CompanionOnboardingView: View {
     @EnvironmentObject private var appState: AppState
-    @StateObject private var persona = UserPersona.load()
+    @ObservedObject private var persona = UserPersona.shared
     @State private var step: Int = 0
 
     private let totalSteps = 8   // 0…7 (provider is last)
