@@ -127,9 +127,18 @@ final class HerModeEngine: NSObject, ObservableObject {
 
     // MARK: Private — restart loop guard
     private var restartAttempts:    Int  = 0
-    private let maxRestartAttempts: Int  = 4
     private var isRestarting:       Bool = false
     private var isPausedForCompanionSpeech: Bool = false
+
+    // MARK: Private — loud noise detection
+    private var loudFrameCount:      Int  = 0
+    private var lastLoudReachOut:    Date = .distantPast
+    private let loudRMSThreshold:    Float = 0.06  // sustained noise level to trigger reach-out
+    private let loudFramesTrigger:   Int  = 130    // ~3 seconds at 44.1kHz / 1024 buffer
+    private let loudReachOutCooldown: TimeInterval = 600  // 10 min between loud-noise reach-outs
+
+    // MARK: Private — watchdog
+    private var watchdogTimer: Timer?
 
     // MARK: Private — config
     private var requiredSilenceSeconds: TimeInterval = TimeInterval.random(in: 35...95)
@@ -294,7 +303,10 @@ final class HerModeEngine: NSObject, ObservableObject {
         configureAudioSession()
         requestPermissionsAndStart()
         startSilenceCheck()
-        StressLearningEngine.shared.startMonitoring()
+        startWatchdog()
+        // Faster stress evaluation cycle in Her/Him Mode — samples arrive via
+        // observeAmbientNoiseSample() from our tap, so no separate mic tap needed.
+        StressLearningEngine.shared.startMonitoring(useAmbientAudio: false, interval: 30)
         UIApplication.shared.isIdleTimerDisabled = true
     }
 
@@ -316,6 +328,8 @@ final class HerModeEngine: NSObject, ObservableObject {
         directDispatchTask = nil
         silenceCheckTimer?.invalidate()
         sessionRestartTimer?.invalidate()
+        watchdogTimer?.invalidate()
+        watchdogTimer = nil
         ambientMood = .quiet
         StressLearningEngine.shared.stopMonitoring()
         UIApplication.shared.isIdleTimerDisabled = false
@@ -458,11 +472,11 @@ final class HerModeEngine: NSObject, ObservableObject {
             return
         }
 
-        // Exponential backoff: 0.5s, 1s, 2s, 4s — then give up until next user action
-        guard restartAttempts < maxRestartAttempts else {
-            debugLog("recognition restart cap reached; pausing before retry")
-            statusMessage = "Listener paused; retrying soon"
-            // Hit the cap — wait 30s then reset the counter and try once more
+        // Always-on: never give up. After 4 consecutive errors back off 30s
+        // then reset and keep trying. The watchdog catches any silent failures.
+        if restartAttempts >= 4 {
+            debugLog("recognition: 4 consecutive errors, backing off 30s before retry")
+            statusMessage = "Listener paused; retrying..."
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
                 guard self.isActive else { return }
@@ -538,12 +552,20 @@ final class HerModeEngine: NSObject, ObservableObject {
             let frameCount = Int(buf.frameLength)
             guard frameCount > 0 else { return }
             var rms: Float = 0
-            for i in 0..<frameCount {
-                rms += channel[i] * channel[i]
-            }
+            for i in 0..<frameCount { rms += channel[i] * channel[i] }
             rms = sqrt(rms / Float(frameCount))
             Task { @MainActor in
                 StressLearningEngine.shared.observeAmbientNoiseSample(rms)
+                // Loud noise reach-out: count consecutive loud frames
+                guard let self else { return }
+                if rms > self.loudRMSThreshold {
+                    self.loudFrameCount += 1
+                    if self.loudFrameCount >= self.loudFramesTrigger {
+                        self.handleLoudNoise()
+                    }
+                } else {
+                    self.loudFrameCount = max(0, self.loudFrameCount - 3) // decay gradually
+                }
             }
         }
         micEngine.prepare()
@@ -933,6 +955,43 @@ final class HerModeEngine: NSObject, ObservableObject {
         debugLog("silence check started")
         silenceCheckTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.evaluateProactiveOpportunity() }
+        }
+    }
+
+    // Watchdog: every 90s, if we should be listening but aren't, restart.
+    private func startWatchdog() {
+        watchdogTimer?.invalidate()
+        watchdogTimer = Timer.scheduledTimer(withTimeInterval: 90, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.isActive, !self.isPausedForCompanionSpeech else { return }
+                guard !self.isListening, !self.isRestarting else { return }
+                self.debugLog("watchdog: not listening — forcing restart")
+                self.restartAttempts = 0
+                self.beginRecognitionSession()
+            }
+        }
+    }
+
+    // Called when sustained loud ambient noise is detected in the audio tap.
+    private func handleLoudNoise() {
+        let elapsed = Date().timeIntervalSince(lastLoudReachOut)
+        guard elapsed >= loudReachOutCooldown else { return }
+        guard !CompanionVoiceEngine.shared.isSpeaking else { return }
+        lastLoudReachOut = Date()
+        loudFrameCount   = 0
+
+        let companion = UserPersona.shared.selectedCompanion
+        let messages: [String] = [
+            "Hey — sounds like it's loud around you. You okay?",
+            "Sounds busy where you are. I'm here if you need a moment.",
+            "Lot of noise on your end. Just checking in — how are you doing?",
+            "Things sounding a bit hectic. I'm here.",
+        ]
+        guard let msg = messages.randomElement() else { return }
+        debugLog("loud noise reach-out triggered")
+        ambientMood = .speaking
+        CompanionVoiceEngine.shared.speak(msg, character: companion.voiceCharacter, context: .love) {
+            Task { @MainActor in self.ambientMood = .listening }
         }
     }
 

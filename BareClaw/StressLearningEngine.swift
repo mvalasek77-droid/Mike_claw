@@ -128,7 +128,7 @@ final class StressLearningEngine: ObservableObject {
 
     // MARK: - Monitoring lifecycle
 
-    func startMonitoring(useAmbientAudio: Bool = false) {
+    func startMonitoring(useAmbientAudio: Bool = false, interval: TimeInterval = 60) {
         guard !isMonitoring else { return }
         isMonitoring = true
         noiseSamples.removeAll()
@@ -137,7 +137,7 @@ final class StressLearningEngine: ObservableObject {
         } else {
             removeNoiseTap()
         }
-        evaluationTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        evaluationTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.evaluate() }
         }
     }

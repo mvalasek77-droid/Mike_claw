@@ -403,9 +403,12 @@ actor BareClawAudioSessionController {
                 options: []
             )
         case .herModeListening:
+            // .measurement mode — no echo cancellation or noise suppression.
+            // Keeps neural TTS voices intact while the mic is open for ambient listening.
+            // .voiceChat was killing the premium voice quality.
             try session.setCategory(
                 .playAndRecord,
-                mode: .voiceChat,
+                mode: .measurement,
                 options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
             )
         }
