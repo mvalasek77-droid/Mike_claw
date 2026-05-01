@@ -791,6 +791,10 @@ final class ChatViewModel: ObservableObject {
             interests: persona.interests
         )
 
+        // Update psychological profile and message count tracking
+        PsychologicalProfiler.shared.observe(message: lastUserMessage)
+        TrackingEngine.shared.messageSent()
+
         // Memory agent: save this exchange + detect emotion
         await HermesMemoryAgent.shared.run(.message(user: lastUserMessage, assistant: finalText))
 

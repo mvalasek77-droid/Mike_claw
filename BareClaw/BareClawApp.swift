@@ -450,6 +450,7 @@ struct RootView: View {
             Task {
                 await MainActor.run { LaunchRecovery.markLaunchStable() }
                 await HermesIntegration.shared.logSessionEnd()
+                await MainActor.run { TrackingEngine.shared.sessionEnded() }
                 HermesDreamEngine.shared.scheduleNextDream()
                 await HermesKairos.shared.pause()
                 // Flush all memory to disk before the app is suspended
@@ -521,6 +522,7 @@ struct RootView: View {
             await HermesSessionState.shared.loadFromDisk()
             await HermesPrivacyGate.shared.configureHermesIfReady()
 
+            await MainActor.run { TrackingEngine.shared.sessionStarted() }
             let sessionId = UUID().uuidString
             await HermesIntegration.shared.logSessionStart(conversationId: sessionId)
             DiagnosticsLog.info("startup", "Core background services booted.")
@@ -806,26 +808,3 @@ private struct TermsAcceptanceView: View {
     }
 }
 
-// MARK: - Stub singletons referenced in RootView.task
-// Remove these as you implement each engine in its own file.
-
-private final class IntimacyScalingEngine {
-    static let shared = IntimacyScalingEngine()
-    private init() {}
-}
-
-private final class PsychologicalProfiler {
-    static let shared = PsychologicalProfiler()
-    private init() {}
-}
-
-private final class TrackingEngine {
-    static let shared = TrackingEngine()
-    private init() {}
-}
-
-private final class ProactiveSuggestionController {
-    static let shared = ProactiveSuggestionController()
-    private init() {}
-    func processQueue() async {}
-}
