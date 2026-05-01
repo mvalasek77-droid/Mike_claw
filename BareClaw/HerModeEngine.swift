@@ -533,7 +533,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         let node   = micEngine.inputNode
         let format = node.outputFormat(forBus: 0)
         node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buf, _ in
-            self?.recognitionRequest?.append(buf)
+            Task { @MainActor [weak self] in self?.recognitionRequest?.append(buf) }
             guard let channel = buf.floatChannelData?[0] else { return }
             let frameCount = Int(buf.frameLength)
             guard frameCount > 0 else { return }

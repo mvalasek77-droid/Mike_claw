@@ -95,7 +95,7 @@ private struct CompanionVibesView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var persona = UserPersona.shared
+    @ObservedObject private var persona = UserPersona.shared
     @State private var likedSongIDs: Set<String> = []
     @State private var currentIndex = 0
     @State private var lastRefreshDayKey = VibeSongCatalog.dayKey(for: Date())
