@@ -32,7 +32,7 @@ struct CompanionTikTokView: View {
     private var captionIndexKey: String { "tiktok.captionIndex.\(companion.id)" }
 
     init() {
-        let p = UserPersona.load()
+        let p = UserPersona.shared
         persona   = p
         let id    = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
         companion = CompanionPersonality.find(id: id) ?? .luna

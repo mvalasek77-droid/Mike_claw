@@ -239,7 +239,7 @@ actor HerLearningEngine {
         await save()
 
         // Fire the push notification so the user is drawn back in
-        let companionName = UserPersona.load().selectedCompanion.name
+        let companionName = UserPersona.shared.selectedCompanion.name
         await scheduleSamanthaNotification(thought, companionName: companionName)
     }
 

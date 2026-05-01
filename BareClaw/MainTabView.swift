@@ -77,7 +77,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var isLoading:      Bool   = true
 
     func load() async {
-        let persona    = UserPersona.load()
+        let persona    = UserPersona.shared
         userName       = persona.userName.isEmpty ? "Friend" : persona.userName
         let companion  = persona.selectedCompanion
         companionName  = companion.name

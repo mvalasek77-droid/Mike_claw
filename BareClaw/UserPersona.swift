@@ -309,6 +309,10 @@ final class UserPersona: ObservableObject, Codable {
 
     // MARK: - Persistence
 
+    // Single shared instance — every view in the app uses this object so that
+    // changes made in onboarding, chat, and settings are always in sync.
+    static let shared: UserPersona = UserPersona.load()
+
     private static let saveURL: URL = {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("hermes/user_persona.json")

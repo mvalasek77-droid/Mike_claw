@@ -116,7 +116,7 @@ struct RootView: View {
 
             // Start companion data tracker — respects TrackingPermissions exactly.
             // Called here so calendar/reminder scans run fresh on each launch.
-            let persona = UserPersona.load()
+            let persona = UserPersona.shared
             await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
 
             // Log session start so metrics (duration, message count) are tracked.
@@ -137,7 +137,7 @@ struct RootView: View {
             Task {
                 await HermesPrivacyGate.shared.configureHermesIfReady()
                 await ProactiveSuggestionController.shared.processQueue()
-                let persona = UserPersona.load()
+                let persona = UserPersona.shared
                 await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
                 let sessionId = UUID().uuidString
                 await HermesIntegration.shared.logSessionStart(conversationId: sessionId)

@@ -60,7 +60,7 @@ final class DreamStore: ObservableObject {
             await HerLearningEngine.shared.processUserMessage(
                 text,
                 responseText: "I love that you shared that with me.",
-                interests: UserPersona.load().interests
+                interests: UserPersona.shared.interests
             )
             // Signal a deep conversation to the love stage engine
             LoveEngine.shared.signal(.deepConversation)

@@ -402,7 +402,7 @@ final class HerModeEngine: NSObject, ObservableObject {
 
         // Check if this is a direct message TO the companion
         // (starts with companion's name or wake phrase)
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         let companionName = persona.selectedCompanion.name.lowercased()
         let isDirectMessage = lower.hasPrefix(companionName) ||
                               lower.hasPrefix("hey \(companionName)") ||
@@ -490,7 +490,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         let message = candidates.randomElement()!
 
         ambientMood = .speaking
-        let persona     = UserPersona.load()
+        let persona     = UserPersona.shared
         let companion   = persona.selectedCompanion
         CompanionVoiceEngine.shared.speakFiltered(message, companion: companion)
 

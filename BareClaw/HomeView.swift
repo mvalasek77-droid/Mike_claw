@@ -44,7 +44,7 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Load
 
     func load() async {
-        let persona = UserPersona.load()
+        let persona = UserPersona.shared
         userName = persona.userName.isEmpty ? "Friend" : persona.userName
         companionName = persona.selectedCompanion.name
         companionAccentColor = persona.selectedCompanion.accentColor
