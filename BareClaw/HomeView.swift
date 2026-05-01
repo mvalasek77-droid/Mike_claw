@@ -63,6 +63,7 @@ final class HomeViewModel: ObservableObject {
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var vm = HomeViewModel()
+    @ObservedObject private var herMode = HerModeEngine.shared
 
     @State private var showBondInfo     = false
     @State private var showDreamJournal = false
