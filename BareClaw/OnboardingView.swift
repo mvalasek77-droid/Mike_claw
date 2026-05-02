@@ -463,6 +463,7 @@ private struct ProviderStep: View {
     @State private var apiKey = ""
     @State private var showKey = false
     @State private var checking = false
+    @State private var saveError = false
     @State private var appleAvailable = AppleFoundationModelsBridge.isAvailable
 
     var body: some View {
@@ -549,6 +550,7 @@ private struct ProviderStep: View {
 
                         Button {
                             BCHaptic.medium()
+                            saveError = false
                             saveAndContinue()
                         } label: {
                             HStack {
@@ -568,6 +570,20 @@ private struct ProviderStep: View {
                         .buttonStyle(BCButtonStyle(haptic: .none))
                         .accessibilityLabel("Save API key and meet \(persona.selectedCompanion.name)")
                         .disabled(apiKey.count < 20 || checking)
+
+                        if saveError {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.red)
+                                Text("Couldn't save the key. Check that it starts with "sk-ant-" and try again.")
+                                    .font(BCFont.body(12))
+                                    .foregroundColor(.red.opacity(0.85))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.top, 4)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
 
                         // Skip option — user can add the key later in Settings
                         Button {
@@ -596,10 +612,17 @@ private struct ProviderStep: View {
                              value: apiKey.trimmingCharacters(in: .whitespaces))
         Task {
             await HermesPrivacyGate.shared.acceptCloudAI()
-            // Configure LLM client immediately — without this the provider stays .none all session
             await HermesLLMClient.shared.configure()
-            await MainActor.run { checking = false }
-            onComplete()
+            let configured = await HermesLLMClient.shared.provider != .none
+            await MainActor.run {
+                checking = false
+                if configured {
+                    onComplete()
+                } else {
+                    BCHaptic.error()
+                    withAnimation(BCMotion.snappy) { saveError = true }
+                }
+            }
         }
     }
 }

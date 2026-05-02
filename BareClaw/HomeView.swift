@@ -160,9 +160,10 @@ struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
     @ObservedObject private var herMode = HerModeEngine.shared
 
-    @State private var showBondInfo     = false
-    @State private var showDreamJournal = false
-    @State private var showMemories     = false
+    @State private var showBondInfo      = false
+    @State private var showDreamJournal  = false
+    @State private var showMemories      = false
+    @State private var displayedBondScore: Int = 0
 
     // MARK: Palette (warm Starbucks-inspired light theme)
     private let bgCream        = Color(hex: "#F2F0EB")
@@ -261,6 +262,9 @@ struct HomeView: View {
             await vm.load()
             herMode.checkUnlock(score: vm.intimacyScore)
             herMode.checkCeremonyPending()
+            withAnimation(BCMotion.expansive) {
+                displayedBondScore = vm.bondScoreDisplay
+            }
         }
     }
 
@@ -366,9 +370,10 @@ struct HomeView: View {
                     }
 
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("\(vm.bondScoreDisplay)")
+                        Text("\(displayedBondScore)")
                             .font(.system(size: 54, weight: .heavy, design: .rounded))
                             .foregroundColor(textLight)
+                            .contentTransition(.numericText())
 
                         Image(systemName: "heart.fill")
                             .font(.system(size: 22, weight: .bold))

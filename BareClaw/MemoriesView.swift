@@ -8,11 +8,21 @@ import SwiftUI
 
 struct MemoriesView: View {
 
-    @State private var entries:      [MemoryEntry] = []
-    @State private var isLoading:    Bool = true
-    @State private var editingEntry: MemoryEntry? = nil
-    @State private var deleteTarget: UUID? = nil
-    @State private var showDeleteConfirm = false
+    @State private var entries:           [MemoryEntry] = []
+    @State private var isLoading:         Bool = true
+    @State private var editingEntry:      MemoryEntry? = nil
+    @State private var deleteTarget:      UUID? = nil
+    @State private var showDeleteConfirm  = false
+    @State private var searchText:        String = ""
+
+    private var filteredEntries: [MemoryEntry] {
+        guard !searchText.isEmpty else { return entries }
+        let q = searchText.lowercased()
+        return entries.filter {
+            (($0.content.value as? String) ?? "").lowercased().contains(q) ||
+            $0.category.lowercased().contains(q)
+        }
+    }
     @Environment(\.dismiss) private var dismiss
 
     private let green = Color(hex: "#1E3932")
@@ -118,16 +128,41 @@ struct MemoriesView: View {
     private var memoriesList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                // Search bar
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color(hex: "#9A9A9A"))
+                    TextField("Search memories…", text: $searchText)
+                        .font(.system(size: 14, design: .rounded))
+                        .foregroundColor(Color(hex: "#2C1A0E"))
+                        .submitLabel(.search)
+                    if !searchText.isEmpty {
+                        Button { searchText = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(Color(hex: "#BBBBBB"))
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(Color(hex: "#F0EAE0"))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 4)
+
                 // Header count
-                Text("\(entries.count) thing\(entries.count == 1 ? "" : "s") \(companion.name) knows about you")
+                Text("\(filteredEntries.count) thing\(filteredEntries.count == 1 ? "" : "s") \(companion.name) knows about you")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundColor(Color(hex: "#9A9A9A"))
                     .tracking(0.3)
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.top, 12)
                     .padding(.bottom, 12)
 
-                ForEach(Array(entries.enumerated()), id: \.element.id) { i, entry in
+                ForEach(Array(filteredEntries.enumerated()), id: \.element.id) { i, entry in
                     memoryRow(entry)
                         .contentShape(Rectangle())
                         .onTapGesture {
@@ -153,7 +188,7 @@ struct MemoriesView: View {
                             }
                             .tint(Color(hex: "#CBA258"))
                         }
-                    if i < entries.count - 1 {
+                    if i < filteredEntries.count - 1 {
                         Divider().padding(.leading, 60)
                     }
                 }

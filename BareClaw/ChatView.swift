@@ -1233,7 +1233,10 @@ struct ChatView: View {
                                     .id(msg.id)
                                 }
                                 if vm.isTyping {
-                                    TypingIndicator(name: persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName)
+                                    TypingIndicator(
+                                        name: persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName,
+                                        companion: persona.selectedCompanion
+                                    )
                                 }
                                 Color.clear.frame(height: 1).id("bottom")
                             }
@@ -1707,15 +1710,19 @@ struct CompanionVoiceToggleButton: View {
 
 struct TypingIndicator: View {
     let name: String
+    let companion: CompanionPersonality
     @State private var phase = 0
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            BearLogoView(size: 28).padding(.bottom, 4)
+            CompanionAvatarView(companion: companion, size: .chat)
+                .frame(width: 28, height: 28)
+                .clipShape(Circle())
+                .padding(.bottom, 4)
             HStack(spacing: 5) {
                 ForEach(0..<3, id: \.self) { i in
                     Circle()
-                        .fill(Color.BC.secondaryText)
+                        .fill(companion.accentColor)
                         .frame(width: 7, height: 7)
                         .scaleEffect(phase == i ? 1.3 : 0.85)
                         .animation(

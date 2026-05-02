@@ -768,6 +768,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var stageNumber:    Int    = 1
     @Published var totalMessages:  Int    = 0
     @Published var memoriesCount:  Int    = 0
+    @Published var topCategories:  [String] = []
     @Published var isLoading:      Bool   = true
 
     func load() async {
@@ -788,6 +789,11 @@ final class ProfileViewModel: ObservableObject {
 
         let facts      = await HermesMemory.shared.entries(for: "user_fact")
         memoriesCount  = facts.count
+
+        let allEntries = await HermesMemory.shared.recentEntries(limit: 80)
+        var catCounts: [String: Int] = [:]
+        for e in allEntries { catCounts[e.category, default: 0] += 1 }
+        topCategories = catCounts.sorted { $0.value > $1.value }.prefix(2).map(\.key)
 
         isLoading = false
     }
@@ -853,6 +859,9 @@ struct ProfileView: View {
                     VStack(spacing: 0) {
                         headerSection
                         statsSection
+                        if !vm.topCategories.isEmpty {
+                            insightCard
+                        }
                         bondSection
                         stageSection
                         Spacer(minLength: 32)
@@ -986,6 +995,46 @@ struct ProfileView: View {
         .background(card)
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.05), radius: 6, y: 2)
+    }
+
+    // MARK: – Companion insight card
+
+    private func insightCategoryLabel(_ category: String) -> String {
+        switch category {
+        case "user_fact":    return "your life"
+        case "interest":     return "your interests"
+        case "emotion":      return "your feelings"
+        case "preference":   return "your preferences"
+        case "relationship": return "your relationships"
+        case "goal":         return "your goals"
+        default:             return category.replacingOccurrences(of: "_", with: " ")
+        }
+    }
+
+    private var insightCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(gold)
+                Text("What \(vm.companionName) has noticed")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(green)
+            }
+
+            Text("Mostly learning about \(vm.topCategories.map { insightCategoryLabel($0) }.joined(separator: " and ")).")
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(mid)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(card)
+        .cornerRadius(14)
+        .shadow(color: Color.black.opacity(0.04), radius: 6, y: 2)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 14)
     }
 
     // MARK: – Bond card
