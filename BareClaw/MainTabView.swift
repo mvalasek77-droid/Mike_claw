@@ -843,7 +843,8 @@ struct ProfileView: View {
 
     @ViewBuilder
     private var companionHeroPortrait: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .bottom) {
+            // Portrait image
             if let photo = photoStore.photo(for: vm.companionId) {
                 Image(uiImage: photo)
                     .resizable()
@@ -858,10 +859,11 @@ struct ProfileView: View {
                     clipToCircle: false
                 )
             }
-            // Edit button — top-right corner
+
+            // "Change Photo" bar — clearly visible at the bottom of the portrait
             Menu {
                 CompanionPhotoPicker(companionId: vm.companionId) {
-                    AnyView(Label("Choose Photo", systemImage: "photo.on.rectangle"))
+                    AnyView(Label("Choose Photo from Library", systemImage: "photo.on.rectangle"))
                 }
                 if photoStore.hasPhoto(for: vm.companionId) {
                     Button(role: .destructive) {
@@ -871,13 +873,21 @@ struct ProfileView: View {
                     }
                 }
             } label: {
-                Image(systemName: "camera.circle.fill")
-                    .font(.system(size: 32))
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white, vm.accentColor)
-                    .shadow(radius: 4)
-                    .padding(14)
+                HStack(spacing: 6) {
+                    Image(systemName: photoStore.hasPhoto(for: vm.companionId) ? "photo.badge.arrow.down" : "camera.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(photoStore.hasPhoto(for: vm.companionId) ? "Change Photo" : "Add Photo")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial)
+                .clipShape(Capsule())
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+                .padding(.bottom, 12)
             }
+            .accessibilityLabel(photoStore.hasPhoto(for: vm.companionId) ? "Change companion photo" : "Add companion photo")
         }
     }
 

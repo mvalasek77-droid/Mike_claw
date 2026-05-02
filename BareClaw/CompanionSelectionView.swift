@@ -422,18 +422,26 @@ struct CompanionAvatarView: View {
     let companion: CompanionPersonality
     let size: AvatarSize
 
+    @ObservedObject private var photoStore = CompanionPhotoStore.shared
+
     private var cornerRadius: CGFloat {
         size == .card ? 0 : (size == .chat ? 22 : 0)
     }
 
     var body: some View {
-        if UIImage(named: companion.avatarImageName) != nil {
+        if let photo = photoStore.photo(for: companion.id) {
+            // User-supplied photo always wins
+            Image(uiImage: photo)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .cornerRadius(cornerRadius)
+        } else if UIImage(named: companion.avatarImageName) != nil {
             Image(companion.avatarImageName)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .cornerRadius(cornerRadius)
         } else {
-            // Stylised placeholder until real photos are added
+            // Illustrated placeholder — no asset in catalog yet
             PlaceholderAvatarView(companion: companion, size: size)
                 .cornerRadius(cornerRadius)
         }

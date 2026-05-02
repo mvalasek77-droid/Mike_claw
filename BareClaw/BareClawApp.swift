@@ -176,6 +176,16 @@ struct BareClawApp: App {
 
     init() {
         HermesDreamEngine.shared.registerBackgroundTask()
+#if DEBUG
+        // Seed bond score to 62 so Her/Him Mode can be tested without grinding.
+        // Only seeds if the current score is below the unlock threshold (61).
+        // Remove this block before releasing to the App Store.
+        let companionID = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
+        let currentScore = UserDefaults.standard.double(forKey: "her.intimacyScore")
+        if currentScore < 62 {
+            HerLearningEngine.debugSeedPreHerModeUnlock(companionID: companionID, score: 62)
+        }
+#endif
     }
 
     var body: some Scene {
