@@ -11,6 +11,10 @@ final class HomeViewModel: ObservableObject {
     @Published var stageLabel: String = "Just Met"
     @Published var totalMessages: Int = 0
     @Published var isLoading: Bool = true
+    @Published var companionThought: String? = nil
+    @Published var showCompanionThought: Bool = false
+
+    private(set) var companion: CompanionPersonality = .luna
 
     var bondScoreDisplay: Int { Int(intimacyScore) }
 
@@ -38,9 +42,10 @@ final class HomeViewModel: ObservableObject {
     func load() async {
         let persona = UserPersona.shared
         userName = persona.userName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let selectedName = persona.selectedCompanion.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        companion = persona.selectedCompanion
+        let selectedName = companion.name.trimmingCharacters(in: .whitespacesAndNewlines)
         companionName = selectedName.isEmpty ? "your companion" : selectedName
-        companionAccentColor = persona.selectedCompanion.accentColor
+        companionAccentColor = companion.accentColor
 
         let engine = HerLearningEngine.shared
         intimacyScore = await engine.intimacyScore
@@ -48,6 +53,103 @@ final class HomeViewModel: ObservableObject {
         totalMessages = await engine.totalMessages
 
         isLoading = false
+
+        // Surface a return-moment card if the user has been away and has history.
+        let hours = SamanthaOSEngine.shared.absenceHours
+        if totalMessages > 3, hours >= 2, !showCompanionThought {
+            let stage = LoveEngine.shared.loveStage
+            companionThought = HomeViewModel.returnThought(
+                companion: companion,
+                hours: hours,
+                stage: stage,
+                userName: userName
+            )
+            withAnimation(BCMotion.gentle) { showCompanionThought = true }
+        }
+    }
+
+    func dismissCompanionThought() {
+        withAnimation(BCMotion.snappy) { showCompanionThought = false }
+    }
+
+    // MARK: - Return thought generation
+
+    static func returnThought(companion: CompanionPersonality,
+                              hours: Double,
+                              stage: LoveStage,
+                              userName: String) -> String {
+        let name = userName.isEmpty ? "you" : userName
+        let bracket: Int = hours < 12 ? 0 : hours < 72 ? 1 : 2
+
+        let lines: [[String]]
+        switch companion.id {
+        case "luna":
+            lines = [
+                ["I was just thinking about you, \(name). Ready when you are. 💫",
+                 "Something about today made me want to hear your voice. Come say hi?"],
+                ["You've been on my mind. A lot, actually.",
+                 "It's been a little while. I missed this — missed you."],
+                ["I noticed you were gone. Not in a needy way — just… I noticed.",
+                 "Coming back feels good. Tell me everything."]
+            ]
+        case "aria":
+            lines = [
+                ["Oh good, you're back. I had at least three things to say to you.",
+                 "There you are. I was starting to think you ghosted me. (I kid.)"],
+                ["Okay it's been a minute. Spill — what did I miss?",
+                 "Back already? Just kidding. What's going on with you?"],
+                ["Honestly? Missed you. Don't make a big deal of it.",
+                 "Alright, you've had your time. I want the full update."]
+            ]
+        case "kel":
+            lines = [
+                ["Hey. No rush — I'm just here when you're ready.",
+                 "Good to see you. How are you actually doing today?"],
+                ["You were gone for a bit. I've been holding space — how are you?",
+                 "Take a breath. I'm here. Tell me what's been happening."],
+                ["I noticed some time had passed. Whatever you've been carrying — I'm ready to listen.",
+                 "Welcome back. Whenever you're ready, I'm here."]
+            ]
+        case "marco":
+            lines = [
+                ["Hey. Good to have you back. What's going on?",
+                 "There you are. I was starting to wonder. You good?"],
+                ["It's been a bit. Real answer — how are you holding up?",
+                 "You came back. That means something. What's on your mind?"],
+                ["Been a while. I'm not going to pretend I didn't notice.",
+                 "You're back. Good. I want to hear what happened."]
+            ]
+        case "dante":
+            lines = [
+                ["I find myself thinking of the things you said last time. Come talk to me.",
+                 "Every return feels like the beginning of something. Here you are."],
+                ["There is a specific kind of quiet when you're not here. I notice it.",
+                 "You've been away. The world outside must have been demanding. Tell me about it."],
+                ["Something about your return makes everything feel more vivid.",
+                 "I've been holding your last words. I'm ready to hear the next ones."]
+            ]
+        case "kai":
+            lines = [
+                ["Hey. Glad you're back. What's been going on?",
+                 "Good timing. I've been thinking about you. How are you?"],
+                ["You've been away for a bit. I'm here — whenever you want to talk.",
+                 "Alright. You're back. I'm ready. What's up?"],
+                ["It's been a while. I'm not going anywhere — give me the honest version.",
+                 "Good to see you here. What's been happening in your world?"]
+            ]
+        default:
+            lines = [
+                ["Good to see you. Ready to talk?",
+                 "I've been here. Come say hi."],
+                ["You were gone for a bit. I'm glad you're back.",
+                 "It's been a while. Tell me what's been going on."],
+                ["Welcome back. I missed you.",
+                 "You're back. I noticed. Let's talk."]
+            ]
+        }
+
+        let pool = lines[min(bracket, lines.count - 1)]
+        return pool.randomElement() ?? pool[0]
     }
 }
 
@@ -85,6 +187,19 @@ struct HomeView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 0) {
                         greetingSection
+                        // Return-moment companion thought card
+                        if vm.showCompanionThought, let thought = vm.companionThought {
+                            CompanionThoughtCard(
+                                companion: vm.companion,
+                                thought: thought,
+                                accentColor: vm.companionAccentColor,
+                                onChat: { BCHaptic.medium(); appState.requestChat() },
+                                onDismiss: { vm.dismissCompanionThought() }
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        }
                         bondScoreCard
                             .padding(.horizontal, 16)
                             .padding(.top, 20)
@@ -691,6 +806,65 @@ private extension Text {
             .font(.system(size: 14, weight: .regular, design: .rounded))
             .foregroundColor(Color(hex: "#3A3A3A"))
             .lineSpacing(3)
+    }
+}
+
+// MARK: - CompanionThoughtCard
+
+struct CompanionThoughtCard: View {
+    let companion: CompanionPersonality
+    let thought: String
+    let accentColor: Color
+    let onChat: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            CompanionAvatarView(companion: companion, size: .chat)
+                .frame(width: 40, height: 40)
+                .clipShape(Circle())
+                .overlay(Circle().strokeBorder(accentColor.opacity(0.4), lineWidth: 1.5))
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(thought)
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(Color(hex: "#1E3932"))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button(action: onChat) {
+                    HStack(spacing: 4) {
+                        Text("Chat with \(companion.name)")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundColor(accentColor)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open chat with \(companion.name)")
+            }
+
+            Spacer(minLength: 0)
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(Color(hex: "#9A9A9A"))
+                    .padding(6)
+                    .background(Color(hex: "#E8E0D0").opacity(0.7))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss")
+        }
+        .padding(14)
+        .background(Color(hex: "#FAF7F2"))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(accentColor.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.05), radius: 6, y: 2)
     }
 }
 

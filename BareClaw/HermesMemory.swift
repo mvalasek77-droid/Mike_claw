@@ -199,6 +199,15 @@ actor HermesMemory {
         return entry.id
     }
 
+    /// Delete a single entry by ID and persist immediately.
+    func delete(id: UUID) async throws {
+        await loadIfNeeded()
+        entries.removeAll { $0.id == id }
+        memoryIndex.remove(id: id)
+        categoryIndex = categoryIndex.mapValues { ids in ids.filter { $0 != id } }
+        try await persistNow()
+    }
+
     /// Batch-update multiple entries in one persist round-trip.
     func updateBatch(_ updated: [MemoryEntry]) async throws {
         await loadIfNeeded()

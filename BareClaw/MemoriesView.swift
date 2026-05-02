@@ -8,8 +8,11 @@ import SwiftUI
 
 struct MemoriesView: View {
 
-    @State private var entries:   [MemoryEntry] = []
-    @State private var isLoading: Bool = true
+    @State private var entries:      [MemoryEntry] = []
+    @State private var isLoading:    Bool = true
+    @State private var editingEntry: MemoryEntry? = nil
+    @State private var deleteTarget: UUID? = nil
+    @State private var showDeleteConfirm = false
     @Environment(\.dismiss) private var dismiss
 
     private let green = Color(hex: "#1E3932")
@@ -64,6 +67,25 @@ struct MemoriesView: View {
                         .foregroundColor(green)
                 }
             }
+            .sheet(item: $editingEntry) { entry in
+                MemoryEditSheet(entry: entry) { updated in
+                    if let i = entries.firstIndex(where: { $0.id == updated.id }) {
+                        entries[i] = updated
+                    }
+                    Task { try? await HermesMemory.shared.update(updated) }
+                }
+            }
+            .confirmationDialog("Delete this memory?",
+                                isPresented: $showDeleteConfirm,
+                                titleVisibility: .visible) {
+                Button("Delete", role: .destructive) {
+                    guard let id = deleteTarget else { return }
+                    entries.removeAll { $0.id == id }
+                    Task { try? await HermesMemory.shared.delete(id: id) }
+                    deleteTarget = nil
+                }
+                Button("Cancel", role: .cancel) { deleteTarget = nil }
+            }
         }
         .task {
             entries = await HermesMemory.shared.recentEntries(limit: 80)
@@ -107,6 +129,30 @@ struct MemoriesView: View {
 
                 ForEach(Array(entries.enumerated()), id: \.element.id) { i, entry in
                     memoryRow(entry)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard entry.content.value is String else { return }
+                            editingEntry = entry
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                BCHaptic.medium()
+                                deleteTarget = entry.id
+                                showDeleteConfirm = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            Button {
+                                BCHaptic.light()
+                                guard entry.content.value is String else { return }
+                                editingEntry = entry
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(Color(hex: "#CBA258"))
+                        }
                     if i < entries.count - 1 {
                         Divider().padding(.leading, 60)
                     }
@@ -210,5 +256,86 @@ struct MemoriesView: View {
         cat.components(separatedBy: CharacterSet(charactersIn: "_-"))
             .map { $0.capitalized }
             .joined(separator: " ")
+    }
+}
+
+// MARK: - MemoryEditSheet
+
+struct MemoryEditSheet: View {
+    let entry: MemoryEntry
+    let onSave: (MemoryEntry) -> Void
+
+    @State private var text: String = ""
+    @Environment(\.dismiss) private var dismiss
+
+    private let green = Color(hex: "#1E3932")
+    private let gold  = Color(hex: "#CBA258")
+
+    init(entry: MemoryEntry, onSave: @escaping (MemoryEntry) -> Void) {
+        self.entry = entry
+        self.onSave = onSave
+        _text = State(initialValue: (entry.content.value as? String) ?? "")
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Edit what \(companionName) knows")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color(hex: "#9A9A9A"))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+
+                TextEditor(text: $text)
+                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                    .foregroundColor(Color(hex: "#2A2A2A"))
+                    .padding(12)
+                    .background(Color(hex: "#F2F0EB"))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 120)
+
+                Text("This memory shapes how \(companionName) understands you. Edit to correct errors or add clarity.")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(Color(hex: "#AAAAAA"))
+                    .padding(.horizontal, 20)
+
+                Spacer()
+            }
+            .background(Color(hex: "#FAF7F2").ignoresSafeArea())
+            .navigationTitle("Edit Memory")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(Color(hex: "#9A9A9A"))
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        BCHaptic.medium()
+                        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let updated = MemoryEntry(
+                            id: entry.id,
+                            timestamp: entry.timestamp,
+                            category: entry.category,
+                            content: cleaned,
+                            metadata: entry.metadata.mapValues { $0.value },
+                            importance: entry.importance,
+                            tier: entry.tier
+                        )
+                        onSave(updated)
+                        dismiss()
+                    }
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(green)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
+    private var companionName: String {
+        let id = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
+        return CompanionPersonality.find(id: id)?.name ?? "your companion"
     }
 }

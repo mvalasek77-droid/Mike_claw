@@ -87,6 +87,26 @@ actor HermesPersonality {
                 LoveEngine.shared.lovePromptLayer(for: companion)
             }
             sections.append(loveEngineLayer)
+
+            // ── 4b-ii. DEEP BOND layer (inLove only) ─────────────────
+            // Second-chapter mechanics: established relationship register,
+            // specific memory callbacks, wired vulnerabilityProbability.
+            let isInLove = await MainActor.run { LoveEngine.shared.loveStage == .inLove }
+            if isInLove {
+                let anchors = await memory.entries(forAny: [
+                    "memory_anchor", "user_fact", "relationship_continuity"
+                ])
+                .prefix(4)
+                .compactMap { $0.content.value as? String }
+                let deepBond = await MainActor.run {
+                    LoveEngine.shared.deepBondLayer(
+                        userName: userName,
+                        companion: companion,
+                        anchorMemories: Array(anchors)
+                    )
+                }
+                if !deepBond.isEmpty { sections.append(deepBond) }
+            }
         }
 
         // ── 4c. MOOD layer ───────────────────────────────────────────
