@@ -14,15 +14,18 @@ struct ChatMessage: Identifiable, Equatable, Codable {
     var isStreaming: Bool
     var isError: Bool
     var isSamanthaThought: Bool   // proactive thought from companion
+    var isLetter: Bool            // the one-time love letter — triggers full-screen reveal
 
     enum MessageRole: String, Codable { case user, assistant, system }
 
     init(id: UUID = UUID(), role: MessageRole, text: String,
          timestamp: Date = Date(), isStreaming: Bool = false,
-         isError: Bool = false, isSamanthaThought: Bool = false) {
+         isError: Bool = false, isSamanthaThought: Bool = false,
+         isLetter: Bool = false) {
         self.id = id; self.role = role; self.text = text
         self.timestamp = timestamp; self.isStreaming = isStreaming
         self.isError = isError; self.isSamanthaThought = isSamanthaThought
+        self.isLetter = isLetter
     }
 }
 
@@ -226,6 +229,8 @@ final class ChatViewModel: ObservableObject {
     @Published var intimacyScore:       Double = 0
 
     @Published var failedMessageText: String = ""
+    @Published var showLetter:  Bool   = false
+    @Published var letterText:  String = ""
 
     private var streamingID: UUID?
     private var suggestionTask: Task<Void, Never>?
@@ -902,9 +907,19 @@ final class ChatViewModel: ObservableObject {
         let thought = deferredThoughts.removeFirst()
         let message = ChatMessage(role: .assistant,
                                   text: thought.text,
-                                  isSamanthaThought: !thought.isLetter)
+                                  isSamanthaThought: !thought.isLetter,
+                                  isLetter: thought.isLetter)
         messages.append(message)
         saveMessages()
+
+        // Love letter gets a full-screen reveal — it's the most significant moment.
+        if thought.isLetter {
+            BCHaptic.success()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.letterText  = thought.text
+                self?.showLetter  = true
+            }
+        }
         CompanionThoughtFlow.proactiveThoughtDelivered()
 
         if thought.shouldSpeak && !CompanionVoiceEngine.shared.isSpeaking {
@@ -1315,6 +1330,11 @@ struct ChatView: View {
                         }
                     }
             }
+            .fullScreenCover(isPresented: $vm.showLetter) {
+                LoveLetterView(text: vm.letterText, companion: persona.selectedCompanion) {
+                    vm.showLetter = false
+                }
+            }
             .task {
                 // Show banner immediately if no provider is ready
                 await HermesLLMClient.shared.configure()
@@ -1490,9 +1510,12 @@ struct MessageBubble: View {
     @State private var cursorVisible = false
 
     var body: some View {
-        // Samantha thought gets its own special treatment
         if message.isSamanthaThought {
             SamanthaThoughtBubble(text: message.text, companion: persona.selectedCompanion)
+                .padding(.vertical, 4)
+        } else if message.isLetter {
+            // The love letter — shown in-chat as a sealed card the user can re-open.
+            LetterPreviewBubble(text: message.text, companion: persona.selectedCompanion)
                 .padding(.vertical, 4)
         } else {
         HStack(alignment: .bottom, spacing: 8) {
