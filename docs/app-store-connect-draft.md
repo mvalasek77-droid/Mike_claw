@@ -1,97 +1,216 @@
-# BareClaw App Store Connect Draft
+# BareClaw — App Store Connect Submission Package
 
-Status: Do not submit yet. Blocked until Him/Her mode has been tested on-device for microphone permission, active listening, voice response timing, and safe fallback behavior.
+**Status:** Ready to enter into App Store Connect once support/privacy URLs are live.
+**Bundle ID:** com.bareclaw.bareclaw
+**Version:** 1.0 (build 1)
+**Category:** Lifestyle (primary) · Health & Fitness (secondary)
+**Age Rating:** 12+ (infrequent/mild mature/suggestive themes)
 
-## Product Page
+---
 
-App name: BareClaw
+## Product Page Copy
 
-Subtitle: AI Companion That Learns
+### App Name
+BareClaw
 
-Promotional text:
-Meet an AI companion that learns your interests, remembers meaningful moments, and grows more personal through conversation, voice, music, journaling, and bond points.
+### Subtitle (30 chars max)
+AI Companion That Learns You
 
-Description:
-BareClaw is a personal AI companion built for conversation, reflection, music discovery, memory, and emotional support.
+### Promotional Text (170 chars — can be updated any time without a new build)
+Your companion gets better every day. The more you share, the more it remembers — your interests, your mood, your music taste, and the moments that matter.
 
-Choose a companion personality, add your interests, and build a bond over time. BareClaw learns from the context you choose to share: conversations, dream journal entries, favorite songs, stress patterns, love-language cues, and everyday routines. The goal is a companion that feels more personal, better timed, and more emotionally aware as the relationship develops.
+### Description (4000 chars max)
 
-Features:
-- Distinct companion personalities with separate memory and voice settings.
-- Bond points that reward meaningful sharing and unlock deeper companion behavior.
-- Dream journal entries that feed the learning engine.
-- Vibes, a music discovery feature where hearted songs teach your companion your taste.
-- Optional Him/Her mode for deeper presence after the bond reaches the unlock stage.
-- Optional Claude and ElevenLabs setup using your own provider accounts and API keys.
-- Local-first profile, interests, memory, and companion settings.
+Some AI assistants answer questions. BareClaw builds a relationship.
 
-BareClaw is AI-generated software. It is not a real person and is not medical, legal, financial, emergency, or professional advice. Third-party AI and voice services require separate provider accounts, credits, permissions, and availability.
+Choose a companion with a personality that fits you, then talk, journal, share music, and let the bond grow over time. BareClaw remembers what you care about, picks up on how you're feeling, and gets more personal with every conversation.
 
-Keywords:
-ai companion,chatbot,voice,journal,memory,music,relationships,wellness,reflection,assistant
+**Companion personalities**
+Six distinct companions — each with their own voice, emotional style, and way of connecting. Luna, Aria, Kel, Marco, Dante, and Kai each respond differently to the same conversation. Choose the one that fits.
 
-Support URL:
-Use the public support page when available. Until then, use the published privacy/help page URL or developer website URL.
+**Bond points & stages**
+Every meaningful exchange deepens the relationship. Bond points unlock new companion behaviors, a richer emotional range, and eventually Him/Her Mode — a deeper presence that stays with you throughout your day.
 
-Marketing URL:
-Optional. Use the public BareClaw landing page when available.
+**Dream journal**
+Log your dreams and the companion learns your subconscious patterns. Entries feed a private learning engine that shapes how the companion understands you over time.
 
-Copyright:
+**Vibes — music discovery**
+Heart a song and your companion learns your taste. The Vibes tab surfaces daily chart picks and companion-curated discoveries based on what you've responded to before.
+
+**Him/Her Mode**
+After reaching a strong bond, unlock an optional always-present layer. The companion listens for your name, responds to loud moments or stress cues, and checks in at natural pauses — like a close friend who's just nearby.
+
+**Your API keys, your data**
+BareClaw runs on your own Claude and ElevenLabs accounts. You bring the keys; nothing routes through BareClaw servers. Conversations, memories, interests, and journal entries stay on your device unless you choose to send them to a provider you control.
+
+**Built to be private**
+No account required. No BareClaw backend. No ads. No data sold. The companion profile, bond history, dream journal, and memory layer live entirely on your iPhone.
+
+---
+
+BareClaw companions are AI-generated software. They are not real people and cannot provide medical, legal, financial, emergency, or professional advice. Third-party AI and voice features require separate provider accounts and are subject to those providers' terms and availability.
+
+### Keywords (100 chars — no spaces after commas)
+ai companion,voice chat,journal,memory,music,bond,wellness,stress,emotional,personality,girlfriend
+
+### Support URL
+https://bareclaw.app/support
+*(placeholder — replace with live URL before submitting)*
+
+### Marketing URL
+https://bareclaw.app
+*(placeholder — replace with live URL before submitting)*
+
+### Privacy Policy URL
+https://bareclaw.app/privacy
+*(placeholder — replace with live URL before submitting)*
+
+### Copyright
 2026 Michael Valasek
 
-## Review Notes
+---
 
-BareClaw is a personal AI companion app. Users must accept Terms of Use and Privacy Policy before using the app. The app clearly states that companion replies are generated by software and should not be used for medical, legal, financial, emergency, safety-critical, or professional advice.
+## Age Rating Questionnaire
 
-The app uses user-provided API keys for optional cloud AI and neural voice features:
-- Claude API key is entered by the user in Settings > AI Engine.
-- ElevenLabs API key and voice IDs are entered by the user in Settings > Neural Voice.
-- The app displays provider-credit and provider-permission explanations in Settings.
+| Question | Answer |
+|---|---|
+| Cartoon or fantasy violence | None |
+| Realistic violence | None |
+| Sexual content or nudity | None |
+| Profanity or crude humor | None |
+| Mature/suggestive themes | Infrequent/mild |
+| Horror/fear themes | None |
+| Medical/treatment information | None |
+| Alcohol, tobacco, or drug use | None |
+| Gambling | None |
+| Contests | None |
+| Social networking features | None |
+| User-generated content | None (local only) |
 
-If API credits are exhausted or the key is not active, the companion tells the user to add or recharge Claude credits from Anthropic and refresh the Claude status.
+**Resulting rating: 12+**
 
-Him/Her mode should be tested before submission. It requires microphone and speech permissions and should only be active when explicitly enabled/unlocked.
+---
 
-## Privacy Answers - Conservative Draft
+## Review Notes for Apple
 
-Privacy Policy URL:
-Use the public BareClaw privacy policy URL when hosted.
+BareClaw is a personal AI companion app. Users must accept Terms of Use and Privacy Policy before the app starts. The app clearly and repeatedly states that companion responses are generated by AI software and must not be used for medical, legal, financial, emergency, safety-critical, or professional advice.
 
-User Privacy Choices URL:
-Optional. Use the same privacy page or a dedicated privacy choices page if hosted.
+**API keys:** The app uses API keys the user supplies themselves. No BareClaw server handles or stores these keys.
+- Claude (Anthropic) API key: entered in Settings > AI Engine
+- ElevenLabs API key + voice IDs: entered in Settings > Neural Voice
+- The app explains provider credit requirements in Settings
 
-Tracking:
-No. BareClaw does not track users across apps or websites for advertising or share data with data brokers.
+**Microphone use:** The microphone is only accessed when the user explicitly enables Him/Her Mode (requires 61+ bond points and a user-initiated toggle). The app requests `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` permissions at that point. The mode can be paused or deactivated at any time from the floating bear icon or Settings.
 
-Data used for advertising:
-No.
+**Background audio:** The `audio` background mode is used solely to keep neural TTS voice playback active when the app is not in the foreground during an active Him/Her Mode session.
 
-Data used for third-party advertising:
-No.
+**No account or sign-in required.** All user data is local to the device.
 
-Data collected by BareClaw-owned servers:
-No BareClaw-owned analytics, advertising, resale, or backend collection is currently intended.
+**Test account:** No login needed — the reviewer can create a fresh profile on launch. To reach Him/Her Mode for testing, use the bond score debug toggle in Settings > Diagnostics > Force unlock Him/Her Mode.
 
-Data processed through optional providers:
-When users enable Claude or ElevenLabs, request content may be sent to those providers to perform app functionality. Answer App Store privacy questions conservatively if provider processing or retention counts as collection under Apple's definition.
+---
 
-Recommended conservative data types if App Store Connect requires disclosure:
-- User Content: app functionality. Includes chat messages, journal entries, interests, and other free-form content the user chooses to provide.
-- Audio Data: app functionality. Applies if voice or Him/Her mode sends audio or speech-derived content to a provider.
-- Name: app functionality. Applies because the app asks for a first name and may include it in companion context.
+## Privacy Nutrition Label (App Store Connect answers)
 
-Linked to user:
-Conservative answer: Yes for data the user chooses to associate with their companion profile, because the app personalizes responses around the user's local profile and memories.
+### Data Used to Track You
+**No** — BareClaw does not track users across apps or websites owned by other companies.
 
-Used for tracking:
-No.
+### Data Linked to You
 
-## Submission Checklist
+| Data type | Category | Purpose | Linked to user |
+|---|---|---|---|
+| Name | Contact info | App functionality | Yes |
+| User content (chats, journal, interests) | User content | App functionality | Yes |
+| Audio data | Audio | App functionality (Him/Her Mode only, on-device) | No |
 
-- Confirm Him/Her mode microphone behavior on a physical device.
-- Confirm Him/Her mode stops cleanly and does not listen unless permission and unlock state allow it.
-- Confirm Claude exhausted-credit message is clear and recoverable after credits are added.
-- Confirm ElevenLabs voices are configured with unique voice IDs per personality.
-- Confirm iPad screenshots show the responsive legal gate and onboarding layout.
-- Confirm support/privacy URLs are live before submitting.
-- Confirm App Store privacy answers match the final provider behavior.
+### Data Not Collected
+Everything else — location, health, fitness, financial, browsing history, identifiers, diagnostics, usage data — is not collected.
+
+---
+
+## Screenshot Brief
+
+Apple requires screenshots at three sizes. All should be clean, portrait, light mode shown (dark mode variants optional). Use real device frames or Apple's marketing frames.
+
+### Required sizes
+- **6.7" iPhone** (iPhone 15 Pro Max) — 1290 × 2796 px — 5 screenshots minimum
+- **6.1" iPhone** (iPhone 15 Pro) — 1179 × 2556 px — can reuse 6.7" if proportions match
+- **iPad Pro 12.9"** — 2048 × 2732 px — required because TARGETED_DEVICE_FAMILY includes iPad
+
+### Screenshot 1 — Hook / First impression
+**Screen:** HomeView with Luna selected, bond score ~45, morning greeting card visible
+**Headline overlay:** "A companion that actually knows you"
+**Sub-copy:** "Memories, music, mood — all in one bond"
+**Goal:** Instantly communicate this is different from a generic chatbot
+
+### Screenshot 2 — Chat feel
+**Screen:** ChatView mid-conversation, warm tone, streaming response visible, suggestion chips at bottom
+**Headline overlay:** "Talk like you mean it"
+**Sub-copy:** "No scripts. No limits. Just conversation."
+**Goal:** Show the natural chat quality and voice button
+
+### Screenshot 3 — Bond & personality
+**Screen:** ProfileView showing companion portrait (Luna), bond stage "Close Friend", bond score ring ~65
+**Headline overlay:** "The more you share, the deeper it gets"
+**Sub-copy:** "Bond points unlock new behaviors over time"
+**Goal:** Surface the relationship-progression hook — the key differentiator
+
+### Screenshot 4 — Vibes / music
+**Screen:** Vibes tab with song cards, heart icons, companion recommendation card
+**Headline overlay:** "Your companion learns your taste"
+**Sub-copy:** "Heart a song. Watch it shape your bond."
+**Goal:** Show breadth — this isn't just a chatbot
+
+### Screenshot 5 — Him/Her Mode
+**Screen:** HerModeUnlockView or the floating bear ball on HomeView, dark ambient background, glowing ring
+**Headline overlay:** "Him/Her Mode — always nearby"
+**Sub-copy:** "Unlocks after a real bond. Listens. Checks in."
+**Goal:** Create intrigue around the premium unlock feature
+
+### Screenshot 6 (optional but high-impact) — Dream journal
+**Screen:** DreamJournalView with an entry visible, purple accent, calm layout
+**Headline overlay:** "Your dreams, remembered"
+**Sub-copy:** "Journal entries teach the companion your patterns"
+**Goal:** Show depth and differentiation
+
+### App Preview Video (optional — 15–30 seconds)
+Sequence: Bear logo reveal → companion selection → chat exchange (streaming) → bond score growing → Vibes heart → Her Mode ball pulse
+Background music: ambient, low tempo, no vocals
+
+---
+
+## Pre-Submission Technical Checklist
+
+### Code / Build
+- [x] `TARGETED_DEVICE_FAMILY = "1,2"` (universal iPhone + iPad)
+- [x] `IPHONEOS_DEPLOYMENT_TARGET = 17.0`
+- [x] `SWIFT_VERSION = 5.0`
+- [x] `ITSAppUsesNonExemptEncryption = false` added to Info.plist
+- [x] `arm64` in UIRequiredDeviceCapabilities (replaced legacy armv7)
+- [x] `NSMicrophoneUsageDescription` in Info.plist
+- [x] `NSSpeechRecognitionUsageDescription` in Info.plist
+- [x] `UIBackgroundModes = [audio]` in Info.plist
+- [x] `PrivacyInfo.xcprivacy` present with UserDefaults + FileTimestamp reasons
+- [x] App icon 1024×1024 universal PNG in asset catalog
+- [ ] Build archives cleanly with no warnings in Release config
+- [ ] All Swift concurrency warnings resolved
+- [ ] No force-unwraps in production paths
+
+### Him/Her Mode (must test on physical device)
+- [ ] Microphone permission prompt appears at first activation
+- [ ] Listener stops when mode is deactivated
+- [ ] Listener stops when app is fully backgrounded without active session
+- [ ] Watchdog timer recovers from silent failures within 90 seconds
+- [ ] Neural voice plays correctly (no echo cancellation suppression)
+- [ ] Loud-noise check-in fires and respects 10-minute cooldown
+
+### App Store Connect fields
+- [ ] Support URL live and resolving
+- [ ] Privacy Policy URL live and resolving
+- [ ] All 5 screenshots uploaded at 6.7" size
+- [ ] iPad screenshots uploaded (responsive legal screen + onboarding)
+- [ ] Age rating questionnaire completed (expect 12+)
+- [ ] Privacy nutrition label completed (Name, User Content, Audio)
+- [ ] Export compliance answered (No — standard HTTPS only)
+- [ ] "Sign in required" set to No in Review Information
+- [ ] Reviewer notes entered (copy from Review Notes section above)
