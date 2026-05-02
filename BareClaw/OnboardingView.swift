@@ -235,33 +235,32 @@ private struct RelationshipModeStep: View {
     @ObservedObject var persona: UserPersona
 
     var body: some View {
-        VStack(alignment: .leading, spacing: BCSizing.spacingMD) {
-            Spacer()
-
-            VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
-                Text("💕 What kind of connection?")
-                    .font(BCFont.caption())
-                    .foregroundColor(.BC.accent)
-                Text("Set the vibe")
-                    .font(BCFont.title())
-                    .foregroundColor(.BC.textPrimary)
-                Text("This shapes how your companion relates to you — and which personalities are the best fit.")
-                    .font(BCFont.body())
-                    .foregroundColor(.BC.textSecondary)
-            }
-            .padding(.horizontal, BCSizing.spacingLG)
-
-            ForEach(RelationshipMode.displayOrder) { mode in
-                RelationshipModeCard(mode: mode, selected: persona.relationshipMode == mode) {
-                    withAnimation(.spring(response: 0.3)) {
-                        persona.relationshipMode = mode
-                        persona.save()
-                    }
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: BCSizing.spacingMD) {
+                VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
+                    Text("💕 What kind of connection?")
+                        .font(BCFont.caption())
+                        .foregroundColor(.BC.accent)
+                    Text("Set the vibe")
+                        .font(BCFont.title())
+                        .foregroundColor(.BC.textPrimary)
+                    Text("This shapes how your companion relates to you — and which personalities are the best fit.")
+                        .font(BCFont.body())
+                        .foregroundColor(.BC.textSecondary)
                 }
                 .padding(.horizontal, BCSizing.spacingLG)
-            }
 
-            Spacer()
+                ForEach(RelationshipMode.displayOrder) { mode in
+                    RelationshipModeCard(mode: mode, selected: persona.relationshipMode == mode) {
+                        withAnimation(.spring(response: 0.3)) {
+                            persona.relationshipMode = mode
+                            persona.save()
+                        }
+                    }
+                    .padding(.horizontal, BCSizing.spacingLG)
+                }
+            }
+            .padding(.vertical, BCSizing.spacingMD)
         }
     }
 }
@@ -310,25 +309,26 @@ private struct StyleStep: View {
     @ObservedObject var persona: UserPersona
 
     var body: some View {
-        VStack(alignment: .leading, spacing: BCSizing.spacingMD) {
-            Spacer()
-            VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
-                Text("🗣 How should I talk to you?")
-                    .font(BCFont.caption())
-                    .foregroundColor(.BC.accent)
-                Text("Pick your vibe")
-                    .font(BCFont.title())
-                    .foregroundColor(.BC.textPrimary)
-            }
-            .padding(.horizontal, BCSizing.spacingLG)
-
-            ForEach(CommunicationStyle.allCases) { style in
-                StyleCard(style: style, selected: persona.style == style) {
-                    withAnimation(.spring(response: 0.3)) { persona.style = style }
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: BCSizing.spacingMD) {
+                VStack(alignment: .leading, spacing: BCSizing.spacingSM) {
+                    Text("🗣 How should I talk to you?")
+                        .font(BCFont.caption())
+                        .foregroundColor(.BC.accent)
+                    Text("Pick your vibe")
+                        .font(BCFont.title())
+                        .foregroundColor(.BC.textPrimary)
                 }
                 .padding(.horizontal, BCSizing.spacingLG)
+
+                ForEach(CommunicationStyle.allCases) { style in
+                    StyleCard(style: style, selected: persona.style == style) {
+                        withAnimation(.spring(response: 0.3)) { persona.style = style }
+                    }
+                    .padding(.horizontal, BCSizing.spacingLG)
+                }
             }
-            Spacer()
+            .padding(.vertical, BCSizing.spacingMD)
         }
     }
 }
