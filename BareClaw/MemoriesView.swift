@@ -27,8 +27,28 @@ struct MemoriesView: View {
                 bg.ignoresSafeArea()
 
                 if isLoading {
-                    ProgressView()
-                        .tint(green)
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(0..<7, id: \.self) { _ in
+                            HStack(spacing: 12) {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color(hex: "#D4C9B4"))
+                                    .frame(width: 32, height: 32)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color(hex: "#D4C9B4"))
+                                        .frame(height: 13)
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color(hex: "#D4C9B4").opacity(0.6))
+                                        .frame(width: 120, height: 11)
+                                }
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            Divider().padding(.leading, 60)
+                        }
+                    }
+                    .shimmer()
                 } else if entries.isEmpty {
                     emptyState
                 } else {

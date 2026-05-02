@@ -12,16 +12,17 @@ struct ChatMessage: Identifiable, Equatable, Codable {
     var text: String
     let timestamp: Date
     var isStreaming: Bool
+    var isError: Bool
     var isSamanthaThought: Bool   // proactive thought from companion
 
     enum MessageRole: String, Codable { case user, assistant, system }
 
     init(id: UUID = UUID(), role: MessageRole, text: String,
          timestamp: Date = Date(), isStreaming: Bool = false,
-         isSamanthaThought: Bool = false) {
+         isError: Bool = false, isSamanthaThought: Bool = false) {
         self.id = id; self.role = role; self.text = text
         self.timestamp = timestamp; self.isStreaming = isStreaming
-        self.isSamanthaThought = isSamanthaThought
+        self.isError = isError; self.isSamanthaThought = isSamanthaThought
     }
 }
 
@@ -224,6 +225,8 @@ final class ChatViewModel: ObservableObject {
     @Published var intimacyStage:       String = ""
     @Published var intimacyScore:       Double = 0
 
+    @Published var failedMessageText: String = ""
+
     private var streamingID: UUID?
     private var suggestionTask: Task<Void, Never>?
     private let persona: UserPersona
@@ -401,10 +404,19 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Send message
 
+    func retryLastMessage() async {
+        guard !failedMessageText.isEmpty, !isTyping else { return }
+        messages.removeAll { $0.isError }
+        inputText = failedMessageText
+        failedMessageText = ""
+        await send()
+    }
+
     func send() async {
         persona.refreshFromDisk()
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        failedMessageText = ""
         inputText = ""
         DiagnosticsLog.info(
             "chat",
@@ -774,6 +786,10 @@ final class ChatViewModel: ObservableObject {
         )
 
         if runtimeFailed {
+            if let i = messages.firstIndex(where: { $0.id == capturedID }) {
+                messages[i].isError = true
+            }
+            failedMessageText = lastUserMessage
             voiceStream.cancel()
             saveMessages()
             CompanionVoiceEngine.shared.speakWithCurrentCompanion(finalText)
@@ -1194,8 +1210,12 @@ struct ChatView: View {
                         ScrollView {
                             LazyVStack(spacing: 12) {
                                 ForEach(vm.messages) { msg in
-                                    MessageBubble(message: msg, persona: persona)
-                                        .id(msg.id)
+                                    MessageBubble(
+                                        message: msg,
+                                        persona: persona,
+                                        onRetry: msg.isError ? { Task { await vm.retryLastMessage() } } : nil
+                                    )
+                                    .id(msg.id)
                                 }
                                 if vm.isTyping {
                                     TypingIndicator(name: persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName)
@@ -1466,7 +1486,8 @@ struct ChatView: View {
 struct MessageBubble: View {
     let message: ChatMessage
     let persona: UserPersona
-    @State private var showSpeakButton = false
+    var onRetry: (() -> Void)? = nil
+    @State private var cursorVisible = false
 
     var body: some View {
         // Samantha thought gets its own special treatment
@@ -1485,7 +1506,14 @@ struct MessageBubble: View {
             }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
-                Text(message.text.isEmpty && message.isStreaming ? "   " : message.text)
+                // Streaming cursor appended to text while assistant is typing
+                let displayText: String = {
+                    if message.isStreaming && !message.text.isEmpty {
+                        return message.text + (cursorVisible ? "▌" : " ")
+                    }
+                    return message.text.isEmpty && message.isStreaming ? "   " : message.text
+                }()
+                Text(displayText)
                     .font(BCFont.body())
                     .foregroundColor(message.role == .user ? .black : .BC.textPrimary)
                     .padding(.horizontal, 14)
@@ -1502,9 +1530,40 @@ struct MessageBubble: View {
                     }
                 }
                 .padding(.horizontal, 4)
+
+                // Retry button — only on error messages
+                if message.isError, let retry = onRetry {
+                    Button(action: retry) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text("Try again")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundColor(persona.selectedCompanion.accentColor)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(persona.selectedCompanion.accentColor.opacity(0.12))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 2)
+                    .accessibilityLabel("Retry sending message")
+                }
             }
 
             if message.role == .assistant { Spacer(minLength: 60) }
+        }
+        // Blink cursor while streaming
+        .task(id: message.isStreaming) {
+            guard message.isStreaming else { cursorVisible = false; return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(420))
+                guard !Task.isCancelled else { break }
+                cursorVisible.toggle()
+            }
+            cursorVisible = false
         }
         } // end else
     }

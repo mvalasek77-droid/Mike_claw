@@ -1202,7 +1202,7 @@ final class HerModeEngine: NSObject, ObservableObject {
                 "I heard a show or movie come up. Are you into it?"
             ],
             "default": [
-                "\(companionName) heard something in your world. Want to tell me about it?"
+                "I heard something in your world. Want to tell me about it?"
             ]
         ]
     }

@@ -820,8 +820,34 @@ struct ProfileView: View {
             bg.ignoresSafeArea()
 
             if vm.isLoading {
-                ProgressView()
-                    .tint(green)
+                VStack(spacing: 0) {
+                    // Hero portrait skeleton
+                    RoundedRectangle(cornerRadius: 0)
+                        .fill(Color(hex: "#D4C9B4"))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 260)
+                    // Stats row skeleton
+                    HStack(spacing: 12) {
+                        ForEach(0..<3, id: \.self) { _ in
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(hex: "#D4C9B4").opacity(0.7))
+                                .frame(height: 72)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    // Name skeleton
+                    HStack {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color(hex: "#D4C9B4").opacity(0.5))
+                            .frame(width: 140, height: 16)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    Spacer()
+                }
+                .shimmer()
             } else {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
