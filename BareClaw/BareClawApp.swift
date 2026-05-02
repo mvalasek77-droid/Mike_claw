@@ -185,6 +185,12 @@ struct BareClawApp: App {
         if currentScore < 62 {
             HerLearningEngine.debugSeedPreHerModeUnlock(companionID: companionID, score: 62)
         }
+        // Seed LoveEngine to .attached stage (50 pts) so the LLM system prompt matches
+        // the bond level shown in UI. Without this the LLM sees loveStage = .curious at bond 62.
+        let loveKey = "loveEngine.score.\(companionID)"
+        if UserDefaults.standard.double(forKey: loveKey) < 50 {
+            UserDefaults.standard.set(50.0, forKey: loveKey)
+        }
 #endif
     }
 

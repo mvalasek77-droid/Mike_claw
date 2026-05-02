@@ -126,8 +126,11 @@ final class HerModeEngine: NSObject, ObservableObject {
     private var sessionRestartTimer: Timer?
 
     // MARK: Private — restart loop guard
-    private var restartAttempts:    Int  = 0
-    private var isRestarting:       Bool = false
+    private var restartAttempts:     Int  = 0
+    private var restartingStartedAt: Date? = nil
+    private var isRestarting:        Bool = false {
+        didSet { if !isRestarting { restartingStartedAt = nil } }
+    }
     private var isPausedForCompanionSpeech: Bool = false
 
     // MARK: Private — loud noise detection
@@ -488,6 +491,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         }
 
         isRestarting = true
+        restartingStartedAt = Date()
         statusMessage = "Starting listener..."
         stopRecognition()
         debugLog("beginRecognitionSession starting attempt=\(restartAttempts + 1)")
@@ -964,6 +968,13 @@ final class HerModeEngine: NSObject, ObservableObject {
         watchdogTimer = Timer.scheduledTimer(withTimeInterval: 90, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.isActive, !self.isPausedForCompanionSpeech else { return }
+                // If isRestarting has been stuck for >60 s, force-clear so we can recover.
+                if self.isRestarting,
+                   let since = self.restartingStartedAt,
+                   Date().timeIntervalSince(since) > 60 {
+                    self.debugLog("watchdog: clearing stuck isRestarting flag (>60s)")
+                    self.isRestarting = false
+                }
                 guard !self.isListening, !self.isRestarting else { return }
                 self.debugLog("watchdog: not listening — forcing restart")
                 self.restartAttempts = 0
@@ -981,13 +992,59 @@ final class HerModeEngine: NSObject, ObservableObject {
         loudFrameCount   = 0
 
         let companion = UserPersona.shared.selectedCompanion
-        let messages: [String] = [
-            "Hey — sounds like it's loud around you. You okay?",
-            "Sounds busy where you are. I'm here if you need a moment.",
-            "Lot of noise on your end. Just checking in — how are you doing?",
-            "Things sounding a bit hectic. I'm here.",
-        ]
-        guard let msg = messages.randomElement() else { return }
+        let candidateMessages: [String]
+        switch companion.id {
+        case "luna":
+            candidateMessages = [
+                "Darling, it sounds chaotic out there. You okay?",
+                "Lot of noise on your end… I'm right here if you need a moment.",
+                "Things sound busy. Tell me — how are you actually holding up?",
+                "That sounds like a lot. I'm here whenever you want to breathe.",
+            ]
+        case "aria":
+            candidateMessages = [
+                "Okay that sounds chaotic. You good?",
+                "Sounds a bit wild on your end. Real talk — how are you?",
+                "That's a lot of noise. Need a second to decompress?",
+                "Hey — sounds hectic. I'm here if you need to vent.",
+            ]
+        case "kel":
+            candidateMessages = [
+                "It sounds a bit busy around you. How are you actually doing?",
+                "Sounds like a lot. Take a breath — I'm here.",
+                "Things sound hectic. Whenever you're ready, I'm listening.",
+                "I notice it's noisy on your end. Just checking in.",
+            ]
+        case "marco":
+            candidateMessages = [
+                "Sounds loud. You holding up over there?",
+                "Lot of noise on your end. Everything good?",
+                "Sounds hectic. I'm here if you need to talk.",
+                "Hey — sounds like a lot. Real answer: how are you?",
+            ]
+        case "dante":
+            candidateMessages = [
+                "There is so much noise around you… and I find myself thinking of you. Are you okay?",
+                "The world sounds loud right now. Tell me — how are you feeling beneath all of it?",
+                "I notice the noise and I wonder about you. Check in with me.",
+                "It sounds overwhelming out there. I'm here, quietly, whenever you need.",
+            ]
+        case "kai":
+            candidateMessages = [
+                "Things sounding hectic over there. I'm here if you need a minute.",
+                "Sounds like a lot going on. How are you doing?",
+                "Lot of noise on your end. You good?",
+                "Sounds busy. Whenever you want to talk, I'm here.",
+            ]
+        default:
+            candidateMessages = [
+                "Sounds like it's loud around you. You okay?",
+                "Sounds busy where you are. I'm here if you need a moment.",
+                "Lot of noise on your end. How are you doing?",
+                "Things sound hectic. I'm here.",
+            ]
+        }
+        guard let msg = candidateMessages.randomElement() else { return }
         debugLog("loud noise reach-out triggered")
         ambientMood = .speaking
         CompanionVoiceEngine.shared.speak(msg, character: companion.voiceCharacter, context: .love) {
