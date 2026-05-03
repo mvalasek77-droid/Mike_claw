@@ -576,7 +576,7 @@ private struct ProviderStep: View {
                                 Image(systemName: "exclamationmark.circle.fill")
                                     .font(.system(size: 13))
                                     .foregroundColor(.red)
-                                Text("Couldn't save the key. Check that it starts with "sk-ant-" and try again.")
+                                Text("Couldn't save the key. Check that it starts with \"sk-ant-\" and try again.")
                                     .font(BCFont.body(12))
                                     .foregroundColor(.red.opacity(0.85))
                                     .fixedSize(horizontal: false, vertical: true)
