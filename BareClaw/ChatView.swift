@@ -231,6 +231,7 @@ final class ChatViewModel: ObservableObject {
     @Published var failedMessageText: String = ""
     @Published var showLetter:  Bool   = false
     @Published var letterText:  String = ""
+    @Published var photoAttachments: [UUID: UIImage] = [:]
 
     private var streamingID: UUID?
     private var suggestionTask: Task<Void, Never>?
@@ -414,6 +415,17 @@ final class ChatViewModel: ObservableObject {
         messages.removeAll { $0.isError }
         inputText = failedMessageText
         failedMessageText = ""
+        await send()
+    }
+
+    func sendPhoto(_ image: UIImage) async {
+        guard !isTyping else { return }
+        BCHaptic.medium()
+        let photoMsgID = UUID()
+        let photoMsg = ChatMessage(id: photoMsgID, role: .user, text: "📷 Photo")
+        messages.append(photoMsg)
+        photoAttachments[photoMsgID] = image
+        inputText = "I'm sharing a photo with you."
         await send()
     }
 
@@ -1228,7 +1240,8 @@ struct ChatView: View {
                                     MessageBubble(
                                         message: msg,
                                         persona: persona,
-                                        onRetry: msg.isError ? { Task { await vm.retryLastMessage() } } : nil
+                                        onRetry: msg.isError ? { Task { await vm.retryLastMessage() } } : nil,
+                                        image: vm.photoAttachments[msg.id]
                                     )
                                     .id(msg.id)
                                 }
@@ -1260,9 +1273,11 @@ struct ChatView: View {
                     QuickActionsBar(actions: vm.quickActions)
 
                     // Input bar
-                    InputBar(text: $vm.inputText) {
+                    InputBar(text: $vm.inputText, onSend: {
                         Task { await vm.send() }
-                    }
+                    }, onPhoto: { image in
+                        Task { await vm.sendPhoto(image) }
+                    })
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -1510,6 +1525,7 @@ struct MessageBubble: View {
     let message: ChatMessage
     let persona: UserPersona
     var onRetry: (() -> Void)? = nil
+    var image: UIImage? = nil
     @State private var cursorVisible = false
 
     var body: some View {
@@ -1517,7 +1533,6 @@ struct MessageBubble: View {
             SamanthaThoughtBubble(text: message.text, companion: persona.selectedCompanion)
                 .padding(.vertical, 4)
         } else if message.isLetter {
-            // The love letter — shown in-chat as a sealed card the user can re-open.
             LetterPreviewBubble(text: message.text, companion: persona.selectedCompanion)
                 .padding(.vertical, 4)
         } else {
@@ -1532,6 +1547,15 @@ struct MessageBubble: View {
             }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
+                // Photo attachment (user messages only)
+                if let img = image {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: 220, maxHeight: 220)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.2), lineWidth: 1))
+                }
                 // Streaming cursor appended to text while assistant is typing
                 let displayText: String = {
                     if message.isStreaming && !message.text.isEmpty {
@@ -1539,6 +1563,7 @@ struct MessageBubble: View {
                     }
                     return message.text.isEmpty && message.isStreaming ? "   " : message.text
                 }()
+                if !displayText.trimmingCharacters(in: .whitespaces).isEmpty || image == nil {
                 Text(displayText)
                     .font(BCFont.body())
                     .foregroundColor(message.role == .user ? .black : .BC.textPrimary)
@@ -1546,6 +1571,7 @@ struct MessageBubble: View {
                     .padding(.vertical, 10)
                     .background(bubbleBackground)
                     .clipShape(BubbleShape(isUser: message.role == .user))
+                }
 
                 HStack(spacing: 8) {
                     Text(timeString(message.timestamp))
@@ -1915,7 +1941,9 @@ struct QuickActionsBar: View {
 struct InputBar: View {
     @Binding var text: String
     let onSend: () -> Void
+    var onPhoto: ((UIImage) -> Void)? = nil
     @FocusState private var focused: Bool
+    @State private var pickerItem: PhotosPickerItem?
 
     private let green  = Color(hex: "#1E3932")
     private let gold   = Color(hex: "#CBA258")
@@ -1928,6 +1956,25 @@ struct InputBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            // ── Photo picker ──────────────────────────────────────────
+            if let onPhoto {
+                PhotosPicker(selection: $pickerItem, matching: .images) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(green.opacity(0.7))
+                        .frame(width: 36, height: 36)
+                }
+                .onChange(of: pickerItem) { _, item in
+                    Task {
+                        guard let item,
+                              let data = try? await item.loadTransferable(type: Data.self),
+                              let image = UIImage(data: data) else { return }
+                        pickerItem = nil
+                        onPhoto(image)
+                    }
+                }
+            }
+
             // ── Text field ────────────────────────────────────────────
             ZStack(alignment: .leading) {
                 if text.isEmpty {

@@ -35,9 +35,9 @@ enum LLMAPIStatus: Equatable, Sendable {
         case .active(.none):
             return "Not configured — add your API key below"
         case .creditsExhausted:
-            return "Claude API needs credits from Anthropic"
+            return "Key saved ✓ — no credits left. Top up at console.anthropic.com"
         case .invalidKey:
-            return "Claude API key was rejected — check Settings"
+            return "Key saved ✓ — Anthropic rejected it. Check it's valid at console.anthropic.com"
         case .rateLimited:
             return "Claude API is rate limited — try again shortly"
         case .serverError(let message):
