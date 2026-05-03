@@ -185,9 +185,10 @@ struct CompanionPortraitView: View {
 
     private var cameraButton: some View {
         Menu {
-            CompanionPhotoPicker(companionId: companion.id) {
-                AnyView(Label("Choose Photo", systemImage: "photo.on.rectangle"))
-            }
+            CompanionPhotoPicker(
+                companionId: companion.id,
+                label: AnyView(Label("Choose Photo", systemImage: "photo.on.rectangle"))
+            )
             if photoStore.hasPhoto(for: companion.id) {
                 Button(role: .destructive) {
                     showRemoveConfirm = true
