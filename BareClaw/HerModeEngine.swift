@@ -1183,7 +1183,6 @@ final class HerModeEngine: NSObject, ObservableObject {
     static let learningBoost: Double = 2.0
 
     private var fallbackOpeners: [String: [String]] {
-        let companionName = companion.name
         return [
             "conversation": [
                 "I heard conversation in the room. Was that something you want to talk about?",
