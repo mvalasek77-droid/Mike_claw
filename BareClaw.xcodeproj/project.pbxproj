@@ -68,6 +68,13 @@
 		FD0011223344556677889900 /* StressOfferBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0011223344556677889901 /* StressOfferBanner.swift */; };
 		FE55461A0513DA513E49CC1A /* HermesPersonality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D627665FCEB2B8E2A4266C /* HermesPersonality.swift */; };
 		FF6600AABB11CC22DD33EE44 /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF6600AABB11CC22DD33EE45 /* Speech.framework */; };
+		C0FFEE00112233445566AA00 /* CompanionPhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00112233445566AA01 /* CompanionPhotoStore.swift */; };
+		C0FFEE00112233445566BB00 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00112233445566BB01 /* DesignSystem.swift */; };
+		C0FFEE00112233445566CC00 /* IntimacyScalingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00112233445566CC01 /* IntimacyScalingEngine.swift */; };
+		C0FFEE00112233445566DD00 /* LoveLetterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00112233445566DD01 /* LoveLetterView.swift */; };
+		C0FFEE00112233445566EE00 /* ProactiveSuggestionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00112233445566EE01 /* ProactiveSuggestionController.swift */; };
+		C0FFEE00112233445566FF00 /* PsychologicalProfiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00112233445566FF01 /* PsychologicalProfiler.swift */; };
+		C0FFEE001122334455667700 /* TrackingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE001122334455667701 /* TrackingEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -134,6 +141,13 @@
 		FD0011223344556677889901 /* StressOfferBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StressOfferBanner.swift; sourceTree = "<group>"; };
 		FDE2858379AE6FE3EBC288C2 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		FF6600AABB11CC22DD33EE45 /* Speech.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
+		C0FFEE00112233445566AA01 /* CompanionPhotoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionPhotoStore.swift; sourceTree = "<group>"; };
+		C0FFEE00112233445566BB01 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		C0FFEE00112233445566CC01 /* IntimacyScalingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntimacyScalingEngine.swift; sourceTree = "<group>"; };
+		C0FFEE00112233445566DD01 /* LoveLetterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoveLetterView.swift; sourceTree = "<group>"; };
+		C0FFEE00112233445566EE01 /* ProactiveSuggestionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProactiveSuggestionController.swift; sourceTree = "<group>"; };
+		C0FFEE00112233445566FF01 /* PsychologicalProfiler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PsychologicalProfiler.swift; sourceTree = "<group>"; };
+		C0FFEE001122334455667701 /* TrackingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackingEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -219,6 +233,13 @@
 				C8148501BED8E38C330C660B /* OnboardingView.swift */,
 				070D0EAE507CB50A724FB60A /* CompanionTaskEngine.swift */,
 				F5BFC352458AD3C5DF1BC371 /* UserPersona.swift */,
+				C0FFEE00112233445566AA01 /* CompanionPhotoStore.swift */,
+				C0FFEE00112233445566BB01 /* DesignSystem.swift */,
+				C0FFEE00112233445566CC01 /* IntimacyScalingEngine.swift */,
+				C0FFEE00112233445566DD01 /* LoveLetterView.swift */,
+				C0FFEE00112233445566EE01 /* ProactiveSuggestionController.swift */,
+				C0FFEE00112233445566FF01 /* PsychologicalProfiler.swift */,
+				C0FFEE001122334455667701 /* TrackingEngine.swift */,
 				DAF2B6E40B5FA95F9E67EABC /* Assets.xcassets */,
 				29206E86E41A89CBAF31918B /* Info.plist */,
 			);
@@ -371,6 +392,13 @@
 				A6A6EED803937ED62D8364D3 /* OnboardingView.swift in Sources */,
 				F16E7BF11002B85C6E2A052D /* CompanionTaskEngine.swift in Sources */,
 				C5F7DC732685EDC61770D9C6 /* UserPersona.swift in Sources */,
+				C0FFEE00112233445566AA00 /* CompanionPhotoStore.swift in Sources */,
+				C0FFEE00112233445566BB00 /* DesignSystem.swift in Sources */,
+				C0FFEE00112233445566CC00 /* IntimacyScalingEngine.swift in Sources */,
+				C0FFEE00112233445566DD00 /* LoveLetterView.swift in Sources */,
+				C0FFEE00112233445566EE00 /* ProactiveSuggestionController.swift in Sources */,
+				C0FFEE00112233445566FF00 /* PsychologicalProfiler.swift in Sources */,
+				C0FFEE001122334455667700 /* TrackingEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
