@@ -414,7 +414,6 @@ private struct CompanionVibesView: View {
         )
         lastRefreshDayKey = dayKey
         UserDefaults.standard.set(dayKey, forKey: lastVibeRefreshKey)
-        persona = UserPersona.shared
         likedSongIDs = loadLikedSongIDs()
         chartSongs = []
         currentIndex = 0
@@ -897,9 +896,10 @@ struct ProfileView: View {
 
             // "Change Photo" bar — clearly visible at the bottom of the portrait
             Menu {
-                CompanionPhotoPicker(companionId: vm.companionId) {
-                    AnyView(Label("Choose Photo from Library", systemImage: "photo.on.rectangle"))
-                }
+                CompanionPhotoPicker(
+                    companionId: vm.companionId,
+                    label: AnyView(Label("Choose Photo from Library", systemImage: "photo.on.rectangle"))
+                )
                 if photoStore.hasPhoto(for: vm.companionId) {
                     Button(role: .destructive) {
                         CompanionPhotoStore.shared.remove(for: vm.companionId)

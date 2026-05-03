@@ -134,7 +134,7 @@ struct BCButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(BCMotion.snappy, value: configuration.isPressed)
-            .onChange(of: configuration.isPressed) { pressed in
+            .onChange(of: configuration.isPressed) { _, pressed in
                 if pressed {
                     switch haptic {
                     case .light:  BCHaptic.light()

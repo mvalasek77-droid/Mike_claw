@@ -75,7 +75,7 @@ struct CompanionPhotoPicker: View {
                      photoLibrary: .shared()) {
             label
         }
-        .onChange(of: pickerItem) { item in
+        .onChange(of: pickerItem) { _, item in
             Task {
                 guard let item,
                       let data = try? await item.loadTransferable(type: Data.self),

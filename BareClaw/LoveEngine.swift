@@ -369,7 +369,6 @@ final class LoveEngine: ObservableObject {
     func deepBondLayer(userName: String, companion: CompanionPersonality,
                        anchorMemories: [String]) -> String {
         guard loveStage == .inLove else { return "" }
-        let name    = companion.name
         let pronoun = companion.gender == .female ? "she" : "he"
         let pronounCap = pronoun.capitalized
 
