@@ -2,55 +2,10 @@ import SwiftUI
 
 // MARK: - BareClaw Design System
 //
-// Single source of truth for color, typography, motion, haptics, and glass effects.
-// Every pixel in the app should source from here. No hardcoded hex values in views.
+// Single source of truth for motion, haptics, button styles, and glass effects.
+// Color palette, typography, spacing, and hex init live in HermesTheme.swift.
 
-// MARK: - Color Palette
-
-extension Color {
-    enum BC {
-        // MARK: Brand
-        static let forest        = Color("BCForest",        bundle: nil)
-        static let forestMid     = Color("BCForestMid",     bundle: nil)
-        static let gold          = Color("BCGold",          bundle: nil)
-        static let cream         = Color("BCCream",         bundle: nil)
-        static let warmWhite     = Color("BCWarmWhite",     bundle: nil)
-        static let tan           = Color("BCTan",           bundle: nil)
-        static let purple        = Color("BCPurple",        bundle: nil)
-
-        // MARK: Text
-        static let textPrimary   = Color("BCTextPrimary",   bundle: nil)
-        static let textSecondary = Color("BCTextSecondary", bundle: nil)
-        static let textTertiary  = Color("BCTextTertiary",  bundle: nil)
-
-        // MARK: Surface
-        static let surface        = Color("BCSurface",       bundle: nil)
-        static let surfaceRaised  = Color("BCSurfaceRaised", bundle: nil)
-        static let surfaceOverlay = Color("BCSurfaceOverlay",bundle: nil)
-
-        // MARK: Semantic
-        static let destructive   = Color.red
-        static let success       = Color(hex: "#30D158")
-        static let warning       = Color(hex: "#FF9F0A")
-
-        // MARK: Hex fallbacks (used while ColorSet assets are added to Xcode)
-        // These match the light-mode palette already in the app.
-        static var _forest:    Color { Color(hex: "#1E3932") }
-        static var _forestMid: Color { Color(hex: "#2C5147") }
-        static var _gold:      Color { Color(hex: "#CBA258") }
-        static var _cream:     Color { Color(hex: "#F2F0EB") }
-        static var _warmWhite: Color { Color(hex: "#FAF7F2") }
-        static var _tan:       Color { Color(hex: "#E8E0D0") }
-        static var _purple:    Color { Color(hex: "#7B68EE") }
-        static var _textPrimary:   Color { Color(hex: "#1E3932") }
-        static var _textSecondary: Color { Color(hex: "#5C5C5C") }
-        static var _textTertiary:  Color { Color(hex: "#9A9A9A") }
-        static var _surface:       Color { Color(hex: "#FFFFFF") }
-        static var _surfaceRaised: Color { Color(hex: "#F2F0EB") }
-    }
-}
-
-// MARK: - Typography
+// MARK: - Typography (Font.BC — distinct from Color.BC in HermesTheme)
 
 extension Font {
     enum BC {
@@ -166,16 +121,6 @@ extension View {
     func glassCard(radius: CGFloat = 18, shadow: Bool = true) -> some View {
         modifier(GlassCardModifier(radius: radius, shadow: shadow))
     }
-
-    /// Applies standard BareClaw card styling (solid white card, rounded corners, shadow).
-    func bcCard(radius: CGFloat = 16) -> some View {
-        self
-            .background(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(Color.BC._surface)
-                    .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
-            )
-    }
 }
 
 // MARK: - Accessible Button Style
@@ -266,11 +211,3 @@ extension View {
     func pulse() -> some View { modifier(PulseModifier()) }
 }
 
-// MARK: - applyIf helper (already in codebase, keep compatible)
-
-extension View {
-    @ViewBuilder
-    func applyIf<T: View>(_ condition: Bool, transform: (Self) -> T) -> some View {
-        if condition { transform(self) } else { self }
-    }
-}
