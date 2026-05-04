@@ -144,9 +144,9 @@ final class HerModeEngine: NSObject, ObservableObject {
     private var watchdogTimer: Timer?
 
     // MARK: Private — config
-    private var requiredSilenceSeconds: TimeInterval = TimeInterval.random(in: 35...95)
-    private let minProactiveGapMinutes: TimeInterval = 18
-    private let maxProactiveMessagesPerDay = 6
+    private var requiredSilenceSeconds: TimeInterval = TimeInterval.random(in: 15...45)
+    private let minProactiveGapMinutes: TimeInterval = 8
+    private let maxProactiveMessagesPerDay = 10
     private let defaults = UserDefaults.standard
 
     // MARK: - Topic detection dictionary
@@ -500,7 +500,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         speechRecognizer?.defaultTaskHint = .dictation
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         recognitionRequest?.shouldReportPartialResults  = true
-        recognitionRequest?.requiresOnDeviceRecognition = true
+        recognitionRequest?.requiresOnDeviceRecognition = false  // allow cloud fallback; on-device model may not be downloaded
 
         guard let request    = recognitionRequest,
               let recognizer = speechRecognizer,
@@ -718,8 +718,8 @@ final class HerModeEngine: NSObject, ObservableObject {
         let window = ambientWindowPieces.joined(separator: " ")
         let wordCount = window.split(separator: " ").count
         let windowAge = Date().timeIntervalSince(ambientWindowStartedAt ?? Date())
-        guard wordCount >= 10, wordCount >= 18 || windowAge >= 18 else { return }
-        guard Date().timeIntervalSince(lastAmbientInsightAt) >= 20 else { return }
+        guard wordCount >= 5, wordCount >= 8 || windowAge >= 8 else { return }
+        guard Date().timeIntervalSince(lastAmbientInsightAt) >= 10 else { return }
 
         maybeCreateAmbientInsight(from: window)
     }
@@ -965,14 +965,14 @@ final class HerModeEngine: NSObject, ObservableObject {
     // Watchdog: every 90s, if we should be listening but aren't, restart.
     private func startWatchdog() {
         watchdogTimer?.invalidate()
-        watchdogTimer = Timer.scheduledTimer(withTimeInterval: 90, repeats: true) { [weak self] _ in
+        watchdogTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.isActive, !self.isPausedForCompanionSpeech else { return }
                 // If isRestarting has been stuck for >60 s, force-clear so we can recover.
                 if self.isRestarting,
                    let since = self.restartingStartedAt,
-                   Date().timeIntervalSince(since) > 60 {
-                    self.debugLog("watchdog: clearing stuck isRestarting flag (>60s)")
+                   Date().timeIntervalSince(since) > 20 {
+                    self.debugLog("watchdog: clearing stuck isRestarting flag (>20s)")
                     self.isRestarting = false
                 }
                 guard !self.isListening, !self.isRestarting else { return }
