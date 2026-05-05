@@ -1201,7 +1201,10 @@ struct ChatView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.BC.background.ignoresSafeArea()
+                BeachSceneBackground()
+                ChatStarfieldView()
+                    .allowsHitTesting(false)
+                    .ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     // API key required banner (shown when no provider is configured)
@@ -1283,7 +1286,7 @@ struct ChatView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.BC.background, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -1641,9 +1644,11 @@ struct MessageBubble: View {
     @ViewBuilder
     private var bubbleBackground: some View {
         if message.role == .user {
-            persona.selectedCompanion.accentColor.opacity(0.85)
+            persona.selectedCompanion.accentColor.opacity(0.92)
         } else {
-            Color.BC.surfaceRaised
+            // Frosted dark glass — material blurs the beach scene, tint ensures text contrast
+            Color.black.opacity(0.38)
+                .background(.ultraThinMaterial)
         }
     }
 
@@ -1731,6 +1736,141 @@ struct BubbleShape: Shape {
     }
 }
 
+// MARK: - BeachSceneBackground
+
+struct BeachSceneBackground: View {
+    @State private var shimmer: CGFloat = 0
+
+    // Pre-computed shimmer streak positions to avoid random redraws
+    private let streaks: [(width: CGFloat, yFrac: Double, xBase: CGFloat, opacity: Double)] = [
+        (140, 0.42, 0,   0.14), (80,  0.47, 120, 0.20),
+        (190, 0.52, 50,  0.12), (60,  0.57, 200, 0.18),
+        (130, 0.62, 30,  0.15), (170, 0.45, 150, 0.11),
+        (90,  0.50, 80,  0.16), (150, 0.55, 250, 0.13),
+    ]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            ZStack(alignment: .top) {
+                // Sky-to-ocean-to-sand gradient
+                LinearGradient(
+                    stops: [
+                        .init(color: Color(hex: "#F7C97A"), location: 0.00),  // golden sky
+                        .init(color: Color(hex: "#87CEEB"), location: 0.14),  // soft sky blue
+                        .init(color: Color(hex: "#3FA9D9"), location: 0.36),  // horizon water
+                        .init(color: Color(hex: "#0B6FB8"), location: 0.58),  // mid ocean
+                        .init(color: Color(hex: "#04428A"), location: 0.78),  // deep ocean
+                        .init(color: Color(hex: "#C89A55"), location: 1.00),  // sandy beach
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                // Sun glow — top-right warm radial
+                RadialGradient(
+                    colors: [Color(hex: "#FFE680").opacity(0.42), .clear],
+                    center: UnitPoint(x: 0.75, y: 0.05),
+                    startRadius: 10, endRadius: 160
+                )
+
+                // Soft cloud wisps near top
+                Color(hex: "#FFFFFF").opacity(0.06)
+                    .frame(width: w * 0.45, height: 18)
+                    .blur(radius: 10)
+                    .offset(x: -w * 0.05, y: h * 0.10)
+                Color(hex: "#FFFFFF").opacity(0.05)
+                    .frame(width: w * 0.30, height: 14)
+                    .blur(radius: 8)
+                    .offset(x: w * 0.20, y: h * 0.15)
+
+                // Ocean shimmer streaks (slowly drift left-right)
+                ForEach(Array(streaks.enumerated()), id: \.offset) { _, streak in
+                    Capsule()
+                        .fill(Color.white.opacity(streak.opacity))
+                        .frame(width: streak.width, height: 1.5)
+                        .offset(
+                            x: streak.xBase + shimmer * w * 0.12 - w * 0.05,
+                            y: h * streak.yFrac
+                        )
+                        .blur(radius: 1.5)
+                }
+
+                // Sandy beach texture glow at the very bottom
+                LinearGradient(
+                    colors: [.clear, Color(hex: "#E8B96A").opacity(0.55)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .frame(height: h * 0.10)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+            }
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            withAnimation(.easeInOut(duration: 9).repeatForever(autoreverses: true)) {
+                shimmer = 1
+            }
+        }
+    }
+}
+
+// MARK: - ChatStarfieldView
+//
+// Twinkling 4-pointed starlight rendered with Canvas at ~15 fps.
+// Appears over the beach scene, behind the scroll content (allowsHitTesting: false).
+
+struct ChatStarfieldView: View {
+    private struct Star {
+        var x, y, size, phase: Double
+    }
+
+    private let stars: [Star]
+
+    init() {
+        var rng = SystemRandomNumberGenerator()
+        stars = (0..<65).map { _ in
+            Star(
+                x: Double.random(in: 0...1, using: &rng),
+                y: Double.random(in: 0...1, using: &rng),
+                size: Double.random(in: 1.5...4.2, using: &rng),
+                phase: Double.random(in: 0...(Double.pi * 2), using: &rng)
+            )
+        }
+    }
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 15, paused: false)) { ctx in
+            Canvas { context, size in
+                let t = ctx.date.timeIntervalSinceReferenceDate
+                for star in stars {
+                    let twinkle = (sin(t * 1.6 + star.phase) + 1) * 0.5
+                    let alpha = twinkle * 0.72 + 0.07
+                    let s = star.size * (0.8 + twinkle * 0.4)
+                    let cx = star.x * size.width
+                    let cy = star.y * size.height
+                    var ctx2 = context
+                    ctx2.opacity = alpha
+                    ctx2.fill(fourPointStar(cx: cx, cy: cy, outer: s, inner: s * 0.35),
+                              with: .color(.white))
+                }
+            }
+        }
+    }
+
+    private func fourPointStar(cx: Double, cy: Double, outer: Double, inner: Double) -> Path {
+        var path = Path()
+        for i in 0..<8 {
+            let angle = Double(i) * .pi / 4 - .pi / 2
+            let r = i % 2 == 0 ? outer : inner
+            let pt = CGPoint(x: cx + cos(angle) * r, y: cy + sin(angle) * r)
+            if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
 // MARK: - CompanionVoiceToggleButton
 
 struct CompanionVoiceToggleButton: View {
@@ -1779,7 +1919,7 @@ struct TypingIndicator: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(Color.BC.surface)
+            .background(Color.black.opacity(0.35).background(.ultraThinMaterial))
             .clipShape(Capsule())
             Spacer(minLength: 60)
         }
