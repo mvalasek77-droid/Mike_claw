@@ -2826,8 +2826,17 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundColor(Color.BC.primary)
+                    Button("Done") {
+                        // Auto-save key if one is present — no separate tap needed
+                        let trimmed = apiKey.trimmingCharacters(in: .whitespaces)
+                        if trimmed.count > 20 {
+                            KeychainHelper.write(service: "com.bareclaw.bareclaw",
+                                                 key: "anthropic_api_key",
+                                                 value: trimmed)
+                        }
+                        dismiss()
+                    }
+                    .foregroundColor(Color.BC.primary)
                 }
             }
         }
@@ -3125,15 +3134,20 @@ struct SettingsView: View {
         }
     }
 
-	    private func saveAPIKey() {
-	        let trimmed = apiKey.trimmingCharacters(in: .whitespaces)
-	        guard trimmed.count > 20 else { return }
-	        KeychainHelper.write(service: "com.bareclaw.bareclaw",
-	                             key: "anthropic_api_key",
-	                             value: trimmed)
-	        DiagnosticsLog.info("settings", "Claude API key saved from Settings.")
-	        refreshAPIStatus(markSavedOnSuccess: true)
-	    }
+    private func saveAPIKey() {
+        let trimmed = apiKey.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count > 20 else { return }
+        KeychainHelper.write(service: "com.bareclaw.bareclaw",
+                             key: "anthropic_api_key",
+                             value: trimmed)
+        DiagnosticsLog.info("settings", "Claude API key saved from Settings.")
+        // Show saved confirmation immediately — don't wait for Anthropic to respond
+        BCHaptic.success()
+        keySaved = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { keySaved = false }
+        // Validate in background to update the status label
+        refreshAPIStatus()
+    }
 
     private func refreshAPIStatus(markSavedOnSuccess: Bool = false) {
         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)

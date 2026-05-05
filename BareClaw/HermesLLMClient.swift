@@ -192,13 +192,10 @@ actor HermesLLMClient {
             _apiStatus = .notConfigured
             return
         }
-
-        switch _apiStatus {
-        case .unknown, .notConfigured, .active(_):
-            _apiStatus = .active(_provider)
-        case .creditsExhausted, .invalidKey, .rateLimited, .serverError(_):
-            break
-        }
+        // Always optimistically mark active when a provider is selected.
+        // Errors are surfaced through real API call failures, not cached here,
+        // so configure() can never get permanently stuck in an error state.
+        _apiStatus = .active(_provider)
     }
 
     // MARK: - Main call (with full Hermes context injection)

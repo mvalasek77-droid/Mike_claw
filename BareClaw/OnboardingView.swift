@@ -547,6 +547,15 @@ private struct ProviderStep: View {
                             RoundedRectangle(cornerRadius: BCSizing.radiusMD)
                                 .strokeBorder(apiKey.isEmpty ? Color.BC.border : Color.BC.primary, lineWidth: 1)
                         )
+                        .onAppear {
+                            // Pre-fill if a key was already saved (e.g. user revisits this step)
+                            if apiKey.isEmpty,
+                               let saved = KeychainHelper.read(service: "com.bareclaw.bareclaw",
+                                                               key: "anthropic_api_key"),
+                               !saved.isEmpty {
+                                apiKey = saved
+                            }
+                        }
 
                         Button {
                             BCHaptic.medium()
