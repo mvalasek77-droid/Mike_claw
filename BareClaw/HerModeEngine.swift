@@ -566,18 +566,16 @@ final class HerModeEngine: NSObject, ObservableObject {
             }
         }
 
-        // prepare() must run before outputFormat — without it the engine hasn't
-        // queried hardware yet and outputFormat can return sampleRate=0, which
-        // causes installTap to throw an NSException (uncatchable in Swift).
+        // prepare() must run before installTap so the engine has queried hardware.
         micEngine.prepare()
-        let node   = micEngine.inputNode
-        let format = node.outputFormat(forBus: 0)
+        let node = micEngine.inputNode
 
-        guard format.sampleRate > 0 else {
+        // Sanity-check the hardware format before installing the tap.
+        let hwFormat = node.outputFormat(forBus: 0)
+        guard hwFormat.sampleRate > 0 else {
             debugLog("beginRecognitionSession: audio format has 0 sampleRate — deferring restart")
             isRestarting = false
             restartAttempts += 1
-            // Schedule a retry once the audio session has had a moment to settle
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 guard self.isActive, !self.isListening, !self.isRestarting else { return }
@@ -590,7 +588,10 @@ final class HerModeEngine: NSObject, ObservableObject {
         let rmsThreshold  = self.loudRMSThreshold
         let framesTrigger = self.loudFramesTrigger
 
-        node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buf, _ in
+        // Pass nil so AVAudioEngine picks the native hardware format for the tap.
+        // An explicit format risks a "format mismatch" NSException if the engine's
+        // internal bus format differs from what outputFormat(forBus:0) reported.
+        node.installTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] buf, _ in
             // Direct append on the audio thread — SFSpeechAudioBufferRecognitionRequest is
             // documented as thread-safe. Eliminates one Task per buffer (~43/sec).
             self?._requestRef?.append(buf)
