@@ -549,13 +549,42 @@ final class HerModeEngine: NSObject, ObservableObject {
                         let backoff = UInt64(pow(2.0, Double(self.restartAttempts)) * 500_000_000)
                         try? await Task.sleep(nanoseconds: min(backoff, 8_000_000_000))
                     }
+                    // Reactivate the audio session before each restart — not just after
+                    // interruptions. The 60s rollover stops the engine, which can leave
+                    // the inputNode format stale; reactivate brings hardware state back.
+                    let audioReady = await BareClawAudioSessionController.shared.reactivate(
+                        owner: BareClawAudioSessionOwner.herMode
+                    )
+                    guard audioReady else {
+                        self.statusMessage = "Listener audio unavailable"
+                        self.isListening   = false
+                        self.isRestarting  = false
+                        return
+                    }
                     self.beginRecognitionSession()
                 }
             }
         }
 
+        // prepare() must run before outputFormat — without it the engine hasn't
+        // queried hardware yet and outputFormat can return sampleRate=0, which
+        // causes installTap to throw an NSException (uncatchable in Swift).
+        micEngine.prepare()
         let node   = micEngine.inputNode
         let format = node.outputFormat(forBus: 0)
+
+        guard format.sampleRate > 0 else {
+            debugLog("beginRecognitionSession: audio format has 0 sampleRate — deferring restart")
+            isRestarting = false
+            restartAttempts += 1
+            // Schedule a retry once the audio session has had a moment to settle
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard self.isActive, !self.isListening, !self.isRestarting else { return }
+                self.beginRecognitionSession()
+            }
+            return
+        }
 
         // Capture immutable thresholds on MainActor before entering the audio-thread tap
         let rmsThreshold  = self.loudRMSThreshold
@@ -649,13 +678,16 @@ final class HerModeEngine: NSObject, ObservableObject {
         if isListening || micEngine.isRunning {
             debugLog("stopping recognition")
         }
-        micEngine.stop()
-        micEngine.inputNode.removeTap(onBus: 0)
+        // End audio + cancel task first so the request knows no more buffers are coming
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
         recognitionRequest = nil
         _requestRef        = nil   // clear nonisolated ref so the tap stops appending
         recognitionTask    = nil
+        // Remove tap before stopping the engine — stopping first invalidates the
+        // inputNode state and can leave a phantom tap that crashes the next installTap
+        micEngine.inputNode.removeTap(onBus: 0)
+        micEngine.stop()
         isListening        = false
         if isActive {
             statusMessage = "Restarting listener..."
