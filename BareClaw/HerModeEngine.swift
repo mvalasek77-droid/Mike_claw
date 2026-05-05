@@ -140,6 +140,11 @@ final class HerModeEngine: NSObject, ObservableObject {
     private let loudFramesTrigger:   Int  = 130    // ~3 seconds at 44.1kHz / 1024 buffer
     private let loudReachOutCooldown: TimeInterval = 600  // 10 min between loud-noise reach-outs
 
+    // Non-isolated refs safe to access from the audio thread without a Task
+    nonisolated(unsafe) private var _requestRef: SFSpeechAudioBufferRecognitionRequest?
+    nonisolated(unsafe) private var _loudFrameCount: Int = 0
+    nonisolated(unsafe) private var _stressSampleCounter: Int = 0
+
     // MARK: Private — watchdog
     private var watchdogTimer: Timer?
 
@@ -499,6 +504,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
         speechRecognizer?.defaultTaskHint = .dictation
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        _requestRef = recognitionRequest   // nonisolated copy for audio thread — no Task needed
         recognitionRequest?.shouldReportPartialResults  = true
         recognitionRequest?.requiresOnDeviceRecognition = false  // allow cloud fallback; on-device model may not be downloaded
 
@@ -550,26 +556,43 @@ final class HerModeEngine: NSObject, ObservableObject {
 
         let node   = micEngine.inputNode
         let format = node.outputFormat(forBus: 0)
+
+        // Capture immutable thresholds on MainActor before entering the audio-thread tap
+        let rmsThreshold  = self.loudRMSThreshold
+        let framesTrigger = self.loudFramesTrigger
+
         node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buf, _ in
-            Task { @MainActor [weak self] in self?.recognitionRequest?.append(buf) }
+            // Direct append on the audio thread — SFSpeechAudioBufferRecognitionRequest is
+            // documented as thread-safe. Eliminates one Task per buffer (~43/sec).
+            self?._requestRef?.append(buf)
+
             guard let channel = buf.floatChannelData?[0] else { return }
             let frameCount = Int(buf.frameLength)
             guard frameCount > 0 else { return }
             var rms: Float = 0
             for i in 0..<frameCount { rms += channel[i] * channel[i] }
             rms = sqrt(rms / Float(frameCount))
-            Task { @MainActor in
-                StressLearningEngine.shared.observeAmbientNoiseSample(rms)
-                // Loud noise reach-out: count consecutive loud frames
-                guard let self else { return }
-                if rms > self.loudRMSThreshold {
-                    self.loudFrameCount += 1
-                    if self.loudFrameCount >= self.loudFramesTrigger {
-                        self.handleLoudNoise()
-                    }
-                } else {
-                    self.loudFrameCount = max(0, self.loudFrameCount - 3) // decay gradually
+
+            guard let self else { return }
+
+            // Throttle stress samples: every 10th buffer → ~4×/sec instead of 43×/sec
+            _stressSampleCounter += 1
+            if _stressSampleCounter % 10 == 0 {
+                let sample = rms
+                DispatchQueue.main.async {
+                    StressLearningEngine.shared.observeAmbientNoiseSample(sample)
                 }
+            }
+
+            // Loud-noise counter runs entirely on the audio thread via nonisolated vars.
+            // Only dispatches to MainActor on the rare trigger event.
+            if rms > rmsThreshold {
+                _loudFrameCount += 1
+                if _loudFrameCount >= framesTrigger {
+                    DispatchQueue.main.async { [weak self] in self?.handleLoudNoise() }
+                }
+            } else {
+                _loudFrameCount = max(0, _loudFrameCount - 3)
             }
         }
         micEngine.prepare()
@@ -631,6 +654,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
         recognitionRequest = nil
+        _requestRef        = nil   // clear nonisolated ref so the tap stops appending
         recognitionTask    = nil
         isListening        = false
         if isActive {

@@ -1180,6 +1180,8 @@ struct ChatView: View {
     @State private var showSettings = false
     @State private var showAutomation = false
     @State private var showAPIKeyBanner = false
+    @State private var headerPickerItem: PhotosPickerItem? = nil
+    @ObservedObject private var photoStore = CompanionPhotoStore.shared
     @ObservedObject private var voiceEngine = CompanionVoiceEngine.shared
     private let herModePendingSpeechKey = "herMode.pendingDirectMessage"
 
@@ -1285,11 +1287,18 @@ struct ChatView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    // Tapping the companion's avatar/name returns to video mode
-                    Button {
-                        BCHaptic.light()
-                        CompanionVoiceEngine.shared.stopSpeaking()
-                        appState.currentMode = .video
+                    // Avatar taps open a photo-picker menu so the user can set a custom photo
+                    Menu {
+                        PhotosPicker(selection: $headerPickerItem, matching: .images) {
+                            Label("Change Photo", systemImage: "photo.badge.plus")
+                        }
+                        if photoStore.hasPhoto(for: persona.selectedCompanion.id) {
+                            Button(role: .destructive) {
+                                CompanionPhotoStore.shared.remove(for: persona.selectedCompanion.id)
+                            } label: {
+                                Label("Remove Photo", systemImage: "trash")
+                            }
+                        }
                     } label: {
                         HStack(spacing: 10) {
                             CompanionAvatarView(companion: persona.selectedCompanion, size: .chat)
@@ -1304,9 +1313,8 @@ struct ChatView: View {
                                 Text(persona.selectedCompanion.name)
                                     .font(BCFont.headline())
                                     .foregroundColor(.BC.textPrimary)
-                                // Intimacy stage label — grows over time
                                 HStack(spacing: 4) {
-                                    Image(systemName: "video.fill")
+                                    Image(systemName: "photo.circle")
                                         .font(.system(size: 9))
                                         .foregroundColor(persona.selectedCompanion.accentColor.opacity(0.7))
                                     Text(vm.intimacyStage.isEmpty ? "Just getting started" : vm.intimacyStage)
@@ -1317,6 +1325,16 @@ struct ChatView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .onChange(of: headerPickerItem) { _, item in
+                        guard let item else { return }
+                        Task {
+                            if let data = try? await item.loadTransferable(type: Data.self),
+                               let image = UIImage(data: data) {
+                                CompanionPhotoStore.shared.save(image, for: persona.selectedCompanion.id)
+                            }
+                            headerPickerItem = nil
+                        }
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 14) {
