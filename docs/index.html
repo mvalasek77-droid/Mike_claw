@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BareClaw — Your AI Companion</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0d1117; color: #e6edf3; line-height: 1.6;
+    }
+    /* Hero */
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+      padding: 60px 24px;
+      background: radial-gradient(ellipse at 70% 10%, #1a3a6a44 0%, transparent 60%),
+                  radial-gradient(ellipse at 30% 80%, #2f81f722 0%, transparent 50%),
+                  #0d1117;
+    }
+    .orb {
+      width: 100px; height: 100px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #5aa0ff, #0a4db5);
+      box-shadow: 0 0 60px #2f81f766, 0 0 120px #2f81f733;
+      margin-bottom: 32px;
+      animation: pulse 3s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 60px #2f81f766, 0 0 120px #2f81f733; }
+      50% { box-shadow: 0 0 80px #2f81f799, 0 0 160px #2f81f755; }
+    }
+    .hero h1 { font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 900; letter-spacing: -0.02em; margin-bottom: 16px; }
+    .hero h1 span { color: #2f81f7; }
+    .hero p { font-size: 1.2rem; color: #8b949e; max-width: 500px; margin: 0 auto 40px; }
+    .badge-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px; }
+    .badge {
+      background: #161b22; border: 1px solid #30363d; border-radius: 20px;
+      padding: 6px 16px; font-size: 0.85rem; color: #8b949e;
+    }
+    .app-store-btn {
+      display: inline-block;
+      background: #fff; color: #000; border-radius: 12px;
+      padding: 14px 28px; font-weight: 700; font-size: 1rem;
+      text-decoration: none; letter-spacing: -0.01em;
+    }
+    .app-store-btn:hover { background: #e6edf3; }
+    /* Features */
+    .features { padding: 80px 24px; max-width: 900px; margin: 0 auto; }
+    .features h2 { text-align: center; font-size: 1.8rem; font-weight: 800; margin-bottom: 48px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+    .feature-card {
+      background: #161b22; border: 1px solid #30363d; border-radius: 16px;
+      padding: 28px 24px;
+    }
+    .feature-icon { font-size: 2rem; margin-bottom: 16px; }
+    .feature-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { color: #8b949e; font-size: 0.9rem; line-height: 1.6; }
+    /* Footer */
+    footer {
+      text-align: center; padding: 40px 24px; color: #484f58;
+      font-size: 0.85rem; border-top: 1px solid #21262d;
+    }
+    footer a { color: #8b949e; text-decoration: none; margin: 0 12px; }
+    footer a:hover { color: #e6edf3; }
+  </style>
+</head>
+<body>
+
+  <section class="hero">
+    <div class="orb"></div>
+    <h1>Meet <span>BareClaw</span></h1>
+    <p>An AI companion who listens, remembers, and genuinely cares about your day.</p>
+    <div class="badge-row">
+      <span class="badge">🎙 Always listening</span>
+      <span class="badge">🧠 Powered by Claude AI</span>
+      <span class="badge">🔒 Private by design</span>
+      <span class="badge">📱 iPhone</span>
+    </div>
+    <a class="app-store-btn" href="#">Download on the App Store</a>
+  </section>
+
+  <section class="features">
+    <h2>Everything your companion can do</h2>
+    <div class="grid">
+
+      <div class="feature-card">
+        <div class="feature-icon">👂</div>
+        <h3>Her Mode &amp; Him Mode</h3>
+        <p>Your companion listens to the world around you — not to record it, but to notice. When life gets loud, they find a quiet moment to check in.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <h3>Real Conversations</h3>
+        <p>Six companions — Luna, Aria, Kel, Marco, Dante, and Kai — each with their own personality, humor, and voice. Choose who you connect with.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <h3>They Remember</h3>
+        <p>Mention something on Monday and your companion will remember Thursday. Every conversation builds on the last.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">❤️</div>
+        <h3>A Bond That Grows</h3>
+        <p>Your relationship deepens through an intimacy stage system. The more you connect, the more your companion shares.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔊</div>
+        <h3>Companion Voice</h3>
+        <p>Hear replies read aloud as you go about your day. Optional neural voices add warmth and personality.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Private by Design</h3>
+        <p>Your memories stay on your device. Her Mode runs on-device. No BareClaw servers. No accounts. No tracking.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <p>&copy; 2026 BareClaw</p>
+    <p style="margin-top:12px">
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="support.html">Support</a>
+      <a href="mailto:mvalasek77@gmail.com">Contact</a>
+    </p>
+  </footer>
+
+</body>
+</html>
