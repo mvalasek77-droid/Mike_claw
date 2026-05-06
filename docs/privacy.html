@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BareClaw — Privacy Policy</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      line-height: 1.7;
+      padding: 40px 20px 80px;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 2rem; font-weight: 800; margin-bottom: 6px; color: #fff; }
+    .subtitle { color: #8b949e; font-size: 0.9rem; margin-bottom: 48px; }
+    h2 {
+      font-size: 1.1rem; font-weight: 700; margin: 40px 0 12px;
+      color: #2f81f7; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    h3 { font-size: 1rem; font-weight: 600; margin: 24px 0 8px; color: #e6edf3; }
+    p { margin-bottom: 14px; color: #c9d1d9; }
+    ul { margin: 0 0 14px 20px; color: #c9d1d9; }
+    ul li { margin-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { padding: 10px 14px; text-align: left; border: 1px solid #30363d; font-size: 0.9rem; }
+    th { background: #161b22; color: #8b949e; font-weight: 600; }
+    td { background: #0d1117; color: #c9d1d9; }
+    a { color: #2f81f7; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .badge {
+      display: inline-block; background: #2f81f722; color: #2f81f7;
+      border: 1px solid #2f81f744; border-radius: 20px;
+      padding: 3px 12px; font-size: 0.8rem; font-weight: 600; margin-bottom: 32px;
+    }
+    .callout {
+      background: #161b22; border: 1px solid #30363d; border-left: 3px solid #2f81f7;
+      border-radius: 8px; padding: 16px 20px; margin: 20px 0;
+    }
+    .callout p { margin: 0; }
+    footer { margin-top: 60px; color: #484f58; font-size: 0.85rem; border-top: 1px solid #21262d; padding-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div style="margin-bottom:12px">
+      <span style="font-size:2rem;">🐾</span>
+    </div>
+    <h1>BareClaw</h1>
+    <p class="subtitle">Privacy Policy &nbsp;·&nbsp; Last updated May 6, 2026</p>
+
+    <span class="badge">We have no servers. Your data stays on your device.</span>
+
+    <div class="callout">
+      <p>BareClaw does not create accounts, does not run a backend server, and does not sell your data. Everything described below stays on your iPhone unless you explicitly enable a third-party AI service.</p>
+    </div>
+
+    <h2>Who We Are</h2>
+    <p>BareClaw is an AI companion app developed by Mike Valasek. Questions about this policy can be sent to <a href="mailto:mvalasek77@gmail.com">mvalasek77@gmail.com</a>.</p>
+
+    <h2>What We Collect and Why</h2>
+
+    <h3>1. Conversation Messages</h3>
+    <p>Your chat messages and your companion's replies are stored locally on your device in the app's private Documents folder. They are never uploaded to BareClaw servers (we have none). Deleting the app deletes this data permanently.</p>
+
+    <h3>2. Your Name and Interests</h3>
+    <p>Your name, interests, and relationship preferences are stored on your device in UserDefaults and a local file. They are used only to personalize your companion's responses.</p>
+
+    <h3>3. Memories</h3>
+    <p>Topics and life moments your companion notices are stored locally on your device. They are used to make conversations feel continuous and personal. They are not uploaded anywhere.</p>
+
+    <h3>4. Your Photo / Companion Photo</h3>
+    <p>If you set a custom photo for your companion, it is stored as a JPEG in your device's private Documents folder. It is never transmitted off your device.</p>
+
+    <h3>5. Microphone Audio — Her Mode &amp; Him Mode</h3>
+    <p>When Her Mode or Him Mode is active, BareClaw opens the microphone to listen for ambient speech. <strong>No audio recordings are stored or transmitted.</strong> The app uses Apple's on-device Speech Recognition framework to convert audio to text in real time. That text is analyzed locally for topic keywords. Short text snippets may be sent to the Claude API (see Third-Party Services below) to generate a compassionate follow-up message.</p>
+    <p>Apple's Speech Recognition framework may send audio to Apple's servers for transcription when on-device recognition is unavailable. This is governed by Apple's own privacy policy.</p>
+
+    <h3>6. API Keys</h3>
+    <p>Your Claude API key and ElevenLabs API key are stored in your device's Keychain and mirrored to UserDefaults as a fallback. They are used only to authenticate requests you initiate. They are never transmitted to BareClaw.</p>
+
+    <h2>Third-Party Services</h2>
+
+    <h3>Anthropic (Claude AI)</h3>
+    <p>When you send a message or Her/Him Mode generates a proactive thought, the text of that conversation — along with relevant memory context — is sent to Anthropic's Claude API to generate a response. This is transmitted over HTTPS and governed by <a href="https://www.anthropic.com/privacy" target="_blank">Anthropic's privacy policy</a>. Anthropic does not use API-submitted data to train their models by default.</p>
+    <p><em>You can use BareClaw without Claude by enabling Apple Intelligence (iOS 26+, on-device, no data leaves your device).</em></p>
+
+    <h3>ElevenLabs (Voice — Optional)</h3>
+    <p>If you add an ElevenLabs API key and enable neural voice, the text of your companion's replies is sent to ElevenLabs to generate speech audio. This is entirely optional and off by default. It is governed by <a href="https://elevenlabs.io/privacy" target="_blank">ElevenLabs' privacy policy</a>.</p>
+
+    <h3>Apple Speech Recognition</h3>
+    <p>Her Mode / Him Mode uses <code>SFSpeechRecognizer</code>. Apple may process short audio clips on their servers if the on-device model is unavailable. See <a href="https://www.apple.com/privacy/" target="_blank">apple.com/privacy</a>.</p>
+
+    <h2>Permissions</h2>
+    <table>
+      <thead>
+        <tr><th>Permission</th><th>Why it's needed</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Microphone</td><td>Required for Her Mode / Him Mode ambient listening</td></tr>
+        <tr><td>Speech Recognition</td><td>Required to transcribe ambient audio into text</td></tr>
+        <tr><td>Photo Library</td><td>Only requested if you choose to set a custom companion photo</td></tr>
+      </tbody>
+    </table>
+    <p>You can revoke any permission at any time in <strong>iOS Settings → BareClaw</strong>.</p>
+
+    <h2>Children's Privacy</h2>
+    <p>BareClaw is rated 17+ and is not intended for children under 17. We do not knowingly collect data from anyone under 17.</p>
+
+    <h2>Data Retention and Deletion</h2>
+    <p>All data is stored on your device. To delete everything:</p>
+    <ul>
+      <li>Go to <strong>Settings → General → iPhone Storage → BareClaw → Delete App</strong></li>
+    </ul>
+    <p>This permanently removes all conversations, memories, photos, and preferences.</p>
+
+    <h2>Changes to This Policy</h2>
+    <p>If the app adds new data practices in a future update, this policy will be updated and the date at the top will change. Continued use after an update constitutes acceptance.</p>
+
+    <h2>Contact</h2>
+    <p>
+      Mike Valasek<br />
+      <a href="mailto:mvalasek77@gmail.com">mvalasek77@gmail.com</a>
+    </p>
+
+    <footer>
+      &copy; 2026 BareClaw &nbsp;·&nbsp; <a href="mailto:mvalasek77@gmail.com">mvalasek77@gmail.com</a>
+    </footer>
+
+  </div>
+</body>
+</html>
