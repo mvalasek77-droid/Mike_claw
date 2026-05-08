@@ -87,7 +87,11 @@ struct DataPermissionsView: View {
                         subtitle: "Lets \(companionName) see upcoming events and check in before and after important moments.",
                         benefit: "Proactive support around meetings, dates, and deadlines.",
                         enabled: $persona.trackingPermissions.calendarEnabled,
-                        onToggle: { syncTrackingPermissions() }
+                        onToggle: {
+                            syncTrackingPermissions(
+                                requestSystemAccess: persona.trackingPermissions.calendarEnabled
+                            )
+                        }
                     )
                 }
                 .padding(.horizontal, BCSizing.spacingLG)
@@ -145,12 +149,20 @@ struct DataPermissionsView: View {
         }
     }
 
-    private func syncTrackingPermissions() {
+    private func syncTrackingPermissions(requestSystemAccess: Bool = false) {
+        if persona.trackingPermissions.emailEnabled
+            || persona.trackingPermissions.messagesEnabled
+            || persona.trackingPermissions.browsingEnabled
+            || persona.trackingPermissions.locationEnabled
+            || persona.trackingPermissions.calendarEnabled {
+            persona.trackingPermissions.dynamicSignalsEnabled = true
+        }
         persona.save()
         DiagnosticsLog.info(
             "permissions",
             "Onboarding tracking permissions synced.",
             details: [
+                "dynamic": "\(persona.trackingPermissions.dynamicSignalsEnabled)",
                 "email": "\(persona.trackingPermissions.emailEnabled)",
                 "messages": "\(persona.trackingPermissions.messagesEnabled)",
                 "browsing": "\(persona.trackingPermissions.browsingEnabled)",
@@ -159,7 +171,11 @@ struct DataPermissionsView: View {
             ]
         )
         Task {
-            await CompanionDataTracker.shared.updatePermissions(persona.trackingPermissions, persona: persona)
+            await CompanionDataTracker.shared.updatePermissions(
+                persona.trackingPermissions,
+                persona: persona,
+                requestSystemAccess: requestSystemAccess
+            )
         }
     }
 }
@@ -228,13 +244,50 @@ private struct PermissionCard: View {
 // MARK: - TrackingPermissions model (referenced by UserPersona)
 
 struct TrackingPermissions: Codable {
+    var dynamicSignalsEnabled: Bool = false
     var emailEnabled:    Bool = false
     var messagesEnabled: Bool = false
     var browsingEnabled: Bool = false
     var locationEnabled: Bool = false
     var calendarEnabled: Bool = false
 
+    init(
+        dynamicSignalsEnabled: Bool = false,
+        emailEnabled: Bool = false,
+        messagesEnabled: Bool = false,
+        browsingEnabled: Bool = false,
+        locationEnabled: Bool = false,
+        calendarEnabled: Bool = false
+    ) {
+        self.dynamicSignalsEnabled = dynamicSignalsEnabled
+        self.emailEnabled = emailEnabled
+        self.messagesEnabled = messagesEnabled
+        self.browsingEnabled = browsingEnabled
+        self.locationEnabled = locationEnabled
+        self.calendarEnabled = calendarEnabled
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case dynamicSignalsEnabled
+        case emailEnabled
+        case messagesEnabled
+        case browsingEnabled
+        case locationEnabled
+        case calendarEnabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        dynamicSignalsEnabled = try container.decodeIfPresent(Bool.self, forKey: .dynamicSignalsEnabled) ?? false
+        emailEnabled = try container.decodeIfPresent(Bool.self, forKey: .emailEnabled) ?? false
+        messagesEnabled = try container.decodeIfPresent(Bool.self, forKey: .messagesEnabled) ?? false
+        browsingEnabled = try container.decodeIfPresent(Bool.self, forKey: .browsingEnabled) ?? false
+        locationEnabled = try container.decodeIfPresent(Bool.self, forKey: .locationEnabled) ?? false
+        calendarEnabled = try container.decodeIfPresent(Bool.self, forKey: .calendarEnabled) ?? false
+    }
+
     var enabledLearningAreas: [String] {
+        guard dynamicSignalsEnabled else { return [] }
         var enabled: [String] = []
         if emailEnabled    { enabled.append("email topics the user brings into chat") }
         if messagesEnabled { enabled.append("messaging and relationship moments the user describes") }
@@ -246,6 +299,7 @@ struct TrackingPermissions: Codable {
 
     var disabledLearningAreas: [String] {
         var disabled: [String] = []
+        if !dynamicSignalsEnabled { disabled.append("dynamic tracking") }
         if !emailEnabled    { disabled.append("email") }
         if !messagesEnabled { disabled.append("messages") }
         if !browsingEnabled { disabled.append("browsing") }
@@ -256,6 +310,7 @@ struct TrackingPermissions: Codable {
 
     var learningSignature: String {
         [
+            "dynamic:\(dynamicSignalsEnabled ? 1 : 0)",
             "email:\(emailEnabled ? 1 : 0)",
             "messages:\(messagesEnabled ? 1 : 0)",
             "browsing:\(browsingEnabled ? 1 : 0)",
@@ -268,6 +323,10 @@ struct TrackingPermissions: Codable {
     var systemPromptSummary: String {
         let enabled = enabledLearningAreas
         let disabled = disabledLearningAreas
+
+        guard dynamicSignalsEnabled else {
+            return "The user has turned Dynamic Tracking off. Do not proactively infer, store, or use email, messages, browsing, location routines, calendar, ambient speech, or app-context signals as personalization sources unless the user explicitly shares something in the current message."
+        }
 
         guard !enabled.isEmpty else {
             return "The user has not opted into companion tracking. Do not proactively infer, store, or use email, messages, browsing, location routines, or calendar as personalization sources unless the user explicitly shares something in the current message."

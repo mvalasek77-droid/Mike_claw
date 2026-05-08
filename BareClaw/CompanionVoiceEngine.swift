@@ -398,9 +398,9 @@ actor BareClawAudioSessionController {
         switch profile {
         case .companionPlayback:
             try session.setCategory(
-                .playback,
-                mode: .spokenAudio,
-                options: []
+                .playAndRecord,
+                mode: .measurement,
+                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers, .duckOthers]
             )
         case .herModeListening:
             // .measurement mode — no echo cancellation or noise suppression.
@@ -409,7 +409,7 @@ actor BareClawAudioSessionController {
             try session.setCategory(
                 .playAndRecord,
                 mode: .measurement,
-                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers, .duckOthers]
             )
         }
 
@@ -498,7 +498,6 @@ private final class CompanionVoicePlaybackDriver: NSObject, AVAudioPlayerDelegat
             guard !self.isStopped, let player = self.player else { return }
 
             player.prepareToPlay()
-            Thread.sleep(forTimeInterval: 0.08)
 
             Task { @MainActor [weak self] in
                 guard let self,
@@ -580,15 +579,38 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     private var playbackGeneration: UInt64 = 0
     private var streamingSpeechID: UUID?
     private var streamingSpeechQueue: [StreamingSpeechSegment] = []
+    private var preparedStreamingSpeechSegments: [Int: PreparedStreamingSpeechSegment] = [:]
+    private var streamingSpeechInFlight: [Int: StreamingSpeechSegment] = [:]
+    private var skippedStreamingSpeechSequences: Set<Int> = []
+    private var nextStreamingSpeechSequence = 0
+    private var nextStreamingSpeechSequenceToPlay = 0
     private var streamingSpeechIsOpen = false
     private var streamingSpeechIsPlaying = false
+    private var streamingSpeechIsSynthesizing = false
+    private var streamingAudioSessionToken: UUID?
+    private var streamingAudioSessionTask: Task<Bool, Never>?
+    private var streamingAudioSessionIsReady = false
     private var streamingPausedHerMode = false
+    private var streamingSpeechCompletion: (() -> Void)?
     private var activeSpeechPausedHerMode = false
+    private var activeSpeechUsesStreamingSession = false
+    private var herModePauseStartedAt: Date?
+    private let maxStreamingSpeechPrefetches = 4
 
     private struct StreamingSpeechSegment {
+        let sequence: Int
         let text: String
         let character: VoiceCharacter
         let context: CompanionSpeechContext
+        let attempt: Int
+    }
+
+    private struct PreparedStreamingSpeechSegment {
+        let sequence: Int
+        let text: String
+        let character: VoiceCharacter
+        let context: CompanionSpeechContext
+        let audio: Data
     }
 
     private override init() {
@@ -669,6 +691,12 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         context: CompanionSpeechContext = .conversation,
         completion: (() -> Void)? = nil
     ) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.count > 560 {
+            speakResponsively(trimmed, character: character, context: context, completion: completion)
+            return
+        }
+
         startSpeech(text,
                     character: character,
                     context: context,
@@ -677,7 +705,11 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     }
 
     @discardableResult
-    func beginStreamingSpeech(character: VoiceCharacter, context: CompanionSpeechContext = .love) -> UUID? {
+    func beginStreamingSpeech(
+        character: VoiceCharacter,
+        context: CompanionSpeechContext = .love,
+        completion: (() -> Void)? = nil
+    ) -> UUID? {
         guard voiceEnabled else {
             DiagnosticsLog.warning(
                 "voice",
@@ -694,8 +726,35 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         let streamID = UUID()
         streamingSpeechID = streamID
         streamingSpeechQueue.removeAll()
+        preparedStreamingSpeechSegments.removeAll()
+        streamingSpeechInFlight.removeAll()
+        skippedStreamingSpeechSequences.removeAll()
+        nextStreamingSpeechSequence = 0
+        nextStreamingSpeechSequenceToPlay = 0
         streamingSpeechIsOpen = true
         streamingSpeechIsPlaying = false
+        streamingSpeechIsSynthesizing = false
+        streamingSpeechCompletion = completion
+        streamingAudioSessionToken = streamID
+        streamingAudioSessionIsReady = false
+        let audioSessionTask = activateVoiceAudioSession(token: streamID)
+        streamingAudioSessionTask = audioSessionTask
+        Task { [weak self] in
+            let ready = await audioSessionTask.value
+            await MainActor.run {
+                guard let self, self.streamingSpeechID == streamID else { return }
+                self.streamingAudioSessionIsReady = ready
+                if !ready {
+                    DiagnosticsLog.error(
+                        "voice",
+                        "Streaming voice audio session was not ready.",
+                        details: ["character": character.characterName]
+                    )
+                    self.cancelStreamingSpeech(clearCurrentAudio: false)
+                }
+            }
+        }
+        isSpeaking = true
         activeCharacterName = character.characterName
         lastVoiceError = nil
         DiagnosticsLog.info(
@@ -722,11 +781,18 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        streamingSpeechQueue.append(StreamingSpeechSegment(
-            text: trimmed,
-            character: character,
-            context: context
-        ))
+        let chunks = Self.responsiveSpeechChunks(from: trimmed)
+        for chunk in chunks {
+            let sequence = nextStreamingSpeechSequence
+            nextStreamingSpeechSequence += 1
+            streamingSpeechQueue.append(StreamingSpeechSegment(
+                sequence: sequence,
+                text: chunk,
+                character: character,
+                context: context,
+                attempt: 0
+            ))
+        }
         DiagnosticsLog.info(
             "voice",
             "Streaming speech segment queued.",
@@ -734,9 +800,11 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
                 "character": character.characterName,
                 "context": "\(context)",
                 "length": "\(trimmed.count)",
+                "chunks": "\(chunks.count)",
                 "queueDepth": "\(streamingSpeechQueue.count)"
             ]
         )
+        prefetchStreamingSpeechSegments()
         playNextStreamingSpeechSegment()
     }
 
@@ -755,10 +823,17 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
     func speakResponsively(
         _ text: String,
         character: VoiceCharacter,
-        context: CompanionSpeechContext = .love
+        context: CompanionSpeechContext = .love,
+        completion: (() -> Void)? = nil
     ) {
-        guard voiceEnabled else { return }
-        guard let streamID = beginStreamingSpeech(character: character, context: context) else { return }
+        guard voiceEnabled else {
+            completion?()
+            return
+        }
+        guard let streamID = beginStreamingSpeech(character: character, context: context, completion: completion) else {
+            completion?()
+            return
+        }
         for chunk in Self.responsiveSpeechChunks(from: text) {
             enqueueStreamingSpeech(chunk, character: character, context: context, streamID: streamID)
         }
@@ -800,6 +875,7 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         let audioSessionTask = activateVoiceAudioSession(token: requestID)
         activeRequestID = requestID
         activeAudioSessionToken = requestID
+        activeSpeechUsesStreamingSession = false
         activeSpeechPausedHerMode = pausedHerMode
         isSpeaking = true
         activeCharacterName = character.characterName
@@ -836,6 +912,144 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
                 self.failSpeech(error, requestID: requestID)
             }
         }
+    }
+
+    private func startPreparedSpeech(
+        audio: Data,
+        text: String,
+        character: VoiceCharacter,
+        context: CompanionSpeechContext,
+        cancelStreamingQueue: Bool,
+        audioSessionTask streamingSessionTask: Task<Bool, Never>? = nil,
+        completion: (() -> Void)?
+    ) {
+        if !cancelStreamingQueue, let streamingSessionTask {
+            startPreparedStreamingSpeech(
+                audio: audio,
+                text: text,
+                character: character,
+                context: context,
+                audioSessionTask: streamingSessionTask,
+                completion: completion
+            )
+            return
+        }
+
+        guard voiceEnabled else {
+            completion?()
+            DiagnosticsLog.warning(
+                "voice",
+                "Prepared speech skipped because voice is disabled.",
+                details: ["character": character.characterName]
+            )
+            return
+        }
+
+        if cancelStreamingQueue {
+            cancelStreamingSpeech(clearCurrentAudio: false)
+        }
+
+        let requestID = UUID()
+        stopCurrentSpeech(callCompletion: false)
+        let pausedHerMode = cancelStreamingQueue ? pauseHerModeForActiveSpeechIfNeeded() : false
+        let usesStreamingSession = !cancelStreamingQueue && streamingSessionTask != nil
+        let audioSessionTask = streamingSessionTask ?? activateVoiceAudioSession(token: requestID)
+        activeRequestID = requestID
+        activeAudioSessionToken = usesStreamingSession ? nil : requestID
+        activeSpeechUsesStreamingSession = usesStreamingSession
+        activeSpeechPausedHerMode = pausedHerMode
+        isSpeaking = true
+        activeCharacterName = character.characterName
+        activeSpeakCompletion = completion
+        lastVoiceError = nil
+        DiagnosticsLog.info(
+            "voice",
+            "Prepared voice playback requested.",
+            details: [
+                "character": character.characterName,
+                "context": "\(context)",
+                "textLength": "\(text.count)",
+                "audioBytes": "\(audio.count)"
+            ]
+        )
+
+        activeSpeakTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let audioSessionReady = await audioSessionTask.value
+                try Task.checkCancellation()
+                guard audioSessionReady else {
+                    throw NeuralVoiceError.playbackFailed
+                }
+                self.playAudio(audio, requestID: requestID)
+            } catch is CancellationError {
+                DiagnosticsLog.warning("voice", "Prepared voice playback task cancelled.")
+                return
+            } catch {
+                self.failSpeech(error, requestID: requestID)
+            }
+        }
+    }
+
+    private func startPreparedStreamingSpeech(
+        audio: Data,
+        text: String,
+        character: VoiceCharacter,
+        context: CompanionSpeechContext,
+        audioSessionTask: Task<Bool, Never>,
+        completion: (() -> Void)?
+    ) {
+        guard voiceEnabled else {
+            completion?()
+            DiagnosticsLog.warning(
+                "voice",
+                "Prepared streaming speech skipped because voice is disabled.",
+                details: ["character": character.characterName]
+            )
+            return
+        }
+
+        let requestID = UUID()
+        activeSpeakTask?.cancel()
+        activeSpeakTask = nil
+        playbackGeneration &+= 1
+        audioPlayback = nil
+        activeRequestID = requestID
+        activeAudioSessionToken = nil
+        activeSpeechUsesStreamingSession = true
+        activeSpeechPausedHerMode = false
+        isSpeaking = true
+        activeCharacterName = character.characterName
+        activeSpeakCompletion = completion
+        lastVoiceError = nil
+        DiagnosticsLog.info(
+            "voice",
+            "Prepared streaming voice playback requested.",
+            details: [
+                "character": character.characterName,
+                "context": "\(context)",
+                "textLength": "\(text.count)",
+                "audioBytes": "\(audio.count)"
+            ]
+        )
+
+        guard streamingAudioSessionIsReady else {
+            activeSpeakTask = Task { [weak self] in
+                let audioSessionReady = await audioSessionTask.value
+                await MainActor.run {
+                    guard let self, self.activeRequestID == requestID else { return }
+                    self.streamingAudioSessionIsReady = audioSessionReady
+                    guard audioSessionReady else {
+                        self.failSpeech(NeuralVoiceError.playbackFailed, requestID: requestID)
+                        return
+                    }
+                    self.playAudio(audio, requestID: requestID)
+                }
+            }
+            return
+        }
+
+        playAudio(audio, requestID: requestID)
     }
 
     func speakWithCurrentCompanion(_ text: String, context: CompanionSpeechContext = .love) {
@@ -961,18 +1175,28 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
 
     private func playNextStreamingSpeechSegment() {
         guard let streamID = streamingSpeechID,
-              !streamingSpeechIsPlaying,
-              !streamingSpeechQueue.isEmpty else {
+              !streamingSpeechIsPlaying else {
             clearFinishedStreamingSpeechIfIdle()
             return
         }
 
-        let segment = streamingSpeechQueue.removeFirst()
+        advancePastSkippedStreamingSpeechSegments()
+        prefetchStreamingSpeechSegments()
+
+        guard let segment = preparedStreamingSpeechSegments.removeValue(forKey: nextStreamingSpeechSequenceToPlay) else {
+            clearFinishedStreamingSpeechIfIdle()
+            return
+        }
+
+        nextStreamingSpeechSequenceToPlay += 1
         streamingSpeechIsPlaying = true
-        startSpeech(segment.text,
-                    character: segment.character,
-                    context: segment.context,
-                    cancelStreamingQueue: false) { [weak self] in
+        prefetchStreamingSpeechSegments()
+        startPreparedSpeech(audio: segment.audio,
+                            text: segment.text,
+                            character: segment.character,
+                            context: segment.context,
+                            cancelStreamingQueue: false,
+                            audioSessionTask: streamingAudioSessionTask) { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self, self.streamingSpeechID == streamID else { return }
                 let speechFailed = self.lastVoiceError != nil
@@ -986,27 +1210,245 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         }
     }
 
+    private func prefetchStreamingSpeechSegments() {
+        guard let streamID = streamingSpeechID else { return }
+
+        while streamingSpeechInFlight.count < maxStreamingSpeechPrefetches,
+              !streamingSpeechQueue.isEmpty {
+            let segment = streamingSpeechQueue.removeFirst()
+            prefetchStreamingSpeechSegment(segment, streamID: streamID)
+        }
+
+        streamingSpeechIsSynthesizing = !streamingSpeechInFlight.isEmpty
+    }
+
+    private func prefetchStreamingSpeechSegment(_ segment: StreamingSpeechSegment, streamID: UUID) {
+        let deliveryCharacter = segment.character.tuned(for: segment.context)
+        let cleanText = normalizedSpeechText(from: segment.text, character: deliveryCharacter)
+        guard !cleanText.isEmpty else {
+            skippedStreamingSpeechSequences.insert(segment.sequence)
+            advancePastSkippedStreamingSpeechSegments()
+            prefetchStreamingSpeechSegments()
+            playNextStreamingSpeechSegment()
+            return
+        }
+
+        streamingSpeechInFlight[segment.sequence] = segment
+        streamingSpeechIsSynthesizing = true
+        DiagnosticsLog.info(
+            "voice",
+            "Streaming speech prefetch started.",
+            details: [
+                "character": segment.character.characterName,
+                "context": "\(segment.context)",
+                "sequence": "\(segment.sequence)",
+                "textLength": "\(cleanText.count)",
+                "inFlight": "\(streamingSpeechInFlight.count)",
+                "pendingDepth": "\(streamingSpeechQueue.count)"
+            ]
+        )
+
+        Task { [weak self] in
+            do {
+                let audio = try await NeuralVoiceService.synthesize(
+                    text: cleanText,
+                    character: deliveryCharacter,
+                    context: segment.context
+                )
+                await MainActor.run {
+                    guard let self, self.streamingSpeechID == streamID else { return }
+                    self.streamingSpeechInFlight.removeValue(forKey: segment.sequence)
+                    self.streamingSpeechIsSynthesizing = !self.streamingSpeechInFlight.isEmpty
+                    self.preparedStreamingSpeechSegments[segment.sequence] =
+                        PreparedStreamingSpeechSegment(
+                            sequence: segment.sequence,
+                            text: cleanText,
+                            character: segment.character,
+                            context: segment.context,
+                            audio: audio
+                        )
+                    DiagnosticsLog.info(
+                        "voice",
+                        "Streaming speech prefetch finished.",
+                        details: [
+                            "character": segment.character.characterName,
+                            "sequence": "\(segment.sequence)",
+                            "preparedDepth": "\(self.preparedStreamingSpeechSegments.count)",
+                            "inFlight": "\(self.streamingSpeechInFlight.count)",
+                            "pendingDepth": "\(self.streamingSpeechQueue.count)"
+                        ]
+                    )
+                    self.prefetchStreamingSpeechSegments()
+                    self.playNextStreamingSpeechSegment()
+                }
+            } catch is CancellationError {
+                await MainActor.run {
+                    guard let self, self.streamingSpeechID == streamID else { return }
+                    self.streamingSpeechInFlight.removeValue(forKey: segment.sequence)
+                    self.streamingSpeechIsSynthesizing = !self.streamingSpeechInFlight.isEmpty
+                }
+                DiagnosticsLog.warning("voice", "Streaming speech prefetch cancelled.")
+            } catch {
+                await MainActor.run {
+                    guard let self, self.streamingSpeechID == streamID else { return }
+                    self.streamingSpeechInFlight.removeValue(forKey: segment.sequence)
+                    self.streamingSpeechIsSynthesizing = !self.streamingSpeechInFlight.isEmpty
+                    self.handleStreamingSynthesisFailure(error, segment: segment, streamID: streamID)
+                }
+            }
+        }
+    }
+
+    private func advancePastSkippedStreamingSpeechSegments() {
+        while skippedStreamingSpeechSequences.remove(nextStreamingSpeechSequenceToPlay) != nil {
+            nextStreamingSpeechSequenceToPlay += 1
+        }
+    }
+
+    private func handleStreamingSynthesisFailure(
+        _ error: Error,
+        segment: StreamingSpeechSegment,
+        streamID: UUID
+    ) {
+        let userMessage = NeuralVoiceService.userMessage(for: error)
+
+        if isTerminalStreamingVoiceError(error) {
+            DiagnosticsLog.error(
+                "voice",
+                "Streaming speech stopped because voice configuration failed.",
+                error: error,
+                details: [
+                    "character": segment.character.characterName,
+                    "sequence": "\(segment.sequence)",
+                    "attempt": "\(segment.attempt)",
+                    "userMessage": userMessage
+                ]
+            )
+            failSpeech(error, requestID: nil)
+            cancelStreamingSpeech(clearCurrentAudio: false)
+            return
+        }
+
+        if segment.attempt < 2 {
+            streamingSpeechQueue.insert(
+                StreamingSpeechSegment(
+                    sequence: segment.sequence,
+                    text: segment.text,
+                    character: segment.character,
+                    context: segment.context,
+                    attempt: segment.attempt + 1
+                ),
+                at: 0
+            )
+            DiagnosticsLog.warning(
+                "voice",
+                "Streaming speech segment retrying after transient synthesis failure.",
+                details: [
+                    "character": segment.character.characterName,
+                    "sequence": "\(segment.sequence)",
+                    "attempt": "\(segment.attempt + 1)",
+                    "textLength": "\(segment.text.count)",
+                    "userMessage": userMessage
+                ]
+            )
+            prefetchStreamingSpeechSegments()
+            return
+        }
+
+        skippedStreamingSpeechSequences.insert(segment.sequence)
+        DiagnosticsLog.warning(
+            "voice",
+            "Streaming speech segment skipped after retries; continuing remaining voice queue.",
+            details: [
+                "character": segment.character.characterName,
+                "sequence": "\(segment.sequence)",
+                "attempt": "\(segment.attempt)",
+                "textLength": "\(segment.text.count)",
+                "userMessage": userMessage,
+                "remainingDepth": "\(streamingSpeechQueue.count)"
+            ]
+        )
+        advancePastSkippedStreamingSpeechSegments()
+        prefetchStreamingSpeechSegments()
+        playNextStreamingSpeechSegment()
+        clearFinishedStreamingSpeechIfIdle()
+    }
+
+    private func isTerminalStreamingVoiceError(_ error: Error) -> Bool {
+        guard let voiceError = error as? NeuralVoiceError else { return false }
+        switch voiceError {
+        case .missingAPIKey,
+             .missingVoiceID(_),
+             .invalidURL,
+             .invalidVoiceID(_),
+             .voiceNotFound(_),
+             .missingPermissions(_),
+             .creditsExhausted:
+            return true
+        case .httpStatus(let status, _):
+            return status == 400 || status == 401 || status == 403 || status == 404
+        case .invalidResponse,
+             .invalidAudio,
+             .playbackFailed:
+            return false
+        }
+    }
+
     private func clearFinishedStreamingSpeechIfIdle() {
+        advancePastSkippedStreamingSpeechSegments()
         guard streamingSpeechID != nil,
               !streamingSpeechIsOpen,
               !streamingSpeechIsPlaying,
-              streamingSpeechQueue.isEmpty else { return }
+              !streamingSpeechIsSynthesizing,
+              streamingSpeechQueue.isEmpty,
+              streamingSpeechInFlight.isEmpty,
+              preparedStreamingSpeechSegments.isEmpty else { return }
+        let audioSessionToken = streamingAudioSessionToken
         streamingSpeechID = nil
         streamingSpeechIsOpen = false
         streamingSpeechIsPlaying = false
+        streamingSpeechIsSynthesizing = false
+        streamingAudioSessionToken = nil
+        streamingAudioSessionTask = nil
+        streamingAudioSessionIsReady = false
+        skippedStreamingSpeechSequences.removeAll()
+        isSpeaking = false
+        activeCharacterName = nil
         resumeHerModeForStreamingIfNeeded()
+        if let audioSessionToken {
+            deactivateVoiceAudioSession(token: audioSessionToken)
+        }
+        let completion = streamingSpeechCompletion
+        streamingSpeechCompletion = nil
+        completion?()
     }
 
     private func cancelStreamingSpeech(clearCurrentAudio: Bool) {
         let hadStreamingSpeech = streamingSpeechID != nil
+        let audioSessionToken = streamingAudioSessionToken
         streamingSpeechID = nil
         streamingSpeechQueue.removeAll()
+        preparedStreamingSpeechSegments.removeAll()
+        streamingSpeechInFlight.removeAll()
+        skippedStreamingSpeechSequences.removeAll()
+        nextStreamingSpeechSequence = 0
+        nextStreamingSpeechSequenceToPlay = 0
         streamingSpeechIsOpen = false
         streamingSpeechIsPlaying = false
+        streamingSpeechIsSynthesizing = false
+        streamingAudioSessionToken = nil
+        streamingAudioSessionTask = nil
+        streamingAudioSessionIsReady = false
+        streamingSpeechCompletion = nil
         if clearCurrentAudio {
             stopCurrentSpeech(callCompletion: false)
         }
+        if let audioSessionToken {
+            deactivateVoiceAudioSession(token: audioSessionToken)
+        }
         if hadStreamingSpeech {
+            isSpeaking = false
+            activeCharacterName = nil
             resumeHerModeForStreamingIfNeeded()
         }
         DiagnosticsLog.info(
@@ -1040,10 +1482,14 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         audioPlayback?.stop()
         audioPlayback = nil
         let audioSessionToken = activeAudioSessionToken
+        let wasStreamingSegment = activeSpeechUsesStreamingSession
         activeRequestID = nil
         activeAudioSessionToken = nil
-        isSpeaking = false
-        activeCharacterName = nil
+        activeSpeechUsesStreamingSession = false
+        if !(wasStreamingSegment && streamingSpeechID != nil) {
+            isSpeaking = false
+            activeCharacterName = nil
+        }
         if let audioSessionToken {
             deactivateVoiceAudioSession(token: audioSessionToken)
         }
@@ -1056,10 +1502,68 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         }
     }
 
+    func recoverHerModeRecognitionIfVoiceIdle(reason: String) {
+        guard activeSpeechPausedHerMode || streamingPausedHerMode else { return }
+        let pausedSeconds = herModePauseStartedAt.map { Date().timeIntervalSince($0) } ?? 0
+        guard pausedSeconds > 45, !isSpeaking else { return }
+
+        DiagnosticsLog.warning(
+            "voice",
+            "Recovering Her Mode listener from idle voice pause.",
+            details: [
+                "reason": reason,
+                "pausedSeconds": "\(Int(pausedSeconds))",
+                "streamingPaused": "\(streamingPausedHerMode)",
+                "activePaused": "\(activeSpeechPausedHerMode)",
+                "streamOpen": "\(streamingSpeechIsOpen)",
+                "streamPlaying": "\(streamingSpeechIsPlaying)",
+                "streamSynthesizing": "\(streamingSpeechIsSynthesizing)"
+            ]
+        )
+
+        let streamingSessionToken = streamingAudioSessionToken
+        playbackGeneration &+= 1
+        streamingSpeechID = nil
+        streamingSpeechQueue.removeAll()
+        preparedStreamingSpeechSegments.removeAll()
+        streamingSpeechInFlight.removeAll()
+        skippedStreamingSpeechSequences.removeAll()
+        nextStreamingSpeechSequence = 0
+        nextStreamingSpeechSequenceToPlay = 0
+        streamingSpeechIsOpen = false
+        streamingSpeechIsPlaying = false
+        streamingSpeechIsSynthesizing = false
+        streamingAudioSessionToken = nil
+        streamingAudioSessionTask = nil
+        streamingAudioSessionIsReady = false
+        activeSpeakTask?.cancel()
+        activeSpeakTask = nil
+        audioPlayback?.stop()
+        audioPlayback = nil
+        activeRequestID = nil
+        isSpeaking = false
+        let audioSessionToken = activeAudioSessionToken
+        activeAudioSessionToken = nil
+        activeSpeechUsesStreamingSession = false
+        activeCharacterName = nil
+        activeSpeakCompletion = nil
+        if let audioSessionToken {
+            deactivateVoiceAudioSession(token: audioSessionToken)
+        }
+        if let streamingSessionToken {
+            deactivateVoiceAudioSession(token: streamingSessionToken)
+        }
+
+        resumeHerModeForActiveSpeechIfNeeded()
+        resumeHerModeForStreamingIfNeeded()
+        clearHerModePauseStartIfIdle()
+    }
+
     private func pauseHerModeForStreamingIfNeeded() {
         guard !streamingPausedHerMode else { return }
         streamingPausedHerMode = HerModeEngine.shared.pauseRecognitionForCompanionSpeech()
         if streamingPausedHerMode {
+            markHerModePauseStarted()
             DiagnosticsLog.info("voice", "Her Mode listener paused for streaming voice playback.")
         }
     }
@@ -1069,12 +1573,14 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         streamingPausedHerMode = false
         DiagnosticsLog.info("voice", "Her Mode listener resuming after streaming voice playback.")
         HerModeEngine.shared.resumeRecognitionAfterCompanionSpeech()
+        clearHerModePauseStartIfIdle()
     }
 
     private func pauseHerModeForActiveSpeechIfNeeded() -> Bool {
         guard !streamingPausedHerMode else { return false }
         let didPause = HerModeEngine.shared.pauseRecognitionForCompanionSpeech()
         if didPause {
+            markHerModePauseStarted()
             DiagnosticsLog.info("voice", "Her Mode listener paused for voice playback.")
         }
         return didPause
@@ -1085,6 +1591,19 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         activeSpeechPausedHerMode = false
         DiagnosticsLog.info("voice", "Her Mode listener resuming after voice playback.")
         HerModeEngine.shared.resumeRecognitionAfterCompanionSpeech()
+        clearHerModePauseStartIfIdle()
+    }
+
+    private func markHerModePauseStarted() {
+        if herModePauseStartedAt == nil {
+            herModePauseStartedAt = Date()
+        }
+    }
+
+    private func clearHerModePauseStartIfIdle() {
+        if !activeSpeechPausedHerMode && !streamingPausedHerMode {
+            herModePauseStartedAt = nil
+        }
     }
 
     private static func responsiveSpeechChunks(from text: String) -> [String] {
@@ -1092,13 +1611,13 @@ final class CompanionVoiceEngine: NSObject, ObservableObject {
         var chunks: [String] = []
 
         while !remaining.isEmpty {
-            if remaining.count <= 360 {
+            if remaining.count <= 560 {
                 chunks.append(remaining)
                 break
             }
 
-            let minCount = min(120, remaining.count)
-            let maxCount = min(360, remaining.count)
+            let minCount = min(170, remaining.count)
+            let maxCount = min(560, remaining.count)
             let minIndex = remaining.index(remaining.startIndex, offsetBy: minCount)
             let maxIndex = remaining.index(remaining.startIndex, offsetBy: maxCount)
             let searchRange = minIndex..<maxIndex
@@ -1173,8 +1692,9 @@ enum NeuralVoiceService {
     static let service = "com.bareclaw.bareclaw"
     static let apiKeyKey = "elevenlabs_api_key"
     static let modelDefaultsKey = "elevenlabs.modelID"
-    static let defaultModelID = "eleven_v3"
+    static let defaultModelID = "eleven_flash_v2_5"
     static let outputFormat = "mp3_44100_128"
+    private static let legacySlowModelIDs: Set<String> = ["eleven_v3"]
 
     static func readAPIKey() -> String? {
         guard let raw = KeychainHelper.read(service: service, key: apiKeyKey)?
@@ -1194,12 +1714,16 @@ enum NeuralVoiceService {
     static var configuredModelID: String {
         let saved = UserDefaults.standard.string(forKey: modelDefaultsKey)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return saved?.isEmpty == false ? saved! : defaultModelID
+        guard let saved, !saved.isEmpty else { return defaultModelID }
+        return legacySlowModelIDs.contains(saved.lowercased()) ? defaultModelID : saved
     }
 
     static func saveModelID(_ value: String) {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        UserDefaults.standard.set(trimmed.isEmpty ? defaultModelID : trimmed, forKey: modelDefaultsKey)
+        let modelID = trimmed.isEmpty || legacySlowModelIDs.contains(trimmed.lowercased())
+            ? defaultModelID
+            : trimmed
+        UserDefaults.standard.set(modelID, forKey: modelDefaultsKey)
         UserDefaults.standard.synchronize()
     }
 

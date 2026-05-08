@@ -360,12 +360,6 @@ actor HermesPersonality {
     // MARK: - Daily affirmation
 
     func scheduleDailyAffirmation(for persona: UserPersona) {
-#if DEBUG
-        if ProcessInfo.processInfo.environment["BARECLAW_DEBUG_SEED_HERMODE"] == "1" {
-            print("HermesPersonality: skipped daily affirmation notification authorization for Him/Her simulator test")
-            return
-        }
-#endif
         guard persona.dailyAffirmationsEnabled else { return }
 
         // Pre-capture affirmation text on the actor's executor to avoid a

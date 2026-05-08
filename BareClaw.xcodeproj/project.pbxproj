@@ -21,6 +21,7 @@
 		85221555EEC8B55FB8D06851 /* HerLearningEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DA425E7D995B1943C8D88E0 /* HerLearningEngine.swift */; };
 		905CA419DAB46969C20E8908 /* HermesDreamEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB5ED29CCF2AD64265DD24FD /* HermesDreamEngine.swift */; };
 		90EA6F8D1F7C76A72A7C8C01 /* ASMRTextProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90EA6F8D1F7C76A72A7C8C02 /* ASMRTextProcessor.swift */; };
+		90EA6F8D1F7C76A72A7C8C10 /* CompanionExperienceMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90EA6F8D1F7C76A72A7C8C11 /* CompanionExperienceMode.swift */; };
 		91DA058E342EE75367B60A8F /* BareClawApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3146A2AAD1F0858E7251B116 /* BareClawApp.swift */; };
 		91EA6F8D1F7C76A72A7C8C03 /* DreamJournalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91EA6F8D1F7C76A72A7C8C04 /* DreamJournalView.swift */; };
 		92EA6F8D1F7C76A72A7C8C05 /* HerModeCeremonyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92EA6F8D1F7C76A72A7C8C06 /* HerModeCeremonyView.swift */; };
@@ -75,6 +76,7 @@
 		C0FFEE00112233445566EE00 /* ProactiveSuggestionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00112233445566EE01 /* ProactiveSuggestionController.swift */; };
 		C0FFEE00112233445566FF00 /* PsychologicalProfiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00112233445566FF01 /* PsychologicalProfiler.swift */; };
 		C0FFEE001122334455667700 /* TrackingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE001122334455667701 /* TrackingEngine.swift */; };
+		C0FFEE001122334455668000 /* EntertainmentSourceFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE001122334455668001 /* EntertainmentSourceFetcher.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -101,6 +103,7 @@
 		8AAFA576E973B4B43580A987 /* HermesMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesMemory.swift; sourceTree = "<group>"; };
 		8F334E761EC0BF32142DEBB4 /* LanguageOfLoveEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageOfLoveEngine.swift; sourceTree = "<group>"; };
 		90EA6F8D1F7C76A72A7C8C02 /* ASMRTextProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASMRTextProcessor.swift; sourceTree = "<group>"; };
+		90EA6F8D1F7C76A72A7C8C11 /* CompanionExperienceMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionExperienceMode.swift; sourceTree = "<group>"; };
 		91EA6F8D1F7C76A72A7C8C04 /* DreamJournalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DreamJournalView.swift; sourceTree = "<group>"; };
 		92EA6F8D1F7C76A72A7C8C06 /* HerModeCeremonyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HerModeCeremonyView.swift; sourceTree = "<group>"; };
 		93EA6F8D1F7C76A72A7C8C08 /* HumorEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HumorEngine.swift; sourceTree = "<group>"; };
@@ -148,6 +151,7 @@
 		C0FFEE00112233445566EE01 /* ProactiveSuggestionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProactiveSuggestionController.swift; sourceTree = "<group>"; };
 		C0FFEE00112233445566FF01 /* PsychologicalProfiler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PsychologicalProfiler.swift; sourceTree = "<group>"; };
 		C0FFEE001122334455667701 /* TrackingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackingEngine.swift; sourceTree = "<group>"; };
+		C0FFEE001122334455668001 /* EntertainmentSourceFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntertainmentSourceFetcher.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -175,6 +179,8 @@
 			isa = PBXGroup;
 				children = (
 					90EA6F8D1F7C76A72A7C8C02 /* ASMRTextProcessor.swift */,
+					90EA6F8D1F7C76A72A7C8C11 /* CompanionExperienceMode.swift */,
+					C0FFEE001122334455668001 /* EntertainmentSourceFetcher.swift */,
 					A91D1A1B2C3D4E5F60718294 /* DiagnosticsLog.swift */,
 					91EA6F8D1F7C76A72A7C8C04 /* DreamJournalView.swift */,
 				92EA6F8D1F7C76A72A7C8C06 /* HerModeCeremonyView.swift */,
@@ -334,6 +340,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				90EA6F8D1F7C76A72A7C8C01 /* ASMRTextProcessor.swift in Sources */,
+				90EA6F8D1F7C76A72A7C8C10 /* CompanionExperienceMode.swift in Sources */,
 				91EA6F8D1F7C76A72A7C8C03 /* DreamJournalView.swift in Sources */,
 				92EA6F8D1F7C76A72A7C8C05 /* HerModeCeremonyView.swift in Sources */,
 				93EA6F8D1F7C76A72A7C8C07 /* HumorEngine.swift in Sources */,
@@ -399,6 +406,7 @@
 				C0FFEE00112233445566EE00 /* ProactiveSuggestionController.swift in Sources */,
 				C0FFEE00112233445566FF00 /* PsychologicalProfiler.swift in Sources */,
 				C0FFEE001122334455667700 /* TrackingEngine.swift in Sources */,
+				C0FFEE001122334455668000 /* EntertainmentSourceFetcher.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -409,6 +417,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSTCAT_NOTICES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_STYLE = Automatic;
@@ -433,6 +442,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSTCAT_NOTICES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_STYLE = Automatic;
@@ -489,7 +499,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -553,7 +563,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;

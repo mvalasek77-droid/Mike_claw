@@ -464,6 +464,7 @@ private struct ProviderStep: View {
     @State private var showKey = false
     @State private var checking = false
     @State private var saveError = false
+    @State private var saveErrorMessage = "Claude could not be activated. Check the key and try again."
     @State private var appleAvailable = AppleFoundationModelsBridge.isAvailable
 
     var body: some View {
@@ -565,27 +566,29 @@ private struct ProviderStep: View {
                             HStack {
                                 if checking {
                                     ProgressView().tint(.black).scaleEffect(0.8)
+                                    Text("Checking Claude...")
+                                        .font(BCFont.headline())
                                 } else {
-                                    Text("Save & Meet \(persona.selectedCompanion.name)")
+                                    Text("Connect & Meet \(persona.selectedCompanion.name)")
                                         .font(BCFont.headline())
                                 }
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(apiKey.count > 20 ? Color.BC.primary : Color.BC.border)
-                            .foregroundColor(apiKey.count > 20 ? .white : .BC.textMuted)
+                            .background(hasTypedClaudeKey ? Color.BC.primary : Color.BC.border)
+                            .foregroundColor(hasTypedClaudeKey ? .white : .BC.textMuted)
                             .cornerRadius(BCSizing.radiusLG)
                         }
                         .buttonStyle(BCButtonStyle(haptic: .none))
-                        .accessibilityLabel("Save API key and meet \(persona.selectedCompanion.name)")
-                        .disabled(apiKey.count < 20 || checking)
+                        .accessibilityLabel("Connect Claude and meet \(persona.selectedCompanion.name)")
+                        .disabled(!hasTypedClaudeKey || checking)
 
                         if saveError {
                             HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.circle.fill")
                                     .font(.system(size: 13))
                                     .foregroundColor(.red)
-                                Text("Couldn't save the key. Check that it starts with \"sk-ant-\" and try again.")
+                                Text(saveErrorMessage)
                                     .font(BCFont.body(12))
                                     .foregroundColor(.red.opacity(0.85))
                                     .fixedSize(horizontal: false, vertical: true)
@@ -614,21 +617,33 @@ private struct ProviderStep: View {
         }
     }
 
+    private var cleanedClaudeAPIKey: String {
+        apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasTypedClaudeKey: Bool {
+        cleanedClaudeAPIKey.count > 20
+    }
+
     private func saveAndContinue() {
+        let trimmed = cleanedClaudeAPIKey
+        guard trimmed.count > 20 else { return }
         checking = true
+        saveError = false
         KeychainHelper.write(service: "com.bareclaw.bareclaw",
                              key: "anthropic_api_key",
-                             value: apiKey.trimmingCharacters(in: .whitespaces))
+                             value: trimmed)
         Task {
             await HermesPrivacyGate.shared.acceptCloudAI()
-            await HermesLLMClient.shared.configure()
-            let configured = await HermesLLMClient.shared.provider != .none
+            let status = await HermesLLMClient.shared.refreshAPIKeyInformation()
             await MainActor.run {
                 checking = false
-                if configured {
+                if case .active(.claudeAPI) = status {
+                    BCHaptic.success()
                     onComplete()
                 } else {
                     BCHaptic.error()
+                    saveErrorMessage = status.settingsLabel
                     withAnimation(BCMotion.snappy) { saveError = true }
                 }
             }

@@ -132,13 +132,14 @@ final class HerModeEngine: NSObject, ObservableObject {
         didSet { if !isRestarting { restartingStartedAt = nil } }
     }
     private var isPausedForCompanionSpeech: Bool = false
+    private var recognitionPermissionsGranted = false
 
     // MARK: Private — loud noise detection
     private var loudFrameCount:      Int  = 0
     private var lastLoudReachOut:    Date = .distantPast
-    private let loudRMSThreshold:    Float = 0.06  // sustained noise level to trigger reach-out
-    private let loudFramesTrigger:   Int  = 130    // ~3 seconds at 44.1kHz / 1024 buffer
-    private let loudReachOutCooldown: TimeInterval = 600  // 10 min between loud-noise reach-outs
+    private let loudDecibelThreshold: Float = -28  // dBFS spike level for sustained chaotic audio
+    private let loudFramesTrigger:   Int  = 52     // ~1.2 seconds at 44.1kHz / 1024 buffer
+    private let loudReachOutCooldown: TimeInterval = 420  // 7 min between loud-noise reach-outs
 
     // Non-isolated refs safe to access from the audio thread without a Task
     nonisolated(unsafe) private var _requestRef: SFSpeechAudioBufferRecognitionRequest?
@@ -192,8 +193,15 @@ final class HerModeEngine: NSObject, ObservableObject {
 
     override private init() {
         super.init()
-        isUnlocked = defaults.bool(forKey: "herMode.unlocked")
-        isActive   = defaults.bool(forKey: "herMode.active")
+        let persistedUnlocked = defaults.bool(forKey: "herMode.unlocked")
+        let reachedUnlockThreshold = Self.persistedUnlockScore(defaults: defaults) >= HerLearningEngine.herModeUnlockScore
+        isUnlocked = persistedUnlocked && reachedUnlockThreshold
+        if persistedUnlocked && !reachedUnlockThreshold {
+            defaults.removeObject(forKey: "herMode.unlocked")
+            defaults.removeObject(forKey: "herMode.active")
+            defaults.removeObject(forKey: "herMode.ceremonyCompleted")
+        }
+        isActive   = isUnlocked && defaults.bool(forKey: "herMode.active")
         statusMessage = isActive ? "Starting listener..." : "Paused"
         loadPersistedTopics()
         if let saved = defaults.object(forKey: lastProactiveKey) as? Date {
@@ -243,13 +251,29 @@ final class HerModeEngine: NSObject, ObservableObject {
 
     private func scheduleNextProactiveWindow(minutes range: ClosedRange<Double>) {
         nextProactiveAllowedAt = Date().addingTimeInterval(Double.random(in: range) * 60)
-        requiredSilenceSeconds = TimeInterval.random(in: 35...95)
+        requiredSilenceSeconds = TimeInterval.random(in: 24...58)
         persistProactiveTiming()
     }
 
     private static func dayStamp(for date: Date) -> String {
         let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
         return "\(parts.year ?? 0)-\(parts.month ?? 0)-\(parts.day ?? 0)"
+    }
+
+    private var hasReachedUnlockThreshold: Bool {
+        Self.persistedUnlockScore(defaults: defaults) >= HerLearningEngine.herModeUnlockScore
+    }
+
+    private static func persistedUnlockScore(defaults: UserDefaults = .standard) -> Double {
+        let companionID = defaults.string(forKey: "selectedCompanionID") ?? "luna"
+        let companionScoreKey = "her.intimacyScore.\(companionID)"
+        if defaults.object(forKey: companionScoreKey) != nil {
+            return defaults.double(forKey: companionScoreKey)
+        }
+        if defaults.object(forKey: "her.intimacyScore") != nil {
+            return defaults.double(forKey: "her.intimacyScore")
+        }
+        return 0
     }
 
     // MARK: - Unlock
@@ -300,8 +324,10 @@ final class HerModeEngine: NSObject, ObservableObject {
     // MARK: - Activate / Deactivate
 
     func activate() {
-        guard isUnlocked else {
+        guard isUnlocked, hasReachedUnlockThreshold else {
             debugLog("activate blocked: mode is locked")
+            isActive = false
+            defaults.removeObject(forKey: "herMode.active")
             return
         }
         debugLog("activate requested for \(modeName)")
@@ -321,7 +347,10 @@ final class HerModeEngine: NSObject, ObservableObject {
     func resumeIfNeeded() {
         let shouldResume = defaults.bool(forKey: "herMode.active")
         debugLog("resumeIfNeeded unlocked=\(isUnlocked) persistedActive=\(shouldResume)")
-        guard isUnlocked, shouldResume else { return }
+        guard isUnlocked, shouldResume, hasReachedUnlockThreshold else {
+            defaults.removeObject(forKey: "herMode.active")
+            return
+        }
         activate()
     }
 
@@ -331,6 +360,7 @@ final class HerModeEngine: NSObject, ObservableObject {
         isPausedForCompanionSpeech = false
         statusMessage = "Paused"
         defaults.set(false, forKey: "herMode.active")
+        recognitionPermissionsGranted = false
         stopRecognition()
         directDispatchTask?.cancel()
         directDispatchTask = nil
@@ -346,6 +376,17 @@ final class HerModeEngine: NSObject, ObservableObject {
                 owner: BareClawAudioSessionOwner.herMode
             )
         }
+    }
+
+    func clearAmbientTrackingForPrivacy() {
+        detectedTopics.removeAll()
+        ambientWindowPieces.removeAll()
+        ambientWindowStartedAt = nil
+        lastAmbientInsightAt = .distantPast
+        lastHeardTopic = nil
+        liveTranscript = ""
+        saveTopics()
+        debugLog("ambient tracking state cleared for privacy")
     }
 
     // MARK: - Audio session
@@ -399,12 +440,14 @@ final class HerModeEngine: NSObject, ObservableObject {
 
     private func requestPermissionsAndStart() {
         debugLog("requesting speech authorization")
+        recognitionPermissionsGranted = false
         statusMessage = "Requesting speech permission..."
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             Task { @MainActor in
                 guard let self else { return }
                 self.debugLog("speech authorization status=\(Self.speechAuthorizationDescription(status))")
                 guard status == .authorized else {
+                    self.recognitionPermissionsGranted = false
                     self.statusMessage = "Speech permission needed"
                     return
                 }
@@ -420,11 +463,13 @@ final class HerModeEngine: NSObject, ObservableObject {
                 guard let self else { return }
                 self.debugLog("microphone permission granted=\(granted)")
                 guard granted else {
+                    self.recognitionPermissionsGranted = false
                     self.statusMessage = "Microphone permission needed"
                     self.ambientMood = .quiet
                     self.isListening = false
                     return
                 }
+                self.recognitionPermissionsGranted = true
                 self.statusMessage = "Starting listener..."
                 let audioReady = await BareClawAudioSessionController.shared.activate(
                     .herModeListening,
@@ -584,8 +629,8 @@ final class HerModeEngine: NSObject, ObservableObject {
             return
         }
 
-        // Capture immutable thresholds on MainActor before entering the audio-thread tap
-        let rmsThreshold  = self.loudRMSThreshold
+        // Capture immutable thresholds on MainActor before entering the audio-thread tap.
+        let decibelThreshold = self.loudDecibelThreshold
         let framesTrigger = self.loudFramesTrigger
 
         // Pass nil so AVAudioEngine picks the native hardware format for the tap.
@@ -602,6 +647,7 @@ final class HerModeEngine: NSObject, ObservableObject {
             var rms: Float = 0
             for i in 0..<frameCount { rms += channel[i] * channel[i] }
             rms = sqrt(rms / Float(frameCount))
+            let decibels = Self.decibels(fromRMS: rms)
 
             guard let self else { return }
 
@@ -616,7 +662,7 @@ final class HerModeEngine: NSObject, ObservableObject {
 
             // Loud-noise counter runs entirely on the audio thread via nonisolated vars.
             // Only dispatches to MainActor on the rare trigger event.
-            if rms > rmsThreshold {
+            if decibels >= decibelThreshold {
                 _loudFrameCount += 1
                 if _loudFrameCount >= framesTrigger {
                     DispatchQueue.main.async { [weak self] in self?.handleLoudNoise() }
@@ -640,6 +686,10 @@ final class HerModeEngine: NSObject, ObservableObject {
             statusMessage = "Microphone failed to start"
             debugLog("mic engine failed to start: \(error.localizedDescription)")
         }
+    }
+
+    nonisolated private static func decibels(fromRMS rms: Float) -> Float {
+        20 * log10(max(rms, 0.000_001))
     }
 
     @discardableResult
@@ -713,10 +763,23 @@ final class HerModeEngine: NSObject, ObservableObject {
         lastProcessedTranscript = transcript
 
         let ambientDelta = newAmbientText(previous: previousTranscript, current: transcript)
+        let persona = UserPersona.shared
+        if let directMessage = directAmbientMessage(from: transcript, persona: persona) {
+            guard directMessage != lastSentText else { return }
+            liveTranscript = ""
+            scheduleDirectMessage(directMessage)
+            return
+        }
+
+        guard persona.trackingPermissions.dynamicSignalsEnabled else {
+            ambientWindowPieces.removeAll()
+            ambientWindowStartedAt = nil
+            return
+        }
+
         observeAmbientConversationText(ambientDelta.isEmpty ? transcript : ambientDelta)
 
         let lower = transcript.lowercased()
-
         // Scan for topic keywords
         for (topic, keywords) in topicMap {
             for kw in keywords {
@@ -734,13 +797,6 @@ final class HerModeEngine: NSObject, ObservableObject {
                     break
                 }
             }
-        }
-
-        let persona = UserPersona.shared
-        if let directMessage = directAmbientMessage(from: transcript, persona: persona) {
-            guard directMessage != lastSentText else { return }
-            liveTranscript = ""
-            scheduleDirectMessage(directMessage)
         }
     }
 
@@ -916,10 +972,10 @@ final class HerModeEngine: NSObject, ObservableObject {
     private func scheduleDirectMessage(_ text: String) {
         directDispatchTask?.cancel()
         directDispatchTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 850_000_000)
+            try? await Task.sleep(nanoseconds: 500_000_000)
             guard !Task.isCancelled else { return }
             let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !cleaned.isEmpty, cleaned != self.lastSentText else { return }
+            guard self.isMeaningfulDirectSpeech(cleaned), cleaned != self.lastSentText else { return }
             self.lastSentText = cleaned
             self.debugLog("direct ambient speech detected length=\(cleaned.count)")
             self.dispatchDirectMessage(cleaned)
@@ -953,22 +1009,35 @@ final class HerModeEngine: NSObject, ObservableObject {
                     continue
                 }
 
-                guard cleaned.count > prefix.count else { return cleaned }
+                guard cleaned.count > prefix.count else { return nil }
                 let start = cleaned.index(cleaned.startIndex, offsetBy: prefix.count)
                 let remainder = String(cleaned[start...])
                     .trimmingCharacters(in: punctuation)
-                return remainder.isEmpty ? cleaned : remainder
+                return isMeaningfulDirectSpeech(remainder) ? remainder : nil
             }
         }
 
         return nil
     }
 
+    private func isMeaningfulDirectSpeech(_ text: String) -> Bool {
+        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return false }
+        let words = cleaned.split { $0.isWhitespace || $0.isNewline }
+        if words.count >= 2 { return true }
+
+        let lower = cleaned.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ".,:;!?- "))
+        let shortCommands: Set<String> = ["help", "stop", "wait", "yes", "no", "listen"]
+        return shortCommands.contains(lower)
+    }
+
     private func wakeAliases(for persona: UserPersona) -> [String] {
         var aliases = [
             persona.assistantName,
             persona.selectedCompanion.name,
-            persona.selectedCompanion.id
+            persona.selectedCompanion.id,
+            "bareclaw",
+            "bearclaw"
         ]
         aliases = aliases
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -1014,23 +1083,32 @@ final class HerModeEngine: NSObject, ObservableObject {
     private func startSilenceCheck() {
         silenceCheckTimer?.invalidate()
         debugLog("silence check started")
-        silenceCheckTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        silenceCheckTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.evaluateProactiveOpportunity() }
         }
     }
 
-    // Watchdog: every 90s, if we should be listening but aren't, restart.
+    // Watchdog: if we should be listening but aren't, restart quickly.
     private func startWatchdog() {
         watchdogTimer?.invalidate()
-        watchdogTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        watchdogTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.isActive, !self.isPausedForCompanionSpeech else { return }
+                guard let self, self.isActive else { return }
+                if self.isPausedForCompanionSpeech {
+                    CompanionVoiceEngine.shared.recoverHerModeRecognitionIfVoiceIdle(reason: "her_mode_watchdog")
+                    return
+                }
                 // If isRestarting has been stuck for >60 s, force-clear so we can recover.
                 if self.isRestarting,
                    let since = self.restartingStartedAt,
                    Date().timeIntervalSince(since) > 20 {
                     self.debugLog("watchdog: clearing stuck isRestarting flag (>20s)")
                     self.isRestarting = false
+                }
+                guard self.recognitionPermissionsGranted else { return }
+                if self.isListening, !self.micEngine.isRunning {
+                    self.debugLog("watchdog: mic engine stopped while marked listening")
+                    self.isListening = false
                 }
                 guard !self.isListening, !self.isRestarting else { return }
                 self.debugLog("watchdog: not listening — forcing restart")
@@ -1042,11 +1120,13 @@ final class HerModeEngine: NSObject, ObservableObject {
 
     // Called when sustained loud ambient noise is detected in the audio tap.
     private func handleLoudNoise() {
+        guard UserPersona.shared.trackingPermissions.dynamicSignalsEnabled else { return }
         let elapsed = Date().timeIntervalSince(lastLoudReachOut)
         guard elapsed >= loudReachOutCooldown else { return }
         guard !CompanionVoiceEngine.shared.isSpeaking else { return }
         lastLoudReachOut = Date()
         loudFrameCount   = 0
+        _loudFrameCount  = 0
 
         let companion = UserPersona.shared.selectedCompanion
         let candidateMessages: [String]
@@ -1103,14 +1183,31 @@ final class HerModeEngine: NSObject, ObservableObject {
         }
         guard let msg = candidateMessages.randomElement() else { return }
         debugLog("loud noise reach-out triggered")
-        ambientMood = .speaking
-        CompanionVoiceEngine.shared.speak(msg, character: companion.voiceCharacter, context: .love) {
-            Task { @MainActor in self.ambientMood = .listening }
+        let deferSpeech = CompanionThoughtFlow.shouldDeferProactiveDelivery
+        ambientMood = deferSpeech ? .thinking : .speaking
+        if !deferSpeech {
+            CompanionVoiceEngine.shared.speak(msg, character: companion.voiceCharacter, context: .love) {
+                Task { @MainActor in self.ambientMood = .listening }
+            }
+        }
+        NotificationCenter.default.post(
+            name: .herModeProactiveMessage,
+            object: nil,
+            userInfo: ["text": msg, "topic": "noise_spike", "shouldSpeak": deferSpeech]
+        )
+        if deferSpeech {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.ambientMood = self?.isListening == true ? .listening : .quiet
+            }
         }
     }
 
     private func evaluateProactiveOpportunity() {
         guard isActive else { return }
+        guard UserPersona.shared.trackingPermissions.dynamicSignalsEnabled else {
+            debugLog("proactive opportunity skipped: Dynamic Tracking disabled")
+            return
+        }
         guard !CompanionVoiceEngine.shared.isSpeaking else {
             debugLog("proactive opportunity skipped: companion already speaking")
             return
@@ -1276,5 +1373,5 @@ extension Notification.Name {
 // MARK: - Unlock threshold (shared constant)
 
 extension HerLearningEngine {
-    static let herModeUnlockScore: Double = 61.0
+    static let herModeUnlockScore: Double = 60.0
 }

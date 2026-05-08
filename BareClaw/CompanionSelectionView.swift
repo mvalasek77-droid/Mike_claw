@@ -366,7 +366,6 @@ struct CompanionDetailSheet: View {
                                 dismiss()
                             } label: {
                                 HStack {
-                                    Image(systemName: "person.crop.circle.badge.plus")
                                     Text(isSelected ? "Keep \(companion.name)" : "Choose \(companion.name)")
                                         .font(BCFont.headline())
                                 }

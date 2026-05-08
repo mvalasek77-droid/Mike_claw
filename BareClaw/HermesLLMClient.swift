@@ -56,10 +56,22 @@ struct LLMRequest {
     let role: AgentRole
 }
 
-struct LLMMessage {
+struct LLMImageAttachment: Sendable, Equatable {
+    let mimeType: String
+    let base64Data: String
+}
+
+struct LLMMessage: Sendable {
     enum Role { case user, assistant, system }
     let role: Role
     let content: String
+    let imageAttachments: [LLMImageAttachment]
+
+    init(role: Role, content: String, imageAttachments: [LLMImageAttachment] = []) {
+        self.role = role
+        self.content = content
+        self.imageAttachments = imageAttachments
+    }
 }
 
 struct LLMResponse {
@@ -486,8 +498,10 @@ enum ClaudeAPIBridge {
         // Build Anthropic messages array from transcript
         let messages: [[String: Any]] = request.messages.compactMap { msg in
             guard msg.role != .system else { return nil }  // system goes in top-level key
-            return ["role": msg.role == .user ? "user" : "assistant",
-                    "content": msg.content]
+            return [
+                "role": msg.role == .user ? "user" : "assistant",
+                "content": anthropicContentBlocks(for: msg)
+            ]
         }
 
         // Build tools array from ToolDefinitions
@@ -533,13 +547,13 @@ enum ClaudeAPIBridge {
                 var fallbackBody = body
                 if !tools.isEmpty { fallbackBody["tools"] = tools }
                 let fallbackRequest = try makeRequest(body: fallbackBody, key: key)
-                return try await blockingResponse(fallbackRequest)
+                return try await blockingResponseWithRetry(fallbackRequest)
             }
         } else {
             var blockingBody = body
             if !tools.isEmpty { blockingBody["tools"] = tools }
             let urlRequest = try makeRequest(body: blockingBody, key: key)
-            return try await blockingResponse(urlRequest)
+            return try await blockingResponseWithRetry(urlRequest)
         }
     }
 
@@ -671,12 +685,31 @@ enum ClaudeAPIBridge {
                 "outputTokens": "\(outputTokens)"
             ]
         )
+        guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            DiagnosticsLog.warning("claude", "Claude streaming completed with no text; falling back.")
+            throw LLMError.serverError(0)
+        }
         return LLMResponse(content: fullText, promptTokens: inputTokens,
                            completionTokens: outputTokens,
                            provider: .claudeAPI, toolCallsRequested: [])
     }
 
     // MARK: Blocking
+
+    private static func blockingResponseWithRetry(_ request: URLRequest,
+                                                  remainingRetries: Int = 1) async throws -> LLMResponse {
+        do {
+            return try await blockingResponse(request)
+        } catch LLMError.serverError(let code) where remainingRetries > 0 && [0, 500, 502, 503, 504, 529].contains(code) {
+            DiagnosticsLog.warning(
+                "claude",
+                "Claude blocking request failed with retryable server error; retrying once.",
+                details: ["status": "\(code)"]
+            )
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            return try await blockingResponseWithRetry(request, remainingRetries: remainingRetries - 1)
+        }
+    }
 
     private static func blockingResponse(_ request: URLRequest) async throws -> LLMResponse {
         DiagnosticsLog.info("claude", "Claude blocking request started.")
@@ -804,6 +837,27 @@ enum ClaudeAPIBridge {
         case .verify:   return "claude-opus-4-6"              // highest scrutiny
         }
     }
+
+    private static func anthropicContentBlocks(for msg: LLMMessage) -> Any {
+        guard !msg.imageAttachments.isEmpty, msg.role == .user else {
+            return msg.content
+        }
+
+        var blocks: [[String: Any]] = [
+            ["type": "text", "text": msg.content]
+        ]
+        for image in msg.imageAttachments {
+            blocks.append([
+                "type": "image",
+                "source": [
+                    "type": "base64",
+                    "media_type": image.mimeType,
+                    "data": image.base64Data
+                ]
+            ])
+        }
+        return blocks
+    }
 }
 
 // MARK: - Ollama LLM Bridge
@@ -858,8 +912,12 @@ enum OllamaLLMBridge {
         ]
         messages += request.messages.compactMap { msg -> [String: Any]? in
             guard msg.role != .system else { return nil }
+            var content = msg.content
+            if !msg.imageAttachments.isEmpty {
+                content += "\n\n[Image attached. Vision requires the Claude API path; if this local provider cannot inspect it, ask the user for a description.]"
+            }
             return ["role": msg.role == .user ? "user" : "assistant",
-                    "content": msg.content]
+                    "content": content]
         }
 
         let body: [String: Any] = [

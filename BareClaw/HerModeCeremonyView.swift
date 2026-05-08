@@ -32,6 +32,7 @@ final class CeremonyController: ObservableObject {
     private var pendingCompletion: (() -> Void)?
     private var mouthPulsing:      Bool = false
     private var autoFinishTask:    Task<Void, Never>?
+    private var finalVoiceStartedAt: Date?
 
     let questions: [String] = [
         "Tell me about your relationship with your mother.",
@@ -133,19 +134,30 @@ final class CeremonyController: ObservableObject {
 
         congratsText = text
         withAnimation(.easeIn(duration: 0.9)) { congratsVisible = true }
+        finalVoiceStartedAt = Date()
+        autoFinishTask?.cancel()
 
         speak(companion: text) {
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 2_800_000_000)
-                self.finishCeremony()
+                self.finishCeremony(stopVoice: false)
             }
         }
-        autoFinishTask?.cancel()
         autoFinishTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            try? await Task.sleep(nanoseconds: 60_000_000_000)
             guard !Task.isCancelled else { return }
-            DiagnosticsLog.warning("him_her_ceremony", "Ceremony auto-finished after 15 seconds on congratulations page.")
-            self.finishCeremony()
+            guard self.phase == .congratulating else { return }
+            guard !CompanionVoiceEngine.shared.isSpeaking else {
+                let elapsed = self.finalVoiceStartedAt.map { Int(Date().timeIntervalSince($0)) } ?? 60
+                DiagnosticsLog.warning(
+                    "him_her_ceremony",
+                    "Ceremony final voice still speaking at failsafe; leaving ceremony open.",
+                    details: ["elapsedSeconds": "\(elapsed)"]
+                )
+                return
+            }
+            DiagnosticsLog.warning("him_her_ceremony", "Ceremony auto-finished after final voice failsafe.")
+            self.finishCeremony(stopVoice: false)
         }
     }
 
@@ -219,10 +231,13 @@ final class CeremonyController: ObservableObject {
         UserDefaults.standard.set(dict, forKey: "ceremony.answers")
     }
 
-    private func finishCeremony() {
+    private func finishCeremony(stopVoice: Bool = true) {
         autoFinishTask?.cancel()
         autoFinishTask = nil
-        CompanionVoiceEngine.shared.stopSpeaking()
+        finalVoiceStartedAt = nil
+        if stopVoice {
+            CompanionVoiceEngine.shared.stopSpeaking()
+        }
         stopMouthAnimation()
         phase = .done
     }

@@ -3,67 +3,70 @@
 **Status:** Ready to enter into App Store Connect once support/privacy URLs are live.
 **Bundle ID:** com.bareclaw.bareclaw
 **Version:** 1.0 (build 1)
-**Category:** Lifestyle (primary) · Health & Fitness (secondary)
-**Age Rating:** 12+ (infrequent/mild mature/suggestive themes)
+**Category:** Lifestyle (primary) · Entertainment (secondary)
+**Age Rating:** 17+ recommended (AI companion chat, romantic roleplay modes, mature reflection themes)
 
 ---
 
 ## Product Page Copy
 
 ### App Name
-BareClaw
+BareClaw AI Companion
 
 ### Subtitle (30 chars max)
-AI Companion That Learns You
+Chat, voice, mood & memory
 
 ### Promotional Text (170 chars — can be updated any time without a new build)
-Your companion gets better every day. The more you share, the more it remembers — your interests, your mood, your music taste, and the moments that matter.
+Meet a companion that remembers what matters: chat, voice, dreams, moods, guided reflection, ASMR calm, romantic moments, movie charts, and game reviews.
 
 ### Description (4000 chars max)
 
-Some AI assistants answer questions. BareClaw builds a relationship.
+BareClaw is a private AI companion built for real conversation, memory, voice, reflection, and everyday connection.
 
-Choose a companion with a personality that fits you, then talk, journal, share music, and let the bond grow over time. BareClaw remembers what you care about, picks up on how you're feeling, and gets more personal with every conversation.
+Choose a companion, give them a name, and build a bond through chat, journaling, music, movie picks, game discovery, and the moments you want to remember. BareClaw learns your interests and emotional patterns over time, then responds with more context, personality, and presence.
 
-**Companion personalities**
-Six distinct companions — each with their own voice, emotional style, and way of connecting. Luna, Aria, Kel, Marco, Dante, and Kai each respond differently to the same conversation. Choose the one that fits.
+**A companion with personality**
+Choose from distinct companion personalities with different voices, moods, and emotional styles. Each one has their own way of talking, supporting, teasing, calming, and connecting.
 
-**Bond points & stages**
-Every meaningful exchange deepens the relationship. Bond points unlock new companion behaviors, a richer emotional range, and eventually Him/Her Mode — a deeper presence that stays with you throughout your day.
+**Chat that feels alive**
+Messages are personal and remembered. The chat view is built with polished glass depth, red iMessage-style bubbles, expressive animations, voice playback, and clearer separation between companion thoughts and normal replies.
 
-**Dream journal**
-Log your dreams and the companion learns your subconscious patterns. Entries feed a private learning engine that shapes how the companion understands you over time.
+**Bond points and unlocks**
+Meaningful conversations deepen the bond. As your score grows, new behaviors unlock, including richer memories, deeper reflection, and Him/Her Mode.
 
-**Vibes — music discovery**
-Heart a song and your companion learns your taste. The Vibes tab surfaces daily chart picks and companion-curated discoveries based on what you've responded to before.
+**Guided reflection mode**
+Enter a focused, hour-session style conversation where your companion helps you slow down, name the problem, explore patterns, and find a next step. It is emotional support and self-reflection, not medical therapy.
 
-**Him/Her Mode**
-After reaching a strong bond, unlock an optional always-present layer. The companion listens for your name, responds to loud moments or stress cues, and checks in at natural pauses — like a close friend who's just nearby.
+**ASMR Spa mode**
+Step into a calming voice experience with soft, continuous companion speech designed for relaxation, unwinding, and quiet moments.
 
-**Your API keys, your data**
-BareClaw runs on your own Claude and ElevenLabs accounts. You bring the keys; nothing routes through BareClaw servers. Conversations, memories, interests, and journal entries stay on your device unless you choose to send them to a provider you control.
+**Dream moments**
+Create boyfriend, girlfriend, or custom companion moments. Tell the companion exactly how to act, what the setting is, and what kind of memory you want to roleplay.
 
-**Built to be private**
-No account required. No BareClaw backend. No ads. No data sold. The companion profile, bond history, dream journal, and memory layer live entirely on your iPhone.
+**Movie and game discovery**
+Ask for movie charts, box-office context, reviews, game charts, top sellers, and review summaries from live entertainment sources.
+
+**Dream journal and memory**
+Log dreams, save reflections, and build a private emotional history that helps your companion understand what matters to you.
+
+**Private by design**
+No BareClaw account. No ads. No data sold. Your profile, bond history, memories, journal entries, and settings are stored on your iPhone. AI and voice features use API keys you choose to enter for third-party providers.
 
 ---
 
-BareClaw companions are AI-generated software. They are not real people and cannot provide medical, legal, financial, emergency, or professional advice. Third-party AI and voice features require separate provider accounts and are subject to those providers' terms and availability.
+BareClaw companions are AI-generated software. They are not real people and cannot provide medical, legal, financial, emergency, safety, or professional advice. Guided reflection features are not therapy or treatment. Third-party AI and voice features may require separate provider accounts and are subject to those providers' terms and availability.
 
 ### Keywords (100 chars — no spaces after commas)
-ai companion,voice chat,journal,memory,music,bond,wellness,stress,emotional,personality,girlfriend
+girlfriend,boyfriend,journal,dreams,reflection,asmr,wellness,stress,relationship,games,movies,lonely
 
 ### Support URL
-https://bareclaw.app/support
-*(placeholder — replace with live URL before submitting)*
+https://mvalasek77-droid.github.io/Mike_claw/support.html
 
 ### Marketing URL
-https://bareclaw.app
-*(placeholder — replace with live URL before submitting)*
+https://mvalasek77-droid.github.io/Mike_claw/
 
 ### Privacy Policy URL
-https://bareclaw.app/privacy
-*(placeholder — replace with live URL before submitting)*
+https://mvalasek77-droid.github.io/Mike_claw/privacy.html
 
 ### Copyright
 2026 Michael Valasek
@@ -78,7 +81,7 @@ https://bareclaw.app/privacy
 | Realistic violence | None |
 | Sexual content or nudity | None |
 | Profanity or crude humor | None |
-| Mature/suggestive themes | Infrequent/mild |
+| Mature/suggestive themes | Frequent/intense |
 | Horror/fear themes | None |
 | Medical/treatment information | None |
 | Alcohol, tobacco, or drug use | None |
@@ -87,13 +90,19 @@ https://bareclaw.app/privacy
 | Social networking features | None |
 | User-generated content | None (local only) |
 
-**Resulting rating: 12+**
+**Expected rating: 17+**
 
 ---
 
 ## Review Notes for Apple
 
-BareClaw is a personal AI companion app. Users must accept Terms of Use and Privacy Policy before the app starts. The app clearly and repeatedly states that companion responses are generated by AI software and must not be used for medical, legal, financial, emergency, safety-critical, or professional advice.
+BareClaw is a personal AI companion app with chat, voice, memory, dream journaling, guided reflection, ASMR Spa, romantic dream moments, movie charts, and game review discovery. Users must accept Terms of Use and Privacy Policy before the app starts. The app clearly and repeatedly states that companion responses are generated by AI software and must not be used for medical, legal, financial, emergency, safety-critical, or professional advice.
+
+**New modes in this build:**
+- Guided Reflection / Therapist-style mode: a structured self-reflection conversation. It is not medical therapy, diagnosis, or treatment.
+- ASMR Spa mode: calming generated companion speech for relaxation.
+- Boyfriend/Girlfriend dream moments: user-configured romantic roleplay with the selected companion.
+- Movie Charts and Game Charts: entertainment source summaries from public chart/review sites.
 
 **API keys:** The app uses API keys the user supplies themselves. No BareClaw server handles or stores these keys.
 - Claude (Anthropic) API key: entered in Settings > AI Engine
@@ -104,7 +113,7 @@ BareClaw is a personal AI companion app. Users must accept Terms of Use and Priv
 
 **Background audio:** The `audio` background mode is used solely to keep neural TTS voice playback active when the app is not in the foreground during an active Him/Her Mode session.
 
-**No account or sign-in required.** All user data is local to the device.
+**No account or sign-in required.** App data is stored locally unless the user chooses to send message or voice text to third-party AI providers using their own API keys.
 
 **Test account:** No login needed — the reviewer can create a fresh profile on launch. To reach Him/Her Mode for testing, use the bond score debug toggle in Settings > Diagnostics > Force unlock Him/Her Mode.
 
@@ -121,10 +130,10 @@ BareClaw is a personal AI companion app. Users must accept Terms of Use and Priv
 |---|---|---|---|
 | Name | Contact info | App functionality | Yes |
 | User content (chats, journal, interests) | User content | App functionality | Yes |
-| Audio data | Audio | App functionality (Him/Her Mode only, on-device) | No |
+| Text sent to AI/voice providers | User content | App functionality | Yes |
 
 ### Data Not Collected
-Everything else — location, health, fitness, financial, browsing history, identifiers, diagnostics, usage data — is not collected.
+Everything else — audio recordings, location, health, fitness, financial information, browsing history, identifiers, diagnostics, usage data — is not collected by BareClaw. Microphone audio for Him/Her Mode is not recorded or transmitted by BareClaw.
 
 ---
 

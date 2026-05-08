@@ -143,7 +143,10 @@ enum DiagnosticsLog {
             return
         }
 
-        let retained = data.suffix(retainedBytesAfterRotation)
+        var retained = Data(data.suffix(retainedBytesAfterRotation))
+        if let firstLineBreak = retained.firstIndex(of: 0x0A) {
+            retained = Data(retained[retained.index(after: firstLineBreak)...])
+        }
         var rotated = Data()
         rotated.append(Data("{\"level\":\"info\",\"category\":\"diagnostics\",\"message\":\"Diagnostics log rotated.\"}\n".utf8))
         rotated.append(retained)

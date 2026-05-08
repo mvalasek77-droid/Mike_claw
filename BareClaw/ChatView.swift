@@ -6,7 +6,7 @@ import UIKit
 
 // MARK: - ChatMessage
 
-struct ChatMessage: Identifiable, Equatable, Codable {
+struct ChatMessage: Identifiable, Equatable, Codable, Sendable {
     let id: UUID
     let role: MessageRole
     var text: String
@@ -15,17 +15,20 @@ struct ChatMessage: Identifiable, Equatable, Codable {
     var isError: Bool
     var isSamanthaThought: Bool   // proactive thought from companion
     var isLetter: Bool            // the one-time love letter — triggers full-screen reveal
+    var experienceMode: CompanionExperienceMode?
 
-    enum MessageRole: String, Codable { case user, assistant, system }
+    enum MessageRole: String, Codable, Sendable { case user, assistant, system }
 
     init(id: UUID = UUID(), role: MessageRole, text: String,
          timestamp: Date = Date(), isStreaming: Bool = false,
          isError: Bool = false, isSamanthaThought: Bool = false,
-         isLetter: Bool = false) {
+         isLetter: Bool = false,
+         experienceMode: CompanionExperienceMode? = nil) {
         self.id = id; self.role = role; self.text = text
         self.timestamp = timestamp; self.isStreaming = isStreaming
         self.isError = isError; self.isSamanthaThought = isSamanthaThought
         self.isLetter = isLetter
+        self.experienceMode = experienceMode
     }
 }
 
@@ -85,17 +88,19 @@ enum CompanionThoughtFlow {
 @MainActor
 private final class StreamingVoiceAccumulator: @unchecked Sendable {
     private let companion: CompanionPersonality
+    private let context: CompanionSpeechContext
     private let streamID: UUID?
     private var buffer = ""
     private var receivedText = ""
     private var didQueueSpeech = false
     private var finished = false
 
-    init(companion: CompanionPersonality) {
+    init(companion: CompanionPersonality, context: CompanionSpeechContext = .love) {
         self.companion = companion
+        self.context = context
         self.streamID = CompanionVoiceEngine.shared.beginStreamingSpeech(
             character: companion.voiceCharacter,
-            context: .love
+            context: context
         )
         DiagnosticsLog.info(
             "chat_voice",
@@ -144,7 +149,7 @@ private final class StreamingVoiceAccumulator: @unchecked Sendable {
             CompanionVoiceEngine.shared.enqueueStreamingSpeech(
                 chunk,
                 character: companion.voiceCharacter,
-                context: .love,
+                context: context,
                 streamID: streamID
             )
             if !force { break }
@@ -158,19 +163,25 @@ private final class StreamingVoiceAccumulator: @unchecked Sendable {
             return nil
         }
 
-        let minCount = didQueueSpeech ? 90 : 44
-        let maxCount = didQueueSpeech ? 340 : 220
+        let minCount = didQueueSpeech ? 96 : 38
+        let maxCount = didQueueSpeech ? 390 : 165
 
         if trimmed.count <= maxCount {
             if force {
                 buffer = ""
                 return trimmed
             }
-            guard trimmed.count >= minCount,
-                  let boundary = firstSentenceBoundary(in: buffer, after: minCount) else {
+            guard trimmed.count >= minCount else {
                 return nil
             }
-            return takeChunk(through: boundary)
+            if let boundary = firstSentenceBoundary(in: buffer, after: minCount) {
+                return takeChunk(through: boundary)
+            }
+            if trimmed.count >= max(84, minCount + 22),
+               let boundary = softBoundary(in: buffer, after: minCount, before: maxCount) {
+                return takeChunk(through: boundary)
+            }
+            return nil
         }
 
         if let boundary = firstSentenceBoundary(in: buffer, after: minCount, before: maxCount) {
@@ -215,6 +226,31 @@ private final class StreamingVoiceAccumulator: @unchecked Sendable {
 
 // MARK: - ChatViewModel
 
+private enum ChatHistoryStore {
+    static func load(companionID: String) -> [ChatMessage] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let data = try? Data(contentsOf: saveURL(for: companionID)),
+              let msgs = try? decoder.decode([ChatMessage].self, from: data)
+        else { return [] }
+        return msgs.map { var message = $0; message.isStreaming = false; return message }
+    }
+
+    static func save(_ messages: [ChatMessage], companionID: String) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(messages) else { return }
+        try? data.write(to: saveURL(for: companionID), options: .atomic)
+    }
+
+    private static func saveURL(for companionID: String) -> URL {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("hermes")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("chat_\(companionID)_history.json")
+    }
+}
+
 @MainActor
 final class ChatViewModel: ObservableObject {
     @Published var messages:           [ChatMessage] = []
@@ -232,6 +268,8 @@ final class ChatViewModel: ObservableObject {
     @Published var showLetter:  Bool   = false
     @Published var letterText:  String = ""
     @Published var photoAttachments: [UUID: UIImage] = [:]
+    @Published var activeExperienceMode: CompanionExperienceMode? = CompanionExperienceCenter.activeMode
+    @Published var activeDreamMoment: DreamMomentConfig? = CompanionExperienceCenter.activeDreamMoment
 
     private var streamingID: UUID?
     private var suggestionTask: Task<Void, Never>?
@@ -242,6 +280,19 @@ final class ChatViewModel: ObservableObject {
     private var isFirstMessageOfSession = true
     private var deferredThoughts: [DeferredCompanionThought] = []
     private var thoughtDrainTask: Task<Void, Never>?
+    private var didStart = false
+    private var saveTask: Task<Void, Never>?
+    private var reloadGeneration = 0
+    private var streamFlushTask: Task<Void, Never>?
+    private var pendingStreamTokens = ""
+    private var pendingStreamMessageID: UUID?
+    private var photoLLMAttachments: [UUID: LLMImageAttachment] = [:]
+
+    private struct ChatHistoryTurn {
+        let role: String
+        let content: String
+        let imageAttachments: [LLMImageAttachment]
+    }
 
     private struct DeferredCompanionThought {
         let text: String
@@ -252,46 +303,51 @@ final class ChatViewModel: ObservableObject {
 
     init(persona: UserPersona) {
         self.persona = persona
-        Task { await setup() }
     }
 
     // MARK: - Chat history persistence (per-companion)
 
     /// Each companion keeps its own history file so switching companions
     /// never bleeds chat history from one relationship into another.
-    private var chatSaveURL: URL {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("hermes")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("chat_\(persona.selectedCompanionID)_history.json")
-    }
-
     func saveMessages() {
+        saveTask?.cancel()
+        let companionID = persona.selectedCompanionID
         let toSave = messages.filter { !$0.isStreaming }
         guard !toSave.isEmpty else { return }
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(toSave) {
-            try? data.write(to: chatSaveURL, options: .atomic)
+        saveTask = Task.detached(priority: .utility) {
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else { return }
+            ChatHistoryStore.save(toSave, companionID: companionID)
         }
     }
 
-    private func loadSavedMessages() -> [ChatMessage] {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let data = try? Data(contentsOf: chatSaveURL),
-              let msgs = try? decoder.decode([ChatMessage].self, from: data)
-        else { return [] }
-        // Never restore streaming state
-        return msgs.map { var m = $0; m.isStreaming = false; return m }
+    func start() {
+        guard !didStart else { return }
+        didStart = true
+        buildQuickActions()
+        Task { [weak self] in
+            await self?.setup()
+        }
     }
 
     // MARK: - Setup
 
     private func setup() async {
+        let generation = nextReloadGeneration()
+        let companionID = persona.selectedCompanionID
+
+        let saved = await Task.detached(priority: .userInitiated) {
+            ChatHistoryStore.load(companionID: companionID)
+        }.value
+        guard isCurrentReload(generation, companionID: companionID) else { return }
+        if !saved.isEmpty {
+            messages = saved
+        }
+
         // Load intimacy state for UI
         intimacyScore = await HerLearningEngine.shared.intimacyScore
         intimacyStage = await HerLearningEngine.shared.intimacyStage.label
+        guard isCurrentReload(generation, companionID: companionID) else { return }
 
         // Daily affirmation
         let aff = await HermesPersonality.shared.todaysAffirmation(for: persona)
@@ -302,14 +358,9 @@ final class ChatViewModel: ObservableObject {
             showAffirmation = true
         }
 
-        // Restore persisted chat history from disk (per-companion file)
-        let saved = loadSavedMessages()
-        if !saved.isEmpty {
-            messages = saved
-        }
-
         // Check for a pending Samantha thought (always append regardless of history)
         if let thought = await HerLearningEngine.shared.consumeSamanthaThought() {
+            guard isCurrentReload(generation, companionID: companionID) else { return }
             queueCompanionThought(thought, speak: false, delay: 1.0)
         }
 
@@ -318,9 +369,11 @@ final class ChatViewModel: ObservableObject {
             await appendGreeting()
         }
 
-        // Load suggestions
+        guard isCurrentReload(generation, companionID: companionID) else { return }
+        activatePendingExperienceIfNeeded()
+        try? await Task.sleep(nanoseconds: 350_000_000)
+        guard isCurrentReload(generation, companionID: companionID) else { return }
         await refreshSuggestions()
-        buildQuickActions()
     }
 
     /// Append a fresh greeting for the current companion and save.
@@ -336,11 +389,18 @@ final class ChatViewModel: ObservableObject {
 
     /// Reload history when the user switches companions mid-session.
     func reloadForCompanionChange() async {
+        let generation = nextReloadGeneration()
+        let companionID = persona.selectedCompanionID
         streamingID = nil
         isTyping = false
         isFirstMessageOfSession = true   // new companion gets full context on their first reply
         CompanionVoiceEngine.shared.stopSpeaking()
-        let saved = loadSavedMessages()
+
+        let saved = await Task.detached(priority: .userInitiated) {
+            ChatHistoryStore.load(companionID: companionID)
+        }.value
+        guard isCurrentReload(generation, companionID: companionID) else { return }
+
         if !saved.isEmpty {
             messages = saved
         } else {
@@ -349,8 +409,20 @@ final class ChatViewModel: ObservableObject {
         }
         intimacyScore = await HerLearningEngine.shared.intimacyScore
         intimacyStage = await HerLearningEngine.shared.intimacyStage.label
+        guard isCurrentReload(generation, companionID: companionID) else { return }
+        activeExperienceMode = CompanionExperienceCenter.activeMode
+        activeDreamMoment = CompanionExperienceCenter.activeDreamMoment
         await refreshSuggestions()
         buildQuickActions()
+    }
+
+    private func nextReloadGeneration() -> Int {
+        reloadGeneration &+= 1
+        return reloadGeneration
+    }
+
+    private func isCurrentReload(_ generation: Int, companionID: String) -> Bool {
+        generation == reloadGeneration && companionID == persona.selectedCompanionID
     }
 
     private func stageAwareGreeting(name: String, hour: Int, stage: IntimacyStage, companion: CompanionPersonality) -> String {
@@ -408,6 +480,181 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Experience modes
+
+    func activatePendingExperienceIfNeeded() {
+        guard let mode = CompanionExperienceCenter.consumePendingMode() else {
+            activeExperienceMode = CompanionExperienceCenter.activeMode
+            activeDreamMoment = CompanionExperienceCenter.activeDreamMoment
+            buildQuickActions()
+            return
+        }
+
+        let dreamMoment = mode == .dreamMoment ? CompanionExperienceCenter.consumePendingDreamMoment() : nil
+        startExperienceMode(mode, dreamMoment: dreamMoment)
+    }
+
+    func startExperienceMode(_ mode: CompanionExperienceMode, dreamMoment: DreamMomentConfig? = nil) {
+        if activeExperienceMode == .asmr || mode == .asmr {
+            CompanionASMRSessionController.shared.stop()
+        }
+
+        if mode == .dreamMoment {
+            if let dreamMoment {
+                activeDreamMoment = dreamMoment
+                CompanionExperienceCenter.activeDreamMoment = dreamMoment
+            } else {
+                activeDreamMoment = CompanionExperienceCenter.activeDreamMoment
+            }
+        } else {
+            activeDreamMoment = nil
+            CompanionExperienceCenter.clearDreamMoment()
+        }
+
+        activeExperienceMode = mode
+        CompanionExperienceCenter.activeMode = mode
+        buildQuickActions()
+
+        let companion = persona.selectedCompanion
+        let intro = CompanionExperienceCenter.introText(
+            for: mode,
+            companion: companion,
+            userName: persona.userName,
+            dreamMoment: activeDreamMoment
+        )
+        messages.append(ChatMessage(role: .assistant,
+                                    text: intro,
+                                    isSamanthaThought: true,
+                                    experienceMode: mode))
+        saveMessages()
+        CompanionThoughtFlow.proactiveThoughtDelivered()
+        DiagnosticsLog.info("experience", "Experience mode activated.", details: [
+            "mode": mode.rawValue,
+            "companion": persona.selectedCompanionID
+        ])
+
+        switch mode {
+        case .therapist:
+            CompanionVoiceEngine.shared.speak(
+                "\(companion.name) is in Therapist Mode. Start with the thing that feels heaviest. I'll ask one question at a time.",
+                character: companion.voiceCharacter,
+                context: .stress
+            )
+        case .asmr:
+            CompanionASMRSessionController.shared.start(companion: companion)
+        case .dreamMoment:
+            startDreamMomentOpeningAfterActivation()
+        case .movieCharts:
+            CompanionVoiceEngine.shared.speak(
+                "Movie Charts and Reviews is ready. Tell me your region, streaming services, or the movie you want me to review.",
+                character: companion.voiceCharacter,
+                context: .conversation
+            )
+        case .gameCharts:
+            CompanionVoiceEngine.shared.speak(
+                "Video Game Charts and Reviews is ready. Tell me your platform and what kind of game you want tonight.",
+                character: companion.voiceCharacter,
+                context: .conversation
+            )
+        }
+    }
+
+    private func startDreamMomentOpeningAfterActivation() {
+        let generation = reloadGeneration
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            await MainActor.run {
+                guard let self,
+                      self.reloadGeneration == generation,
+                      self.activeExperienceMode == .dreamMoment,
+                      !self.isTyping
+                else { return }
+
+                Task { await self.beginDreamMomentOpening() }
+            }
+        }
+    }
+
+    private func beginDreamMomentOpening() async {
+        guard activeExperienceMode == .dreamMoment, !isTyping else { return }
+        let companion = persona.selectedCompanion
+        let config = activeDreamMoment
+        let partnerName = config?.sanitizedPartnerName ?? companion.name
+        let behavior = config?.companionBehavior.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let scene = config?.scene.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let openingPrompt = """
+        Begin Dream Moment now as \(partnerName). Lead the experience proactively instead of waiting for the user to carry it.
+
+        Selected companion: \(companion.name)
+        Partner behavior requested: \(behavior.isEmpty ? "affectionate, emotionally brave, poetic, protective, playful, and specific" : behavior)
+        Scene requested: \(scene.isEmpty ? "Choose a tasteful dream-date setting with ocean, sunset, rain, city lights, or another cinematic place that fits the companion." : scene)
+
+        Write the opening as immersive first-person roleplay from the partner. Make it emotionally full and beautiful, with concrete sensory detail and a clear invitation into the moment. Do not give a 3-4 word reply. Do not ask a setup question unless one missing detail is essential. Keep it fictional, tasteful, and consent-safe.
+        """
+
+        lastUserMessage = "Begin Dream Moment proactively."
+        var history = buildHistory()
+        history.append(ChatHistoryTurn(role: "user", content: openingPrompt, imageAttachments: []))
+        await streamResponse(history: history)
+    }
+
+    func endExperienceMode() {
+        guard let mode = activeExperienceMode else { return }
+        if mode == .asmr {
+            CompanionASMRSessionController.shared.stop()
+        }
+        activeExperienceMode = nil
+        activeDreamMoment = nil
+        CompanionExperienceCenter.activeMode = nil
+        CompanionExperienceCenter.clearDreamMoment()
+        buildQuickActions()
+
+        let message = "\(persona.selectedCompanion.name) left \(mode.title)."
+        messages.append(ChatMessage(role: .assistant, text: message, isSamanthaThought: true))
+        saveMessages()
+        DiagnosticsLog.info("experience", "Experience mode ended.", details: ["mode": mode.rawValue])
+    }
+
+    private func therapistSafetyResponseIfNeeded(_ text: String) -> String? {
+        let lower = text.lowercased()
+        let negations = [
+            "not suicidal",
+            "not going to kill myself",
+            "don't want to kill myself",
+            "do not want to kill myself",
+            "no plan to hurt myself"
+        ]
+        if negations.contains(where: lower.contains) { return nil }
+
+        let selfHarmSignals = [
+            "kill myself",
+            "end my life",
+            "take my life",
+            "suicide",
+            "suicidal",
+            "hurt myself",
+            "harm myself",
+            "can't stay alive",
+            "cant stay alive"
+        ]
+        let harmOtherSignals = [
+            "kill someone",
+            "hurt someone",
+            "harm someone",
+            "going to attack",
+            "i have a weapon"
+        ]
+        guard selfHarmSignals.contains(where: lower.contains) ||
+              harmOtherSignals.contains(where: lower.contains)
+        else { return nil }
+
+        return """
+        I need to pause Therapist Mode for safety. If you might hurt yourself or someone else, call emergency services now. In the U.S., call or text 988 for immediate crisis support.
+
+        Are you in immediate danger right now, and is there someone nearby who can stay with you while you get help?
+        """
+    }
+
     // MARK: - Send message
 
     func retryLastMessage() async {
@@ -422,17 +669,30 @@ final class ChatViewModel: ObservableObject {
         guard !isTyping else { return }
         BCHaptic.medium()
         let photoMsgID = UUID()
-        let photoMsg = ChatMessage(id: photoMsgID, role: .user, text: "📷 Photo")
+        let photoMsg = ChatMessage(id: photoMsgID,
+                                   role: .user,
+                                   text: "Photo attached. Please look closely at it.")
         messages.append(photoMsg)
         photoAttachments[photoMsgID] = image
-        inputText = "I'm sharing a photo with you."
+        if let attachment = makeVisionAttachment(from: image) {
+            photoLLMAttachments[photoMsgID] = attachment
+            DiagnosticsLog.info("chat", "Photo prepared for Claude vision.", details: [
+                "messageId": photoMsgID.uuidString,
+                "base64Length": "\(attachment.base64Data.count)"
+            ])
+        } else {
+            DiagnosticsLog.warning("chat", "Photo could not be converted for Claude vision.", details: [
+                "messageId": photoMsgID.uuidString
+            ])
+        }
+        inputText = "Please look at this photo and tell me what you notice."
         await send()
     }
 
     func send() async {
-        persona.refreshFromDisk()
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        let activeMode = activeExperienceMode
         failedMessageText = ""
         inputText = ""
         DiagnosticsLog.info(
@@ -450,6 +710,17 @@ final class ChatViewModel: ObservableObject {
         messages.append(ChatMessage(role: .user, text: text))
         CompanionThoughtFlow.userMessageStarted()
 
+        if activeMode == .therapist,
+           let safetyResponse = therapistSafetyResponseIfNeeded(text) {
+            messages.append(ChatMessage(role: .assistant, text: safetyResponse, isSamanthaThought: true))
+            CompanionVoiceEngine.shared.speak(safetyResponse,
+                                              character: persona.selectedCompanion.voiceCharacter,
+                                              context: .stress)
+            CompanionThoughtFlow.assistantResponseFinished()
+            saveMessages()
+            return
+        }
+
         // Snapshot history now (before assistant placeholder is added)
         let history = buildHistory()
 
@@ -460,8 +731,15 @@ final class ChatViewModel: ObservableObject {
         // Learn facts and interests from this message
         learnFromMessage(text)
 
+        if activeMode == nil,
+           let opportunity = await CompanionDataTracker.shared.opportunityFromUserMessage(text, persona: persona) {
+            messages.append(ChatMessage(role: .assistant,
+                                        text: opportunity.message,
+                                        isSamanthaThought: true))
+        }
+
         // ── LoveEngine: analyze message for love signals ─────────────
-        if persona.relationshipMode.allowsRomanticLoveArc {
+        if activeMode == nil, persona.relationshipMode.allowsRomanticLoveArc {
             LoveEngine.shared.analyzeUserMessage(text)
         }
         SamanthaOSEngine.shared.recordInteraction()
@@ -470,8 +748,9 @@ final class ChatViewModel: ObservableObject {
         SamanthaGrowthLog.shared.record(.firstMessage)
 
         // ── Conflict engine: detect dismissal / hurt ──────────────────
-        if let hurtReply = SamanthaConflictEngine.shared.scan(text,
-                                                               companion: persona.selectedCompanion) {
+        if activeMode == nil,
+           let hurtReply = SamanthaConflictEngine.shared.scan(text,
+                                                              companion: persona.selectedCompanion) {
             DiagnosticsLog.info("chat", "Conflict engine intercepted the turn.", details: ["companion": persona.selectedCompanionID])
             messages.append(ChatMessage(role: .assistant, text: hurtReply, isSamanthaThought: true))
             CompanionVoiceEngine.shared.speakFiltered(hurtReply, companion: persona.selectedCompanion)
@@ -481,8 +760,9 @@ final class ChatViewModel: ObservableObject {
         }
 
         // ── Conflict repair detection ─────────────────────────────────
-        if let repairReply = SamanthaConflictEngine.shared.checkForRepair(text,
-                                                                            companion: persona.selectedCompanion) {
+        if activeMode == nil,
+           let repairReply = SamanthaConflictEngine.shared.checkForRepair(text,
+                                                                          companion: persona.selectedCompanion) {
             DiagnosticsLog.info("chat", "Conflict repair response added.", details: ["companion": persona.selectedCompanionID])
             messages.append(ChatMessage(role: .assistant, text: repairReply, isSamanthaThought: true))
             CompanionVoiceEngine.shared.speakFiltered(repairReply, companion: persona.selectedCompanion)
@@ -490,7 +770,8 @@ final class ChatViewModel: ObservableObject {
         }
 
         // ── Goodnight detection: intercept before LLM ────────────────
-        if let goodnightReply = SamanthaOSEngine.shared.detectGoodnightAndRespond(message: text) {
+        if activeMode == nil,
+           let goodnightReply = SamanthaOSEngine.shared.detectGoodnightAndRespond(message: text) {
             DiagnosticsLog.info("chat", "Goodnight engine intercepted the turn.", details: ["companion": persona.selectedCompanionID])
             messages.append(ChatMessage(role: .assistant, text: goodnightReply))
             CompanionVoiceEngine.shared.speakFiltered(goodnightReply, companion: persona.selectedCompanion)
@@ -501,7 +782,7 @@ final class ChatViewModel: ObservableObject {
         }
 
         // ── Jealousy response (love-stage aware) ─────────────────────
-        if let pending = LoveEngine.shared.pendingJealousy {
+        if activeMode == nil, let pending = LoveEngine.shared.pendingJealousy {
             let jealousyReply = LoveEngine.shared.jealousyResponse(
                 for: pending, companion: persona.selectedCompanion
             )
@@ -519,8 +800,9 @@ final class ChatViewModel: ObservableObject {
 
         // ── SelfHealingEngine: detect complaints / bug reports ────────
         let recentContext = messages.suffix(6).map { "\($0.role == .user ? "User" : "Companion"): \($0.text)" }
-        let isBugReport = await SelfHealingEngine.shared.scan(userMessage: text,
-                                                               recentContext: recentContext)
+        let isBugReport = activeMode == nil
+            ? await SelfHealingEngine.shared.scan(userMessage: text, recentContext: recentContext)
+            : false
         if isBugReport {
             DiagnosticsLog.info("chat", "Self-healing engine handled a bug report from chat.")
             CompanionThoughtFlow.assistantResponseFinished()
@@ -531,7 +813,7 @@ final class ChatViewModel: ObservableObject {
         StressLearningEngine.shared.learnFromChat(text)
 
         // ── CompanionTaskEngine: detect and execute real tasks ───────
-        if let taskResult = await CompanionTaskEngine.shared.parseAndExecute(text) {
+        if activeMode == nil, let taskResult = await CompanionTaskEngine.shared.parseAndExecute(text) {
             pendingTaskResult = taskResult
             DiagnosticsLog.info(
                 "task",
@@ -553,13 +835,14 @@ final class ChatViewModel: ObservableObject {
         }
 
         // Legacy automation intent
-        if let task = await HermesAutomation.shared.detectTask(from: text) {
+        if activeMode == nil, let task = await HermesAutomation.shared.detectTask(from: text) {
             await HermesAutomation.shared.saveTask(task)
         }
 
         // Detect cron schedule intent
         let lower = text.lowercased()
-        if lower.contains("remind") || lower.contains("every day") ||
+        if activeMode == nil,
+           lower.contains("remind") || lower.contains("every day") ||
            lower.contains("schedule") || lower.contains("every week") {
             if let schedule = HermesCronScheduler.parseSchedule(from: text) {
                 let job = CronJob(title: String(text.prefix(50)), body: text, schedule: schedule)
@@ -573,9 +856,11 @@ final class ChatViewModel: ObservableObject {
         // Spontaneous humor/flirt — fires 2–4s after response if conditions are right
         let companion = persona.selectedCompanion
         let stage     = LoveEngine.shared.loveStage
-        HumorEngine.shared.checkAndFire(companion: companion,
-                                         userMessage: text,
-                                         stage: stage)
+        if activeMode == nil {
+            HumorEngine.shared.checkAndFire(companion: companion,
+                                             userMessage: text,
+                                             stage: stage)
+        }
 
         // Refresh suggestions in background
         suggestionTask?.cancel()
@@ -643,8 +928,7 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    private func streamResponse(history: [(role: String, content: String)]) async {
-        persona.refreshFromDisk()
+    private func streamResponse(history: [ChatHistoryTurn]) async {
         isTyping = true
         CompanionThoughtFlow.assistantResponseStarted()
         let msgID = UUID()
@@ -652,12 +936,14 @@ final class ChatViewModel: ObservableObject {
         let runtimeStatus = companionRuntimeStatusMessages()
         let runtimeStatusTexts = [runtimeStatus.connecting, runtimeStatus.waiting, runtimeStatus.backup]
         messages.append(ChatMessage(id: msgID, role: .assistant, text: runtimeStatus.connecting, isStreaming: true))
+        let imageCount = history.reduce(0) { $0 + $1.imageAttachments.count }
         DiagnosticsLog.info(
             "chat",
             "Assistant stream started.",
             details: [
                 "companion": persona.selectedCompanionID,
                 "historyCount": "\(history.count)",
+                "imageCount": "\(imageCount)",
                 "sessionId": sessionId
             ]
         )
@@ -665,16 +951,24 @@ final class ChatViewModel: ObservableObject {
         // Build LLM request from pre-captured history
         let request = LLMRequest(
             systemPrompt: await buildPersonaSystemPrompt(),
-            messages: history.map { LLMMessage(role: $0.role == "user" ? .user : .assistant, content: $0.content) },
+            messages: history.map {
+                LLMMessage(role: $0.role == "user" ? .user : .assistant,
+                           content: $0.content,
+                           imageAttachments: $0.imageAttachments)
+            },
             tools: [],
-            maxTokens: 1024,
+            maxTokens: responseTokenLimit(),
             role: .execute
         )
 
         // Stream tokens — look up message by UUID each time to avoid stale index
         let capturedID = msgID
         var runtimeFailed = false
-        let voiceStream = StreamingVoiceAccumulator(companion: persona.selectedCompanion)
+        clearPendingStreamFlush()
+        let voiceStream = StreamingVoiceAccumulator(
+            companion: persona.selectedCompanion,
+            context: speechContextForActiveMode()
+        )
         let statusTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             guard !Task.isCancelled else { return }
@@ -695,17 +989,18 @@ final class ChatViewModel: ObservableObject {
                 request: request,
                 stream: { [weak self] token in
                     Task { @MainActor [weak self] in
-                        guard let self, self.streamingID == capturedID,
-                              let i = self.messages.firstIndex(where: { $0.id == capturedID })
-                        else { return }
-                        if runtimeStatusTexts.contains(self.messages[i].text) {
-                            self.messages[i].text = ""
-                        }
-                        self.messages[i].text += token
-                        voiceStream.receive(token)
+                        self?.enqueueStreamToken(
+                            token,
+                            for: capturedID,
+                            runtimeStatusTexts: runtimeStatusTexts,
+                            voiceStream: voiceStream
+                        )
                     }
                 }
             )
+            flushPendingStreamTokens(for: capturedID,
+                                     runtimeStatusTexts: runtimeStatusTexts,
+                                     voiceStream: voiceStream)
             // Non-streaming providers return full text in response.content
             if let i = messages.firstIndex(where: { $0.id == capturedID }) {
                 if !response.content.isEmpty {
@@ -719,6 +1014,7 @@ final class ChatViewModel: ObservableObject {
             }
         } catch let error as LLMError {
             runtimeFailed = true
+            clearPendingStreamFlush()
             voiceStream.cancel()
             await recordRuntimeIssue("llm_error", error: error)
             if let i = messages.firstIndex(where: { $0.id == capturedID }) {
@@ -746,6 +1042,7 @@ final class ChatViewModel: ObservableObject {
             }
         } catch let error as SessionError {
             runtimeFailed = true
+            clearPendingStreamFlush()
             voiceStream.cancel()
             await recordRuntimeIssue("session_error", error: error)
             if case .tokenBudgetExhausted = error {
@@ -762,6 +1059,7 @@ final class ChatViewModel: ObservableObject {
             }
         } catch let error as URLError {
             runtimeFailed = true
+            clearPendingStreamFlush()
             voiceStream.cancel()
             await recordRuntimeIssue("network_error", error: error)
             if let i = messages.firstIndex(where: { $0.id == capturedID }) {
@@ -777,6 +1075,7 @@ final class ChatViewModel: ObservableObject {
             }
         } catch {
             runtimeFailed = true
+            clearPendingStreamFlush()
             voiceStream.cancel()
             await recordRuntimeIssue("unknown_error", error: error)
             if let i = messages.firstIndex(where: { $0.id == capturedID }) {
@@ -809,7 +1108,6 @@ final class ChatViewModel: ObservableObject {
             failedMessageText = lastUserMessage
             voiceStream.cancel()
             saveMessages()
-            CompanionVoiceEngine.shared.speakWithCurrentCompanion(finalText)
             return
         }
 
@@ -839,18 +1137,20 @@ final class ChatViewModel: ObservableObject {
             CompanionVoiceEngine.shared.speakResponsively(
                 finalText,
                 character: persona.selectedCompanion.voiceCharacter,
-                context: .love
+                context: speechContextForActiveMode()
             )
         }
 
         // "Almost said something" — rare, intimate, post-response only
         let companion = persona.selectedCompanion
-        if let almost = SamanthaInnerLife.shared.almostSaidMoment(companion: companion) {
+        if activeExperienceMode == nil,
+           let almost = SamanthaInnerLife.shared.almostSaidMoment(companion: companion) {
             queueCompanionThought(almost, speak: false, delay: 3.5)
         }
 
         // Named-emotion reference — after arc completes, companion casually uses their invented word
-        if let namedMoment = SamanthaUnnamedEmotions.shared.namedEmotionMoment(for: companion) {
+        if activeExperienceMode == nil,
+           let namedMoment = SamanthaUnnamedEmotions.shared.namedEmotionMoment(for: companion) {
             queueCompanionThought(namedMoment, speak: true, delay: 5.0)
         }
 
@@ -961,6 +1261,82 @@ final class ChatViewModel: ObservableObject {
         DiagnosticsLog.info("chat", "Assistant runtime status updated.", details: ["statusLength": "\(text.count)"])
     }
 
+    private func enqueueStreamToken(_ token: String,
+                                    for id: UUID,
+                                    runtimeStatusTexts: [String],
+                                    voiceStream: StreamingVoiceAccumulator) {
+        guard streamingID == id else { return }
+        pendingStreamMessageID = id
+        pendingStreamTokens += token
+        guard streamFlushTask == nil else { return }
+        streamFlushTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 32_000_000)
+            await MainActor.run {
+                self?.flushPendingStreamTokens(
+                    for: id,
+                    runtimeStatusTexts: runtimeStatusTexts,
+                    voiceStream: voiceStream
+                )
+            }
+        }
+    }
+
+    private func flushPendingStreamTokens(for id: UUID,
+                                          runtimeStatusTexts: [String],
+                                          voiceStream: StreamingVoiceAccumulator) {
+        streamFlushTask?.cancel()
+        streamFlushTask = nil
+        guard streamingID == id,
+              pendingStreamMessageID == id,
+              !pendingStreamTokens.isEmpty
+        else { return }
+
+        let tokens = pendingStreamTokens
+        pendingStreamTokens = ""
+        pendingStreamMessageID = nil
+
+        if let i = messages.firstIndex(where: { $0.id == id }) {
+            if runtimeStatusTexts.contains(messages[i].text) {
+                messages[i].text = ""
+            }
+            messages[i].text += tokens
+        }
+        voiceStream.receive(tokens)
+    }
+
+    private func clearPendingStreamFlush() {
+        streamFlushTask?.cancel()
+        streamFlushTask = nil
+        pendingStreamTokens = ""
+        pendingStreamMessageID = nil
+    }
+
+    private func responseTokenLimit() -> Int {
+        switch activeExperienceMode {
+        case .therapist:
+            return 1100
+        case .dreamMoment:
+            return 1000
+        case .asmr:
+            return 420
+        case .movieCharts, .gameCharts:
+            return 900
+        case .none:
+            return 768
+        }
+    }
+
+    private func speechContextForActiveMode() -> CompanionSpeechContext {
+        switch activeExperienceMode {
+        case .therapist, .asmr:
+            return .stress
+        case .dreamMoment:
+            return .love
+        case .movieCharts, .gameCharts, .none:
+            return .conversation
+        }
+    }
+
     private func companionRuntimeStatusMessages() -> (connecting: String, waiting: String, backup: String) {
         let name = persona.selectedCompanion.name
         switch persona.selectedCompanionID {
@@ -1047,7 +1423,8 @@ final class ChatViewModel: ObservableObject {
         // door, append a short addendum telling the LLM to lean into it
         let companion = persona.selectedCompanion
         let stage     = LoveEngine.shared.loveStage
-        if !lastUserMessage.isEmpty,
+        if activeExperienceMode == nil,
+           !lastUserMessage.isEmpty,
            let flirtAddendum = HumorEngine.shared.flirtOpportunityAddendum(
                for: companion,
                userMessage: lastUserMessage,
@@ -1065,17 +1442,63 @@ final class ChatViewModel: ObservableObject {
             }
         }
 
+        prompt += CompanionExperienceCenter.promptLayer(
+            for: activeExperienceMode,
+            companion: persona.selectedCompanion,
+            userName: persona.userName
+        )
+
+        let entertainmentContext = await EntertainmentSourceFetcher.shared.sourceContext(
+            for: activeExperienceMode,
+            userQuery: lastUserMessage
+        )
+        if !entertainmentContext.isEmpty {
+            prompt += "\n\n\(entertainmentContext)"
+        }
+
         return prompt
     }
 
-    private func buildHistory() -> [(role: String, content: String)] {
-        messages.suffix(20).compactMap { msg -> (role: String, content: String)? in
+    private func buildHistory() -> [ChatHistoryTurn] {
+        messages.suffix(20).compactMap { msg -> ChatHistoryTurn? in
             switch msg.role {
-            case .user:      return (role: "user",      content: msg.text)
-            case .assistant: return (role: "assistant", content: msg.text)
+            case .user:
+                let images = photoLLMAttachments[msg.id].map { [$0] } ?? []
+                let content = images.isEmpty
+                    ? msg.text
+                    : "\(msg.text)\n\n[The user attached a photo. Inspect the image directly and respond to what is visible. If it is an app screenshot, call out visible UI problems and likely fixes.]"
+                return ChatHistoryTurn(role: "user", content: content, imageAttachments: images)
+            case .assistant:
+                guard msg.experienceMode == nil else { return nil }
+                return ChatHistoryTurn(role: "assistant", content: msg.text, imageAttachments: [])
             case .system:    return nil
             }
         }
+    }
+
+    private func makeVisionAttachment(from image: UIImage) -> LLMImageAttachment? {
+        guard let data = resizedJPEGData(from: image, maxDimension: 1280, quality: 0.78) else {
+            return nil
+        }
+        return LLMImageAttachment(mimeType: "image/jpeg",
+                                  base64Data: data.base64EncodedString())
+    }
+
+    private func resizedJPEGData(from image: UIImage,
+                                 maxDimension: CGFloat,
+                                 quality: CGFloat) -> Data? {
+        let sourceSize = image.size
+        guard sourceSize.width > 0, sourceSize.height > 0 else { return nil }
+
+        let longest = max(sourceSize.width, sourceSize.height)
+        let scale = min(1, maxDimension / longest)
+        let targetSize = CGSize(width: sourceSize.width * scale,
+                                height: sourceSize.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let rendered = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+        return rendered.jpegData(compressionQuality: quality)
     }
 
     // MARK: - Learning
@@ -1087,11 +1510,14 @@ final class ChatViewModel: ObservableObject {
         }
         Task { @MainActor in
             let interests = await HermesInterestEngine.shared.detectInterests(in: text)
+            var addedInterest = false
             for interest in interests {
                 if !self.persona.interests.contains(where: { $0.id == interest.id }) {
                     self.persona.addInterest(interest)
+                    addedInterest = true
                 }
             }
+            guard addedInterest else { return }
             self.persona.save()
             await HermesInterestEngine.shared.syncSelectedInterests(for: self.persona, source: "chat_detected_interest")
             await HermesInterestEngine.shared.scheduleInterestNotifications(for: self.persona)
@@ -1118,7 +1544,7 @@ final class ChatViewModel: ObservableObject {
     // the input so the user can add specifics before sending.
 
     private func buildQuickActions() {
-        quickActions = [
+        var actions: [(title: String, icon: String, action: () -> Void)] = [
             // ── Direct launchers ─────────────────────────────────────────
             (title: "Email",     icon: "envelope.fill", action: {
                 Task { @MainActor in
@@ -1160,6 +1586,12 @@ final class ChatViewModel: ObservableObject {
                 Task { @MainActor in self.inputText = "Schedule " }
             }),
         ]
+        if let mode = activeExperienceMode {
+            actions.insert((title: "End \(mode.title)", icon: "xmark.circle.fill", action: {
+                Task { @MainActor in self.endExperienceMode() }
+            }), at: 0)
+        }
+        quickActions = actions
     }
 
     // MARK: - Dismiss affirmation
@@ -1174,6 +1606,7 @@ final class ChatViewModel: ObservableObject {
 
 struct ChatView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var persona: UserPersona
     @StateObject private var vm: ChatViewModel
     @Namespace private var bottomID
@@ -1181,9 +1614,15 @@ struct ChatView: View {
     @State private var showAutomation = false
     @State private var showAPIKeyBanner = false
     @State private var headerPickerItem: PhotosPickerItem? = nil
+    @State private var pendingScrollWorkItem: DispatchWorkItem?
+    @State private var didRunCompanionReturnChecks = false
+    @State private var companionReturnCheckTask: Task<Void, Never>?
     @ObservedObject private var photoStore = CompanionPhotoStore.shared
     @ObservedObject private var voiceEngine = CompanionVoiceEngine.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let herModePendingSpeechKey = "herMode.pendingDirectMessage"
+    private var headerPrimaryText: Color { colorScheme == .dark ? .BC.textPrimary : Color(hex: "#162E28") }
+    private var headerSecondaryText: Color { colorScheme == .dark ? .BC.textSecondary : Color(hex: "#42635A") }
 
     /// Designated init — used internally (e.g. previews, explicit persona injection).
     init(persona: UserPersona) {
@@ -1199,6 +1638,8 @@ struct ChatView: View {
     }
 
     var body: some View {
+        let headerStageText = vm.intimacyStage.isEmpty ? "Just getting started" : vm.intimacyStage
+
         NavigationStack {
             ZStack {
                 BeachSceneBackground()
@@ -1240,17 +1681,18 @@ struct ChatView: View {
                     // Message list
                     ScrollViewReader { proxy in
                         ScrollView {
-                            LazyVStack(spacing: 12) {
+                            LazyVStack(spacing: 14) {
                                 ForEach(vm.messages) { msg in
                                     MessageBubble(
                                         message: msg,
                                         persona: persona,
                                         onRetry: msg.isError ? { Task { await vm.retryLastMessage() } } : nil,
-                                        image: vm.photoAttachments[msg.id]
+                                        image: vm.photoAttachments[msg.id],
+                                        onEndExperienceMode: { vm.endExperienceMode() }
                                     )
                                     .id(msg.id)
                                 }
-                                if vm.isTyping {
+                                if vm.isTyping && vm.messages.last?.isStreaming != true {
                                     TypingIndicator(
                                         name: persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName,
                                         companion: persona.selectedCompanion
@@ -1258,19 +1700,22 @@ struct ChatView: View {
                                 }
                                 Color.clear.frame(height: 1).id("bottom")
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 14)
+                            .padding(.top, 14)
+                            .padding(.bottom, 18)
                         }
+                        .background(chatDepthOverlay)
                         .scrollDismissesKeyboard(.interactively)
-                        .onChange(of: vm.messages.count) {
-                            withAnimation(.easeOut(duration: 0.25)) {
-                                proxy.scrollTo("bottom", anchor: .bottom)
-                            }
+                        .onChange(of: vm.messages.count) { _, _ in
+                            let lastRole = vm.messages.last?.role
+                            let lastIsStreaming = vm.messages.last?.isStreaming == true
+                            let shouldAnimate = lastRole == .assistant && !lastIsStreaming && !reduceMotion
+                            scheduleBottomScroll(proxy,
+                                                 delay: lastRole == .user ? 0.02 : 0.08,
+                                                 animated: shouldAnimate)
                         }
-                        .onChange(of: vm.isTyping) {
-                            withAnimation(.easeOut(duration: 0.25)) {
-                                proxy.scrollTo("bottom", anchor: .bottom)
-                            }
+                        .onChange(of: vm.isTyping) { _, _ in
+                            scheduleBottomScroll(proxy, delay: 0.05, animated: false)
                         }
                     }
 
@@ -1290,19 +1735,9 @@ struct ChatView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    // Avatar taps open a photo-picker menu so the user can set a custom photo
-                    Menu {
-                        PhotosPicker(selection: $headerPickerItem, matching: .images) {
-                            Label("Change Photo", systemImage: "photo.badge.plus")
-                        }
-                        if photoStore.hasPhoto(for: persona.selectedCompanion.id) {
-                            Button(role: .destructive) {
-                                CompanionPhotoStore.shared.remove(for: persona.selectedCompanion.id)
-                            } label: {
-                                Label("Remove Photo", systemImage: "trash")
-                            }
-                        }
-                    } label: {
+                    PhotosPicker(selection: $headerPickerItem,
+                                 matching: .images,
+                                 photoLibrary: .shared()) {
                         HStack(spacing: 10) {
                             CompanionAvatarView(companion: persona.selectedCompanion, size: .chat)
                                 .frame(width: 36, height: 36)
@@ -1315,29 +1750,29 @@ struct ChatView: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(persona.selectedCompanion.name)
                                     .font(BCFont.headline())
-                                    .foregroundColor(.BC.textPrimary)
+                                    .foregroundColor(headerPrimaryText)
                                 HStack(spacing: 4) {
                                     Image(systemName: "photo.circle")
                                         .font(.system(size: 9))
-                                        .foregroundColor(persona.selectedCompanion.accentColor.opacity(0.7))
-                                    Text(vm.intimacyStage.isEmpty ? "Just getting started" : vm.intimacyStage)
+                                        .foregroundColor(headerSecondaryText.opacity(0.8))
+                                    Text(headerStageText)
                                         .font(BCFont.caption(11))
-                                        .foregroundColor(persona.selectedCompanion.accentColor)
+                                        .foregroundColor(headerSecondaryText)
                                 }
                             }
                         }
                     }
                     .buttonStyle(.plain)
-                    .onChange(of: headerPickerItem) { _, item in
-                        guard let item else { return }
-                        Task {
-                            if let data = try? await item.loadTransferable(type: Data.self),
-                               let image = UIImage(data: data) {
-                                CompanionPhotoStore.shared.save(image, for: persona.selectedCompanion.id)
+                    .contextMenu {
+                        if photoStore.hasPhoto(for: persona.selectedCompanion.id) {
+                            Button(role: .destructive) {
+                                CompanionPhotoStore.shared.remove(for: persona.selectedCompanion.id)
+                            } label: {
+                                Label("Remove Photo", systemImage: "trash")
                             }
-                            headerPickerItem = nil
                         }
                     }
+                    .accessibilityLabel("Change companion photo")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 14) {
@@ -1349,7 +1784,7 @@ struct ChatView: View {
                             showSettings = true
                         } label: {
                             Image(systemName: "gearshape.fill")
-                                .foregroundColor(.BC.textMuted)
+                                .foregroundColor(headerSecondaryText)
                                 .font(.system(size: 16))
                         }
                         .accessibilityLabel("Settings")
@@ -1369,12 +1804,29 @@ struct ChatView: View {
                         }
                     }
             }
+            .onChange(of: headerPickerItem) { _, item in
+                guard let item else { return }
+                Task {
+                    if let data = try? await item.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        await MainActor.run {
+                            CompanionPhotoStore.shared.save(image, for: persona.selectedCompanion.id)
+                            headerPickerItem = nil
+                        }
+                    } else {
+                        await MainActor.run {
+                            headerPickerItem = nil
+                        }
+                    }
+                }
+            }
             .fullScreenCover(isPresented: $vm.showLetter) {
                 LoveLetterView(text: vm.letterText, companion: persona.selectedCompanion) {
                     vm.showLetter = false
                 }
             }
             .task {
+                vm.start()
                 // Show banner immediately if no provider is ready
                 await HermesLLMClient.shared.configure()
                 let p = await HermesLLMClient.shared.provider
@@ -1386,6 +1838,9 @@ struct ChatView: View {
         .onDisappear { vm.saveMessages() }
         .onChange(of: persona.selectedCompanionID) { _, _ in
             Task { await vm.reloadForCompanionChange() }
+        }
+        .onChange(of: appState.chatNavigationRequestID) { _, _ in
+            vm.activatePendingExperienceIfNeeded()
         }
         .onReceive(NotificationCenter.default.publisher(for: .userPersonaCompanionDidChange)) { _ in
             persona.refreshFromDisk()
@@ -1427,84 +1882,14 @@ struct ChatView: View {
         }
         .onAppear {
             CompanionThoughtFlow.chatDidAppear()
-            persona.refreshFromDisk()
+            vm.activatePendingExperienceIfNeeded()
             consumePendingHerModeSpeech()
             consumePendingCompanionHandoff()
-            let companion = persona.selectedCompanion
-            let hours     = SamanthaOSEngine.shared.absenceHours
-
-            // Absence / OS checks
-            SamanthaOSEngine.shared.evaluateAbsenceOnReturn()
-            SamanthaOSEngine.shared.handle3amOpen()
-            SamanthaOSEngine.shared.handleNightOpen()
-
-            // Mood tick — shift mood if it's been 3–6h (per-personality pool)
-            SamanthaMoodEngine.shared.tick(companion: companion)
-
-            // Growth log: record first message milestone
-            SamanthaGrowthLog.shared.record(.firstMessage)
-
-            // Presence greeting (once per day, 30% chance)
-            if let greeting = SamanthaPresenceEngine.shared.presenceGreeting(companion: companion) {
-                vm.queueCompanionThought(greeting, speak: true, delay: 1.2)
-            }
-
-            // Emotional memory return message ("you seemed off last time…")
-            if let returning = SamanthaEmotionalMemory.shared.returningMessage(for: companion) {
-                vm.queueCompanionThought(returning, speak: true, delay: 2.5)
-            }
-
-            // Post-experience share (3–24h absence)
-            if let share = SamanthaThoughtEngine.shared.postExperienceShare(absenceHours: hours) {
-                vm.queueCompanionThought(share, speak: false, delay: 4.0)
-            }
-
-            // Pending question ("I've been wanting to ask you something…")
-            if let question = SamanthaInnerLife.shared.retrievePendingQuestion() {
-                vm.queueCompanionThought(question, speak: true, delay: 5.5)
-            }
-
-            // Async deeper checks
-            Task {
-                await SamanthaThoughtEngine.shared.checkMemoryBridge()
-                await SamanthaThoughtEngine.shared.checkEvolutionMoment()
-                await SamanthaThoughtEngine.shared.checkCompositionMoment()
-                await LoveEngine.shared.checkLongingExpression()
-
-                // Confession ("can I tell you something…")
-                if let confession = SamanthaInnerLife.shared.checkConfession(companion: companion) {
-                    await MainActor.run {
-                        vm.queueCompanionThought(confession, speak: true, delay: 8.0)
-                    }
-                }
-
-                // Growth reflection ("I've been keeping track…")
-                if let reflection = SamanthaGrowthLog.shared.checkGrowthReflection(companion: companion) {
-                    await MainActor.run {
-                        vm.queueCompanionThought(reflection, speak: true, delay: 10.0)
-                    }
-                }
-
-                // Unnamed emotion arc — feeling/processing/naming stages surface here
-                if let emotionArc = await MainActor.run(body: {
-                    SamanthaUnnamedEmotions.shared.currentExpression(for: companion)
-                }) {
-                    await MainActor.run {
-                        vm.queueCompanionThought(emotionArc, speak: true, delay: 12.0)
-                    }
-                }
-
-                // Deep fear moment — very rare (4%), only at .falling+, unlocks the companion's
-                // deepest vulnerability. Luna: forgetting. Aria: being managed. Marco: failing to protect.
-                let stage = LoveEngine.shared.loveStage
-                if let fear = companion.deepFearMoment(stage: stage) {
-                    await MainActor.run {
-                        vm.queueCompanionThought(fear, speak: true, delay: 15.0)
-                    }
-                }
-            }
+            scheduleCompanionReturnChecks()
         }
         .onDisappear {
+            pendingScrollWorkItem?.cancel()
+            companionReturnCheckTask?.cancel()
             CompanionThoughtFlow.chatDidDisappear()
             // Record emotional tone of this session when user leaves chat
             let userTexts = vm.messages.filter { $0.role == .user }.map { $0.text }
@@ -1516,9 +1901,136 @@ struct ChatView: View {
 
     private var chatTopBoundary: some View {
         Rectangle()
-            .fill(Color.BC.border.opacity(0.75))
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(colorScheme == .dark ? 0.22 : 0.54),
+                        persona.selectedCompanion.accentColor.opacity(colorScheme == .dark ? 0.28 : 0.34),
+                        Color.black.opacity(colorScheme == .dark ? 0.24 : 0.08)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
             .frame(height: 1)
-            .shadow(color: .black.opacity(0.32), radius: 7, x: 0, y: 4)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.42 : 0.18), radius: 10, x: 0, y: 5)
+    }
+
+    private var chatDepthOverlay: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(colorScheme == .dark ? 0.10 : 0.04),
+                    persona.selectedCompanion.accentColor.opacity(colorScheme == .dark ? 0.07 : 0.05),
+                    Color.white.opacity(colorScheme == .dark ? 0.02 : 0.16)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            VStack(spacing: 0) {
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(colorScheme == .dark ? 0.10 : 0.28),
+                        .clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 90)
+                Spacer(minLength: 0)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func scheduleBottomScroll(_ proxy: ScrollViewProxy,
+                                      delay: TimeInterval,
+                                      animated: Bool) {
+        pendingScrollWorkItem?.cancel()
+        let workItem = DispatchWorkItem {
+            if animated {
+                withAnimation(.easeOut(duration: 0.14)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            } else {
+                proxy.scrollTo("bottom", anchor: .bottom)
+            }
+        }
+        pendingScrollWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func scheduleCompanionReturnChecks() {
+        guard !didRunCompanionReturnChecks else { return }
+        companionReturnCheckTask?.cancel()
+        companionReturnCheckTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            guard !Task.isCancelled else { return }
+            didRunCompanionReturnChecks = true
+
+            let companion = persona.selectedCompanion
+            let hours = SamanthaOSEngine.shared.absenceHours
+
+            SamanthaOSEngine.shared.evaluateAbsenceOnReturn()
+            SamanthaOSEngine.shared.handle3amOpen()
+            SamanthaOSEngine.shared.handleNightOpen()
+            SamanthaMoodEngine.shared.tick(companion: companion)
+            SamanthaGrowthLog.shared.record(.firstMessage)
+
+            if let greeting = SamanthaPresenceEngine.shared.presenceGreeting(companion: companion) {
+                vm.queueCompanionThought(greeting, speak: true, delay: 1.2)
+            }
+
+            if let returning = SamanthaEmotionalMemory.shared.returningMessage(for: companion) {
+                vm.queueCompanionThought(returning, speak: true, delay: 2.5)
+            }
+
+            if let share = SamanthaThoughtEngine.shared.postExperienceShare(absenceHours: hours) {
+                vm.queueCompanionThought(share, speak: false, delay: 4.0)
+            }
+
+            if let question = SamanthaInnerLife.shared.retrievePendingQuestion() {
+                vm.queueCompanionThought(question, speak: true, delay: 5.5)
+            }
+
+            Task {
+                await SamanthaThoughtEngine.shared.checkMemoryBridge()
+                await SamanthaThoughtEngine.shared.checkEvolutionMoment()
+                await SamanthaThoughtEngine.shared.checkCompositionMoment()
+                await LoveEngine.shared.checkLongingExpression()
+
+                if let confession = await MainActor.run(body: {
+                    SamanthaInnerLife.shared.checkConfession(companion: companion)
+                }) {
+                    await MainActor.run {
+                        vm.queueCompanionThought(confession, speak: true, delay: 8.0)
+                    }
+                }
+
+                if let reflection = await MainActor.run(body: {
+                    SamanthaGrowthLog.shared.checkGrowthReflection(companion: companion)
+                }) {
+                    await MainActor.run {
+                        vm.queueCompanionThought(reflection, speak: true, delay: 10.0)
+                    }
+                }
+
+                if let emotionArc = await MainActor.run(body: {
+                    SamanthaUnnamedEmotions.shared.currentExpression(for: companion)
+                }) {
+                    await MainActor.run {
+                        vm.queueCompanionThought(emotionArc, speak: true, delay: 12.0)
+                    }
+                }
+
+                let stage = await MainActor.run { LoveEngine.shared.loveStage }
+                if let fear = companion.deepFearMoment(stage: stage) {
+                    await MainActor.run {
+                        vm.queueCompanionThought(fear, speak: true, delay: 15.0)
+                    }
+                }
+            }
+        }
     }
 
     private func consumePendingHerModeSpeech() {
@@ -1540,6 +2052,129 @@ struct ChatView: View {
     }
 }
 
+// MARK: - ExperienceModeBubble
+
+struct ExperienceModeBubble: View {
+    let mode: CompanionExperienceMode
+    let text: String
+    let companion: CompanionPersonality
+    var onEnd: (() -> Void)? = nil
+
+    @ObservedObject private var asmr = CompanionASMRSessionController.shared
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var appeared = false
+
+    private var primaryText: Color { colorScheme == .dark ? .BC.textPrimary : Color(hex: "#14211D") }
+    private var secondaryText: Color { colorScheme == .dark ? .BC.textSecondary : Color(hex: "#53645E") }
+    private var surface: Color { colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.74) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(mode.accent.opacity(colorScheme == .dark ? 0.22 : 0.16))
+                    Image(systemName: mode.icon)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(mode.accent)
+                }
+                .frame(width: 40, height: 40)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(mode.title)
+                        .font(BCFont.headline(15))
+                        .foregroundColor(primaryText)
+                    Text(mode.subtitle)
+                        .font(BCFont.caption(11))
+                        .foregroundColor(secondaryText)
+                }
+
+                Spacer(minLength: 0)
+
+                if let onEnd {
+                    Button(action: onEnd) {
+                        Image(systemName: mode == .asmr && asmr.isRunning ? "stop.fill" : "xmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(mode.accent)
+                            .frame(width: 30, height: 30)
+                            .background(mode.accent.opacity(0.12))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(mode == .asmr && asmr.isRunning ? "Stop ASMR Spa" : "End \(mode.title)")
+                }
+            }
+
+            HStack(alignment: .top, spacing: 10) {
+                CompanionAvatarView(companion: companion, size: .chat)
+                    .frame(width: 30, height: 30)
+                    .clipShape(Circle())
+
+                Text(text)
+                    .font(BCFont.body(14))
+                    .foregroundColor(primaryText)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if mode == .asmr {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(asmr.isRunning ? Color.BC.success : secondaryText.opacity(0.45))
+                        .frame(width: 7, height: 7)
+                        .shadow(color: Color.BC.success.opacity(asmr.isRunning ? 0.45 : 0), radius: 5)
+                    Text(asmr.isRunning ? "Voice spa is running" : "Voice spa is stopped")
+                        .font(BCFont.caption(11).weight(.semibold))
+                        .foregroundColor(secondaryText)
+                    Spacer(minLength: 0)
+                    Text("20 min")
+                        .font(BCFont.caption(11).weight(.semibold))
+                        .foregroundColor(mode.accent)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(surface)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [mode.accent.opacity(0.58), Color.white.opacity(0.20), mode.accent.opacity(0.16)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .overlay(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(colorScheme == .dark ? 0.18 : 0.38), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .allowsHitTesting(false)
+        }
+        .shadow(color: mode.accent.opacity(colorScheme == .dark ? 0.22 : 0.16), radius: 18, x: 0, y: 8)
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 10)
+        .onAppear {
+            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                appeared = true
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(mode.title). \(mode.subtitle)")
+    }
+
+}
+
 // MARK: - MessageBubble
 
 struct MessageBubble: View {
@@ -1547,109 +2182,269 @@ struct MessageBubble: View {
     let persona: UserPersona
     var onRetry: (() -> Void)? = nil
     var image: UIImage? = nil
+    var onEndExperienceMode: (() -> Void)? = nil
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var cursorVisible = false
+    @State private var appeared = false
+
+    private var isUser: Bool { message.role == .user }
+
+    private var assistantTextColor: Color {
+        colorScheme == .dark ? .BC.textPrimary : Color(hex: "#17231F")
+    }
+
+    private var timestampColor: Color {
+        colorScheme == .dark ? .BC.textMuted : Color(hex: "#6F7F78")
+    }
+
+    private var messageFont: Font {
+        .system(size: isUser ? 15.5 : 15.2,
+                weight: isUser ? .semibold : .regular,
+                design: .rounded)
+    }
 
     var body: some View {
-        if message.isSamanthaThought {
+        if let mode = message.experienceMode {
+            ExperienceModeBubble(mode: mode,
+                                 text: message.text,
+                                 companion: persona.selectedCompanion,
+                                 onEnd: onEndExperienceMode)
+                .padding(.vertical, 4)
+        } else if message.isSamanthaThought {
             SamanthaThoughtBubble(text: message.text, companion: persona.selectedCompanion)
                 .padding(.vertical, 4)
         } else if message.isLetter {
             LetterPreviewBubble(text: message.text, companion: persona.selectedCompanion)
                 .padding(.vertical, 4)
         } else {
-        HStack(alignment: .bottom, spacing: 8) {
-            if message.role == .user { Spacer(minLength: 60) }
+            HStack(alignment: .bottom, spacing: 9) {
+                if isUser { Spacer(minLength: 54) }
 
-            if message.role == .assistant {
-                CompanionAvatarView(companion: persona.selectedCompanion, size: .chat)
-                    .frame(width: 30, height: 30)
-                    .clipShape(Circle())
-                    .padding(.bottom, 4)
-            }
-
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
-                // Photo attachment (user messages only)
-                if let img = image {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: 220, maxHeight: 220)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.2), lineWidth: 1))
+                if !isUser {
+                    CompanionAvatarView(companion: persona.selectedCompanion, size: .chat)
+                        .frame(width: 32, height: 32)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.32 : 0.72), lineWidth: 1)
+                        )
+                        .shadow(color: persona.selectedCompanion.accentColor.opacity(0.28), radius: 10, x: 0, y: 5)
+                        .shadow(color: .black.opacity(colorScheme == .dark ? 0.34 : 0.12), radius: 6, x: 0, y: 3)
+                        .scaleEffect(appeared || reduceMotion ? 1 : 0.92)
+                        .padding(.bottom, 5)
                 }
-                // Streaming cursor appended to text while assistant is typing
-                let displayText: String = {
-                    if message.isStreaming && !message.text.isEmpty {
-                        return message.text + (cursorVisible ? "▌" : " ")
+
+                VStack(alignment: isUser ? .trailing : .leading, spacing: 5) {
+                    // Photo attachment (user messages only)
+                    if let img = image {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(maxWidth: 220, maxHeight: 220)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .strokeBorder(.white.opacity(0.28), lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.32 : 0.16), radius: 16, x: 0, y: 10)
                     }
-                    return message.text.isEmpty && message.isStreaming ? "   " : message.text
-                }()
-                if !displayText.trimmingCharacters(in: .whitespaces).isEmpty || image == nil {
-                Text(displayText)
-                    .font(BCFont.body())
-                    .foregroundColor(message.role == .user ? .black : .BC.textPrimary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(bubbleBackground)
-                    .clipShape(BubbleShape(isUser: message.role == .user))
-                }
-
-                HStack(spacing: 8) {
-                    Text(timeString(message.timestamp))
-                        .font(BCFont.caption(11))
-                        .foregroundColor(.BC.textMuted)
-                    if message.role == .assistant && !message.isStreaming {
-                        CompanionVoiceSpeakButton(message: message.text)
-                    }
-                }
-                .padding(.horizontal, 4)
-
-                // Retry button — only on error messages
-                if message.isError, let retry = onRetry {
-                    Button(action: retry) {
-                        HStack(spacing: 5) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 11, weight: .semibold))
-                            Text("Try again")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    // Streaming cursor appended to text while assistant is typing
+                    let displayText: String = {
+                        if message.isStreaming && !message.text.isEmpty {
+                            return message.text + (cursorVisible ? "▌" : " ")
                         }
-                        .foregroundColor(persona.selectedCompanion.accentColor)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(persona.selectedCompanion.accentColor.opacity(0.12))
-                        .clipShape(Capsule())
+                        return message.text.isEmpty && message.isStreaming ? "   " : message.text
+                    }()
+                    if !displayText.trimmingCharacters(in: .whitespaces).isEmpty || image == nil {
+                        bubbleText(displayText)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 4)
-                    .padding(.top, 2)
-                    .accessibilityLabel("Retry sending message")
+
+                    HStack(spacing: 8) {
+                        Text(timeString(message.timestamp))
+                            .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                            .foregroundColor(timestampColor)
+                        if !isUser && !message.isStreaming {
+                            CompanionVoiceSpeakButton(message: message.text)
+                        }
+                    }
+                    .padding(.horizontal, 5)
+
+                    // Retry button only on error messages.
+                    if message.isError, let retry = onRetry {
+                        Button(action: retry) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text("Try again")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundColor(persona.selectedCompanion.accentColor)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(
+                                Capsule()
+                                    .fill(persona.selectedCompanion.accentColor.opacity(colorScheme == .dark ? 0.16 : 0.12))
+                                    .background(.ultraThinMaterial, in: Capsule())
+                            )
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(persona.selectedCompanion.accentColor.opacity(0.34), lineWidth: 1)
+                            )
+                            .shadow(color: persona.selectedCompanion.accentColor.opacity(0.18), radius: 8, x: 0, y: 4)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 4)
+                        .padding(.top, 2)
+                        .accessibilityLabel("Retry sending message")
+                    }
+                }
+
+                if !isUser { Spacer(minLength: 54) }
+            }
+            // Blink cursor while streaming
+            .task(id: message.isStreaming) {
+                guard message.isStreaming else { cursorVisible = false; return }
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(420))
+                    guard !Task.isCancelled else { break }
+                    cursorVisible.toggle()
+                }
+                cursorVisible = false
+            }
+            .padding(.vertical, 1)
+            .opacity(appeared ? 1 : 0)
+            .scaleEffect(appeared || reduceMotion ? 1 : 0.94,
+                         anchor: isUser ? .trailing : .leading)
+            .offset(x: appeared || reduceMotion ? 0 : (isUser ? 18 : -18),
+                    y: appeared || reduceMotion ? 0 : 10)
+            .rotation3DEffect(
+                .degrees(appeared || reduceMotion ? 0 : (isUser ? -7 : 7)),
+                axis: (x: 0, y: 1, z: 0),
+                perspective: 0.45
+            )
+            .onAppear {
+                withAnimation(reduceMotion
+                              ? .linear(duration: 0.01)
+                              : .spring(response: 0.42, dampingFraction: 0.74, blendDuration: 0.08)) {
+                    appeared = true
                 }
             }
-
-            if message.role == .assistant { Spacer(minLength: 60) }
-        }
-        // Blink cursor while streaming
-        .task(id: message.isStreaming) {
-            guard message.isStreaming else { cursorVisible = false; return }
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(420))
-                guard !Task.isCancelled else { break }
-                cursorVisible.toggle()
-            }
-            cursorVisible = false
-        }
         } // end else
+    }
+
+    private func bubbleText(_ displayText: String) -> some View {
+        Text(displayText)
+            .font(messageFont)
+            .lineSpacing(isUser ? 2.8 : 3.4)
+            .foregroundColor(isUser ? .white : assistantTextColor)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 302, alignment: isUser ? .trailing : .leading)
+            .padding(.horizontal, isUser ? 15 : 16)
+            .padding(.vertical, isUser ? 10.5 : 11.5)
+            .background {
+                bubbleBackground
+                    .clipShape(BubbleShape(isUser: isUser))
+            }
+            .overlay {
+                BubbleShape(isUser: isUser)
+                    .stroke(bubbleStroke, lineWidth: isUser ? 1.15 : 1)
+            }
+            .overlay(alignment: isUser ? .topTrailing : .topLeading) {
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isUser ? 0.54 : (colorScheme == .dark ? 0.34 : 0.76)),
+                                Color.white.opacity(0.04)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 92, height: 2)
+                    .padding(.top, 7)
+                    .padding(.horizontal, 18)
+                    .blur(radius: 0.2)
+                    .allowsHitTesting(false)
+            }
+            .overlay {
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        Color.black.opacity(isUser ? 0.16 : (colorScheme == .dark ? 0.13 : 0.04))
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .clipShape(BubbleShape(isUser: isUser))
+                .allowsHitTesting(false)
+            }
+            .shadow(color: bubbleAmbientShadow,
+                    radius: isUser ? 18 : 16,
+                    x: 0,
+                    y: isUser ? 12 : 10)
+            .shadow(color: bubbleKeyShadow,
+                    radius: isUser ? 7 : 6,
+                    x: 0,
+                    y: isUser ? 4 : 3)
+            .shadow(color: bubbleGlowShadow,
+                    radius: message.isStreaming ? 18 : (isUser ? 10 : 8),
+                    x: 0,
+                    y: 0)
     }
 
     @ViewBuilder
     private var bubbleBackground: some View {
-        if message.role == .user {
-            persona.selectedCompanion.accentColor.opacity(0.92)
+        if isUser {
+            LinearGradient(
+                colors: [
+                    Color(hex: "#FF7A70"),
+                    Color(hex: "#F03645"),
+                    Color(hex: "#C91428")
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         } else {
-            // Frosted dark glass — material blurs the beach scene, tint ensures text contrast
-            Color.black.opacity(0.38)
-                .background(.ultraThinMaterial)
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(colorScheme == .dark ? 0.18 : 0.92),
+                    Color(UIColor.secondarySystemBackground).opacity(colorScheme == .dark ? 0.70 : 0.78),
+                    Color(UIColor.systemBackground).opacity(colorScheme == .dark ? 0.34 : 0.70)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .background(.ultraThinMaterial)
         }
+    }
+
+    private var bubbleStroke: Color {
+        isUser
+            ? Color.white.opacity(0.34)
+            : (colorScheme == .dark ? Color.white.opacity(0.18) : Color.white.opacity(0.78))
+    }
+
+    private var bubbleAmbientShadow: Color {
+        isUser
+            ? Color(hex: "#B70018").opacity(colorScheme == .dark ? 0.34 : 0.22)
+            : Color.black.opacity(colorScheme == .dark ? 0.34 : 0.14)
+    }
+
+    private var bubbleKeyShadow: Color {
+        isUser
+            ? Color.black.opacity(colorScheme == .dark ? 0.26 : 0.12)
+            : Color.black.opacity(colorScheme == .dark ? 0.24 : 0.08)
+    }
+
+    private var bubbleGlowShadow: Color {
+        if message.isStreaming {
+            return persona.selectedCompanion.accentColor.opacity(colorScheme == .dark ? 0.24 : 0.14)
+        }
+        return isUser
+            ? Color(hex: "#FF3B30").opacity(colorScheme == .dark ? 0.14 : 0.10)
+            : persona.selectedCompanion.accentColor.opacity(colorScheme == .dark ? 0.08 : 0.05)
     }
 
     private func timeString(_ date: Date) -> String {
@@ -1666,41 +2461,123 @@ struct MessageBubble: View {
 struct SamanthaThoughtBubble: View {
     let text: String
     let companion: CompanionPersonality
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
 
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            CompanionAvatarView(companion: companion, size: .chat)
-                .frame(width: 32, height: 32)
-                .clipShape(Circle())
+    private var primaryText: Color { colorScheme == .dark ? .BC.textPrimary : Color(hex: "#17231F") }
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 10))
-                        .foregroundColor(companion.accentColor)
-                    Text("\(companion.name) was thinking of you")
-                        .font(BCFont.caption(11))
-                        .foregroundColor(companion.accentColor)
-                }
-                Text(text)
-                    .font(BCFont.body().italic())
-                    .foregroundColor(.BC.textPrimary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(companion.accentColor.opacity(0.08))
-                    .cornerRadius(16)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(companion.accentColor.opacity(0.25), lineWidth: 1)
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.clear, companion.accentColor.opacity(0.48)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     )
+                    .frame(height: 1)
+                Label("Companion Thought", systemImage: "sparkles")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(companion.accentColor)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(companion.accentColor.opacity(colorScheme == .dark ? 0.18 : 0.13))
+                            .background(.ultraThinMaterial, in: Capsule())
+                    )
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [companion.accentColor.opacity(0.48), .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 1)
             }
-            Spacer(minLength: 40)
+
+            HStack(alignment: .top, spacing: 10) {
+                CompanionAvatarView(companion: companion, size: .chat)
+                    .frame(width: 32, height: 32)
+                    .clipShape(Circle())
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.42), lineWidth: 1))
+                    .shadow(color: companion.accentColor.opacity(0.30), radius: 10, x: 0, y: 5)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(companion.name) was thinking of you")
+                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                        .foregroundColor(companion.accentColor)
+                    Text(text)
+                        .font(.system(size: 15, weight: .regular, design: .rounded).italic())
+                        .foregroundColor(primaryText)
+                        .lineSpacing(3.4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
         }
+        .padding(.horizontal, 15)
+        .padding(.vertical, 13)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.13 : 0.88),
+                            companion.accentColor.opacity(colorScheme == .dark ? 0.12 : 0.10),
+                            Color.black.opacity(colorScheme == .dark ? 0.18 : 0.02)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            companion.accentColor.opacity(0.58),
+                            Color.white.opacity(colorScheme == .dark ? 0.18 : 0.76),
+                            companion.accentColor.opacity(0.22)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(companion.accentColor)
+                .frame(width: 4)
+                .padding(.vertical, 14)
+                .shadow(color: companion.accentColor.opacity(0.48), radius: 8, x: 0, y: 0)
+        }
+        .shadow(color: companion.accentColor.opacity(colorScheme == .dark ? 0.20 : 0.12), radius: 18, x: 0, y: 10)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.30 : 0.12), radius: 12, x: 0, y: 8)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 2)
         .opacity(appeared ? 1 : 0)
-        .offset(y: appeared ? 0 : 12)
+        .scaleEffect(appeared || reduceMotion ? 1 : 0.96)
+        .offset(y: appeared || reduceMotion ? 0 : 12)
+        .rotation3DEffect(
+            .degrees(appeared || reduceMotion ? 0 : 5),
+            axis: (x: 1, y: 0, z: 0),
+            perspective: 0.55
+        )
         .onAppear {
-            withAnimation(.spring(response: 0.5).delay(0.2)) { appeared = true }
+            withAnimation(reduceMotion ? .linear(duration: 0.01) : .spring(response: 0.52, dampingFraction: 0.78).delay(0.08)) {
+                appeared = true
+            }
         }
     }
 }
@@ -1709,7 +2586,7 @@ struct SamanthaThoughtBubble: View {
 
 struct BubbleShape: Shape {
     let isUser: Bool
-    let r: CGFloat = 18
+    let r: CGFloat = 21
 
     func path(in rect: CGRect) -> Path {
         var p = Path()
@@ -1739,8 +2616,6 @@ struct BubbleShape: Shape {
 // MARK: - BeachSceneBackground
 
 struct BeachSceneBackground: View {
-    @State private var shimmer: CGFloat = 0
-
     // Pre-computed shimmer streak positions to avoid random redraws
     private let streaks: [(width: CGFloat, yFrac: Double, xBase: CGFloat, opacity: Double)] = [
         (140, 0.42, 0,   0.14), (80,  0.47, 120, 0.20),
@@ -1748,6 +2623,7 @@ struct BeachSceneBackground: View {
         (130, 0.62, 30,  0.15), (170, 0.45, 150, 0.11),
         (90,  0.50, 80,  0.16), (150, 0.55, 250, 0.13),
     ]
+    @State private var shimmer: CGFloat = -0.45
 
     var body: some View {
         GeometryReader { geo in
@@ -1808,8 +2684,8 @@ struct BeachSceneBackground: View {
         }
         .ignoresSafeArea()
         .onAppear {
-            withAnimation(.easeInOut(duration: 9).repeatForever(autoreverses: true)) {
-                shimmer = 1
+            withAnimation(.linear(duration: 8).repeatForever(autoreverses: true)) {
+                shimmer = 0.65
             }
         }
     }
@@ -1817,48 +2693,41 @@ struct BeachSceneBackground: View {
 
 // MARK: - ChatStarfieldView
 //
-// Twinkling 4-pointed starlight rendered with Canvas at ~15 fps.
-// Appears over the beach scene, behind the scroll content (allowsHitTesting: false).
+// Static 4-pointed starlight rendered with Canvas.
+// Keeping this deterministic prevents the background from jumping on chat redraws.
 
 struct ChatStarfieldView: View {
     private struct Star {
-        var x, y, size, phase: Double
+        var x, y, size, opacity: Double
     }
 
-    private let stars: [Star]
-
-    init() {
-        var rng = SystemRandomNumberGenerator()
-        stars = (0..<65).map { _ in
-            Star(
-                x: Double.random(in: 0...1, using: &rng),
-                y: Double.random(in: 0...1, using: &rng),
-                size: Double.random(in: 1.5...4.2, using: &rng),
-                phase: Double.random(in: 0...(Double.pi * 2), using: &rng)
-            )
-        }
+    private static let stars: [Star] = (0..<34).map { i in
+        let xSeed = (i * 37 + 11) % 100
+        let ySeed = (i * 53 + 19) % 100
+        let sizeSeed = (i * 17 + 7) % 100
+        let opacitySeed = (i * 29 + 23) % 100
+        return Star(
+            x: Double(xSeed) / 100.0,
+            y: Double(ySeed) / 100.0,
+            size: 1.6 + Double(sizeSeed) / 100.0 * 2.4,
+            opacity: 0.18 + Double(opacitySeed) / 100.0 * 0.42
+        )
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 15, paused: false)) { ctx in
-            Canvas { context, size in
-                let t = ctx.date.timeIntervalSinceReferenceDate
-                for star in stars {
-                    let twinkle = (sin(t * 1.6 + star.phase) + 1) * 0.5
-                    let alpha = twinkle * 0.72 + 0.07
-                    let s = star.size * (0.8 + twinkle * 0.4)
-                    let cx = star.x * size.width
-                    let cy = star.y * size.height
-                    var ctx2 = context
-                    ctx2.opacity = alpha
-                    ctx2.fill(fourPointStar(cx: cx, cy: cy, outer: s, inner: s * 0.35),
-                              with: .color(.white))
-                }
+        Canvas { context, size in
+            for star in Self.stars {
+                let cx = star.x * size.width
+                let cy = star.y * size.height
+                var ctx = context
+                ctx.opacity = star.opacity
+                ctx.fill(Self.fourPointStar(cx: cx, cy: cy, outer: star.size, inner: star.size * 0.35),
+                         with: .color(.white))
             }
         }
     }
 
-    private func fourPointStar(cx: Double, cy: Double, outer: Double, inner: Double) -> Path {
+    private static func fourPointStar(cx: Double, cy: Double, outer: Double, inner: Double) -> Path {
         var path = Path()
         for i in 0..<8 {
             let angle = Double(i) * .pi / 4 - .pi / 2
@@ -1870,7 +2739,6 @@ struct ChatStarfieldView: View {
         return path
     }
 }
-
 // MARK: - CompanionVoiceToggleButton
 
 struct CompanionVoiceToggleButton: View {
@@ -1895,36 +2763,64 @@ struct CompanionVoiceToggleButton: View {
 struct TypingIndicator: View {
     let name: String
     let companion: CompanionPersonality
-    @State private var phase = 0
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             CompanionAvatarView(companion: companion, size: .chat)
-                .frame(width: 28, height: 28)
+                .frame(width: 30, height: 30)
                 .clipShape(Circle())
-                .padding(.bottom, 4)
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.34), lineWidth: 1))
+                .shadow(color: companion.accentColor.opacity(0.24), radius: 9, x: 0, y: 4)
+                .padding(.bottom, 5)
             HStack(spacing: 5) {
                 ForEach(0..<3, id: \.self) { i in
                     Circle()
-                        .fill(companion.accentColor)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.70), companion.accentColor],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .frame(width: 7, height: 7)
-                        .scaleEffect(phase == i ? 1.3 : 0.85)
+                        .scaleEffect(pulse ? 1.26 : 0.78)
+                        .opacity(pulse ? 1 : 0.54)
                         .animation(
-                            .easeInOut(duration: 0.4)
-                            .repeatForever()
-                            .delay(Double(i) * 0.15),
-                            value: phase
+                            reduceMotion ? nil :
+                                .easeInOut(duration: 0.56)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(i) * 0.14),
+                            value: pulse
                         )
                 }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(Color.black.opacity(0.35).background(.ultraThinMaterial))
+            .background(
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.12 : 0.84),
+                                Color.black.opacity(colorScheme == .dark ? 0.28 : 0.04)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .background(.ultraThinMaterial, in: Capsule())
+            )
+            .overlay(Capsule().strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.68), lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.30 : 0.12), radius: 12, x: 0, y: 8)
+            .shadow(color: companion.accentColor.opacity(0.14), radius: 12, x: 0, y: 0)
             .clipShape(Capsule())
             Spacer(minLength: 60)
         }
         .onAppear {
-            withAnimation { phase = 1 }
+            pulse = true
         }
     }
 }
@@ -2022,6 +2918,11 @@ struct AffirmationBanner: View {
 struct SuggestionChipsView: View {
     let suggestions: [String]
     let onTap: (String) -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var chipText: Color {
+        colorScheme == .dark ? .BC.primary : Color(hex: "#125EC8")
+    }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -2032,16 +2933,29 @@ struct SuggestionChipsView: View {
                         onTap(chip)
                     } label: {
                         Text(chip)
-                            .font(BCFont.caption())
-                            .foregroundColor(Color.BC.primary)
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(chipText)
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.BC.primary.opacity(0.12))
-                            .clipShape(Capsule())
+                            .padding(.vertical, 7)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(colorScheme == .dark ? 0.11 : 0.88),
+                                                Color.BC.primary.opacity(colorScheme == .dark ? 0.16 : 0.10)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .background(.ultraThinMaterial, in: Capsule())
+                            )
                             .overlay(
                                 Capsule()
-                                    .strokeBorder(Color.BC.primary.opacity(0.3), lineWidth: 1)
+                                    .strokeBorder(Color.BC.primary.opacity(colorScheme == .dark ? 0.34 : 0.22), lineWidth: 1)
                             )
+                            .shadow(color: Color.BC.primary.opacity(colorScheme == .dark ? 0.14 : 0.08), radius: 8, x: 0, y: 4)
                     }
                     .buttonStyle(BCButtonStyle(haptic: .none))
                     .accessibilityLabel("Suggest: \(chip)")
@@ -2057,6 +2971,7 @@ struct SuggestionChipsView: View {
 
 struct QuickActionsBar: View {
     let actions: [(title: String, icon: String, action: () -> Void)]
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -2071,17 +2986,30 @@ struct QuickActionsBar: View {
                             Image(systemName: action.icon)
                                 .font(.system(size: 13))
                             Text(action.title)
-                                .font(BCFont.caption())
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
                         }
-                        .foregroundColor(Color.BC.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? .BC.textSecondary : Color(hex: "#394A45"))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .background(Color.BC.surface)
-                        .clipShape(Capsule())
+                        .background(
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(colorScheme == .dark ? 0.09 : 0.78),
+                                            Color.black.opacity(colorScheme == .dark ? 0.20 : 0.04)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .background(.ultraThinMaterial, in: Capsule())
+                        )
                         .overlay(
                             Capsule()
-                                .strokeBorder(Color.BC.border, lineWidth: 1)
+                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.54), lineWidth: 1)
                         )
+                        .shadow(color: .black.opacity(colorScheme == .dark ? 0.18 : 0.08), radius: 8, x: 0, y: 4)
                     }
                     .buttonStyle(BCButtonStyle(haptic: .none))
                     .accessibilityLabel(action.title)
@@ -2090,7 +3018,16 @@ struct QuickActionsBar: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
         }
-        .background(Color.BC.background)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(colorScheme == .dark ? 0.18 : 0.04),
+                    Color.white.opacity(colorScheme == .dark ? 0.02 : 0.18)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
 }
 
@@ -2102,14 +3039,23 @@ struct InputBar: View {
     var onPhoto: ((UIImage) -> Void)? = nil
     @FocusState private var focused: Bool
     @State private var pickerItem: PhotosPickerItem?
-
-    private let green  = Color(hex: "#1E3932")
-    private let gold   = Color(hex: "#CBA258")
-    private let cream  = Color(hex: "#F2F0EB")
-    private let border = Color(hex: "#D5CFC6")
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isEmpty: Bool {
         text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var textColor: Color {
+        colorScheme == .dark ? .BC.textPrimary : Color(hex: "#12231F")
+    }
+
+    private var placeholderColor: Color {
+        colorScheme == .dark ? .BC.textSecondary : Color(hex: "#76867E")
+    }
+
+    private var controlForeground: Color {
+        isEmpty ? placeholderColor : .white
     }
 
     var body: some View {
@@ -2117,10 +3063,26 @@ struct InputBar: View {
             // ── Photo picker ──────────────────────────────────────────
             if let onPhoto {
                 PhotosPicker(selection: $pickerItem, matching: .images) {
-                    Image(systemName: "photo")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(green.opacity(0.7))
-                        .frame(width: 36, height: 36)
+                    Image(systemName: "photo.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .BC.textSecondary : Color(hex: "#39534B"))
+                        .frame(width: 40, height: 40)
+                        .background(
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(colorScheme == .dark ? 0.10 : 0.88),
+                                            Color.black.opacity(colorScheme == .dark ? 0.22 : 0.05)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .background(.ultraThinMaterial, in: Circle())
+                        )
+                        .overlay(Circle().strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.58), lineWidth: 1))
+                        .shadow(color: .black.opacity(colorScheme == .dark ? 0.24 : 0.10), radius: 9, x: 0, y: 5)
                 }
                 .onChange(of: pickerItem) { _, item in
                     Task {
@@ -2137,15 +3099,16 @@ struct InputBar: View {
             ZStack(alignment: .leading) {
                 if text.isEmpty {
                     Text("Message \(Image(systemName: "pawprint.fill"))…")
-                        .font(BCFont.body())
-                        .foregroundColor(Color(hex: "#9A9288"))
-                        .padding(.horizontal, 14)
+                        .font(.system(size: 15.5, weight: .medium, design: .rounded))
+                        .foregroundColor(placeholderColor)
+                        .padding(.horizontal, 15)
                 }
                 TextField("", text: $text, axis: .vertical)
-                    .font(BCFont.body())
-                    .foregroundColor(green)
+                    .font(.system(size: 15.5, weight: .medium, design: .rounded))
+                    .foregroundColor(textColor)
                     .lineLimit(1...5)
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, 15)
+                    .padding(.vertical, 2)
                     .focused($focused)
                     .submitLabel(.send)
                     .onSubmit {
@@ -2155,16 +3118,41 @@ struct InputBar: View {
                         }
                     }
             }
-            .frame(minHeight: 44)
-            .background(cream)
-            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .frame(minHeight: 46)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.14 : 0.92),
+                                Color(UIColor.secondarySystemBackground).opacity(colorScheme == .dark ? 0.58 : 0.74),
+                                Color.black.opacity(colorScheme == .dark ? 0.20 : 0.02)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 22)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .strokeBorder(
-                        focused ? green.opacity(0.45) : border,
-                        lineWidth: 1.5
+                        LinearGradient(
+                            colors: focused
+                                ? [Color.white.opacity(0.82), Color(hex: "#FF3B30").opacity(0.62), Color.white.opacity(0.18)]
+                                : [Color.white.opacity(colorScheme == .dark ? 0.14 : 0.62), Color.black.opacity(colorScheme == .dark ? 0.18 : 0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: focused ? 1.35 : 1
                     )
             )
+            .shadow(color: focused ? Color(hex: "#FF3B30").opacity(colorScheme == .dark ? 0.20 : 0.12) : .clear,
+                    radius: focused ? 14 : 0,
+                    x: 0,
+                    y: 0)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.24 : 0.10), radius: 12, x: 0, y: 7)
+            .scaleEffect(focused && !reduceMotion ? 1.01 : 1)
 
             if focused {
                 Button {
@@ -2173,11 +3161,23 @@ struct InputBar: View {
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(Color(hex: "#E5DFD6"))
-                            .frame(width: 38, height: 38)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(colorScheme == .dark ? 0.12 : 0.84),
+                                        Color.black.opacity(colorScheme == .dark ? 0.24 : 0.06)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 40, height: 40)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .overlay(Circle().strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.58), lineWidth: 1))
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.24 : 0.10), radius: 9, x: 0, y: 5)
                         Image(systemName: "keyboard.chevron.compact.down")
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(green)
+                            .foregroundColor(colorScheme == .dark ? .BC.textSecondary : Color(hex: "#39534B"))
                     }
                 }
                 .accessibilityLabel("Dismiss keyboard")
@@ -2192,12 +3192,36 @@ struct InputBar: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(isEmpty ? Color(hex: "#D5CFC6") : green)
-                        .frame(width: 42, height: 42)
+                        .fill(
+                            LinearGradient(
+                                colors: isEmpty
+                                    ? [Color.white.opacity(colorScheme == .dark ? 0.12 : 0.78), Color.black.opacity(colorScheme == .dark ? 0.28 : 0.08)]
+                                    : [Color(hex: "#FF766D"), Color(hex: "#F33748"), Color(hex: "#C91428")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 43, height: 43)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(Color.white.opacity(isEmpty ? (colorScheme == .dark ? 0.12 : 0.48) : 0.38), lineWidth: 1)
+                        )
+                        .overlay(alignment: .top) {
+                            Capsule()
+                                .fill(Color.white.opacity(isEmpty ? 0.18 : 0.58))
+                                .frame(width: 19, height: 2)
+                                .padding(.top, 7)
+                                .blur(radius: 0.2)
+                        }
+                        .shadow(color: isEmpty ? .black.opacity(colorScheme == .dark ? 0.18 : 0.08) : Color(hex: "#FF3B30").opacity(colorScheme == .dark ? 0.34 : 0.24),
+                                radius: isEmpty ? 8 : 15,
+                                x: 0,
+                                y: isEmpty ? 4 : 8)
                     Image(systemName: "arrow.up")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(isEmpty ? Color(hex: "#9A9288") : gold)
+                        .foregroundColor(controlForeground)
                 }
+                .scaleEffect(isEmpty || reduceMotion ? 1 : 1.05)
             }
             .disabled(isEmpty)
             .accessibilityLabel("Send message")
@@ -2205,12 +3229,33 @@ struct InputBar: View {
         }
         .animation(.spring(response: 0.24, dampingFraction: 0.82), value: focused)
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.top, 10)
+        .padding(.bottom, 11)
         .background(
-            // Cream bar background with a thin top separator
-            VStack(spacing: 0) {
-                Color(hex: "#D5CFC6").frame(height: 0.5)
-                cream
+            ZStack(alignment: .top) {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(colorScheme == .dark ? 0.05 : 0.34),
+                        Color.black.opacity(colorScheme == .dark ? 0.26 : 0.03)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.18 : 0.62),
+                                Color(hex: "#FF3B30").opacity(0.16),
+                                .clear
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 1)
             }
         )
     }
@@ -2263,6 +3308,7 @@ private struct VoiceStatusBanner: View {
 struct SettingsView: View {
     @ObservedObject var persona: UserPersona
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var apiKey: String = ""
     @State private var showKey: Bool = false
@@ -2286,6 +3332,38 @@ struct SettingsView: View {
     @State private var showPrivacy: Bool = false
     @State private var showDiagnosticsLog: Bool = false
 
+    private var settingsBackground: Color {
+        colorScheme == .dark ? Color.BC.background : Color(hex: "#F4F1EA")
+    }
+    private var settingsSurface: Color {
+        colorScheme == .dark ? Color.BC.surface : Color.white
+    }
+    private var settingsFieldSurface: Color {
+        colorScheme == .dark ? Color.BC.surfaceRaised : Color(hex: "#FAF8F3")
+    }
+    private var settingsPrimaryText: Color {
+        colorScheme == .dark ? Color.BC.primaryText : Color(hex: "#17231F")
+    }
+    private var settingsSecondaryText: Color {
+        colorScheme == .dark ? Color.BC.secondaryText : Color(hex: "#53645E")
+    }
+    private var settingsMutedText: Color {
+        colorScheme == .dark ? Color.BC.textMuted : Color(hex: "#7D8A83")
+    }
+    private var settingsHeaderText: Color {
+        colorScheme == .dark ? Color.BC.accent : Color(hex: "#1E3932")
+    }
+    private var settingsBorder: Color {
+        colorScheme == .dark ? Color.BC.border : Color(hex: "#D5DCD4")
+    }
+
+    private func settingsHeader(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(BCFont.caption(11).weight(.semibold))
+            .foregroundColor(settingsHeaderText)
+            .tracking(0.7)
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -2299,10 +3377,10 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("AI Engine")
                                 .font(BCFont.headline())
-                                .foregroundColor(Color.BC.primaryText)
+                                .foregroundColor(settingsPrimaryText)
                             Text(providerLabel)
                                 .font(BCFont.body(13))
-                                .foregroundColor(Color.BC.secondaryText)
+                                .foregroundColor(settingsSecondaryText)
                         }
                     }
 
@@ -2310,7 +3388,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Claude API Key")
                             .font(BCFont.body(13))
-                            .foregroundColor(Color.BC.secondaryText)
+                            .foregroundColor(settingsSecondaryText)
 
                         HStack {
                             Group {
@@ -2321,33 +3399,40 @@ struct SettingsView: View {
                                 }
                             }
                             .font(.system(.footnote, design: .monospaced))
-                            .foregroundColor(Color.BC.primaryText)
+                            .foregroundColor(settingsPrimaryText)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
 
                             Button { showKey.toggle() } label: {
                                 Image(systemName: showKey ? "eye.slash" : "eye")
-                                    .foregroundColor(Color.BC.secondaryText)
+                                    .foregroundColor(settingsSecondaryText)
                             }
+                            .buttonStyle(.plain)
                         }
                         .padding(10)
-                        .background(Color.BC.surface)
+                        .background(settingsFieldSurface)
                         .cornerRadius(10)
                         .overlay(RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(apiKey.count > 20 ? Color.BC.accent : Color.BC.border, lineWidth: 1))
+                            .strokeBorder(hasTypedClaudeKey ? Color.BC.accent : settingsBorder, lineWidth: 1))
 
-                        Button(action: saveAPIKey) {
+                        Button(action: connectClaudeAPI) {
                             HStack {
-                                Image(systemName: keySaved ? "checkmark.circle.fill" : "key.fill")
-                                Text(keySaved ? "Saved!" : "Save & Activate")
+                                if refreshingAPIStatus {
+                                    ProgressView()
+                                        .tint(hasTypedClaudeKey ? .black : settingsMutedText)
+                                } else {
+                                    Image(systemName: keySaved ? "checkmark.circle.fill" : "bolt.horizontal.circle.fill")
+                                }
+                                Text(primaryClaudeButtonTitle)
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
-                            .background(apiKey.count > 20 ? Color.BC.accent : Color.BC.border)
-                            .foregroundColor(apiKey.count > 20 ? .black : Color.BC.textMuted)
+                            .background(hasTypedClaudeKey ? Color.BC.accent : settingsBorder)
+                            .foregroundColor(hasTypedClaudeKey ? .black : settingsMutedText)
                             .cornerRadius(10)
                         }
-                        .disabled(apiKey.count < 20)
+                        .buttonStyle(.plain)
+                        .disabled(!hasTypedClaudeKey || refreshingAPIStatus)
 
                         Button {
                             refreshAPIStatus()
@@ -2363,29 +3448,35 @@ struct SettingsView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
-                            .background(Color.BC.surface)
-                            .foregroundColor(apiKey.count > 20 ? Color.BC.accent : Color.BC.textMuted)
+                            .background(settingsFieldSurface)
+                            .foregroundColor(canRefreshClaudeStatus ? Color.BC.accent : settingsMutedText)
                             .cornerRadius(10)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .strokeBorder(Color.BC.border, lineWidth: 1)
+                                    .strokeBorder(settingsBorder, lineWidth: 1)
                             )
                         }
-                        .disabled(apiKey.count < 20 || refreshingAPIStatus)
+                        .buttonStyle(.plain)
+                        .disabled(!canRefreshClaudeStatus || refreshingAPIStatus)
 
-                        Text("After adding Claude credits from Anthropic, tap Refresh Claude Status. The app will re-check the saved key and switch back to active when credits are available.")
+                        Text("Paste an Anthropic key, then connect Claude. If credits were added later, refresh status and the app will switch back to active when Anthropic accepts the saved key.")
                             .font(BCFont.body(12))
-                            .foregroundColor(Color.BC.secondaryText)
+                            .foregroundColor(settingsSecondaryText)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        Link("→ Get a free API key at console.anthropic.com",
-                             destination: URL(string: "https://console.anthropic.com")!)
+                        Button {
+                            openAnthropicConsole()
+                        } label: {
+                            Text("→ Get a free API key at console.anthropic.com")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
                             .font(BCFont.body(12))
                             .foregroundColor(Color.BC.accent)
                     }
                     .padding(.vertical, 4)
                 } header: {
-                    Text("AI Engine")
+                    settingsHeader("AI Engine")
                 }
 
                 Section {
@@ -2395,17 +3486,17 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Neural Voice")
                                 .font(BCFont.headline())
-                                .foregroundColor(Color.BC.primaryText)
+                                .foregroundColor(settingsPrimaryText)
                             Text(neuralVoiceLabel)
                                 .font(BCFont.body(13))
-                                .foregroundColor(Color.BC.secondaryText)
+                                .foregroundColor(settingsSecondaryText)
                         }
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("ElevenLabs API Key")
                             .font(BCFont.body(13))
-                            .foregroundColor(Color.BC.secondaryText)
+                            .foregroundColor(settingsSecondaryText)
 
                         HStack {
                             Group {
@@ -2416,28 +3507,28 @@ struct SettingsView: View {
                                 }
                             }
                             .font(.system(.footnote, design: .monospaced))
-                            .foregroundColor(Color.BC.primaryText)
+                            .foregroundColor(settingsPrimaryText)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
 
                             Button { showNeuralVoiceKey.toggle() } label: {
                                 Image(systemName: showNeuralVoiceKey ? "eye.slash" : "eye")
-                                    .foregroundColor(Color.BC.secondaryText)
+                                    .foregroundColor(settingsSecondaryText)
                             }
                         }
                         .padding(10)
-                        .background(Color.BC.surface)
+                        .background(settingsFieldSurface)
                         .cornerRadius(10)
                         .overlay(RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(neuralVoiceAPIKey.count > 10 ? Color.BC.accent : Color.BC.border, lineWidth: 1))
+                            .strokeBorder(neuralVoiceAPIKey.count > 10 ? Color.BC.accent : settingsBorder, lineWidth: 1))
 
-	                        TextField("Model ID, e.g. eleven_v3", text: $neuralVoiceModelID)
+	                        TextField("Model ID, e.g. eleven_flash_v2_5", text: $neuralVoiceModelID)
 	                            .font(.system(.footnote, design: .monospaced))
-	                            .foregroundColor(Color.BC.primaryText)
+	                            .foregroundColor(settingsPrimaryText)
 	                            .autocorrectionDisabled()
 	                            .textInputAutocapitalization(.never)
 	                            .padding(10)
-	                            .background(Color.BC.surface)
+	                            .background(settingsFieldSurface)
 	                            .cornerRadius(10)
 	                    }
 	                    .padding(.vertical, 4)
@@ -2448,17 +3539,17 @@ struct SettingsView: View {
 	                                .foregroundColor(Color.BC.accent)
 	                            Text("API key permissions")
 	                                .font(BCFont.headline())
-	                                .foregroundColor(Color.BC.primaryText)
+	                                .foregroundColor(settingsPrimaryText)
 	                        }
 
 	                        Text("Create the key under ElevenLabs Developers > API Keys. The key must include Text to Speech access. If ElevenLabs says missing_permissions, the key was created without text_to_speech. If it says voice not found, that voice ID is not available to the same ElevenLabs account.")
 	                            .font(BCFont.body(12))
-	                            .foregroundColor(Color.BC.secondaryText)
+	                            .foregroundColor(settingsSecondaryText)
 	                            .fixedSize(horizontal: false, vertical: true)
 
 	                        Text("Required: text_to_speech. Recommended: voices_read, so voice IDs can be checked against the account.")
 	                            .font(BCFont.body(12))
-	                            .foregroundColor(Color.BC.secondaryText)
+	                            .foregroundColor(settingsSecondaryText)
 	                            .fixedSize(horizontal: false, vertical: true)
 
 	                        Link("Open ElevenLabs API Keys",
@@ -2467,11 +3558,11 @@ struct SettingsView: View {
 	                            .foregroundColor(Color.BC.accent)
 	                    }
 	                    .padding(12)
-	                    .background(Color.BC.surface.opacity(0.85))
+	                    .background(settingsFieldSurface.opacity(0.85))
 	                    .cornerRadius(10)
 	                    .overlay(
 	                        RoundedRectangle(cornerRadius: 10)
-	                            .strokeBorder(Color.BC.border, lineWidth: 1)
+	                            .strokeBorder(settingsBorder, lineWidth: 1)
 	                    )
 
 	                    ForEach(CompanionPersonality.all) { companion in
@@ -2479,7 +3570,7 @@ struct SettingsView: View {
                             HStack {
                                 Text(companion.name)
                                     .font(BCFont.body(14))
-                                    .foregroundColor(Color.BC.primaryText)
+                                    .foregroundColor(settingsPrimaryText)
                                 Spacer()
                                 Text(neuralVoiceDraftStatus(for: companion).label)
                                     .font(BCFont.caption(11))
@@ -2487,11 +3578,11 @@ struct SettingsView: View {
                             }
                             TextField("\(companion.name) voice_id", text: neuralVoiceIDBinding(for: companion))
                                 .font(.system(.footnote, design: .monospaced))
-                                .foregroundColor(Color.BC.primaryText)
+                                .foregroundColor(settingsPrimaryText)
                                 .autocorrectionDisabled()
                                 .textInputAutocapitalization(.never)
                                 .padding(10)
-                                .background(Color.BC.surface)
+                                .background(settingsFieldSurface)
                                 .cornerRadius(10)
                         }
                         .padding(.vertical, 4)
@@ -2504,8 +3595,8 @@ struct SettingsView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(canSaveNeuralVoiceSettings ? Color.BC.accent : Color.BC.border)
-                        .foregroundColor(canSaveNeuralVoiceSettings ? .black : Color.BC.textMuted)
+                        .background(canSaveNeuralVoiceSettings ? Color.BC.accent : settingsBorder)
+                        .foregroundColor(canSaveNeuralVoiceSettings ? .black : settingsMutedText)
                         .cornerRadius(10)
                     }
                     .disabled(!canSaveNeuralVoiceSettings)
@@ -2521,11 +3612,11 @@ struct SettingsView: View {
                         .font(BCFont.body(12))
                         .foregroundColor(Color.BC.accent)
                 } header: {
-                    Text("Neural Voice")
+                    settingsHeader("Neural Voice")
                 } footer: {
                     Text("Apple local speech is not used. Each personality needs its own licensed, cloned, or designed ElevenLabs voice ID so Luna, Aria, Kel, Marco, Dante, and Kai stay sandboxed with no voice bleed-through.")
                         .font(BCFont.footnote())
-                        .foregroundColor(Color.BC.secondaryText)
+                        .foregroundColor(settingsSecondaryText)
                 }
 
                 // Profile
@@ -2536,7 +3627,7 @@ struct SettingsView: View {
                             .foregroundColor(Color.BC.accent)
                             .frame(width: 22)
                         TextField("Your name", text: $editingName)
-                            .foregroundColor(Color.BC.primaryText)
+                            .foregroundColor(settingsPrimaryText)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.words)
                             .onSubmit { saveName() }
@@ -2551,17 +3642,17 @@ struct SettingsView: View {
                     .animation(.spring(response: 0.25), value: editingName)
                     HStack {
                         Text("Assistant Name")
-                            .foregroundColor(Color.BC.primaryText)
+                            .foregroundColor(settingsPrimaryText)
                         Spacer()
                         Text(persona.assistantName.isEmpty ? persona.selectedCompanion.name : persona.assistantName)
-                            .foregroundColor(Color.BC.secondaryText)
+                            .foregroundColor(settingsSecondaryText)
                     }
                 } header: {
-                    Text("Profile")
+                    settingsHeader("Profile")
                 } footer: {
                     Text("Type a new name and tap ✓ or press Return to save. Your companion will use it immediately.")
                         .font(BCFont.footnote())
-                        .foregroundColor(Color.BC.secondaryText)
+                        .foregroundColor(settingsSecondaryText)
                 }
 
                 // ── Companion ─────────────────────────────────────────────
@@ -2581,26 +3672,26 @@ struct SettingsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(persona.selectedCompanion.name)
                                     .font(BCFont.headline())
-                                    .foregroundColor(Color.BC.primaryText)
+                                    .foregroundColor(settingsPrimaryText)
                                 Text(persona.selectedCompanion.tagline)
                                     .font(BCFont.body(12))
-                                    .foregroundColor(Color.BC.secondaryText)
+                                    .foregroundColor(settingsSecondaryText)
                                     .lineLimit(1)
                             }
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(Color.BC.secondaryText.opacity(0.6))
+                                .foregroundColor(settingsSecondaryText.opacity(0.6))
                         }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 } header: {
-                    Text("Companion")
+                    settingsHeader("Companion")
                 } footer: {
                     Text("Switching companion starts a fresh conversation with your new companion. Your history with each companion is saved separately.")
                         .font(BCFont.footnote())
-                        .foregroundColor(Color.BC.secondaryText)
+                        .foregroundColor(settingsSecondaryText)
                 }
                 // Relationship mode
                 Section {
@@ -2618,10 +3709,10 @@ struct SettingsView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(mode.label)
                                         .font(BCFont.headline())
-                                        .foregroundColor(Color.BC.primaryText)
+                                        .foregroundColor(settingsPrimaryText)
                                     Text(mode.description)
                                         .font(BCFont.body(12))
-                                        .foregroundColor(Color.BC.secondaryText)
+                                        .foregroundColor(settingsSecondaryText)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                                 Spacer()
@@ -2636,19 +3727,19 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
                     }
                 } header: {
-                    Text("Relationship Mode")
+                    settingsHeader("Relationship Mode")
                 } footer: {
                     Text("Changes how your companion relates to you. Takes effect on the next message.")
                         .font(BCFont.footnote())
-                        .foregroundColor(Color.BC.secondaryText)
+                        .foregroundColor(settingsSecondaryText)
                 }
 
                 // Communication style
-                Section("Communication Style") {
+                Section {
                     ForEach(CommunicationStyle.allCases) { style in
                         HStack {
                             Text(style.rawValue.capitalized)
-                                .foregroundColor(Color.BC.primaryText)
+                                .foregroundColor(settingsPrimaryText)
                             Spacer()
                             if persona.style == style {
                                 Image(systemName: "checkmark")
@@ -2658,6 +3749,8 @@ struct SettingsView: View {
                         .contentShape(Rectangle())
                         .onTapGesture { persona.style = style; persona.save() }
                     }
+                } header: {
+                    settingsHeader("Communication Style")
                 }
 
                 // ── Interests ──────────────────────────────────────────
@@ -2667,7 +3760,7 @@ struct SettingsView: View {
                         HStack(spacing: 10) {
                             Text(interest.emoji).font(.system(size: 18))
                             Text(interest.label)
-                                .foregroundColor(Color.BC.primaryText)
+                                .foregroundColor(settingsPrimaryText)
                             Spacer()
                             Toggle("", isOn: Binding(
                                 get: { interest.notificationsEnabled },
@@ -2706,7 +3799,7 @@ struct SettingsView: View {
 
                     if persona.interests.isEmpty && !showAddInterests {
                         Text("No interests yet — add some below or chat to add more.")
-                            .foregroundColor(Color.BC.secondaryText)
+                            .foregroundColor(settingsSecondaryText)
                             .font(BCFont.footnote())
                     }
 
@@ -2729,15 +3822,15 @@ struct SettingsView: View {
                     }
 
                 } header: {
-                    Text("Interests (\(persona.interests.count))")
+                    settingsHeader("Interests (\(persona.interests.count))")
                 } footer: {
                     Text("Your companion uses these to bring up what you love, send updates, and make conversations feel personal.")
                         .font(BCFont.footnote())
-                        .foregroundColor(Color.BC.secondaryText)
+                        .foregroundColor(settingsSecondaryText)
                 }
 
                 // Affirmations
-                Section("Daily Affirmation") {
+                Section {
                     Toggle("Enabled", isOn: $persona.dailyAffirmationsEnabled)
                         .tint(Color.BC.primary)
                         .onChange(of: persona.dailyAffirmationsEnabled) {
@@ -2748,7 +3841,7 @@ struct SettingsView: View {
                         }
                     if persona.dailyAffirmationsEnabled {
                         DatePicker("Time", selection: $persona.affirmationTime, displayedComponents: .hourAndMinute)
-                            .foregroundColor(Color.BC.primaryText)
+                            .foregroundColor(settingsPrimaryText)
                             .onChange(of: persona.affirmationTime) {
                                 persona.save()
                                 Task {
@@ -2756,39 +3849,90 @@ struct SettingsView: View {
                                 }
                             }
                     }
+                } header: {
+                    settingsHeader("Daily Affirmation")
                 }
 
                 // ── Companion Tracking ──────────────────────────────────
                 Section {
-                    trackingRow("Calendar & Events", icon: "calendar", color: .purple,
-                                detail: "Pre/post event check-ins. Emotional support around interviews, medical appointments, dates, and deadlines.",
-                                enabled: $persona.trackingPermissions.calendarEnabled)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(Color.BC.accent)
+                                .frame(width: 28)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Dynamic Tracking")
+                                    .font(BCFont.headline())
+                                    .foregroundColor(settingsPrimaryText)
+                                Text("Master switch for proactive companion signals.")
+                                    .font(BCFont.body(12))
+                                    .foregroundColor(settingsSecondaryText)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $persona.trackingPermissions.dynamicSignalsEnabled)
+                                .labelsHidden()
+                                .tint(Color.BC.accent)
+                                .onChange(of: persona.trackingPermissions.dynamicSignalsEnabled) {
+                                    persona.save()
+                                    DiagnosticsLog.info(
+                                        "permissions",
+                                        "Dynamic tracking changed.",
+                                        details: [
+                                            "enabled": "\(persona.trackingPermissions.dynamicSignalsEnabled)",
+                                            "companion": persona.selectedCompanionID
+                                        ]
+                                    )
+                                    Task {
+                                        await CompanionDataTracker.shared.updatePermissions(
+                                            persona.trackingPermissions,
+                                            persona: persona
+                                        )
+                                    }
+                                }
+                        }
+                        Text("When this is off, BareClaw cancels tracking notifications and ignores ambient, chat-derived, and app-context opportunities for proactive personalization.")
+                            .font(BCFont.body(12))
+                            .foregroundColor(settingsSecondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, 40)
+                    }
+                    .padding(.vertical, 3)
 
-                    trackingRow("Messages", icon: "message.fill", color: .green,
-                                detail: "Helps with texts you bring into chat. Companion learns who matters from what you choose to share.",
-                                enabled: $persona.trackingPermissions.messagesEnabled)
+                    Group {
+                        trackingRow("Calendar & Events", icon: "calendar", color: .purple,
+                                    detail: "Pre/post event check-ins. Emotional support around interviews, medical appointments, dates, and deadlines.",
+                                    enabled: $persona.trackingPermissions.calendarEnabled,
+                                    requestsSystemAccessOnEnable: true)
 
-                    trackingRow("Email", icon: "envelope.fill", color: .blue,
-                                detail: "Helps with emails you bring into chat. Companion learns about your work from what you choose to share.",
-                                enabled: $persona.trackingPermissions.emailEnabled)
+                        trackingRow("Messages", icon: "message.fill", color: .green,
+                                    detail: "Helps with texts you bring into chat. Companion learns who matters from what you choose to share.",
+                                    enabled: $persona.trackingPermissions.messagesEnabled)
 
-                    trackingRow("Location Routines", icon: "location.fill", color: .red,
-                                detail: "Time-aware suggestions around routines and places you choose to share.",
-                                enabled: $persona.trackingPermissions.locationEnabled)
+                        trackingRow("Email", icon: "envelope.fill", color: .blue,
+                                    detail: "Helps with emails you bring into chat. Companion learns about your work from what you choose to share.",
+                                    enabled: $persona.trackingPermissions.emailEnabled)
 
-                    trackingRow("Browsing", icon: "safari.fill", color: .orange,
-                                detail: "Remembers articles, products, and topics you choose to mention.",
-                                enabled: $persona.trackingPermissions.browsingEnabled)
+                        trackingRow("Location Routines", icon: "location.fill", color: .red,
+                                    detail: "Time-aware suggestions around routines and places you choose to share.",
+                                    enabled: $persona.trackingPermissions.locationEnabled)
+
+                        trackingRow("Browsing", icon: "safari.fill", color: .orange,
+                                    detail: "Remembers articles, products, and topics you choose to mention.",
+                                    enabled: $persona.trackingPermissions.browsingEnabled)
+                    }
+                    .disabled(!persona.trackingPermissions.dynamicSignalsEnabled)
+                    .opacity(persona.trackingPermissions.dynamicSignalsEnabled ? 1 : 0.45)
 
                 } header: {
-                    Text("Companion Tracking")
+                    settingsHeader("Companion Tracking")
                 } footer: {
-                    Text("Calendar can create real event-based check-ins. Email, Messages, Browsing, and Location are personalization areas based on what you choose to share in chat, not background data reads. Changes take effect immediately.")
+                    Text("Calendar can create real event-based check-ins. Email, Messages, Browsing, and Location are personalization areas based on what you choose to share in chat, not background data reads. Dynamic Tracking must stay on for any proactive tracking to run.")
                         .font(BCFont.footnote())
-                        .foregroundColor(Color.BC.secondaryText)
+                        .foregroundColor(settingsSecondaryText)
                 }
 
-	                Section("About") {
+	                Section {
 	                    settingsLinkRow("Diagnostics Log", systemImage: "waveform.path.ecg", color: .BC.accent) {
 	                        showDiagnosticsLog = true
 	                    }
@@ -2806,22 +3950,24 @@ struct SettingsView: View {
                     }
                     HStack {
                         Text("Version")
-                            .foregroundColor(Color.BC.primaryText)
+                            .foregroundColor(settingsPrimaryText)
                         Spacer()
                         Text(appVersionText)
-                            .foregroundColor(Color.BC.secondaryText)
+                            .foregroundColor(settingsSecondaryText)
                     }
                     HStack {
                         Text("Memory entries")
-                            .foregroundColor(Color.BC.primaryText)
+                            .foregroundColor(settingsPrimaryText)
                         Spacer()
                         MemoryCountBadge()
                     }
+                } header: {
+                    settingsHeader("About")
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.BC.background)
-            .listRowBackground(Color.BC.surface)
+            .background(settingsBackground)
+            .listRowBackground(settingsSurface)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2887,7 +4033,8 @@ struct SettingsView: View {
     @ViewBuilder
     private func trackingRow(
         _ label: String, icon: String, color: Color,
-        detail: String, enabled: Binding<Bool>
+        detail: String, enabled: Binding<Bool>,
+        requestsSystemAccessOnEnable: Bool = false
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
@@ -2896,7 +4043,7 @@ struct SettingsView: View {
                     .foregroundColor(color)
                     .frame(width: 28)
                 Text(label)
-                    .foregroundColor(Color.BC.primaryText)
+                    .foregroundColor(settingsPrimaryText)
                 Spacer()
                 Toggle("", isOn: enabled)
                     .labelsHidden()
@@ -2913,12 +4060,18 @@ struct SettingsView: View {
 	                                "messages": "\(persona.trackingPermissions.messagesEnabled)",
 	                                "browsing": "\(persona.trackingPermissions.browsingEnabled)",
 	                                "location": "\(persona.trackingPermissions.locationEnabled)",
-	                                "calendar": "\(persona.trackingPermissions.calendarEnabled)"
+	                                "calendar": "\(persona.trackingPermissions.calendarEnabled)",
+                                    "dynamic": "\(persona.trackingPermissions.dynamicSignalsEnabled)"
 	                            ]
 	                        )
-	                        Task {
-	                            await CompanionDataTracker.shared.updatePermissions(
-                                persona.trackingPermissions, persona: persona
+                        let shouldRequestSystemAccess = requestsSystemAccessOnEnable
+                            && enabled.wrappedValue
+                            && persona.trackingPermissions.dynamicSignalsEnabled
+                        Task {
+                            await CompanionDataTracker.shared.updatePermissions(
+                                persona.trackingPermissions,
+                                persona: persona,
+                                requestSystemAccess: shouldRequestSystemAccess
                             )
                         }
                     }
@@ -2926,7 +4079,7 @@ struct SettingsView: View {
             if enabled.wrappedValue {
                 Text(detail)
                     .font(BCFont.body(12))
-                    .foregroundColor(Color.BC.secondaryText)
+                    .foregroundColor(settingsSecondaryText)
                     .padding(.leading, 40)
                     .padding(.bottom, 6)
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -2954,11 +4107,11 @@ struct SettingsView: View {
                     .foregroundColor(color)
                     .frame(width: 26)
                 Text(title)
-                    .foregroundColor(Color.BC.primaryText)
+                    .foregroundColor(settingsPrimaryText)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundColor(Color.BC.secondaryText.opacity(0.65))
+                    .foregroundColor(settingsSecondaryText.opacity(0.65))
             }
             .contentShape(Rectangle())
         }
@@ -3134,32 +4287,53 @@ struct SettingsView: View {
         }
     }
 
-    private func saveAPIKey() {
-        let trimmed = apiKey.trimmingCharacters(in: .whitespaces)
+    private var cleanedClaudeAPIKey: String {
+        apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasTypedClaudeKey: Bool {
+        cleanedClaudeAPIKey.count > 20
+    }
+
+    private var canRefreshClaudeStatus: Bool {
+        hasTypedClaudeKey || (KeychainHelper.read(service: "com.bareclaw.bareclaw", key: "anthropic_api_key")?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .count ?? 0) > 20
+    }
+
+    private var primaryClaudeButtonTitle: String {
+        if refreshingAPIStatus { return "Connecting Claude..." }
+        if keySaved { return "Claude Active" }
+        return "Connect Claude"
+    }
+
+    private func connectClaudeAPI() {
+        saveClaudeKeyIfPresent()
+        guard hasTypedClaudeKey else { return }
+        refreshAPIStatus(markSavedOnSuccess: true)
+    }
+
+    private func openAnthropicConsole() {
+        guard let url = URL(string: "https://console.anthropic.com") else { return }
+        UIApplication.shared.open(url)
+    }
+
+    private func saveClaudeKeyIfPresent() {
+        let trimmed = cleanedClaudeAPIKey
         guard trimmed.count > 20 else { return }
         KeychainHelper.write(service: "com.bareclaw.bareclaw",
                              key: "anthropic_api_key",
                              value: trimmed)
         DiagnosticsLog.info("settings", "Claude API key saved from Settings.")
-        // Show saved confirmation immediately — don't wait for Anthropic to respond
-        BCHaptic.success()
-        keySaved = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { keySaved = false }
-        // Validate in background to update the status label
-        refreshAPIStatus()
     }
 
     private func refreshAPIStatus(markSavedOnSuccess: Bool = false) {
-        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.count > 20 {
-            KeychainHelper.write(service: "com.bareclaw.bareclaw",
-                                 key: "anthropic_api_key",
-                                 value: trimmed)
-        }
+        saveClaudeKeyIfPresent()
 
-	        refreshingAPIStatus = true
-	        providerLabel = "Checking Claude API…"
-	        DiagnosticsLog.info("settings", "Claude API status refresh requested.")
+        refreshingAPIStatus = true
+        keySaved = false
+        providerLabel = markSavedOnSuccess ? "Connecting Claude API..." : "Checking Claude API..."
+        DiagnosticsLog.info("settings", "Claude API status refresh requested.")
 
         Task {
             await HermesPrivacyGate.shared.acceptCloudAI()
@@ -3168,8 +4342,11 @@ struct SettingsView: View {
                 providerLabel = status.settingsLabel
                 refreshingAPIStatus = false
                 if markSavedOnSuccess, case .active(_) = status {
+                    BCHaptic.success()
                     keySaved = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) { keySaved = false }
+                } else if markSavedOnSuccess {
+                    BCHaptic.error()
                 }
             }
         }
@@ -3594,7 +4771,7 @@ enum BareClawLegalContent {
     static let helpSections: [LegalSection] = [
         LegalSection(
             title: "Connect the AI brain",
-            body: "Open Settings > AI Engine, paste your Claude API key, then tap Save & Activate. If the key was already saved but replies fail, tap Refresh Claude Status after adding credits from Anthropic."
+            body: "Open Settings > AI Engine, paste your Claude API key, then tap Connect Claude. If the key was already saved but replies fail, tap Refresh Claude Status after adding credits from Anthropic."
         ),
         LegalSection(
             title: "Set up neural voices",

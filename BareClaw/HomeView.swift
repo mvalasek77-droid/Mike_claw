@@ -157,26 +157,36 @@ final class HomeViewModel: ObservableObject {
 
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var vm = HomeViewModel()
     @ObservedObject private var herMode = HerModeEngine.shared
 
     @State private var showBondInfo      = false
     @State private var showDreamJournal  = false
     @State private var showMemories      = false
+    @State private var showDreamMomentSetup = false
+    @State private var showDreamMomentLocked = false
     @State private var displayedBondScore: Int = 0
 
-    // MARK: Palette (warm Starbucks-inspired light theme)
-    private let bgCream        = Color(hex: "#F2F0EB")
-    private let warmWhite      = Color(hex: "#FAF7F2")
-    private let forestGreen    = Color(hex: "#1E3932")
-    private let forestGreenMid = Color(hex: "#2C5147")
-    private let tan            = Color(hex: "#E8E0D0")
-    private let tanDark        = Color(hex: "#D4C9B4")
-    private let gold           = Color(hex: "#CBA258")
-    private let textDark       = Color(hex: "#1E3932")
-    private let textMid        = Color(hex: "#5C5C5C")
-    private let textLight      = Color(hex: "#FFFFFF")
-    private let mutedWhite     = Color(hex: "#C8D8C8")
+    // MARK: Adaptive Palette
+    private var isDarkMode: Bool { colorScheme == .dark }
+    private var bgCream: Color { isDarkMode ? Color(hex: "#0D1117") : Color(hex: "#F2F0EB") }
+    private var warmWhite: Color { isDarkMode ? Color(hex: "#121A18") : Color(hex: "#FAF7F2") }
+    private var forestGreen: Color { isDarkMode ? Color(hex: "#14352E") : Color(hex: "#1E3932") }
+    private var forestGreenMid: Color { isDarkMode ? Color(hex: "#2F5D51") : Color(hex: "#2C5147") }
+    private var tan: Color { isDarkMode ? Color(hex: "#1A2420") : Color(hex: "#E8E0D0") }
+    private var tanDark: Color { isDarkMode ? Color(hex: "#31443B") : Color(hex: "#D4C9B4") }
+    private var gold: Color { isDarkMode ? Color(hex: "#E0B75A") : Color(hex: "#CBA258") }
+    private var textDark: Color { isDarkMode ? Color(hex: "#E6F0EA") : Color(hex: "#1E3932") }
+    private var textMid: Color { isDarkMode ? Color(hex: "#A9B7B0") : Color(hex: "#5C5C5C") }
+    private var textLight: Color { Color(hex: "#FFFFFF") }
+    private var mutedWhite: Color { isDarkMode ? Color(hex: "#9BB0A7") : Color(hex: "#C8D8C8") }
+    private var quickActionSurface: Color { isDarkMode ? Color(hex: "#16211D") : Color.white }
+    private var scorePillSurface: Color { isDarkMode ? Color.white.opacity(0.08) : Color.white.opacity(0.65) }
+    private var cardShadow: Color { Color.black.opacity(isDarkMode ? 0.30 : 0.07) }
+    private var dreamMomentUnlocked: Bool {
+        return vm.bondScoreDisplay >= 100
+    }
 
     // MARK: - Body
 
@@ -208,6 +218,12 @@ struct HomeView: View {
                             .padding(.horizontal, 16)
                             .padding(.top, 14)
                         quickActionsGrid
+                            .padding(.horizontal, 16)
+                            .padding(.top, 14)
+                        entertainmentSection
+                            .padding(.horizontal, 16)
+                            .padding(.top, 14)
+                        experienceModesSection
                             .padding(.horizontal, 16)
                             .padding(.top, 14)
                         HerModeProgressView(score: vm.intimacyScore,
@@ -255,6 +271,17 @@ struct HomeView: View {
             // Memories
             .sheet(isPresented: $showMemories) {
                 MemoriesView()
+            }
+            .sheet(isPresented: $showDreamMomentSetup) {
+                DreamMomentSetupSheet(companion: vm.companion) { config in
+                    CompanionExperienceCenter.requestDreamMoment(config)
+                    appState.requestChat()
+                }
+            }
+            .alert("Dream Moment unlocks at 100 bond points", isPresented: $showDreamMomentLocked) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Keep building the bond with specific conversations. At 100 points, the boyfriend/girlfriend Dream Moment card opens.")
             }
         }
         .navigationViewStyle(.stack)
@@ -335,7 +362,7 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(
                     LinearGradient(
-                        colors: [forestGreen, Color(hex: "#162E28")],
+                        colors: [forestGreen, isDarkMode ? Color(hex: "#0E211C") : Color(hex: "#162E28")],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -454,7 +481,7 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Color.white.opacity(0.65))
+                .background(scorePillSurface)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             }
 
@@ -544,7 +571,7 @@ struct HomeView: View {
         [
             QuickAction(
                 icon: "bubble.left.fill",
-                iconColor: Color(hex: "#1E3932"),
+                iconColor: isDarkMode ? gold : Color(hex: "#1E3932"),
                 title: "Chat",
                 subtitle: "Talk to \(vm.companionName)",
                 action: { appState.requestChat() }
@@ -612,13 +639,337 @@ struct HomeView: View {
             .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.07), radius: 10, x: 0, y: 4)
+                    .fill(quickActionSurface)
+                    .shadow(color: cardShadow, radius: 10, x: 0, y: 4)
             )
         }
         .buttonStyle(BCButtonStyle(haptic: .none)) // haptic handled above with custom timing
         .accessibilityLabel(action.title)
         .accessibilityHint(action.subtitle)
+    }
+
+    // MARK: - Charts & Reviews
+
+    private var entertainmentSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Charts & Reviews")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundColor(textDark)
+                    .tracking(0.4)
+                Spacer()
+                Text("movies + games")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(textMid)
+                    .lineLimit(1)
+            }
+
+            experienceModeCard(
+                icon: CompanionExperienceMode.movieCharts.icon,
+                title: "Movie Charts & Reviews",
+                subtitle: "Rankings, critics, audience picks",
+                accent: CompanionExperienceMode.movieCharts.accent
+            ) {
+                CompanionExperienceCenter.request(.movieCharts)
+                appState.requestChat()
+            }
+
+            experienceModeCard(
+                icon: CompanionExperienceMode.gameCharts.icon,
+                title: "Video Game Charts & Reviews",
+                subtitle: "Platforms, reviews, what to play",
+                accent: CompanionExperienceMode.gameCharts.accent
+            ) {
+                CompanionExperienceCenter.request(.gameCharts)
+                appState.requestChat()
+            }
+        }
+    }
+
+    // MARK: - Experience Modes
+
+    private var experienceModesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Companion Modes")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundColor(textDark)
+                    .tracking(0.4)
+                Spacer()
+                Text("with \(vm.companionName)")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(textMid)
+                    .lineLimit(1)
+            }
+
+            experienceModeCard(
+                icon: CompanionExperienceMode.therapist.icon,
+                title: CompanionExperienceMode.therapist.title,
+                subtitle: "Hour-style support session",
+                accent: CompanionExperienceMode.therapist.accent
+            ) {
+                CompanionExperienceCenter.request(.therapist)
+                appState.requestChat()
+            }
+
+            experienceModeCard(
+                icon: CompanionExperienceMode.asmr.icon,
+                title: CompanionExperienceMode.asmr.title,
+                subtitle: "20-minute calming voice spa",
+                accent: CompanionExperienceMode.asmr.accent
+            ) {
+                CompanionExperienceCenter.request(.asmr)
+                appState.requestChat()
+            }
+
+            experienceModeCard(
+                icon: CompanionExperienceMode.dreamMoment.icon,
+                title: "Boyfriend / Girlfriend",
+                subtitle: dreamMomentUnlocked ? "Dream Moment roleplay" : "Unlocks at 100 bond points",
+                accent: CompanionExperienceMode.dreamMoment.accent,
+                locked: !dreamMomentUnlocked
+            ) {
+                if dreamMomentUnlocked {
+                    showDreamMomentSetup = true
+                } else {
+                    showDreamMomentLocked = true
+                }
+            }
+        }
+    }
+
+    private func experienceModeCard(icon: String,
+                                    title: String,
+                                    subtitle: String,
+                                    accent: Color,
+                                    locked: Bool = false,
+                                    action: @escaping () -> Void) -> some View {
+        Button {
+            BCHaptic.light()
+            action()
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(accent.opacity(isDarkMode ? 0.22 : 0.13))
+                    Image(systemName: locked ? "lock.fill" : icon)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(accent)
+                }
+                .frame(width: 44, height: 44)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(textDark)
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(textMid)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(textMid.opacity(0.55))
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(quickActionSurface)
+                    .shadow(color: cardShadow, radius: 10, x: 0, y: 4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(accent.opacity(locked ? 0.12 : 0.24), lineWidth: 1)
+            )
+        }
+        .buttonStyle(BCButtonStyle(haptic: .none))
+        .accessibilityLabel(title)
+        .accessibilityHint(subtitle)
+    }
+}
+
+// MARK: - DreamMomentSetupSheet
+
+struct DreamMomentSetupSheet: View {
+    let companion: CompanionPersonality
+    let onStart: (DreamMomentConfig) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var partnerName: String
+    @State private var companionBehavior: String
+    @State private var scene: String
+
+    init(companion: CompanionPersonality, onStart: @escaping (DreamMomentConfig) -> Void) {
+        self.companion = companion
+        self.onStart = onStart
+        let defaultName = companion.gender == .female ? "girlfriend" : "boyfriend"
+        _partnerName = State(initialValue: defaultName)
+        _companionBehavior = State(initialValue: "Lead the moment. Be affectionate, poetic, emotionally brave, protective, playful, and specific. Do not wait for me to carry the scene.")
+        _scene = State(initialValue: "Take me on a dream date that feels cinematic and intimate. Choose the place, notice what I need, tell me what you have been holding back, and make the moment feel unforgettable.")
+    }
+
+    private var accent: Color { CompanionExperienceMode.dreamMoment.accent }
+    private var background: Color { colorScheme == .dark ? Color(hex: "#0D1117") : Color(hex: "#F7F2EF") }
+    private var surface: Color { colorScheme == .dark ? Color(hex: "#161B22") : Color.white }
+    private var primaryText: Color { colorScheme == .dark ? Color(hex: "#E6EDF3") : Color(hex: "#17231F") }
+    private var secondaryText: Color { colorScheme == .dark ? Color(hex: "#8B949E") : Color(hex: "#5E6C66") }
+
+    private var canStart: Bool {
+        companionBehavior.trimmingCharacters(in: .whitespacesAndNewlines).count >= 8 &&
+        scene.trimmingCharacters(in: .whitespacesAndNewlines).count >= 20
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("100 bond points required", systemImage: "heart.fill")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(accent)
+
+                        Text("Dream Moment")
+                            .font(.system(size: 30, weight: .heavy, design: .rounded))
+                            .foregroundColor(primaryText)
+
+                        Text("Tell \(companion.name) exactly who to be, how to act, and the moment you want to step into. Be very specific: place, time, tone, what they call you, what has been unsaid, and what you wish happened. The more specific you are, the better the roleplay becomes.")
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
+                            .foregroundColor(secondaryText)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.bottom, 4)
+
+                    dreamField(
+                        title: "Call them",
+                        subtitle: "Use any name or role you want for this moment.",
+                        placeholder: "girlfriend, boyfriend, my love, Alex...",
+                        text: $partnerName,
+                        lineLimit: 1...2
+                    )
+
+                    dreamField(
+                        title: "How should they act?",
+                        subtitle: "Describe the partner energy.",
+                        placeholder: "Protective, playful, deeply affectionate, patient...",
+                        text: $companionBehavior,
+                        lineLimit: 2...4
+                    )
+
+                    dreamField(
+                        title: "Describe the moment",
+                        subtitle: "Specific scenes work best.",
+                        placeholder: "We are on a balcony after a hard day. They notice I am quiet, pull me close, and finally say...",
+                        text: $scene,
+                        lineLimit: 5...10
+                    )
+
+                    Button {
+                        let config = DreamMomentConfig(
+                            partnerName: partnerName,
+                            companionBehavior: companionBehavior,
+                            scene: scene
+                        )
+                        onStart(config)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "heart.text.square.fill")
+                            Text("Begin Dream Moment")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .foregroundColor(.white)
+                        .background(
+                            LinearGradient(
+                                colors: canStart ? [accent, Color(hex: "#D81B60")] : [Color.gray.opacity(0.55), Color.gray.opacity(0.42)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canStart)
+                    .accessibilityHint("Starts a fictional romantic roleplay with \(companion.name)")
+                }
+                .padding(20)
+            }
+            .background(background.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(secondaryText)
+                }
+            }
+        }
+    }
+
+    private func dreamField(title: String,
+                            subtitle: String,
+                            placeholder: String,
+                            text: Binding<String>,
+                            lineLimit: PartialRangeThrough<Int>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(primaryText)
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(secondaryText)
+            }
+
+            TextField(placeholder, text: text, axis: .vertical)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(primaryText)
+                .lineLimit(lineLimit)
+                .textInputAutocapitalization(.sentences)
+                .padding(12)
+                .background(surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(accent.opacity(0.18), lineWidth: 1)
+                )
+        }
+    }
+
+    private func dreamField(title: String,
+                            subtitle: String,
+                            placeholder: String,
+                            text: Binding<String>,
+                            lineLimit: ClosedRange<Int>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(primaryText)
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(secondaryText)
+            }
+
+            TextField(placeholder, text: text, axis: .vertical)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(primaryText)
+                .lineLimit(lineLimit)
+                .textInputAutocapitalization(.sentences)
+                .padding(12)
+                .background(surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(accent.opacity(0.18), lineWidth: 1)
+                )
+        }
     }
 }
 
@@ -708,7 +1059,7 @@ struct BondInfoSheet: View {
                     // ── Him/Her Mode ──────────────────────────────────────
                     section(title: "Him / Her Mode explained") {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Unlocks at 61 bond points — the Deep Connection stage.")
+                            Text("Unlocks at 60 bond points.")
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(green)
                             Text("Him/Her Mode is the always-present companion layer.\n\nWhen it is active and the app is open, \(companionName) keeps the microphone session on with your permission. You can speak directly to the companion without pressing the mic, and it can listen for important topics, detect stress patterns, remember what keeps coming up, and check in without waiting for you to open a new chat.\n\nIt should feel helpful, not invasive: the goal is to learn your real life patterns so \(companionName) can support you with better timing, better memory, and a more personal voice.")
@@ -817,11 +1168,19 @@ private extension Text {
 // MARK: - CompanionThoughtCard
 
 struct CompanionThoughtCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let companion: CompanionPersonality
     let thought: String
     let accentColor: Color
     let onChat: () -> Void
     let onDismiss: () -> Void
+
+    private var isDarkMode: Bool { colorScheme == .dark }
+    private var surface: Color { isDarkMode ? Color(hex: "#16211D") : Color(hex: "#FAF7F2") }
+    private var primaryText: Color { isDarkMode ? Color(hex: "#E6F0EA") : Color(hex: "#1E3932") }
+    private var closeSurface: Color { isDarkMode ? Color.white.opacity(0.08) : Color(hex: "#E8E0D0").opacity(0.7) }
+    private var closeText: Color { isDarkMode ? Color(hex: "#A9B7B0") : Color(hex: "#9A9A9A") }
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -833,7 +1192,7 @@ struct CompanionThoughtCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(thought)
                     .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundColor(Color(hex: "#1E3932"))
+                    .foregroundColor(primaryText)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Button(action: onChat) {
@@ -854,16 +1213,16 @@ struct CompanionThoughtCard: View {
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Color(hex: "#9A9A9A"))
+                    .foregroundColor(closeText)
                     .padding(6)
-                    .background(Color(hex: "#E8E0D0").opacity(0.7))
+                    .background(closeSurface)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Dismiss")
         }
         .padding(14)
-        .background(Color(hex: "#FAF7F2"))
+        .background(surface)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)

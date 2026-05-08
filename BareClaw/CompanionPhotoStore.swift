@@ -14,6 +14,8 @@ final class CompanionPhotoStore: ObservableObject {
     // Published so any view observing this redraws when a photo changes.
     @Published private(set) var photoVersion: Int = 0
 
+    private var imageCache: [String: UIImage] = [:]
+
     private let dir: URL = {
         let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("hermes/photos")
@@ -26,9 +28,14 @@ final class CompanionPhotoStore: ObservableObject {
     // MARK: - Read
 
     func photo(for companionId: String) -> UIImage? {
+        if let cached = imageCache[companionId] {
+            return cached
+        }
         let url = photoURL(for: companionId)
         guard let data = try? Data(contentsOf: url) else { return nil }
-        return UIImage(data: data)
+        let image = UIImage(data: data)
+        imageCache[companionId] = image
+        return image
     }
 
     func hasPhoto(for companionId: String) -> Bool {
@@ -40,11 +47,13 @@ final class CompanionPhotoStore: ObservableObject {
     func save(_ image: UIImage, for companionId: String) {
         guard let jpeg = image.jpegData(compressionQuality: 0.88) else { return }
         try? jpeg.write(to: photoURL(for: companionId), options: .atomic)
+        imageCache[companionId] = image
         photoVersion += 1
     }
 
     func remove(for companionId: String) {
         try? FileManager.default.removeItem(at: photoURL(for: companionId))
+        imageCache[companionId] = nil
         photoVersion += 1
     }
 

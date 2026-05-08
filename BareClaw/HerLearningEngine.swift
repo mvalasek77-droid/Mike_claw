@@ -665,30 +665,6 @@ actor HerLearningEngine {
     }
 }
 
-#if DEBUG
-extension HerLearningEngine {
-    static func debugSeedPreHerModeUnlock(companionID: String, score: Double) {
-        var seededState = LearningState()
-        seededState.intimacyScore = score
-
-        let safeID = companionID.replacingOccurrences(of: "/", with: "_")
-        let seededURL = storageDirectory.appendingPathComponent("her_learning_state_\(safeID).json")
-
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = .prettyPrinted
-
-        if let data = try? encoder.encode(seededState) {
-            try? data.write(to: seededURL, options: .atomic)
-        }
-
-        UserDefaults.standard.set(score, forKey: "her.intimacyScore.\(companionID)")
-        UserDefaults.standard.set(score, forKey: "her.intimacyScore")
-        UserDefaults.standard.set(true, forKey: "herLearning.legacyMigrated.\(companionID)")
-    }
-}
-#endif
-
 // MARK: - IntimacyStage
 
 enum IntimacyStage: Int {

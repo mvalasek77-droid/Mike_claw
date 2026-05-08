@@ -2,6 +2,11 @@ import Foundation
 import EventKit
 import UserNotifications
 
+struct CompanionTrackingOpportunity: Sendable {
+    let category: String
+    let message: String
+}
+
 // MARK: - CompanionDataTracker
 //
 // An actor that observes the data sources the user has permitted (calendar,
@@ -25,6 +30,7 @@ actor CompanionDataTracker {
     /// respected without waiting for the next launch.
     private var currentPermissions: TrackingPermissions = TrackingPermissions()
     private let trackingLearningSignatureKey = "companion.tracking.learningSignature"
+    private let opportunityRateLimitPrefix = "companion.tracking.opportunity"
 
     /// Event identifiers for which we have already scheduled notifications.
     /// Prevents duplicate scheduling when `updatePermissions` is called
@@ -48,13 +54,18 @@ actor CompanionDataTracker {
     /// - Parameters:
     ///   - permissions: The full, current permission snapshot from `UserPersona`.
     ///   - persona:     The user's persona — used to personalise message copy.
-    public func updatePermissions(_ permissions: TrackingPermissions, persona: UserPersona) async {
+    public func updatePermissions(
+        _ permissions: TrackingPermissions,
+        persona: UserPersona,
+        requestSystemAccess: Bool = false
+    ) async {
         let previous = currentPermissions
         currentPermissions = permissions
         DiagnosticsLog.info(
             "tracking",
             "Companion tracking permissions updated.",
             details: [
+                "dynamic": "\(permissions.dynamicSignalsEnabled)",
                 "email": "\(permissions.emailEnabled)",
                 "messages": "\(permissions.messagesEnabled)",
                 "browsing": "\(permissions.browsingEnabled)",
@@ -65,6 +76,29 @@ actor CompanionDataTracker {
         )
 
         await syncTrackingPreferencesIfNeeded(permissions, persona: persona)
+
+        guard permissions.dynamicSignalsEnabled else {
+            DiagnosticsLog.info("tracking", "Dynamic tracking disabled; cancelling all companion tracking notifications.")
+            scheduledEventIDs.removeAll()
+            await cancelAllTrackingNotifications()
+            await MainActor.run {
+                HerModeEngine.shared.clearAmbientTrackingForPrivacy()
+            }
+            return
+        }
+
+        if previous.emailEnabled && !permissions.emailEnabled {
+            await cancelNotifications(category: "email")
+        }
+        if previous.messagesEnabled && !permissions.messagesEnabled {
+            await cancelNotifications(category: "messages")
+        }
+        if previous.browsingEnabled && !permissions.browsingEnabled {
+            await cancelNotifications(category: "browsing")
+        }
+        if previous.locationEnabled && !permissions.locationEnabled {
+            await cancelNotifications(category: "location")
+        }
 
         // ── Calendar permission revoked ──────────────────────────────────
         if previous.calendarEnabled && !permissions.calendarEnabled {
@@ -78,9 +112,84 @@ actor CompanionDataTracker {
         // ── Calendar permission enabled ──────────────────────────────────
         if permissions.calendarEnabled {
             DiagnosticsLog.info("tracking", "Calendar tracking enabled; scanning calendar and reminders.")
-            await scanCalendar(persona: persona)
-            await scanReminders(persona: persona)
+            await scanCalendar(persona: persona, requestSystemAccess: requestSystemAccess)
+            await scanReminders(persona: persona, requestSystemAccess: requestSystemAccess)
         }
+    }
+
+    public func opportunityFromUserMessage(_ text: String, persona: UserPersona) async -> CompanionTrackingOpportunity? {
+        let permissions = persona.trackingPermissions
+        currentPermissions = permissions
+
+        guard permissions.dynamicSignalsEnabled else { return nil }
+
+        let cleaned = text
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cleaned.count >= 6 else { return nil }
+
+        let lower = cleaned.lowercased()
+        let candidate: CompanionTrackingOpportunity?
+
+        if permissions.locationEnabled,
+           lower.containsAny(["hospital", "emergency room", " er ", "urgent care", "clinic", "doctor", "medical appointment", "surgery"]) {
+            candidate = CompanionTrackingOpportunity(
+                category: "location_health",
+                message: "I noticed this sounds medical. Are you okay? I can stay with you, help you organize what happened, or help you figure out the next step."
+            )
+        } else if permissions.messagesEnabled,
+                  lower.containsAny(["arguing", "argument", "fight", "fighting", "yelling", "they said", "she said", "he said", "texted me", "message from"]) {
+            candidate = CompanionTrackingOpportunity(
+                category: "message_conflict",
+                message: "That sounds tense. Want me to help you unpack what happened before you answer?"
+            )
+        } else if permissions.browsingEnabled,
+                  lower.containsAny(["new phone", "buy a phone", "iphone", "android", "compare phones", "shopping for", "which phone", "phone plan"]) {
+            candidate = CompanionTrackingOpportunity(
+                category: "browsing_phone",
+                message: "I can help compare the phone options. Send me your budget, must-haves, and the models you're looking at, and I'll narrow it down."
+            )
+        } else if permissions.browsingEnabled,
+                  lower.containsAny(["recipe", "cook", "cooking", "dinner idea", "meal prep", "ingredients", "grocery list"]) {
+            candidate = CompanionTrackingOpportunity(
+                category: "browsing_recipe",
+                message: "I can help turn that into a simple plan: recipe, grocery list, timing, and substitutions if you tell me what you have."
+            )
+        } else if (permissions.emailEnabled || permissions.calendarEnabled || permissions.browsingEnabled),
+                  lower.containsAny(["movie ticket", "movie tickets", "showtime", "cinema", "theater", "film tickets", "ticket confirmation"]) {
+            candidate = CompanionTrackingOpportunity(
+                category: "email_movie",
+                message: "That sounds like movie plans. I'm excited for you. I can help with timing, directions, or a post-movie debrief after."
+            )
+        } else {
+            candidate = nil
+        }
+
+        guard let candidate,
+              shouldSurfaceOpportunity(category: candidate.category,
+                                       companionID: persona.selectedCompanionID)
+        else { return nil }
+
+        _ = try? await HermesMemory.shared.observe(
+            category: "tracking_opportunity",
+            content: [
+                "category": candidate.category,
+                "source": "chat",
+                "excerpt": String(cleaned.prefix(180))
+            ],
+            metadata: [
+                "importance": 2,
+                "source": "companion_tracking",
+                "companionID": persona.selectedCompanionID
+            ]
+        )
+
+        DiagnosticsLog.info(
+            "tracking",
+            "Dynamic chat opportunity surfaced.",
+            details: ["category": candidate.category, "companion": persona.selectedCompanionID]
+        )
+        return candidate
     }
 
     private func syncTrackingPreferencesIfNeeded(_ permissions: TrackingPermissions, persona: UserPersona) async {
@@ -94,6 +203,7 @@ actor CompanionDataTracker {
         _ = try? await HermesMemory.shared.observe(
             category: "tracking_preferences",
             content: [
+                "dynamicSignalsEnabled": permissions.dynamicSignalsEnabled,
                 "emailEnabled": permissions.emailEnabled,
                 "messagesEnabled": permissions.messagesEnabled,
                 "browsingEnabled": permissions.browsingEnabled,
@@ -109,9 +219,14 @@ actor CompanionDataTracker {
             ]
         )
 
-        let userSignal = enabled.isEmpty
-            ? "I turned off companion tracking."
-            : "My companion can personalize from \(enabled.joined(separator: ", "))."
+        let userSignal: String
+        if !permissions.dynamicSignalsEnabled {
+            userSignal = "I turned Dynamic Tracking off."
+        } else if enabled.isEmpty {
+            userSignal = "I turned on Dynamic Tracking without choosing any personalization sources."
+        } else {
+            userSignal = "My companion can personalize from \(enabled.joined(separator: ", "))."
+        }
         await HerLearningEngine.shared.processUserMessage(
             userSignal,
             responseText: "I'll respect those choices and only use the areas you allow.",
@@ -121,16 +236,24 @@ actor CompanionDataTracker {
         UserDefaults.standard.set(permissions.learningSignature, forKey: key)
     }
 
+    private func shouldSurfaceOpportunity(category: String, companionID: String) -> Bool {
+        let key = "\(opportunityRateLimitPrefix).\(companionID).\(category)"
+        let now = Date().timeIntervalSince1970
+        let last = UserDefaults.standard.double(forKey: key)
+        guard last == 0 || now - last >= 20 * 60 else { return false }
+        UserDefaults.standard.set(now, forKey: key)
+        return true
+    }
+
     // MARK: - Calendar Scanning
 
     /// Requests full EventKit access, reads events for the next 7 days, and
     /// schedules a pre-event and post-event companion notification for each.
-    private func scanCalendar(persona: UserPersona) async {
+    private func scanCalendar(persona: UserPersona, requestSystemAccess: Bool) async {
         // Guard: re-check live permission snapshot before doing any I/O.
-        guard currentPermissions.calendarEnabled else { return }
+        guard currentPermissions.dynamicSignalsEnabled, currentPermissions.calendarEnabled else { return }
 
-        // Request access — API differs between iOS 17+ and earlier versions.
-        let granted = await requestCalendarAccess()
+        let granted = requestSystemAccess ? await requestCalendarAccess() : calendarAccessAlreadyGranted()
         guard granted else {
             DiagnosticsLog.warning("tracking", "Calendar scan skipped because access was not granted.")
             return
@@ -194,11 +317,11 @@ actor CompanionDataTracker {
     /// and schedules a supportive companion notification for each (max 3).
     /// Fire times are randomised between 5 and 15 minutes from now so the
     /// notifications feel organic rather than mechanical.
-    private func scanReminders(persona: UserPersona) async {
+    private func scanReminders(persona: UserPersona, requestSystemAccess: Bool) async {
         // Guard: re-check live permission snapshot.
-        guard currentPermissions.calendarEnabled else { return }
+        guard currentPermissions.dynamicSignalsEnabled, currentPermissions.calendarEnabled else { return }
 
-        let granted = await requestReminderAccess()
+        let granted = requestSystemAccess ? await requestReminderAccess() : reminderAccessAlreadyGranted()
         guard granted else { return }
 
         let companionName = persona.selectedCompanion.name
@@ -288,6 +411,24 @@ actor CompanionDataTracker {
         }
     }
 
+    private func calendarAccessAlreadyGranted() -> Bool {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        if #available(iOS 17.0, *) {
+            return status == .fullAccess
+        } else {
+            return status == .authorized
+        }
+    }
+
+    private func reminderAccessAlreadyGranted() -> Bool {
+        let status = EKEventStore.authorizationStatus(for: .reminder)
+        if #available(iOS 17.0, *) {
+            return status == .fullAccess
+        } else {
+            return status == .authorized
+        }
+    }
+
     // MARK: - Notification Scheduling
 
     /// Schedules a single `UNCalendarNotificationTrigger`-based notification.
@@ -308,6 +449,8 @@ actor CompanionDataTracker {
         date:          Date,
         category:      String
     ) async {
+        guard currentPermissions.dynamicSignalsEnabled else { return }
+
         let content          = UNMutableNotificationContent()
         content.title        = companionName
         content.body         = body
@@ -372,6 +515,12 @@ actor CompanionDataTracker {
         }
         if !deliveredIDs.isEmpty {
             center.removeDeliveredNotifications(withIdentifiers: deliveredIDs)
+        }
+    }
+
+    private func cancelAllTrackingNotifications() async {
+        for category in ["calendar", "reminder", "email", "messages", "browsing", "location"] {
+            await cancelNotifications(category: category)
         }
     }
 }

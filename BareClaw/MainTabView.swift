@@ -12,11 +12,19 @@ import UIKit
 
 struct MainTabView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: Int = 0
+    @State private var hasLoadedChat = false
 
-    /// Forest green matches the home screen palette used throughout the app.
-    private let tabTint = Color(hex: "#1E3932")
+    /// Matches the adaptive Home palette while preserving the brand accent.
+    private var tabTint: Color {
+        colorScheme == .dark ? Color(hex: "#E0B75A") : Color(hex: "#1E3932")
+    }
+
+    private var tabBackground: Color {
+        colorScheme == .dark ? Color(hex: "#0D1117") : Color(hex: "#FAF7F2")
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -30,7 +38,14 @@ struct MainTabView: View {
                 .tag(0)
 
             // MARK: Tab 1 — Chat
-            ChatView()
+            Group {
+                if hasLoadedChat {
+                    ChatView()
+                } else {
+                    Color.BC.background
+                        .ignoresSafeArea()
+                }
+            }
                 .tabItem {
                     Label("Chat", systemImage: "bubble.left.fill")
                 }
@@ -51,32 +66,47 @@ struct MainTabView: View {
                 .tag(3)
         }
         .tint(tabTint)
-        .toolbarBackground(Color.BC.background, for: .tabBar)
+        .toolbarBackground(tabBackground, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .onAppear {
+            if appState.currentMode == .chat {
+                hasLoadedChat = true
+                selectedTab = 1
+            }
+        }
         // React to mode changes driven from anywhere in the app
         .onChange(of: appState.currentMode) { _, newMode in
+            if newMode == .chat {
+                hasLoadedChat = true
+            }
             withAnimation(BCMotion.snappy) {
                 selectedTab = newMode == .chat ? 1 : 0
             }
         }
         .onChange(of: appState.chatNavigationRequestID) { _, _ in
+            hasLoadedChat = true
             withAnimation(BCMotion.snappy) {
                 selectedTab = 1
             }
         }
         .onChange(of: selectedTab) { _, newTab in
+            if newTab == 1 {
+                hasLoadedChat = true
+            }
             let resolvedMode: AppMode = newTab == 1 ? .chat : .video
             if appState.currentMode != resolvedMode {
                 appState.currentMode = resolvedMode
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .herModeSpeechDetected)) { _ in
+            hasLoadedChat = true
             appState.requestChat()
             withAnimation(BCMotion.snappy) {
                 selectedTab = 1
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .companionHandoffRequested)) { _ in
+            hasLoadedChat = true
             appState.requestChat()
             withAnimation(BCMotion.snappy) {
                 selectedTab = 1

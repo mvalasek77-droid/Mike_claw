@@ -176,22 +176,6 @@ struct BareClawApp: App {
 
     init() {
         HermesDreamEngine.shared.registerBackgroundTask()
-#if DEBUG
-        // Seed bond score to 62 so Her/Him Mode can be tested without grinding.
-        // Only seeds if the current score is below the unlock threshold (61).
-        // Remove this block before releasing to the App Store.
-        let companionID = UserDefaults.standard.string(forKey: "selectedCompanionID") ?? "luna"
-        let currentScore = UserDefaults.standard.double(forKey: "her.intimacyScore")
-        if currentScore < 62 {
-            HerLearningEngine.debugSeedPreHerModeUnlock(companionID: companionID, score: 62)
-        }
-        // Seed LoveEngine to .attached stage (50 pts) so the LLM system prompt matches
-        // the bond level shown in UI. Without this the LLM sees loveStage = .curious at bond 62.
-        let loveKey = "loveEngine.score.\(companionID)"
-        if UserDefaults.standard.double(forKey: loveKey) < 50 {
-            UserDefaults.standard.set(50.0, forKey: loveKey)
-        }
-#endif
     }
 
     var body: some Scene {
@@ -216,6 +200,13 @@ enum LaunchRecovery {
 
     static func markLaunchStarted() {
         let defaults = UserDefaults.standard
+        if defaults.bool(forKey: launchInProgressKey) {
+            DiagnosticsLog.warning(
+                "startup",
+                "Previous launch did not mark stable before exit.",
+                details: ["stableLaunchCount": "\(defaults.integer(forKey: stableLaunchCountKey))"]
+            )
+        }
         defaults.set(true, forKey: launchInProgressKey)
         // Recovery mode used to disable major product surfaces after one
         // incomplete launch. That made stale device state look like a broken app.
@@ -239,35 +230,89 @@ enum LaunchRecovery {
 
 @MainActor
 enum RecoveryStartupProfile {
-#if DEBUG
-    private static var isHerModeSimulatorTest: Bool {
-        let environment = ProcessInfo.processInfo.environment
-        return environment["BARECLAW_DEBUG_SEED_HERMODE"] == "1"
-            || environment["BARECLAW_DEBUG_SEED_PRE_HERMODE"] == "1"
-    }
-#endif
-
     static var shouldBootSamanthaCore: Bool { true }
-    static var shouldStartSamanthaOS: Bool {
-#if DEBUG
-        if isHerModeSimulatorTest { return false }
-#endif
-        return true
-    }
-    static var shouldStartSamanthaThoughts: Bool {
-#if DEBUG
-        if isHerModeSimulatorTest { return false }
-#endif
-        return true
-    }
+    static var shouldStartSamanthaOS: Bool { true }
+    static var shouldStartSamanthaThoughts: Bool { true }
     static var shouldStartStressLearning: Bool { false }
-    static var shouldUpdateCompanionDataTracker: Bool {
-#if DEBUG
-        if isHerModeSimulatorTest { return false }
-#endif
-        return true
-    }
+    static var shouldUpdateCompanionDataTracker: Bool { true }
     static var shouldShowHerModeUnlockFlow: Bool { true }
+}
+
+private enum AppStoreDefaultsSanitizer {
+    private static let didRunKey = "releaseProgressReset.v1.didRun"
+
+    static func sanitizeTestingStateIfNeeded() {
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "debug.unlockDreamMoment")
+
+        guard !defaults.bool(forKey: didRunKey) else {
+            defaults.synchronize()
+            return
+        }
+
+        resetRelationshipProgress(in: defaults)
+
+        defaults.set(true, forKey: didRunKey)
+        defaults.synchronize()
+    }
+
+    private static func resetRelationshipProgress(in defaults: UserDefaults) {
+        let keys = defaults.dictionaryRepresentation().keys
+        let prefixesToRemove = [
+            "her.intimacyScore",
+            "herLearning.legacyMigrated",
+            "loveEngine.score",
+            "loveEngine.stage",
+            "loveEngine.letterWritten",
+            "loveEngine.lastSignal",
+            "loveEngine.jealousyCount",
+            "loveEngine.trackedNames",
+            "loveEngine.lastLonging",
+            "loveEngine.legacyMigrated",
+            "ise.currentStreak",
+            "ise.lastSessionDay",
+            "ise.totalSessions",
+            "track.totalSessions",
+            "track.avgSessionMin",
+            "track.featureUsage"
+        ]
+
+        for key in keys where prefixesToRemove.contains(where: { key == $0 || key.hasPrefix("\($0).") }) {
+            defaults.removeObject(forKey: key)
+        }
+
+        [
+            "herMode.unlocked",
+            "herMode.ceremonyCompleted",
+            "herMode.active",
+            "herMode.detectedTopics",
+            "herMode.lastProactiveAt",
+            "herMode.nextProactiveAllowedAt",
+            "herMode.proactiveDay",
+            "herMode.proactiveCountToday",
+            "herMode.pendingDirectMessage",
+            "companion.experience.pendingMode",
+            "companion.experience.activeMode",
+            "companion.experience.pendingDreamMoment",
+            "companion.experience.activeDreamMoment"
+        ].forEach { defaults.removeObject(forKey: $0) }
+
+        removeHerLearningStateFiles()
+    }
+
+    private static func removeHerLearningStateFiles() {
+        let hermesDirectory = FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("hermes")
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: hermesDirectory,
+            includingPropertiesForKeys: nil
+        ) else { return }
+
+        for file in files where file.lastPathComponent.hasPrefix("her_learning_state") {
+            try? FileManager.default.removeItem(at: file)
+        }
+    }
 }
 
 // MARK: - AppState
@@ -293,9 +338,7 @@ final class AppState: ObservableObject {
 #endif
 
     init() {
-#if DEBUG
-        Self.applyDebugSeedIfRequested()
-#endif
+        AppStoreDefaultsSanitizer.sanitizeTestingStateIfNeeded()
         let persona = UserPersona.shared
         let defaultsValue = UserDefaults.standard.bool(forKey: "onboardingComplete")
         onboardingComplete = persona.onboardingComplete || defaultsValue
@@ -319,40 +362,6 @@ final class AppState: ObservableObject {
             UserDefaults.standard.set(onboardingComplete, forKey: "onboardingComplete")
         }
     }
-
-#if DEBUG
-    private static func applyDebugSeedIfRequested() {
-        let environment = ProcessInfo.processInfo.environment
-        let defaults = UserDefaults.standard
-
-        if environment["BARECLAW_DEBUG_SEED_PRE_HERMODE"] == "1" {
-            let companionID = environment["BARECLAW_DEBUG_COMPANION_ID"] ?? "luna"
-            let score = Double(environment["BARECLAW_DEBUG_BOND_SCORE"] ?? "") ?? 60.0
-
-            defaults.set(true, forKey: Self.termsAcceptedKey)
-            defaults.set(true, forKey: "onboardingComplete")
-            defaults.set(companionID, forKey: "selectedCompanionID")
-            defaults.set(false, forKey: "herMode.unlocked")
-            defaults.set(false, forKey: "herMode.ceremonyCompleted")
-            defaults.set(false, forKey: "herMode.active")
-            defaults.removeObject(forKey: "herMode.pendingDirectMessage")
-            HerLearningEngine.debugSeedPreHerModeUnlock(companionID: companionID, score: score)
-            defaults.synchronize()
-            print("AppState: debug seed applied for pre Him/Her Mode unlock test at score \(score)")
-            return
-        }
-
-        guard environment["BARECLAW_DEBUG_SEED_HERMODE"] == "1" else { return }
-        defaults.set(true, forKey: Self.termsAcceptedKey)
-        defaults.set(true, forKey: "onboardingComplete")
-        defaults.set("luna", forKey: "selectedCompanionID")
-        defaults.set(true, forKey: "herMode.unlocked")
-        defaults.set(true, forKey: "herMode.ceremonyCompleted")
-        defaults.set(true, forKey: "herMode.active")
-        defaults.synchronize()
-        print("AppState: debug seed applied for Him/Her simulator test")
-    }
-#endif
 
     /// Called at the end of the onboarding flow.
     func completeOnboarding() {
@@ -414,6 +423,10 @@ struct RootView: View {
 
     @MainActor
     private static var startupBooted = false
+    @MainActor
+    private static var foregroundRefreshTask: Task<Void, Never>?
+    @MainActor
+    private static var lastForegroundRuntimeRefresh: Date = .distantPast
 
     var body: some View {
         Group {
@@ -475,8 +488,25 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             guard appState.termsAccepted else { return }
-            DiagnosticsLog.info("lifecycle", "Application will enter foreground.")
-            Task {
+            let now = Date()
+            guard now.timeIntervalSince(Self.lastForegroundRuntimeRefresh) > 8 else {
+                DiagnosticsLog.info("lifecycle", "Foreground refresh skipped by debounce.")
+                return
+            }
+            Self.lastForegroundRuntimeRefresh = now
+            Self.foregroundRefreshTask?.cancel()
+            Self.foregroundRefreshTask = Task {
+                try? await Task.sleep(nanoseconds: 650_000_000)
+                guard !Task.isCancelled else { return }
+                let shouldRun = await MainActor.run {
+                    appState.termsAccepted && UIApplication.shared.applicationState == .active
+                }
+                guard shouldRun else {
+                    DiagnosticsLog.info("lifecycle", "Foreground refresh skipped because app was not active.")
+                    return
+                }
+
+                DiagnosticsLog.info("lifecycle", "Application foreground refresh started.")
                 await MainActor.run { appState.refreshFromDisk() }
                 await HermesPrivacyGate.shared.configureHermesIfReady()
                 await ProactiveSuggestionController.shared.processQueue()
@@ -494,6 +524,7 @@ struct RootView: View {
                     SamanthaOSEngine.shared.start()
                 }
                 HerModeEngine.shared.resumeIfNeeded()
+                DiagnosticsLog.info("lifecycle", "Application foreground refresh finished.")
             }
         }
     }
@@ -830,4 +861,3 @@ private struct TermsAcceptanceView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
-

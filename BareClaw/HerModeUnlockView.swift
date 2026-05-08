@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - HerModeUnlockView
 //
-// Shown once when the user first reaches 61 bond points (Stage 4 Deep Connection).
+// Shown once when the user first reaches the Him/Her Mode bond threshold.
 // Stars burst across the screen, then a full explanation of Him/Her Mode is revealed.
 // The user taps "Activate" to turn it on, or "Later" to dismiss and find it in settings.
 

@@ -58,13 +58,18 @@ final class SamanthaOSEngine: ObservableObject {
     func start() {
         recordInteraction()
         updateTimeOfDay()
+        refreshCalendarAuthorization()
         Task {
-            await requestCalendarAccess()
             await evaluateMorningWake()
             evaluateAbsenceOnReturn()
             checkAnniversary()
         }
-        startCalendarPolling()
+        if calendarGranted {
+            startCalendarPolling()
+        } else {
+            calendarTimer?.invalidate()
+            calendarTimer = nil
+        }
         schedulePushNotifications()
     }
 
@@ -144,6 +149,15 @@ final class SamanthaOSEngine: ObservableObject {
         }
     }
 
+    private func refreshCalendarAuthorization() {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        if #available(iOS 17.0, *) {
+            calendarGranted = status == .fullAccess
+        } else {
+            calendarGranted = status == .authorized
+        }
+    }
+
     func requestCalendarAccess() async {
         if #available(iOS 17.0, *) {
             calendarGranted = (try? await eventStore.requestFullAccessToEvents()) ?? false
@@ -151,6 +165,9 @@ final class SamanthaOSEngine: ObservableObject {
             calendarGranted = await withCheckedContinuation { cont in
                 eventStore.requestAccess(to: .event) { g, _ in cont.resume(returning: g) }
             }
+        }
+        if calendarGranted {
+            startCalendarPolling()
         }
     }
 
@@ -360,12 +377,6 @@ final class SamanthaOSEngine: ObservableObject {
     // ═══════════════════════════════════════════════════════════════
 
     func schedulePushNotifications() {
-#if DEBUG
-        if ProcessInfo.processInfo.environment["BARECLAW_DEBUG_SEED_HERMODE"] == "1" {
-            print("SamanthaOSEngine: skipped push notification authorization for Him/Her simulator test")
-            return
-        }
-#endif
         let companion     = currentCompanion()
         let companionName = companion.name
         let stage         = LoveEngine.shared.loveStage

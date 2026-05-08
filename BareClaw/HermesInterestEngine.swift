@@ -24,6 +24,9 @@ actor HermesInterestEngine {
         return URLSession(configuration: config)
     }()
     private let selectedInterestSyncSignatureKey = "hermes.interests.selectedSyncSignature"
+    private let scheduledInterestSignatureKey = "hermes.interests.notificationScheduleSignature"
+    private let scheduledInterestDateKey = "hermes.interests.notificationScheduleDate"
+    private let notificationRescheduleInterval: TimeInterval = 6 * 60 * 60
 
     private init() {}
 
@@ -88,12 +91,6 @@ actor HermesInterestEngine {
     // MARK: - Notification permission
 
     func requestPermission() async -> Bool {
-#if DEBUG
-        if ProcessInfo.processInfo.environment["BARECLAW_DEBUG_SEED_HERMODE"] == "1" {
-            print("HermesInterestEngine: skipped notification authorization for Him/Her simulator test")
-            return false
-        }
-#endif
         do {
             let granted = try await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert, .sound, .badge])
@@ -109,11 +106,28 @@ actor HermesInterestEngine {
 
     /// Call after onboarding or whenever interests change.
     func scheduleInterestNotifications(for persona: UserPersona) async {
+        let signature = selectedInterestSignature(for: persona)
+        let key = "\(scheduledInterestSignatureKey).\(persona.selectedCompanionID)"
+        let dateKey = "\(scheduledInterestDateKey).\(persona.selectedCompanionID)"
+        let now = Date().timeIntervalSince1970
+        let lastScheduled = UserDefaults.standard.double(forKey: dateKey)
+        if UserDefaults.standard.string(forKey: key) == signature,
+           now - lastScheduled < notificationRescheduleInterval {
+            DiagnosticsLog.info(
+                "notification",
+                "Interest notification schedule skipped because interests are unchanged.",
+                details: ["companion": persona.selectedCompanionID]
+            )
+            return
+        }
+
         await cancelAllInterestNotifications()
 
         let enabledInterests = persona.interests.filter { $0.notificationsEnabled }
         guard !enabledInterests.isEmpty else {
             DiagnosticsLog.info("notification", "No enabled interests to schedule.")
+            UserDefaults.standard.set(signature, forKey: key)
+            UserDefaults.standard.set(now, forKey: dateKey)
             return
         }
         guard await requestPermission() else {
@@ -129,6 +143,8 @@ actor HermesInterestEngine {
         for interest in enabledInterests {
             await scheduleNotification(for: interest, persona: persona)
         }
+        UserDefaults.standard.set(signature, forKey: key)
+        UserDefaults.standard.set(now, forKey: dateKey)
     }
 
     private func cancelAllInterestNotifications() async {

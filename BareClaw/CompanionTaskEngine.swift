@@ -33,7 +33,9 @@ actor CompanionTaskEngine {
     private var reminderAuthorized = false
 
     private init() {
-        Task { await requestPermissions() }
+        let permissions = Self.currentPermissionStatus()
+        calendarAuthorized = permissions.calendar
+        reminderAuthorized = permissions.reminders
     }
 
     // MARK: - Permission requests
@@ -54,6 +56,58 @@ actor CompanionTaskEngine {
                 }
             }
         }
+    }
+
+    private func refreshPermissionStatus() {
+        let permissions = Self.currentPermissionStatus()
+        calendarAuthorized = permissions.calendar
+        reminderAuthorized = permissions.reminders
+    }
+
+    private static func currentPermissionStatus() -> (calendar: Bool, reminders: Bool) {
+        let calendarStatus = EKEventStore.authorizationStatus(for: .event)
+        let reminderStatus = EKEventStore.authorizationStatus(for: .reminder)
+        if #available(iOS 17.0, *) {
+            return (
+                calendar: calendarStatus == .fullAccess,
+                reminders: reminderStatus == .fullAccess
+            )
+        } else {
+            return (
+                calendar: calendarStatus == .authorized,
+                reminders: reminderStatus == .authorized
+            )
+        }
+    }
+
+    private func requestCalendarPermissionIfNeeded() async -> Bool {
+        refreshPermissionStatus()
+        guard !calendarAuthorized else { return true }
+        if #available(iOS 17.0, *) {
+            calendarAuthorized = (try? await eventStore.requestFullAccessToEvents()) ?? false
+        } else {
+            calendarAuthorized = await withCheckedContinuation { cont in
+                eventStore.requestAccess(to: .event) { ok, _ in
+                    cont.resume(returning: ok)
+                }
+            }
+        }
+        return calendarAuthorized
+    }
+
+    private func requestReminderPermissionIfNeeded() async -> Bool {
+        refreshPermissionStatus()
+        guard !reminderAuthorized else { return true }
+        if #available(iOS 17.0, *) {
+            reminderAuthorized = (try? await eventStore.requestFullAccessToReminders()) ?? false
+        } else {
+            reminderAuthorized = await withCheckedContinuation { cont in
+                eventStore.requestAccess(to: .reminder) { ok, _ in
+                    cont.resume(returning: ok)
+                }
+            }
+        }
+        return reminderAuthorized
     }
 
     // MARK: - Natural language task parser
@@ -197,7 +251,7 @@ actor CompanionTaskEngine {
     // MARK: - Calendar event handler
 
     private func handleCalendarEvent(title: String, date: Date?) async -> TaskResult {
-        guard calendarAuthorized else {
+        guard await requestCalendarPermissionIfNeeded() else {
             return TaskResult(
                 kind: .permissionNeeded,
                 title: "Calendar",
@@ -235,7 +289,7 @@ actor CompanionTaskEngine {
     // MARK: - Reminder handler
 
     private func handleReminder(what: String, when: Date?) async -> TaskResult {
-        guard reminderAuthorized else {
+        guard await requestReminderPermissionIfNeeded() else {
             return TaskResult(
                 kind: .permissionNeeded,
                 title: "Reminders",
