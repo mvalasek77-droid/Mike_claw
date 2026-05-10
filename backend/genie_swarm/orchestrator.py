@@ -44,12 +44,14 @@ def _bootstrap_registry() -> ToolRegistry:
     from .tools.xcode import XcodeBuild, SwiftLint, XcrunSimctl
     from .tools.apple_docs import AppleDocs
     from .tools.memory import RememberFact, RecallMemory, NoteDecision
+    from .tools.testflight import TestFlightUpload
     for t in (
         ReadFile(), WriteFile(), EditFile(), ListDir(),
         RunShell(), Grep(),
         XcodeBuild(), SwiftLint(), XcrunSimctl(),
         AppleDocs(),
         RememberFact(), RecallMemory(), NoteDecision(),
+        TestFlightUpload(),
     ):
         default_registry.register(t)
     return default_registry
@@ -71,6 +73,25 @@ class SwarmConfig:
     # Unit Tester reports failures. 0 disables retries (the test layer
     # still runs, but failing tests don't loop).
     max_retries: int = 3
+    # Optional ship stage: after the test layer succeeds, upload the
+    # built .ipa to TestFlight and watch processing state until Apple
+    # marks it VALID/FAILED/INVALID/EXPIRED. None = don't ship.
+    ship: ShipConfig | None = None
+
+
+@dataclass
+class ShipConfig:
+    """Settings for the orchestrator's optional shipping stage."""
+    ipa_path: str                            # workspace-relative .ipa
+    bundle_id: str
+    apple_id: str | None = None              # for altool BYO-creds path
+    app_specific_password: str | None = None
+    asc_api_key_id: str | None = None        # preferred: ASC API key
+    asc_api_issuer_id: str | None = None
+    asc_api_key_path: str | None = None      # workspace-relative .p8
+    poll_after_upload: bool = True
+    poll_timeout_s: float = 60 * 60
+    poll_interval_s: float = 30.0
 
 
 class SwarmOrchestrator:
@@ -122,6 +143,10 @@ class SwarmOrchestrator:
                 await events.emit("job.state", state=session.job.state.value)
                 await self._run_test_layer(session, events)
                 session.checkpoint("after-tests")
+
+            # ---- SHIP (optional) ----
+            if self.config.ship:
+                await self._run_ship_stage(session, events)
 
             # ---- DONE ----
             session.update_state(JobState.succeeded)
@@ -265,6 +290,82 @@ class SwarmOrchestrator:
         if match and int(match.group(1)) > 0:
             return True
         return False
+
+    async def _run_ship_stage(self, session: Session, events) -> None:
+        """Promote the build to TestFlight, then watch ASC processing.
+
+        This is intentionally not delegated to an agent — the upload
+        tool already exists, and a deterministic call gives us tighter
+        guarantees than asking an LLM to invoke it correctly. The
+        poller runs to completion before we mark the job done so the
+        iOS UI can show the final state in the same SSE stream."""
+        from .testflight_status import PollerConfig, watch
+        from .tools.testflight import TestFlightUpload
+        from .tools.base import ToolContext
+        from .models import ToolCall
+
+        ship = self.config.ship
+        assert ship is not None
+
+        await events.emit(
+            "job.state", state="shipping",
+            detail=f"uploading {ship.ipa_path} to TestFlight",
+        )
+
+        upload = TestFlightUpload()
+        ctx = ToolContext(
+            job_id=session.job.id, agent="🚀 Shipper",
+            workspace=str(session.sandbox.policy.workspace),
+        )
+        args: dict[str, object] = {"ipa_path": ship.ipa_path, "validate": True}
+        for k in ("apple_id", "app_specific_password",
+                  "asc_api_key_id", "asc_api_issuer_id", "asc_api_key_path"):
+            v = getattr(ship, k)
+            if v: args[k] = v
+
+        result = await self.tools.invoke(
+            ToolCall(name="testflight_upload", arguments=args),
+            session.sandbox, ctx,
+        )
+        await events.emit(
+            "testflight.upload",
+            ok=result.ok,
+            preview=result.content[-1500:],
+        )
+        if not result.ok:
+            # Don't fail the whole job — record the upload failure and
+            # let the user inspect. The Memory layer logs it.
+            self.memory.note_decision(
+                session.job.id, "shipping",
+                f"TestFlight upload failed: {result.content[:300]}",
+            )
+            return
+
+        if not ship.poll_after_upload:
+            return
+
+        # Poll Apple's processing pipeline. ASC API requires the
+        # ES256-signed JWT path — only available when the user pre-
+        # configured ASC API key creds.
+        if not (ship.asc_api_key_id and ship.asc_api_issuer_id and ship.asc_api_key_path):
+            await events.emit(
+                "testflight.status", state="POLL_SKIPPED",
+                detail="No ASC API key configured — upload finished but status polling needs the JWT path.",
+            )
+            return
+
+        poller_cfg = PollerConfig(
+            api_key_id=ship.asc_api_key_id,
+            issuer_id=ship.asc_api_issuer_id,
+            p8_path=str(session.sandbox.safe_path(ship.asc_api_key_path)),
+            bundle_id=ship.bundle_id,
+            poll_interval_s=ship.poll_interval_s,
+            timeout_s=ship.poll_timeout_s,
+        )
+        try:
+            await watch(poller_cfg, events)
+        except Exception as exc:  # noqa: BLE001
+            await events.emit("testflight.status", state="POLL_ERROR", detail=str(exc))
 
     def _fix_prompt(self, job: BuildJob, unit_tester_output: str) -> str:
         return (
