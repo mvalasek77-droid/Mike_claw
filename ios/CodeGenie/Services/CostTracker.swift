@@ -12,6 +12,8 @@ final class CostTracker: ObservableObject {
     @Published private(set) var inputTokens: Int = 0
     @Published private(set) var outputTokens: Int = 0
     @Published private(set) var perAgent: [String: AgentCost] = [:]
+    @Published private(set) var retryAttempts: Int = 0
+    @Published private(set) var maxRetries: Int = 0
 
     struct AgentCost: Identifiable, Hashable {
         var id: String { agent }
@@ -34,6 +36,7 @@ final class CostTracker: ObservableObject {
     func bind(to client: SwarmClient) {
         cancellables.removeAll()
         inputTokens = 0; outputTokens = 0; perAgent = [:]
+        retryAttempts = 0; maxRetries = 0
         client.$events
             .sink { [weak self] events in self?.consume(events) }
             .store(in: &cancellables)
@@ -57,25 +60,37 @@ final class CostTracker: ObservableObject {
         var input = 0
         var output = 0
         var byAgent: [String: AgentCost] = [:]
-        for event in events where event.type == "agent.finished" {
-            let inT = event.payload["input_tokens"] as? Int ?? 0
-            let outT = event.payload["output_tokens"] as? Int ?? 0
-            input += inT
-            output += outT
-            if let agent = event.agent {
-                let prior = byAgent[agent]?.inputTokens ?? 0
-                let priorOut = byAgent[agent]?.outputTokens ?? 0
-                byAgent[agent] = AgentCost(
-                    agent: agent,
-                    inputTokens: prior + inT,
-                    outputTokens: priorOut + outT,
-                    usd: usd(input: prior + inT, output: priorOut + outT)
-                )
+        var retries = 0
+        var maxR = 0
+        for event in events {
+            switch event.type {
+            case "agent.finished":
+                let inT = event.payload["input_tokens"] as? Int ?? 0
+                let outT = event.payload["output_tokens"] as? Int ?? 0
+                input += inT
+                output += outT
+                if let agent = event.agent {
+                    let prior = byAgent[agent]?.inputTokens ?? 0
+                    let priorOut = byAgent[agent]?.outputTokens ?? 0
+                    byAgent[agent] = AgentCost(
+                        agent: agent,
+                        inputTokens: prior + inT,
+                        outputTokens: priorOut + outT,
+                        usd: usd(input: prior + inT, output: priorOut + outT)
+                    )
+                }
+            case "retry.attempt":
+                let n = event.payload["attempt"] as? Int ?? 0
+                retries = max(retries, n)
+                if let cap = event.payload["max_retries"] as? Int { maxR = cap }
+            default: break
             }
         }
         inputTokens = input
         outputTokens = output
         perAgent = byAgent
+        retryAttempts = retries
+        maxRetries = maxR
     }
 
     private func usd(input: Int, output: Int) -> Double {

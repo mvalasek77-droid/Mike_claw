@@ -167,8 +167,15 @@ class SwarmOrchestrator:
         prompt: str,
     ):
         # Paste a memory briefing on top of the agent's system prompt so
-        # past preferences carry across builds.
+        # past preferences carry across builds. Also surface it to the
+        # iOS transcript so the user can *see* what the swarm remembers.
         briefing = self.memory.briefing()
+        if briefing:
+            await events.emit(
+                "memory.briefing",
+                agent=blueprint.title,
+                text=briefing,
+            )
         full_system = (briefing + "\n\n" + blueprint.system_prompt) if briefing else blueprint.system_prompt
         # Per-agent model override beats blueprint default.
         model = self.config.model_overrides.get(blueprint.role.value, blueprint.model)
