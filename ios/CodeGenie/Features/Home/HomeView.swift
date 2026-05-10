@@ -5,6 +5,8 @@ struct HomeView: View {
     @State private var showXcodeGuide = false
     @State private var showDescribe = false
     @State private var showSettings = false
+    @State private var showTutorial = false
+    @State private var showGame = false
 
     var body: some View {
         ScrollView {
@@ -38,6 +40,24 @@ struct HomeView: View {
             SettingsView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showTutorial) {
+            TutorialView(mode: .replay) { showTutorial = false }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .fullScreenCover(isPresented: $showGame) {
+            ZStack(alignment: .topTrailing) {
+                GameHomeView()
+                Button { showGame = false } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.white.opacity(0.7), .black.opacity(0.4))
+                        .padding(.top, 14)
+                        .padding(.trailing, 16)
+                }
+                .accessibilityLabel("Close game")
+            }
         }
         .fullScreenCover(item: $session.currentJob) { job in
             BuildScreen(job: job)
@@ -111,13 +131,10 @@ struct HomeView: View {
 
     private var quickGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            QuickTile(title: "Xcode steps", subtitle: "Pocket guide", icon: "hammer.fill", tint: LiquidGlass.warning) { showXcodeGuide = true }
-            QuickTile(title: "Templates", subtitle: "Start faster", icon: "square.grid.2x2.fill", tint: LiquidGlass.accentSecondary) { showDescribe = true }
-            QuickTile(title: "Costs & keys", subtitle: "Pick your provider", icon: "creditcard.fill", tint: LiquidGlass.success) { showSettings = true }
-            QuickTile(title: "BitDrop", subtitle: "Play & boost", icon: "gamecontroller.fill", tint: LiquidGlass.accent) {
-                let demo = AppDescription(title: "Practice run", prompt: "Standalone BitDrop session")
-                _ = session.startBuild(from: demo)
-            }
+            QuickTile(title: "Watch the tour",  subtitle: "7-step tutorial",       icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
+            QuickTile(title: "Xcode steps",     subtitle: "Pocket guide",          icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
+            QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
+            QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
         }
     }
 

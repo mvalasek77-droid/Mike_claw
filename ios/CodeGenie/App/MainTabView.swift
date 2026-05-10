@@ -4,7 +4,7 @@ struct MainTabView: View {
     @EnvironmentObject private var session: AppSession
     @State private var tab: Tab = .home
 
-    enum Tab: Hashable { case home, build, apps, settings }
+    enum Tab: Hashable { case home, build, play, apps, settings }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -12,6 +12,7 @@ struct MainTabView: View {
                 switch tab {
                 case .home:     HomeView()
                 case .build:    BuildPlaceholderView { tab = .home }
+                case .play:     GameHomeView()
                 case .apps:     ProjectsGalleryView()
                 case .settings: SettingsView()
                 }
@@ -30,30 +31,35 @@ private struct TabBar: View {
     @Binding var selected: MainTabView.Tab
     var body: some View {
         GlassSurface(tier: .deep, corner: 28) {
-            HStack(spacing: 4) {
-                tab(.home,     icon: "house.fill",                 label: "Home")
-                tab(.build,    icon: "wand.and.stars",             label: "Build")
-                tab(.apps,     icon: "square.grid.2x2.fill",       label: "Apps")
-                tab(.settings, icon: "gearshape.fill",             label: "Settings")
+            HStack(spacing: 2) {
+                tab(.home,     icon: "house.fill",            label: "Home")
+                tab(.build,    icon: "wand.and.stars",        label: "Build")
+                tab(.play,     icon: "gamecontroller.fill",   label: "Play")
+                tab(.apps,     icon: "square.grid.2x2.fill",  label: "Apps")
+                tab(.settings, icon: "gearshape.fill",        label: "Settings")
             }
             .padding(8)
         }
-        .frame(maxWidth: 420)
+        .frame(maxWidth: 460)
     }
 
     private func tab(_ t: MainTabView.Tab, icon: String, label: String) -> some View {
         Button {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { selected = t }
+            Motion.run(Motion.snap) { selected = t }
             Haptics.selection()
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: icon)
-                    .font(.system(size: 17, weight: .semibold))
-                Text(label).font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .font(.system(size: 16, weight: .semibold))
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundStyle(selected == t ? .white : .white.opacity(0.55))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
             .background(
                 Group {
                     if selected == t {
@@ -64,6 +70,7 @@ private struct TabBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+        .accessibilityAddTraits(selected == t ? .isSelected : [])
     }
 }
 

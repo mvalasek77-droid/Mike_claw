@@ -39,25 +39,38 @@ enum LiquidGlass {
 }
 
 struct LiquidGlassBackground: View {
-    @State private var phase: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
             LiquidGlass.baseGradient
 
             // Slow drifting orbs that give the screen depth without
-            // distracting from content. Disabled in Reduce Motion.
-            TimelineView(.animation(minimumInterval: 1 / 30)) { context in
+            // distracting from content. Frozen at a pleasant pose under
+            // Reduce Motion so we don't burn battery on a TimelineView
+            // the user explicitly opted out of.
+            if reduceMotion {
                 Canvas { ctx, size in
-                    let t = context.date.timeIntervalSinceReferenceDate
-                    drawOrb(in: ctx, size: size, t: t, hueShift: 0)
-                    drawOrb(in: ctx, size: size, t: t + 5, hueShift: 0.18)
-                    drawOrb(in: ctx, size: size, t: t + 11, hueShift: -0.12)
+                    drawOrb(in: ctx, size: size, t: 0,    hueShift: 0)
+                    drawOrb(in: ctx, size: size, t: 5,    hueShift: 0.18)
+                    drawOrb(in: ctx, size: size, t: 11,   hueShift: -0.12)
                 }
+                .blendMode(.screen)
+                .opacity(0.45)
+                .accessibilityHidden(true)
+            } else {
+                TimelineView(.animation(minimumInterval: 1 / 30)) { context in
+                    Canvas { ctx, size in
+                        let t = context.date.timeIntervalSinceReferenceDate
+                        drawOrb(in: ctx, size: size, t: t, hueShift: 0)
+                        drawOrb(in: ctx, size: size, t: t + 5, hueShift: 0.18)
+                        drawOrb(in: ctx, size: size, t: t + 11, hueShift: -0.12)
+                    }
+                }
+                .blendMode(.screen)
+                .opacity(0.55)
+                .accessibilityHidden(true)
             }
-            .blendMode(.screen)
-            .opacity(0.55)
-            .accessibilityHidden(true)
 
             // Subtle vignette for legibility
             RadialGradient(

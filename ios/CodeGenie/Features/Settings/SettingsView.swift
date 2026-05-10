@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var revealOpenAI = false
     @State private var savedFlash: AIProvider?
     @State private var showPairMac = false
+    @State private var showTutorial = false
 
     var body: some View {
         ZStack {
@@ -22,6 +23,7 @@ struct SettingsView: View {
                     modelComparison
                     estimatorBlock
                     pairMacBlock
+                    tutorialBlock
                     aboutBlock
                     Color.clear.frame(height: 30)
                 }
@@ -35,6 +37,11 @@ struct SettingsView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showTutorial) {
+            TutorialView(mode: .replay) { showTutorial = false }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .onAppear {
             anthropicDraft = creds.anthropicKey
             openaiDraft    = creds.openaiKey
@@ -42,19 +49,38 @@ struct SettingsView: View {
     }
 
     private var pairMacBlock: some View {
-        Button { showPairMac = true } label: {
+        navTile(
+            title: "Pair your Mac",
+            subtitle: "Reach into Xcode + Safari from this app.",
+            icon: "macbook.and.iphone",
+            tint: LiquidGlass.accent
+        ) { showPairMac = true }
+    }
+
+    private var tutorialBlock: some View {
+        navTile(
+            title: "Watch the tour",
+            subtitle: "The 7-step tutorial — re-runnable anytime.",
+            icon: "play.rectangle.fill",
+            tint: LiquidGlass.accentSecondary
+        ) { showTutorial = true }
+    }
+
+    private func navTile(title: String, subtitle: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: { Haptics.selection(); action() }) {
             GlassSurface(tier: .raised, corner: 22) {
                 HStack(spacing: 14) {
-                    Image(systemName: "macbook.and.iphone")
+                    Image(systemName: icon)
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(LiquidGlass.accent)
+                        .foregroundStyle(tint)
                         .frame(width: 44, height: 44)
-                        .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
+                        .background(Circle().fill(tint.opacity(0.18)))
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Pair your Mac")
+                        Text(title)
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white)
-                        Text("Reach into Xcode + Safari from this app.")
+                        Text(subtitle)
                             .font(.system(size: 12, weight: .regular, design: .rounded))
                             .foregroundStyle(.white.opacity(0.65))
                     }
@@ -65,6 +91,9 @@ struct SettingsView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityHint(subtitle)
     }
 
     // MARK: Sections
