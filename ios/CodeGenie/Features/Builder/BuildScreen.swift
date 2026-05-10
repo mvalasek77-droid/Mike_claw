@@ -14,8 +14,15 @@ struct BuildScreen: View {
     @State private var builderTask: Task<Void, Never>?
     @State private var showGame: Bool = true
     @StateObject private var game = BitDropGame()
+    @StateObject private var swarm = SwarmClient()
 
     private let builder: BuilderService = LocalSimulatedBuilder()
+    private var useRemote: Bool {
+        // If backend is configured *and* a non-default URL is set we'll
+        // attempt a real backend build; otherwise simulate locally.
+        let url = Credentials.shared.backendURL
+        return !url.isEmpty && !url.hasPrefix("https://api.codegenie.app")
+    }
 
     init(job: BuildJob) { self.initialJob = job }
 
@@ -29,6 +36,7 @@ struct BuildScreen: View {
                         progressBlock
                         stageList
                         if showGame { gameBlock }
+                        if useRemote { transcriptBlock }
                         logBlock
                         Color.clear.frame(height: 24)
                     }
@@ -40,7 +48,11 @@ struct BuildScreen: View {
             if stage == .readyForTest { successOverlay }
         }
         .task { await runBuild() }
-        .onDisappear { builderTask?.cancel(); builder.cancel(initialJob.id) }
+        .onDisappear {
+            builderTask?.cancel()
+            builder.cancel(initialJob.id)
+            swarm.closeStream()
+        }
     }
 
     // MARK: Sections
@@ -114,6 +126,12 @@ struct BuildScreen: View {
         }
     }
 
+    private var transcriptBlock: some View {
+        GlassCard(title: "Live transcript", icon: "waveform", tint: LiquidGlass.accent) {
+            TranscriptView(client: swarm)
+        }
+    }
+
     private var logBlock: some View {
         GlassCard(title: "Build log", icon: "terminal.fill", tint: LiquidGlass.success) {
             VStack(alignment: .leading, spacing: 4) {
@@ -165,6 +183,53 @@ struct BuildScreen: View {
 
     private func runBuild() async {
         builderTask?.cancel()
+        if useRemote {
+            await runRemoteBuild()
+        } else {
+            builderTask = Task {
+                await builder.start(initialJob) { newStage in
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                        stage = newStage
+                    }
+                    appendLog(for: newStage)
+                }
+            }
+        }
+    }
+
+    private func runRemoteBuild() async {
+        do {
+            let id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+            swarm.openStream(jobID: id) { event in
+                Task { @MainActor in
+                    // Mirror backend stage into the local UI, append to the
+                    // simulated log so users see continuity.
+                    if event.type == "job.state",
+                       let s = event.payload["state"] as? String {
+                        let mapped: BuildJob.Stage = {
+                            switch s {
+                            case "planning": .planning
+                            case "building": .generatingUI
+                            case "testing":  .linting
+                            case "succeeded": .readyForTest
+                            case "failed":    .failed
+                            default: .planning
+                            }
+                        }()
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
+                        appendLog(for: mapped)
+                    }
+                }
+            }
+        } catch {
+            // Fall back to the local simulator so the user always sees progress.
+            appendLog(for: .planning)
+            await runLocalFallback(reason: "\(error)")
+        }
+    }
+
+    private func runLocalFallback(reason: String) async {
+        push(.warn, formattedTime(), "remote build unavailable (\(reason)), simulating")
         builderTask = Task {
             await builder.start(initialJob) { newStage in
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
@@ -173,6 +238,11 @@ struct BuildScreen: View {
                 appendLog(for: newStage)
             }
         }
+    }
+
+    private func formattedTime() -> String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
+        return f.string(from: .now)
     }
 
     private func appendLog(for stage: BuildJob.Stage) {

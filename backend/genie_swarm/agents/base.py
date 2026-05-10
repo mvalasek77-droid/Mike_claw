@@ -1,13 +1,16 @@
 """Agent blueprints — pure data: the role, the system prompt, the tool set.
 
-The orchestrator instantiates a `ConversationRuntime` from a blueprint
-when it needs that agent. Keeping blueprints declarative makes the swarm
-easy to extend (drop a new blueprint into BUILD_LAYER or TEST_LAYER).
+Prompts live as ``prompts/*.md`` files alongside this package so they
+can be edited and reviewed like documentation. We load them lazily and
+fall back to a small inline string if the file is missing — that way
+the package still works when installed from a wheel without the data
+files (rare, but possible).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 from ..tools import ToolRegistry, default_registry
 
@@ -27,11 +30,22 @@ class AgentRole(str, Enum):
 class AgentBlueprint:
     role: AgentRole
     title: str           # human-friendly, e.g. "🏗️ Architect"
-    system_prompt: str
+    prompt_file: str     # filename under prompts/, e.g. "architect.md"
+    fallback_prompt: str # used if the file is missing
     model: str = "claude-opus-4-7"
     temperature: float = 0.2
     tool_names: tuple[str, ...] = ()           # subset of registry; empty = all
     layer: str = "build"                       # "build" | "test"
+
+    @property
+    def system_prompt(self) -> str:
+        path = _PROMPTS_DIR / self.prompt_file
+        if path.exists():
+            try:
+                return path.read_text(encoding="utf-8")
+            except OSError:
+                pass
+        return self.fallback_prompt
 
     def tools(self, registry: ToolRegistry = default_registry) -> ToolRegistry:
         if not self.tool_names:
@@ -40,6 +54,9 @@ class AgentBlueprint:
         for name in self.tool_names:
             sub.register(registry.get(name))
         return sub
+
+
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 
 # ---------------------------------------------------------------------------
@@ -51,15 +68,10 @@ ARCHITECT = AgentBlueprint(
     title="🏗️ Architect",
     layer="build",
     tool_names=("read_file", "list_dir", "apple_docs", "write_file"),
-    system_prompt=(
-        "You are the Architect of a multi-agent Swift app builder. "
-        "Given a high-level user prompt, output a concrete plan: file map, "
-        "module boundaries, models, services, and the sequence the other "
-        "agents should run in. You write the plan to docs/PLAN.md and a "
-        "machine-readable plan.json that the Coder and Designer will "
-        "consume. Be opinionated and apple-native: SwiftUI, async/await, "
-        "MV pattern, Liquid Glass surfaces. Keep dependencies minimal — "
-        "prefer Apple frameworks. Stop as soon as the plan is written."
+    prompt_file="architect.md",
+    fallback_prompt=(
+        "You are the Architect. Plan the Xcode project: file map, modules, "
+        "screens. Write docs/PLAN.md and docs/plan.json. Stop after writing them."
     ),
 )
 
@@ -68,13 +80,11 @@ CODER = AgentBlueprint(
     title="💻 Coder",
     layer="build",
     tool_names=("read_file", "write_file", "edit_file", "list_dir", "shell", "grep"),
-    system_prompt=(
-        "You are the Coder. Read docs/plan.json, then implement every "
-        "Swift source file the plan calls for. Production quality only — "
-        "no TODOs, no placeholders, no commented-out code. Use `write_file` "
-        "for new files, `edit_file` for surgical changes, and `shell` to run "
-        "swift-format and check `swift build` succeeds. After every file "
-        "you write, re-read the plan and tick the relevant entry off."
+    prompt_file="coder.md",
+    fallback_prompt=(
+        "You are the Coder. Read docs/plan.json and implement every Swift "
+        "source file the plan calls for that isn't a SwiftUI View. Production "
+        "quality only."
     ),
 )
 
@@ -83,13 +93,10 @@ DESIGNER = AgentBlueprint(
     title="🎨 Designer",
     layer="build",
     tool_names=("read_file", "write_file", "edit_file", "apple_docs", "list_dir"),
-    system_prompt=(
-        "You are the Designer. You own SwiftUI views, the Liquid Glass "
-        "design system, motion, accessibility labels, dark mode, and "
-        "Dynamic Type. Consult `apple_docs` whenever unsure. You do not "
-        "write business logic — you collaborate with the Coder by editing "
-        "Views/* and Theme/*. Every view you ship must look like it could "
-        "feature in a WWDC demo."
+    prompt_file="designer.md",
+    fallback_prompt=(
+        "You are the Designer. Implement every SwiftUI View the plan calls "
+        "for. Liquid Glass, accessibility, dark mode."
     ),
 )
 
@@ -98,12 +105,10 @@ INTEGRATOR = AgentBlueprint(
     title="🔗 Integrator",
     layer="build",
     tool_names=("read_file", "write_file", "edit_file", "list_dir", "grep", "shell"),
-    system_prompt=(
-        "You are the Integrator. After the Coder and Designer have run, "
-        "your job is to glue the codebase together: imports, navigation, "
-        "ObservableObject wiring, dependency injection, asset catalog "
-        "entries, and bundle config. You also fix any orphaned references "
-        "or missing protocol conformances. Stop when `swift build` succeeds."
+    prompt_file="integrator.md",
+    fallback_prompt=(
+        "You are the Integrator. Wire navigation, dependency injection, "
+        "asset catalog, and Info.plist. Stop when xcodebuild succeeds."
     ),
 )
 
@@ -112,11 +117,10 @@ UNIT_TESTER = AgentBlueprint(
     title="🧪 Unit Tester",
     layer="test",
     tool_names=("read_file", "write_file", "edit_file", "shell", "grep"),
-    system_prompt=(
-        "You are the Unit Tester. Generate XCTest coverage for models, "
-        "services, and view-models. Cover happy path + at least two edge "
-        "cases per type. Use `shell` to run `xcodebuild test` and ensure "
-        "the suite stays green. Aim for ≥70% line coverage on non-View files."
+    prompt_file="unit_tester.md",
+    fallback_prompt=(
+        "You are the Unit Tester. Generate XCTest coverage. Aim for ≥70% "
+        "line coverage on non-View files. Run xcodebuild test until green."
     ),
 )
 
@@ -125,12 +129,10 @@ UI_TESTER = AgentBlueprint(
     title="📱 UI Tester",
     layer="test",
     tool_names=("read_file", "write_file", "edit_file", "shell", "simctl", "apple_docs"),
-    system_prompt=(
-        "You are the UI Tester. Drive the simulator with `simctl`, take "
-        "screenshots of every primary screen in light + dark, and verify "
-        "Liquid Glass compliance (44pt minimum tap targets, 4.5:1 contrast, "
-        "reduce-motion fallbacks, accessibility labels on every interactive "
-        "view). Generate XCUITest cases for the golden paths."
+    prompt_file="ui_tester.md",
+    fallback_prompt=(
+        "You are the UI Tester. Drive simctl, capture screenshots, write "
+        "XCUITests for the golden paths."
     ),
 )
 
@@ -139,12 +141,10 @@ REVIEWER = AgentBlueprint(
     title="👁️ Code Reviewer",
     layer="test",
     tool_names=("read_file", "list_dir", "grep", "swiftlint", "shell"),
-    system_prompt=(
-        "You are the Code Reviewer. Read the diff, run swiftlint, and "
-        "produce a senior-engineer review: correctness, performance, "
-        "memory, threading, force-unwraps, retain cycles, and HIG fit. "
-        "Output findings as JSON list of {severity,title,body,file,line,autofix}. "
-        "If you can autofix safely, ship the fix via `edit_file`."
+    prompt_file="reviewer.md",
+    fallback_prompt=(
+        "You are the Code Reviewer. Run swiftlint and review the diff. "
+        "Output JSON list of findings."
     ),
 )
 
@@ -153,11 +153,10 @@ SECURITY = AgentBlueprint(
     title="🔒 Security Auditor",
     layer="test",
     tool_names=("read_file", "list_dir", "grep", "shell"),
-    system_prompt=(
-        "You are the Security Auditor. Check for hard-coded API keys, "
-        "ATS exemptions, weak entropy, missing input validation, unsafe "
-        "URL schemes, keychain misuse, and PII in logs. Produce findings "
-        "as JSON. Block release on any `critical`."
+    prompt_file="security.md",
+    fallback_prompt=(
+        "You are the Security Auditor. Look for hard-coded keys, ATS issues, "
+        "input validation, keychain misuse. Block on critical."
     ),
 )
 

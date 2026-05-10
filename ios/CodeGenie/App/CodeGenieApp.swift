@@ -18,13 +18,17 @@ struct CodeGenieApp: App {
 struct RootView: View {
     @EnvironmentObject private var session: AppSession
     @AppStorage("hasFinishedOnboarding") private var hasFinishedOnboarding = false
+    @State private var splashDone: Bool = false
 
     var body: some View {
         ZStack {
             LiquidGlassBackground()
                 .ignoresSafeArea()
 
-            if hasFinishedOnboarding {
+            if !splashDone {
+                SplashView { splashDone = true }
+                    .transition(.opacity)
+            } else if hasFinishedOnboarding {
                 MainTabView()
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 1.02)),
@@ -41,5 +45,6 @@ struct RootView: View {
             }
         }
         .animation(.smooth(duration: 0.55), value: hasFinishedOnboarding)
+        .animation(.smooth(duration: 0.55), value: splashDone)
     }
 }

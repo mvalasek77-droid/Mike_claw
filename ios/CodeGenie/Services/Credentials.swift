@@ -14,6 +14,8 @@ final class Credentials: ObservableObject {
     @Published private(set) var openaiKey: String = ""
     @Published var authMode: AuthMode = .byok
     @Published var preferredModelID: String = ModelCatalogue.recommendedDefault
+    @Published var backendURL: String = "https://api.codegenie.app"
+    @Published private(set) var backendToken: String = ""
 
     enum AuthMode: String, CaseIterable, Identifiable, Codable {
         case byok          // Bring your own API key
@@ -43,11 +45,28 @@ final class Credentials: ObservableObject {
     private init() {
         anthropicKey = read(.anthropic) ?? ""
         openaiKey    = read(.openai) ?? ""
+        backendToken = readBackendToken() ?? ""
         if let raw = UserDefaults.standard.string(forKey: "auth.mode"),
            let mode = AuthMode(rawValue: raw) { authMode = mode }
         if let id = UserDefaults.standard.string(forKey: "model.preferred") {
             preferredModelID = id
         }
+        if let url = UserDefaults.standard.string(forKey: "backend.url"),
+           !url.isEmpty {
+            backendURL = url
+        }
+    }
+
+    func setBackendURL(_ url: String) {
+        let trimmed = url.trimmingCharacters(in: .whitespaces)
+        backendURL = trimmed
+        UserDefaults.standard.set(trimmed, forKey: "backend.url")
+    }
+
+    func setBackendToken(_ token: String) {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        backendToken = trimmed
+        writeBackendToken(trimmed)
     }
 
     func setKey(_ key: String, for provider: AIProvider) {
@@ -102,5 +121,35 @@ final class Credentials: ObservableObject {
             kSecAttrService as String: "com.codegenie.api-keys",
             kSecAttrAccount as String: provider.rawValue,
         ]
+    }
+
+    // Backend token has its own keychain entry to avoid mixing it with provider keys.
+    private func backendQuery() -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "com.codegenie.backend-token",
+            kSecAttrAccount as String: "default",
+        ]
+    }
+
+    private func readBackendToken() -> String? {
+        var q = backendQuery()
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data,
+              let s = String(data: data, encoding: .utf8) else { return nil }
+        return s
+    }
+
+    private func writeBackendToken(_ value: String) {
+        let q = backendQuery()
+        SecItemDelete(q as CFDictionary)
+        guard !value.isEmpty else { return }
+        var add = q
+        add[kSecValueData as String] = Data(value.utf8)
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(add as CFDictionary, nil)
     }
 }
