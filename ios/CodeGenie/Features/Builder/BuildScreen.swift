@@ -112,7 +112,10 @@ struct BuildScreen: View {
                     StatPill(label: "ETA",   value: etaString,   icon: "timer")
                     StatPill(label: "Score", value: "\(game.score)", icon: "star.fill")
                     StatPill(label: "Boost", value: "\(Int(game.buildBoost * 100))%", icon: "bolt.fill")
-                    if useRemote { CostBadge(tracker: costs) }
+                    if useRemote {
+                        CostBadge(tracker: costs)
+                        RetryBadge(tracker: costs)
+                    }
                 }
             }
             .padding(20)

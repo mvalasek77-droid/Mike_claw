@@ -133,6 +133,86 @@ async def test_full_swarm_run_e2e(tmp_path: Path, recorded_llm):
 
 
 @pytest.mark.asyncio
+async def test_memory_briefing_event_fires_when_memory_has_facts(tmp_path: Path, recorded_llm):
+    """If Memory has prior facts, every agent.started should be
+    preceded by a memory.briefing event surfacing what the swarm
+    remembers — so the iOS transcript can show it."""
+    from genie_swarm.memory import Memory
+
+    # Pre-seed memory with a fact older runs would have stored.
+    config = SwarmConfig(workspace_root=tmp_path / "ws",
+                         parallel_build=False, parallel_test=False,
+                         skip_tests=True, max_retries=0)
+    Memory(config.workspace_root).remember(
+        "preferred_palette", "muted earth tones", confidence=0.9,
+    )
+
+    # Minimal script: each build-layer agent text-finishes.
+    recorded_llm.script = [
+        LLMResponse(text=f"agent {i} done", tool_calls=[], stop_reason="end_turn")
+        for i in range(4)
+    ]
+
+    bus = EventBus()
+    orch = SwarmOrchestrator(llm=recorded_llm, bus=bus, config=config)
+
+    received: list[str] = []
+
+    async def collect():
+        stream = await bus.stream_for(job.id)
+        async for ev in stream.subscribe():
+            received.append(ev.type)
+            if ev.type == "done":
+                break
+
+    job = BuildJob(spec=AppSpec(title="HabitsApp", prompt="habits"))
+    consumer = asyncio.create_task(collect())
+    await asyncio.sleep(0.01)
+    await orch.execute(job)
+    await asyncio.wait_for(consumer, timeout=5.0)
+
+    # At least one memory.briefing should have fired (one per agent in
+    # this skipped-test config), with each pairing immediately preceding
+    # an agent.started.
+    briefings = [i for i, t in enumerate(received) if t == "memory.briefing"]
+    starts = [i for i, t in enumerate(received) if t == "agent.started"]
+    assert len(briefings) >= 1
+    # The first briefing should sit just before the first start.
+    assert briefings[0] < starts[0]
+
+
+@pytest.mark.asyncio
+async def test_no_memory_briefing_when_memory_is_empty(tmp_path: Path, recorded_llm):
+    """Empty memory must NOT emit a memory.briefing event — otherwise
+    the iOS transcript would show an empty 'remembers:' row."""
+    recorded_llm.script = [
+        LLMResponse(text=f"agent {i} done", tool_calls=[], stop_reason="end_turn")
+        for i in range(4)
+    ]
+    bus = EventBus()
+    config = SwarmConfig(workspace_root=tmp_path / "ws",
+                         parallel_build=False, parallel_test=False,
+                         skip_tests=True, max_retries=0)
+    orch = SwarmOrchestrator(llm=recorded_llm, bus=bus, config=config)
+
+    received: list[str] = []
+
+    async def collect():
+        stream = await bus.stream_for(job.id)
+        async for ev in stream.subscribe():
+            received.append(ev.type)
+            if ev.type == "done":
+                break
+
+    job = BuildJob(spec=AppSpec(title="Clean", prompt="empty memory"))
+    consumer = asyncio.create_task(collect())
+    await asyncio.sleep(0.01)
+    await orch.execute(job)
+    await asyncio.wait_for(consumer, timeout=5.0)
+    assert "memory.briefing" not in received
+
+
+@pytest.mark.asyncio
 async def test_e2e_failure_records_in_memory(tmp_path: Path, recorded_llm):
     """If the very first agent's tool call escapes the sandbox, the
     orchestrator should mark the job failed *and* still log it in

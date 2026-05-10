@@ -69,35 +69,42 @@ private struct TranscriptRow: View {
 
     private var icon: String {
         switch event.type {
-        case "agent.started":  "play.circle.fill"
-        case "agent.finished": "checkmark.circle.fill"
-        case "agent.thought":  "bubble.left.fill"
-        case "tool.call":      "wrench.and.screwdriver.fill"
-        case "tool.result":    "checkmark.seal.fill"
-        case "diff":           "doc.text.fill"
-        case "test.result":    "testtube.2"
-        case "review.finding": "exclamationmark.bubble.fill"
-        case "error":          "xmark.octagon.fill"
-        case "job.state":      "flag.fill"
-        case "done":           "flag.checkered"
-        default:               "circle.fill"
+        case "agent.started":     "play.circle.fill"
+        case "agent.finished":    "checkmark.circle.fill"
+        case "agent.thought":     "bubble.left.fill"
+        case "tool.call":         "wrench.and.screwdriver.fill"
+        case "tool.result":       "checkmark.seal.fill"
+        case "diff":              "doc.text.fill"
+        case "test.result":       "testtube.2"
+        case "review.finding":    "exclamationmark.bubble.fill"
+        case "retry.attempt":     "arrow.clockwise.circle.fill"
+        case "memory.briefing":   "brain.head.profile"
+        case "testflight.upload": "icloud.and.arrow.up.fill"
+        case "testflight.status": "shippingbox.fill"
+        case "error":             "xmark.octagon.fill"
+        case "job.state":         "flag.fill"
+        case "done":              "flag.checkered"
+        default:                  "circle.fill"
         }
     }
 
     private var tint: Color {
         switch event.type {
-        case "agent.started":   LiquidGlass.accent
-        case "agent.finished":  LiquidGlass.success
-        case "agent.thought":   .white.opacity(0.85)
-        case "tool.call":       LiquidGlass.warning
-        case "tool.result":     LiquidGlass.success
-        case "diff":            LiquidGlass.accentSecondary
-        case "review.finding":  LiquidGlass.warning
-        case "test.result":     LiquidGlass.accentSecondary
-        case "error":           .red
-        case "job.state":       LiquidGlass.accent
-        case "done":            LiquidGlass.success
-        default:                .white.opacity(0.6)
+        case "agent.started":     LiquidGlass.accent
+        case "agent.finished":    LiquidGlass.success
+        case "agent.thought":     .white.opacity(0.85)
+        case "tool.call":         LiquidGlass.warning
+        case "tool.result":       LiquidGlass.success
+        case "diff":              LiquidGlass.accentSecondary
+        case "review.finding":    LiquidGlass.warning
+        case "test.result":       LiquidGlass.accentSecondary
+        case "retry.attempt":     LiquidGlass.warning
+        case "memory.briefing":   LiquidGlass.accentSecondary
+        case "testflight.upload", "testflight.status": LiquidGlass.accent
+        case "error":             .red
+        case "job.state":         LiquidGlass.accent
+        case "done":              LiquidGlass.success
+        default:                  .white.opacity(0.6)
         }
     }
 
@@ -140,6 +147,22 @@ private struct TranscriptRow: View {
             let p = event.payload["passed"] as? Int ?? 0
             let f = event.payload["failed"] as? Int ?? 0
             return "tests: \(p) passed, \(f) failed"
+        case "retry.attempt":
+            let n = event.payload["attempt"] as? Int ?? 0
+            let max = event.payload["max_retries"] as? Int ?? 0
+            return "retry \(n)/\(max) — tests still red"
+        case "memory.briefing":
+            let lines = ((event.payload["text"] as? String) ?? "")
+                .split(separator: "\n")
+                .filter { !$0.isEmpty }
+            let preview = lines.prefix(3).joined(separator: " · ")
+            return "remembers: \(preview)"
+        case "testflight.upload":
+            let bid = (event.payload["build_id"] as? String) ?? "—"
+            return "uploaded to TestFlight (build \(bid))"
+        case "testflight.status":
+            let state = (event.payload["state"] as? String) ?? "?"
+            return "TestFlight: \(state)"
         case "job.state":
             return "state → \((event.payload["state"] as? String) ?? "?")"
         case "done":
