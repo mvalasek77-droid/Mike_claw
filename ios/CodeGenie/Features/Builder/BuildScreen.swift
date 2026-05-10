@@ -14,6 +14,7 @@ struct BuildScreen: View {
     @State private var builderTask: Task<Void, Never>?
     @State private var showGame: Bool = true
     @State private var showDiffReview: Bool = false
+    @State private var startedAt: Date = .now
     @StateObject private var game = BitDropGame()
     @StateObject private var swarm = SwarmClient()
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
@@ -228,6 +229,8 @@ struct BuildScreen: View {
 
     private func runBuild() async {
         builderTask?.cancel()
+        startedAt = .now
+        Telemetry.shared.recordBuildStarted()
         if useRemote {
             await runRemoteBuild()
         } else {
@@ -237,6 +240,13 @@ struct BuildScreen: View {
                         stage = newStage
                     }
                     appendLog(for: newStage)
+                    if newStage == .readyForTest || newStage == .failed {
+                        Telemetry.shared.recordBuildFinished(
+                            succeeded: newStage == .readyForTest,
+                            retries: costs.retryAttempts,
+                            secondsElapsed: Date().timeIntervalSince(startedAt)
+                        )
+                    }
                 }
             }
         }

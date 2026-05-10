@@ -10,6 +10,8 @@ struct SettingsView: View {
     @State private var showPairMac = false
     @State private var showTutorial = false
     @State private var showAgentRouting = false
+    @State private var showAppleDev = false
+    @StateObject private var telemetry = Telemetry.shared
 
     var body: some View {
         ZStack {
@@ -24,8 +26,10 @@ struct SettingsView: View {
                     modelComparison
                     estimatorBlock
                     agentRoutingBlock
+                    appleDevBlock
                     pairMacBlock
                     tutorialBlock
+                    telemetryBlock
                     aboutBlock
                     Color.clear.frame(height: 30)
                 }
@@ -46,6 +50,11 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showAgentRouting) {
             AgentRoutingView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAppleDev) {
+            AppleDevSetupView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -71,6 +80,15 @@ struct SettingsView: View {
             icon: "arrow.triangle.branch",
             tint: LiquidGlass.warning
         ) { showAgentRouting = true }
+    }
+
+    private var appleDevBlock: some View {
+        navTile(
+            title: "Apple Developer",
+            subtitle: creds.hasAppleDevCreds ? "Connected — TestFlight upload enabled" : "Connect to enable signing & TestFlight",
+            icon: "applelogo",
+            tint: creds.hasAppleDevCreds ? LiquidGlass.success : LiquidGlass.accent
+        ) { showAppleDev = true }
     }
 
     private var routingSubtitle: String {
@@ -325,6 +343,50 @@ struct SettingsView: View {
                     .font(.system(size: 12, weight: .regular, design: .rounded))
                     .foregroundStyle(.white.opacity(0.6))
             }
+        }
+    }
+
+    private var telemetryBlock: some View {
+        GlassCard(title: "Build telemetry", icon: "chart.bar.fill", tint: LiquidGlass.accentSecondary) {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: Binding(
+                    get: { telemetry.enabled },
+                    set: { telemetry.setEnabled($0); Haptics.selection() }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Track build outcomes")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("On-device only. Nothing leaves your phone.")
+                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+                }
+                .tint(LiquidGlass.accent)
+
+                if telemetry.enabled && (telemetry.snapshot.buildsStarted > 0) {
+                    Divider().background(.white.opacity(0.1))
+                    let s = telemetry.snapshot
+                    metricRow("Builds run",    "\(s.buildsStarted)")
+                    metricRow("Success rate",  String(format: "%.0f%%", s.successRate * 100))
+                    metricRow("Avg retries",   String(format: "%.1f", s.averageRetries))
+                    metricRow("Avg time",      String(format: "%.0fs", s.averageSeconds))
+                    Button("Reset stats") { telemetry.reset(); Haptics.tap() }
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.warning)
+                        .padding(.top, 4)
+                }
+            }
+        }
+    }
+
+    private func metricRow(_ k: String, _ v: String) -> some View {
+        HStack {
+            Text(k).font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.75))
+            Spacer()
+            Text(v).font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.white)
         }
     }
 

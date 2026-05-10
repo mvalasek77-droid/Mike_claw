@@ -18,6 +18,12 @@ final class Credentials: ObservableObject {
     @Published private(set) var backendToken: String = ""
     /// Per-agent model overrides keyed by `AgentRole.rawValue` ("coder", "reviewer", …).
     @Published var agentModels: [String: String] = [:]
+    /// Apple Developer Program credentials.
+    @Published var appleTeamID: String = ""
+    @Published var ascKeyID: String = ""
+    @Published var ascIssuerID: String = ""
+    @Published private(set) var ascP8PEM: String = ""
+    @Published private(set) var appSpecificPassword: String = ""
 
     enum AuthMode: String, CaseIterable, Identifiable, Codable {
         case byok          // Bring your own API key
@@ -61,6 +67,44 @@ final class Credentials: ObservableObject {
            let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
             agentModels = decoded
         }
+        appleTeamID  = UserDefaults.standard.string(forKey: "apple.teamID") ?? ""
+        ascKeyID     = UserDefaults.standard.string(forKey: "apple.ascKeyID") ?? ""
+        ascIssuerID  = UserDefaults.standard.string(forKey: "apple.ascIssuer") ?? ""
+        ascP8PEM     = readAppleSecret(account: "asc.p8") ?? ""
+        appSpecificPassword = readAppleSecret(account: "apple.appSpecific") ?? ""
+    }
+
+    func setAppleTeamID(_ id: String) {
+        appleTeamID = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(appleTeamID, forKey: "apple.teamID")
+    }
+
+    func setASCKeyID(_ id: String) {
+        ascKeyID = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(ascKeyID, forKey: "apple.ascKeyID")
+    }
+
+    func setASCIssuerID(_ id: String) {
+        ascIssuerID = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(ascIssuerID, forKey: "apple.ascIssuer")
+    }
+
+    func setASCP8(_ pem: String) {
+        let clean = pem.trimmingCharacters(in: .whitespacesAndNewlines)
+        ascP8PEM = clean
+        writeAppleSecret(clean, account: "asc.p8")
+    }
+
+    func setAppSpecificPassword(_ pwd: String) {
+        let clean = pwd.trimmingCharacters(in: .whitespacesAndNewlines)
+        appSpecificPassword = clean
+        writeAppleSecret(clean, account: "apple.appSpecific")
+    }
+
+    var hasAppleDevCreds: Bool {
+        !appleTeamID.isEmpty
+            && ((!ascKeyID.isEmpty && !ascIssuerID.isEmpty && !ascP8PEM.isEmpty)
+                || !appSpecificPassword.isEmpty)
     }
 
     func setAgentModel(role: String, model: String?) {
@@ -158,6 +202,35 @@ final class Credentials: ObservableObject {
 
     private func writeBackendToken(_ value: String) {
         let q = backendQuery()
+        SecItemDelete(q as CFDictionary)
+        guard !value.isEmpty else { return }
+        var add = q
+        add[kSecValueData as String] = Data(value.utf8)
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(add as CFDictionary, nil)
+    }
+
+    private func appleQuery(account: String) -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "com.codegenie.apple-dev",
+            kSecAttrAccount as String: account,
+        ]
+    }
+
+    private func readAppleSecret(account: String) -> String? {
+        var q = appleQuery(account: account)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data,
+              let s = String(data: data, encoding: .utf8) else { return nil }
+        return s
+    }
+
+    private func writeAppleSecret(_ value: String, account: String) {
+        let q = appleQuery(account: account)
         SecItemDelete(q as CFDictionary)
         guard !value.isEmpty else { return }
         var add = q

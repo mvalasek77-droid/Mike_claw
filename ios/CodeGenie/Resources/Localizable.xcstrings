@@ -1,0 +1,163 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "CodeGenie" : {
+      "comment" : "App name. Do not translate.",
+      "shouldTranslate" : false,
+      "extractionState" : "manual"
+    },
+    "Ship from your pocket." : {
+      "comment" : "Splash subtitle.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ship from your pocket." } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Lanza desde tu bolsillo." } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Publiez depuis votre poche." } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Veröffentliche aus deiner Hosentasche." } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "ポケットからリリース。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "随身上架。" } }
+      }
+    },
+    "Build your next app\nfrom your phone." : {
+      "comment" : "Home hero title.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Build your next app\nfrom your phone." } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Crea tu próxima app\ndesde tu teléfono." } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Créez votre prochaine app\ndepuis votre téléphone." } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Baue deine nächste App\nvon deinem Handy aus." } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "スマホから\n次のアプリを作ろう。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "用你的手机\n构建下一款应用。" } }
+      }
+    },
+    "Start a new build" : {
+      "comment" : "Home primary CTA.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start a new build" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Iniciar nueva compilación" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Lancer une compilation" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Neuen Build starten" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "新しいビルドを開始" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "开始新构建" } }
+      }
+    },
+    "Describe an app" : {
+      "comment" : "Home prompt card title.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Describe an app" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Describe una app" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Décrivez une app" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "App beschreiben" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "アプリを説明する" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "描述一款应用" } }
+      }
+    },
+    "Watch the tour" : {
+      "comment" : "Home QuickTile + Settings entry.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Watch the tour" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Ver el tour" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Voir la visite" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Tour ansehen" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "ツアーを見る" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "查看引导" } }
+      }
+    },
+    "Xcode steps" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Xcode steps" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Pasos en Xcode" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Étapes Xcode" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Xcode-Schritte" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "Xcode手順" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "Xcode 步骤" } }
+      }
+    },
+    "Costs & keys" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Costs & keys" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Costos y claves" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Coûts et clés" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Kosten & Schlüssel" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "コスト & キー" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "费用与密钥" } }
+      }
+    },
+    "BitDrop" : {
+      "comment" : "Game name. Do not translate.",
+      "shouldTranslate" : false,
+      "extractionState" : "manual"
+    },
+    "Home" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Home" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Inicio" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Accueil" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Start" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "ホーム" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "首页" } }
+      }
+    },
+    "Build" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Build" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Compilar" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Compiler" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Build" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "ビルド" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "构建" } }
+      }
+    },
+    "Play" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Play" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Jugar" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Jouer" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Spielen" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "プレイ" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "游戏" } }
+      }
+    },
+    "Apps" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Apps" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Apps" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Apps" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Apps" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "アプリ" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "应用" } }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Ajustes" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Réglages" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Einstellungen" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "設定" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "设置" } }
+      }
+    },
+    "Pair your Mac" : {
+      "comment" : "Settings nav tile + Pair Mac sheet title.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pair your Mac" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Vincula tu Mac" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Associer votre Mac" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Mac koppeln" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "Macをペアリング" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "配对你的 Mac" } }
+      }
+    },
+    "Connected to your Mac" : {
+      "comment" : "Pair Mac status — happy path.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connected to your Mac" } },
+        "es" : { "stringUnit" : { "state" : "new",        "value" : "Conectado a tu Mac" } },
+        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Connecté à votre Mac" } },
+        "de" : { "stringUnit" : { "state" : "new",        "value" : "Mit deinem Mac verbunden" } },
+        "ja" : { "stringUnit" : { "state" : "new",        "value" : "Macに接続済み" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "已连接到你的 Mac" } }
+      }
+    }
+  }
+}
