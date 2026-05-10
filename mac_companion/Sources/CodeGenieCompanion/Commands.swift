@@ -40,9 +40,7 @@ final class Commands {
             return try await screenshot(display: payload["display"] as? Int ?? 0)
 
         case "app_store_connect.fill":
-            // Stub for now — real impl drives Safari via AppleScript and
-            // requires a per-call Mac confirmation banner.
-            throw CmdError.bad("app_store_connect.fill not yet implemented")
+            return try await fillAppStoreConnect(payload: payload)
 
         default:
             throw CmdError.bad("unknown command: \(type)")
@@ -125,6 +123,119 @@ final class Commands {
             "exit_code": Int(process.terminationStatus),
             "log_tail": tail.joined(separator: "\n"),
         ]
+    }
+
+    /// Drives the frontmost Safari window via AppleScript / JS to fill
+    /// an App Store Connect form field.
+    ///
+    /// Workflow per call:
+    ///   1. Display a system notification on the Mac asking the user
+    ///      to confirm (`Approve` / `Reject` buttons via osascript).
+    ///   2. If approved, run a JavaScript snippet against the active
+    ///      Safari tab that sets the value of the named field and
+    ///      dispatches an `input` event so React-style listeners fire.
+    ///
+    /// This is intentionally narrow — we only target App Store Connect
+    /// because we know the field selectors; on other domains the
+    /// command refuses.
+    private func fillAppStoreConnect(payload: [String: Any]) async throws -> [String: Any] {
+        guard let field = payload["field"] as? String,
+              let value = payload["value"] as? String else {
+            throw CmdError.bad("field + value required")
+        }
+
+        // Always confirm with the human in the loop.
+        let approved = try await askUserApproval(title: "CodeGenie wants to fill", message: "\(field) → \(value)")
+        guard approved else {
+            return ["filled": false, "reason": "user rejected"]
+        }
+
+        // Verify we're on appstoreconnect.apple.com — we won't drive
+        // arbitrary websites.
+        let urlScript = """
+        tell application "Safari"
+          if (count of windows) is 0 then return "(no window)"
+          return URL of current tab of front window
+        end tell
+        """
+        let currentURL = (try await runOsa(urlScript)).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard currentURL.contains("appstoreconnect.apple.com") else {
+            throw CmdError.bad("Safari isn't on App Store Connect (saw: \(currentURL))")
+        }
+
+        // Set the field. We try several selector strategies because
+        // ASC's Vue/React stack uses different attribute schemes per
+        // page. Order: data-testid, name, aria-label, placeholder.
+        let escapedField = jsEscape(field)
+        let escapedValue = jsEscape(value)
+        let js = """
+        (function() {
+          const sel = [
+            '[data-testid="' + #field + '"]',
+            'input[name="' + #field + '"]',
+            'textarea[name="' + #field + '"]',
+            '[aria-label="' + #field + '"]',
+            'input[placeholder="' + #field + '"]'
+          ].map(s => s.replace(/#field/g, '\(escapedField)'));
+          for (const q of sel) {
+            const el = document.querySelector(q);
+            if (el) {
+              const setter = Object.getOwnPropertyDescriptor(el.__proto__, 'value').set;
+              setter.call(el, '\(escapedValue)');
+              el.dispatchEvent(new Event('input',  { bubbles: true }));
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+              return 'OK ' + q;
+            }
+          }
+          return 'NOT_FOUND';
+        })();
+        """
+        let escapedJS = js.replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: " ")
+        let runScript = """
+        tell application "Safari"
+          do JavaScript "\(escapedJS)" in current tab of front window
+        end tell
+        """
+        let result = (try await runOsa(runScript)).trimmingCharacters(in: .whitespacesAndNewlines)
+        if result.hasPrefix("OK ") {
+            return ["filled": true, "selector": String(result.dropFirst(3))]
+        } else {
+            throw CmdError.bad("could not find field '\(field)' on the current page")
+        }
+    }
+
+    private func askUserApproval(title: String, message: String) async throws -> Bool {
+        let osa = """
+        display dialog "\(message)" with title "\(title)" buttons {"Reject", "Approve"} default button "Approve"
+        """
+        do {
+            let out = try await runOsa(osa)
+            return out.contains("Approve")
+        } catch {
+            return false
+        }
+    }
+
+    private func runOsa(_ script: String) async throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", script]
+        let pipe = Pipe(); process.standardOutput = pipe; process.standardError = pipe
+        try process.run()
+        process.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let text = String(data: data, encoding: .utf8) ?? ""
+        if process.terminationStatus != 0 {
+            throw CmdError.bad("osascript exit \(process.terminationStatus): \(text)")
+        }
+        return text
+    }
+
+    private func jsEscape(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'",  with: "\\'")
+            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 
     private func screenshot(display: Int) async throws -> [String: Any] {

@@ -38,6 +38,10 @@ class SwarmState:
         self.config = SwarmConfig()
         self.jobs: dict[str, BuildJob] = {}
         self.tasks: dict[str, asyncio.Task[Any]] = {}
+        # Per-job map of path -> "accept"|"reject" filed by the iOS UI.
+        # The orchestrator drains this between runs to decide which
+        # proposed file changes to actually apply.
+        self.decisions: dict[str, dict[str, str]] = {}
 
 
 state = SwarmState()
@@ -137,6 +141,33 @@ async def get_file(job_id: str, path: str = Query(...)):
     if not target.exists() or not target.is_file():
         raise HTTPException(404, "file not found")
     return {"path": path, "body": target.read_text(encoding="utf-8", errors="replace")}
+
+
+@router.post("/{job_id}/decisions")
+async def post_decisions(job_id: str, body: dict):
+    """The user's accept/reject calls from DiffPreviewView land here.
+
+    Wire shape:
+        { "decisions": [ {"path": "...", "status": "accept|reject"} ] }
+
+    Paths not present in the list are treated as rejected. The
+    orchestrator polls `state.decisions[job_id]` between agent runs.
+    """
+    if job_id not in state.jobs:
+        raise HTTPException(404, "unknown job")
+    incoming = body.get("decisions") or []
+    state.decisions.setdefault(job_id, {})
+    for entry in incoming:
+        path = entry.get("path")
+        status = entry.get("status", "reject")
+        if path:
+            state.decisions[job_id][path] = status
+    return {"ok": True, "applied": len(incoming)}
+
+
+@router.get("/{job_id}/decisions")
+async def get_decisions(job_id: str):
+    return {"decisions": state.decisions.get(job_id, {})}
 
 
 @router.get("/health")

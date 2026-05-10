@@ -13,8 +13,11 @@ struct BuildScreen: View {
     @State private var displayedLog: [LogLine] = []
     @State private var builderTask: Task<Void, Never>?
     @State private var showGame: Bool = true
+    @State private var showDiffReview: Bool = false
     @StateObject private var game = BitDropGame()
     @StateObject private var swarm = SwarmClient()
+    @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
+    @StateObject private var diffStream = DiffStream()
 
     private let builder: BuilderService = LocalSimulatedBuilder()
     private var useRemote: Bool {
@@ -37,6 +40,7 @@ struct BuildScreen: View {
                         stageList
                         if showGame { gameBlock }
                         if useRemote { transcriptBlock }
+                        if !diffStream.pending.isEmpty { diffReviewCallout }
                         logBlock
                         Color.clear.frame(height: 24)
                     }
@@ -48,6 +52,17 @@ struct BuildScreen: View {
             if stage == .readyForTest { successOverlay }
         }
         .task { await runBuild() }
+        .sheet(isPresented: $showDiffReview) {
+            DiffPreviewView(diffs: diffStream.pending) { decisions in
+                Task {
+                    try? await diffStream.submit(decisions: decisions)
+                    showDiffReview = false
+                    Haptics.success()
+                }
+            }
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
+        }
         .onDisappear {
             builderTask?.cancel()
             builder.cancel(initialJob.id)
@@ -97,6 +112,7 @@ struct BuildScreen: View {
                     StatPill(label: "ETA",   value: etaString,   icon: "timer")
                     StatPill(label: "Score", value: "\(game.score)", icon: "star.fill")
                     StatPill(label: "Boost", value: "\(Int(game.buildBoost * 100))%", icon: "bolt.fill")
+                    if useRemote { CostBadge(tracker: costs) }
                 }
             }
             .padding(20)
@@ -130,6 +146,32 @@ struct BuildScreen: View {
         GlassCard(title: "Live transcript", icon: "waveform", tint: LiquidGlass.accent) {
             TranscriptView(client: swarm)
         }
+    }
+
+    private var diffReviewCallout: some View {
+        Button { showDiffReview = true; Haptics.selection() } label: {
+            GlassSurface(tier: .deep, corner: 18) {
+                HStack(spacing: 12) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accentSecondary)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(LiquidGlass.accentSecondary.opacity(0.18)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(diffStream.pending.count) changes proposed")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Review and apply selectively")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.65))
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.55))
+                }
+                .padding(14)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var logBlock: some View {
@@ -198,6 +240,8 @@ struct BuildScreen: View {
     }
 
     private func runRemoteBuild() async {
+        costs.bind(to: swarm)
+        diffStream.bind(to: swarm)
         do {
             let id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
             swarm.openStream(jobID: id) { event in

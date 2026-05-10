@@ -70,6 +70,11 @@ final class SwarmClient: ObservableObject {
         return (r["body"] as? String) ?? ""
     }
 
+    /// Submit accept/reject decisions for proposed file changes.
+    func postDecisions(jobID: String, body: [String: Any]) async throws -> [String: Any] {
+        try await postJSON("/api/coding/swarm/\(jobID)/decisions", body: body)
+    }
+
     // MARK: - SSE
 
     /// Subscribe to a job's event stream. Calls `onEvent` for every parsed
