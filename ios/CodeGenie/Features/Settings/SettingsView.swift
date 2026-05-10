@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var savedFlash: AIProvider?
     @State private var showPairMac = false
     @State private var showTutorial = false
+    @State private var showAgentRouting = false
 
     var body: some View {
         ZStack {
@@ -22,6 +23,7 @@ struct SettingsView: View {
                     if creds.authMode == .codegenie { hostedBlock }
                     modelComparison
                     estimatorBlock
+                    agentRoutingBlock
                     pairMacBlock
                     tutorialBlock
                     aboutBlock
@@ -42,6 +44,11 @@ struct SettingsView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showAgentRouting) {
+            AgentRoutingView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .onAppear {
             anthropicDraft = creds.anthropicKey
             openaiDraft    = creds.openaiKey
@@ -55,6 +62,21 @@ struct SettingsView: View {
             icon: "macbook.and.iphone",
             tint: LiquidGlass.accent
         ) { showPairMac = true }
+    }
+
+    private var agentRoutingBlock: some View {
+        navTile(
+            title: "Route per agent",
+            subtitle: routingSubtitle,
+            icon: "arrow.triangle.branch",
+            tint: LiquidGlass.warning
+        ) { showAgentRouting = true }
+    }
+
+    private var routingSubtitle: String {
+        let n = creds.agentModels.count
+        if n == 0 { return "Send each agent to its best model." }
+        return "\(n) of 8 agents overridden."
     }
 
     private var tutorialBlock: some View {

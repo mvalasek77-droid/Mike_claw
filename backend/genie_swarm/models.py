@@ -116,6 +116,7 @@ class SwarmEvent(BaseModel):
         "diff",
         "test.result",
         "review.finding",
+        "retry.attempt",
         "artifact",
         "error",
         "done",

@@ -15,6 +15,7 @@ struct PairMacView: View {
     @State private var manualHost: String = ""
     @State private var manualPort: String = ""
     @State private var manualToken: String = ""
+    @State private var showScanner: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -24,6 +25,7 @@ struct PairMacView: View {
                 VStack(spacing: 16) {
                     header
                     statusBlock
+                    scanQRBlock
                     discoveredBlock
                     manualBlock
                     helpBlock
@@ -36,6 +38,19 @@ struct PairMacView: View {
         }
         .onAppear { bridge.startBrowsing() }
         .onDisappear { bridge.stopBrowsing() }
+        .fullScreenCover(isPresented: $showScanner) {
+            QRScannerView(
+                onScan: { payload in
+                    showScanner = false
+                    if let url = URL(string: payload), payload.hasPrefix("codegenie://") {
+                        Task { await bridge.connect(pairingURL: url) }
+                    } else {
+                        pasteURL = payload
+                    }
+                },
+                onCancel: { showScanner = false }
+            )
+        }
     }
 
     private var header: some View {
@@ -66,6 +81,35 @@ struct PairMacView: View {
                 }
             }
         }
+    }
+
+    private var scanQRBlock: some View {
+        Button { showScanner = true } label: {
+            GlassSurface(tier: .raised, corner: 22) {
+                HStack(spacing: 14) {
+                    Image(systemName: "qrcode.viewfinder")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accent)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Scan QR code")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Fastest path — one tap, one scan.")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.65))
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.5))
+                }
+                .padding(14)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Scan QR code to pair")
     }
 
     private var discoveredBlock: some View {

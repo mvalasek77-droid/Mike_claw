@@ -35,7 +35,7 @@ final class SwarmClient: ObservableObject {
     // MARK: - REST
 
     func startBuild(spec: AppSpec) async throws -> String {
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "spec": [
                 "title": spec.title,
                 "prompt": spec.prompt,
@@ -47,6 +47,8 @@ final class SwarmClient: ObservableObject {
             "parallel": true,
             "skip_tests": false
         ]
+        let overrides = credentials.agentModels
+        if !overrides.isEmpty { body["model_overrides"] = overrides }
         let response: [String: Any] = try await postJSON("/api/coding/swarm/build", body: body)
         guard let id = response["job_id"] as? String else {
             throw SwarmError.malformed("missing job_id")

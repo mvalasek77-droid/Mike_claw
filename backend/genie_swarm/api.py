@@ -58,12 +58,13 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
     state.jobs[job.id] = job
 
     cfg = state.config
-    if req.workspace_root:
+    if req.workspace_root or req.model_overrides or req.skip_tests or not req.parallel:
         cfg = SwarmConfig(
-            workspace_root=Path(req.workspace_root),
+            workspace_root=Path(req.workspace_root) if req.workspace_root else cfg.workspace_root,
             parallel_build=req.parallel,
             skip_tests=req.skip_tests,
             runtime=cfg.runtime,
+            model_overrides=req.model_overrides,
         )
 
     orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=cfg)

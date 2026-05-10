@@ -24,7 +24,7 @@ from pathlib import Path
 from .agents import (
     ALL_AGENTS, BUILD_LAYER, TEST_LAYER, AgentBlueprint, AgentRole,
 )
-from .agents.base import ARCHITECT, CODER, DESIGNER, INTEGRATOR
+from .agents.base import ARCHITECT, CODER, DESIGNER, INTEGRATOR, UNIT_TESTER
 from .llm import LLMClient
 from .memory import Memory
 from .models import BuildJob, JobState
@@ -62,6 +62,15 @@ class SwarmConfig:
     parallel_test: bool = True    # run all four test agents in parallel
     skip_tests: bool = False
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
+    # Per-agent model overrides. Keys are AgentRole values
+    # ("architect", "coder", ...). Falls back to blueprint.model when a
+    # role isn't present. Lets the iOS app route Opus to Reviewer and
+    # Haiku to UI-Tester, for example, without code changes here.
+    model_overrides: dict[str, str] = field(default_factory=dict)
+    # Max times we re-run Coder + Integrator + Unit Tester after the
+    # Unit Tester reports failures. 0 disables retries (the test layer
+    # still runs, but failing tests don't loop).
+    max_retries: int = 3
 
 
 class SwarmOrchestrator:
@@ -161,6 +170,8 @@ class SwarmOrchestrator:
         # past preferences carry across builds.
         briefing = self.memory.briefing()
         full_system = (briefing + "\n\n" + blueprint.system_prompt) if briefing else blueprint.system_prompt
+        # Per-agent model override beats blueprint default.
+        model = self.config.model_overrides.get(blueprint.role.value, blueprint.model)
         runtime = ConversationRuntime(
             agent_name=blueprint.title,
             system_prompt=full_system,
@@ -169,7 +180,7 @@ class SwarmOrchestrator:
             sandbox=session.sandbox,
             events=events,
             config=RuntimeConfig(
-                model=blueprint.model,
+                model=model,
                 max_steps=self.config.runtime.max_steps,
                 max_parallel_tool_calls=self.config.runtime.max_parallel_tool_calls,
                 temperature=blueprint.temperature,
@@ -181,14 +192,82 @@ class SwarmOrchestrator:
         return run
 
     async def _run_test_layer(self, session: Session, events) -> None:
+        # Loop: Unit Tester first; if it reports failures, re-run Coder
+        # + Integrator + Unit Tester until green or `max_retries` is
+        # exceeded. Then run the remaining test agents in parallel.
+        unit_run = await self._run_agent(
+            UNIT_TESTER, session, events,
+            prompt=self._test_prompt(UNIT_TESTER, session.job),
+        )
+        attempts = 0
+        while attempts < self.config.max_retries and self._unit_tests_failed(unit_run):
+            attempts += 1
+            await events.emit(
+                "retry.attempt", agent=UNIT_TESTER.title,
+                attempt=attempts, max_retries=self.config.max_retries,
+            )
+            await self._run_agent(
+                CODER, session, events,
+                prompt=self._fix_prompt(session.job, unit_run.final_message.content),
+            )
+            await self._run_agent(
+                INTEGRATOR, session, events,
+                prompt="Tests just failed. Re-glue anything the Coder changed, "
+                       "then run `swift build` / `xcodebuild` until it's green.",
+            )
+            unit_run = await self._run_agent(
+                UNIT_TESTER, session, events,
+                prompt=self._test_prompt(UNIT_TESTER, session.job),
+            )
+
+        # The other test agents (UI Tester, Reviewer, Security) — same
+        # parallel-or-serial knob.
+        remaining = tuple(bp for bp in TEST_LAYER if bp is not UNIT_TESTER)
         if self.config.parallel_test:
             await asyncio.gather(*[
                 self._run_agent(bp, session, events, prompt=self._test_prompt(bp, session.job))
-                for bp in TEST_LAYER
+                for bp in remaining
             ])
         else:
-            for bp in TEST_LAYER:
+            for bp in remaining:
                 await self._run_agent(bp, session, events, prompt=self._test_prompt(bp, session.job))
+
+    @staticmethod
+    def _unit_tests_failed(run) -> bool:
+        """Heuristic: does the Unit Tester's final message indicate
+        red tests? We look for explicit failure markers — xcodebuild's
+        `Failing tests:` line, `TEST FAILED`, or an explicit count of
+        > 0 failures. The agent is told to say so in plain English."""
+        text = (run.final_message.content or "").lower()
+        if not text:
+            return False
+        if "all tests pass" in text or "all green" in text or "0 failures" in text:
+            return False
+        markers = [
+            "failing tests:",
+            "test failed",
+            "tests failed",
+            "** test failed **",
+            "build failed",
+        ]
+        if any(m in text for m in markers):
+            return True
+        # Numeric "N failure" / "N failures" where N > 0.
+        import re as _re
+        match = _re.search(r"(\d+)\s+failures?\b", text)
+        if match and int(match.group(1)) > 0:
+            return True
+        return False
+
+    def _fix_prompt(self, job: BuildJob, unit_tester_output: str) -> str:
+        return (
+            "The Unit Tester reported failures:\n\n"
+            f"{unit_tester_output[:4000]}\n\n"
+            "Fix the underlying Swift code. Do not modify the tests to make "
+            "them pass — change the implementation until the existing "
+            "tests are green. Run `swift build` (or `xcodebuild`) until it "
+            "succeeds before declaring done."
+        )
 
     # ------------------------------------------------------------------
     # Prompt templating

@@ -16,6 +16,8 @@ final class Credentials: ObservableObject {
     @Published var preferredModelID: String = ModelCatalogue.recommendedDefault
     @Published var backendURL: String = "https://api.codegenie.app"
     @Published private(set) var backendToken: String = ""
+    /// Per-agent model overrides keyed by `AgentRole.rawValue` ("coder", "reviewer", …).
+    @Published var agentModels: [String: String] = [:]
 
     enum AuthMode: String, CaseIterable, Identifiable, Codable {
         case byok          // Bring your own API key
@@ -54,6 +56,17 @@ final class Credentials: ObservableObject {
         if let url = UserDefaults.standard.string(forKey: "backend.url"),
            !url.isEmpty {
             backendURL = url
+        }
+        if let data = UserDefaults.standard.data(forKey: "agent.models"),
+           let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
+            agentModels = decoded
+        }
+    }
+
+    func setAgentModel(role: String, model: String?) {
+        if let model { agentModels[role] = model } else { agentModels.removeValue(forKey: role) }
+        if let data = try? JSONEncoder().encode(agentModels) {
+            UserDefaults.standard.set(data, forKey: "agent.models")
         }
     }
 
