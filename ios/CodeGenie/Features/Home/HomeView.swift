@@ -4,6 +4,7 @@ struct HomeView: View {
     @EnvironmentObject private var session: AppSession
     @State private var showXcodeGuide = false
     @State private var showDescribe = false
+    @State private var showSettings = false
 
     var body: some View {
         ScrollView {
@@ -33,6 +34,11 @@ struct HomeView: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .fullScreenCover(item: $session.currentJob) { job in
             BuildScreen(job: job)
                 .environmentObject(session)
@@ -52,10 +58,8 @@ struct HomeView: View {
     private var hero: some View {
         VStack(spacing: 10) {
             HStack {
-                HStack(spacing: 8) {
-                    Image(systemName: "wand.and.stars.inverse")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(LiquidGlass.accent)
+                HStack(spacing: 10) {
+                    CodeGenieLogo(size: 34, animate: false)
                     Text("CodeGenie")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
@@ -108,10 +112,9 @@ struct HomeView: View {
     private var quickGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             QuickTile(title: "Xcode steps", subtitle: "Pocket guide", icon: "hammer.fill", tint: LiquidGlass.warning) { showXcodeGuide = true }
-            QuickTile(title: "App Store", subtitle: "Connect walkthrough", icon: "paperplane.fill", tint: LiquidGlass.success) { /* gate via job */ }
             QuickTile(title: "Templates", subtitle: "Start faster", icon: "square.grid.2x2.fill", tint: LiquidGlass.accentSecondary) { showDescribe = true }
+            QuickTile(title: "Costs & keys", subtitle: "Pick your provider", icon: "creditcard.fill", tint: LiquidGlass.success) { showSettings = true }
             QuickTile(title: "BitDrop", subtitle: "Play & boost", icon: "gamecontroller.fill", tint: LiquidGlass.accent) {
-                // Standalone play — spawns a no-op job so the game screen opens
                 let demo = AppDescription(title: "Practice run", prompt: "Standalone BitDrop session")
                 _ = session.startBuild(from: demo)
             }

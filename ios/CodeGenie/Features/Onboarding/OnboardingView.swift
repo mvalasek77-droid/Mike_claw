@@ -35,10 +35,8 @@ struct OnboardingView: View {
 
     private var header: some View {
         HStack {
-            HStack(spacing: 8) {
-                Image(systemName: "wand.and.stars.inverse")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(LiquidGlass.accent)
+            HStack(spacing: 10) {
+                CodeGenieLogo(size: 32, animate: false)
                 Text("CodeGenie")
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)

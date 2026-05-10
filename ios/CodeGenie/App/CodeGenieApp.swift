@@ -25,7 +25,7 @@ struct RootView: View {
                 .ignoresSafeArea()
 
             if hasFinishedOnboarding {
-                HomeView()
+                MainTabView()
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 1.02)),
                         removal: .opacity
