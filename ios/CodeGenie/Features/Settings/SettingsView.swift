@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var revealAnthropic = false
     @State private var revealOpenAI = false
     @State private var savedFlash: AIProvider?
+    @State private var showPairMac = false
 
     var body: some View {
         ZStack {
@@ -20,6 +21,7 @@ struct SettingsView: View {
                     if creds.authMode == .codegenie { hostedBlock }
                     modelComparison
                     estimatorBlock
+                    pairMacBlock
                     aboutBlock
                     Color.clear.frame(height: 30)
                 }
@@ -28,10 +30,41 @@ struct SettingsView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .sheet(isPresented: $showPairMac) {
+            PairMacView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .onAppear {
             anthropicDraft = creds.anthropicKey
             openaiDraft    = creds.openaiKey
         }
+    }
+
+    private var pairMacBlock: some View {
+        Button { showPairMac = true } label: {
+            GlassSurface(tier: .raised, corner: 22) {
+                HStack(spacing: 14) {
+                    Image(systemName: "macbook.and.iphone")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accent)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Pair your Mac")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Reach into Xcode + Safari from this app.")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.65))
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.5))
+                }
+                .padding(16)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: Sections

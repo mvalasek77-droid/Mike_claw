@@ -1,0 +1,138 @@
+"""SQLite-backed memory store + memory tool tests."""
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from genie_swarm.memory import Memory
+from genie_swarm.models import ToolCall
+from genie_swarm.tools import ToolRegistry
+from genie_swarm.tools.base import ToolContext
+from genie_swarm.tools.memory import RememberFact, RecallMemory, NoteDecision
+
+
+# --------------------------------------------------------------------------- #
+# Memory store
+# --------------------------------------------------------------------------- #
+
+def test_remember_then_recall_round_trips(tmp_path: Path):
+    mem = Memory(tmp_path)
+    mem.remember("preferred_palette", "muted earth tones", confidence=0.9, source="designer")
+    rows = mem.recall("palette")
+    assert len(rows) == 1
+    assert rows[0].key == "preferred_palette"
+    assert rows[0].confidence == pytest.approx(0.9)
+    assert rows[0].source == "designer"
+
+
+def test_remember_overwrites_existing_key(tmp_path: Path):
+    mem = Memory(tmp_path)
+    mem.remember("style", "minimalist", confidence=0.4, source="a")
+    mem.remember("style", "playful", confidence=0.8, source="b")
+    rows = mem.recall("style")
+    assert len(rows) == 1
+    assert rows[0].value == "playful"
+    assert rows[0].source == "b"
+
+
+def test_forget_removes_fact(tmp_path: Path):
+    mem = Memory(tmp_path)
+    mem.remember("k", "v")
+    assert mem.recall("k")
+    mem.forget("k")
+    assert mem.recall("k") == []
+
+
+def test_record_project_then_recent(tmp_path: Path):
+    mem = Memory(tmp_path)
+    mem.record_project("job_a", "TideRider", {"prompt": "..."}, True, "shipped")
+    mem.record_project("job_b", "Habitica", {"prompt": "..."}, False, "compile failed")
+    recent = mem.recent_projects()
+    titles = {p.title for p in recent}
+    assert {"TideRider", "Habitica"} == titles
+
+
+def test_decisions_are_scoped_per_job(tmp_path: Path):
+    mem = Memory(tmp_path)
+    mem.note_decision("j1", "use SwiftUI?", "yes")
+    mem.note_decision("j2", "use SwiftUI?", "yes (with UIKit fallback)")
+    j1 = mem.decisions_for("j1")
+    j2 = mem.decisions_for("j2")
+    assert len(j1) == 1 and len(j2) == 1
+    assert j1[0].decision != j2[0].decision
+
+
+def test_briefing_renders_when_facts_exist(tmp_path: Path):
+    mem = Memory(tmp_path)
+    mem.remember("preferred_palette", "muted earth tones")
+    mem.record_project("j", "Calmly", {"prompt": "x"}, True, "shipped to TestFlight")
+    text = mem.briefing()
+    assert "preferred_palette" in text
+    assert "Calmly" in text
+    assert "✓" in text
+
+
+def test_briefing_empty_when_nothing_stored(tmp_path: Path):
+    mem = Memory(tmp_path)
+    assert mem.briefing() == ""
+
+
+# --------------------------------------------------------------------------- #
+# Memory tools
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture
+def memory_registry() -> ToolRegistry:
+    r = ToolRegistry()
+    for tool in (RememberFact(), RecallMemory(), NoteDecision()):
+        r.register(tool)
+    return r
+
+
+@pytest.mark.asyncio
+async def test_remember_then_recall_via_tools(memory_registry, sandbox, tmp_path):
+    ctx = ToolContext(job_id="j", agent="tester", workspace=str(sandbox.policy.workspace))
+
+    await memory_registry.invoke(
+        ToolCall(name="remember_fact", arguments={
+            "key": "preferred_palette",
+            "value": "muted earth tones",
+            "confidence": 0.85,
+        }), sandbox, ctx,
+    )
+    result = await memory_registry.invoke(
+        ToolCall(name="recall_memory", arguments={"query": "palette"}),
+        sandbox, ctx,
+    )
+    assert result.ok
+    assert "preferred_palette" in result.content
+    assert "muted earth tones" in result.content
+
+
+@pytest.mark.asyncio
+async def test_remember_fact_validates_arguments(memory_registry, sandbox):
+    ctx = ToolContext(job_id="j", agent="tester", workspace=str(sandbox.policy.workspace))
+    result = await memory_registry.invoke(
+        ToolCall(name="remember_fact", arguments={"key": "x"}),  # missing value
+        sandbox, ctx,
+    )
+    assert not result.ok
+    assert result.metadata.get("kind") == "schema_violation"
+
+
+@pytest.mark.asyncio
+async def test_note_decision_persists(memory_registry, sandbox, tmp_path):
+    ctx = ToolContext(job_id="j42", agent="tester", workspace=str(sandbox.policy.workspace))
+    result = await memory_registry.invoke(
+        ToolCall(name="note_decision", arguments={
+            "context": "third-party SDKs?",
+            "decision": "no analytics in v1",
+        }), sandbox, ctx,
+    )
+    assert result.ok
+
+    mem = Memory(Path(ctx.workspace).parent)
+    decisions = mem.decisions_for("j42")
+    assert len(decisions) == 1
+    assert "analytics" in decisions[0].decision

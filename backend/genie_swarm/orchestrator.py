@@ -26,6 +26,7 @@ from .agents import (
 )
 from .agents.base import ARCHITECT, CODER, DESIGNER, INTEGRATOR
 from .llm import LLMClient
+from .memory import Memory
 from .models import BuildJob, JobState
 from .runtime import ConversationRuntime, RuntimeConfig
 from .session import Session
@@ -42,11 +43,13 @@ def _bootstrap_registry() -> ToolRegistry:
     from .tools.shell import RunShell, Grep
     from .tools.xcode import XcodeBuild, SwiftLint, XcrunSimctl
     from .tools.apple_docs import AppleDocs
+    from .tools.memory import RememberFact, RecallMemory, NoteDecision
     for t in (
         ReadFile(), WriteFile(), EditFile(), ListDir(),
         RunShell(), Grep(),
         XcodeBuild(), SwiftLint(), XcrunSimctl(),
         AppleDocs(),
+        RememberFact(), RecallMemory(), NoteDecision(),
     ):
         default_registry.register(t)
     return default_registry
@@ -67,6 +70,7 @@ class SwarmOrchestrator:
         self.bus = bus
         self.config = config or SwarmConfig()
         self.tools = _bootstrap_registry()
+        self.memory = Memory(self.config.workspace_root)
 
     # ------------------------------------------------------------------
     # Public entrypoint
@@ -116,6 +120,10 @@ class SwarmOrchestrator:
                 f"{job.spec.title} built successfully — "
                 f"{int((time.time() - (job.started_at or job.created_at)))}s end-to-end."
             )
+            self.memory.record_project(
+                job.id, job.spec.title, job.spec.model_dump(),
+                succeeded=True, summary=session.job.summary,
+            )
             await events.emit("job.state", state=session.job.state.value, summary=session.job.summary)
             await events.emit("done", success=True)
         except asyncio.CancelledError:
@@ -125,6 +133,10 @@ class SwarmOrchestrator:
             raise
         except Exception as exc:  # noqa: BLE001
             session.update_state(JobState.failed, error=f"{type(exc).__name__}: {exc}")
+            self.memory.record_project(
+                job.id, job.spec.title, job.spec.model_dump(),
+                succeeded=False, summary=f"failed: {exc}",
+            )
             await events.emit("error", message=str(exc))
             await events.emit("done", success=False, reason="error")
             raise
@@ -145,9 +157,13 @@ class SwarmOrchestrator:
         *,
         prompt: str,
     ):
+        # Paste a memory briefing on top of the agent's system prompt so
+        # past preferences carry across builds.
+        briefing = self.memory.briefing()
+        full_system = (briefing + "\n\n" + blueprint.system_prompt) if briefing else blueprint.system_prompt
         runtime = ConversationRuntime(
             agent_name=blueprint.title,
-            system_prompt=blueprint.system_prompt,
+            system_prompt=full_system,
             llm=self.llm,
             tools=blueprint.tools(self.tools),
             sandbox=session.sandbox,
