@@ -100,6 +100,16 @@ struct BuildScreen: View {
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
             Spacer()
+            if let jobID = swarm.jobID, useRemote {
+                Button { Task { await saveCheckpoint(jobID: jobID) } } label: {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(10)
+                        .background(.white.opacity(0.08), in: Circle())
+                        .foregroundStyle(.white)
+                }
+                .accessibilityLabel("Save checkpoint")
+            }
             Button { showGame.toggle(); Haptics.selection() } label: {
                 Image(systemName: showGame ? "gamecontroller.fill" : "gamecontroller")
                     .font(.system(size: 16, weight: .semibold))
@@ -353,6 +363,17 @@ struct BuildScreen: View {
             Haptics.success()
         } catch {
             shipBanner = "Submit failed: \(error)"
+            Haptics.error()
+        }
+    }
+
+    private func saveCheckpoint(jobID: String) async {
+        do {
+            let label = try await swarm.snapshot(jobID: jobID)
+            shipBanner = "Checkpoint saved: \(label)"
+            Haptics.success()
+        } catch {
+            shipBanner = "Snapshot failed: \(error)"
             Haptics.error()
         }
     }

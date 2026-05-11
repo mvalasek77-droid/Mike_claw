@@ -14,6 +14,14 @@ final class CostTracker: ObservableObject {
     @Published private(set) var perAgent: [String: AgentCost] = [:]
     @Published private(set) var retryAttempts: Int = 0
     @Published private(set) var maxRetries: Int = 0
+    /// Authoritative running spend reported by the backend (USD). 0
+    /// until the first `cost.update` event lands.
+    @Published private(set) var backendSpendUSD: Double = 0
+    /// The cap the backend is enforcing for the current run, if any.
+    @Published private(set) var backendCapUSD: Double?
+    /// True when the backend has emitted `cost.cap_hit`. The UI uses
+    /// this to swap the cost badge to a warning state.
+    @Published private(set) var capHit: Bool = false
 
     struct AgentCost: Identifiable, Hashable {
         var id: String { agent }
@@ -37,6 +45,7 @@ final class CostTracker: ObservableObject {
         cancellables.removeAll()
         inputTokens = 0; outputTokens = 0; perAgent = [:]
         retryAttempts = 0; maxRetries = 0
+        backendSpendUSD = 0; backendCapUSD = nil; capHit = false
         client.$events
             .sink { [weak self] events in self?.consume(events) }
             .store(in: &cancellables)
@@ -62,6 +71,9 @@ final class CostTracker: ObservableObject {
         var byAgent: [String: AgentCost] = [:]
         var retries = 0
         var maxR = 0
+        var backendSpend: Double = 0
+        var backendCap: Double? = nil
+        var hit = false
         for event in events {
             switch event.type {
             case "agent.finished":
@@ -83,6 +95,13 @@ final class CostTracker: ObservableObject {
                 let n = event.payload["attempt"] as? Int ?? 0
                 retries = max(retries, n)
                 if let cap = event.payload["max_retries"] as? Int { maxR = cap }
+            case "cost.update":
+                if let spent = event.payload["spend_usd"] as? Double { backendSpend = spent }
+                if let cap = event.payload["cap_usd"] as? Double { backendCap = cap }
+            case "cost.cap_hit":
+                hit = true
+                if let spent = event.payload["spent_usd"] as? Double { backendSpend = spent }
+                if let cap = event.payload["cap_usd"] as? Double { backendCap = cap }
             default: break
             }
         }
@@ -91,6 +110,9 @@ final class CostTracker: ObservableObject {
         perAgent = byAgent
         retryAttempts = retries
         maxRetries = maxR
+        backendSpendUSD = backendSpend
+        backendCapUSD = backendCap
+        capHit = hit
     }
 
     private func usd(input: Int, output: Int) -> Double {

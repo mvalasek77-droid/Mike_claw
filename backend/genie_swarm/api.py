@@ -60,7 +60,7 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
     cfg = state.config
     ship_cfg = _to_ship_config(req.ship) if req.ship else None
     if (req.workspace_root or req.model_overrides or req.skip_tests
-            or not req.parallel or ship_cfg):
+            or not req.parallel or ship_cfg or req.cost_cap_usd is not None):
         cfg = SwarmConfig(
             workspace_root=Path(req.workspace_root) if req.workspace_root else cfg.workspace_root,
             parallel_build=req.parallel,
@@ -68,6 +68,7 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
             runtime=cfg.runtime,
             model_overrides=req.model_overrides,
             ship=ship_cfg,
+            cost_cap_usd=req.cost_cap_usd,
         )
 
     orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=cfg)
@@ -191,6 +192,80 @@ async def ship_now(job_id: str, req: ShipRequest):
     orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=state.config)
     state.tasks[job_id] = asyncio.create_task(orch.ship_only(job, _to_ship_config(req)))
     return {"ok": True, "job_id": job_id}
+
+
+@router.post("/{job_id}/resume")
+async def resume_job(job_id: str):
+    """Pick up an interrupted build from the latest checkpoint.
+
+    Use cases:
+      * The user cancelled mid-build and now wants to continue.
+      * A cost cap was hit; the user lifted it and wants to resume.
+      * The process restarted between agent runs.
+
+    The orchestrator decides which stages to skip based on what was
+    checkpointed; the body is empty by design — the workspace and
+    saved session are the only inputs needed."""
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    if job.state in {JobState.queued, JobState.planning, JobState.building, JobState.testing}:
+        raise HTTPException(409, f"job is already running (state={job.state.value})")
+
+    orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=state.config)
+    state.tasks[job_id] = asyncio.create_task(orch.resume(job))
+    return {"ok": True, "job_id": job_id}
+
+
+@router.post("/{job_id}/snapshot")
+async def take_snapshot(job_id: str, body: dict | None = None):
+    """User-initiated checkpoint. Useful before a risky diff batch — if
+    the next agent goes sideways the iOS UI can ask the orchestrator
+    to restore from this label.
+
+    Body: { "label": "before accepting the icon redesign" } — optional.
+    Reuses `Session.checkpoint` so snapshots and orchestrator-internal
+    checkpoints share storage and replay paths.
+    """
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    workspace = state.config.workspace_root / job_id
+    if not workspace.exists():
+        raise HTTPException(404, "workspace not found")
+
+    from .session import Session
+    session = Session.open(job, state.config.workspace_root)
+    label = (body or {}).get("label") or f"manual {len(session.checkpoints) + 1}"
+    cp = session.checkpoint(label)
+    session.save()
+    return {
+        "ok": True,
+        "label": cp.label,
+        "at": cp.at,
+        "files": len(cp.files_snapshot),
+    }
+
+
+@router.get("/{job_id}/snapshots")
+async def list_snapshots(job_id: str):
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    workspace = state.config.workspace_root / job_id
+    if not workspace.exists():
+        return {"snapshots": []}
+    try:
+        from .session import Session
+        session = Session.load(state.config.workspace_root, job_id)
+    except FileNotFoundError:
+        return {"snapshots": []}
+    return {
+        "snapshots": [
+            {"label": c.label, "at": c.at, "files": len(c.files_snapshot)}
+            for c in session.checkpoints
+        ]
+    }
 
 
 @router.get("/{job_id}/export")

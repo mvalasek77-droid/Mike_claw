@@ -49,6 +49,7 @@ final class SwarmClient: ObservableObject {
         ]
         let overrides = credentials.agentModels
         if !overrides.isEmpty { body["model_overrides"] = overrides }
+        if let cap = credentials.costCapUSD, cap > 0 { body["cost_cap_usd"] = cap }
         let response: [String: Any] = try await postJSON("/api/coding/swarm/build", body: body)
         guard let id = response["job_id"] as? String else {
             throw SwarmError.malformed("missing job_id")
@@ -59,6 +60,12 @@ final class SwarmClient: ObservableObject {
 
     func cancel(jobID: String) async throws {
         _ = try await postJSON("/api/coding/swarm/\(jobID)/cancel", body: [:])
+    }
+
+    /// Pick up a cancelled or failed job from its latest checkpoint.
+    /// Throws if the backend can't find the saved session.
+    func resume(jobID: String) async throws {
+        _ = try await postJSON("/api/coding/swarm/\(jobID)/resume", body: [:])
     }
 
     func files(jobID: String) async throws -> [String] {
@@ -75,6 +82,30 @@ final class SwarmClient: ObservableObject {
     /// Submit accept/reject decisions for proposed file changes.
     func postDecisions(jobID: String, body: [String: Any]) async throws -> [String: Any] {
         try await postJSON("/api/coding/swarm/\(jobID)/decisions", body: body)
+    }
+
+    /// Capture a manual checkpoint of the workspace so the user can
+    /// roll back to it later. Returns the snapshot's label.
+    @discardableResult
+    func snapshot(jobID: String, label: String? = nil) async throws -> String {
+        var body: [String: Any] = [:]
+        if let label { body["label"] = label }
+        let response = try await postJSON("/api/coding/swarm/\(jobID)/snapshot", body: body)
+        return (response["label"] as? String) ?? "snapshot"
+    }
+
+    /// List all snapshots for a job (orchestrator-internal + manual).
+    func listSnapshots(jobID: String) async throws -> [SnapshotSummary] {
+        let r: [String: Any] = try await getJSON("/api/coding/swarm/\(jobID)/snapshots")
+        let entries = (r["snapshots"] as? [[String: Any]]) ?? []
+        return entries.compactMap { dict in
+            guard let label = dict["label"] as? String else { return nil }
+            return SnapshotSummary(
+                label: label,
+                at: Date(timeIntervalSince1970: (dict["at"] as? Double) ?? 0),
+                files: dict["files"] as? Int ?? 0
+            )
+        }
     }
 
     /// Promote a green build to TestFlight without rebuilding.
@@ -246,6 +277,13 @@ final class SwarmClient: ObservableObject {
 /// Mirror of the backend's Pydantic `SwarmEvent`. We keep the iOS copy
 /// here (rather than in Models/) because it's intentionally untyped on
 /// `payload` — different event types ship different shapes.
+struct SnapshotSummary: Identifiable, Hashable {
+    let label: String
+    let at: Date
+    let files: Int
+    var id: String { label }
+}
+
 struct SwarmEvent: Identifiable {
     let id = UUID()
     let type: String
