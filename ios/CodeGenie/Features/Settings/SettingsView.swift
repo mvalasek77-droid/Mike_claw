@@ -26,6 +26,7 @@ struct SettingsView: View {
                     if creds.authMode == .codegenie { hostedBlock }
                     modelComparison
                     estimatorBlock
+                    costCapBlock
                     agentRoutingBlock
                     appleDevBlock
                     pairMacBlock
@@ -77,6 +78,50 @@ struct SettingsView: View {
             icon: "macbook.and.iphone",
             tint: LiquidGlass.accent
         ) { showPairMac = true }
+    }
+
+    private var costCapBlock: some View {
+        GlassCard(title: "Build cost cap", icon: "exclamationmark.triangle.fill", tint: LiquidGlass.warning) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(isOn: Binding(
+                    get: { creds.costCapUSD != nil },
+                    set: { on in
+                        creds.setCostCap(on ? (creds.costCapUSD ?? 5.00) : nil)
+                        Haptics.selection()
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Halt the build over $X")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Backend stops cleanly when rolling USD spend crosses the cap.")
+                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+                }
+                .tint(LiquidGlass.warning)
+
+                if let cap = creds.costCapUSD {
+                    HStack(spacing: 12) {
+                        Image(systemName: "dollarsign.circle.fill")
+                            .foregroundStyle(LiquidGlass.warning)
+                        Slider(
+                            value: Binding(
+                                get: { cap },
+                                set: { creds.setCostCap(($0 * 100).rounded() / 100) }
+                            ),
+                            in: 0.50...50.0,
+                            step: 0.25
+                        )
+                        .tint(LiquidGlass.warning)
+                        Text(String(format: "$%.2f", cap))
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white)
+                            .frame(width: 56, alignment: .trailing)
+                    }
+                }
+            }
+        }
     }
 
     private var agentRoutingBlock: some View {

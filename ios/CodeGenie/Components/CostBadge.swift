@@ -12,22 +12,22 @@ struct CostBadge: View {
             Haptics.selection()
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: "dollarsign.circle.fill")
+                Image(systemName: tracker.capHit ? "exclamationmark.triangle.fill" : "dollarsign.circle.fill")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(LiquidGlass.success)
+                    .foregroundStyle(tracker.capHit ? LiquidGlass.warning : LiquidGlass.success)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(tracker.totalLabel)
+                    Text(spendLabel)
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(.white)
                         .contentTransition(.numericText())
-                    Text("\(formattedTokens) tok")
+                    Text(capCaption)
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.6))
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(.white.opacity(0.08), in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+            .overlay(Capsule().strokeBorder(tracker.capHit ? LiquidGlass.warning.opacity(0.5) : .white.opacity(0.15)))
         }
         .buttonStyle(.plain)
         .popover(isPresented: $expanded, arrowEdge: .bottom) {
@@ -71,5 +71,25 @@ struct CostBadge: View {
         if total < 1_000 { return "\(total)" }
         if total < 1_000_000 { return String(format: "%.1fk", Double(total) / 1_000) }
         return String(format: "%.1fM", Double(total) / 1_000_000)
+    }
+
+    /// Prefer the backend's authoritative spend when it has reported a
+    /// `cost.update`. Otherwise fall back to the local computation
+    /// (which matters during simulated builds).
+    private var spendLabel: String {
+        if tracker.backendSpendUSD > 0 {
+            return String(format: "$%.3f", tracker.backendSpendUSD)
+        }
+        return tracker.totalLabel
+    }
+
+    /// Caption shows the cap when one is set, otherwise token count.
+    private var capCaption: String {
+        if let cap = tracker.backendCapUSD {
+            return tracker.capHit
+                ? String(format: "cap $%.2f hit", cap)
+                : String(format: "of $%.2f cap", cap)
+        }
+        return "\(formattedTokens) tok"
     }
 }

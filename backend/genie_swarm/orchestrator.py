@@ -25,6 +25,7 @@ from .agents import (
     ALL_AGENTS, BUILD_LAYER, TEST_LAYER, AgentBlueprint, AgentRole,
 )
 from .agents.base import ARCHITECT, CODER, DESIGNER, INTEGRATOR, UNIT_TESTER
+from .cost import BudgetExceeded
 from .llm import LLMClient
 from .memory import Memory
 from .models import BuildJob, JobState
@@ -78,6 +79,9 @@ class SwarmConfig:
     # giving up. Distinct from `max_retries` (which loops on red
     # tests). 0 disables recovery — failures bubble immediately.
     max_crash_recoveries: int = 2
+    # Halt the build if rolling USD spend crosses this cap. None
+    # disables enforcement; the iOS UI sets this from Settings.
+    cost_cap_usd: float | None = None
     # Optional ship stage: after the test layer succeeds, upload the
     # built .ipa to TestFlight and watch processing state until Apple
     # marks it VALID/FAILED/INVALID/EXPIRED. None = don't ship.
@@ -101,11 +105,15 @@ class ShipConfig:
 
 class SwarmOrchestrator:
     def __init__(self, *, llm: LLMClient, bus: EventBus, config: SwarmConfig | None = None) -> None:
+        from .cost import CostMeter
         self.llm = llm
         self.bus = bus
         self.config = config or SwarmConfig()
         self.tools = _bootstrap_registry()
         self.memory = Memory(self.config.workspace_root)
+        # One meter per orchestrator instance. The /build route makes a
+        # new orchestrator per job so the meter is naturally job-scoped.
+        self.cost = CostMeter(cap_usd=self.config.cost_cap_usd)
 
     # ------------------------------------------------------------------
     # Public entrypoint
@@ -170,6 +178,17 @@ class SwarmOrchestrator:
             await events.emit("job.state", state=session.job.state.value)
             await events.emit("done", success=False, reason="cancelled")
             raise
+        except BudgetExceeded as exc:
+            # Budget cap is intentional — surface it cleanly, log the
+            # partial spend, and end the job without treating it as a
+            # crash. The user can lift the cap and retry.
+            session.update_state(JobState.cancelled, error=str(exc))
+            self.memory.record_project(
+                job.id, job.spec.title, job.spec.model_dump(),
+                succeeded=False, summary=f"halted by cost cap: ${exc.spent:.4f}",
+            )
+            await events.emit("job.state", state="cancelled", reason="cost_cap")
+            await events.emit("done", success=False, reason="cost_cap")
         except Exception as exc:  # noqa: BLE001
             session.update_state(JobState.failed, error=f"{type(exc).__name__}: {exc}")
             self.memory.record_project(
@@ -205,7 +224,7 @@ class SwarmOrchestrator:
         while True:
             try:
                 return await self._run_agent_once(blueprint, session, events, prompt=prompt)
-            except asyncio.CancelledError:
+            except (asyncio.CancelledError, BudgetExceeded):
                 raise
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
@@ -261,6 +280,22 @@ class SwarmOrchestrator:
         )
         run = await runtime.run(user=prompt, transcript=session.transcript)
         session.transcript = run.transcript
+        # Tally usage against the cost meter. The runtime's usage map
+        # is the same shape as the agent.finished event payload —
+        # `input_tokens` and `output_tokens` keys, both ints.
+        in_tok = int(run.usage.get("input_tokens", 0))
+        out_tok = int(run.usage.get("output_tokens", 0))
+        if in_tok or out_tok:
+            try:
+                self.cost.record(model=model, input_tokens=in_tok, output_tokens=out_tok)
+            except BudgetExceeded as exc:
+                await events.emit(
+                    "cost.cap_hit", agent=blueprint.title,
+                    spent_usd=round(exc.spent, 5),
+                    cap_usd=round(exc.cap, 5),
+                )
+                raise
+            await events.emit("cost.update", agent=blueprint.title, **self.cost.snapshot())
         return run
 
     async def _run_test_layer(self, session: Session, events) -> None:
@@ -330,6 +365,81 @@ class SwarmOrchestrator:
         if match and int(match.group(1)) > 0:
             return True
         return False
+
+    async def resume(self, job: BuildJob) -> Session:
+        """Pick up an interrupted build from its latest checkpoint.
+
+        We map the checkpoint label produced by `execute()` to the next
+        stage to run. Anything earlier than the checkpoint is skipped
+        — the workspace already has those agents' outputs on disk and
+        re-running them would waste tokens and risk overwriting later
+        edits the user has accepted via the diff review flow.
+        """
+        events = await self.bus.stream_for(job.id)
+        try:
+            session = Session.load(self.config.workspace_root, job.id)
+        except FileNotFoundError:
+            raise RuntimeError("no saved session for this job — start a fresh build instead")
+
+        last_label = session.checkpoints[-1].label if session.checkpoints else None
+        await events.emit("job.state", state="resuming", from_checkpoint=last_label or "(none)")
+
+        try:
+            if last_label is None:
+                # Nothing has been checkpointed — fall through to a
+                # full execute. This is rare; checkpoints land after
+                # the Architect so an interrupt before that is
+                # effectively a cold start.
+                return await self.execute(job)
+
+            # Stage map: each checkpoint label marks the END of a stage.
+            # We skip every stage whose label is present in the saved
+            # checkpoints and run everything after it.
+            done = {cp.label for cp in session.checkpoints}
+
+            session.update_state(JobState.building)
+            await events.emit("job.state", state=session.job.state.value)
+
+            if "after-architect" not in done:
+                await self._run_agent(ARCHITECT, session, events, prompt=self._architect_prompt(job))
+                session.checkpoint("after-architect")
+
+            if "after-build-layer" not in done:
+                if self.config.parallel_build:
+                    await asyncio.gather(
+                        self._run_agent(CODER,    session, events, prompt=self._coder_prompt(job)),
+                        self._run_agent(DESIGNER, session, events, prompt=self._designer_prompt(job)),
+                    )
+                else:
+                    await self._run_agent(CODER,    session, events, prompt=self._coder_prompt(job))
+                    await self._run_agent(DESIGNER, session, events, prompt=self._designer_prompt(job))
+                session.checkpoint("after-build-layer")
+
+            if "after-integrator" not in done:
+                await self._run_agent(INTEGRATOR, session, events,
+                                       prompt=self._integrator_prompt(job))
+                session.checkpoint("after-integrator")
+
+            if "after-tests" not in done and not self.config.skip_tests:
+                session.update_state(JobState.testing)
+                await events.emit("job.state", state=session.job.state.value)
+                await self._run_test_layer(session, events)
+                session.checkpoint("after-tests")
+
+            if self.config.ship:
+                await self._run_ship_stage(session, events)
+
+            session.update_state(JobState.succeeded)
+            await events.emit("job.state", state=session.job.state.value, resumed=True)
+            await events.emit("done", success=True, resumed=True)
+        except Exception as exc:  # noqa: BLE001
+            session.update_state(JobState.failed, error=str(exc))
+            await events.emit("error", message=f"resume failed: {exc}")
+            await events.emit("done", success=False, reason="error", resumed=True)
+            raise
+        finally:
+            session.save()
+        return session
 
     async def ship_only(self, job: BuildJob, ship_config: "ShipConfig") -> Session:
         """Run **only** the ship stage on a previously built job's workspace.

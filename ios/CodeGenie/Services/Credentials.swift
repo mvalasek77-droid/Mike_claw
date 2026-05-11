@@ -18,6 +18,8 @@ final class Credentials: ObservableObject {
     @Published private(set) var backendToken: String = ""
     /// Per-agent model overrides keyed by `AgentRole.rawValue` ("coder", "reviewer", …).
     @Published var agentModels: [String: String] = [:]
+    /// Optional per-build USD cap. `nil` disables enforcement.
+    @Published var costCapUSD: Double?
     /// Apple Developer Program credentials.
     @Published var appleTeamID: String = ""
     @Published var ascKeyID: String = ""
@@ -67,6 +69,10 @@ final class Credentials: ObservableObject {
            let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
             agentModels = decoded
         }
+        if UserDefaults.standard.object(forKey: "cost.cap.usd") != nil {
+            let raw = UserDefaults.standard.double(forKey: "cost.cap.usd")
+            costCapUSD = raw > 0 ? raw : nil
+        }
         appleTeamID  = UserDefaults.standard.string(forKey: "apple.teamID") ?? ""
         ascKeyID     = UserDefaults.standard.string(forKey: "apple.ascKeyID") ?? ""
         ascIssuerID  = UserDefaults.standard.string(forKey: "apple.ascIssuer") ?? ""
@@ -111,6 +117,15 @@ final class Credentials: ObservableObject {
         if let model { agentModels[role] = model } else { agentModels.removeValue(forKey: role) }
         if let data = try? JSONEncoder().encode(agentModels) {
             UserDefaults.standard.set(data, forKey: "agent.models")
+        }
+    }
+
+    func setCostCap(_ usd: Double?) {
+        costCapUSD = usd
+        if let usd, usd > 0 {
+            UserDefaults.standard.set(usd, forKey: "cost.cap.usd")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "cost.cap.usd")
         }
     }
 

@@ -60,6 +60,10 @@ class BuildRequest(BaseModel):
     skip_tests: bool = False
     model_overrides: dict[str, str] = Field(default_factory=dict)
     ship: ShipRequest | None = None
+    # Halt the build if rolling USD spend crosses this cap. None
+    # disables enforcement. Backend computes spend using
+    # genie_swarm.cost.DEFAULT_PRICES.
+    cost_cap_usd: float | None = None
 
 
 class JobState(str, Enum):
@@ -136,6 +140,8 @@ class SwarmEvent(BaseModel):
         "memory.briefing",
         "testflight.upload",
         "testflight.status",
+        "cost.update",
+        "cost.cap_hit",
         "artifact",
         "error",
         "done",
