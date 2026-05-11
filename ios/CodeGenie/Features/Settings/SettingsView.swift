@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var showTutorial = false
     @State private var showAgentRouting = false
     @State private var showAppleDev = false
+    @State private var showChangelog = false
     @StateObject private var telemetry = Telemetry.shared
 
     var body: some View {
@@ -55,6 +56,11 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showAppleDev) {
             AppleDevSetupView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showChangelog) {
+            ChangelogView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -397,6 +403,21 @@ struct SettingsView: View {
                 aboutRow("Engine", "Genie Swarm — 8 agents")
                 aboutRow("Theme", "iOS 26 Liquid Glass")
                 aboutRow("Repo", "github.com/mvalasek77-droid/Mike_claw")
+                Button {
+                    showChangelog = true
+                    Haptics.selection()
+                } label: {
+                    HStack {
+                        Text("What's new")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(LiquidGlass.accent)
+                    .padding(.top, 8)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open changelog")
             }
         }
     }

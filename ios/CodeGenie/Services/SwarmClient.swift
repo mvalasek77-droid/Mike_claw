@@ -77,6 +77,32 @@ final class SwarmClient: ObservableObject {
         try await postJSON("/api/coding/swarm/\(jobID)/decisions", body: body)
     }
 
+    /// Promote a green build to TestFlight without rebuilding.
+    func ship(jobID: String, config: ShipConfig) async throws {
+        var body: [String: Any] = [
+            "ipa_path": config.ipaPath,
+            "bundle_id": config.bundleID,
+            "poll_after_upload": config.pollAfterUpload,
+        ]
+        if let v = config.appleID { body["apple_id"] = v }
+        if let v = config.appSpecificPassword { body["app_specific_password"] = v }
+        if let v = config.ascKeyID { body["asc_api_key_id"] = v }
+        if let v = config.ascIssuerID { body["asc_api_issuer_id"] = v }
+        if let v = config.ascKeyPath { body["asc_api_key_path"] = v }
+        _ = try await postJSON("/api/coding/swarm/\(jobID)/ship", body: body)
+    }
+
+    /// URL the iOS share sheet can hand off so the user can save the
+    /// generated workspace as a zip. We add the auth token via a
+    /// query parameter so `URL` can be passed straight to `ShareLink`.
+    func exportURL(jobID: String) -> URL? {
+        var components = URLComponents(string: credentials.backendURL + "/api/coding/swarm/\(jobID)/export")
+        if !credentials.backendToken.isEmpty {
+            components?.queryItems = [URLQueryItem(name: "token", value: credentials.backendToken)]
+        }
+        return components?.url
+    }
+
     // MARK: - SSE
 
     /// Subscribe to a job's event stream. Calls `onEvent` for every parsed
@@ -260,5 +286,40 @@ enum SwarmError: Error, CustomStringConvertible {
         case .http(let r):
             if let h = r as? HTTPURLResponse { "HTTP \(h.statusCode)" } else { "HTTP error" }
         }
+    }
+}
+
+/// Mirror of the backend's ShipRequest. Keeps iOS-facing names camel-cased.
+struct ShipConfig: Hashable {
+    var ipaPath: String
+    var bundleID: String
+    var appleID: String? = nil
+    var appSpecificPassword: String? = nil
+    var ascKeyID: String? = nil
+    var ascIssuerID: String? = nil
+    var ascKeyPath: String? = nil
+    var pollAfterUpload: Bool = true
+
+    /// Build a `ShipConfig` from the user's saved Apple Developer
+    /// credentials. Returns nil when none are configured — the caller
+    /// should prompt the user to open Apple Developer setup.
+    @MainActor
+    static func fromCredentials(
+        ipaPath: String = "Build.ipa",
+        bundleID: String,
+        keyPath: String = "asc-key.p8",
+        credentials: Credentials = .shared
+    ) -> ShipConfig? {
+        guard credentials.hasAppleDevCreds else { return nil }
+        var config = ShipConfig(ipaPath: ipaPath, bundleID: bundleID)
+        if !credentials.ascKeyID.isEmpty {
+            config.ascKeyID = credentials.ascKeyID
+            config.ascIssuerID = credentials.ascIssuerID
+            config.ascKeyPath = keyPath
+        }
+        if !credentials.appSpecificPassword.isEmpty {
+            config.appSpecificPassword = credentials.appSpecificPassword
+        }
+        return config
     }
 }
