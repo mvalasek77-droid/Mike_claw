@@ -73,6 +73,11 @@ class SwarmConfig:
     # Unit Tester reports failures. 0 disables retries (the test layer
     # still runs, but failing tests don't loop).
     max_retries: int = 3
+    # Crash recovery: if an agent throws unexpectedly, restore from
+    # the latest checkpoint and retry up to this many times before
+    # giving up. Distinct from `max_retries` (which loops on red
+    # tests). 0 disables recovery — failures bubble immediately.
+    max_crash_recoveries: int = 2
     # Optional ship stage: after the test layer succeeds, upload the
     # built .ipa to TestFlight and watch processing state until Apple
     # marks it VALID/FAILED/INVALID/EXPIRED. None = don't ship.
@@ -191,6 +196,41 @@ class SwarmOrchestrator:
         *,
         prompt: str,
     ):
+        """Run one agent. Wraps the inner call in crash-recovery — if
+        the agent throws an unexpected exception we restore from the
+        most recent checkpoint and try again, up to `max_crash_recoveries`.
+        Test-failure retries are handled separately in `_run_test_layer`."""
+        attempts_left = max(0, self.config.max_crash_recoveries)
+        last_exc: BaseException | None = None
+        while True:
+            try:
+                return await self._run_agent_once(blueprint, session, events, prompt=prompt)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                if attempts_left <= 0:
+                    raise
+                attempts_left -= 1
+                await events.emit(
+                    "retry.attempt", agent=blueprint.title,
+                    attempt=self.config.max_crash_recoveries - attempts_left,
+                    max_retries=self.config.max_crash_recoveries,
+                    reason=f"crash: {type(exc).__name__}",
+                )
+                # Roll back to the latest checkpoint so we don't carry
+                # partial state from the crashed turn into the retry.
+                if session.checkpoints:
+                    session.restore(session.checkpoints[-1])
+
+    async def _run_agent_once(
+        self,
+        blueprint: AgentBlueprint,
+        session: Session,
+        events,
+        *,
+        prompt: str,
+    ):
         # Paste a memory briefing on top of the agent's system prompt so
         # past preferences carry across builds. Also surface it to the
         # iOS transcript so the user can *see* what the swarm remembers.
@@ -290,6 +330,32 @@ class SwarmOrchestrator:
         if match and int(match.group(1)) > 0:
             return True
         return False
+
+    async def ship_only(self, job: BuildJob, ship_config: "ShipConfig") -> Session:
+        """Run **only** the ship stage on a previously built job's workspace.
+
+        Used by the `POST /{job}/ship` endpoint so the user can promote
+        a green build to TestFlight from the iOS success screen without
+        rebuilding. We re-open the session from disk (no transcript
+        replay needed — the workspace is the source of truth) and call
+        the same `_run_ship_stage` that `execute()` uses, so the wire
+        shape is identical."""
+        previous_ship = self.config.ship
+        self.config.ship = ship_config
+        try:
+            session = Session.open(job, self.config.workspace_root)
+            events = await self.bus.stream_for(job.id)
+            await events.emit("job.state", state="shipping", detail="manual ship-only run")
+            try:
+                await self._run_ship_stage(session, events)
+                await events.emit("done", success=True, ship_only=True)
+            except Exception as exc:  # noqa: BLE001
+                await events.emit("error", message=f"ship failed: {exc}")
+                await events.emit("done", success=False, ship_only=True)
+                raise
+            return session
+        finally:
+            self.config.ship = previous_ship
 
     async def _run_ship_stage(self, session: Session, events) -> None:
         """Promote the build to TestFlight, then watch ASC processing.

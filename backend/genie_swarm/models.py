@@ -38,12 +38,28 @@ class AppSpec(BaseModel):
     features: list[str] = Field(default_factory=list)
 
 
+class ShipRequest(BaseModel):
+    """Wire-level subset of orchestrator.ShipConfig. The iOS app POSTs
+    one of these when the user taps "Submit to App Store" — typed
+    separately from the orchestrator's internal dataclass so the API
+    layer doesn't leak dataclass-only types."""
+    ipa_path: str
+    bundle_id: str
+    apple_id: str | None = None
+    app_specific_password: str | None = None
+    asc_api_key_id: str | None = None
+    asc_api_issuer_id: str | None = None
+    asc_api_key_path: str | None = None
+    poll_after_upload: bool = True
+
+
 class BuildRequest(BaseModel):
     spec: AppSpec
     workspace_root: str | None = None
     parallel: bool = True
     skip_tests: bool = False
     model_overrides: dict[str, str] = Field(default_factory=dict)
+    ship: ShipRequest | None = None
 
 
 class JobState(str, Enum):

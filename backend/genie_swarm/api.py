@@ -20,8 +20,8 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .llm import AnthropicClient, LLMClient
-from .models import AppSpec, BuildJob, BuildRequest, JobState
-from .orchestrator import SwarmConfig, SwarmOrchestrator
+from .models import AppSpec, BuildJob, BuildRequest, JobState, ShipRequest
+from .orchestrator import ShipConfig, SwarmConfig, SwarmOrchestrator
 from .session import Session
 from .streaming import EventBus
 
@@ -58,13 +58,16 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
     state.jobs[job.id] = job
 
     cfg = state.config
-    if req.workspace_root or req.model_overrides or req.skip_tests or not req.parallel:
+    ship_cfg = _to_ship_config(req.ship) if req.ship else None
+    if (req.workspace_root or req.model_overrides or req.skip_tests
+            or not req.parallel or ship_cfg):
         cfg = SwarmConfig(
             workspace_root=Path(req.workspace_root) if req.workspace_root else cfg.workspace_root,
             parallel_build=req.parallel,
             skip_tests=req.skip_tests,
             runtime=cfg.runtime,
             model_overrides=req.model_overrides,
+            ship=ship_cfg,
         )
 
     orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=cfg)
@@ -171,6 +174,77 @@ async def get_decisions(job_id: str):
     return {"decisions": state.decisions.get(job_id, {})}
 
 
+@router.post("/{job_id}/ship")
+async def ship_now(job_id: str, req: ShipRequest):
+    """Promote an already-built job to TestFlight without rebuilding.
+
+    The iOS app calls this when the user taps "Submit to App Store" on
+    a green build's success screen. We run only the ship stage against
+    the existing workspace and stream the same testflight.upload +
+    testflight.status events the build flow uses."""
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    if job.state not in {JobState.succeeded, JobState.testing, JobState.reviewing}:
+        raise HTTPException(409, f"job is in state {job.state.value}; not shippable")
+
+    orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=state.config)
+    state.tasks[job_id] = asyncio.create_task(orch.ship_only(job, _to_ship_config(req)))
+    return {"ok": True, "job_id": job_id}
+
+
+@router.get("/{job_id}/export")
+async def export_workspace(job_id: str):
+    """Stream the job's workspace as a zip so the iOS Apps tab can let
+    the user keep a copy after the cloud workspace is reaped."""
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    workspace = state.config.workspace_root / job_id
+    if not workspace.exists():
+        raise HTTPException(404, "workspace not found")
+
+    def _stream():
+        import io
+        import zipfile
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for path in workspace.rglob("*"):
+                if not path.is_file():
+                    continue
+                # Skip our own metadata + anything inside .codegenie
+                # so secrets in Memory don't leak with the export.
+                rel = path.relative_to(workspace)
+                if rel.parts and rel.parts[0] in {".codegenie", ".genie-session.json"}:
+                    continue
+                if ".git" in rel.parts:
+                    continue
+                zf.write(path, arcname=str(rel))
+        buf.seek(0)
+        while chunk := buf.read(64 * 1024):
+            yield chunk
+
+    filename = f"{job.spec.title.replace(' ', '_')}.zip"
+    return StreamingResponse(
+        _stream(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/health")
 async def health():
     return {"ok": True, "active_jobs": len(state.tasks)}
+
+
+def _to_ship_config(req: ShipRequest) -> ShipConfig:
+    return ShipConfig(
+        ipa_path=req.ipa_path,
+        bundle_id=req.bundle_id,
+        apple_id=req.apple_id,
+        app_specific_password=req.app_specific_password,
+        asc_api_key_id=req.asc_api_key_id,
+        asc_api_issuer_id=req.asc_api_issuer_id,
+        asc_api_key_path=req.asc_api_key_path,
+        poll_after_upload=req.poll_after_upload,
+    )

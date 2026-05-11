@@ -15,6 +15,8 @@ struct BuildScreen: View {
     @State private var showGame: Bool = true
     @State private var showDiffReview: Bool = false
     @State private var startedAt: Date = .now
+    @State private var showAppleDevSetup: Bool = false
+    @State private var shipBanner: String?
     @StateObject private var game = BitDropGame()
     @StateObject private var swarm = SwarmClient()
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
@@ -63,6 +65,11 @@ struct BuildScreen: View {
             }
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAppleDevSetup) {
+            AppleDevSetupView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
         }
         .onDisappear {
             builderTask?.cancel()
@@ -214,8 +221,28 @@ struct BuildScreen: View {
                         session.openPreview(for: job)
                     }
                     PrimaryButton(title: "Submit to App Store", systemImage: "paperplane.fill", style: .glass) {
-                        let job = BuildJob(description: initialJob.description, stage: .shipping)
-                        session.openAppStoreConnect(for: job)
+                        Task { await submitToAppStore() }
+                    }
+                    if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
+                        ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "square.and.arrow.down")
+                                Text("Download workspace")
+                            }
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .foregroundStyle(.white.opacity(0.85))
+                            .background(.white.opacity(0.06), in: Capsule())
+                            .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+                        }
+                        .accessibilityLabel("Download workspace zip")
+                    }
+                    if let banner = shipBanner {
+                        Text(banner)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(LiquidGlass.success)
+                            .multilineTextAlignment(.center)
+                            .transition(.opacity)
                     }
                 }
                 .padding(24)
@@ -300,6 +327,42 @@ struct BuildScreen: View {
     private func formattedTime() -> String {
         let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
         return f.string(from: .now)
+    }
+
+    /// Wired to the "Submit to App Store" CTA in the success overlay.
+    /// Runs the orchestrator's `/ship` route on the existing job — no
+    /// rebuild. If Apple Developer creds aren't set, opens the setup
+    /// sheet first so the user can configure them in-place.
+    private func submitToAppStore() async {
+        guard Credentials.shared.hasAppleDevCreds else {
+            showAppleDevSetup = true
+            Haptics.warning()
+            return
+        }
+        guard let jobID = swarm.jobID,
+              let cfg = ShipConfig.fromCredentials(
+                bundleID: defaultBundleID(for: initialJob.description.title)
+              ) else {
+            shipBanner = "Could not assemble ship config."
+            Haptics.error()
+            return
+        }
+        do {
+            try await swarm.ship(jobID: jobID, config: cfg)
+            shipBanner = "Submitted — watch the transcript for processing status."
+            Haptics.success()
+        } catch {
+            shipBanner = "Submit failed: \(error)"
+            Haptics.error()
+        }
+    }
+
+    private func defaultBundleID(for title: String) -> String {
+        let slug = title
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .joined()
+        return "com.codegenie.\(slug.isEmpty ? "app" : slug)"
     }
 
     private func appendLog(for stage: BuildJob.Stage) {
