@@ -68,7 +68,8 @@ ARCHITECT = AgentBlueprint(
     title="🏗️ Architect",
     layer="build",
     tool_names=("read_file", "list_dir", "apple_docs", "write_file",
-                "recall_memory", "remember_fact", "note_decision"),
+                "recall_memory", "remember_fact", "note_decision",
+                "find_artifact", "recall_artifact"),
     prompt_file="architect.md",
     fallback_prompt=(
         "You are the Architect. Plan the Xcode project: file map, modules, "
@@ -81,7 +82,8 @@ CODER = AgentBlueprint(
     title="💻 Coder",
     layer="build",
     tool_names=("read_file", "write_file", "edit_file", "list_dir", "shell", "grep",
-                "recall_memory", "remember_fact"),
+                "recall_memory", "remember_fact",
+                "find_artifact", "recall_artifact"),
     prompt_file="coder.md",
     fallback_prompt=(
         "You are the Coder. Read docs/plan.json and implement every Swift "
@@ -95,7 +97,7 @@ DESIGNER = AgentBlueprint(
     title="🎨 Designer",
     layer="build",
     tool_names=("read_file", "write_file", "edit_file", "apple_docs", "list_dir",
-                "recall_memory"),
+                "recall_memory", "find_artifact", "recall_artifact"),
     prompt_file="designer.md",
     fallback_prompt=(
         "You are the Designer. Implement every SwiftUI View the plan calls "

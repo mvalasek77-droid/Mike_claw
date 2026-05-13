@@ -145,6 +145,7 @@ class SwarmEvent(BaseModel):
         "testflight.status",
         "cost.update",
         "cost.cap_hit",
+        "workspace.full",
         "artifact",
         "error",
         "done",
