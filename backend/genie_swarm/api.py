@@ -300,6 +300,63 @@ async def resume_job(job_id: str):
     return {"ok": True, "job_id": job_id}
 
 
+@router.post("/{job_id}/fork")
+async def fork_snapshot(job_id: str, body: dict):
+    """Branch a snapshot into a brand-new job. The live build stays
+    untouched; the fork gets its own workspace seeded from the
+    snapshot's files + transcript.
+
+    Body: { "label": "after-architect", "title": "Optional new name" }
+
+    Returns the new job_id so the iOS UI can open it as a fresh run.
+    """
+    original = state.jobs.get(job_id)
+    if not original:
+        raise HTTPException(404, "unknown job")
+    label = (body or {}).get("label")
+    if not label:
+        raise HTTPException(400, "label required")
+    new_title = (body or {}).get("title")
+
+    from .session import Session
+    try:
+        source = Session.load(state.config.workspace_root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(404, "no saved session")
+
+    match = next((c for c in source.checkpoints if c.label == label), None)
+    if match is None:
+        raise HTTPException(404, f"no snapshot labeled {label!r}")
+
+    # Build a new job with a fresh ID and (optionally) a new title.
+    forked_spec = original.spec.model_copy(update={"title": new_title} if new_title else {})
+    forked_job = BuildJob(spec=forked_spec)
+    state.jobs[forked_job.id] = forked_job
+
+    # Open a session at the new workspace and seed it from the snapshot.
+    forked = Session.open(forked_job, state.config.workspace_root)
+    for rel, content in match.files_snapshot.items():
+        target = forked.workspace / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            target.write_text(content, encoding="utf-8")
+        except OSError:
+            pass
+    forked.transcript = list(match.transcript)
+    # Carry the "after-X" checkpoint label forward so the fork knows
+    # which stage it's been seeded past — `resume()` can then run only
+    # what's downstream of that point.
+    forked.checkpoint(label)
+    forked.save()
+
+    return {
+        "ok": True,
+        "job_id": forked_job.id,
+        "from": {"job_id": job_id, "label": label},
+        "files_seeded": len(match.files_snapshot),
+    }
+
+
 @router.post("/{job_id}/snapshot")
 async def take_snapshot(job_id: str, body: dict | None = None):
     """User-initiated checkpoint. Useful before a risky diff batch — if

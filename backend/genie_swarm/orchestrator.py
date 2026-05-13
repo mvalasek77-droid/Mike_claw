@@ -48,6 +48,7 @@ def _bootstrap_registry() -> ToolRegistry:
     from .tools.apple_docs import AppleDocs
     from .tools.memory import RememberFact, RecallMemory, NoteDecision
     from .tools.testflight import TestFlightUpload
+    from .tools.recall import FindArtifact, RecallArtifact
     for t in (
         ReadFile(), WriteFile(), EditFile(), ListDir(),
         RunShell(), Grep(),
@@ -55,6 +56,7 @@ def _bootstrap_registry() -> ToolRegistry:
         AppleDocs(),
         RememberFact(), RecallMemory(), NoteDecision(),
         TestFlightUpload(),
+        FindArtifact(), RecallArtifact(),
     ):
         default_registry.register(t)
     return default_registry
@@ -91,6 +93,12 @@ class SwarmConfig:
     # User-defined agents that run after the standard test layer.
     # Each entry is a dict with keys: name, system_prompt, tool_allowlist.
     custom_agents: list[dict] = field(default_factory=list)
+    # Hard ceiling on snapshot storage per job. When `.codegenie/
+    # snapshots/` exceeds this many bytes, new checkpoint persists
+    # are skipped (in-memory checkpoint still happens) and a
+    # `workspace.full` event is emitted. Default 256 MiB which is
+    # generous for app-sized workspaces.
+    max_snapshot_bytes: int = 256 * 1024 * 1024
     # Optional ship stage: after the test layer succeeds, upload the
     # built .ipa to TestFlight and watch processing state until Apple
     # marks it VALID/FAILED/INVALID/EXPIRED. None = don't ship.
@@ -140,7 +148,7 @@ class SwarmOrchestrator:
             # ---- BUILD LAYER ----
             await self._run_agent(ARCHITECT, session, events,
                                    prompt=self._architect_prompt(job))
-            session.checkpoint("after-architect")
+            await self._checkpoint(session, events, "after-architect")
 
             session.update_state(JobState.building)
             await events.emit("job.state", state=session.job.state.value)
@@ -153,23 +161,23 @@ class SwarmOrchestrator:
             else:
                 await self._run_agent(CODER,    session, events, prompt=self._coder_prompt(job))
                 await self._run_agent(DESIGNER, session, events, prompt=self._designer_prompt(job))
-            session.checkpoint("after-build-layer")
+            await self._checkpoint(session, events, "after-build-layer")
 
             await self._run_agent(INTEGRATOR, session, events,
                                    prompt=self._integrator_prompt(job))
-            session.checkpoint("after-integrator")
+            await self._checkpoint(session, events, "after-integrator")
 
             # ---- TEST LAYER ----
             if not self.config.skip_tests:
                 session.update_state(JobState.testing)
                 await events.emit("job.state", state=session.job.state.value)
                 await self._run_test_layer(session, events)
-                session.checkpoint("after-tests")
+                await self._checkpoint(session, events, "after-tests")
 
             # ---- CUSTOM AGENTS (optional) ----
             if self.config.custom_agents:
                 await self._run_custom_agents(session, events)
-                session.checkpoint("after-custom-agents")
+                await self._checkpoint(session, events, "after-custom-agents")
 
             # ---- SHIP (optional) ----
             if self.config.ship:
@@ -269,6 +277,12 @@ class SwarmOrchestrator:
         # past preferences carry across builds. Also surface it to the
         # iOS transcript so the user can *see* what the swarm remembers.
         briefing = self.memory.briefing()
+        # If this is a resumed run, append the job's prior reasoning
+        # decisions so the agent picks up where the last attempt left
+        # off rather than re-deriving from scratch.
+        decisions_block = self._decisions_briefing(session.job.id)
+        if decisions_block:
+            briefing = (briefing + "\n\n" + decisions_block) if briefing else decisions_block
         if briefing:
             await events.emit(
                 "memory.briefing",
@@ -312,6 +326,58 @@ class SwarmOrchestrator:
                 raise
             await events.emit("cost.update", agent=blueprint.title, **self.cost.snapshot())
         return run
+
+    async def _checkpoint(self, session: Session, events, label: str) -> None:
+        """Wrap `session.checkpoint(label)` with the workspace-size
+        ceiling. If snapshot storage would exceed the cap we still
+        record the checkpoint in memory (so `resume()` knows which
+        stage finished), but we don't persist the file bytes — the
+        in-memory `files_snapshot` stays empty for that entry. We emit
+        a `workspace.full` event so the iOS UI can warn the user.
+        """
+        # `session.checkpoint` calls `save()` internally; we can't
+        # easily intercept that, so we let the checkpoint happen and
+        # then check the cap after the fact. If we're over, prune the
+        # new entry's on-disk files (the in-memory bytes are still
+        # there for an immediate in-process restore).
+        cap = self.config.max_snapshot_bytes
+        before_size = session.snapshots_size_bytes()
+        cp = session.checkpoint(label)
+        after_size = session.snapshots_size_bytes()
+        if cap and after_size > cap:
+            # Snapshot too big — remove the on-disk slice we just wrote
+            # *and* clear the in-memory file map so the next save()
+            # (triggered by the next checkpoint) doesn't re-persist it.
+            # The label survives in memory + on disk so resume() still
+            # treats the stage as done.
+            slug = session._safe_label(label)
+            session._rmtree_silent(session._snapshots_dir / slug)
+            cp.files_snapshot.clear()
+            session.save()
+            await events.emit(
+                "workspace.full",
+                label=label,
+                size_bytes=after_size,
+                cap_bytes=cap,
+                kept_in_memory=False,
+            )
+
+    def _decisions_briefing(self, job_id: str, *, limit: int = 6) -> str:
+        """Render this job's prior reasoning decisions as a Markdown
+        block to prepend to the agent's system prompt. Empty string
+        when there are none — first runs skip cleanly.
+
+        We cap at `limit` so prompts stay bounded; older decisions
+        already informed the on-disk transcript so the LLM still has
+        the full context if it needs to grep for it."""
+        decisions = self.memory.decisions_for(job_id)
+        if not decisions:
+            return ""
+        keep = decisions[-limit:]
+        out: list[str] = ["## Decisions already made on this job", ""]
+        for d in keep:
+            out.append(f"- **{d.context}** → {d.decision}")
+        return "\n".join(out)
 
     async def _await_unpaused(self, job_id: str, events, agent_title: str) -> None:
         """Block until the pause gate is set. The gate lookup is
@@ -450,7 +516,7 @@ class SwarmOrchestrator:
 
             if "after-architect" not in done:
                 await self._run_agent(ARCHITECT, session, events, prompt=self._architect_prompt(job))
-                session.checkpoint("after-architect")
+                await self._checkpoint(session, events, "after-architect")
 
             if "after-build-layer" not in done:
                 if self.config.parallel_build:
@@ -461,22 +527,22 @@ class SwarmOrchestrator:
                 else:
                     await self._run_agent(CODER,    session, events, prompt=self._coder_prompt(job))
                     await self._run_agent(DESIGNER, session, events, prompt=self._designer_prompt(job))
-                session.checkpoint("after-build-layer")
+                await self._checkpoint(session, events, "after-build-layer")
 
             if "after-integrator" not in done:
                 await self._run_agent(INTEGRATOR, session, events,
                                        prompt=self._integrator_prompt(job))
-                session.checkpoint("after-integrator")
+                await self._checkpoint(session, events, "after-integrator")
 
             if "after-tests" not in done and not self.config.skip_tests:
                 session.update_state(JobState.testing)
                 await events.emit("job.state", state=session.job.state.value)
                 await self._run_test_layer(session, events)
-                session.checkpoint("after-tests")
+                await self._checkpoint(session, events, "after-tests")
 
             if "after-custom-agents" not in done and self.config.custom_agents:
                 await self._run_custom_agents(session, events)
-                session.checkpoint("after-custom-agents")
+                await self._checkpoint(session, events, "after-custom-agents")
 
             if self.config.ship:
                 await self._run_ship_stage(session, events)

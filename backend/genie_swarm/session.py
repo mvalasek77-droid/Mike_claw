@@ -48,6 +48,22 @@ class Session:
     def _snapshots_dir(self) -> Path:
         return self.workspace / ".codegenie" / "snapshots"
 
+    def snapshots_size_bytes(self) -> int:
+        """Sum of every file under `.codegenie/snapshots/`. Cheap-ish —
+        we walk the tree on demand. Cached lookups would help if this
+        ever became a hot path; it isn't today."""
+        d = self._snapshots_dir
+        if not d.is_dir():
+            return 0
+        total = 0
+        for p in d.rglob("*"):
+            try:
+                if p.is_file():
+                    total += p.stat().st_size
+            except OSError:
+                pass
+        return total
+
     def _safe_label(self, label: str) -> str:
         """Return a filesystem-safe directory name for a checkpoint."""
         keep = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")

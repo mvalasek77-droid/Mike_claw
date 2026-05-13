@@ -92,6 +92,20 @@ final class SwarmClient: ObservableObject {
         _ = try await postJSON("/api/coding/swarm/\(jobID)/restore", body: ["label": label])
     }
 
+    /// Fork a snapshot into a brand-new job (the original keeps
+    /// running). Returns the new job id so the iOS UI can navigate to
+    /// it; an optional `newTitle` overrides the spec's title.
+    @discardableResult
+    func fork(jobID: String, label: String, newTitle: String? = nil) async throws -> String {
+        var body: [String: Any] = ["label": label]
+        if let newTitle, !newTitle.isEmpty { body["title"] = newTitle }
+        let response = try await postJSON("/api/coding/swarm/\(jobID)/fork", body: body)
+        guard let new = response["job_id"] as? String else {
+            throw SwarmError.malformed("missing job_id in fork response")
+        }
+        return new
+    }
+
     /// Recent project records from the swarm's persistent memory.
     /// Pass `onlyFailed: true` to filter to failed runs (crash log).
     func recentProjects(limit: Int = 20, onlyFailed: Bool = false) async throws -> [ProjectRecord] {
