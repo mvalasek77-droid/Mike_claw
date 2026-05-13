@@ -78,7 +78,7 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
 
     if (req.workspace_root or req.model_overrides or req.skip_tests
             or not req.parallel or ship_cfg or req.cost_cap_usd is not None
-            or req.custom_agents):
+            or req.custom_agents or req.max_snapshot_bytes is not None):
         cfg = SwarmConfig(
             workspace_root=Path(req.workspace_root) if req.workspace_root else cfg.workspace_root,
             parallel_build=req.parallel,
@@ -89,6 +89,7 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
             cost_cap_usd=req.cost_cap_usd,
             custom_agents=req.custom_agents,
             pause_gate=_pause_gate_for_state,
+            max_snapshot_bytes=req.max_snapshot_bytes or cfg.max_snapshot_bytes,
         )
     else:
         # Default config also gets the pause gate wired in.
@@ -483,6 +484,32 @@ async def list_memory_decisions(job_id: str):
         "decisions": [
             {"context": d.context, "decision": d.decision, "ts": d.ts}
             for d in rows
+        ]
+    }
+
+
+@router.post("/admin/archive")
+async def archive_old_jobs(body: dict | None = None):
+    """Zip + remove job workspaces older than `older_than_days`
+    (default 30). Active jobs are skipped. Returns one summary per
+    archive."""
+    from .archive import archive_old_workspaces
+    days = float((body or {}).get("older_than_days", 30))
+    active = {job_id for job_id, task in state.tasks.items() if not task.done()}
+    summaries = archive_old_workspaces(
+        state.config.workspace_root,
+        older_than_seconds=days * 24 * 60 * 60,
+        active_job_ids=active,
+    )
+    return {
+        "archived": [
+            {
+                "job_id": s.job_id,
+                "archive_path": s.archive_path,
+                "bytes_written": s.bytes_written,
+                "files_archived": s.files_archived,
+            }
+            for s in summaries
         ]
     }
 

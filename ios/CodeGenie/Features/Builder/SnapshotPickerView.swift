@@ -10,6 +10,9 @@ import SwiftUI
 struct SnapshotPickerView: View {
     let jobID: String
     let client: SwarmClient
+    /// Called with the new backend job id when the user forks a
+    /// snapshot. Caller wires it into `AppSession.adoptForkedJob`.
+    var onFork: ((String) -> Void)? = nil
 
     @State private var snapshots: [SnapshotSummary] = []
     @State private var loading = true
@@ -134,6 +137,7 @@ struct SnapshotPickerView: View {
         do {
             let newID = try await client.fork(jobID: jobID, label: snapshot.label)
             bannerText = "Forked into new job: \(newID.prefix(12))…"
+            onFork?(newID)
             Haptics.success()
         } catch {
             self.error = "Fork failed: \(error)"

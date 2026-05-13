@@ -588,15 +588,11 @@ class SwarmOrchestrator:
     async def _run_ship_stage(self, session: Session, events) -> None:
         """Promote the build to TestFlight, then watch ASC processing.
 
-        This is intentionally not delegated to an agent — the upload
-        tool already exists, and a deterministic call gives us tighter
-        guarantees than asking an LLM to invoke it correctly. The
-        poller runs to completion before we mark the job done so the
-        iOS UI can show the final state in the same SSE stream."""
+        Bypasses the TestFlightUpload Tool so we can stream altool's
+        stdout line-by-line as `testflight.upload.progress` events.
+        The Tool stays available for agents who want to invoke it
+        themselves; the orchestrator just doesn't need it here."""
         from .testflight_status import PollerConfig, watch
-        from .tools.testflight import TestFlightUpload
-        from .tools.base import ToolContext
-        from .models import ToolCall
 
         ship = self.config.ship
         assert ship is not None
@@ -606,32 +602,59 @@ class SwarmOrchestrator:
             detail=f"uploading {ship.ipa_path} to TestFlight",
         )
 
-        upload = TestFlightUpload()
-        ctx = ToolContext(
-            job_id=session.job.id, agent="🚀 Shipper",
-            workspace=str(session.sandbox.policy.workspace),
-        )
-        args: dict[str, object] = {"ipa_path": ship.ipa_path, "validate": True}
-        for k in ("apple_id", "app_specific_password",
-                  "asc_api_key_id", "asc_api_issuer_id", "asc_api_key_path"):
-            v = getattr(ship, k)
-            if v: args[k] = v
+        ipa_full = session.sandbox.safe_path(ship.ipa_path)
+        if not ipa_full.exists():
+            await events.emit(
+                "testflight.upload", ok=False,
+                preview=f"ipa not found at {ship.ipa_path}",
+            )
+            self.memory.note_decision(
+                session.job.id, "shipping",
+                f"TestFlight upload failed: ipa missing at {ship.ipa_path}",
+            )
+            return
 
-        result = await self.tools.invoke(
-            ToolCall(name="testflight_upload", arguments=args),
-            session.sandbox, ctx,
+        creds_argv = self._ship_creds_argv(ship, session)
+        if creds_argv is None:
+            await events.emit(
+                "testflight.upload", ok=False,
+                preview="no upload credentials configured",
+            )
+            self.memory.note_decision(
+                session.job.id, "shipping",
+                "TestFlight upload failed: no credentials",
+            )
+            return
+
+        # Validate first, then upload. Both stream output.
+        ok_validate, validate_tail = await self._stream_altool(
+            ["xcrun", "altool", "--validate-app", "-f", str(ipa_full), "-t", "ios", *creds_argv],
+            phase="validate", events=events,
+        )
+        if not ok_validate:
+            await events.emit(
+                "testflight.upload", ok=False,
+                preview=f"validate failed:\n{validate_tail}",
+            )
+            self.memory.note_decision(
+                session.job.id, "shipping",
+                f"TestFlight validate failed: {validate_tail[:300]}",
+            )
+            return
+
+        ok_upload, upload_tail = await self._stream_altool(
+            ["xcrun", "altool", "--upload-app", "-f", str(ipa_full), "-t", "ios", *creds_argv],
+            phase="upload", events=events,
         )
         await events.emit(
             "testflight.upload",
-            ok=result.ok,
-            preview=result.content[-1500:],
+            ok=ok_upload,
+            preview=upload_tail[-1500:],
         )
-        if not result.ok:
-            # Don't fail the whole job — record the upload failure and
-            # let the user inspect. The Memory layer logs it.
+        if not ok_upload:
             self.memory.note_decision(
                 session.job.id, "shipping",
-                f"TestFlight upload failed: {result.content[:300]}",
+                f"TestFlight upload failed: {upload_tail[:300]}",
             )
             return
 
@@ -660,6 +683,56 @@ class SwarmOrchestrator:
             await watch(poller_cfg, events)
         except Exception as exc:  # noqa: BLE001
             await events.emit("testflight.status", state="POLL_ERROR", detail=str(exc))
+
+    def _ship_creds_argv(self, ship: "ShipConfig", session: Session) -> list[str] | None:
+        """Prefer ASC API key (no 2FA prompts) over Apple-ID + app-
+        specific-password. Returns None when neither is configured."""
+        if ship.asc_api_key_id and ship.asc_api_issuer_id and ship.asc_api_key_path:
+            resolved = session.sandbox.safe_path(ship.asc_api_key_path)
+            return [
+                "--apiKey", ship.asc_api_key_id,
+                "--apiIssuer", ship.asc_api_issuer_id,
+                "--apiKeyPath", str(resolved),
+            ]
+        if ship.apple_id and ship.app_specific_password:
+            return ["-u", ship.apple_id, "-p", ship.app_specific_password]
+        return None
+
+    async def _stream_altool(
+        self, argv: list[str], *, phase: str, events,
+    ) -> tuple[bool, str]:
+        """Run altool and stream each stdout line as a
+        `testflight.upload.progress` event. Returns (ok, tail) where
+        `tail` is the last 4 KB of combined output for the surrounding
+        `testflight.upload` summary."""
+        import asyncio as _asyncio
+        proc = await _asyncio.create_subprocess_exec(
+            *argv,
+            stdout=_asyncio.subprocess.PIPE,
+            stderr=_asyncio.subprocess.STDOUT,
+        )
+        assert proc.stdout is not None
+
+        captured: list[str] = []
+        try:
+            async for raw in proc.stdout:
+                line = raw.decode(errors="replace").rstrip("\n")
+                if not line:
+                    continue
+                captured.append(line)
+                await events.emit(
+                    "testflight.upload.progress",
+                    phase=phase,
+                    line=line,
+                )
+                if len("\n".join(captured)) > 64 * 1024:
+                    # Keep memory bounded — drop the oldest half.
+                    captured = captured[len(captured) // 2 :]
+        finally:
+            await proc.wait()
+
+        tail = "\n".join(captured)[-4096:]
+        return proc.returncode == 0, tail
 
     def _fix_prompt(self, job: BuildJob, unit_tester_output: str) -> str:
         return (

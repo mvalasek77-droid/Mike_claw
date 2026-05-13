@@ -20,6 +20,9 @@ final class Credentials: ObservableObject {
     @Published var agentModels: [String: String] = [:]
     /// Optional per-build USD cap. `nil` disables enforcement.
     @Published var costCapUSD: Double?
+    /// Optional snapshot-bytes cap sent with each build start.
+    /// `nil` lets the backend keep its default (256 MiB).
+    @Published var snapshotCapMB: Int?
     /// User-defined agents that run after the standard test layer.
     @Published var customAgents: [CustomAgent] = []
     /// Apple Developer Program credentials.
@@ -74,6 +77,10 @@ final class Credentials: ObservableObject {
         if UserDefaults.standard.object(forKey: "cost.cap.usd") != nil {
             let raw = UserDefaults.standard.double(forKey: "cost.cap.usd")
             costCapUSD = raw > 0 ? raw : nil
+        }
+        if UserDefaults.standard.object(forKey: "snapshot.cap.mb") != nil {
+            let raw = UserDefaults.standard.integer(forKey: "snapshot.cap.mb")
+            snapshotCapMB = raw > 0 ? raw : nil
         }
         if let data = UserDefaults.standard.data(forKey: "custom.agents"),
            let decoded = try? JSONDecoder().decode([CustomAgent].self, from: data) {
@@ -132,6 +139,15 @@ final class Credentials: ObservableObject {
             UserDefaults.standard.set(usd, forKey: "cost.cap.usd")
         } else {
             UserDefaults.standard.removeObject(forKey: "cost.cap.usd")
+        }
+    }
+
+    func setSnapshotCap(mb: Int?) {
+        snapshotCapMB = mb
+        if let mb, mb > 0 {
+            UserDefaults.standard.set(mb, forKey: "snapshot.cap.mb")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "snapshot.cap.mb")
         }
     }
 
