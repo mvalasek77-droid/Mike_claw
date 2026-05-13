@@ -50,6 +50,10 @@ final class SwarmClient: ObservableObject {
         let overrides = credentials.agentModels
         if !overrides.isEmpty { body["model_overrides"] = overrides }
         if let cap = credentials.costCapUSD, cap > 0 { body["cost_cap_usd"] = cap }
+        let custom = credentials.customAgents
+            .filter { $0.enabled }
+            .map { $0.wireForm }
+        if !custom.isEmpty { body["custom_agents"] = custom }
         let response: [String: Any] = try await postJSON("/api/coding/swarm/build", body: body)
         guard let id = response["job_id"] as? String else {
             throw SwarmError.malformed("missing job_id")
@@ -66,6 +70,21 @@ final class SwarmClient: ObservableObject {
     /// Throws if the backend can't find the saved session.
     func resume(jobID: String) async throws {
         _ = try await postJSON("/api/coding/swarm/\(jobID)/resume", body: [:])
+    }
+
+    /// Soft-pause the orchestrator between agents.
+    func pause(jobID: String) async throws {
+        _ = try await postJSON("/api/coding/swarm/\(jobID)/pause", body: [:])
+    }
+
+    /// Release a paused orchestrator.
+    func unpause(jobID: String) async throws {
+        _ = try await postJSON("/api/coding/swarm/\(jobID)/continue", body: [:])
+    }
+
+    /// Restore the workspace to a named snapshot.
+    func restore(jobID: String, label: String) async throws {
+        _ = try await postJSON("/api/coding/swarm/\(jobID)/restore", body: ["label": label])
     }
 
     func files(jobID: String) async throws -> [String] {

@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var showAgentRouting = false
     @State private var showAppleDev = false
     @State private var showChangelog = false
+    @State private var showCustomAgents = false
     @StateObject private var telemetry = Telemetry.shared
 
     var body: some View {
@@ -28,6 +29,7 @@ struct SettingsView: View {
                     estimatorBlock
                     costCapBlock
                     agentRoutingBlock
+                    customAgentsBlock
                     appleDevBlock
                     pairMacBlock
                     tutorialBlock
@@ -62,6 +64,11 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showChangelog) {
             ChangelogView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showCustomAgents) {
+            CustomAgentsView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -131,6 +138,19 @@ struct SettingsView: View {
             icon: "arrow.triangle.branch",
             tint: LiquidGlass.warning
         ) { showAgentRouting = true }
+    }
+
+    private var customAgentsBlock: some View {
+        let count = creds.customAgents.filter(\.enabled).count
+        let subtitle = count == 0
+            ? "Add your own swarm member."
+            : "\(count) active custom agent\(count == 1 ? "" : "s")"
+        return navTile(
+            title: "Custom agents",
+            subtitle: subtitle,
+            icon: "person.crop.circle.badge.plus",
+            tint: LiquidGlass.accentSecondary
+        ) { showCustomAgents = true }
     }
 
     private var appleDevBlock: some View {

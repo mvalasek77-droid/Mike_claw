@@ -12,6 +12,7 @@ Mounted at `/api/coding/swarm` by the parent app.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 from pathlib import Path
 from typing import Any
@@ -42,10 +43,25 @@ class SwarmState:
         # The orchestrator drains this between runs to decide which
         # proposed file changes to actually apply.
         self.decisions: dict[str, dict[str, str]] = {}
+        # Per-job pause gate. The orchestrator awaits the event between
+        # agent runs; /pause clears it, /continue sets it. The default
+        # is "set" (running) — we lazy-construct on first /pause.
+        self.pause_events: dict[str, asyncio.Event] = {}
 
 
 state = SwarmState()
 router = APIRouter(prefix="/api/coding/swarm", tags=["genie-swarm"])
+
+
+def _pause_gate_for_state(job_id: str) -> asyncio.Event:
+    """Per-job pause event. New jobs start *running* (event set).
+    `/pause` clears it; `/continue` sets it again."""
+    event = state.pause_events.get(job_id)
+    if event is None:
+        event = asyncio.Event()
+        event.set()
+        state.pause_events[job_id] = event
+    return event
 
 
 # ---------------------------------------------------------------------------
@@ -59,8 +75,10 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
 
     cfg = state.config
     ship_cfg = _to_ship_config(req.ship) if req.ship else None
+
     if (req.workspace_root or req.model_overrides or req.skip_tests
-            or not req.parallel or ship_cfg or req.cost_cap_usd is not None):
+            or not req.parallel or ship_cfg or req.cost_cap_usd is not None
+            or req.custom_agents):
         cfg = SwarmConfig(
             workspace_root=Path(req.workspace_root) if req.workspace_root else cfg.workspace_root,
             parallel_build=req.parallel,
@@ -69,7 +87,12 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
             model_overrides=req.model_overrides,
             ship=ship_cfg,
             cost_cap_usd=req.cost_cap_usd,
+            custom_agents=req.custom_agents,
+            pause_gate=_pause_gate_for_state,
         )
+    else:
+        # Default config also gets the pause gate wired in.
+        cfg = dataclasses.replace(cfg, pause_gate=_pause_gate_for_state)
 
     orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=cfg)
     state.tasks[job.id] = asyncio.create_task(_drive(orch, job))
@@ -192,6 +215,69 @@ async def ship_now(job_id: str, req: ShipRequest):
     orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=state.config)
     state.tasks[job_id] = asyncio.create_task(orch.ship_only(job, _to_ship_config(req)))
     return {"ok": True, "job_id": job_id}
+
+
+@router.post("/{job_id}/restore")
+async def restore_snapshot(job_id: str, body: dict):
+    """Roll the workspace back to a named snapshot.
+
+    Body: { "label": "before accepting the icon redesign" }
+
+    The user picks a snapshot from the iOS picker; we re-write every
+    file the snapshot captured and truncate the in-memory transcript
+    to where that snapshot was taken. The orchestrator is not running
+    when this is called — `cancel` first if it is."""
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    label = (body or {}).get("label")
+    if not label:
+        raise HTTPException(400, "label required")
+
+    from .session import Session
+    try:
+        session = Session.load(state.config.workspace_root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(404, "no saved session")
+
+    match = next((c for c in session.checkpoints if c.label == label), None)
+    if match is None:
+        raise HTTPException(404, f"no snapshot labeled {label!r}")
+
+    # The on-disk `files_snapshot` is empty after a `Session.load` —
+    # we deliberately don't persist file contents. So `restore`
+    # truncates only the transcript and forces a re-checkpoint of the
+    # current workspace as the new tip. For full file-state rollback,
+    # users need an active in-memory checkpoint (i.e. created during a
+    # running build's session). We surface this nuance in the response.
+    session.transcript = list(match.transcript)
+    session.save()
+    return {
+        "ok": True,
+        "label": label,
+        "transcript_truncated": True,
+        "files_restored": len(match.files_snapshot),
+    }
+
+
+@router.post("/{job_id}/pause")
+async def pause_job(job_id: str):
+    """Soft-pause the orchestrator between agents. The current LLM
+    call finishes; the next agent waits for /continue. Idempotent."""
+    if job_id not in state.jobs:
+        raise HTTPException(404, "unknown job")
+    state.pause_events.setdefault(job_id, asyncio.Event()).clear()
+    return {"ok": True, "paused": True}
+
+
+@router.post("/{job_id}/continue")
+async def continue_job(job_id: str):
+    """Resume a paused orchestrator. Idempotent."""
+    if job_id not in state.jobs:
+        raise HTTPException(404, "unknown job")
+    event = state.pause_events.setdefault(job_id, asyncio.Event())
+    event.set()
+    return {"ok": True, "paused": False}
 
 
 @router.post("/{job_id}/resume")

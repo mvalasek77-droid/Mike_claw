@@ -17,6 +17,8 @@ struct BuildScreen: View {
     @State private var startedAt: Date = .now
     @State private var showAppleDevSetup: Bool = false
     @State private var shipBanner: String?
+    @State private var showSnapshots: Bool = false
+    @State private var isPaused: Bool = false
     @StateObject private var game = BitDropGame()
     @StateObject private var swarm = SwarmClient()
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
@@ -43,6 +45,7 @@ struct BuildScreen: View {
                         stageList
                         if showGame { gameBlock }
                         if useRemote { transcriptBlock }
+                        if costs.capHit { costCapCallout }
                         if !diffStream.pending.isEmpty { diffReviewCallout }
                         logBlock
                         Color.clear.frame(height: 24)
@@ -70,6 +73,13 @@ struct BuildScreen: View {
             AppleDevSetupView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showSnapshots) {
+            if let jobID = swarm.jobID {
+                SnapshotPickerView(jobID: jobID, client: swarm)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(.ultraThinMaterial)
+            }
         }
         .onDisappear {
             builderTask?.cancel()
@@ -101,6 +111,22 @@ struct BuildScreen: View {
                 .foregroundStyle(.white)
             Spacer()
             if let jobID = swarm.jobID, useRemote {
+                Button { Task { await togglePause(jobID: jobID) } } label: {
+                    Image(systemName: isPaused ? "play.fill" : "pause.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(10)
+                        .background(.white.opacity(0.08), in: Circle())
+                        .foregroundStyle(isPaused ? LiquidGlass.success : .white)
+                }
+                .accessibilityLabel(isPaused ? "Continue build" : "Pause build")
+                Button { showSnapshots = true } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(10)
+                        .background(.white.opacity(0.08), in: Circle())
+                        .foregroundStyle(.white)
+                }
+                .accessibilityLabel("Open snapshots")
                 Button { Task { await saveCheckpoint(jobID: jobID) } } label: {
                     Image(systemName: "bookmark.fill")
                         .font(.system(size: 14, weight: .semibold))
@@ -166,6 +192,39 @@ struct BuildScreen: View {
     private var transcriptBlock: some View {
         GlassCard(title: "Live transcript", icon: "waveform", tint: LiquidGlass.accent) {
             TranscriptView(client: swarm)
+        }
+    }
+
+    private var costCapCallout: some View {
+        GlassSurface(tier: .deep, corner: 18) {
+            HStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(LiquidGlass.warning)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(LiquidGlass.warning.opacity(0.18)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Cost cap hit")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text(costs.backendCapUSD.map {
+                        String(format: "Stopped at $%.3f of $%.2f cap", costs.backendSpendUSD, $0)
+                    } ?? "Build halted by the cost cap.")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+                }
+                Spacer()
+                Button { Task { await liftCapAndResume() } } label: {
+                    Text("Lift cap × 2")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(LiquidGlass.auroraGradient.opacity(0.85), in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Double the cap and resume the build")
+            }
+            .padding(14)
         }
     }
 
@@ -374,6 +433,43 @@ struct BuildScreen: View {
             Haptics.success()
         } catch {
             shipBanner = "Snapshot failed: \(error)"
+            Haptics.error()
+        }
+    }
+
+    private func togglePause(jobID: String) async {
+        do {
+            if isPaused {
+                try await swarm.unpause(jobID: jobID)
+                isPaused = false
+                shipBanner = "Build resumed."
+            } else {
+                try await swarm.pause(jobID: jobID)
+                isPaused = true
+                shipBanner = "Paused — current agent finishes, then we wait."
+            }
+            Haptics.selection()
+        } catch {
+            shipBanner = "Pause/continue failed: \(error)"
+            Haptics.error()
+        }
+    }
+
+    /// Wired to the "Lift cap × 2" callout that appears when the
+    /// backend halts the build via cost.cap_hit. We bump the cap
+    /// 2× (or +$5 minimum), persist it, then POST /resume so the
+    /// orchestrator picks up from the latest checkpoint.
+    private func liftCapAndResume() async {
+        guard let jobID = swarm.jobID else { return }
+        let current = Credentials.shared.costCapUSD ?? costs.backendCapUSD ?? 5.0
+        let newCap = max(current * 2.0, current + 5.0)
+        Credentials.shared.setCostCap(newCap)
+        do {
+            try await swarm.resume(jobID: jobID)
+            shipBanner = String(format: "Cap lifted to $%.2f — resuming.", newCap)
+            Haptics.success()
+        } catch {
+            shipBanner = "Resume failed: \(error)"
             Haptics.error()
         }
     }

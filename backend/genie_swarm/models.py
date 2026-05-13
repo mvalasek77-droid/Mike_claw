@@ -64,6 +64,9 @@ class BuildRequest(BaseModel):
     # disables enforcement. Backend computes spend using
     # genie_swarm.cost.DEFAULT_PRICES.
     cost_cap_usd: float | None = None
+    # User-defined agents to run after the standard test layer. Each
+    # entry: { name, system_prompt, tool_allowlist }.
+    custom_agents: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class JobState(str, Enum):
