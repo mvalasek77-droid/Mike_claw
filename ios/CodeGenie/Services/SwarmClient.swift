@@ -20,6 +20,11 @@ final class SwarmClient: ObservableObject {
     @Published private(set) var lastError: String?
     @Published private(set) var isConnected: Bool = false
     @Published private(set) var jobID: String?
+    /// Live pause state derived from `job.state` events. Flips to true
+    /// when the backend emits `paused` and back to false on `resumed`
+    /// or any subsequent normal state. Optimistic UI buttons should
+    /// trust this rather than tracking their own flag.
+    @Published private(set) var isPaused: Bool = false
 
     private let session: URLSession
     private var streamTask: Task<Void, Never>?
@@ -85,6 +90,44 @@ final class SwarmClient: ObservableObject {
     /// Restore the workspace to a named snapshot.
     func restore(jobID: String, label: String) async throws {
         _ = try await postJSON("/api/coding/swarm/\(jobID)/restore", body: ["label": label])
+    }
+
+    /// Recent project records from the swarm's persistent memory.
+    /// Pass `onlyFailed: true` to filter to failed runs (crash log).
+    func recentProjects(limit: Int = 20, onlyFailed: Bool = false) async throws -> [ProjectRecord] {
+        var path = "/api/coding/swarm/memory/projects?limit=\(limit)"
+        if onlyFailed { path += "&only_failed=true" }
+        let r: [String: Any] = try await getJSON(path)
+        let entries = (r["projects"] as? [[String: Any]]) ?? []
+        return entries.compactMap { dict in
+            guard let jobID = dict["job_id"] as? String,
+                  let title = dict["title"] as? String,
+                  let succeeded = dict["succeeded"] as? Bool,
+                  let ts = dict["ts"] as? Double else { return nil }
+            return ProjectRecord(
+                jobID: jobID, title: title,
+                succeeded: succeeded,
+                summary: (dict["summary"] as? String) ?? "",
+                at: Date(timeIntervalSince1970: ts)
+            )
+        }
+    }
+
+    /// Reasoning decisions the swarm logged for a specific job — used
+    /// when the user taps a crash-log row to see what was happening
+    /// when the build went sideways.
+    func decisions(jobID: String) async throws -> [DecisionRecord] {
+        let r: [String: Any] = try await getJSON("/api/coding/swarm/memory/decisions/\(jobID)")
+        let entries = (r["decisions"] as? [[String: Any]]) ?? []
+        return entries.compactMap { dict in
+            guard let context = dict["context"] as? String,
+                  let decision = dict["decision"] as? String,
+                  let ts = dict["ts"] as? Double else { return nil }
+            return DecisionRecord(
+                context: context, decision: decision,
+                at: Date(timeIntervalSince1970: ts)
+            )
+        }
     }
 
     func files(jobID: String) async throws -> [String] {
@@ -225,9 +268,16 @@ final class SwarmClient: ObservableObject {
     private func ingest(_ event: SwarmEvent, forward: ((SwarmEvent) -> Void)?) async {
         events.append(event)
         if event.type == "job.state",
-           let s = event.payload["state"] as? String,
-           let mapped = mapState(s) {
-            stage = mapped
+           let s = event.payload["state"] as? String {
+            // Pause / resume are surfaced as job.state changes too —
+            // map them to isPaused so the header badge can react.
+            switch s {
+            case "paused":  isPaused = true
+            case "resumed": isPaused = false
+            default:
+                isPaused = false
+                if let mapped = mapState(s) { stage = mapped }
+            }
         }
         forward?(event)
     }
@@ -301,6 +351,22 @@ struct SnapshotSummary: Identifiable, Hashable {
     let at: Date
     let files: Int
     var id: String { label }
+}
+
+struct ProjectRecord: Identifiable, Hashable {
+    let jobID: String
+    let title: String
+    let succeeded: Bool
+    let summary: String
+    let at: Date
+    var id: String { jobID }
+}
+
+struct DecisionRecord: Identifiable, Hashable {
+    let context: String
+    let decision: String
+    let at: Date
+    var id: String { "\(context)|\(decision)|\(at.timeIntervalSince1970)" }
 }
 
 struct SwarmEvent: Identifiable {

@@ -11,6 +11,7 @@ struct CustomAgentsView: View {
     @StateObject private var creds = Credentials.shared
     @State private var editing: CustomAgent?
     @State private var deletePending: CustomAgent?
+    @State private var viewingRun: CustomAgent?
 
     var body: some View {
         ZStack {
@@ -38,6 +39,11 @@ struct CustomAgentsView: View {
             }
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(item: $viewingRun) { agent in
+            CustomAgentLastRunView(agent: agent)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
         }
         .alert("Delete custom agent?", isPresented: Binding(
             get: { deletePending != nil },
@@ -86,6 +92,7 @@ struct CustomAgentsView: View {
                 AgentCard(
                     agent: agent,
                     onEdit: { editing = agent },
+                    onShowLastRun: { viewingRun = agent },
                     onToggle: { on in
                         var copy = agent; copy.enabled = on
                         creds.upsertCustomAgent(copy)
@@ -153,6 +160,7 @@ struct CustomAgentsView: View {
 private struct AgentCard: View {
     let agent: CustomAgent
     let onEdit: () -> Void
+    let onShowLastRun: () -> Void
     let onToggle: (Bool) -> Void
     let onDelete: () -> Void
 
@@ -187,10 +195,13 @@ private struct AgentCard: View {
                         }
                     }
                 }
-                HStack(spacing: 10) {
+                HStack(spacing: 14) {
                     Button("Edit", action: onEdit)
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(LiquidGlass.accent)
+                    Button("Last run", action: onShowLastRun)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.accentSecondary)
                     Spacer()
                     Button("Delete", role: .destructive, action: onDelete)
                         .font(.system(size: 12, weight: .semibold, design: .rounded))

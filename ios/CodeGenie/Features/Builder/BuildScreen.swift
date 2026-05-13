@@ -18,7 +18,6 @@ struct BuildScreen: View {
     @State private var showAppleDevSetup: Bool = false
     @State private var shipBanner: String?
     @State private var showSnapshots: Bool = false
-    @State private var isPaused: Bool = false
     @StateObject private var game = BitDropGame()
     @StateObject private var swarm = SwarmClient()
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
@@ -106,19 +105,24 @@ struct BuildScreen: View {
             }
             .accessibilityLabel("Minimize build")
             Spacer()
-            Text(initialJob.description.title)
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+            VStack(spacing: 4) {
+                Text(initialJob.description.title)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if useRemote { PauseStatusBadge(swarm: swarm) }
+            }
             Spacer()
             if let jobID = swarm.jobID, useRemote {
                 Button { Task { await togglePause(jobID: jobID) } } label: {
-                    Image(systemName: isPaused ? "play.fill" : "pause.fill")
+                    Image(systemName: swarm.isPaused ? "play.fill" : "pause.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .padding(10)
                         .background(.white.opacity(0.08), in: Circle())
-                        .foregroundStyle(isPaused ? LiquidGlass.success : .white)
+                        .foregroundStyle(swarm.isPaused ? LiquidGlass.success : .white)
                 }
-                .accessibilityLabel(isPaused ? "Continue build" : "Pause build")
+                .accessibilityLabel(swarm.isPaused ? "Continue build" : "Pause build")
                 Button { showSnapshots = true } label: {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 14, weight: .semibold))
@@ -351,6 +355,7 @@ struct BuildScreen: View {
     private func runRemoteBuild() async {
         costs.bind(to: swarm)
         diffStream.bind(to: swarm)
+        CustomAgentLog.shared.bind(to: swarm)
         do {
             let id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
             swarm.openStream(jobID: id) { event in
@@ -439,13 +444,11 @@ struct BuildScreen: View {
 
     private func togglePause(jobID: String) async {
         do {
-            if isPaused {
+            if swarm.isPaused {
                 try await swarm.unpause(jobID: jobID)
-                isPaused = false
                 shipBanner = "Build resumed."
             } else {
                 try await swarm.pause(jobID: jobID)
-                isPaused = true
                 shipBanner = "Paused — current agent finishes, then we wait."
             }
             Haptics.selection()

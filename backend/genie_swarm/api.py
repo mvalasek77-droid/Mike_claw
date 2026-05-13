@@ -244,13 +244,10 @@ async def restore_snapshot(job_id: str, body: dict):
     if match is None:
         raise HTTPException(404, f"no snapshot labeled {label!r}")
 
-    # The on-disk `files_snapshot` is empty after a `Session.load` —
-    # we deliberately don't persist file contents. So `restore`
-    # truncates only the transcript and forces a re-checkpoint of the
-    # current workspace as the new tip. For full file-state rollback,
-    # users need an active in-memory checkpoint (i.e. created during a
-    # running build's session). We surface this nuance in the response.
-    session.transcript = list(match.transcript)
+    # Real rollback: re-hydrate the snapshot's files onto disk and
+    # remove anything newer. `Session.load` already loaded the file
+    # contents from `.codegenie/snapshots/<slug>/`.
+    session.restore(match)
     session.save()
     return {
         "ok": True,
@@ -391,6 +388,46 @@ async def export_workspace(job_id: str):
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/memory/projects")
+async def list_memory_projects(limit: int = Query(20, ge=1, le=200), only_failed: bool = False):
+    """Recent project records from CodeGenie's persistent memory.
+
+    Powers the iOS "Recent build failures" view. By default returns
+    the last `limit` projects (success + failure). Pass
+    `only_failed=true` to filter — useful for the crash log."""
+    from .memory import Memory
+    mem = Memory(state.config.workspace_root)
+    rows = mem.recent_projects(limit=limit)
+    if only_failed:
+        rows = [r for r in rows if not r.succeeded]
+    return {
+        "projects": [
+            {
+                "job_id": r.job_id,
+                "title": r.title,
+                "succeeded": r.succeeded,
+                "summary": r.summary,
+                "ts": r.ts,
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.get("/memory/decisions/{job_id}")
+async def list_memory_decisions(job_id: str):
+    """Reasoning decisions the swarm logged for a specific job."""
+    from .memory import Memory
+    mem = Memory(state.config.workspace_root)
+    rows = mem.decisions_for(job_id)
+    return {
+        "decisions": [
+            {"context": d.context, "decision": d.decision, "ts": d.ts}
+            for d in rows
+        ]
+    }
 
 
 @router.get("/health")

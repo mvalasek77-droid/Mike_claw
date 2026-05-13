@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var showAppleDev = false
     @State private var showChangelog = false
     @State private var showCustomAgents = false
+    @State private var showCrashLog = false
     @StateObject private var telemetry = Telemetry.shared
 
     var body: some View {
@@ -69,6 +70,11 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showCustomAgents) {
             CustomAgentsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showCrashLog) {
+            CrashLogView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -483,6 +489,21 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Open changelog")
+                Button {
+                    showCrashLog = true
+                    Haptics.selection()
+                } label: {
+                    HStack {
+                        Text("Recent build failures")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(LiquidGlass.warning)
+                    .padding(.top, 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open recent build failures")
             }
         }
     }
