@@ -53,6 +53,65 @@ def test_checkpoint_excludes_metadata_directory(tmp_path: Path):
     assert not any(".git" in p.split("/") for p in paths)
 
 
+def test_snapshot_files_persist_across_reload(tmp_path: Path):
+    """A checkpoint's file contents should round-trip through
+    Session.save → Session.load. This is the real-restore guarantee
+    the /restore endpoint depends on."""
+    job = BuildJob(spec=AppSpec(title="Roundtrip", prompt="x"))
+    session = Session.open(job, tmp_path)
+    session.sandbox.write_text("a/b.swift", "import SwiftUI\nstruct A{}")
+    session.checkpoint("after-architect")
+    session.save()
+
+    reloaded = Session.load(tmp_path, job.id)
+    assert reloaded.checkpoints[0].files_snapshot["a/b.swift"].startswith("import SwiftUI")
+
+
+def test_restore_rolls_files_back_and_removes_new_ones(tmp_path: Path):
+    """Restore is real: the workspace ends up exactly matching the
+    snapshot — files that didn't exist at the checkpoint are gone."""
+    job = BuildJob(spec=AppSpec(title="Rewind", prompt="x"))
+    session = Session.open(job, tmp_path)
+    session.sandbox.write_text("kept.swift", "// v1")
+    cp = session.checkpoint("v1")
+
+    # Simulate further edits after the checkpoint.
+    session.sandbox.write_text("kept.swift", "// v2 modified")
+    session.sandbox.write_text("new_file.swift", "// added later")
+
+    session.restore(cp)
+
+    # File that existed at v1 is back to v1 contents.
+    assert session.sandbox.read_text("kept.swift") == "// v1"
+    # File added after v1 was removed.
+    assert "new_file.swift" not in session.sandbox.list_dir(".")
+
+
+def test_restore_never_touches_codegenie_or_git_dirs(tmp_path: Path):
+    """Memory + VCS state must survive a rollback."""
+    job = BuildJob(spec=AppSpec(title="Safe", prompt="x"))
+    session = Session.open(job, tmp_path)
+    session.sandbox.write_text("app.swift", "// initial")
+    cp = session.checkpoint("init")
+
+    # Memory + git both write something.
+    cg = session.workspace / ".codegenie" / "memory.sqlite3"
+    cg.parent.mkdir(parents=True, exist_ok=True)
+    cg.write_text("(stub db)")
+    git_head = session.workspace / ".git" / "HEAD"
+    git_head.parent.mkdir(parents=True, exist_ok=True)
+    git_head.write_text("ref: x")
+
+    # Add a stray top-level file that should be removed.
+    session.sandbox.write_text("stray.swift", "extra")
+
+    session.restore(cp)
+
+    assert cg.exists() and cg.read_text() == "(stub db)"
+    assert git_head.exists() and git_head.read_text() == "ref: x"
+    assert "stray.swift" not in session.sandbox.list_dir(".")
+
+
 # --------------------------------------------------------------------------- #
 # Resume
 # --------------------------------------------------------------------------- #
