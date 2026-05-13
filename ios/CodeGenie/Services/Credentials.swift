@@ -20,6 +20,8 @@ final class Credentials: ObservableObject {
     @Published var agentModels: [String: String] = [:]
     /// Optional per-build USD cap. `nil` disables enforcement.
     @Published var costCapUSD: Double?
+    /// User-defined agents that run after the standard test layer.
+    @Published var customAgents: [CustomAgent] = []
     /// Apple Developer Program credentials.
     @Published var appleTeamID: String = ""
     @Published var ascKeyID: String = ""
@@ -72,6 +74,10 @@ final class Credentials: ObservableObject {
         if UserDefaults.standard.object(forKey: "cost.cap.usd") != nil {
             let raw = UserDefaults.standard.double(forKey: "cost.cap.usd")
             costCapUSD = raw > 0 ? raw : nil
+        }
+        if let data = UserDefaults.standard.data(forKey: "custom.agents"),
+           let decoded = try? JSONDecoder().decode([CustomAgent].self, from: data) {
+            customAgents = decoded
         }
         appleTeamID  = UserDefaults.standard.string(forKey: "apple.teamID") ?? ""
         ascKeyID     = UserDefaults.standard.string(forKey: "apple.ascKeyID") ?? ""
@@ -127,6 +133,26 @@ final class Credentials: ObservableObject {
         } else {
             UserDefaults.standard.removeObject(forKey: "cost.cap.usd")
         }
+    }
+
+    func saveCustomAgents(_ agents: [CustomAgent]) {
+        customAgents = agents
+        if let data = try? JSONEncoder().encode(agents) {
+            UserDefaults.standard.set(data, forKey: "custom.agents")
+        }
+    }
+
+    func upsertCustomAgent(_ agent: CustomAgent) {
+        if let i = customAgents.firstIndex(where: { $0.id == agent.id }) {
+            customAgents[i] = agent
+        } else {
+            customAgents.append(agent)
+        }
+        saveCustomAgents(customAgents)
+    }
+
+    func removeCustomAgent(id: UUID) {
+        saveCustomAgents(customAgents.filter { $0.id != id })
     }
 
     func setBackendURL(_ url: String) {

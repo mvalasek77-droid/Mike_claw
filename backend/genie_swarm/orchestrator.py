@@ -24,6 +24,8 @@ from pathlib import Path
 from .agents import (
     ALL_AGENTS, BUILD_LAYER, TEST_LAYER, AgentBlueprint, AgentRole,
 )
+from typing import Callable
+
 from .agents.base import ARCHITECT, CODER, DESIGNER, INTEGRATOR, UNIT_TESTER
 from .cost import BudgetExceeded
 from .llm import LLMClient
@@ -82,6 +84,13 @@ class SwarmConfig:
     # Halt the build if rolling USD spend crosses this cap. None
     # disables enforcement; the iOS UI sets this from Settings.
     cost_cap_usd: float | None = None
+    # Optional callable returning an asyncio.Event the orchestrator
+    # awaits between agents. /pause clears it, /continue sets it.
+    # When None the orchestrator never blocks.
+    pause_gate: "Callable[[str], asyncio.Event] | None" = None
+    # User-defined agents that run after the standard test layer.
+    # Each entry is a dict with keys: name, system_prompt, tool_allowlist.
+    custom_agents: list[dict] = field(default_factory=list)
     # Optional ship stage: after the test layer succeeds, upload the
     # built .ipa to TestFlight and watch processing state until Apple
     # marks it VALID/FAILED/INVALID/EXPIRED. None = don't ship.
@@ -157,6 +166,11 @@ class SwarmOrchestrator:
                 await self._run_test_layer(session, events)
                 session.checkpoint("after-tests")
 
+            # ---- CUSTOM AGENTS (optional) ----
+            if self.config.custom_agents:
+                await self._run_custom_agents(session, events)
+                session.checkpoint("after-custom-agents")
+
             # ---- SHIP (optional) ----
             if self.config.ship:
                 await self._run_ship_stage(session, events)
@@ -219,6 +233,7 @@ class SwarmOrchestrator:
         the agent throws an unexpected exception we restore from the
         most recent checkpoint and try again, up to `max_crash_recoveries`.
         Test-failure retries are handled separately in `_run_test_layer`."""
+        await self._await_unpaused(session.job.id, events, blueprint.title)
         attempts_left = max(0, self.config.max_crash_recoveries)
         last_exc: BaseException | None = None
         while True:
@@ -297,6 +312,39 @@ class SwarmOrchestrator:
                 raise
             await events.emit("cost.update", agent=blueprint.title, **self.cost.snapshot())
         return run
+
+    async def _await_unpaused(self, job_id: str, events, agent_title: str) -> None:
+        """Block until the pause gate is set. The gate lookup is
+        injected via `SwarmConfig.pause_gate`; in tests we leave it
+        None and never block."""
+        if self.config.pause_gate is None:
+            return
+        gate = self.config.pause_gate(job_id)
+        if gate is None or gate.is_set():
+            return
+        await events.emit("job.state", state="paused", agent=agent_title)
+        await gate.wait()
+        await events.emit("job.state", state="resumed", agent=agent_title)
+
+    async def _run_custom_agents(self, session: Session, events) -> None:
+        """Run any user-defined agents at the tail of the build, after
+        the standard test layer. Each entry is a {name, system_prompt,
+        tool_allowlist} dict — we wrap it in an `AgentBlueprint` at
+        run-time so the rest of the runner code stays the same."""
+        for entry in self.config.custom_agents:
+            name = entry.get("name") or "Custom Agent"
+            blueprint = AgentBlueprint(
+                role=AgentRole.reviewer,    # reuses an existing enum slot
+                title=f"🧩 {name}",
+                prompt_file="",             # never resolved on disk
+                fallback_prompt=entry.get("system_prompt") or "",
+                tool_names=tuple(entry.get("tool_allowlist") or ()),
+                layer="test",
+            )
+            await self._run_agent(
+                blueprint, session, events,
+                prompt=f"Run your custom check on the workspace. App: {session.job.spec.title}.",
+            )
 
     async def _run_test_layer(self, session: Session, events) -> None:
         # Loop: Unit Tester first; if it reports failures, re-run Coder
@@ -425,6 +473,10 @@ class SwarmOrchestrator:
                 await events.emit("job.state", state=session.job.state.value)
                 await self._run_test_layer(session, events)
                 session.checkpoint("after-tests")
+
+            if "after-custom-agents" not in done and self.config.custom_agents:
+                await self._run_custom_agents(session, events)
+                session.checkpoint("after-custom-agents")
 
             if self.config.ship:
                 await self._run_ship_stage(session, events)
