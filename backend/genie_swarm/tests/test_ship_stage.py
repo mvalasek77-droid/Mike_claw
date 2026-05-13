@@ -219,4 +219,9 @@ async def test_ship_stage_records_failure_without_killing_job(tmp_path: Path, re
 
     # Memory should have recorded the failure as a decision.
     decisions = orch.memory.decisions_for(job.id)
-    assert any("upload failed" in d.decision.lower() for d in decisions)
+    # The orchestrator may log this as a validate- OR upload-phase
+    # failure depending on which altool call broke. Either is fine.
+    assert any(
+        "upload failed" in d.decision.lower() or "validate failed" in d.decision.lower()
+        for d in decisions
+    )

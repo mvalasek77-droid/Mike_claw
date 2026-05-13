@@ -22,6 +22,16 @@ final class CostTracker: ObservableObject {
     /// True when the backend has emitted `cost.cap_hit`. The UI uses
     /// this to swap the cost badge to a warning state.
     @Published private(set) var capHit: Bool = false
+    /// Last `workspace.full` event the backend emitted, if any. The
+    /// BuildScreen banner reads from this — UI lets the user lift the
+    /// snapshot cap in Settings → Build cost cap.
+    @Published private(set) var workspaceFull: WorkspaceFullState?
+
+    struct WorkspaceFullState: Equatable {
+        let label: String
+        let sizeBytes: Int64
+        let capBytes: Int64
+    }
 
     struct AgentCost: Identifiable, Hashable {
         var id: String { agent }
@@ -46,6 +56,7 @@ final class CostTracker: ObservableObject {
         inputTokens = 0; outputTokens = 0; perAgent = [:]
         retryAttempts = 0; maxRetries = 0
         backendSpendUSD = 0; backendCapUSD = nil; capHit = false
+        workspaceFull = nil
         client.$events
             .sink { [weak self] events in self?.consume(events) }
             .store(in: &cancellables)
@@ -74,6 +85,7 @@ final class CostTracker: ObservableObject {
         var backendSpend: Double = 0
         var backendCap: Double? = nil
         var hit = false
+        var wsFull: WorkspaceFullState? = nil
         for event in events {
             switch event.type {
             case "agent.finished":
@@ -102,6 +114,13 @@ final class CostTracker: ObservableObject {
                 hit = true
                 if let spent = event.payload["spent_usd"] as? Double { backendSpend = spent }
                 if let cap = event.payload["cap_usd"] as? Double { backendCap = cap }
+            case "workspace.full":
+                let label = (event.payload["label"] as? String) ?? "(unknown)"
+                let size = (event.payload["size_bytes"] as? Int).map(Int64.init)
+                    ?? (event.payload["size_bytes"] as? Int64) ?? 0
+                let cap = (event.payload["cap_bytes"] as? Int).map(Int64.init)
+                    ?? (event.payload["cap_bytes"] as? Int64) ?? 0
+                wsFull = WorkspaceFullState(label: label, sizeBytes: size, capBytes: cap)
             default: break
             }
         }
@@ -113,6 +132,7 @@ final class CostTracker: ObservableObject {
         backendSpendUSD = backendSpend
         backendCapUSD = backendCap
         capHit = hit
+        workspaceFull = wsFull
     }
 
     private func usd(input: Int, output: Int) -> Double {

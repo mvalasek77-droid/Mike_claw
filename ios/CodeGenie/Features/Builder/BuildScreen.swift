@@ -18,6 +18,7 @@ struct BuildScreen: View {
     @State private var showAppleDevSetup: Bool = false
     @State private var shipBanner: String?
     @State private var showSnapshots: Bool = false
+    @State private var showSnapshotSettingsSheet: Bool = false
     @StateObject private var game = BitDropGame()
     @StateObject private var swarm = SwarmClient()
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
@@ -45,6 +46,7 @@ struct BuildScreen: View {
                         if showGame { gameBlock }
                         if useRemote { transcriptBlock }
                         if costs.capHit { costCapCallout }
+                        WorkspaceFullBanner(tracker: costs) { showSnapshotSettingsSheet = true }
                         if !diffStream.pending.isEmpty { diffReviewCallout }
                         logBlock
                         Color.clear.frame(height: 24)
@@ -73,11 +75,25 @@ struct BuildScreen: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showSnapshotSettingsSheet) {
+            SnapshotCapSettingsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .sheet(isPresented: $showSnapshots) {
             if let jobID = swarm.jobID {
-                SnapshotPickerView(jobID: jobID, client: swarm)
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(.ultraThinMaterial)
+                SnapshotPickerView(
+                    jobID: jobID,
+                    client: swarm,
+                    onFork: { newID in
+                        session.adoptForkedJob(
+                            originalDescription: initialJob.description,
+                            newID: newID
+                        )
+                    }
+                )
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
             }
         }
         .onDisappear {

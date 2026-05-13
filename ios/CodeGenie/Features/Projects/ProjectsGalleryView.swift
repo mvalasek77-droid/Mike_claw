@@ -25,7 +25,7 @@ struct ProjectsGalleryView: View {
                         emptyState
                     } else {
                         ForEach(filtered) { job in
-                            ProjectCard(job: job)
+                            ProjectCard(job: job, backendID: session.backendJobIDs[job.id])
                         }
                     }
                     Color.clear.frame(height: 30)
@@ -107,6 +107,7 @@ struct ProjectsGalleryView: View {
 
 private struct ProjectCard: View {
     let job: BuildJob
+    var backendID: String? = nil
 
     var body: some View {
         GlassSurface(tier: .raised, corner: 22) {
@@ -136,6 +137,20 @@ private struct ProjectCard: View {
                     .font(.system(size: 13, weight: .regular, design: .rounded))
                     .foregroundStyle(.white.opacity(0.75))
                     .lineLimit(2)
+                if let backendID {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.system(size: 9, weight: .bold))
+                            .accessibilityHidden(true)
+                        Text("forked · \(backendID.prefix(12))")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    }
+                    .padding(.horizontal, 6).padding(.vertical, 3)
+                    .background(LiquidGlass.accentSecondary.opacity(0.18), in: Capsule())
+                    .overlay(Capsule().strokeBorder(LiquidGlass.accentSecondary.opacity(0.35)))
+                    .foregroundStyle(LiquidGlass.accentSecondary)
+                    .accessibilityLabel("Forked from build \(backendID)")
+                }
             }
             .padding(16)
         }

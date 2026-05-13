@@ -67,6 +67,9 @@ class BuildRequest(BaseModel):
     # User-defined agents to run after the standard test layer. Each
     # entry: { name, system_prompt, tool_allowlist }.
     custom_agents: list[dict[str, Any]] = Field(default_factory=list)
+    # Per-build snapshot-bytes ceiling. None = use SwarmConfig default
+    # (256 MiB). The iOS UI lets the user lift this from Settings.
+    max_snapshot_bytes: int | None = None
 
 
 class JobState(str, Enum):
@@ -142,6 +145,7 @@ class SwarmEvent(BaseModel):
         "retry.attempt",
         "memory.briefing",
         "testflight.upload",
+        "testflight.upload.progress",
         "testflight.status",
         "cost.update",
         "cost.cap_hit",
