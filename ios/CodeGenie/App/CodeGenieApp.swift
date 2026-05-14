@@ -36,7 +36,7 @@ struct RootView: View {
                     ))
             } else {
                 OnboardingView {
-                    withAnimation(.smooth(duration: 0.6)) {
+                    Motion.run(.smooth(duration: 0.6)) {
                         hasFinishedOnboarding = true
                     }
                     Haptics.success()
@@ -44,7 +44,7 @@ struct RootView: View {
                 .transition(.opacity)
             }
         }
-        .animation(.smooth(duration: 0.55), value: hasFinishedOnboarding)
-        .animation(.smooth(duration: 0.55), value: splashDone)
+        .motion(Motion.smooth, value: hasFinishedOnboarding)
+        .motion(Motion.smooth, value: splashDone)
     }
 }

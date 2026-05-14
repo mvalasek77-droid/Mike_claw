@@ -32,7 +32,7 @@ struct DiffPreviewView: View {
                                 status: states[diff.id] ?? .pending,
                                 isExpanded: expanded == diff.id,
                                 onToggle: {
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                                    Motion.run(.spring(response: 0.4, dampingFraction: 0.85)) {
                                         expanded = expanded == diff.id ? nil : diff.id
                                     }
                                 },
@@ -157,7 +157,7 @@ private struct DiffCard: View {
                     Divider().background(.white.opacity(0.1))
                     DiffBodyView(hunks: diff.hunks())
                     HStack(spacing: 8) {
-                        actionButton(title: "Reject", icon: "xmark", tint: .white.opacity(0.8), filled: status == .rejected, action: onReject)
+                        actionButton(title: "Reject", icon: "xmark", tint: LiquidGlass.primaryText.opacity(0.8), filled: status == .rejected, action: onReject)
                         actionButton(title: "Accept", icon: "checkmark", tint: LiquidGlass.success, filled: status == .accepted, action: onAccept)
                     }
                 }
@@ -239,10 +239,10 @@ private struct DiffBodyView: View {
         switch k { case .added: "+"; case .removed: "−"; case .same: " " }
     }
     private func tint(_ k: FileDiff.Hunk.Kind) -> Color {
-        switch k { case .added: LiquidGlass.success; case .removed: .red.opacity(0.9); case .same: .white.opacity(0.4) }
+        switch k { case .added: LiquidGlass.success; case .removed: .red.opacity(0.9); case .same: LiquidGlass.primaryText.opacity(0.4) }
     }
     private func textTint(_ k: FileDiff.Hunk.Kind) -> Color {
-        switch k { case .added: .white; case .removed: .white.opacity(0.85); case .same: .white.opacity(0.7) }
+        switch k { case .added: LiquidGlass.primaryText; case .removed: LiquidGlass.primaryText.opacity(0.85); case .same: LiquidGlass.primaryText.opacity(0.7) }
     }
     private func background(_ k: FileDiff.Hunk.Kind) -> Color {
         switch k {

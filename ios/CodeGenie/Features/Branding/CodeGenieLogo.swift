@@ -9,6 +9,7 @@ struct CodeGenieLogo: View {
 
     @State private var floating = false
     @State private var sparkleSpin = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -59,9 +60,9 @@ struct CodeGenieLogo: View {
         .accessibilityElement()
         .accessibilityLabel("CodeGenie logo")
         .onAppear {
-            guard animate else { return }
-            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) { floating = true }
-            withAnimation(.linear(duration: 16).repeatForever(autoreverses: false)) { sparkleSpin = true }
+            guard animate, !reduceMotion else { return }
+            Motion.run(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) { floating = true }
+            Motion.run(.linear(duration: 16).repeatForever(autoreverses: false)) { sparkleSpin = true }
         }
     }
 

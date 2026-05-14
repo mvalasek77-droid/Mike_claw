@@ -7,6 +7,7 @@ struct OnboardingIllustrationView: View {
     let kind: OnboardingSlide.Illustration
     @State private var bob: Bool = false
     @State private var spin: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -21,8 +22,9 @@ struct OnboardingIllustrationView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) { bob = true }
-            withAnimation(.linear(duration: 14).repeatForever(autoreverses: false)) { spin = true }
+            guard !reduceMotion else { return }
+            Motion.run(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) { bob = true }
+            Motion.run(.linear(duration: 14).repeatForever(autoreverses: false)) { spin = true }
         }
         .accessibilityHidden(true)
     }

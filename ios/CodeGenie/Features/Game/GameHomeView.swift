@@ -151,7 +151,7 @@ struct GameHomeView: View {
     private var helpOverlay: some View {
         ZStack {
             Color.black.opacity(0.55).ignoresSafeArea()
-                .onTapGesture { withAnimation(Motion.smooth) { showHelp = false } }
+                .onTapGesture { Motion.run(Motion.smooth) { showHelp = false } }
             GlassSurface(tier: .deep) {
                 VStack(spacing: 14) {
                     Text("BitDrop").font(.system(size: 22, weight: .bold, design: .rounded))
@@ -161,7 +161,7 @@ struct GameHomeView: View {
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                         .multilineTextAlignment(.center)
                     PrimaryButton(title: "Play", systemImage: "play.fill", style: .filled) {
-                        withAnimation(Motion.smooth) { showHelp = false }
+                        Motion.run(Motion.smooth) { showHelp = false }
                     }
                     .frame(maxWidth: 200)
                 }

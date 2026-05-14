@@ -16,7 +16,7 @@ struct ProgressOrb: View {
             if reduceMotion {
                 orbContent(t: 0)
             } else {
-                TimelineView(.animation(minimumInterval: 1 / 60)) { context in
+                TimelineView(.animation(minimumInterval: 1 / 30)) { context in
                     orbContent(t: context.date.timeIntervalSinceReferenceDate)
                 }
             }
@@ -52,7 +52,7 @@ struct ProgressOrb: View {
                     style: StrokeStyle(lineWidth: 8, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .animation(.spring(response: 0.6, dampingFraction: 0.85), value: progress)
+                .motion(.spring(response: 0.6, dampingFraction: 0.85), value: progress)
 
             VStack(spacing: 4) {
                 Text("\(Int(progress * 100))%")

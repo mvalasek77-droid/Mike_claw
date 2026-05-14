@@ -202,7 +202,7 @@ struct PairMacView: View {
         case .connected:                       LiquidGlass.success
         case .connecting, .authenticating, .browsing: LiquidGlass.warning
         case .failed:                          .red
-        case .idle:                            .white.opacity(0.4)
+        case .idle:                            LiquidGlass.primaryText.opacity(0.4)
         }
     }
 }

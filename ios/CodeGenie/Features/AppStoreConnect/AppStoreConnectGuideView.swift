@@ -154,7 +154,7 @@ struct AppStoreConnectGuideView: View {
                     Capsule().fill(.white.opacity(0.1))
                     Capsule().fill(LiquidGlass.auroraGradient)
                         .frame(width: proxy.size.width * Double(completed.count) / Double(ASCStep.all.count))
-                        .animation(.spring(response: 0.5), value: completed.count)
+                        .motion(.spring(response: 0.5), value: completed.count)
                 }
             }
             .frame(height: 6)
@@ -191,7 +191,7 @@ struct AppStoreConnectGuideView: View {
         Haptics.success()
         completed.insert(step.id)
         if let i = ASCStep.all.firstIndex(of: step), i + 1 < ASCStep.all.count {
-            withAnimation(.spring(response: 0.4)) { current = i + 1 }
+            Motion.run(.spring(response: 0.4)) { current = i + 1 }
         }
     }
 }

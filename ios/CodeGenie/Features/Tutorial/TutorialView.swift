@@ -140,7 +140,7 @@ struct TutorialView: View {
                 Capsule()
                     .fill(i == index ? LiquidGlass.accent : .white.opacity(0.25))
                     .frame(width: i == index ? 22 : 7, height: 7)
-                    .animation(Motion.spring, value: index)
+                    .motion(Motion.spring, value: index)
             }
         }
         .accessibilityElement()
@@ -151,7 +151,7 @@ struct TutorialView: View {
         HStack(spacing: 12) {
             if index > 0 {
                 PrimaryButton(title: "Back", systemImage: "chevron.left", style: .ghost) {
-                    withAnimation(Motion.smooth) { index -= 1 }
+                    Motion.run(Motion.smooth) { index -= 1 }
                 }
                 .frame(maxWidth: 130)
                 .accessibilityLabel("Previous slide")
@@ -164,7 +164,7 @@ struct TutorialView: View {
                 if index == slides.count - 1 {
                     finish()
                 } else {
-                    withAnimation(Motion.smooth) { index += 1 }
+                    Motion.run(Motion.smooth) { index += 1 }
                 }
             }
             .accessibilityLabel(index == slides.count - 1 ? finishCTA : "Next slide")

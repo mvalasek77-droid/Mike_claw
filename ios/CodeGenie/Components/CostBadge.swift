@@ -8,7 +8,7 @@ struct CostBadge: View {
 
     var body: some View {
         Button {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { expanded.toggle() }
+            Motion.run(.spring(response: 0.4, dampingFraction: 0.85)) { expanded.toggle() }
             Haptics.selection()
         } label: {
             HStack(spacing: 6) {

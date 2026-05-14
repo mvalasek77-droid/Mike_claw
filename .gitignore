@@ -8,6 +8,7 @@ build/
 DerivedData*/
 xcuserdata/
 *.xcuserstate
+codegenie-*-check.png
 .venv/
 .venv*/
 venv/

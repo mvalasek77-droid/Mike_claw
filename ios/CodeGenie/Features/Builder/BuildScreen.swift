@@ -427,7 +427,7 @@ struct BuildScreen: View {
         } else {
             builderTask = Task {
                 await builder.start(initialJob) { newStage in
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                    Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
                         stage = newStage
                     }
                     appendLog(for: newStage)
@@ -475,7 +475,7 @@ struct BuildScreen: View {
                             default: .planning
                             }
                         }()
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
+                        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
                         appendLog(for: mapped)
                         if mapped == .readyForTest {
                             startPerfectionIfNeeded(jobID: id)
@@ -494,7 +494,7 @@ struct BuildScreen: View {
         push(.warn, formattedTime(), "remote build unavailable (\(reason)), simulating")
         builderTask = Task {
             await builder.start(initialJob) { newStage in
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
                     stage = newStage
                 }
                 appendLog(for: newStage)
@@ -667,12 +667,12 @@ struct BuildScreen: View {
             case info, accent, ok, warn, err, dim
             var color: Color {
                 switch self {
-                case .info: return .white.opacity(0.85)
+                case .info: return LiquidGlass.primaryText.opacity(0.85)
                 case .accent: return LiquidGlass.accent
                 case .ok: return LiquidGlass.success
                 case .warn: return LiquidGlass.warning
                 case .err: return .red
-                case .dim: return .white.opacity(0.55)
+                case .dim: return LiquidGlass.primaryText.opacity(0.55)
                 }
             }
         }

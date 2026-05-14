@@ -73,7 +73,7 @@ struct XcodeInstructionsView: View {
                     aiCaution
                     ForEach(XcodeStep.all) { step in
                         StepCard(step: step, isExpanded: expanded == step.id) {
-                            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                            Motion.run(.spring(response: 0.45, dampingFraction: 0.85)) {
                                 expanded = expanded == step.id ? nil : step.id
                             }
                             Haptics.selection()

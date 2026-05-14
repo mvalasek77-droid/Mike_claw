@@ -36,8 +36,13 @@ struct PrimaryButton: View {
         .buttonStyle(.plain)
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
-                .onChanged { _ in if !pressed { withAnimation(.spring(response: 0.2)) { pressed = true } } }
-                .onEnded { _ in withAnimation(.spring(response: 0.3)) { pressed = false } }
+                .onChanged { _ in
+                    guard !pressed else { return }
+                    Motion.run(.spring(response: 0.2)) { pressed = true }
+                }
+                .onEnded { _ in
+                    Motion.run(.spring(response: 0.3)) { pressed = false }
+                }
         )
         .accessibilityAddTraits(.isButton)
     }
@@ -52,7 +57,7 @@ struct PrimaryButton: View {
     private var foreground: Color {
         switch style {
         case .filled: .white
-        case .glass, .ghost: .white.opacity(0.95)
+        case .glass, .ghost: LiquidGlass.primaryText.opacity(0.95)
         }
     }
     private var shadow: Color {

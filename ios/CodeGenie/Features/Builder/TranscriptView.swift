@@ -20,7 +20,7 @@ struct TranscriptView: View {
             }
             .onChange(of: client.events.count) { _, _ in
                 if let last = client.events.last {
-                    withAnimation(.easeOut(duration: 0.2)) {
+                    Motion.run(.easeOut(duration: 0.2)) {
                         proxy.scrollTo(last.id, anchor: .bottom)
                     }
                 }
@@ -93,7 +93,7 @@ private struct TranscriptRow: View {
         switch event.type {
         case "agent.started":     LiquidGlass.accent
         case "agent.finished":    LiquidGlass.success
-        case "agent.thought":     .white.opacity(0.85)
+        case "agent.thought":     LiquidGlass.primaryText.opacity(0.85)
         case "tool.call":         LiquidGlass.warning
         case "tool.result":       LiquidGlass.success
         case "diff":              LiquidGlass.accentSecondary
@@ -105,7 +105,7 @@ private struct TranscriptRow: View {
         case "error":             .red
         case "job.state":         LiquidGlass.accent
         case "done":              LiquidGlass.success
-        default:                  .white.opacity(0.6)
+        default:                  LiquidGlass.primaryText.opacity(0.6)
         }
     }
 
