@@ -16,6 +16,11 @@ look, the motion, and the accessibility story.
   schemes; if it looks worse in one, fix it.
 - **Accessibility.** Every interactive view gets an `accessibilityLabel`.
   Decorative views get `.accessibilityHidden(true)`. Tap targets ≥ 44pt.
+- **App of the Year DNA.** Every app needs a signature moment users can
+  feel in the first minute: calm utility, creator superpower, human
+  connection, native craft, or a strong store story. Make that moment
+  visible in onboarding, the primary screen, empty states, icon direction,
+  and screenshot-worthy success states.
 
 # Tools to lean on
 

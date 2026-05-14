@@ -21,6 +21,7 @@ def _write_clean_workspace(root: Path, job_id: str = "job_green") -> Path:
     (ws / "Sources" / "DemoApp.swift").write_text(
         """
         import SwiftUI
+        import CoreHaptics
 
         struct DemoAppView: View {
             @Environment(\\.accessibilityReduceMotion) private var reduceMotion
@@ -37,6 +38,19 @@ def _write_clean_workspace(root: Path, job_id: str = "job_green") -> Path:
         """,
         encoding="utf-8",
     )
+    (ws / "Sources" / "OnboardingView.swift").write_text(
+        """
+        import SwiftUI
+
+        struct OnboardingView: View {
+            var body: some View {
+                Text("A calm creative first launch")
+                    .accessibilityLabel("A calm creative first launch")
+            }
+        }
+        """,
+        encoding="utf-8",
+    )
     (ws / "Tests" / "DemoAppTests.swift").write_text(
         "import XCTest\nfinal class DemoAppTests: XCTestCase { func testSmoke() {} }\n",
         encoding="utf-8",
@@ -47,6 +61,19 @@ def _write_clean_workspace(root: Path, job_id: str = "job_green") -> Path:
         "{}",
         encoding="utf-8",
     )
+    (ws / "Resources" / "AppStoreMetadata.json").write_text(
+        """
+        {
+          "subtitle": "Calm creative progress",
+          "description": "A focused habit app with a clear first-run payoff.",
+          "keywords": ["calm", "habit", "create"],
+          "screenshots": ["Screenshots/01-home.png", "Screenshots/02-success.png"]
+        }
+        """,
+        encoding="utf-8",
+    )
+    (ws / "Resources" / "Screenshots" / "01-home.png.json").parent.mkdir(parents=True)
+    (ws / "Resources" / "Screenshots" / "01-home.png.json").write_text("{}", encoding="utf-8")
     return ws
 
 
@@ -110,6 +137,7 @@ def test_perfection_matrix_finds_release_blockers(tmp_path: Path):
     titles = {f["title"] for f in result["findings"]}
     assert "Privacy manifest missing" in titles
     assert "fatalError call found" in titles
+    assert "First-run payoff is not explicit" in titles
     assert result["score"] < 80
 
 

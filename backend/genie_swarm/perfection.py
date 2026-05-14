@@ -64,6 +64,7 @@ AXES: tuple[QualityAxis, ...] = (
     QualityAxis("resilience", "Offline + Edge Cases", 1.05, 260),
     QualityAxis("security", "Privacy + Security", 1.35, 190),
     QualityAxis("ui_polish", "Liquid Glass Polish", 0.95, 180),
+    QualityAxis("award_caliber", "App of Year DNA", 1.20, 230),
     QualityAxis("store_ready", "App Store Package", 1.25, 360),
     QualityAxis("engineering", "Senior Engineering", 1.10, 240),
 )
@@ -110,7 +111,7 @@ def run_perfection_matrix(
     raw_probes = 10_000 if requested_probes is None else requested_probes
     probes = max(1_000, min(int(raw_probes), 100_000))
     scanned = list(_scan_workspace(workspace))
-    findings = _audit_spec(spec) + _audit_workspace(workspace, scanned)
+    findings = _audit_spec(spec) + _audit_workspace(spec, workspace, scanned)
     axis_budgets = _allocate_probes(probes)
     axis_reports = [
         _axis_report(axis, axis_budgets[axis.key], findings, spec, clock)
@@ -204,7 +205,7 @@ def _audit_spec(spec: AppSpec) -> list[PerfectionFinding]:
     return findings
 
 
-def _audit_workspace(workspace: Path, files: list[ScannedFile]) -> list[PerfectionFinding]:
+def _audit_workspace(spec: AppSpec, workspace: Path, files: list[ScannedFile]) -> list[PerfectionFinding]:
     findings: list[PerfectionFinding] = []
     if not workspace.exists():
         return [PerfectionFinding(
@@ -262,6 +263,7 @@ def _audit_workspace(workspace: Path, files: list[ScannedFile]) -> list[Perfecti
     findings.extend(_scan_network_resilience(swift_files))
     findings.extend(_scan_security(files))
     findings.extend(_scan_large_files(swift_files))
+    findings.extend(_scan_award_caliber(spec, paths, all_text))
     return findings
 
 
@@ -356,6 +358,84 @@ def _scan_large_files(files: list[ScannedFile]) -> list[PerfectionFinding]:
                 file=f.path,
                 recommendation="Split large views/services by responsibility before release.",
             ))
+    return findings
+
+
+def _scan_award_caliber(
+    spec: AppSpec,
+    paths: set[str],
+    all_text: str,
+) -> list[PerfectionFinding]:
+    """Look for the product DNA Apple repeatedly rewards.
+
+    This does not try to predict awards. It checks for the concrete
+    ingredients that make an app launch-worthy: a crisp first run, a
+    named human outcome, native-device leverage, and a store story.
+    """
+    findings: list[PerfectionFinding] = []
+    haystack = "\n".join([
+        spec.title,
+        spec.prompt,
+        " ".join(spec.features),
+        all_text,
+        " ".join(paths),
+    ]).lower()
+
+    first_run_terms = (
+        "onboarding", "firstlaunch", "first launch", "welcome",
+        "tutorial", "splash", "empty state",
+    )
+    if not any(term in haystack for term in first_run_terms):
+        findings.append(PerfectionFinding(
+            "warning", "award_caliber", "First-run payoff is not explicit",
+            "Recent iPhone App of the Year winners make the product value obvious immediately.",
+            recommendation="Add a first-run moment that proves the app's core payoff before asking for setup.",
+        ))
+
+    human_terms = (
+        "calm", "focus", "habit", "health", "wellness", "create",
+        "creative", "share", "connect", "community", "family",
+        "authentic", "explore", "learn", "accessibility", "inclusive",
+        "confidence", "delight", "story",
+    )
+    if not any(term in haystack for term in human_terms):
+        findings.append(PerfectionFinding(
+            "warning", "award_caliber", "Human outcome is not named",
+            "Award-caliber apps are framed around a meaningful human result, not only features.",
+            recommendation="Name the emotional or practical outcome in the product brief and app copy.",
+        ))
+
+    native_terms = (
+        "avfoundation", "corelocation", "mapkit", "photosui",
+        "widgetkit", "appintents", "healthkit", "corehaptics",
+        "sensoryfeedback", "uiimpactfeedbackgenerator",
+        "accessibility", "liveactivity", "activitykit",
+    )
+    if not any(term in haystack for term in native_terms):
+        findings.append(PerfectionFinding(
+            "warning", "award_caliber", "Native Apple leverage is unclear",
+            "The strongest winners feel specific to Apple devices rather than portable web screens.",
+            recommendation="Use at least one native capability that materially improves the core workflow.",
+        ))
+
+    store_story_terms = (
+        "appstoremetadata", "subtitle", "keywords", "promotional",
+        "description", "screenshot", "screenshots", "appicon",
+        "icon-1024",
+    )
+    if not any(term in haystack for term in store_story_terms):
+        findings.append(PerfectionFinding(
+            "warning", "award_caliber", "Store story is missing",
+            "The App Store package should communicate the payoff through metadata, icon, and screenshots.",
+            recommendation="Generate App Store metadata, screenshot plan, and icon proof before TestFlight.",
+        ))
+
+    if not any("screenshot" in p.lower() for p in paths):
+        findings.append(PerfectionFinding(
+            "warning", "award_caliber", "Launch screenshots are not planned",
+            "A polished listing needs screenshots that prove the app's best moments on real device sizes.",
+            recommendation="Capture simulator screenshots for the main flow, empty state, and success state.",
+        ))
     return findings
 
 
