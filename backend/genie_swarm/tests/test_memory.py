@@ -126,6 +126,39 @@ def test_briefing_empty_when_nothing_stored(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
+# FTS5 retrieval
+# --------------------------------------------------------------------------- #
+
+def test_fts_recall_tokenises_multi_word_queries(tmp_path: Path):
+    """A two-word query should match facts containing both words even
+    if they're not adjacent — LIKE %query% would only match adjacency."""
+    mem = Memory(tmp_path)
+    mem.remember("preferred_palette", "muted earth tones with warm hues", confidence=0.9)
+    mem.remember("typography",        "rounded display fonts everywhere",  confidence=0.8)
+    rows = mem.recall("warm earth")
+    assert len(rows) >= 1
+    assert rows[0].key == "preferred_palette"
+
+
+def test_fts_recall_handles_punctuation_in_query(tmp_path: Path):
+    """Queries with punctuation that would break raw FTS syntax must
+    not raise — our token-quoter strips/wraps them safely."""
+    mem = Memory(tmp_path)
+    mem.remember("xcode_setup", "Use Xcode 16, signed via team ABCD123", confidence=0.7)
+    # Quotes, parens, hyphen — all of which are FTS5 operators or
+    # syntax markers if not properly escaped.
+    rows = mem.recall('"xcode" (16)')
+    assert len(rows) >= 1
+    assert rows[0].key == "xcode_setup"
+
+
+def test_fts_recall_returns_empty_for_unrelated_query(tmp_path: Path):
+    mem = Memory(tmp_path)
+    mem.remember("k", "blue green red")
+    assert mem.recall("octopus") == []
+
+
+# --------------------------------------------------------------------------- #
 # Memory tools
 # --------------------------------------------------------------------------- #
 

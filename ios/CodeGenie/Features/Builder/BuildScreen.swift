@@ -8,6 +8,11 @@ struct BuildScreen: View {
     @Environment(\.dismiss) private var dismiss
 
     let initialJob: BuildJob
+    /// When non-nil, BuildScreen attaches to an existing backend job
+    /// (subscribes to its SSE stream) instead of starting a fresh
+    /// build. Used by the Apps tab to open a forked / resumed job's
+    /// live transcript without spending tokens.
+    let attachToBackendID: String?
 
     @State private var stage: BuildJob.Stage = .planning
     @State private var displayedLog: [LogLine] = []
@@ -23,6 +28,7 @@ struct BuildScreen: View {
     @StateObject private var swarm = SwarmClient()
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
     @StateObject private var diffStream = DiffStream()
+    @StateObject private var uploadProgress = UploadProgressTracker()
 
     private let builder: BuilderService = LocalSimulatedBuilder()
     private var useRemote: Bool {
@@ -32,7 +38,10 @@ struct BuildScreen: View {
         return !url.isEmpty && !url.hasPrefix("https://api.codegenie.app")
     }
 
-    init(job: BuildJob) { self.initialJob = job }
+    init(job: BuildJob, attachToBackendID: String? = nil) {
+        self.initialJob = job
+        self.attachToBackendID = attachToBackendID
+    }
 
     var body: some View {
         ZStack {
@@ -47,6 +56,7 @@ struct BuildScreen: View {
                         if useRemote { transcriptBlock }
                         if costs.capHit { costCapCallout }
                         WorkspaceFullBanner(tracker: costs) { showSnapshotSettingsSheet = true }
+                        UploadProgressStrip(tracker: uploadProgress)
                         if !diffStream.pending.isEmpty { diffReviewCallout }
                         logBlock
                         Color.clear.frame(height: 24)
@@ -371,9 +381,18 @@ struct BuildScreen: View {
     private func runRemoteBuild() async {
         costs.bind(to: swarm)
         diffStream.bind(to: swarm)
+        uploadProgress.bind(to: swarm)
         CustomAgentLog.shared.bind(to: swarm)
         do {
-            let id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+            // Attach to an existing backend job (forked / resumed)
+            // instead of starting a new build. We don't burn tokens
+            // when the user is just inspecting a job's live state.
+            let id: String
+            if let backendID = attachToBackendID {
+                id = backendID
+            } else {
+                id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+            }
             swarm.openStream(jobID: id) { event in
                 Task { @MainActor in
                     // Mirror backend stage into the local UI, append to the

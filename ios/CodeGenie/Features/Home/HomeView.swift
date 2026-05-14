@@ -60,7 +60,7 @@ struct HomeView: View {
             }
         }
         .fullScreenCover(item: $session.currentJob) { job in
-            BuildScreen(job: job)
+            BuildScreen(job: job, attachToBackendID: session.currentJobBackendID)
                 .environmentObject(session)
         }
         .fullScreenCover(item: $session.pendingPreview) { job in

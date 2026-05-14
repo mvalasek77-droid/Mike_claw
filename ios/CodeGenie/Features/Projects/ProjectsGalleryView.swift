@@ -25,7 +25,16 @@ struct ProjectsGalleryView: View {
                         emptyState
                     } else {
                         ForEach(filtered) { job in
-                            ProjectCard(job: job, backendID: session.backendJobIDs[job.id])
+                            Button {
+                                session.openJob(job, backendID: session.backendJobIDs[job.id])
+                            } label: {
+                                ProjectCard(job: job, backendID: session.backendJobIDs[job.id])
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Open \(job.description.title)")
+                            .accessibilityHint(session.backendJobIDs[job.id] != nil
+                                ? "Attach to the live build"
+                                : "Resume locally")
                         }
                     }
                     Color.clear.frame(height: 30)

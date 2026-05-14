@@ -128,6 +128,40 @@ class Memory:
                 CREATE INDEX IF NOT EXISTS idx_facts_source ON facts(source);
                 """
             )
+            # FTS5 mirror of facts. Some SQLite builds ship without
+            # FTS5 — we degrade to a LIKE-based recall path in that case.
+            try:
+                c.executescript(
+                    """
+                    CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts USING fts5(
+                        key, value, content='facts', content_rowid='rowid'
+                    );
+                    CREATE TRIGGER IF NOT EXISTS facts_ai AFTER INSERT ON facts BEGIN
+                        INSERT INTO facts_fts(rowid, key, value)
+                        VALUES (new.rowid, new.key, new.value);
+                    END;
+                    CREATE TRIGGER IF NOT EXISTS facts_ad AFTER DELETE ON facts BEGIN
+                        INSERT INTO facts_fts(facts_fts, rowid, key, value)
+                        VALUES ('delete', old.rowid, old.key, old.value);
+                    END;
+                    CREATE TRIGGER IF NOT EXISTS facts_au AFTER UPDATE ON facts BEGIN
+                        INSERT INTO facts_fts(facts_fts, rowid, key, value)
+                        VALUES ('delete', old.rowid, old.key, old.value);
+                        INSERT INTO facts_fts(rowid, key, value)
+                        VALUES (new.rowid, new.key, new.value);
+                    END;
+                    """
+                )
+                # Seed any pre-existing rows so older sessions get
+                # FTS coverage without a manual rebuild.
+                c.execute(
+                    "INSERT INTO facts_fts(rowid, key, value) "
+                    "SELECT f.rowid, f.key, f.value FROM facts f "
+                    "WHERE f.rowid NOT IN (SELECT rowid FROM facts_fts)"
+                )
+                self._fts_available = True
+            except sqlite3.OperationalError:
+                self._fts_available = False
 
     # ------------------------------------------------------------------
     # Facts
@@ -151,22 +185,61 @@ class Memory:
             c.execute("DELETE FROM facts WHERE key=?", (key,))
 
     def recall(self, query: str, *, limit: int = 10, now: float | None = None) -> list[Fact]:
-        """Cheap LIKE-based retrieval, with lazy decay. We:
-          1. Pull candidate rows whose key or value mentions the query
-          2. Apply exponential decay to each row's confidence
-          3. Prune rows below ``PRUNE_THRESHOLD`` from the DB
-          4. Return survivors sorted by decayed-confidence × recency
+        """Tokenized retrieval (FTS5) with lazy decay.
+
+        Pipeline:
+          1. Pull candidate rows whose key or value matches the query.
+             FTS5's BM25 ranker gives us proper relevance; we fall
+             back to LIKE if the host SQLite lacks FTS5.
+          2. Apply exponential decay to each row's confidence.
+          3. Prune rows below ``PRUNE_THRESHOLD`` from the DB.
+          4. Return survivors sorted by decayed-confidence × recency.
         """
-        like = f"%{query.lower()}%"
         clock = now if now is not None else time.time()
         with self._conn() as c:
-            rows = c.execute(
-                """SELECT key, value, confidence, source, ts FROM facts
-                   WHERE LOWER(key) LIKE ? OR LOWER(value) LIKE ?
-                   ORDER BY ts DESC""",
-                (like, like),
-            ).fetchall()
+            rows = self._search(c, query)
         return self._apply_decay_and_prune(rows, clock=clock, limit=limit)
+
+    def _search(self, conn: sqlite3.Connection, query: str) -> list[sqlite3.Row]:
+        """Try FTS5; fall back to LIKE on any FTS error (degraded
+        environments, malformed queries, etc.)."""
+        if self._fts_available:
+            try:
+                fts_query = self._build_fts_query(query)
+                if fts_query:
+                    return conn.execute(
+                        """SELECT f.key, f.value, f.confidence, f.source, f.ts
+                           FROM facts_fts m
+                           JOIN facts f ON f.rowid = m.rowid
+                           WHERE facts_fts MATCH ?
+                           ORDER BY bm25(facts_fts), f.ts DESC""",
+                        (fts_query,),
+                    ).fetchall()
+            except sqlite3.OperationalError:
+                # FTS rejected the query — fall through to LIKE.
+                pass
+        like = f"%{query.lower()}%"
+        return conn.execute(
+            """SELECT key, value, confidence, source, ts FROM facts
+               WHERE LOWER(key) LIKE ? OR LOWER(value) LIKE ?
+               ORDER BY ts DESC""",
+            (like, like),
+        ).fetchall()
+
+    @staticmethod
+    def _build_fts_query(raw: str) -> str:
+        """Turn a free-text query into an FTS5 expression. We escape
+        each token by wrapping in double quotes so punctuation can't
+        flip a token into an operator. Empty tokens are dropped; an
+        empty expression returns '' which the caller treats as no
+        match (and skips the FTS branch)."""
+        tokens = [t for t in raw.split() if t.strip()]
+        if not tokens:
+            return ""
+        # FTS5 doesn't allow embedded double quotes inside a "..." token —
+        # they'd open a string. Strip them defensively.
+        cleaned = [f'"{t.replace(chr(34), "")}"' for t in tokens if t.replace('"', "").strip()]
+        return " ".join(cleaned)
 
     def all_facts(self, *, now: float | None = None) -> list[Fact]:
         clock = now if now is not None else time.time()

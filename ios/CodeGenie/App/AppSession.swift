@@ -8,6 +8,10 @@ final class AppSession: ObservableObject {
     @Published var recentJobs: [BuildJob] = []
     @Published var pendingPreview: BuildJob?
     @Published var pendingASC: BuildJob?
+    /// Backend id we should attach to when the cover opens for
+    /// `currentJob`. Cleared on dismiss so a subsequent fresh build
+    /// doesn't accidentally attach.
+    @Published var currentJobBackendID: String?
 
     func startBuild(from description: AppDescription) -> BuildJob {
         let job = BuildJob(description: description)
@@ -39,6 +43,19 @@ final class AppSession: ObservableObject {
     /// Backend job id (string) for an in-app BuildJob. Used so the
     /// Apps tab and BuildScreen can pick up a forked or imported job.
     @Published private(set) var backendJobIDs: [UUID: String] = [:]
+
+    /// Open an existing job in the BuildScreen. If `backendID` is set
+    /// we'll attach to its SSE stream instead of starting a new build.
+    func openJob(_ job: BuildJob, backendID: String? = nil) {
+        currentJobBackendID = backendID
+        currentJob = job
+        Haptics.selection()
+    }
+
+    func startBuildAndOpen(from description: AppDescription) {
+        currentJobBackendID = nil
+        _ = startBuild(from: description)
+    }
 
     func openPreview(for job: BuildJob) {
         currentJob = nil

@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var showChangelog = false
     @State private var showCustomAgents = false
     @State private var showCrashLog = false
+    @State private var showAdmin = false
     @StateObject private var telemetry = Telemetry.shared
 
     var body: some View {
@@ -35,6 +36,7 @@ struct SettingsView: View {
                     pairMacBlock
                     tutorialBlock
                     telemetryBlock
+                    adminBlock
                     aboutBlock
                     Color.clear.frame(height: 30)
                 }
@@ -75,6 +77,11 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showCrashLog) {
             CrashLogView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAdmin) {
+            AdminView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -181,6 +188,15 @@ struct SettingsView: View {
             icon: "play.rectangle.fill",
             tint: LiquidGlass.accentSecondary
         ) { showTutorial = true }
+    }
+
+    private var adminBlock: some View {
+        navTile(
+            title: "Admin",
+            subtitle: "Storage maintenance + workspace archive.",
+            icon: "wrench.and.screwdriver.fill",
+            tint: LiquidGlass.warning
+        ) { showAdmin = true }
     }
 
     private func navTile(title: String, subtitle: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
