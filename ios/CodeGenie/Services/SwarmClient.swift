@@ -130,6 +130,26 @@ final class SwarmClient: ObservableObject {
         }
     }
 
+    /// Archive job workspaces older than `days`. Returns one summary
+    /// per archive. Active jobs are skipped server-side.
+    func archiveOldWorkspaces(olderThanDays days: Int) async throws -> [ArchiveSummary] {
+        let r = try await postJSON(
+            "/api/coding/swarm/admin/archive",
+            body: ["older_than_days": days],
+        )
+        let entries = (r["archived"] as? [[String: Any]]) ?? []
+        return entries.compactMap { dict in
+            guard let jobID = dict["job_id"] as? String,
+                  let path = dict["archive_path"] as? String else { return nil }
+            return ArchiveSummary(
+                jobID: jobID,
+                archivePath: path,
+                bytesWritten: (dict["bytes_written"] as? Int) ?? 0,
+                filesArchived: (dict["files_archived"] as? Int) ?? 0
+            )
+        }
+    }
+
     /// Reasoning decisions the swarm logged for a specific job — used
     /// when the user taps a crash-log row to see what was happening
     /// when the build went sideways.
@@ -384,6 +404,14 @@ struct DecisionRecord: Identifiable, Hashable {
     let decision: String
     let at: Date
     var id: String { "\(context)|\(decision)|\(at.timeIntervalSince1970)" }
+}
+
+struct ArchiveSummary: Identifiable, Hashable {
+    let jobID: String
+    let archivePath: String
+    let bytesWritten: Int
+    let filesArchived: Int
+    var id: String { archivePath }
 }
 
 struct SwarmEvent: Identifiable {
