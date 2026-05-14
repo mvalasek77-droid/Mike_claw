@@ -9,6 +9,7 @@ struct AdminView: View {
     @State private var lastResult: String?
     @State private var lastSummaries: [ArchiveSummary] = []
     @State private var error: String?
+    @State private var showArchived: Bool = false
     private let client = SwarmClient()
 
     var body: some View {
@@ -18,6 +19,7 @@ struct AdminView: View {
                 VStack(spacing: 16) {
                     header
                     archiveCard
+                    archivedJobsTile
                     if let lastResult { resultCard(lastResult) }
                     if !lastSummaries.isEmpty { summariesCard }
                     if let error { errorCard(error) }
@@ -40,6 +42,39 @@ struct AdminView: View {
                 .foregroundStyle(.white.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var archivedJobsTile: some View {
+        Button { showArchived = true; Haptics.selection() } label: {
+            GlassSurface(tier: .raised, corner: 18) {
+                HStack(spacing: 12) {
+                    Image(systemName: "archivebox.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accent)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Archived workspaces")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Browse and re-extract")
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.65))
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.5))
+                }
+                .padding(12)
+            }
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showArchived) {
+            ArchivedJobsView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Open archived workspaces")
     }
 
     private var archiveCard: some View {

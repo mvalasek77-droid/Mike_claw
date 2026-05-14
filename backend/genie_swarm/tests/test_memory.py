@@ -158,6 +158,40 @@ def test_fts_recall_returns_empty_for_unrelated_query(tmp_path: Path):
     assert mem.recall("octopus") == []
 
 
+def test_search_decisions_finds_across_jobs(tmp_path: Path):
+    """FTS5-ranked search over the decisions table — returns matches
+    regardless of which job logged them, and respects the optional
+    `job_id` scoping."""
+    mem = Memory(tmp_path)
+    mem.note_decision("job_a", "third-party SDKs", "no analytics in v1")
+    mem.note_decision("job_b", "third-party SDKs", "RevenueCat for billing")
+    mem.note_decision("job_b", "navigation",       "TabView with custom bar")
+
+    # Global search — both jobs match the SDK query.
+    hits = mem.search_decisions("analytics")
+    assert any(d.job_id == "job_a" for d in hits)
+    assert all("analytics" in d.decision.lower() for d in hits)
+
+    # Job-scoped search filters out the other job.
+    scoped = mem.search_decisions("SDKs", job_id="job_b")
+    assert all(d.job_id == "job_b" for d in scoped)
+    assert len(scoped) == 1
+
+
+def test_search_decisions_handles_punctuation_safely(tmp_path: Path):
+    """Punctuation-heavy queries don't crash — the token quoter
+    sanitises stray FTS operators. We don't assert hits because
+    correctly-empty results are also a valid outcome (e.g. the
+    quoted-phrase token doesn't appear verbatim)."""
+    mem = Memory(tmp_path)
+    mem.note_decision("j", "Xcode 16 setup", "use --signing-style automatic")
+    # Should not raise. Either matches or empty list is fine.
+    _ = mem.search_decisions('"--signing-style" automatic')
+    # The intact word matches the indexed text.
+    hits = mem.search_decisions("automatic")
+    assert any("signing" in d.decision.lower() for d in hits)
+
+
 # --------------------------------------------------------------------------- #
 # Memory tools
 # --------------------------------------------------------------------------- #

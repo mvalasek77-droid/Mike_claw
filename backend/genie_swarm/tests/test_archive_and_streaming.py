@@ -88,6 +88,44 @@ def test_archive_old_workspaces_skips_non_sessions(tmp_path: Path):
     assert scratch.is_dir()
 
 
+def test_extract_zip_round_trips(tmp_path: Path):
+    """Archive a workspace, then re-extract it and prove the contents
+    are intact. Uses the archive module directly + stdlib zipfile to
+    keep the test API-layer-agnostic."""
+    import zipfile
+    now = time.time()
+    ws = _seed_job(tmp_path, "round_trip", mtime=now - 10 * 24 * 60 * 60)
+    (ws / "src").mkdir()
+    (ws / "src" / "Hello.swift").write_text("print(\"hi\")")
+    summaries = archive_old_workspaces(
+        tmp_path, older_than_seconds=24 * 60 * 60, now=now,
+    )
+    assert len(summaries) == 1
+    archive_path = Path(summaries[0].archive_path)
+    # Workspace was removed.
+    assert not (tmp_path / "round_trip").exists()
+
+    # Re-extract.
+    target = tmp_path / "round_trip"
+    target.mkdir()
+    with zipfile.ZipFile(archive_path) as zf:
+        zf.extractall(target)
+    assert (target / "src" / "Hello.swift").read_text() == "print(\"hi\")"
+    assert (target / ".genie-session.json").exists()
+
+
+def test_archive_filename_carries_job_id_and_timestamp(tmp_path: Path):
+    """`<job_id>-<unix_ts>.zip` is the contract the /admin/archives
+    endpoint relies on to surface the original job id."""
+    now = time.time()
+    _seed_job(tmp_path, "ABC-XYZ", mtime=now - 10 * 24 * 60 * 60)
+    summaries = archive_old_workspaces(tmp_path, older_than_seconds=60, now=now)
+    name = Path(summaries[0].archive_path).stem
+    job_id, _, ts = name.rpartition("-")
+    assert job_id == "ABC-XYZ"
+    assert ts.isdigit()
+
+
 def test_archive_old_workspaces_logs_to_memory(tmp_path: Path):
     """The archive helper notes a decision against the job in Memory
     so the iOS crash log / future history can surface it."""

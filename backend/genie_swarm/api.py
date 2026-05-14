@@ -488,6 +488,76 @@ async def list_memory_decisions(job_id: str):
     }
 
 
+@router.get("/admin/archives")
+async def list_archives():
+    """List `.archives/*.zip` files with size + mtime + parsed
+    `(job_id, archived_at)` from the filename pattern
+    `<job_id>-<unix_ts>.zip`."""
+    archives_dir = state.config.workspace_root / ".archives"
+    if not archives_dir.is_dir():
+        return {"archives": []}
+    out: list[dict[str, Any]] = []
+    for p in archives_dir.iterdir():
+        if not p.is_file() or p.suffix != ".zip":
+            continue
+        try:
+            stat = p.stat()
+        except OSError:
+            continue
+        stem = p.stem
+        job_id, archived_at = stem, None
+        if "-" in stem:
+            job_id, _, ts = stem.rpartition("-")
+            if ts.isdigit():
+                archived_at = int(ts)
+        out.append({
+            "filename": p.name,
+            "job_id": job_id,
+            "archived_at": archived_at,
+            "size_bytes": stat.st_size,
+            "mtime": stat.st_mtime,
+        })
+    out.sort(key=lambda x: x.get("mtime", 0), reverse=True)
+    return {"archives": out}
+
+
+@router.post("/admin/archives/{filename}/extract")
+async def extract_archive(filename: str):
+    """Restore an archived workspace back into `workspace_root`. The
+    extracted job id is parsed from the filename's stem. We refuse to
+    overwrite an existing live job dir — the user has to cancel +
+    archive that one first."""
+    archives_dir = state.config.workspace_root / ".archives"
+    archive = (archives_dir / filename).resolve()
+    try:
+        archive.relative_to(archives_dir.resolve())
+    except ValueError:
+        raise HTTPException(400, "path escapes archive dir")
+    if not archive.is_file() or archive.suffix != ".zip":
+        raise HTTPException(404, "not an archive")
+    stem = archive.stem
+    job_id = stem.rpartition("-")[0] if "-" in stem else stem
+    target = state.config.workspace_root / job_id
+    if target.exists():
+        raise HTTPException(409, f"live workspace already exists at {target.name}")
+
+    import zipfile
+    target.mkdir(parents=True, exist_ok=True)
+    files_extracted = 0
+    with zipfile.ZipFile(archive) as zf:
+        for member in zf.namelist():
+            # Defensive: zip member paths that resolve outside `target`
+            # are skipped (zip-slip protection).
+            dest = (target / member).resolve()
+            try:
+                dest.relative_to(target.resolve())
+            except ValueError:
+                continue
+            zf.extract(member, target)
+            files_extracted += 1
+    return {"ok": True, "job_id": job_id, "files_extracted": files_extracted}
+
+
 @router.post("/admin/archive")
 async def archive_old_jobs(body: dict | None = None):
     """Zip + remove job workspaces older than `older_than_days`

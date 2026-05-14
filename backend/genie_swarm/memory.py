@@ -150,6 +150,19 @@ class Memory:
                         INSERT INTO facts_fts(rowid, key, value)
                         VALUES (new.rowid, new.key, new.value);
                     END;
+                    -- Decisions get the same treatment so resume's
+                    -- prior-decisions briefing can rank by relevance.
+                    CREATE VIRTUAL TABLE IF NOT EXISTS decisions_fts USING fts5(
+                        context, decision, content='decisions', content_rowid='id'
+                    );
+                    CREATE TRIGGER IF NOT EXISTS decisions_ai AFTER INSERT ON decisions BEGIN
+                        INSERT INTO decisions_fts(rowid, context, decision)
+                        VALUES (new.id, new.context, new.decision);
+                    END;
+                    CREATE TRIGGER IF NOT EXISTS decisions_ad AFTER DELETE ON decisions BEGIN
+                        INSERT INTO decisions_fts(decisions_fts, rowid, context, decision)
+                        VALUES ('delete', old.id, old.context, old.decision);
+                    END;
                     """
                 )
                 # Seed any pre-existing rows so older sessions get
@@ -158,6 +171,11 @@ class Memory:
                     "INSERT INTO facts_fts(rowid, key, value) "
                     "SELECT f.rowid, f.key, f.value FROM facts f "
                     "WHERE f.rowid NOT IN (SELECT rowid FROM facts_fts)"
+                )
+                c.execute(
+                    "INSERT INTO decisions_fts(rowid, context, decision) "
+                    "SELECT d.id, d.context, d.decision FROM decisions d "
+                    "WHERE d.id NOT IN (SELECT rowid FROM decisions_fts)"
                 )
                 self._fts_available = True
             except sqlite3.OperationalError:
@@ -319,6 +337,46 @@ class Memory:
                 "SELECT job_id, context, decision, ts FROM decisions WHERE job_id=? ORDER BY ts ASC",
                 (job_id,),
             ).fetchall()
+        return [Decision(**dict(r)) for r in rows]
+
+    def search_decisions(
+        self, query: str, *, job_id: str | None = None, limit: int = 20,
+    ) -> list[Decision]:
+        """FTS5-ranked search across reasoning decisions. Optionally
+        scoped to a single job. Falls back to LIKE when FTS5 isn't
+        available — same semantics, just slower + less precise."""
+        with self._conn() as c:
+            if self._fts_available:
+                fts_query = self._build_fts_query(query)
+                if fts_query:
+                    try:
+                        sql = (
+                            "SELECT d.job_id, d.context, d.decision, d.ts FROM decisions_fts m "
+                            "JOIN decisions d ON d.id = m.rowid "
+                            "WHERE decisions_fts MATCH ?"
+                        )
+                        params: list = [fts_query]
+                        if job_id is not None:
+                            sql += " AND d.job_id = ?"
+                            params.append(job_id)
+                        sql += " ORDER BY bm25(decisions_fts), d.ts DESC LIMIT ?"
+                        params.append(limit)
+                        rows = c.execute(sql, params).fetchall()
+                        return [Decision(**dict(r)) for r in rows]
+                    except sqlite3.OperationalError:
+                        pass
+            like = f"%{query.lower()}%"
+            sql = (
+                "SELECT job_id, context, decision, ts FROM decisions "
+                "WHERE LOWER(context) LIKE ? OR LOWER(decision) LIKE ?"
+            )
+            params: list = [like, like]
+            if job_id is not None:
+                sql += " AND job_id = ?"
+                params.append(job_id)
+            sql += " ORDER BY ts DESC LIMIT ?"
+            params.append(limit)
+            rows = c.execute(sql, params).fetchall()
         return [Decision(**dict(r)) for r in rows]
 
     # ------------------------------------------------------------------
