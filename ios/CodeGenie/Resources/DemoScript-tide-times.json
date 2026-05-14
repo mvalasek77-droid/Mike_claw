@@ -1,0 +1,58 @@
+{
+  "id": "tide-times",
+  "frames": [
+    {"after_ms": 200,  "type": "job.created",  "payload": {"title": "Tide Times"}},
+    {"after_ms": 400,  "type": "job.state",    "payload": {"state": "planning"}},
+    {"after_ms": 200,  "type": "agent.started",  "agent": "🏗️ Architect", "payload": {}},
+    {"after_ms": 700,  "type": "agent.thought",  "agent": "🏗️ Architect", "payload": {"text": "Plan: TideTimes app — one home screen, one watch complication, one settings sheet. Surfers want a single number first."}},
+    {"after_ms": 600,  "type": "tool.call",      "agent": "🏗️ Architect", "payload": {"tool": "apple_docs", "arguments": {"query": "WidgetKit complications"}}},
+    {"after_ms": 500,  "type": "tool.result",    "agent": "🏗️ Architect", "payload": {"tool": "apple_docs", "ok": true, "content_preview": "WidgetKit supports accessoryCircular, accessoryCorner, accessoryRectangular for watchOS 10+."}},
+    {"after_ms": 800,  "type": "tool.call",      "agent": "🏗️ Architect", "payload": {"tool": "write_file", "arguments": {"path": "docs/plan.json"}}},
+    {"after_ms": 600,  "type": "tool.result",    "agent": "🏗️ Architect", "payload": {"tool": "write_file", "ok": true, "content_preview": "wrote 412 bytes → docs/plan.json"}},
+    {"after_ms": 300,  "type": "agent.finished", "agent": "🏗️ Architect", "payload": {"input_tokens": 1820, "output_tokens": 540}},
+    {"after_ms": 200,  "type": "cost.update",    "payload": {"spend_usd": 0.013, "input_tokens": 1820, "output_tokens": 540}},
+    {"after_ms": 100,  "type": "job.state",      "payload": {"state": "building"}},
+
+    {"after_ms": 200,  "type": "agent.started",  "agent": "💻 Coder", "payload": {}},
+    {"after_ms": 800,  "type": "agent.thought",  "agent": "💻 Coder", "payload": {"text": "Models first: TideEvent (date, type:high|low, height_m). Service: NOAATideService (one URL, cached for 6h)."}},
+    {"after_ms": 700,  "type": "tool.call",      "agent": "💻 Coder", "payload": {"tool": "write_file", "arguments": {"path": "Models/TideEvent.swift"}}},
+    {"after_ms": 500,  "type": "tool.result",    "agent": "💻 Coder", "payload": {"tool": "write_file", "ok": true, "content_preview": "wrote 318 bytes → Models/TideEvent.swift"}},
+    {"after_ms": 800,  "type": "diff",           "agent": "💻 Coder", "payload": {"path": "Models/TideEvent.swift", "operation": "create", "additions": 14, "deletions": 0}},
+    {"after_ms": 900,  "type": "tool.call",      "agent": "💻 Coder", "payload": {"tool": "write_file", "arguments": {"path": "Services/NOAATideService.swift"}}},
+    {"after_ms": 500,  "type": "tool.result",    "agent": "💻 Coder", "payload": {"tool": "write_file", "ok": true, "content_preview": "wrote 1.2KB → Services/NOAATideService.swift"}},
+    {"after_ms": 700,  "type": "diff",           "agent": "💻 Coder", "payload": {"path": "Services/NOAATideService.swift", "operation": "create", "additions": 38, "deletions": 0}},
+    {"after_ms": 400,  "type": "agent.finished", "agent": "💻 Coder", "payload": {"input_tokens": 4200, "output_tokens": 1380}},
+    {"after_ms": 100,  "type": "cost.update",    "payload": {"spend_usd": 0.057, "input_tokens": 6020, "output_tokens": 1920}},
+
+    {"after_ms": 200,  "type": "agent.started",  "agent": "🎨 Designer", "payload": {}},
+    {"after_ms": 800,  "type": "agent.thought",  "agent": "🎨 Designer", "payload": {"text": "Home: one BIG number — minutes to next low tide. Below it: today's curve. Calm ocean palette: deep teal + foam white. Reduce Motion respected."}},
+    {"after_ms": 900,  "type": "tool.call",      "agent": "🎨 Designer", "payload": {"tool": "write_file", "arguments": {"path": "Features/Home/TideHomeView.swift"}}},
+    {"after_ms": 600,  "type": "tool.result",    "agent": "🎨 Designer", "payload": {"tool": "write_file", "ok": true, "content_preview": "wrote 2.4KB → Features/Home/TideHomeView.swift"}},
+    {"after_ms": 700,  "type": "diff",           "agent": "🎨 Designer", "payload": {"path": "Features/Home/TideHomeView.swift", "operation": "create", "additions": 78, "deletions": 0}},
+    {"after_ms": 800,  "type": "tool.call",      "agent": "🎨 Designer", "payload": {"tool": "write_file", "arguments": {"path": "Theme/Ocean.swift"}}},
+    {"after_ms": 400,  "type": "tool.result",    "agent": "🎨 Designer", "payload": {"tool": "write_file", "ok": true, "content_preview": "wrote 540 bytes → Theme/Ocean.swift"}},
+    {"after_ms": 300,  "type": "agent.finished", "agent": "🎨 Designer", "payload": {"input_tokens": 3680, "output_tokens": 1240}},
+    {"after_ms": 100,  "type": "cost.update",    "payload": {"spend_usd": 0.092, "input_tokens": 9700, "output_tokens": 3160}},
+
+    {"after_ms": 200,  "type": "agent.started",  "agent": "🔗 Integrator", "payload": {}},
+    {"after_ms": 700,  "type": "agent.thought",  "agent": "🔗 Integrator", "payload": {"text": "Wire TideHomeView into the app entry. Register the complication. swift build is green."}},
+    {"after_ms": 900,  "type": "tool.call",      "agent": "🔗 Integrator", "payload": {"tool": "shell", "arguments": {"command": "swift build"}}},
+    {"after_ms": 1500, "type": "tool.result",    "agent": "🔗 Integrator", "payload": {"tool": "shell", "ok": true, "content_preview": "Build complete! (3.41s)"}},
+    {"after_ms": 300,  "type": "agent.finished", "agent": "🔗 Integrator", "payload": {"input_tokens": 2100, "output_tokens": 480}},
+    {"after_ms": 100,  "type": "cost.update",    "payload": {"spend_usd": 0.109, "input_tokens": 11800, "output_tokens": 3640}},
+
+    {"after_ms": 200,  "type": "job.state",      "payload": {"state": "testing"}},
+    {"after_ms": 200,  "type": "agent.started",  "agent": "🧪 Unit Tester", "payload": {}},
+    {"after_ms": 1000, "type": "test.result",    "agent": "🧪 Unit Tester", "payload": {"suite": "TideTimesTests", "passed": 12, "failed": 0, "skipped": 0, "duration_ms": 380}},
+    {"after_ms": 300,  "type": "agent.finished", "agent": "🧪 Unit Tester", "payload": {"input_tokens": 1900, "output_tokens": 720}},
+    {"after_ms": 200,  "type": "agent.started",  "agent": "👁️ Code Reviewer", "payload": {}},
+    {"after_ms": 1100, "type": "review.finding", "agent": "👁️ Code Reviewer", "payload": {"severity": "info", "title": "Consider a launch-day onboarding card", "body": "First-time users won't know to grant location until the next-tide number is requested."}},
+    {"after_ms": 300,  "type": "agent.finished", "agent": "👁️ Code Reviewer", "payload": {"input_tokens": 2400, "output_tokens": 380}},
+    {"after_ms": 200,  "type": "agent.started",  "agent": "🔒 Security Auditor", "payload": {}},
+    {"after_ms": 900,  "type": "agent.finished", "agent": "🔒 Security Auditor", "payload": {"input_tokens": 1700, "output_tokens": 220}},
+    {"after_ms": 100,  "type": "cost.update",    "payload": {"spend_usd": 0.142, "input_tokens": 17800, "output_tokens": 4960}},
+
+    {"after_ms": 200,  "type": "job.state",      "payload": {"state": "succeeded", "summary": "Tide Times built — 12 tests passing, 1 info finding, $0.142 spent."}},
+    {"after_ms": 100,  "type": "done",           "payload": {"success": true}}
+  ]
+}
