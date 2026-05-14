@@ -183,6 +183,7 @@ struct HomeView: View {
                 ChecklistRow(text: "Animations, accessibility, dark mode", done: true)
                 ChecklistRow(text: "iOS 26 Liquid Glass theme", done: true)
                 ChecklistRow(text: "Senior-engineer code review (no vibe)", done: true)
+                ChecklistRow(text: "Perfection Mode: 10,000 virtual probes", done: true)
                 ChecklistRow(text: "Submission-ready for App Store", done: false)
             }
         }

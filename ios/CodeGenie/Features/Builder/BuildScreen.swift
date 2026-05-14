@@ -24,6 +24,9 @@ struct BuildScreen: View {
     @State private var shipBanner: String?
     @State private var showSnapshots: Bool = false
     @State private var showSnapshotSettingsSheet: Bool = false
+    @State private var perfectionRun: PerfectionRun?
+    @State private var perfectionRunning: Bool = false
+    @State private var perfectionError: String?
     @StateObject private var game = BitDropGame()
     @StateObject private var swarm = SwarmClient()
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
@@ -306,49 +309,110 @@ struct BuildScreen: View {
         ZStack {
             Color.black.opacity(0.45).ignoresSafeArea()
             GlassSurface(tier: .deep) {
-                VStack(spacing: 14) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 56, weight: .bold))
-                        .foregroundStyle(LiquidGlass.success)
-                    Text("Build green").font(.system(size: 24, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                    Text("Ready to test in the cloud simulator or hand off to App Store Connect.")
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                    PrimaryButton(title: "Open simulator preview", systemImage: "play.rectangle.fill", style: .filled) {
-                        let job = BuildJob(description: initialJob.description, stage: .readyForTest)
-                        session.openPreview(for: job)
-                    }
-                    PrimaryButton(title: "Submit to App Store", systemImage: "paperplane.fill", style: .glass) {
-                        Task { await submitToAppStore() }
-                    }
-                    if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
-                        ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "square.and.arrow.down")
-                                Text("Download workspace")
-                            }
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .padding(.horizontal, 16).padding(.vertical, 10)
-                            .foregroundStyle(.white.opacity(0.85))
-                            .background(.white.opacity(0.06), in: Capsule())
-                            .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
-                        }
-                        .accessibilityLabel("Download workspace zip")
-                    }
-                    if let banner = shipBanner {
-                        Text(banner)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                ScrollView {
+                    VStack(spacing: 14) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 56, weight: .bold))
                             .foregroundStyle(LiquidGlass.success)
+                            .accessibilityHidden(true)
+                        Text("Build green")
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Ready to test in the cloud simulator. Run Perfection Mode before App Store handoff.")
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.8))
                             .multilineTextAlignment(.center)
-                            .transition(.opacity)
+                        if let jobID = swarm.jobID {
+                            PrimaryButton(
+                                title: perfectionRunning ? "Running Perfection Mode..." : "Run Perfection Mode",
+                                systemImage: "checkmark.seal.fill",
+                                style: perfectionRun?.isReady == true ? .glass : .filled
+                            ) {
+                                Task { await runPerfection(jobID: jobID) }
+                            }
+                            .disabled(perfectionRunning)
+                            .accessibilityLabel("Run ten thousand probe Perfection Mode")
+                        }
+                        if let perfectionRun {
+                            perfectionSummary(perfectionRun)
+                        }
+                        if let perfectionError {
+                            Text(perfectionError)
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.red.opacity(0.9))
+                                .multilineTextAlignment(.center)
+                                .accessibilityLabel("Perfection Mode failed: \(perfectionError)")
+                        }
+                        PrimaryButton(title: "Open simulator preview", systemImage: "play.rectangle.fill", style: .filled) {
+                            let job = BuildJob(description: initialJob.description, stage: .readyForTest)
+                            session.openPreview(for: job)
+                        }
+                        PrimaryButton(title: "Submit to App Store", systemImage: "paperplane.fill", style: .glass) {
+                            Task { await submitToAppStore() }
+                        }
+                        if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
+                            ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "square.and.arrow.down")
+                                    Text("Download workspace")
+                                }
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .padding(.horizontal, 16).padding(.vertical, 10)
+                                .foregroundStyle(.white.opacity(0.85))
+                                .background(.white.opacity(0.06), in: Capsule())
+                                .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+                            }
+                            .accessibilityLabel("Download workspace zip")
+                        }
+                        if let banner = shipBanner {
+                            Text(banner)
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(LiquidGlass.success)
+                                .multilineTextAlignment(.center)
+                                .transition(.opacity)
+                        }
                     }
+                    .padding(24)
                 }
-                .padding(24)
+                .frame(maxHeight: 620)
+                .scrollIndicators(.hidden)
             }
             .padding(.horizontal, 28)
         }
         .transition(.opacity)
+    }
+
+    private func perfectionSummary(_ run: PerfectionRun) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 10) {
+                Image(systemName: run.isReady ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(run.isReady ? LiquidGlass.success : LiquidGlass.warning)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Perfection Mode")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("\(run.probesRun) probes - \(run.gateLabel) - \(String(format: "%.1f", run.score))/100")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.65))
+                }
+                Spacer()
+            }
+            Text(run.summary)
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .foregroundStyle(.white.opacity(0.75))
+                .fixedSize(horizontal: false, vertical: true)
+            if let top = run.findings.first {
+                Text(top.recommendation ?? top.title)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.62))
+                    .lineLimit(3)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Perfection Mode \(run.gateLabel), score \(String(format: "%.1f", run.score)) out of 100")
     }
 
     // MARK: Build coroutine
@@ -444,6 +508,11 @@ struct BuildScreen: View {
     /// rebuild. If Apple Developer creds aren't set, opens the setup
     /// sheet first so the user can configure them in-place.
     private func submitToAppStore() async {
+        if swarm.jobID != nil && perfectionRun?.isReady != true {
+            shipBanner = "Run Perfection Mode and clear blockers before App Store submission."
+            Haptics.warning()
+            return
+        }
         guard Credentials.shared.hasAppleDevCreds else {
             showAppleDevSetup = true
             Haptics.warning()
@@ -463,6 +532,23 @@ struct BuildScreen: View {
             Haptics.success()
         } catch {
             shipBanner = "Submit failed: \(error)"
+            Haptics.error()
+        }
+    }
+
+    private func runPerfection(jobID: String) async {
+        perfectionRunning = true
+        perfectionError = nil
+        defer { perfectionRunning = false }
+        do {
+            let run = try await swarm.runPerfection(jobID: jobID)
+            perfectionRun = run
+            shipBanner = run.isReady
+                ? "Perfection Mode passed — App Store handoff unlocked."
+                : "Perfection Mode found blockers. Fix them, then rerun."
+            if run.isReady { Haptics.success() } else { Haptics.warning() }
+        } catch {
+            perfectionError = "Could not run Perfection Mode: \(error)"
             Haptics.error()
         }
     }

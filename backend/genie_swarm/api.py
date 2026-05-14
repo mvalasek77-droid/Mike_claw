@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from .llm import AnthropicClient, LLMClient
 from .models import AppSpec, BuildJob, BuildRequest, JobState, ShipRequest
 from .orchestrator import ShipConfig, SwarmConfig, SwarmOrchestrator
+from .perfection import run_perfection_matrix
 from .session import Session
 from .streaming import EventBus
 
@@ -407,6 +408,46 @@ async def list_snapshots(job_id: str):
             for c in session.checkpoints
         ]
     }
+
+
+@router.post("/{job_id}/perfection")
+async def run_perfection(job_id: str, body: dict | None = None):
+    """Run the deterministic 10,000-probe release matrix.
+
+    This is the "always automated" gate the iOS app can trigger before
+    TestFlight: no token spend, no real simulator required, just a fast
+    senior-review pass over the generated workspace. Critical/error
+    findings block release; warnings ask for polish and a rerun.
+    """
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+
+    raw_probes = (body or {}).get("probes", 10_000)
+    try:
+        requested = int(raw_probes)
+    except (TypeError, ValueError):
+        requested = 10_000
+    workspace = state.config.workspace_root / job_id
+    result = run_perfection_matrix(
+        spec=job.spec,
+        workspace=workspace,
+        requested_probes=requested,
+    )
+
+    from .memory import Memory
+    Memory(state.config.workspace_root).note_decision(
+        job_id,
+        "perfection matrix",
+        f"{result['release_gate']} at {result['score']}/100: {result['summary']}",
+    )
+
+    # Surface the highest-severity findings into any live transcript so
+    # the build screen does not need to poll a second channel.
+    events = await state.bus.stream_for(job_id)
+    for finding in result["findings"][:8]:
+        await events.emit("review.finding", **finding)
+    return result
 
 
 @router.get("/{job_id}/export")

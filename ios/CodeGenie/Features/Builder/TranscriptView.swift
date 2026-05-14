@@ -58,8 +58,8 @@ private struct TranscriptRow: View {
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.85))
                 }
-                Text(body)
-                    .font(.system(size: 12, weight: .regular, design: bodyDesign))
+                Text(eventBody)
+                    .font(.system(size: 12, weight: .regular, design: eventBodyDesign))
                     .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(8)
             }
@@ -109,14 +109,14 @@ private struct TranscriptRow: View {
         }
     }
 
-    private var bodyDesign: Font.Design {
+    private var eventBodyDesign: Font.Design {
         switch event.type {
         case "tool.call", "tool.result", "diff", "testflight.upload.progress": .monospaced
         default: .rounded
         }
     }
 
-    private var body: String {
+    private var eventBody: String {
         switch event.type {
         case "agent.started":   return "started"
         case "agent.finished":
