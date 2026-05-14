@@ -51,18 +51,34 @@
   (AppleScript + JS, mandatory per-call user confirmation)
 - XCTest smoke suite for token persistence
 
-## Next (the 30-day push)
+## Phase 2 · finished
 
-- **Per-agent model routing** in Settings (Opus for Reviewer, Sonnet
-  for Coder, Haiku for Linter) — uses `model_overrides` in BuildRequest
-- **Build retry on test failures** — orchestrator loops Coder +
-  Integrator on red unit tests, capped at 3 attempts
-- **Native QR scanner** in `PairMacView` so pairing is one tap
-- **Memory weight decay** — old facts gradually lose confidence
-- **Wire `Memory.briefing()` at agent.started** — surface what the
-  agent "remembers" as a transcript event
-- **TestFlight status polling** — after upload, watch processing state
-  and surface the build into the listing automatically
+- ✅ Per-agent model routing
+- ✅ Build retry on test failures
+- ✅ Native QR scanner
+- ✅ Memory weight decay + FTS5 across facts + decisions
+- ✅ Memory.briefing event at agent.started
+- ✅ TestFlight upload streaming + status polling
+- ✅ Snapshot file persistence + real restore
+- ✅ Workspace size ceiling
+- ✅ Custom agent slots (+ last-run findings)
+- ✅ Pause / continue, build resume, restore-with-fork
+- ✅ Lift-cap-and-resume on cost halts
+- ✅ Crash recovery from checkpoints
+- ✅ Workspace rotation (archive + browser + re-extract)
+- ✅ Per-job cost log + pill on Apps tab
+- ✅ Side-by-side build comparison
+
+## Phase 3 — next (the team arc)
+
+- **GitHub integration** — push workspace, open PR, attach build logs
+- **Shared snapshots** — export + import bundle across devices
+- **Comment threads on diffs** — left-margin inline comments stored in Memory
+- **review.finding inbox** — triaged sheet, severity filter, autofix
+- **Multi-target builds** — same spec → iOS + macOS + watchOS in parallel
+- **ASC screenshot generator** — Mac companion drives the simulator
+- **TestFlight invite automation** — add internal testers post-upload
+- **Submission rehearsal** — dry-run metadata validation
 
 ## Later (the killer-feature track)
 

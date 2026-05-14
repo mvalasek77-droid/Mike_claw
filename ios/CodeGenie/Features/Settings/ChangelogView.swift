@@ -10,6 +10,20 @@ import SwiftUI
 struct ChangelogView: View {
     private let entries: [ChangelogEntry] = [
         .init(
+            version: "0.2.0",
+            date: "May 2026",
+            highlights: [
+                "Side-by-side build comparison: long-press any project to diff two backend jobs file-by-file with an inline hunk view per file.",
+                "Archived workspace browser: Settings → Admin lists every rotated-out job and re-extracts in a tap.",
+                "FTS5 ranking across both facts and reasoning decisions in Memory — multi-word queries finally rank by relevance.",
+                "TestFlight upload streams progress lines through the transcript and a live header strip.",
+                "Per-job spend pill on every project card.",
+                "Settings → Build cost cap + Snapshot storage cap, both enforced backend-side with clean halt + lift-cap-and-resume.",
+                "Pause / continue any running build between agents.",
+                "Forked jobs are tappable: open the live transcript of a fork without burning new tokens.",
+            ]
+        ),
+        .init(
             version: "0.1.0",
             date: "May 2026",
             highlights: [

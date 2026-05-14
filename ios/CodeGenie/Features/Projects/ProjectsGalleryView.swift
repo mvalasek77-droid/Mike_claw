@@ -4,6 +4,8 @@ struct ProjectsGalleryView: View {
     @EnvironmentObject private var session: AppSession
     @State private var query: String = ""
     @State private var showDescribe = false
+    /// Set when the user picks "Compare with…" from a row's context menu.
+    @State private var compareOrigin: BuildJob?
 
     private var filtered: [BuildJob] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -39,6 +41,16 @@ struct ProjectsGalleryView: View {
                             .accessibilityHint(session.backendJobIDs[job.id] != nil
                                 ? "Attach to the live build"
                                 : "Resume locally")
+                            .contextMenu {
+                                if session.backendJobIDs[job.id] != nil {
+                                    Button {
+                                        compareOrigin = job
+                                        Haptics.selection()
+                                    } label: {
+                                        Label("Compare with…", systemImage: "rectangle.split.2x1")
+                                    }
+                                }
+                            }
                         }
                     }
                     Color.clear.frame(height: 30)
@@ -55,6 +67,14 @@ struct ProjectsGalleryView: View {
             }
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(item: $compareOrigin) { job in
+            if let backend = session.backendJobIDs[job.id] {
+                CompareJobsPickerView(originJob: job, originBackendID: backend)
+                    .environmentObject(session)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(.ultraThinMaterial)
+            }
         }
     }
 

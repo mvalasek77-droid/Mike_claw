@@ -558,6 +558,83 @@ async def extract_archive(filename: str):
     return {"ok": True, "job_id": job_id, "files_extracted": files_extracted}
 
 
+@router.get("/compare/{job_a}/{job_b}")
+async def compare_overview(
+    job_a: str,
+    job_b: str,
+    include_unchanged: bool = False,
+):
+    """File-tree diff between two job workspaces.
+
+    Returns one entry per path that exists in either side (or both
+    when `include_unchanged=true`). The iOS comparison view renders
+    this as a sectioned list grouped by status. Either side may be
+    missing from the live `workspace_root` — the diff will mark its
+    files as `removed` / `added` accordingly."""
+    from .compare import compare_workspaces
+
+    if job_a == job_b:
+        raise HTTPException(400, "job_a and job_b must differ")
+    root = state.config.workspace_root
+    try:
+        diff = compare_workspaces(
+            root / job_a, root / job_b,
+            job_a=job_a, job_b=job_b,
+            include_unchanged=include_unchanged,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+    return {
+        "job_a": diff.job_a,
+        "job_b": diff.job_b,
+        "counts": diff.counts,
+        "files": [
+            {
+                "path": f.path,
+                "status": f.status,
+                "a_size": f.a_size,
+                "b_size": f.b_size,
+                "a_sha": f.a_sha,
+                "b_sha": f.b_sha,
+                "is_text_like": f.is_text_like,
+            }
+            for f in diff.files
+        ],
+    }
+
+
+@router.get("/compare/{job_a}/{job_b}/file")
+async def compare_file(
+    job_a: str,
+    job_b: str,
+    path: str = Query(..., description="Workspace-relative file path"),
+    max_bytes: int = Query(200_000, ge=0, le=2_000_000),
+):
+    """Return both versions of a single file so the iOS hunk renderer
+    can show inline diff. Either side may be null when the file is
+    missing from one workspace (added / removed). Refuses non-text
+    files and any path attempting to escape the workspace."""
+    from .compare import read_file_pair, _walk_files  # type: ignore[attr-defined]
+
+    if job_a == job_b:
+        raise HTTPException(400, "job_a and job_b must differ")
+    root = state.config.workspace_root
+    a_text, b_text = read_file_pair(
+        root / job_a, root / job_b, path, max_bytes=max_bytes,
+    )
+    if a_text is None and b_text is None:
+        raise HTTPException(404, f"no readable text at {path!r} on either side")
+
+    return {
+        "job_a": job_a,
+        "job_b": job_b,
+        "path": path,
+        "a_body": a_text,
+        "b_body": b_text,
+    }
+
+
 @router.post("/admin/archive")
 async def archive_old_jobs(body: dict | None = None):
     """Zip + remove job workspaces older than `older_than_days`

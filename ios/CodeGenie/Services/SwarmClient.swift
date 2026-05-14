@@ -130,6 +130,42 @@ final class SwarmClient: ObservableObject {
         }
     }
 
+    /// Compare two jobs' workspaces; returns the file-tree overview.
+    func compareJobs(
+        jobA: String, jobB: String, includeUnchanged: Bool = false,
+    ) async throws -> ProjectDiff {
+        let path = "/api/coding/swarm/compare/\(jobA)/\(jobB)?include_unchanged=\(includeUnchanged ? "true" : "false")"
+        let r: [String: Any] = try await getJSON(path)
+        let entries = (r["files"] as? [[String: Any]]) ?? []
+        let counts = (r["counts"] as? [String: Int]) ?? [:]
+        return ProjectDiff(
+            jobA: jobA, jobB: jobB,
+            files: entries.compactMap { dict in
+                guard let p = dict["path"] as? String,
+                      let s = dict["status"] as? String else { return nil }
+                return ProjectDiff.FileEntry(
+                    path: p, status: s,
+                    aSize: dict["a_size"] as? Int,
+                    bSize: dict["b_size"] as? Int,
+                    aSha:  dict["a_sha"]  as? String,
+                    bSha:  dict["b_sha"]  as? String,
+                    isTextLike: (dict["is_text_like"] as? Bool) ?? false
+                )
+            },
+            counts: counts
+        )
+    }
+
+    /// Fetch both sides of a single file for inline rendering.
+    func compareFile(
+        jobA: String, jobB: String, path: String,
+    ) async throws -> (String?, String?) {
+        let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path
+        let url = "/api/coding/swarm/compare/\(jobA)/\(jobB)/file?path=\(encoded)"
+        let r: [String: Any] = try await getJSON(url)
+        return (r["a_body"] as? String, r["b_body"] as? String)
+    }
+
     /// List currently archived job workspaces.
     func listArchives() async throws -> [ArchivedJob] {
         let r: [String: Any] = try await getJSON("/api/coding/swarm/admin/archives")
@@ -443,6 +479,35 @@ struct ArchiveSummary: Identifiable, Hashable {
     let bytesWritten: Int
     let filesArchived: Int
     var id: String { archivePath }
+}
+
+struct ProjectDiff: Hashable {
+    let jobA: String
+    let jobB: String
+    let files: [FileEntry]
+    let counts: [String: Int]
+
+    struct FileEntry: Identifiable, Hashable {
+        let path: String
+        let status: String   // "same" | "added" | "removed" | "modified"
+        let aSize: Int?
+        let bSize: Int?
+        let aSha: String?
+        let bSha: String?
+        let isTextLike: Bool
+        var id: String { path }
+    }
+
+    /// Files grouped by status for the sectioned list view.
+    var grouped: [(status: String, files: [FileEntry])] {
+        let order = ["modified", "added", "removed", "same"]
+        var bins: [String: [FileEntry]] = [:]
+        for f in files { bins[f.status, default: []].append(f) }
+        return order.compactMap { s in
+            guard let xs = bins[s], !xs.isEmpty else { return nil }
+            return (s, xs)
+        }
+    }
 }
 
 struct ArchivedJob: Identifiable, Hashable {
