@@ -363,6 +363,32 @@ final class SwarmClient: ObservableObject {
         }
     }
 
+    /// Inject demo state for the first-run canned build. The same
+    /// downstream observers (CostTracker, DiffStream, UploadProgress,
+    /// CustomAgentLog) wake up exactly like they do for a real run —
+    /// they only see published events, not the connection.
+    func setDemoState(jobID: String?, connected: Bool) {
+        self.jobID = jobID
+        self.isConnected = connected
+        if connected {
+            // Clean slate for a fresh demo so we don't replay leftover
+            // events from a previous live run on top.
+            self.events = []
+            self.stage = .planning
+            self.isPaused = false
+            self.lastError = nil
+        }
+    }
+
+    /// Push a `SwarmEvent` as if it arrived from the SSE stream.
+    /// Reuses the same `ingest` logic — paused/resumed mapping,
+    /// stage transitions — so demo + live behave identically.
+    func pushDemoEvent(_ event: SwarmEvent) {
+        Task { @MainActor in
+            await self.ingest(event, forward: nil)
+        }
+    }
+
     private func ingest(_ event: SwarmEvent, forward: ((SwarmEvent) -> Void)?) async {
         events.append(event)
         if event.type == "job.state",

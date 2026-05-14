@@ -13,6 +13,10 @@ struct BuildScreen: View {
     /// build. Used by the Apps tab to open a forked / resumed job's
     /// live transcript without spending tokens.
     let attachToBackendID: String?
+    /// When non-nil, BuildScreen replays the canned demo script for
+    /// the given sample id instead of running a real build. Same UI
+    /// surface, no backend, no tokens. Used for first-run magic.
+    let demoSampleID: String?
 
     @State private var stage: BuildJob.Stage = .planning
     @State private var displayedLog: [LogLine] = []
@@ -35,16 +39,20 @@ struct BuildScreen: View {
     @StateObject private var uploadProgress = UploadProgressTracker()
 
     private let builder: BuilderService = LocalSimulatedBuilder()
+    /// Whether to show the "live" UI surface (cost badge, retry badge,
+    /// transcript card, upload progress strip). True for either a real
+    /// backend run OR a canned demo — both stream `SwarmEvent`s
+    /// through `swarm` and the user shouldn't see a different layout.
     private var useRemote: Bool {
-        // If backend is configured *and* a non-default URL is set we'll
-        // attempt a real backend build; otherwise simulate locally.
+        if demoSampleID != nil { return true }
         let url = Credentials.shared.backendURL
         return !url.isEmpty && !url.hasPrefix("https://api.codegenie.app")
     }
 
-    init(job: BuildJob, attachToBackendID: String? = nil) {
+    init(job: BuildJob, attachToBackendID: String? = nil, demoSampleID: String? = nil) {
         self.initialJob = job
         self.attachToBackendID = attachToBackendID
+        self.demoSampleID = demoSampleID
     }
 
     var body: some View {
@@ -422,7 +430,9 @@ struct BuildScreen: View {
         builderTask?.cancel()
         startedAt = .now
         Telemetry.shared.recordBuildStarted()
-        if useRemote {
+        if let demoSampleID {
+            await runCannedDemo(sampleID: demoSampleID)
+        } else if useRemote {
             await runRemoteBuild()
         } else {
             builderTask = Task {
@@ -441,6 +451,19 @@ struct BuildScreen: View {
                 }
             }
         }
+    }
+
+    /// Drive the screen from a canned `DemoScript-<id>.json`. Every
+    /// observer the live path uses (`costs`, `diffStream`, transcript)
+    /// binds to this screen's internal `swarm` so the demo plays
+    /// through the same UI pipeline as a real build.
+    private func runCannedDemo(sampleID: String) async {
+        costs.bind(to: swarm)
+        diffStream.bind(to: swarm)
+        uploadProgress.bind(to: swarm)
+        CustomAgentLog.shared.bind(to: swarm)
+        JobCostLog.shared.bind(to: swarm)
+        DemoSwarmDriver.play(into: swarm, sampleID: sampleID)
     }
 
     private func runRemoteBuild() async {
