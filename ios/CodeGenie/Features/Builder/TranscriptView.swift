@@ -34,7 +34,7 @@ struct TranscriptView: View {
                     .frame(width: 6, height: 6)
                 Text(client.isConnected ? "live" : "offline")
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
             }
             .padding(8)
         }
@@ -56,11 +56,11 @@ private struct TranscriptRow: View {
                 if let agent = event.agent {
                     Text(agent)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 }
                 Text(eventBody)
                     .font(.system(size: 12, weight: .regular, design: eventBodyDesign))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                     .lineLimit(8)
             }
             Spacer(minLength: 0)

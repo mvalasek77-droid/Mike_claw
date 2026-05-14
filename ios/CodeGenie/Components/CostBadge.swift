@@ -18,11 +18,11 @@ struct CostBadge: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(spendLabel)
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .contentTransition(.numericText())
                     Text(capCaption)
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 6)

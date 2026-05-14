@@ -67,10 +67,10 @@ struct SnapshotPickerView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Restore a snapshot")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Pick a point in time. The workspace transcript rolls back; the orchestrator can be resumed from there.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -78,10 +78,10 @@ struct SnapshotPickerView: View {
     private var loadingCard: some View {
         GlassSurface(tier: .raised) {
             HStack(spacing: 12) {
-                ProgressView().tint(.white)
+                ProgressView().tint(LiquidGlass.primaryText)
                 Text("Loading snapshots…")
                     .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
             }
             .padding(20)
             .frame(maxWidth: .infinity)
@@ -92,7 +92,7 @@ struct SnapshotPickerView: View {
         GlassCard(title: "No snapshots yet", icon: "bookmark.slash", tint: LiquidGlass.warning) {
             Text("Tap the bookmark in the build header to save your first checkpoint, or wait for the orchestrator to land its automatic ones.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
         }
     }
 
@@ -100,7 +100,7 @@ struct SnapshotPickerView: View {
         GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: .red) {
             Text(message)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
         }
     }
 
@@ -166,24 +166,24 @@ private struct SnapshotRow: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(snapshot.label)
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("\(snapshot.files) files · \(snapshot.at, format: .relative(presentation: .named))")
                             .font(.system(size: 11, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     }
                     Spacer()
                 }
                 HStack(spacing: 8) {
                     Button(action: onFork) {
                         HStack(spacing: 4) {
-                            if isForking { ProgressView().tint(.white).controlSize(.mini) }
+                            if isForking { ProgressView().tint(LiquidGlass.primaryText).controlSize(.mini) }
                             else { Image(systemName: "arrow.triangle.branch") }
                             Text("Fork").font(.system(size: 12, weight: .semibold, design: .rounded))
                         }
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(.white.opacity(0.06), in: Capsule())
                         .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.9))
                     }
                     .buttonStyle(.plain)
                     .disabled(isForking || isRestoring)
@@ -191,11 +191,11 @@ private struct SnapshotRow: View {
 
                     Spacer()
                     if isRestoring {
-                        ProgressView().tint(.white)
+                        ProgressView().tint(LiquidGlass.primaryText)
                     } else {
                         Button("Restore", action: onRestore)
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                             .padding(.horizontal, 12).padding(.vertical, 8)
                             .background(LiquidGlass.auroraGradient.opacity(0.85), in: Capsule())
                             .disabled(isForking)

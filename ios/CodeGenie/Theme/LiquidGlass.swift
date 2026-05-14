@@ -12,6 +12,11 @@ enum LiquidGlass {
     static let accentSecondary = Color(red: 0.71, green: 0.41, blue: 1.0)
     static let success = Color(red: 0.30, green: 0.84, blue: 0.55)
     static let warning = Color(red: 1.00, green: 0.71, blue: 0.20)
+    static let primaryText = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .light
+            ? UIColor(red: 0.07, green: 0.08, blue: 0.12, alpha: 1.0)
+            : UIColor.white
+    })
 
     static let cornerLarge: CGFloat = 28
     static let cornerMedium: CGFloat = 18
@@ -22,6 +27,16 @@ enum LiquidGlass {
             Color(red: 0.07, green: 0.09, blue: 0.18),
             Color(red: 0.12, green: 0.10, blue: 0.24),
             Color(red: 0.04, green: 0.07, blue: 0.14)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    static let lightBaseGradient = LinearGradient(
+        colors: [
+            Color(red: 0.97, green: 0.98, blue: 1.00),
+            Color(red: 0.91, green: 0.94, blue: 1.00),
+            Color(red: 0.98, green: 0.95, blue: 1.00)
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -40,10 +55,11 @@ enum LiquidGlass {
 
 struct LiquidGlassBackground: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
-            LiquidGlass.baseGradient
+            (colorScheme == .light ? LiquidGlass.lightBaseGradient : LiquidGlass.baseGradient)
 
             // Slow drifting orbs that give the screen depth without
             // distracting from content. Frozen at a pleasant pose under
@@ -56,7 +72,7 @@ struct LiquidGlassBackground: View {
                     drawOrb(in: ctx, size: size, t: 11,   hueShift: -0.12)
                 }
                 .blendMode(.screen)
-                .opacity(0.45)
+                .opacity(colorScheme == .light ? 0.30 : 0.45)
                 .accessibilityHidden(true)
             } else {
                 TimelineView(.animation(minimumInterval: 1 / 30)) { context in
@@ -68,13 +84,13 @@ struct LiquidGlassBackground: View {
                     }
                 }
                 .blendMode(.screen)
-                .opacity(0.55)
+                .opacity(colorScheme == .light ? 0.34 : 0.55)
                 .accessibilityHidden(true)
             }
 
             // Subtle vignette for legibility
             RadialGradient(
-                colors: [.clear, .black.opacity(0.35)],
+                colors: [.clear, vignetteColor],
                 center: .center,
                 startRadius: 200,
                 endRadius: 700
@@ -82,6 +98,10 @@ struct LiquidGlassBackground: View {
             .blendMode(.multiply)
             .allowsHitTesting(false)
         }
+    }
+
+    private var vignetteColor: Color {
+        colorScheme == .light ? Color.black.opacity(0.08) : Color.black.opacity(0.35)
     }
 
     private func drawOrb(in ctx: GraphicsContext, size: CGSize, t: TimeInterval, hueShift: Double) {

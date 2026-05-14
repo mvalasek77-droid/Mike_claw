@@ -104,10 +104,10 @@
 		598B1EE2A2F977B4D9369D3F /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		5AEB8C579447A5BBA5637BB5 /* AppSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSession.swift; sourceTree = "<group>"; };
 		61A50E8C6B31B68AAD9F39DB /* AppOfYearPlaybookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOfYearPlaybookView.swift; sourceTree = "<group>"; };
-		68078DF2835310FC9F69D17E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		68078DF2835310FC9F69D17E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6B7BF9FB75F8754E0C13DC64 /* JobCostLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobCostLog.swift; sourceTree = "<group>"; };
 		6CA43AD75A0BD0A59ABFF78A /* CodeGenieApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeGenieApp.swift; sourceTree = "<group>"; };
-		6DE054B1559DF3736F5EAD8A /* CodeGenie.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CodeGenie.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6DE054B1559DF3736F5EAD8A /* CodeGenie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodeGenie.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		70AA02F860CEAFBAC67F2100 /* TutorialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialView.swift; sourceTree = "<group>"; };
 		716D2BC469544BCC667A4E4A /* WorkspaceFullBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceFullBanner.swift; sourceTree = "<group>"; };
 		7BFD95008827FFF068042261 /* CustomAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomAgent.swift; sourceTree = "<group>"; };
@@ -434,7 +434,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					E08A8D66F8D6D0504BCBCEE0 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -561,6 +560,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = UDM4W27W9V;
 				INFOPLIST_FILE = CodeGenie/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -643,6 +643,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = UDM4W27W9V;
 				INFOPLIST_FILE = CodeGenie/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

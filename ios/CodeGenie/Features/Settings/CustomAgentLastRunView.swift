@@ -43,7 +43,7 @@ struct CustomAgentLastRunView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(agent.name)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Last run findings")
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(LiquidGlass.accent)
@@ -71,10 +71,10 @@ struct CustomAgentLastRunView: View {
 
     private func metaRow(_ k: String, _ v: String) -> some View {
         HStack {
-            Text(k).foregroundStyle(.white.opacity(0.65))
+            Text(k).foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .frame(width: 90, alignment: .leading)
-            Text(v).foregroundStyle(.white)
+            Text(v).foregroundStyle(LiquidGlass.primaryText)
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
             Spacer()
         }
@@ -87,11 +87,11 @@ struct CustomAgentLastRunView: View {
                     HStack(alignment: .top, spacing: 8) {
                         Text("\(i + 1)")
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                             .frame(width: 18, alignment: .trailing)
                         Text(line)
                             .font(.system(size: 13, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.9))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.9))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -103,7 +103,7 @@ struct CustomAgentLastRunView: View {
         GlassCard(title: "No findings recorded", icon: "tray", tint: LiquidGlass.warning) {
             Text("This agent ran but didn't emit any thoughts. The model probably ran tool calls without commentary.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
         }
     }
 
@@ -111,7 +111,7 @@ struct CustomAgentLastRunView: View {
         GlassCard(title: "Not run yet", icon: "hourglass", tint: LiquidGlass.warning) {
             Text("This agent hasn't joined a build yet. Findings will appear here after the next build it participates in.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
         }
     }
 

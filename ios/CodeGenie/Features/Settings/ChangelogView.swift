@@ -46,12 +46,12 @@ struct ChangelogView: View {
                 CodeGenieLogo(size: 40, animate: false)
                 Text("What's new")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Spacer()
             }
             Text("Notable changes between versions.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -61,7 +61,7 @@ struct ChangelogView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(entry.date)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                     .textCase(.uppercase)
                     .tracking(1.2)
                     .accessibilityHidden(true)
@@ -74,7 +74,7 @@ struct ChangelogView: View {
                             .accessibilityHidden(true)
                         Text(line)
                             .font(.system(size: 14, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.88))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.88))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

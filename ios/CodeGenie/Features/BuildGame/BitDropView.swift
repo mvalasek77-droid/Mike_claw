@@ -72,7 +72,7 @@ struct BitDropView: View {
             if let g = glyph {
                 Text(g.rawValue)
                     .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
         }
         .frame(width: cellSize - 1, height: cellSize - 1)
@@ -81,22 +81,22 @@ struct BitDropView: View {
     private var sidebar: some View {
         VStack(spacing: 12) {
             VStack(spacing: 4) {
-                Text("SCORE").font(.caption2).foregroundStyle(.white.opacity(0.5))
-                Text("\(game.score)").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                Text("SCORE").font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                Text("\(game.score)").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(LiquidGlass.primaryText)
                     .contentTransition(.numericText())
             }
             VStack(spacing: 4) {
-                Text("LINES").font(.caption2).foregroundStyle(.white.opacity(0.5))
-                Text("\(game.rowsCleared)").font(.system(size: 18, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                Text("LINES").font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                Text("\(game.rowsCleared)").font(.system(size: 18, weight: .bold, design: .rounded)).foregroundStyle(LiquidGlass.primaryText)
             }
             VStack(spacing: 4) {
-                Text("BOOST").font(.caption2).foregroundStyle(.white.opacity(0.5))
+                Text("BOOST").font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 Text("+\(Int(game.buildBoost * 100))%")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.success)
             }
             VStack(spacing: 4) {
-                Text("NEXT").font(.caption2).foregroundStyle(.white.opacity(0.5))
+                Text("NEXT").font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 nextPiecePreview
             }
         }
@@ -124,7 +124,7 @@ struct BitDropView: View {
                                 if on {
                                     Text(piece.glyph.rawValue)
                                         .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(LiquidGlass.primaryText)
                                 }
                             }
                             .frame(width: 12, height: 12)
@@ -152,7 +152,7 @@ struct BitDropView: View {
         Button(action: { Haptics.tap(intensity: 0.4, sharpness: 0.6); action() }) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .frame(width: 40, height: 40)
                 .background(.white.opacity(0.08), in: Circle())
                 .overlay(Circle().strokeBorder(.white.opacity(0.15)))
@@ -185,10 +185,10 @@ struct BitDropView: View {
             VStack(spacing: 10) {
                 Text("Game over")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text("Score: \(game.score)")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 PrimaryButton(title: "Play again", systemImage: "arrow.counterclockwise", style: .glass) {
                     game.reset()
                 }
@@ -202,10 +202,10 @@ struct BitDropView: View {
         ZStack {
             Color.black.opacity(0.45)
             VStack(spacing: 8) {
-                Image(systemName: "pause.circle.fill").font(.system(size: 40)).foregroundStyle(.white)
+                Image(systemName: "pause.circle.fill").font(.system(size: 40)).foregroundStyle(LiquidGlass.primaryText)
                 Text("Paused")
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 14))

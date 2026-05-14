@@ -37,10 +37,10 @@ struct DecisionSearchView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Decision memory")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Swarm reasoning ledger across every build.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -48,19 +48,19 @@ struct DecisionSearchView: View {
     private var searchBox: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.58))
                 .accessibilityHidden(true)
             TextField("Search decisions", text: $query)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .textFieldStyle(.plain)
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .font(.system(size: 15, weight: .medium, design: .rounded))
                 .submitLabel(.search)
             if !query.isEmpty {
                 Button { query = ""; results = []; error = nil } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                 }
                 .accessibilityLabel("Clear search")
             }
@@ -74,10 +74,10 @@ struct DecisionSearchView: View {
     private var loadingCard: some View {
         GlassSurface(tier: .raised, corner: 18) {
             HStack(spacing: 12) {
-                ProgressView().tint(.white)
+                ProgressView().tint(LiquidGlass.primaryText)
                 Text("Searching memory...")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                 Spacer()
             }
             .padding(14)
@@ -88,7 +88,7 @@ struct DecisionSearchView: View {
         GlassCard(title: "No matches", icon: "brain.head.profile", tint: LiquidGlass.accentSecondary) {
             Text("No remembered decision matched this query.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.78))
         }
     }
 
@@ -96,7 +96,7 @@ struct DecisionSearchView: View {
         GlassCard(title: "Search failed", icon: "exclamationmark.triangle.fill", tint: .red) {
             Text(message)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
         }
     }
 
@@ -139,15 +139,15 @@ private struct DecisionResultCard: View {
                     Spacer()
                     Text(result.at, format: .relative(presentation: .named))
                         .font(.system(size: 11, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                 }
                 Text(result.decision)
                     .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.88))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.88))
                     .fixedSize(horizontal: false, vertical: true)
                 Text(result.jobID)
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                     .lineLimit(1)
                     .truncationMode(.middle)
             }

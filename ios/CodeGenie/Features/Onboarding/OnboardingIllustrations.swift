@@ -95,7 +95,7 @@ struct OnboardingIllustrationView: View {
                 .frame(width: 160, height: 160)
                 .overlay(Image(systemName: "wand.and.stars")
                     .font(.system(size: 70, weight: .bold))
-                    .foregroundStyle(.white))
+                    .foregroundStyle(LiquidGlass.primaryText))
                 .shadow(color: .black.opacity(0.4), radius: 20, y: 12)
                 .rotationEffect(.degrees(bob ? -3 : 3))
             cartoonShape(systemName: "paintbrush.pointed.fill", size: 48, color: .pink, offsetX: -70, offsetY: -70, rotation: -25)

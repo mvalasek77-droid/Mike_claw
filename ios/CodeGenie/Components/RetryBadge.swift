@@ -14,10 +14,10 @@ struct RetryBadge: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Retry")
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     Text("\(tracker.retryAttempts) / \(max(tracker.maxRetries, tracker.retryAttempts))")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .contentTransition(.numericText())
                 }
             }

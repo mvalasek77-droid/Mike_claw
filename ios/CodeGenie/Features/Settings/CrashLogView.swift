@@ -51,10 +51,10 @@ struct CrashLogView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Recent build failures")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Builds the swarm marked failed. Tap a row to see what it was reasoning about when it broke.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -62,10 +62,10 @@ struct CrashLogView: View {
     private var loadingCard: some View {
         GlassSurface(tier: .raised) {
             HStack(spacing: 12) {
-                ProgressView().tint(.white)
+                ProgressView().tint(LiquidGlass.primaryText)
                 Text("Loading…")
                     .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
             }
             .padding(20)
             .frame(maxWidth: .infinity)
@@ -76,7 +76,7 @@ struct CrashLogView: View {
         GlassCard(title: "Clean record", icon: "checkmark.seal.fill", tint: LiquidGlass.success) {
             Text("No failed builds yet — every run has finished green or been cancelled.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
         }
     }
 
@@ -84,7 +84,7 @@ struct CrashLogView: View {
         GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: .red) {
             Text(message)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
         }
     }
 
@@ -136,34 +136,34 @@ private struct FailureCard: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(project.title)
                                 .font(.system(size: 15, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                             Text(project.at, format: .relative(presentation: .named))
                                 .font(.system(size: 11, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.6))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                         }
                         Spacer()
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                     }
                     if !project.summary.isEmpty {
                         Text(project.summary)
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                             .lineLimit(isExpanded ? nil : 2)
                     }
                     if isExpanded {
                         Divider().background(.white.opacity(0.1))
                         if isLoadingDecisions {
                             HStack {
-                                ProgressView().tint(.white)
+                                ProgressView().tint(LiquidGlass.primaryText)
                                 Text("Loading decisions…")
                                     .font(.system(size: 12, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.7))
+                                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                             }
                         } else if decisions.isEmpty {
                             Text("No reasoning decisions were logged for this run.")
                                 .font(.system(size: 12, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.65))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                         } else {
                             ForEach(decisions) { decision in
                                 decisionRow(decision)
@@ -189,7 +189,7 @@ private struct FailureCard: View {
                 .tracking(0.8)
             Text(decision.decision)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.88))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.88))
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 4)

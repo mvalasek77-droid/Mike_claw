@@ -57,15 +57,15 @@ struct ProgressOrb: View {
             VStack(spacing: 4) {
                 Text("\(Int(progress * 100))%")
                     .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .contentTransition(.numericText())
                 Text(label)
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 if let subtitle {
                     Text(subtitle)
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 8)
                 }

@@ -126,12 +126,12 @@ struct AppStoreConnectGuideView: View {
             Button { dismiss() } label: {
                 Image(systemName: "chevron.down")
                     .padding(10).background(.white.opacity(0.08), in: Circle())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
             Spacer()
             Text("Submit \(job.description.title)")
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Spacer()
             Color.clear.frame(width: 40, height: 40)
         }
@@ -143,7 +143,7 @@ struct AppStoreConnectGuideView: View {
             HStack {
                 Text("Step \(current + 1) of \(ASCStep.all.count)")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 Spacer()
                 Text("\(completed.count) complete")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -180,9 +180,9 @@ struct AppStoreConnectGuideView: View {
         HStack(alignment: .top, spacing: 12) {
             Text(k).frame(width: 90, alignment: .leading)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             Text(v).font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -213,17 +213,17 @@ private struct ASCStepCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Step \(step.number)")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                             .textCase(.uppercase).tracking(1)
                         Text(step.title)
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                     }
                     Spacer()
                 }
                 Text(step.body)
                     .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                     .lineSpacing(3)
 
                 if isCurrent {
@@ -245,7 +245,7 @@ private struct ASCStepCard: View {
                     .foregroundStyle(LiquidGlass.success)
             } else {
                 Text("\(step.number)").font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
         }
         .frame(width: 32, height: 32)
@@ -263,9 +263,9 @@ private struct ASCStepCard: View {
             PrimaryButton(title: "Upload \(asset)", systemImage: "icloud.and.arrow.up", style: .filled) { onAction() }
         case .wait(let detail):
             HStack(spacing: 10) {
-                ProgressView().tint(.white)
+                ProgressView().tint(LiquidGlass.primaryText)
                 Text(detail).font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 Spacer()
                 Button("Mark done") { onAction() }
                     .font(.system(size: 13, weight: .semibold, design: .rounded))

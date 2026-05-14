@@ -29,6 +29,9 @@ final class SwarmClient: ObservableObject {
     private let session: URLSession
     private var streamTask: Task<Void, Never>?
     private let credentials: Credentials
+    private static let maxRetainedEvents = 1_500
+    private static let streamBatchSize = 24
+    private static let streamFlushInterval: TimeInterval = 1.0 / 30.0
 
     init(credentials: Credentials? = nil, session: URLSession = .shared) {
         self.credentials = credentials ?? Credentials.shared
@@ -344,14 +347,29 @@ final class SwarmClient: ObservableObject {
         }
         await MainActor.run { self.isConnected = true; self.lastError = nil }
 
-        // Naive SSE parser — sufficient for our event format.
+        // Buffered SSE parsing keeps large agent transcripts from invalidating
+        // SwiftUI hundreds of times per second.
         var pendingData: String = ""
+        var bufferedEvents: [SwarmEvent] = []
+        bufferedEvents.reserveCapacity(Self.streamBatchSize)
+        var lastFlush = Date()
+
+        func flushIfNeeded(force: Bool = false) async {
+            guard !bufferedEvents.isEmpty else { return }
+            let elapsed = Date().timeIntervalSince(lastFlush)
+            guard force || bufferedEvents.count >= Self.streamBatchSize || elapsed >= Self.streamFlushInterval else { return }
+            await ingest(bufferedEvents, forward: onEvent)
+            bufferedEvents.removeAll(keepingCapacity: true)
+            lastFlush = Date()
+        }
+
         for try await line in bytes.lines {
             if Task.isCancelled { break }
             if line.isEmpty {
                 if !pendingData.isEmpty,
                    let event = decodeEvent(pendingData) {
-                    await ingest(event, forward: onEvent)
+                    bufferedEvents.append(event)
+                    await flushIfNeeded()
                 }
                 pendingData = ""
                 continue
@@ -361,23 +379,31 @@ final class SwarmClient: ObservableObject {
             }
             // We ignore "event:" / "id:" / "retry:" — the type lives inside the JSON.
         }
+        await flushIfNeeded(force: true)
     }
 
-    private func ingest(_ event: SwarmEvent, forward: ((SwarmEvent) -> Void)?) async {
-        events.append(event)
-        if event.type == "job.state",
-           let s = event.payload["state"] as? String {
-            // Pause / resume are surfaced as job.state changes too —
-            // map them to isPaused so the header badge can react.
-            switch s {
-            case "paused":  isPaused = true
-            case "resumed": isPaused = false
-            default:
-                isPaused = false
-                if let mapped = mapState(s) { stage = mapped }
-            }
+    private func ingest(_ newEvents: [SwarmEvent], forward: ((SwarmEvent) -> Void)?) async {
+        let overflow = events.count + newEvents.count - Self.maxRetainedEvents
+        if overflow > 0 {
+            events.removeFirst(min(overflow, events.count))
         }
-        forward?(event)
+        events.append(contentsOf: newEvents)
+
+        for event in newEvents {
+            if event.type == "job.state",
+               let s = event.payload["state"] as? String {
+                // Pause / resume are surfaced as job.state changes too —
+                // map them to isPaused so the header badge can react.
+                switch s {
+                case "paused":  isPaused = true
+                case "resumed": isPaused = false
+                default:
+                    isPaused = false
+                    if let mapped = mapState(s) { stage = mapped }
+                }
+            }
+            forward?(event)
+        }
     }
 
     private func mapState(_ s: String) -> BuildJob.Stage? {

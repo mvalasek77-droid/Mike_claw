@@ -65,10 +65,10 @@ struct CustomAgentsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Custom agents")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Add your own swarm member. Runs after the standard test layer with the tools you allowlist.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -78,7 +78,7 @@ struct CustomAgentsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Add one to extend what CodeGenie checks at the end of every build.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                 PrimaryButton(title: "New agent", systemImage: "plus", style: .filled) {
                     editing = CustomAgent(name: "", systemPrompt: "")
                 }
@@ -110,7 +110,7 @@ struct CustomAgentsView: View {
                 }
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .background(LiquidGlass.auroraGradient.opacity(0.85), in: Capsule())
             }
             .buttonStyle(.plain)
@@ -122,7 +122,7 @@ struct CustomAgentsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Tap to add a polished starting point. You can tweak the name + prompt before saving.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 ForEach(CustomAgent.templates) { template in
                     Button {
                         editing = CustomAgent(
@@ -136,10 +136,10 @@ struct CustomAgentsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(template.name)
                                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(LiquidGlass.primaryText)
                                 Text(template.systemPrompt.prefix(80) + "…")
                                     .font(.system(size: 11, weight: .regular, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.6))
+                                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                                     .lineLimit(2)
                             }
                             Spacer()
@@ -172,7 +172,7 @@ private struct AgentCard: View {
                         .foregroundStyle(LiquidGlass.accent)
                     Text(agent.name.isEmpty ? "Untitled" : agent.name)
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Spacer()
                     Toggle("", isOn: Binding(get: { agent.enabled }, set: { onToggle($0) }))
                         .labelsHidden()
@@ -180,7 +180,7 @@ private struct AgentCard: View {
                 }
                 Text(agent.systemPrompt)
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     .lineLimit(3)
                 if !agent.toolAllowlist.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -190,7 +190,7 @@ private struct AgentCard: View {
                                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                                     .padding(.horizontal, 6).padding(.vertical, 2)
                                     .background(.white.opacity(0.08), in: Capsule())
-                                    .foregroundStyle(.white.opacity(0.85))
+                                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                             }
                         }
                     }
@@ -239,7 +239,7 @@ private struct CustomAgentEditor: View {
                     HStack {
                         Text(initial.name.isEmpty ? "New agent" : "Edit agent")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Spacer()
                     }
 
@@ -247,7 +247,7 @@ private struct CustomAgentEditor: View {
                         TextField("Accessibility Auditor", text: $name)
                             .textFieldStyle(.plain)
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                             .padding(10)
                             .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
                             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
@@ -258,7 +258,7 @@ private struct CustomAgentEditor: View {
                             .scrollContentBackground(.hidden)
                             .frame(minHeight: 160)
                             .font(.system(size: 13, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                             .padding(8)
                             .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
                     }
@@ -267,13 +267,13 @@ private struct CustomAgentEditor: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Comma-separated. Leave empty for full access. Available: read_file, list_dir, grep, swiftlint, shell, apple_docs, recall_memory.")
                                 .font(.system(size: 11, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.65))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                             TextField("read_file, grep, swiftlint", text: $allowlistText)
                                 .textFieldStyle(.plain)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .font(.system(size: 12, weight: .medium, design: .monospaced))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                                 .padding(10)
                                 .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
                                 .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))

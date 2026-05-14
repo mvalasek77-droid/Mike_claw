@@ -4,9 +4,8 @@ Every `BuildJob` gets one `EventStream` that all the swarm agents push to.
 HTTP/SSE consumers (and the WebSocket bridge for the iOS client) subscribe
 to that stream and receive events in real-time.
 
-The bus is unbounded per-subscriber by design — slow consumers don't block
-producers, but they pay in memory. The API layer enforces a sane queue cap
-per connection.
+Each subscriber queue is bounded. Slow consumers drop old log events instead
+of applying backpressure to producer agents.
 """
 from __future__ import annotations
 
@@ -34,14 +33,7 @@ class EventStream:
     async def publish(self, event: SwarmEvent) -> None:
         async with self._lock:
             for q in self._subscribers:
-                if q.qsize() >= self._max:
-                    # Drop the oldest event rather than block — viewers
-                    # missing log spam is preferable to wedged producers.
-                    try:
-                        q.get_nowait()
-                    except asyncio.QueueEmpty:
-                        pass
-                await q.put(event)
+                self._put_drop_oldest(q, event)
 
     async def emit(
         self,
@@ -58,10 +50,10 @@ class EventStream:
         async with self._lock:
             self._closed = True
             for q in self._subscribers:
-                await q.put(None)
+                self._put_drop_oldest(q, None)
 
     async def subscribe(self) -> AsyncIterator[SwarmEvent]:
-        q: asyncio.Queue[SwarmEvent | None] = asyncio.Queue()
+        q: asyncio.Queue[SwarmEvent | None] = asyncio.Queue(maxsize=self._max)
         async with self._lock:
             if self._closed:
                 return
@@ -76,6 +68,18 @@ class EventStream:
             async with self._lock:
                 if q in self._subscribers:
                     self._subscribers.remove(q)
+
+    @staticmethod
+    def _put_drop_oldest(
+        q: asyncio.Queue[SwarmEvent | None],
+        event: SwarmEvent | None,
+    ) -> None:
+        if q.full():
+            try:
+                q.get_nowait()
+            except asyncio.QueueEmpty:
+                pass
+        q.put_nowait(event)
 
 
 class EventBus:

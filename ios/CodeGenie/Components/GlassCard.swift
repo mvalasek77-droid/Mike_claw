@@ -21,7 +21,7 @@ struct GlassCard<Content: View>: View {
                         if let title {
                             Text(title)
                                 .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                         }
                         Spacer(minLength: 0)
                     }
@@ -44,9 +44,9 @@ struct StatPill: View {
                 Image(systemName: icon).font(.system(size: 12, weight: .semibold))
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.caption2).foregroundStyle(.white.opacity(0.65))
+                Text(label).font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                 Text(value).font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 8)

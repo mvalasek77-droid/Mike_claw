@@ -27,17 +27,17 @@ struct LaunchAutomationAuditView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Automation audit")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text("The launch pipeline, separated into real automation, Mac-assisted automation, and Apple-required confirmation.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.72))
             }
             .accessibilityLabel("Close automation audit")
         }
@@ -53,11 +53,11 @@ struct LaunchAutomationAuditView: View {
                         .accessibilityHidden(true)
                     Text("Current verdict")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 Text("Build, quality gates, icon generation, TestFlight upload, and status polling are automated once credentials and an IPA exist. Xcode account setup, Apple sign-in, App Store Connect review fields, screenshots, and final submission still need Mac companion wiring or Apple confirmation.")
                     .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.82))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.82))
                     .lineSpacing(3)
             }
             .padding(18)
@@ -162,10 +162,10 @@ private struct AutomationGroupCard: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(row.title)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                             Text(row.detail)
                                 .font(.system(size: 12, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.68))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         Spacer(minLength: 0)

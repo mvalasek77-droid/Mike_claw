@@ -64,12 +64,12 @@ struct ProjectsGalleryView: View {
         HStack {
             Text("My Apps")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Spacer()
             Button { showDescribe = true } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .frame(width: 38, height: 38)
                     .background(LiquidGlass.auroraGradient, in: Circle())
             }
@@ -79,14 +79,14 @@ struct ProjectsGalleryView: View {
 
     private var searchBar: some View {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.white.opacity(0.6))
+            Image(systemName: "magnifyingglass").foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
             TextField("Search your apps", text: $query)
                 .textFieldStyle(.plain)
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .font(.system(size: 14, weight: .medium, design: .rounded))
             if !query.isEmpty {
                 Button { query = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.white.opacity(0.5))
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 }
             }
         }
@@ -101,10 +101,10 @@ struct ProjectsGalleryView: View {
                 CodeGenieLogo(size: 80, animate: true)
                 Text("No apps yet")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text("Describe an idea and CodeGenie will scaffold a real Xcode project for you.")
                     .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 12)
                 PrimaryButton(title: "Start your first build", systemImage: "wand.and.stars", style: .filled) {
@@ -135,21 +135,21 @@ private struct ProjectCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(job.description.title)
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text(job.description.category.label)
                             .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     }
                     Spacer()
                     Text(job.stage.rawValue)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(.white.opacity(0.08), in: Capsule())
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 }
                 Text(job.description.prompt)
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                     .lineLimit(2)
                 HStack(spacing: 6) {
                     if let backendID {

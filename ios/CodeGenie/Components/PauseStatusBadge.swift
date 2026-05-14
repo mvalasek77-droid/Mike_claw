@@ -13,7 +13,7 @@ struct PauseStatusBadge: View {
                     .foregroundStyle(swarm.isPaused ? LiquidGlass.warning : LiquidGlass.success)
                 Text(swarm.isPaused ? "paused" : "running")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.9))
             }
             .padding(.horizontal, 8).padding(.vertical, 4)
             .background(.white.opacity(0.08), in: Capsule())

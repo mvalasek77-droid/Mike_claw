@@ -59,13 +59,13 @@ struct DiffPreviewView: View {
             HStack {
                 Text("Review changes")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Spacer()
                 summaryPills
             }
             Text("\(diffs.count) files proposed by the swarm. Accept the ones you want; CodeGenie applies and re-builds.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -89,7 +89,7 @@ struct DiffPreviewView: View {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .background(.white.opacity(0.08), in: Capsule())
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.95))
                 }
                 .buttonStyle(.plain)
 
@@ -100,7 +100,7 @@ struct DiffPreviewView: View {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .background(.white.opacity(0.08), in: Capsule())
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.95))
                 }
                 .buttonStyle(.plain)
 
@@ -138,17 +138,17 @@ private struct DiffCard: View {
                         opChip
                         Text(diff.path)
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Spacer()
                         Text("+\(diff.additions) −\(diff.deletions)")
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                         statusBadge
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     }
                 }
                 .buttonStyle(.plain)
@@ -207,7 +207,7 @@ private struct DiffCard: View {
             .frame(maxWidth: .infinity)
             .background(filled ? tint.opacity(0.25) : .white.opacity(0.06), in: Capsule())
             .overlay(Capsule().strokeBorder(filled ? tint.opacity(0.5) : .white.opacity(0.12)))
-            .foregroundStyle(filled ? tint : .white.opacity(0.9))
+            .foregroundStyle(filled ? tint : LiquidGlass.primaryText.opacity(0.9))
         }
         .buttonStyle(.plain)
     }
