@@ -80,6 +80,7 @@ private struct TranscriptRow: View {
         case "retry.attempt":     "arrow.clockwise.circle.fill"
         case "memory.briefing":   "brain.head.profile"
         case "testflight.upload": "icloud.and.arrow.up.fill"
+        case "testflight.upload.progress": "dot.radiowaves.up.forward"
         case "testflight.status": "shippingbox.fill"
         case "error":             "xmark.octagon.fill"
         case "job.state":         "flag.fill"
@@ -100,7 +101,7 @@ private struct TranscriptRow: View {
         case "test.result":       LiquidGlass.accentSecondary
         case "retry.attempt":     LiquidGlass.warning
         case "memory.briefing":   LiquidGlass.accentSecondary
-        case "testflight.upload", "testflight.status": LiquidGlass.accent
+        case "testflight.upload", "testflight.upload.progress", "testflight.status": LiquidGlass.accent
         case "error":             .red
         case "job.state":         LiquidGlass.accent
         case "done":              LiquidGlass.success
@@ -110,7 +111,7 @@ private struct TranscriptRow: View {
 
     private var bodyDesign: Font.Design {
         switch event.type {
-        case "tool.call", "tool.result", "diff": .monospaced
+        case "tool.call", "tool.result", "diff", "testflight.upload.progress": .monospaced
         default: .rounded
         }
     }
@@ -160,6 +161,10 @@ private struct TranscriptRow: View {
         case "testflight.upload":
             let bid = (event.payload["build_id"] as? String) ?? "—"
             return "uploaded to TestFlight (build \(bid))"
+        case "testflight.upload.progress":
+            let phase = (event.payload["phase"] as? String) ?? "?"
+            let line  = (event.payload["line"] as? String) ?? ""
+            return "[\(phase)] \(line)"
         case "testflight.status":
             let state = (event.payload["state"] as? String) ?? "?"
             return "TestFlight: \(state)"

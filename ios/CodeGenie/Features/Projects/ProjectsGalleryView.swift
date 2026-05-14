@@ -28,7 +28,11 @@ struct ProjectsGalleryView: View {
                             Button {
                                 session.openJob(job, backendID: session.backendJobIDs[job.id])
                             } label: {
-                                ProjectCard(job: job, backendID: session.backendJobIDs[job.id])
+                                ProjectCard(
+                                    job: job,
+                                    backendID: session.backendJobIDs[job.id],
+                                    spend: session.backendJobIDs[job.id].flatMap { JobCostLog.shared.spend(for: $0) }
+                                )
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Open \(job.description.title)")
@@ -117,6 +121,7 @@ struct ProjectsGalleryView: View {
 private struct ProjectCard: View {
     let job: BuildJob
     var backendID: String? = nil
+    var spend: JobCostLog.Spend? = nil
 
     var body: some View {
         GlassSurface(tier: .raised, corner: 22) {
@@ -146,19 +151,35 @@ private struct ProjectCard: View {
                     .font(.system(size: 13, weight: .regular, design: .rounded))
                     .foregroundStyle(.white.opacity(0.75))
                     .lineLimit(2)
-                if let backendID {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.triangle.branch")
-                            .font(.system(size: 9, weight: .bold))
-                            .accessibilityHidden(true)
-                        Text("forked · \(backendID.prefix(12))")
-                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                HStack(spacing: 6) {
+                    if let backendID {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.triangle.branch")
+                                .font(.system(size: 9, weight: .bold))
+                                .accessibilityHidden(true)
+                            Text("forked · \(backendID.prefix(12))")
+                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        }
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(LiquidGlass.accentSecondary.opacity(0.18), in: Capsule())
+                        .overlay(Capsule().strokeBorder(LiquidGlass.accentSecondary.opacity(0.35)))
+                        .foregroundStyle(LiquidGlass.accentSecondary)
+                        .accessibilityLabel("Forked from build \(backendID)")
                     }
-                    .padding(.horizontal, 6).padding(.vertical, 3)
-                    .background(LiquidGlass.accentSecondary.opacity(0.18), in: Capsule())
-                    .overlay(Capsule().strokeBorder(LiquidGlass.accentSecondary.opacity(0.35)))
-                    .foregroundStyle(LiquidGlass.accentSecondary)
-                    .accessibilityLabel("Forked from build \(backendID)")
+                    if let spend, spend.usd > 0 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "dollarsign.circle.fill")
+                                .font(.system(size: 9, weight: .bold))
+                                .accessibilityHidden(true)
+                            Text(String(format: "$%.3f spent", spend.usd))
+                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        }
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(LiquidGlass.success.opacity(0.18), in: Capsule())
+                        .overlay(Capsule().strokeBorder(LiquidGlass.success.opacity(0.35)))
+                        .foregroundStyle(LiquidGlass.success)
+                        .accessibilityLabel(String(format: "Spent %.3f dollars on this build", spend.usd))
+                    }
                 }
             }
             .padding(16)

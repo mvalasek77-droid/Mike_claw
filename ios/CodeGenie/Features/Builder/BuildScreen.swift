@@ -383,6 +383,7 @@ struct BuildScreen: View {
         diffStream.bind(to: swarm)
         uploadProgress.bind(to: swarm)
         CustomAgentLog.shared.bind(to: swarm)
+        JobCostLog.shared.bind(to: swarm)
         do {
             // Attach to an existing backend job (forked / resumed)
             // instead of starting a new build. We don't burn tokens

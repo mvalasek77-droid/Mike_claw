@@ -130,6 +130,37 @@ final class SwarmClient: ObservableObject {
         }
     }
 
+    /// List currently archived job workspaces.
+    func listArchives() async throws -> [ArchivedJob] {
+        let r: [String: Any] = try await getJSON("/api/coding/swarm/admin/archives")
+        let entries = (r["archives"] as? [[String: Any]]) ?? []
+        return entries.compactMap { dict in
+            guard let filename = dict["filename"] as? String,
+                  let jobID = dict["job_id"] as? String else { return nil }
+            return ArchivedJob(
+                filename: filename,
+                jobID: jobID,
+                archivedAt: (dict["archived_at"] as? Int).map { Date(timeIntervalSince1970: TimeInterval($0)) },
+                sizeBytes: (dict["size_bytes"] as? Int) ?? 0,
+                mtime: Date(timeIntervalSince1970: (dict["mtime"] as? Double) ?? 0)
+            )
+        }
+    }
+
+    /// Re-extract an archived workspace back into `workspace_root`.
+    /// Returns the restored job id.
+    @discardableResult
+    func extractArchive(filename: String) async throws -> String {
+        let encoded = filename.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? filename
+        let r: [String: Any] = try await postJSON(
+            "/api/coding/swarm/admin/archives/\(encoded)/extract", body: [:]
+        )
+        guard let jobID = r["job_id"] as? String else {
+            throw SwarmError.malformed("missing job_id in extract response")
+        }
+        return jobID
+    }
+
     /// Archive job workspaces older than `days`. Returns one summary
     /// per archive. Active jobs are skipped server-side.
     func archiveOldWorkspaces(olderThanDays days: Int) async throws -> [ArchiveSummary] {
@@ -412,6 +443,15 @@ struct ArchiveSummary: Identifiable, Hashable {
     let bytesWritten: Int
     let filesArchived: Int
     var id: String { archivePath }
+}
+
+struct ArchivedJob: Identifiable, Hashable {
+    let filename: String
+    let jobID: String
+    let archivedAt: Date?
+    let sizeBytes: Int
+    let mtime: Date
+    var id: String { filename }
 }
 
 struct SwarmEvent: Identifiable {
