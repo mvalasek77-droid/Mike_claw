@@ -86,7 +86,12 @@ struct AppStoreConnectGuideView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var current: Int = 0
     @State private var completed: Set<UUID> = []
-    @State private var metadata = AppStoreMetadata.demo
+    @State private var metadata: AppStoreMetadata
+
+    init(job: BuildJob) {
+        self.job = job
+        _metadata = State(initialValue: AppStoreMetadata.draft(for: job.description))
+    }
 
     var body: some View {
         ZStack {
@@ -273,16 +278,57 @@ private struct ASCStepCard: View {
 }
 
 extension AppStoreMetadata {
-    static let demo = AppStoreMetadata(
-        name: "TideRider",
-        subtitle: "Surf-ready tide times",
-        primaryCategory: "Sports",
-        keywords: ["tide","surf","ocean","waves","weather","beach","swell","forecast"],
-        description: "TideRider gives surfers a beautiful, glanceable view of the day's tide times…",
-        promotionalText: "Free for the first 1000 downloads.",
-        supportURL: "https://example.com/support",
-        marketingURL: "https://example.com",
-        ageRating: "4+",
-        price: "Free"
-    )
+    static func draft(for app: AppDescription) -> AppStoreMetadata {
+        let featureWords = app.features
+            .flatMap { $0.split { !$0.isLetter && !$0.isNumber } }
+            .map { String($0).lowercased() }
+        let promptWords = app.prompt
+            .split { !$0.isLetter && !$0.isNumber }
+            .map { String($0).lowercased() }
+            .filter { $0.count > 3 }
+        let keywords = Array((featureWords + promptWords + [app.category.rawValue, app.style.label])
+            .map { $0.replacingOccurrences(of: " ", with: "") }
+            .filter { !$0.isEmpty }
+            .uniqued()
+            .prefix(10))
+
+        return AppStoreMetadata(
+            name: app.title,
+            subtitle: app.subtitleDraft,
+            primaryCategory: app.category.label,
+            keywords: keywords.isEmpty ? [app.category.rawValue, "iphone", "swiftui"] : keywords,
+            description: "\(app.title) is built around \(app.prompt.trimmingCharacters(in: .whitespacesAndNewlines)).",
+            promotionalText: "Built with CodeGenie and prepared for TestFlight.",
+            supportURL: "https://example.com/support",
+            marketingURL: "https://example.com",
+            ageRating: "4+",
+            price: "Free"
+        )
+    }
+}
+
+private extension AppDescription {
+    var subtitleDraft: String {
+        if let first = features.first, !first.isEmpty {
+            return String(first.prefix(30))
+        }
+        return switch category {
+        case .utility: "Fast, focused everyday help"
+        case .productivity: "Plan, build, and finish faster"
+        case .lifestyle: "A calmer daily ritual"
+        case .finance: "Money clarity at a glance"
+        case .social: "Share what matters now"
+        case .health: "Healthier habits, gently"
+        case .education: "Learn with less friction"
+        case .games: "Playful moments, polished"
+        case .photo: "Create standout visuals"
+        }
+    }
+}
+
+private extension Array where Element: Hashable {
+    func uniqued() -> [Element] {
+        var seen: Set<Element> = []
+        return filter { seen.insert($0).inserted }
+    }
 }

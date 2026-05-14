@@ -8,6 +8,7 @@ struct HomeView: View {
     @State private var showTutorial = false
     @State private var showGame = false
     @State private var showAppOfYearDNA = false
+    @State private var showAutomationAudit = false
 
     var body: some View {
         ScrollView {
@@ -49,6 +50,11 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showAppOfYearDNA) {
             AppOfYearPlaybookView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAutomationAudit) {
+            LaunchAutomationAuditView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -142,7 +148,7 @@ struct HomeView: View {
             QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
             QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
             QuickTile(title: "Award DNA",        subtitle: "App of Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
-            QuickTile(title: "Launch kit",       subtitle: "Icon, shots, TestFlight", icon: "paperplane.fill",   tint: LiquidGlass.accentSecondary) { showXcodeGuide = true }
+            QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
         }
     }
 
