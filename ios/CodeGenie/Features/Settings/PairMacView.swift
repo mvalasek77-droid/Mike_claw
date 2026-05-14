@@ -174,7 +174,7 @@ struct PairMacView: View {
                 Text("On your Mac, run:")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
                     .foregroundStyle(.white.opacity(0.7))
-                Text("cd ~/code/codebaby/mac_companion\nswift run codegenie-companion")
+                Text("cd ~/code/codegenie/mac_companion\nswift run codegenie-companion")
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.white)
                     .padding(10)
