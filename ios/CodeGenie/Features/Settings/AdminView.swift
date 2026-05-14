@@ -10,6 +10,7 @@ struct AdminView: View {
     @State private var lastSummaries: [ArchiveSummary] = []
     @State private var error: String?
     @State private var showArchived: Bool = false
+    @State private var showDecisionSearch: Bool = false
     private let client = SwarmClient()
 
     var body: some View {
@@ -18,6 +19,7 @@ struct AdminView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     header
+                    decisionSearchTile
                     archiveCard
                     archivedJobsTile
                     if let lastResult { resultCard(lastResult) }
@@ -42,6 +44,40 @@ struct AdminView: View {
                 .foregroundStyle(.white.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var decisionSearchTile: some View {
+        Button { showDecisionSearch = true; Haptics.selection() } label: {
+            GlassSurface(tier: .raised, corner: 18) {
+                HStack(spacing: 12) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accentSecondary)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(LiquidGlass.accentSecondary.opacity(0.18)))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Decision memory")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Reasoning ledger across builds")
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.65))
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.5))
+                }
+                .padding(12)
+            }
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showDecisionSearch) {
+            DecisionSearchView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Open decision memory search")
     }
 
     private var archivedJobsTile: some View {

@@ -167,14 +167,13 @@ final class CompanionBridge: ObservableObject {
 
     private func waitForReady(_ conn: NWConnection) async -> Bool {
         await withCheckedContinuation { cont in
-            var resumed = false
+            let gate = ContinuationGate()
             conn.stateUpdateHandler = { state in
-                guard !resumed else { return }
                 switch state {
                 case .ready:
-                    resumed = true; cont.resume(returning: true)
+                    if gate.claim() { cont.resume(returning: true) }
                 case .failed, .cancelled:
-                    resumed = true; cont.resume(returning: false)
+                    if gate.claim() { cont.resume(returning: false) }
                 default: break
                 }
             }
@@ -199,7 +198,7 @@ final class CompanionBridge: ObservableObject {
                 if isComplete {
                     Task { @MainActor in self.disconnect() }
                 } else {
-                    tick()
+                    Task { @MainActor in tick() }
                 }
             }
         }
@@ -229,6 +228,19 @@ final class CompanionBridge: ObservableObject {
                 userInfo: message
             )
         }
+    }
+}
+
+private final class ContinuationGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var didResume = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !didResume else { return false }
+        didResume = true
+        return true
     }
 }
 

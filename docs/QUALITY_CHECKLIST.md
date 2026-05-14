@@ -16,8 +16,12 @@ still pending sign-off from a real Mac/device run.
 
 ## 2. Tested rigorously
 
-- [✓] **48 backend pytest tests, all green**
+- [✓] **116 backend pytest tests, all green**
   (sandbox, tools, runtime, streaming, memory, ranker, testflight, e2e)
+- [✓] **Perfection Mode** runs 10,000 deterministic virtual probes across
+  Apple review, accessibility, performance, security, offline, Liquid
+  Glass polish, App Store package, and senior-engineering checks before
+  App Store handoff
 - [✓] Swift brace + import audit on every file
 - [□] iPhone 16 / SE / 16 Pro Max flows on real hardware
 - [□] Cold start, warm start, background → foreground
@@ -93,6 +97,8 @@ still pending sign-off from a real Mac/device run.
 - [✓] Genie Swarm Reviewer can raise findings (`severity: critical`
   blocks release)
 - [✓] Genie Swarm Security Auditor wired with read-only tool set
+- [✓] Perfection Matrix blocks TestFlight handoff until critical/error
+  findings are cleared
 - [✓] Build green on the simulator before user is asked to test
 - [✓] Diff visibly previewed (DiffPreviewView) before any file write is
   promoted by the user

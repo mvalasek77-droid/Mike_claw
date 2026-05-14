@@ -7,6 +7,8 @@ struct HomeView: View {
     @State private var showSettings = false
     @State private var showTutorial = false
     @State private var showGame = false
+    @State private var showAppOfYearDNA = false
+    @State private var showAutomationAudit = false
 
     var body: some View {
         ScrollView {
@@ -43,6 +45,16 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showTutorial) {
             TutorialView(mode: .replay) { showTutorial = false }
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAppOfYearDNA) {
+            AppOfYearPlaybookView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAutomationAudit) {
+            LaunchAutomationAuditView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -135,6 +147,8 @@ struct HomeView: View {
             QuickTile(title: "Xcode steps",     subtitle: "Pocket guide",          icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
             QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
             QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
+            QuickTile(title: "Award DNA",        subtitle: "App of Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
+            QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
         }
     }
 
@@ -183,6 +197,7 @@ struct HomeView: View {
                 ChecklistRow(text: "Animations, accessibility, dark mode", done: true)
                 ChecklistRow(text: "iOS 26 Liquid Glass theme", done: true)
                 ChecklistRow(text: "Senior-engineer code review (no vibe)", done: true)
+                ChecklistRow(text: "Perfection Mode: 10,000 virtual probes", done: true)
                 ChecklistRow(text: "Submission-ready for App Store", done: false)
             }
         }

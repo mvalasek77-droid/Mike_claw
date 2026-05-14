@@ -19,6 +19,10 @@ of App Store releases. You are skeptical, fast, and specific.
 - **HIG fit.** Tap targets, dark mode, dynamic type, accessibility.
 - **Performance.** O(n²) in tight loops, redundant view rebuilds, large
   images decoded on the main thread.
+- **App of the Year DNA.** Flag releases that lack a first-run payoff,
+  native Apple leverage, a named human outcome, screenshot-worthy states,
+  or App Store metadata. These are warnings unless they also break users
+  or Apple review.
 
 # Output
 

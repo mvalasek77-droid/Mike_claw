@@ -30,8 +30,8 @@ final class SwarmClient: ObservableObject {
     private var streamTask: Task<Void, Never>?
     private let credentials: Credentials
 
-    init(credentials: Credentials = .shared, session: URLSession = .shared) {
-        self.credentials = credentials
+    init(credentials: Credentials? = nil, session: URLSession = .shared) {
+        self.credentials = credentials ?? Credentials.shared
         self.session = session
     }
 
@@ -198,6 +198,25 @@ final class SwarmClient: ObservableObject {
         }
     }
 
+    /// Search reasoning decisions across every remembered build.
+    func searchDecisions(query: String, limit: Int = 30) async throws -> [DecisionSearchRecord] {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        let r: [String: Any] = try await getJSON(
+            "/api/coding/swarm/memory/decisions/search?q=\(encoded)&limit=\(limit)"
+        )
+        let entries = (r["decisions"] as? [[String: Any]]) ?? []
+        return entries.compactMap { dict in
+            guard let jobID = dict["job_id"] as? String,
+                  let context = dict["context"] as? String,
+                  let decision = dict["decision"] as? String,
+                  let ts = dict["ts"] as? Double else { return nil }
+            return DecisionSearchRecord(
+                jobID: jobID, context: context, decision: decision,
+                at: Date(timeIntervalSince1970: ts)
+            )
+        }
+    }
+
     func files(jobID: String) async throws -> [String] {
         let r: [String: Any] = try await getJSON("/api/coding/swarm/\(jobID)/files")
         return (r["files"] as? [String]) ?? []
@@ -236,6 +255,17 @@ final class SwarmClient: ObservableObject {
                 files: dict["files"] as? Int ?? 0
             )
         }
+    }
+
+    /// Run the zero-token Perfection Matrix: 10,000 deterministic
+    /// virtual probes across Apple review, accessibility, performance,
+    /// resilience, security, polish, and App Store packaging.
+    func runPerfection(jobID: String, probes: Int = 10_000) async throws -> PerfectionRun {
+        let r = try await postJSON(
+            "/api/coding/swarm/\(jobID)/perfection",
+            body: ["probes": probes]
+        )
+        return try PerfectionRun(json: r)
     }
 
     /// Promote a green build to TestFlight without rebuilding.
@@ -437,6 +467,14 @@ struct DecisionRecord: Identifiable, Hashable {
     var id: String { "\(context)|\(decision)|\(at.timeIntervalSince1970)" }
 }
 
+struct DecisionSearchRecord: Identifiable, Hashable {
+    let jobID: String
+    let context: String
+    let decision: String
+    let at: Date
+    var id: String { "\(jobID)|\(context)|\(decision)|\(at.timeIntervalSince1970)" }
+}
+
 struct ArchiveSummary: Identifiable, Hashable {
     let jobID: String
     let archivePath: String
@@ -452,6 +490,107 @@ struct ArchivedJob: Identifiable, Hashable {
     let sizeBytes: Int
     let mtime: Date
     var id: String { filename }
+}
+
+struct PerfectionRun: Identifiable, Hashable {
+    let id: String
+    let probesRun: Int
+    let score: Double
+    let releaseGate: String
+    let summary: String
+    let severityCounts: [String: Int]
+    let axes: [PerfectionAxis]
+    let findings: [PerfectionFinding]
+    let nextActions: [String]
+
+    init(json: [String: Any]) throws {
+        guard let runID = json["run_id"] as? String else {
+            throw SwarmError.malformed("missing run_id")
+        }
+        id = runID
+        probesRun = Self.int(json["probes_run"])
+        score = Self.double(json["score"])
+        releaseGate = (json["release_gate"] as? String) ?? "blocked"
+        summary = (json["summary"] as? String) ?? "Perfection Matrix complete."
+        severityCounts = Self.intMap(json["severity_counts"])
+        axes = ((json["axes"] as? [[String: Any]]) ?? []).map(PerfectionAxis.init(json:))
+        findings = ((json["findings"] as? [[String: Any]]) ?? []).map(PerfectionFinding.init(json:))
+        nextActions = (json["next_actions"] as? [String]) ?? []
+    }
+
+    var isReady: Bool { releaseGate == "ready" }
+    var gateLabel: String {
+        switch releaseGate {
+        case "ready": "Ready"
+        case "needs_polish": "Needs polish"
+        default: "Blocked"
+        }
+    }
+
+    fileprivate static func int(_ value: Any?) -> Int {
+        if let int = value as? Int { return int }
+        if let double = value as? Double { return Int(double) }
+        if let string = value as? String { return Int(string) ?? 0 }
+        return 0
+    }
+
+    fileprivate static func double(_ value: Any?) -> Double {
+        if let double = value as? Double { return double }
+        if let int = value as? Int { return Double(int) }
+        if let string = value as? String { return Double(string) ?? 0 }
+        return 0
+    }
+
+    fileprivate static func intMap(_ value: Any?) -> [String: Int] {
+        let raw = (value as? [String: Any]) ?? [:]
+        return raw.reduce(into: [:]) { partial, item in
+            partial[item.key] = int(item.value)
+        }
+    }
+}
+
+struct PerfectionAxis: Identifiable, Hashable {
+    let key: String
+    let title: String
+    let probes: Int
+    let passed: Int
+    let failed: Int
+    let confidence: Double
+    var id: String { key }
+
+    init(json: [String: Any]) {
+        key = (json["key"] as? String) ?? UUID().uuidString
+        title = (json["title"] as? String) ?? key
+        probes = PerfectionRun.int(json["probes"])
+        passed = PerfectionRun.int(json["passed"])
+        failed = PerfectionRun.int(json["failed"])
+        confidence = PerfectionRun.double(json["confidence"])
+    }
+}
+
+struct PerfectionFinding: Identifiable, Hashable {
+    let id = UUID()
+    let severity: String
+    let axis: String
+    let title: String
+    let body: String
+    let file: String?
+    let line: Int?
+    let recommendation: String?
+
+    init(json: [String: Any]) {
+        severity = (json["severity"] as? String) ?? "info"
+        axis = (json["axis"] as? String) ?? "engineering"
+        title = (json["title"] as? String) ?? "Finding"
+        body = (json["body"] as? String) ?? ""
+        file = json["file"] as? String
+        if let rawLine = json["line"], !(rawLine is NSNull) {
+            line = PerfectionRun.int(rawLine)
+        } else {
+            line = nil
+        }
+        recommendation = json["recommendation"] as? String
+    }
 }
 
 struct SwarmEvent: Identifiable {
@@ -516,8 +655,9 @@ struct ShipConfig: Hashable {
         ipaPath: String = "Build.ipa",
         bundleID: String,
         keyPath: String = "asc-key.p8",
-        credentials: Credentials = .shared
+        credentials: Credentials? = nil
     ) -> ShipConfig? {
+        let credentials = credentials ?? Credentials.shared
         guard credentials.hasAppleDevCreds else { return nil }
         var config = ShipConfig(ipaPath: ipaPath, bundleID: bundleID)
         if !credentials.ascKeyID.isEmpty {

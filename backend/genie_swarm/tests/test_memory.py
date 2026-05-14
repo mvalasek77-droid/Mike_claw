@@ -192,6 +192,32 @@ def test_search_decisions_handles_punctuation_safely(tmp_path: Path):
     assert any("signing" in d.decision.lower() for d in hits)
 
 
+def test_search_decisions_api_route(tmp_path: Path):
+    """The API exposes global decision search before the job-scoped
+    `/memory/decisions/{job_id}` route catches the `search` segment."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from genie_swarm.api import router, state
+
+    original_config = state.config
+    state.config = state.config.__class__(workspace_root=tmp_path)
+    try:
+        mem = Memory(tmp_path)
+        mem.note_decision("job_a", "framework", "Use SwiftUI NavigationStack")
+        mem.note_decision("job_b", "billing", "RevenueCat later, no billing in v1")
+
+        app = FastAPI()
+        app.include_router(router)
+        response = TestClient(app).get("/api/coding/swarm/memory/decisions/search?q=RevenueCat")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["decisions"][0]["job_id"] == "job_b"
+        assert "RevenueCat" in body["decisions"][0]["decision"]
+    finally:
+        state.config = original_config
+
+
 # --------------------------------------------------------------------------- #
 # Memory tools
 # --------------------------------------------------------------------------- #

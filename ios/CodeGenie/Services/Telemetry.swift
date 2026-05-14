@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import os.signpost
 
 /// Opt-in, on-device telemetry. Counts build outcomes locally and
