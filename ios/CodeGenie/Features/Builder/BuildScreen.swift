@@ -27,6 +27,7 @@ struct BuildScreen: View {
     @State private var perfectionRun: PerfectionRun?
     @State private var perfectionRunning: Bool = false
     @State private var perfectionError: String?
+    @State private var perfectionAutostarted: Bool = false
     @StateObject private var game = BitDropGame()
     @StateObject private var swarm = SwarmClient()
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
@@ -476,6 +477,9 @@ struct BuildScreen: View {
                         }()
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
                         appendLog(for: mapped)
+                        if mapped == .readyForTest {
+                            startPerfectionIfNeeded(jobID: id)
+                        }
                     }
                 }
             }
@@ -551,6 +555,13 @@ struct BuildScreen: View {
             perfectionError = "Could not run Perfection Mode: \(error)"
             Haptics.error()
         }
+    }
+
+    private func startPerfectionIfNeeded(jobID: String) {
+        guard !perfectionAutostarted, !perfectionRunning, perfectionRun == nil else { return }
+        perfectionAutostarted = true
+        shipBanner = "Perfection Mode is running automatically."
+        Task { await runPerfection(jobID: jobID) }
     }
 
     private func saveCheckpoint(jobID: String) async {

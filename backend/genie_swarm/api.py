@@ -515,6 +515,34 @@ async def list_memory_projects(limit: int = Query(20, ge=1, le=200), only_failed
     }
 
 
+@router.get("/memory/decisions/search")
+async def search_memory_decisions(
+    q: str = Query(..., min_length=1),
+    job_id: str | None = None,
+    limit: int = Query(30, ge=1, le=100),
+):
+    """Search reasoning decisions across every job.
+
+    This powers the iOS searchable decisions panel: a user can ask
+    "why did we choose RevenueCat?" or "where did offline fail?" and
+    jump back to the runs that made those calls.
+    """
+    from .memory import Memory
+    mem = Memory(state.config.workspace_root)
+    rows = mem.search_decisions(q, job_id=job_id, limit=limit)
+    return {
+        "decisions": [
+            {
+                "job_id": d.job_id,
+                "context": d.context,
+                "decision": d.decision,
+                "ts": d.ts,
+            }
+            for d in rows
+        ]
+    }
+
+
 @router.get("/memory/decisions/{job_id}")
 async def list_memory_decisions(job_id: str):
     """Reasoning decisions the swarm logged for a specific job."""

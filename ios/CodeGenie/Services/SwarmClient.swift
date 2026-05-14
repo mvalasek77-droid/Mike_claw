@@ -198,6 +198,25 @@ final class SwarmClient: ObservableObject {
         }
     }
 
+    /// Search reasoning decisions across every remembered build.
+    func searchDecisions(query: String, limit: Int = 30) async throws -> [DecisionSearchRecord] {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        let r: [String: Any] = try await getJSON(
+            "/api/coding/swarm/memory/decisions/search?q=\(encoded)&limit=\(limit)"
+        )
+        let entries = (r["decisions"] as? [[String: Any]]) ?? []
+        return entries.compactMap { dict in
+            guard let jobID = dict["job_id"] as? String,
+                  let context = dict["context"] as? String,
+                  let decision = dict["decision"] as? String,
+                  let ts = dict["ts"] as? Double else { return nil }
+            return DecisionSearchRecord(
+                jobID: jobID, context: context, decision: decision,
+                at: Date(timeIntervalSince1970: ts)
+            )
+        }
+    }
+
     func files(jobID: String) async throws -> [String] {
         let r: [String: Any] = try await getJSON("/api/coding/swarm/\(jobID)/files")
         return (r["files"] as? [String]) ?? []
@@ -446,6 +465,14 @@ struct DecisionRecord: Identifiable, Hashable {
     let decision: String
     let at: Date
     var id: String { "\(context)|\(decision)|\(at.timeIntervalSince1970)" }
+}
+
+struct DecisionSearchRecord: Identifiable, Hashable {
+    let jobID: String
+    let context: String
+    let decision: String
+    let at: Date
+    var id: String { "\(jobID)|\(context)|\(decision)|\(at.timeIntervalSince1970)" }
 }
 
 struct ArchiveSummary: Identifiable, Hashable {
