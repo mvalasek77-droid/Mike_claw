@@ -15,6 +15,8 @@ struct SettingsView: View {
     @State private var showCustomAgents = false
     @State private var showCrashLog = false
     @State private var showAdmin = false
+    @State private var showGitHub = false
+    @State private var showXcodeReadiness = false
     @StateObject private var telemetry = Telemetry.shared
 
     var body: some View {
@@ -32,8 +34,11 @@ struct SettingsView: View {
                     costCapBlock
                     agentRoutingBlock
                     customAgentsBlock
-                    appleDevBlock
+                    shipChecklistHeader
+                    xcodeReadinessBlock
                     pairMacBlock
+                    appleDevBlock
+                    githubBlock
                     tutorialBlock
                     telemetryBlock
                     adminBlock
@@ -61,7 +66,17 @@ struct SettingsView: View {
                 .presentationBackground(.ultraThinMaterial)
         }
         .sheet(isPresented: $showAppleDev) {
-            AppleDevSetupView()
+            AppleDevWalkthroughView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showGitHub) {
+            GitHubSetupView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showXcodeReadiness) {
+            XcodeReadinessView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -94,10 +109,44 @@ struct SettingsView: View {
     private var pairMacBlock: some View {
         navTile(
             title: "Pair your Mac",
-            subtitle: "Reach into Xcode + Safari from this app.",
+            subtitle: creds.backendToken.isEmpty ? "First, link this phone to a Mac running Xcode." : "Reach into Xcode + Safari from this app.",
             icon: "macbook.and.iphone",
-            tint: LiquidGlass.accent
+            tint: creds.backendToken.isEmpty ? LiquidGlass.warning : LiquidGlass.accent
         ) { showPairMac = true }
+    }
+
+    /// Section header for the four ship-readiness tiles. Treated as a
+    /// quartet because every first-timer needs all four before their
+    /// app can leave their phone.
+    private var shipChecklistHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Ship checklist")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+            Text("Four things to set up once. CodeGenie walks you through each.")
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 8)
+    }
+
+    private var xcodeReadinessBlock: some View {
+        navTile(
+            title: "Xcode",
+            subtitle: "Apple's free build tool. We explain what it is and how to install.",
+            icon: "hammer.fill",
+            tint: LiquidGlass.accentSecondary
+        ) { showXcodeReadiness = true }
+    }
+
+    private var githubBlock: some View {
+        navTile(
+            title: "GitHub",
+            subtitle: creds.hasGithub ? "Connected as @\(creds.githubUsername)" : "Optional — back up your code. We'll help you sign up if you don't have an account.",
+            icon: "chevron.left.forwardslash.chevron.right",
+            tint: creds.hasGithub ? LiquidGlass.success : LiquidGlass.accentSecondary
+        ) { showGitHub = true }
     }
 
     private var costCapBlock: some View {
