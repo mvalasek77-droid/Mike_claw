@@ -24,10 +24,10 @@ struct FirstBuildPromptView: View {
                     .accessibilityHidden(true)
 
                 VStack(spacing: 6) {
-                    Text("Before your first build")
+                    Text("Two paths from here")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
-                    Text("To eventually send an app to the App Store you'll need an Apple Developer account, a Mac with Xcode, and (optionally) GitHub. We can walk you through all of that — about 10 minutes.")
+                    Text("CodeGenie can build your app on its own. Sending it to the App Store needs a Mac with Xcode and an Apple Developer account ($99/yr). We'll walk you through that — but it's also OK to build first and decide later.")
                         .font(.system(size: 14, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                         .multilineTextAlignment(.center)
@@ -35,11 +35,11 @@ struct FirstBuildPromptView: View {
                 }
 
                 VStack(spacing: 10) {
-                    PrimaryButton(title: "Set up shipping first", systemImage: "list.bullet.clipboard", style: .filled) {
+                    PrimaryButton(title: "Start with Xcode (10 min)", systemImage: "list.bullet.clipboard", style: .filled) {
                         Haptics.selection()
                         onSetUp()
                     }
-                    PrimaryButton(title: "Build now, set up later", systemImage: "wand.and.stars", style: .glass) {
+                    PrimaryButton(title: "Just build something — I'll set up shipping later", systemImage: "wand.and.stars", style: .glass) {
                         Haptics.selection()
                         onBuildNow()
                     }

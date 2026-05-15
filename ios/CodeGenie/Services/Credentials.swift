@@ -84,6 +84,12 @@ final class Credentials: ObservableObject {
         if UserDefaults.standard.object(forKey: "cost.cap.usd") != nil {
             let raw = UserDefaults.standard.double(forKey: "cost.cap.usd")
             costCapUSD = raw > 0 ? raw : nil
+        } else {
+            // First launch: opt the user into a safe $5 default rather
+            // than letting an unbounded build run them into a $50 bill.
+            // They can disable it explicitly in Settings.
+            costCapUSD = 5.0
+            UserDefaults.standard.set(5.0, forKey: "cost.cap.usd")
         }
         if UserDefaults.standard.object(forKey: "snapshot.cap.mb") != nil {
             let raw = UserDefaults.standard.integer(forKey: "snapshot.cap.mb")

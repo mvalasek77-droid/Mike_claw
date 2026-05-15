@@ -462,16 +462,44 @@ struct SettingsView: View {
 
     private var hostedBlock: some View {
         GlassCard(title: "CodeGenie hosted credits", icon: "sparkles", tint: LiquidGlass.accent) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Zero setup. We absorb the API cost on a quota.")
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Zero setup — we pay the AI bill, you pay us. No surprise API charges.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
 
                 HStack(spacing: 10) {
                     PlanPill(label: "Free", subtitle: "3 builds / month", price: "$0", highlighted: true)
-                    PlanPill(label: "Pro",  subtitle: "Unlimited Sonnet · 20 Opus", price: "$9.99/mo", highlighted: false)
-                    PlanPill(label: "Studio", subtitle: "Team seats + TestFlight", price: "$29/mo", highlighted: false)
+                    PlanPill(label: "Pro",  subtitle: "Unlimited Sonnet, 20 Opus", price: "$9.99/mo", highlighted: false)
+                    PlanPill(label: "Studio", subtitle: "Team seats, priority queue", price: "$29/mo", highlighted: false)
                 }
+
+                Divider().background(.white.opacity(0.08))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    pricingRow(label: "After 3 free builds", value: "Pay-as-you-go ≈ $0.50/build, or upgrade to Pro")
+                    pricingRow(label: "Pro plan ($9.99/mo)", value: "Flat fee — no per-build charge until you exceed the cap")
+                    pricingRow(label: "Sonnet vs Opus", value: "Two AI models. Sonnet is fast and cheap, Opus is slower but smarter")
+                    pricingRow(label: "Studio extras", value: "Multiple seats + faster build queue. Not needed for solo developers")
+                    pricingRow(label: "Cancel anytime", value: "Builds you already paid for keep working until the period ends")
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    private func pricingRow(label: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(LiquidGlass.accent.opacity(0.85))
+                .padding(.top, 3)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(label)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                Text(value)
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
             }
         }
     }

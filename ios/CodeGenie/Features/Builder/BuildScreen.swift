@@ -71,6 +71,7 @@ struct BuildScreen: View {
                         if showGame { gameBlock }
                         if useRemote { transcriptBlock }
                         if costs.capHit { costCapCallout }
+                        else if costsNearingCap { costApproachingCallout }
                         WorkspaceFullBanner(tracker: costs) { showSnapshotSettingsSheet = true }
                         UploadProgressStrip(tracker: uploadProgress)
                         if !diffStream.pending.isEmpty { diffReviewCallout }
@@ -83,6 +84,7 @@ struct BuildScreen: View {
                 .scrollIndicators(.hidden)
             }
             if stage == .readyForTest { successOverlay }
+            if stage == .failed { failureOverlay }
         }
         .task { await runBuild() }
         .sheet(isPresented: $showDiffReview) {
@@ -266,6 +268,104 @@ struct BuildScreen: View {
         GlassCard(title: "Live transcript", icon: "waveform", tint: LiquidGlass.accent) {
             TranscriptView(client: swarm)
         }
+    }
+
+    /// True when the live spend has crossed 80% of the cap but the cap
+    /// itself hasn't been hit yet. Gives the user a chance to lift the
+    /// cap or stop deliberately before the build halts mid-agent.
+    private var costsNearingCap: Bool {
+        guard let cap = costs.backendCapUSD, cap > 0 else { return false }
+        return costs.backendSpendUSD >= cap * 0.8
+    }
+
+    private var costApproachingCallout: some View {
+        GlassSurface(tier: .raised, corner: 18) {
+            HStack(spacing: 12) {
+                Image(systemName: "gauge.with.dots.needle.67percent")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(LiquidGlass.warning)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(LiquidGlass.warning.opacity(0.18)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Spend approaching cap")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text(costs.backendCapUSD.map {
+                        String(format: "$%.2f of $%.2f used. Build will pause if it crosses.", costs.backendSpendUSD, $0)
+                    } ?? "Approaching the safety cap.")
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                }
+                Spacer()
+            }
+            .padding(12)
+        }
+    }
+
+    /// Shown when the build's `stage` flips to `.failed`. Replaces the
+    /// silent "✗ build failed" log line with an actionable surface:
+    /// last log lines, a retry CTA, and a "save and exit" escape hatch.
+    private var failureOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.55).ignoresSafeArea()
+            GlassSurface(tier: .deep) {
+                ScrollView {
+                    VStack(spacing: 14) {
+                        Image(systemName: "xmark.octagon.fill")
+                            .font(.system(size: 56, weight: .bold))
+                            .foregroundStyle(.red.opacity(0.85))
+                            .accessibilityHidden(true)
+                        Text("Build failed")
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("Something tripped during the build. The transcript below has the last few lines — usually that's enough to spot what went wrong.")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                        recentLogTail
+                        PrimaryButton(title: "Try again", systemImage: "arrow.clockwise", style: .filled) {
+                            Task { await runBuild() }
+                        }
+                        if let jobID = swarm.jobID {
+                            PrimaryButton(title: "Resume from last checkpoint", systemImage: "clock.arrow.circlepath", style: .glass) {
+                                Task {
+                                    do { try await swarm.resume(jobID: jobID); Haptics.success() }
+                                    catch { Haptics.error() }
+                                }
+                            }
+                        }
+                        Button("Close — I'll look at this later") {
+                            Haptics.selection()
+                            dismiss()
+                        }
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    }
+                    .padding(24)
+                }
+                .frame(maxHeight: 540)
+                .scrollIndicators(.hidden)
+            }
+            .padding(.horizontal, 28)
+        }
+        .transition(.opacity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Build failed. Try again, resume from checkpoint, or close.")
+    }
+
+    private var recentLogTail: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(displayedLog.suffix(5)) { line in
+                Text(line.text)
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var costCapCallout: some View {
