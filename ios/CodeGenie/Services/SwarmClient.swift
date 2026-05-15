@@ -271,19 +271,31 @@ final class SwarmClient: ObservableObject {
         return try PerfectionRun(json: r)
     }
 
+    /// Audit Xcode archive, Apple credentials, privacy, terms,
+    /// screenshots, metadata, GitHub, and final Apple-required
+    /// confirmation before attempting TestFlight upload.
+    func runReleaseReadiness(
+        jobID: String,
+        ship: ShipConfig? = nil,
+        github: GitHubSyncConfig? = nil
+    ) async throws -> ReleaseReadinessRun {
+        var body: [String: Any] = [:]
+        if let ship { body["ship"] = ship.wireBody }
+        if let github { body["github"] = github.wireBody }
+        let r = try await postJSON("/api/coding/swarm/\(jobID)/release-readiness", body: body)
+        return ReleaseReadinessRun(json: r)
+    }
+
+    /// Push the generated workspace to the user's GitHub repository.
+    @discardableResult
+    func syncGitHub(jobID: String, config: GitHubSyncConfig) async throws -> GitHubSyncResult {
+        let r = try await postJSON("/api/coding/swarm/\(jobID)/github/sync", body: config.wireBody)
+        return GitHubSyncResult(json: r)
+    }
+
     /// Promote a green build to TestFlight without rebuilding.
     func ship(jobID: String, config: ShipConfig) async throws {
-        var body: [String: Any] = [
-            "ipa_path": config.ipaPath,
-            "bundle_id": config.bundleID,
-            "poll_after_upload": config.pollAfterUpload,
-        ]
-        if let v = config.appleID { body["apple_id"] = v }
-        if let v = config.appSpecificPassword { body["app_specific_password"] = v }
-        if let v = config.ascKeyID { body["asc_api_key_id"] = v }
-        if let v = config.ascIssuerID { body["asc_api_issuer_id"] = v }
-        if let v = config.ascKeyPath { body["asc_api_key_path"] = v }
-        _ = try await postJSON("/api/coding/swarm/\(jobID)/ship", body: body)
+        _ = try await postJSON("/api/coding/swarm/\(jobID)/ship", body: config.wireBody)
     }
 
     /// URL the iOS share sheet can hand off so the user can save the
@@ -673,6 +685,20 @@ struct ShipConfig: Hashable {
     var ascKeyPath: String? = nil
     var pollAfterUpload: Bool = true
 
+    var wireBody: [String: Any] {
+        var body: [String: Any] = [
+            "ipa_path": ipaPath,
+            "bundle_id": bundleID,
+            "poll_after_upload": pollAfterUpload,
+        ]
+        if let v = appleID { body["apple_id"] = v }
+        if let v = appSpecificPassword { body["app_specific_password"] = v }
+        if let v = ascKeyID { body["asc_api_key_id"] = v }
+        if let v = ascIssuerID { body["asc_api_issuer_id"] = v }
+        if let v = ascKeyPath { body["asc_api_key_path"] = v }
+        return body
+    }
+
     /// Build a `ShipConfig` from the user's saved Apple Developer
     /// credentials. Returns nil when none are configured — the caller
     /// should prompt the user to open Apple Developer setup.
@@ -695,5 +721,83 @@ struct ShipConfig: Hashable {
             config.appSpecificPassword = credentials.appSpecificPassword
         }
         return config
+    }
+}
+
+struct GitHubSyncConfig: Hashable {
+    var repoURL: String
+    var branch: String = "codegenie-build"
+    var baseBranch: String = "main"
+    var commitMessage: String = "Sync CodeGenie workspace"
+    var token: String? = nil
+    var openPR: Bool = false
+    var prTitle: String? = nil
+    var prBody: String? = nil
+
+    var wireBody: [String: Any] {
+        var body: [String: Any] = [
+            "repo_url": repoURL,
+            "branch": branch,
+            "base_branch": baseBranch,
+            "commit_message": commitMessage,
+            "open_pr": openPR,
+        ]
+        if let token, !token.isEmpty { body["token"] = token }
+        if let prTitle, !prTitle.isEmpty { body["pr_title"] = prTitle }
+        if let prBody, !prBody.isEmpty { body["pr_body"] = prBody }
+        return body
+    }
+}
+
+struct GitHubSyncResult: Hashable {
+    var ok: Bool
+    var branch: String
+    var remote: String
+    var prRequested: Bool
+    var prURL: String
+
+    init(json: [String: Any]) {
+        ok = json["ok"] as? Bool ?? false
+        branch = json["branch"] as? String ?? ""
+        remote = json["remote"] as? String ?? ""
+        prRequested = json["pr_requested"] as? Bool ?? false
+        prURL = json["pr_url"] as? String ?? ""
+    }
+}
+
+struct ReleaseReadinessRun: Hashable {
+    var releaseGate: String
+    var score: Int
+    var summary: String
+    var nextActions: [String]
+    var items: [ReleaseReadinessItem]
+
+    var isReadyForTestFlight: Bool { releaseGate == "ready_for_testflight" }
+
+    init(json: [String: Any]) {
+        releaseGate = json["release_gate"] as? String ?? "needs_setup"
+        score = json["score"] as? Int ?? 0
+        summary = json["summary"] as? String ?? ""
+        nextActions = json["next_actions"] as? [String] ?? []
+        items = ((json["items"] as? [[String: Any]]) ?? []).map(ReleaseReadinessItem.init(json:))
+    }
+}
+
+struct ReleaseReadinessItem: Identifiable, Hashable {
+    var key: String
+    var title: String
+    var status: String
+    var detail: String
+    var action: String
+    var required: Bool
+    var id: String { key }
+
+    init(json: [String: Any]) {
+        key = json["key"] as? String ?? UUID().uuidString
+        title = json["title"] as? String ?? key
+        status = json["status"] as? String ?? "needs_setup"
+        detail = json["detail"] as? String ?? ""
+        action = json["action"] as? String ?? ""
+        required = json["required"] as? Bool ?? false
     }
 }

@@ -39,7 +39,7 @@ extension ASCStep {
 
         .init(number: 4,
               title: "Auto-generate screenshots",
-              body: "We render 6.7\" and 6.1\" screenshots from your simulator session, with marketing copy laid over the top. Edit them inline or accept ours.",
+              body: "We render App Store-size screenshots from the simulator walkthrough, then let you review the actual screens before upload.",
               action: .uploadAsset("screenshots/*.png"),
               safariRoute: nil),
 
@@ -51,7 +51,7 @@ extension ASCStep {
 
         .init(number: 6,
               title: "Privacy & data collection",
-              body: "Apple's privacy nutrition label. CodeGenie scans your Info.plist and code for tracking SDKs and pre-checks the right boxes — review before submitting.",
+              body: "CodeGenie scans Info.plist, PrivacyInfo.xcprivacy, dependencies, and code for tracking/data-use clues, then drafts the privacy answers for your confirmation.",
               action: .fillForm,
               safariRoute: "https://appstoreconnect.apple.com/apps#privacy"),
 
@@ -62,9 +62,9 @@ extension ASCStep {
               safariRoute: nil),
 
         .init(number: 8,
-              title: "Upload the build (Xcode → Archive)",
-              body: "On your Mac: Product → Archive → Distribute App → App Store Connect. CodeGenie can run this for you on the remote runner if you give it permission.",
-              action: .manual,
+              title: "Validate and upload the build",
+              body: "Once an App Store IPA exists, CodeGenie runs Apple's validate-app and upload-app flow, streams every line, then polls processing with your ASC API key.",
+              action: .uploadAsset("Build.ipa"),
               safariRoute: nil),
 
         .init(number: 9,
@@ -75,7 +75,7 @@ extension ASCStep {
 
         .init(number: 10,
               title: "Submit for review",
-              body: "Pick the processed build, answer the export-compliance question (almost always 'No'), and tap Submit. Average review time is 24-48 hours.",
+              body: "Pick the processed build, confirm export compliance, privacy, content rights, and legal terms, then tap Submit. CodeGenie guides this step but leaves final approval to you.",
               action: .manual,
               safariRoute: nil)
     ]

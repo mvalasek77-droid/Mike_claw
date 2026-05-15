@@ -531,6 +531,12 @@ struct BuildScreen: View {
             return
         }
         do {
+            let readiness = try await swarm.runReleaseReadiness(jobID: jobID, ship: cfg)
+            guard readiness.isReadyForTestFlight else {
+                shipBanner = readiness.nextActions.first ?? readiness.summary
+                Haptics.warning()
+                return
+            }
             try await swarm.ship(jobID: jobID, config: cfg)
             shipBanner = "Submitted — watch the transcript for processing status."
             Haptics.success()

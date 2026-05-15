@@ -55,7 +55,7 @@ struct LaunchAutomationAuditView: View {
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
                 }
-                Text("Build, quality gates, icon generation, TestFlight upload, and status polling are automated once credentials and an IPA exist. Xcode account setup, Apple sign-in, App Store Connect review fields, screenshots, and final submission still need Mac companion wiring or Apple confirmation.")
+                Text("CodeGenie now has a backend release-readiness gate for Xcode archive state, Apple credentials, privacy, terms, metadata, screenshots, GitHub sync, and TestFlight upload. It automates what Apple allows and keeps account ownership, legal truthfulness, 2FA, and final App Review submit explicit.")
                     .font(.system(size: 14, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.82))
                     .lineSpacing(3)
@@ -79,11 +79,13 @@ private struct LaunchAutomationGroup: Identifiable {
             tint: LiquidGlass.success,
             rows: [
                 .init("Xcode project generation", "Tracked CodeGenie.xcodeproj builds from a clean checkout.", .automated),
+                .init("Release readiness gate", "Audits archive, IPA, Apple credentials, privacy manifest, terms, screenshots, metadata, GitHub, and final confirmation.", .automated),
                 .init("Perfection Mode", "Runs after a green backend build and blocks submission on critical findings.", .automated),
                 .init("Decision memory", "Searchable reasoning ledger across jobs.", .automated),
                 .init("Icon Forge", "Generates 1024 px icons and strips alpha before export.", .automated),
                 .init("TestFlight upload", "Backend validates and uploads via altool when IPA and credentials are present.", .automated),
-                .init("Processing poll", "ASC API key polling emits TestFlight status events.", .automated)
+                .init("Processing poll", "ASC API key polling emits TestFlight status events.", .automated),
+                .init("GitHub sync", "Backend commits the workspace and pushes a branch when a repo and token are provided.", .automated)
             ]
         ),
         .init(
@@ -94,7 +96,8 @@ private struct LaunchAutomationGroup: Identifiable {
                 .init("Pair Mac", "iPhone can pair with the companion over local network.", .assisted),
                 .init("Open Xcode/Safari", "Companion has command hooks for Xcode projects and ASC pages.", .assisted),
                 .init("ASC auto-fill", "Companion can fill approved fields after the user is on App Store Connect.", .assisted),
-                .init("Screenshots", "Companion can capture screens; scripted device walkthrough still needs final wiring.", .assisted)
+                .init("Archive/export", "Xcode signing and export can be driven by the Mac runner once the Apple account is signed in.", .assisted),
+                .init("Screenshots", "Companion can capture screens; scripted App Store-size walkthrough still needs final wiring.", .assisted)
             ]
         ),
         .init(
@@ -104,7 +107,7 @@ private struct LaunchAutomationGroup: Identifiable {
             rows: [
                 .init("Developer enrollment", "Apple account, paid team, agreements, tax, and banking stay user-owned.", .requiresUser),
                 .init("Two-factor sign-in", "Apple may require human approval codes.", .requiresUser),
-                .init("Privacy answers", "CodeGenie drafts and checks, but the developer must confirm truthfulness.", .requiresUser),
+                .init("Privacy & terms", "CodeGenie drafts and checks, but the developer must confirm truthfulness and legal fit.", .requiresUser),
                 .init("Final submit", "The last App Review submission action should remain explicit.", .requiresUser)
             ]
         )
