@@ -14,6 +14,10 @@ struct BuildScreen: View {
     /// build. Used by the Apps tab to open a forked / resumed job's
     /// live transcript without spending tokens.
     let attachToBackendID: String?
+    /// When non-nil, BuildScreen replays the canned demo script for
+    /// the given sample id instead of running a real build. Same UI
+    /// surface, no backend, no tokens. Used for first-run magic.
+    let demoSampleID: String?
 
     @State private var stage: BuildJob.Stage = .planning
     @State private var displayedLog: [LogLine] = []
@@ -26,6 +30,10 @@ struct BuildScreen: View {
     @State private var shipBanner: String?
     @State private var showSnapshots: Bool = false
     @State private var showSnapshotSettingsSheet: Bool = false
+    @State private var perfectionRun: PerfectionRun?
+    @State private var perfectionRunning: Bool = false
+    @State private var perfectionError: String?
+    @State private var perfectionAutostarted: Bool = false
     @StateObject private var game = BitDropGame()
     @StateObject private var swarm = SwarmClient()
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
@@ -33,16 +41,20 @@ struct BuildScreen: View {
     @StateObject private var uploadProgress = UploadProgressTracker()
 
     private let builder: BuilderService = LocalSimulatedBuilder()
+    /// Whether to show the "live" UI surface (cost badge, retry badge,
+    /// transcript card, upload progress strip). True for either a real
+    /// backend run OR a canned demo — both stream `SwarmEvent`s
+    /// through `swarm` and the user shouldn't see a different layout.
     private var useRemote: Bool {
-        // If backend is configured *and* a non-default URL is set we'll
-        // attempt a real backend build; otherwise simulate locally.
+        if demoSampleID != nil { return true }
         let url = Credentials.shared.backendURL
         return !url.isEmpty && !url.hasPrefix("https://api.codegenie.app")
     }
 
-    init(job: BuildJob, attachToBackendID: String? = nil) {
+    init(job: BuildJob, attachToBackendID: String? = nil, demoSampleID: String? = nil) {
         self.initialJob = job
         self.attachToBackendID = attachToBackendID
+        self.demoSampleID = demoSampleID
     }
 
     var body: some View {
@@ -151,14 +163,14 @@ struct BuildScreen: View {
                     .font(.system(size: 16, weight: .semibold))
                     .padding(10)
                     .background(.white.opacity(0.08), in: Circle())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
             .accessibilityLabel("Minimize build")
             Spacer()
             VStack(spacing: 4) {
                 Text(initialJob.description.title)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 if useRemote { PauseStatusBadge(swarm: swarm) }
@@ -170,7 +182,7 @@ struct BuildScreen: View {
                         .font(.system(size: 14, weight: .semibold))
                         .padding(10)
                         .background(.white.opacity(0.08), in: Circle())
-                        .foregroundStyle(swarm.isPaused ? LiquidGlass.success : .white)
+                        .foregroundStyle(swarm.isPaused ? LiquidGlass.success : LiquidGlass.primaryText)
                 }
                 .accessibilityLabel(swarm.isPaused ? "Continue build" : "Pause build")
                 Button { showSnapshots = true } label: {
@@ -178,7 +190,7 @@ struct BuildScreen: View {
                         .font(.system(size: 14, weight: .semibold))
                         .padding(10)
                         .background(.white.opacity(0.08), in: Circle())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 .accessibilityLabel("Open snapshots")
                 Button { Task { await saveCheckpoint(jobID: jobID) } } label: {
@@ -186,7 +198,7 @@ struct BuildScreen: View {
                         .font(.system(size: 14, weight: .semibold))
                         .padding(10)
                         .background(.white.opacity(0.08), in: Circle())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 .accessibilityLabel("Save checkpoint")
             }
@@ -195,7 +207,7 @@ struct BuildScreen: View {
                     .font(.system(size: 16, weight: .semibold))
                     .padding(10)
                     .background(.white.opacity(0.08), in: Circle())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
             .accessibilityLabel(showGame ? "Hide BitDrop" : "Show BitDrop")
         }
@@ -237,7 +249,7 @@ struct BuildScreen: View {
                 BitDropView(game: game)
                 Text("Clear rows of Swift symbols. Every row gives a 2% build-speed boost.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     .multilineTextAlignment(.center)
             }
         }
@@ -260,12 +272,12 @@ struct BuildScreen: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Cost cap hit")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Text(costs.backendCapUSD.map {
                         String(format: "Stopped at $%.3f of $%.2f cap", costs.backendSpendUSD, $0)
                     } ?? "Build halted by the cost cap.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 }
                 Spacer()
                 Button { Task { await liftCapAndResume() } } label: {
@@ -273,7 +285,7 @@ struct BuildScreen: View {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .background(LiquidGlass.auroraGradient.opacity(0.85), in: Capsule())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Double the cap and resume the build")
@@ -294,13 +306,13 @@ struct BuildScreen: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(diffStream.pending.count) changes proposed")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("Review and apply selectively")
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.55))
+                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                 }
                 .padding(14)
             }
@@ -315,7 +327,7 @@ struct BuildScreen: View {
                     HStack(alignment: .top, spacing: 8) {
                         Text(line.time)
                             .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.4))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.4))
                         Text(line.text)
                             .font(.system(size: 12, weight: .regular, design: .monospaced))
                             .foregroundStyle(line.tone.color)
@@ -330,49 +342,110 @@ struct BuildScreen: View {
         ZStack {
             Color.black.opacity(0.45).ignoresSafeArea()
             GlassSurface(tier: .deep) {
-                VStack(spacing: 14) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 56, weight: .bold))
-                        .foregroundStyle(LiquidGlass.success)
-                    Text("Build green").font(.system(size: 24, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                    Text("Ready to test in the cloud simulator or hand off to App Store Connect.")
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                    PrimaryButton(title: "Open simulator preview", systemImage: "play.rectangle.fill", style: .filled) {
-                        let job = BuildJob(description: initialJob.description, stage: .readyForTest)
-                        session.openPreview(for: job)
-                    }
-                    PrimaryButton(title: "Submit to App Store", systemImage: "paperplane.fill", style: .glass) {
-                        Task { await submitToAppStore() }
-                    }
-                    if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
-                        ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "square.and.arrow.down")
-                                Text("Download workspace")
-                            }
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .padding(.horizontal, 16).padding(.vertical, 10)
-                            .foregroundStyle(.white.opacity(0.85))
-                            .background(.white.opacity(0.06), in: Capsule())
-                            .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
-                        }
-                        .accessibilityLabel("Download workspace zip")
-                    }
-                    if let banner = shipBanner {
-                        Text(banner)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                ScrollView {
+                    VStack(spacing: 14) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 56, weight: .bold))
                             .foregroundStyle(LiquidGlass.success)
+                            .accessibilityHidden(true)
+                        Text("Build green")
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("Ready to test in the cloud simulator. Run Perfection Mode before App Store handoff.")
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
-                            .transition(.opacity)
+                        if let jobID = swarm.jobID {
+                            PrimaryButton(
+                                title: perfectionRunning ? "Running Perfection Mode..." : "Run Perfection Mode",
+                                systemImage: "checkmark.seal.fill",
+                                style: perfectionRun?.isReady == true ? .glass : .filled
+                            ) {
+                                Task { await runPerfection(jobID: jobID) }
+                            }
+                            .disabled(perfectionRunning)
+                            .accessibilityLabel("Run ten thousand probe Perfection Mode")
+                        }
+                        if let perfectionRun {
+                            perfectionSummary(perfectionRun)
+                        }
+                        if let perfectionError {
+                            Text(perfectionError)
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.red.opacity(0.9))
+                                .multilineTextAlignment(.center)
+                                .accessibilityLabel("Perfection Mode failed: \(perfectionError)")
+                        }
+                        PrimaryButton(title: "Open simulator preview", systemImage: "play.rectangle.fill", style: .filled) {
+                            let job = BuildJob(description: initialJob.description, stage: .readyForTest)
+                            session.openPreview(for: job)
+                        }
+                        PrimaryButton(title: "Submit to App Store", systemImage: "paperplane.fill", style: .glass) {
+                            Task { await submitToAppStore() }
+                        }
+                        if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
+                            ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "square.and.arrow.down")
+                                    Text("Download workspace")
+                                }
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .padding(.horizontal, 16).padding(.vertical, 10)
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                                .background(.white.opacity(0.06), in: Capsule())
+                                .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+                            }
+                            .accessibilityLabel("Download workspace zip")
+                        }
+                        if let banner = shipBanner {
+                            Text(banner)
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(LiquidGlass.success)
+                                .multilineTextAlignment(.center)
+                                .transition(.opacity)
+                        }
                     }
+                    .padding(24)
                 }
-                .padding(24)
+                .frame(maxHeight: 620)
+                .scrollIndicators(.hidden)
             }
             .padding(.horizontal, 28)
         }
         .transition(.opacity)
+    }
+
+    private func perfectionSummary(_ run: PerfectionRun) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 10) {
+                Image(systemName: run.isReady ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(run.isReady ? LiquidGlass.success : LiquidGlass.warning)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Perfection Mode")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text("\(run.probesRun) probes - \(run.gateLabel) - \(String(format: "%.1f", run.score))/100")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
+                }
+                Spacer()
+            }
+            Text(run.summary)
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
+                .fixedSize(horizontal: false, vertical: true)
+            if let top = run.findings.first {
+                Text(top.recommendation ?? top.title)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.62))
+                    .lineLimit(3)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Perfection Mode \(run.gateLabel), score \(String(format: "%.1f", run.score)) out of 100")
     }
 
     // MARK: Build coroutine
@@ -381,12 +454,14 @@ struct BuildScreen: View {
         builderTask?.cancel()
         startedAt = .now
         Telemetry.shared.recordBuildStarted()
-        if useRemote {
+        if let demoSampleID {
+            await runCannedDemo(sampleID: demoSampleID)
+        } else if useRemote {
             await runRemoteBuild()
         } else {
             builderTask = Task {
                 await builder.start(initialJob) { newStage in
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                    Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
                         stage = newStage
                     }
                     appendLog(for: newStage)
@@ -400,6 +475,19 @@ struct BuildScreen: View {
                 }
             }
         }
+    }
+
+    /// Drive the screen from a canned `DemoScript-<id>.json`. Every
+    /// observer the live path uses (`costs`, `diffStream`, transcript)
+    /// binds to this screen's internal `swarm` so the demo plays
+    /// through the same UI pipeline as a real build.
+    private func runCannedDemo(sampleID: String) async {
+        costs.bind(to: swarm)
+        diffStream.bind(to: swarm)
+        uploadProgress.bind(to: swarm)
+        CustomAgentLog.shared.bind(to: swarm)
+        JobCostLog.shared.bind(to: swarm)
+        DemoSwarmDriver.play(into: swarm, sampleID: sampleID)
     }
 
     private func runRemoteBuild() async {
@@ -434,8 +522,11 @@ struct BuildScreen: View {
                             default: .planning
                             }
                         }()
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
+                        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
                         appendLog(for: mapped)
+                        if mapped == .readyForTest {
+                            startPerfectionIfNeeded(jobID: id)
+                        }
                     }
                 }
             }
@@ -450,7 +541,7 @@ struct BuildScreen: View {
         push(.warn, formattedTime(), "remote build unavailable (\(reason)), simulating")
         builderTask = Task {
             await builder.start(initialJob) { newStage in
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
                     stage = newStage
                 }
                 appendLog(for: newStage)
@@ -467,13 +558,20 @@ struct BuildScreen: View {
     /// Runs the orchestrator's `/ship` route on the existing job — no
     /// rebuild.
     ///
-    /// Three preconditions, in order:
-    ///   1. Apple Developer credentials must exist. Otherwise we open
+    /// Four preconditions, in order:
+    ///   1. Perfection Mode must be green. Blocks shipping if there
+    ///      are unresolved quality matrix flags.
+    ///   2. Apple Developer credentials must exist. Otherwise we open
     ///      the walkthrough — a first-timer doesn't know what's missing.
-    ///   2. The TestFlight-vs-App-Store explainer runs once per device
+    ///   3. The TestFlight-vs-App-Store explainer runs once per device
     ///      so the user knows which door they're walking through.
-    ///   3. Then `/ship` fires.
+    ///   4. Then `/ship` fires.
     private func submitToAppStore(skipExplainer: Bool = false) async {
+        if swarm.jobID != nil && perfectionRun?.isReady != true {
+            shipBanner = "Run Perfection Mode and clear blockers before App Store submission."
+            Haptics.warning()
+            return
+        }
         guard Credentials.shared.hasAppleDevCreds else {
             showAppleDevSetup = true
             Haptics.warning()
@@ -494,6 +592,12 @@ struct BuildScreen: View {
             return
         }
         do {
+            let readiness = try await swarm.runReleaseReadiness(jobID: jobID, ship: cfg)
+            guard readiness.isReadyForTestFlight else {
+                shipBanner = readiness.nextActions.first ?? readiness.summary
+                Haptics.warning()
+                return
+            }
             try await swarm.ship(jobID: jobID, config: cfg)
             shipBanner = "Submitted — watch the transcript for processing status."
             Haptics.success()
@@ -501,6 +605,30 @@ struct BuildScreen: View {
             shipBanner = "Submit failed: \(error)"
             Haptics.error()
         }
+    }
+
+    private func runPerfection(jobID: String) async {
+        perfectionRunning = true
+        perfectionError = nil
+        defer { perfectionRunning = false }
+        do {
+            let run = try await swarm.runPerfection(jobID: jobID)
+            perfectionRun = run
+            shipBanner = run.isReady
+                ? "Perfection Mode passed — App Store handoff unlocked."
+                : "Perfection Mode found blockers. Fix them, then rerun."
+            if run.isReady { Haptics.success() } else { Haptics.warning() }
+        } catch {
+            perfectionError = "Could not run Perfection Mode: \(error)"
+            Haptics.error()
+        }
+    }
+
+    private func startPerfectionIfNeeded(jobID: String) {
+        guard !perfectionAutostarted, !perfectionRunning, perfectionRun == nil else { return }
+        perfectionAutostarted = true
+        shipBanner = "Perfection Mode is running automatically."
+        Task { await runPerfection(jobID: jobID) }
     }
 
     private func saveCheckpoint(jobID: String) async {
@@ -606,12 +734,12 @@ struct BuildScreen: View {
             case info, accent, ok, warn, err, dim
             var color: Color {
                 switch self {
-                case .info: return .white.opacity(0.85)
+                case .info: return LiquidGlass.primaryText.opacity(0.85)
                 case .accent: return LiquidGlass.accent
                 case .ok: return LiquidGlass.success
                 case .warn: return LiquidGlass.warning
                 case .err: return .red
-                case .dim: return .white.opacity(0.55)
+                case .dim: return LiquidGlass.primaryText.opacity(0.55)
                 }
             }
         }
@@ -646,10 +774,10 @@ private struct PipelineRow: View {
             }
             Text(stage.rawValue)
                 .font(.system(size: 13, weight: status == .active ? .semibold : .regular, design: .rounded))
-                .foregroundStyle(status == .pending ? .white.opacity(0.5) : .white)
+                .foregroundStyle(status == .pending ? LiquidGlass.primaryText.opacity(0.5) : LiquidGlass.primaryText)
             Spacer()
             if status == .active {
-                ProgressView().tint(.white).scaleEffect(0.7)
+                ProgressView().tint(LiquidGlass.primaryText).scaleEffect(0.7)
             }
         }
     }

@@ -49,6 +49,29 @@ async def test_close_terminates_subscribers():
 
 
 @pytest.mark.asyncio
+async def test_slow_subscriber_drops_oldest_without_blocking():
+    stream = EventStream(job_id="j", max_per_subscriber=3)
+    subscriber = stream.subscribe()
+
+    first_event = asyncio.create_task(subscriber.__anext__())
+    await asyncio.sleep(0.01)
+
+    await stream.emit("agent.started")
+    assert (await asyncio.wait_for(first_event, timeout=2.0)).type == "agent.started"
+
+    for i in range(6):
+        await stream.emit("log", sequence=i)
+
+    retained = [
+        (await asyncio.wait_for(subscriber.__anext__(), timeout=2.0)).payload["sequence"]
+        for _ in range(3)
+    ]
+    await subscriber.aclose()
+
+    assert retained == [3, 4, 5]
+
+
+@pytest.mark.asyncio
 async def test_bus_creates_one_stream_per_job():
     bus = EventBus()
     a = await bus.stream_for("alpha")

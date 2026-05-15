@@ -10,17 +10,14 @@ struct RetryBadge: View {
     var body: some View {
         if tracker.retryAttempts > 0 {
             HStack(spacing: 6) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(LiquidGlass.warning)
-                    .symbolEffect(.rotate, options: .repeating, isActive: tracker.retryAttempts < tracker.maxRetries)
+                retryIcon
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Retry")
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     Text("\(tracker.retryAttempts) / \(max(tracker.maxRetries, tracker.retryAttempts))")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .contentTransition(.numericText())
                 }
             }
@@ -30,6 +27,20 @@ struct RetryBadge: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Retry attempt \(tracker.retryAttempts) of \(max(tracker.maxRetries, tracker.retryAttempts))")
             .transition(.scale.combined(with: .opacity))
+        }
+    }
+
+    @ViewBuilder
+    private var retryIcon: some View {
+        if #available(iOS 18.0, *) {
+            Image(systemName: "arrow.clockwise")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(LiquidGlass.warning)
+                .symbolEffect(.rotate, options: .repeating, isActive: tracker.retryAttempts < tracker.maxRetries)
+        } else {
+            Image(systemName: "arrow.clockwise")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(LiquidGlass.warning)
         }
     }
 }

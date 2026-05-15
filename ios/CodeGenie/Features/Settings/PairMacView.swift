@@ -57,10 +57,10 @@ struct PairMacView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Pair your Mac")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Run the CodeGenie Companion on your Mac, then pair it once. The phone keeps reaching back into Xcode + Safari from there.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -70,12 +70,12 @@ struct PairMacView: View {
             HStack(spacing: 10) {
                 Circle().fill(tint).frame(width: 8, height: 8)
                 Text(label).font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Spacer()
                 if case .connected = bridge.status {
                     Button("Disconnect") { bridge.disconnect() }
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(.white.opacity(0.08), in: Capsule())
                 }
@@ -96,13 +96,13 @@ struct PairMacView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Scan QR code")
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("Fastest path — one tap, one scan.")
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.5))
+                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 }
                 .padding(14)
             }
@@ -116,10 +116,10 @@ struct PairMacView: View {
         GlassCard(title: "On your network", icon: "wifi", tint: LiquidGlass.accent) {
             if bridge.discovered.isEmpty {
                 HStack(spacing: 8) {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(LiquidGlass.primaryText)
                     Text("Looking for `_codegenie-companion._tcp` …")
                         .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 }
             } else {
                 VStack(alignment: .leading, spacing: 6) {
@@ -129,11 +129,11 @@ struct PairMacView: View {
                                 .foregroundStyle(LiquidGlass.accent)
                             Text(entry.name)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                             Spacer()
                             Text("Tap to pair")
                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.55))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                         }
                         .padding(10)
                         .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
@@ -148,12 +148,12 @@ struct PairMacView: View {
             VStack(spacing: 10) {
                 Text("Paste the pairing URL from the Mac terminal:")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 TextField("codegenie://pair?host=…&port=…&token=…", text: $pasteURL, axis: .vertical)
                     .lineLimit(2...3)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .padding(10)
                     .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
@@ -173,15 +173,15 @@ struct PairMacView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("On your Mac, run:")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
-                Text("cd ~/code/codebaby/mac_companion\nswift run codegenie-companion")
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                Text("cd ~/code/codegenie/mac_companion\nswift run codegenie-companion")
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .padding(10)
                     .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
                 Text("It prints a `codegenie://pair?…` URL — paste that here, or scan the QR code shown by the menu bar app once we ship it.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             }
         }
     }
@@ -202,7 +202,7 @@ struct PairMacView: View {
         case .connected:                       LiquidGlass.success
         case .connecting, .authenticating, .browsing: LiquidGlass.warning
         case .failed:                          .red
-        case .idle:                            .white.opacity(0.4)
+        case .idle:                            LiquidGlass.primaryText.opacity(0.4)
         }
     }
 }

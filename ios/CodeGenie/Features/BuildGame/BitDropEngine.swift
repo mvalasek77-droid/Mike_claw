@@ -63,7 +63,7 @@ final class BitDropGame: ObservableObject {
         repeating: Array(repeating: nil, count: cols), count: rows
     )
     @Published private(set) var current: Piece?
-    @Published private(set) var next: Piece = Self.spawn()
+    @Published private(set) var next: Piece
     @Published private(set) var score: Int = 0
     @Published private(set) var rowsCleared: Int = 0
     @Published private(set) var isOver: Bool = false
@@ -75,7 +75,10 @@ final class BitDropGame: ObservableObject {
     private var tickTask: Task<Void, Never>?
     private var tickInterval: UInt64 { UInt64(max(0.18, 0.6 - Double(rowsCleared) * 0.02) * 1_000_000_000) }
 
-    init() { spawnNew() }
+    init() {
+        next = BitDropGame.spawn()
+        spawnNew()
+    }
 
     // MARK: Lifecycle
 

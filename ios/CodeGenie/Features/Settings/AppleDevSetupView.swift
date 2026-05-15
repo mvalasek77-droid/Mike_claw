@@ -60,10 +60,10 @@ struct AppleDevSetupView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Apple Developer Program")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("CodeGenie signs builds and uploads to TestFlight using these. Stored in the iOS Keychain — never sent to our servers.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -79,7 +79,7 @@ struct AppleDevSetupView: View {
                  ? "You're set — Build → Submit will sign and upload automatically."
                  : "Add your Team ID + either an ASC API key (preferred) or Apple ID + app-specific password.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
         }
     }
 
@@ -88,7 +88,7 @@ struct AppleDevSetupView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Find this at developer.apple.com → Membership. 10-character alphanumeric, e.g. ABCD123456.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 fieldRow("ABCD123456", text: $teamID, secure: false)
                 Button("Save Team ID") {
                     creds.setAppleTeamID(teamID)
@@ -107,20 +107,20 @@ struct AppleDevSetupView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Recommended path. Generate at appstoreconnect.apple.com → Users and Access → Keys.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
 
-                Text("Issuer ID").font(.caption2).foregroundStyle(.white.opacity(0.6)).textCase(.uppercase)
+                Text("Issuer ID").font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.6)).textCase(.uppercase)
                 fieldRow("00000000-0000-0000-0000-000000000000", text: $issuerID, secure: false)
 
-                Text("Key ID").font(.caption2).foregroundStyle(.white.opacity(0.6)).textCase(.uppercase)
+                Text("Key ID").font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.6)).textCase(.uppercase)
                 fieldRow("ABCDEFGH12", text: $keyID, secure: false)
 
                 HStack {
-                    Text(".p8 contents").font(.caption2).foregroundStyle(.white.opacity(0.6)).textCase(.uppercase)
+                    Text(".p8 contents").font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.6)).textCase(.uppercase)
                     Spacer()
                     Button { revealP8.toggle() } label: {
                         Image(systemName: revealP8 ? "eye.slash" : "eye")
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     }
                     .accessibilityLabel(revealP8 ? "Hide private key" : "Show private key")
                 }
@@ -134,7 +134,7 @@ struct AppleDevSetupView: View {
                     }
                 }
                 .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .padding(10)
                 .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
@@ -157,14 +157,14 @@ struct AppleDevSetupView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Fallback path. Generate at appleid.apple.com → Sign-In and Security → App-Specific Passwords.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
 
                 HStack {
-                    Text("Password").font(.caption2).foregroundStyle(.white.opacity(0.6)).textCase(.uppercase)
+                    Text("Password").font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.6)).textCase(.uppercase)
                     Spacer()
                     Button { revealPwd.toggle() } label: {
                         Image(systemName: revealPwd ? "eye.slash" : "eye")
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     }
                     .accessibilityLabel(revealPwd ? "Hide password" : "Show password")
                 }
@@ -216,7 +216,7 @@ struct AppleDevSetupView: View {
         }
         .textFieldStyle(.plain)
         .font(.system(size: 14, weight: .medium, design: .monospaced))
-        .foregroundStyle(.white)
+        .foregroundStyle(LiquidGlass.primaryText)
         .padding(10)
         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))

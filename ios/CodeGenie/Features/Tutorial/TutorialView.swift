@@ -55,7 +55,7 @@ struct TutorialView: View {
                 CodeGenieLogo(size: 32, animate: !reduceMotion)
                 Text("CodeGenie")
                     .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
             Spacer()
             Button(mode == .onboarding ? "Skip" : "Close") {
@@ -63,7 +63,7 @@ struct TutorialView: View {
                 finish()
             }
             .font(.system(size: 15, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white.opacity(0.7))
+            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
             .accessibilityLabel(mode == .onboarding ? "Skip onboarding" : "Close tutorial")
         }
         .padding(.horizontal, 24)
@@ -98,13 +98,13 @@ struct TutorialView: View {
 
                 Text(slide.title)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
 
                 Text(slide.body)
                     .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                     .lineSpacing(3)
 
                 if let tip = slide.xcodeTip {
@@ -115,7 +115,7 @@ struct TutorialView: View {
                             .accessibilityHidden(true)
                         Text(tip)
                             .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                             .multilineTextAlignment(.leading)
                     }
                     .padding(12)
@@ -140,7 +140,7 @@ struct TutorialView: View {
                 Capsule()
                     .fill(i == index ? LiquidGlass.accent : .white.opacity(0.25))
                     .frame(width: i == index ? 22 : 7, height: 7)
-                    .animation(Motion.spring, value: index)
+                    .motion(Motion.spring, value: index)
             }
         }
         .accessibilityElement()
@@ -151,7 +151,7 @@ struct TutorialView: View {
         HStack(spacing: 12) {
             if index > 0 {
                 PrimaryButton(title: "Back", systemImage: "chevron.left", style: .ghost) {
-                    withAnimation(Motion.smooth) { index -= 1 }
+                    Motion.run(Motion.smooth) { index -= 1 }
                 }
                 .frame(maxWidth: 130)
                 .accessibilityLabel("Previous slide")
@@ -164,7 +164,7 @@ struct TutorialView: View {
                 if index == slides.count - 1 {
                     finish()
                 } else {
-                    withAnimation(Motion.smooth) { index += 1 }
+                    Motion.run(Motion.smooth) { index += 1 }
                 }
             }
             .accessibilityLabel(index == slides.count - 1 ? finishCTA : "Next slide")

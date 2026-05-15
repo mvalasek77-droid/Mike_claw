@@ -9,6 +9,7 @@ struct CodeGenieLogo: View {
 
     @State private var floating = false
     @State private var sparkleSpin = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -43,7 +44,7 @@ struct CodeGenieLogo: View {
             // Star sparkle, slowly rotating
             Image(systemName: "sparkles")
                 .font(.system(size: size * 0.22, weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .shadow(color: .white.opacity(0.6), radius: size * 0.04)
                 .rotationEffect(.degrees(sparkleSpin ? 360 : 0))
                 .offset(x: size * 0.30, y: -size * 0.32)
@@ -59,9 +60,9 @@ struct CodeGenieLogo: View {
         .accessibilityElement()
         .accessibilityLabel("CodeGenie logo")
         .onAppear {
-            guard animate else { return }
-            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) { floating = true }
-            withAnimation(.linear(duration: 16).repeatForever(autoreverses: false)) { sparkleSpin = true }
+            guard animate, !reduceMotion else { return }
+            Motion.run(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) { floating = true }
+            Motion.run(.linear(duration: 16).repeatForever(autoreverses: false)) { sparkleSpin = true }
         }
     }
 
@@ -88,10 +89,10 @@ struct CodeGenieMark: View {
             CodeGenieLogo(size: 132)
             Text("CodeGenie")
                 .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Build apps from your phone.")
                 .font(.system(size: 14, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
     }
 }

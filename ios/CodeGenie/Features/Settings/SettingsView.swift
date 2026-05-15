@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var showGitHub = false
     @State private var showXcodeReadiness = false
     @StateObject private var telemetry = Telemetry.shared
+    @StateObject private var userMode = UserMode.shared
 
     var body: some View {
         ZStack {
@@ -31,17 +32,20 @@ struct SettingsView: View {
                     if creds.authMode == .codegenie { hostedBlock }
                     modelComparison
                     estimatorBlock
-                    costCapBlock
-                    agentRoutingBlock
-                    customAgentsBlock
+                    modeBlock
                     shipChecklistHeader
                     xcodeReadinessBlock
                     pairMacBlock
                     appleDevBlock
                     githubBlock
+                    if userMode.isPower {
+                        costCapBlock
+                        agentRoutingBlock
+                        customAgentsBlock
+                        adminBlock
+                    }
                     tutorialBlock
                     telemetryBlock
-                    adminBlock
                     aboutBlock
                     Color.clear.frame(height: 30)
                 }
@@ -162,10 +166,10 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Halt the build over $X")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("Backend stops cleanly when rolling USD spend crosses the cap.")
                             .font(.system(size: 11, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     }
                 }
                 .tint(LiquidGlass.warning)
@@ -185,7 +189,7 @@ struct SettingsView: View {
                         .tint(LiquidGlass.warning)
                         Text(String(format: "$%.2f", cap))
                             .font(.system(size: 14, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                             .frame(width: 56, alignment: .trailing)
                     }
                 }
@@ -230,6 +234,34 @@ struct SettingsView: View {
         return "\(n) of 8 agents overridden."
     }
 
+    /// Power-user disclosure. Off by default — first-time users see
+    /// a simple Settings surface. Flipping it reveals every advanced
+    /// block (cost cap, per-agent routing, custom agents, Apple
+    /// Developer setup, Pair-your-Mac, Admin).
+    private var modeBlock: some View {
+        GlassCard(title: "Power user mode", icon: "wand.and.rays", tint: LiquidGlass.accentSecondary) {
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(isOn: Binding(
+                    get: { userMode.isPower },
+                    set: { userMode.setTier($0 ? .power : .justBuild) }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(userMode.isPower ? "Showing all controls" : "Simple mode")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text(userMode.isPower
+                             ? "Cost cap, per-agent routing, custom agents, Apple Developer setup, Pair Mac, Admin."
+                             : "Just build apps. The advanced surface is one tap away when you want it.")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .tint(LiquidGlass.accent)
+            }
+        }
+    }
+
     private var tutorialBlock: some View {
         navTile(
             title: "Watch the tour",
@@ -261,13 +293,13 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text(subtitle)
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.5))
+                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 }
                 .padding(16)
             }
@@ -287,10 +319,10 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Settings")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Text("Pick a provider, see costs, ship.")
                         .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 }
                 Spacer()
             }
@@ -329,7 +361,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Pay-per-token. Set your key once — it stays in the iOS Keychain.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
 
                 HStack(spacing: 10) {
                     Group {
@@ -341,14 +373,14 @@ struct SettingsView: View {
                     }
                     .textFieldStyle(.plain)
                     .font(.system(size: 14, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .padding(.horizontal, 12).padding(.vertical, 10)
                     .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
 
                     Button { reveal.wrappedValue.toggle() } label: {
                         Image(systemName: reveal.wrappedValue ? "eye.slash" : "eye")
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .frame(width: 38, height: 38)
                             .background(.white.opacity(0.08), in: Circle())
                     }
@@ -400,7 +432,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("If you already pay for Claude Pro/Max or ChatGPT Plus/Pro, route CodeGenie through that session — no per-token charges.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
 
                 ForEach(AIProvider.allCases) { p in
                     HStack(spacing: 10) {
@@ -408,14 +440,14 @@ struct SettingsView: View {
                             .foregroundStyle(p == .anthropic ? LiquidGlass.accentSecondary : LiquidGlass.success)
                         Text(p.subscriptionName)
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Spacer()
                         Link(destination: p.subscriptionURL) {
                             Text("Sign in")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .padding(.horizontal, 12).padding(.vertical, 8)
                                 .background(LiquidGlass.auroraGradient, in: Capsule())
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                         }
                     }
                     .padding(.vertical, 4)
@@ -423,7 +455,7 @@ struct SettingsView: View {
 
                 Text("CodeGenie's Mac companion handles the OAuth handshake. We never see your password.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             }
         }
     }
@@ -433,7 +465,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Zero setup. We absorb the API cost on a quota.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
 
                 HStack(spacing: 10) {
                     PlanPill(label: "Free", subtitle: "3 builds / month", price: "$0", highlighted: true)
@@ -470,20 +502,20 @@ struct SettingsView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(String(format: "$%.3f", cost))
                         .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .contentTransition(.numericText())
                     Text("per build").font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.65))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     Spacer()
                     Text(model.displayName)
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 10).padding(.vertical, 5)
                         .background(.white.opacity(0.08), in: Capsule())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 Text("≈ \(buildsPer10) builds for $10. Based on a typical 120k input + 40k output tokens per app.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
             }
         }
     }
@@ -498,10 +530,10 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Track build outcomes")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("On-device only. Nothing leaves your phone.")
                             .font(.system(size: 11, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     }
                 }
                 .tint(LiquidGlass.accent)
@@ -525,10 +557,10 @@ struct SettingsView: View {
     private func metricRow(_ k: String, _ v: String) -> some View {
         HStack {
             Text(k).font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
             Spacer()
             Text(v).font(.system(size: 13, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
         }
     }
 
@@ -576,10 +608,10 @@ struct SettingsView: View {
     private func aboutRow(_ k: String, _ v: String) -> some View {
         HStack {
             Text(k).font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                 .frame(width: 80, alignment: .leading)
             Text(v).font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Spacer()
         }
     }
@@ -596,16 +628,16 @@ private struct AuthModeRow: View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                    .foregroundStyle(selected ? LiquidGlass.accent : .white.opacity(0.4))
+                    .foregroundStyle(selected ? LiquidGlass.accent : LiquidGlass.primaryText.opacity(0.4))
                     .font(.system(size: 22))
                     .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(mode.label)
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Text(mode.blurb)
                         .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                         .multilineTextAlignment(.leading)
                 }
                 Spacer()
@@ -622,13 +654,13 @@ private struct PlanPill: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text(price)
                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(highlighted ? LiquidGlass.success : .white)
+                .foregroundStyle(highlighted ? LiquidGlass.success : LiquidGlass.primaryText)
             Text(subtitle)
                 .font(.caption2)
-                .foregroundStyle(.white.opacity(0.65))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                 .lineLimit(2)
         }
         .padding(10)
@@ -650,26 +682,26 @@ private struct ModelRow: View {
         Button(action: onPick) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                    .foregroundStyle(selected ? LiquidGlass.accent : .white.opacity(0.4))
+                    .foregroundStyle(selected ? LiquidGlass.accent : LiquidGlass.primaryText.opacity(0.4))
                     .padding(.top, 2)
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(model.displayName)
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         TierBadge(tier: model.tier)
                         Spacer()
                         Text(String(format: "$%.0f / $%.0f", model.inputUSDPerMTok, model.outputUSDPerMTok))
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                     }
                     Text(model.tagline)
                         .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.65))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     Text("Best for: \(model.bestFor)")
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 }
             }
             .padding(.vertical, 10)
@@ -685,7 +717,7 @@ private struct TierBadge: View {
             .font(.system(size: 10, weight: .bold, design: .rounded))
             .padding(.horizontal, 6).padding(.vertical, 2)
             .background(tint, in: Capsule())
-            .foregroundStyle(.white)
+            .foregroundStyle(LiquidGlass.primaryText)
     }
     private var tint: Color {
         switch tier {

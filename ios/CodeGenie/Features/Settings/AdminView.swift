@@ -10,6 +10,7 @@ struct AdminView: View {
     @State private var lastSummaries: [ArchiveSummary] = []
     @State private var error: String?
     @State private var showArchived: Bool = false
+    @State private var showDecisionSearch: Bool = false
     private let client = SwarmClient()
 
     var body: some View {
@@ -18,6 +19,7 @@ struct AdminView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     header
+                    decisionSearchTile
                     archiveCard
                     archivedJobsTile
                     if let lastResult { resultCard(lastResult) }
@@ -36,12 +38,46 @@ struct AdminView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Admin")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Maintenance + storage controls. Active jobs are always skipped.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var decisionSearchTile: some View {
+        Button { showDecisionSearch = true; Haptics.selection() } label: {
+            GlassSurface(tier: .raised, corner: 18) {
+                HStack(spacing: 12) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accentSecondary)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(LiquidGlass.accentSecondary.opacity(0.18)))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Decision memory")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("Reasoning ledger across builds")
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                }
+                .padding(12)
+            }
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showDecisionSearch) {
+            DecisionSearchView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Open decision memory search")
     }
 
     private var archivedJobsTile: some View {
@@ -56,13 +92,13 @@ struct AdminView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Archived workspaces")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("Browse and re-extract")
                             .font(.system(size: 11, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.5))
+                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 }
                 .padding(12)
             }
@@ -82,7 +118,7 @@ struct AdminView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Zip job workspaces whose last activity was more than N days ago, then remove the originals from disk.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
 
                 HStack(spacing: 12) {
                     Image(systemName: "calendar")
@@ -91,7 +127,7 @@ struct AdminView: View {
                         .tint(LiquidGlass.warning)
                     Text("\(Int(olderThanDays)) day\(Int(olderThanDays) == 1 ? "" : "s")")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .frame(width: 86, alignment: .trailing)
                 }
 
@@ -105,7 +141,7 @@ struct AdminView: View {
                 .disabled(working)
                 Text("Archives land at <workspace>/.archives/<job>-<ts>.zip on the backend.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             }
         }
     }
@@ -114,7 +150,7 @@ struct AdminView: View {
         GlassCard(title: "Last run", icon: "checkmark.circle.fill", tint: LiquidGlass.success) {
             Text(message)
                 .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
         }
     }
 
@@ -125,10 +161,10 @@ struct AdminView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(s.jobID)
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("\(s.filesArchived) files · \(formatBytes(s.bytesWritten))")
                             .font(.system(size: 11, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }
                     .padding(.vertical, 4)
                 }
@@ -140,7 +176,7 @@ struct AdminView: View {
         GlassCard(title: "Failed", icon: "exclamationmark.triangle.fill", tint: .red) {
             Text(message)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
         }
     }
 

@@ -32,10 +32,10 @@ struct XcodeReadinessView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Xcode")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("The free Apple program that turns CodeGenie's output into a real iPhone app.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -56,7 +56,7 @@ struct XcodeReadinessView: View {
                      ? "When you start a build, CodeGenie sends the source to your Mac, runs Xcode there, and streams the result back to your phone."
                      : "CodeGenie needs to talk to a Mac running Xcode. Open Settings → Pair your Mac to get connected first.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
             }
         }
     }
@@ -88,7 +88,7 @@ struct XcodeReadinessView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("It's a 7-15 GB download. Plan for 30 minutes the first time.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                 Link(destination: URL(string: "macappstores://apps.apple.com/app/xcode/id497799835")!) {
                     HStack(spacing: 10) {
                         Image(systemName: "arrow.down.app.fill")
@@ -99,7 +99,7 @@ struct XcodeReadinessView: View {
                     }
                     .padding(.horizontal, 14).padding(.vertical, 12)
                     .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 }
                 .accessibilityHint("Opens the Mac App Store on your paired Mac")
 
@@ -123,7 +123,7 @@ struct XcodeReadinessView: View {
                 walkRow(num: 3, body: "Quit Xcode. CodeGenie takes it from there — you never have to open it again.")
                 Text("Skipping any of these steps causes a cryptic build error later. Doing them once saves the headache.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     .padding(.top, 6)
             }
         }
@@ -142,10 +142,10 @@ struct XcodeReadinessView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text(body)
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
             }
         }
     }
@@ -154,12 +154,12 @@ struct XcodeReadinessView: View {
         HStack(alignment: .top, spacing: 10) {
             Text("\(num)")
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .frame(width: 24, height: 24)
                 .background(Circle().fill(LiquidGlass.accent.opacity(0.85)))
             Text(.init(body))
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

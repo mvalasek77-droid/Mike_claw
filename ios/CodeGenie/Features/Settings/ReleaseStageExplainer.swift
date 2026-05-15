@@ -40,10 +40,10 @@ struct ReleaseStageExplainer: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Where should this go?")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Apple gives you two doors. Same build — different audience.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -84,7 +84,7 @@ struct ReleaseStageExplainer: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Almost every successful App Store launch starts with a TestFlight round. You catch real-device bugs CodeGenie's simulator can miss, get feedback from a few real users, then ship to the App Store with confidence.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 Text("You can always promote a TestFlight build to the App Store later — same build, no rebuild needed.")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlass.success)
@@ -115,7 +115,7 @@ struct ReleaseStageExplainer: View {
                     onCancel()
                 }
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             }
             .padding(.top, 4)
         }
@@ -139,10 +139,10 @@ struct ReleaseStageExplainer: View {
                             .tracking(0.8)
                         Text(title)
                             .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text(tagline)
                             .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.75))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                     }
                     Spacer()
                 }
@@ -156,7 +156,7 @@ struct ReleaseStageExplainer: View {
                                 .padding(.top, 3)
                             Text(line)
                                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.85))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }

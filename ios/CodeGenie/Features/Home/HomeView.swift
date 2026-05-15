@@ -13,6 +13,9 @@ struct HomeView: View {
     @State private var showAppleDev = false
     @State private var showGitHub = false
     @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
+    @State private var showSampleApps = false
+    @State private var showAppOfYearDNA = false
+    @State private var showAutomationAudit = false
 
     var body: some View {
         ScrollView {
@@ -53,13 +56,29 @@ struct HomeView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showSampleApps) {
+            SampleAppsView()
+                .environmentObject(session)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAppOfYearDNA) {
+            AppOfYearPlaybookView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAutomationAudit) {
+            LaunchAutomationAuditView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .fullScreenCover(isPresented: $showGame) {
             ZStack(alignment: .topTrailing) {
                 GameHomeView()
                 Button { showGame = false } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 28))
-                        .foregroundStyle(.white.opacity(0.7), .black.opacity(0.4))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7), .black.opacity(0.4))
                         .padding(.top, 14)
                         .padding(.trailing, 16)
                 }
@@ -126,10 +145,10 @@ struct HomeView: View {
                         VStack(alignment: .leading, spacing: 1) {
                             Text("Set up shipping")
                                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                             Text("\(done) of 4 done — one-time setup, in plain English.")
                                 .font(.system(size: 12, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                         }
                         Spacer()
                     }
@@ -197,17 +216,17 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title)
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(done ? 0.7 : 1))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(done ? 0.7 : 1))
                         .strikethrough(done, color: .white.opacity(0.35))
                     Text(subtitle)
                         .font(.system(size: 11, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                         .lineLimit(1)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.45))
             }
             .padding(.vertical, 6)
             .contentShape(Rectangle())
@@ -227,13 +246,13 @@ struct HomeView: View {
                     CodeGenieLogo(size: 34, animate: false)
                     Text("CodeGenie")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 Spacer()
                 Button { } label: {
                     Image(systemName: "person.crop.circle")
                         .font(.system(size: 22))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                         .accessibilityLabel("Account")
                 }
             }
@@ -242,11 +261,11 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Build your next app\nfrom your phone.")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .lineSpacing(2)
                 Text("CodeGenie wires Claude, GPT, and Xcode together so you can ship to the App Store from anywhere.")
                     .font(.system(size: 15, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 6)
@@ -258,14 +277,14 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text("Describe an app").font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Spacer()
                     Image(systemName: "sparkles").foregroundStyle(LiquidGlass.accent)
                 }
                 Text("\"A daily habit tracker with streaks and a calm look.\"")
                     .font(.system(size: 15, weight: .regular, design: .rounded))
                     .italic()
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 PrimaryButton(title: "Start a new build", systemImage: "wand.and.stars", style: .filled) {
                     showDescribe = true
                 }
@@ -276,10 +295,13 @@ struct HomeView: View {
 
     private var quickGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            QuickTile(title: "Try a sample",    subtitle: "Watch one build live",  icon: "sparkles",            tint: LiquidGlass.accent)          { showSampleApps = true }
             QuickTile(title: "Watch the tour",  subtitle: "7-step tutorial",       icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
             QuickTile(title: "Xcode steps",     subtitle: "Pocket guide",          icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
             QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
             QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
+            QuickTile(title: "Award DNA",        subtitle: "App of Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
+            QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
         }
     }
 
@@ -287,7 +309,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Recent builds")
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
             ForEach(session.recentJobs.prefix(4)) { job in
                 JobRow(job: job)
             }
@@ -306,13 +328,13 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Xcode instructions")
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("Project → Simulator → Device → App Store")
                             .font(.system(size: 13, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.5))
+                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 }
                 .padding(16)
             }
@@ -328,6 +350,7 @@ struct HomeView: View {
                 ChecklistRow(text: "Animations, accessibility, dark mode", done: true)
                 ChecklistRow(text: "iOS 26 Liquid Glass theme", done: true)
                 ChecklistRow(text: "Senior-engineer code review (no vibe)", done: true)
+                ChecklistRow(text: "Perfection Mode: 10,000 virtual probes", done: true)
                 ChecklistRow(text: "Submission-ready for App Store", done: false)
             }
         }
@@ -352,9 +375,9 @@ private struct QuickTile: View {
                         .background(Circle().fill(tint.opacity(0.18)))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title).font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text(subtitle).font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }
                     Spacer(minLength: 0)
                 }
@@ -380,15 +403,15 @@ private struct JobRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(job.description.title)
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Text(job.stage.rawValue)
                         .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.65))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                 }
                 Spacer()
                 Text("\(Int(job.stage.progress * 100))%")
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
             }
             .padding(12)
         }
@@ -400,11 +423,11 @@ private struct ChecklistRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(done ? LiquidGlass.success : .white.opacity(0.4))
+                .foregroundStyle(done ? LiquidGlass.success : LiquidGlass.primaryText.opacity(0.4))
             Text(text)
                 .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(done ? 0.95 : 0.7))
-                .strikethrough(done, color: .white.opacity(0.3))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(done ? 0.95 : 0.7))
+                .strikethrough(done, color: LiquidGlass.primaryText.opacity(0.3))
             Spacer()
         }
     }

@@ -63,7 +63,7 @@ struct AppleDevWalkthroughView: View {
             HStack(spacing: 10) {
                 Image(systemName: "chevron.left.circle.fill")
                     .font(.system(size: 28))
-                    .foregroundStyle(.white.opacity(step > 0 ? 0.9 : 0.25))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(step > 0 ? 0.9 : 0.25))
                     .onTapGesture {
                         guard step > 0 else { return }
                         withAnimation(LiquidGlass.motion) { step -= 1 }
@@ -73,12 +73,12 @@ struct AppleDevWalkthroughView: View {
                     .accessibilityHidden(step == 0)
                 Text("Apple Developer")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Spacer()
             }
             Text(stepSubtitle)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -139,7 +139,7 @@ struct AppleDevWalkthroughView: View {
                             Text("No — open the enrollment page")
                         }
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .padding(.horizontal, 18).padding(.vertical, 12)
                         .frame(maxWidth: .infinity)
                         .background(.white.opacity(0.06), in: Capsule())
@@ -147,7 +147,7 @@ struct AppleDevWalkthroughView: View {
                     }
                     Text("Come back here once Apple emails you that you're approved.")
                         .font(.system(size: 11, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                         .multilineTextAlignment(.center)
                         .padding(.top, 4)
                 }
@@ -183,7 +183,7 @@ struct AppleDevWalkthroughView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("A 10-character code like `ABCD123456` that identifies you across Apple's tools. Find it at developer.apple.com → Membership.")
                         .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                     HStack(spacing: 10) {
                         Link(destination: URL(string: "https://developer.apple.com/account/#/membership/")!) {
                             HStack(spacing: 6) {
@@ -223,7 +223,7 @@ struct AppleDevWalkthroughView: View {
             GlassCard(title: "Why a key?", icon: "key.fill", tint: LiquidGlass.accentSecondary) {
                 Text("So CodeGenie can upload finished builds without prompting you for your Apple ID password every single time. The key is revocable — delete it from ASC any time and uploads stop.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
             }
 
             GlassCard(title: "Open the right page", icon: "safari.fill", tint: LiquidGlass.accent) {
@@ -238,7 +238,7 @@ struct AppleDevWalkthroughView: View {
                     }
                     .padding(.horizontal, 14).padding(.vertical, 12)
                     .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 }
             }
 
@@ -268,7 +268,7 @@ struct AppleDevWalkthroughView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Long UUID at the top of the API page. Same for every key on your team.")
                         .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     fieldRow("00000000-0000-0000-0000-000000000000", text: $issuerDraft, secure: false)
                 }
             }
@@ -276,7 +276,7 @@ struct AppleDevWalkthroughView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("10 characters. Listed next to the key you just generated.")
                         .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     fieldRow("ABCDEFGH12", text: $keyDraft, secure: false)
                 }
             }
@@ -285,11 +285,11 @@ struct AppleDevWalkthroughView: View {
                     HStack {
                         Text("Paste from the file you downloaded.")
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                         Spacer()
                         Button { revealP8.toggle() } label: {
                             Image(systemName: revealP8 ? "eye.slash" : "eye")
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                         }
                         .accessibilityLabel(revealP8 ? "Hide private key" : "Show private key")
                     }
@@ -303,7 +303,7 @@ struct AppleDevWalkthroughView: View {
                         }
                     }
                     .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .padding(10)
                     .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
@@ -345,10 +345,10 @@ struct AppleDevWalkthroughView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text(body)
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
             }
         }
     }
@@ -362,10 +362,10 @@ struct AppleDevWalkthroughView: View {
                 .tracking(0.6)
             Text(title)
                 .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text(body)
                 .font(.system(size: 12, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
         }
     }
 
@@ -373,12 +373,12 @@ struct AppleDevWalkthroughView: View {
         HStack(alignment: .top, spacing: 10) {
             Text("\(num)")
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .frame(width: 24, height: 24)
                 .background(Circle().fill(LiquidGlass.accent.opacity(0.85)))
             Text(.init(body))
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -396,7 +396,7 @@ struct AppleDevWalkthroughView: View {
         }
         .textFieldStyle(.plain)
         .font(.system(size: 14, weight: .medium, design: .monospaced))
-        .foregroundStyle(.white)
+        .foregroundStyle(LiquidGlass.primaryText)
         .padding(10)
         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))

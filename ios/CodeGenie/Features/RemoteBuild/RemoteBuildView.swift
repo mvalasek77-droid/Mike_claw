@@ -36,16 +36,16 @@ struct RemoteBuildView: View {
                 Image(systemName: "chevron.left")
                     .padding(10)
                     .background(.white.opacity(0.08), in: Circle())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
             Spacer()
             VStack(spacing: 1) {
                 Text(job.description.title)
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 HStack(spacing: 4) {
                     Circle().fill(runner.state.tint).frame(width: 6, height: 6)
-                    Text(runner.state.label).font(.caption2).foregroundStyle(.white.opacity(0.7))
+                    Text(runner.state.label).font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 }
             }
             Spacer()
@@ -53,7 +53,7 @@ struct RemoteBuildView: View {
                 Image(systemName: "square.and.arrow.up")
                     .padding(10)
                     .background(.white.opacity(0.08), in: Circle())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
         }
     }
@@ -107,15 +107,15 @@ struct RemoteBuildView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Hosted runner")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Text(runner.runnerInfo)
                         .font(.system(size: 11, weight: .regular, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                 }
                 Spacer()
                 Text("\(Int(runner.latencyMs))ms")
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
             }
             .padding(12)
         }
@@ -148,13 +148,13 @@ private struct StreamingPlaceholder: View {
             VStack(spacing: 12) {
                 Image(systemName: state == .failed ? "exclamationmark.triangle.fill" : "antenna.radiowaves.left.and.right")
                     .font(.system(size: 36, weight: .bold))
-                    .foregroundStyle(state == .failed ? LiquidGlass.warning : .white)
+                    .foregroundStyle(state == .failed ? LiquidGlass.warning : LiquidGlass.primaryText)
                     .symbolEffect(.variableColor.iterative, options: .repeating, isActive: state != .failed)
                 Text(state.label)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 if state == .connecting || state == .provisioning {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(LiquidGlass.primaryText)
                 }
             }
         }

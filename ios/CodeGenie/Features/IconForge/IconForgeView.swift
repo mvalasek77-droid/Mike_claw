@@ -54,10 +54,10 @@ struct IconForgeView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Icon Forge")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Generate, refine, and export your App Store icon. CodeGenie strips alpha + exports every required size for you.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -68,7 +68,7 @@ struct IconForgeView: View {
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 100)
                 .font(.system(size: 14, weight: .regular, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
         }
     }
 
@@ -88,7 +88,7 @@ struct IconForgeView: View {
                                     in: Capsule()
                                 )
                                 .overlay(Capsule().strokeBorder(.white.opacity(i == styleIndex ? 0.4 : 0.12)))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                         }
                         .buttonStyle(.plain)
                     }
@@ -114,7 +114,7 @@ struct IconForgeView: View {
             }
             Text("ChatGPT image-1 · ~$0.04 per icon · stripped to App-Store-safe before export")
                 .font(.system(size: 11, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
         }
     }
 
@@ -173,7 +173,7 @@ struct IconForgeView: View {
                 .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: size * 0.22).strokeBorder(.white.opacity(0.18)))
             Text(label).font(.system(size: 9, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
     }
 }

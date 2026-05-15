@@ -21,8 +21,19 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .llm import AnthropicClient, LLMClient
-from .models import AppSpec, BuildJob, BuildRequest, JobState, ShipRequest
+from .github_sync import GitHubSyncError, sync_workspace_to_github
+from .models import (
+    AppSpec,
+    BuildJob,
+    BuildRequest,
+    GitHubSyncRequest,
+    JobState,
+    ReleaseReadinessRequest,
+    ShipRequest,
+)
 from .orchestrator import ShipConfig, SwarmConfig, SwarmOrchestrator
+from .perfection import run_perfection_matrix
+from .release_readiness import run_release_readiness
 from .session import Session
 from .streaming import EventBus
 
@@ -218,6 +229,54 @@ async def ship_now(job_id: str, req: ShipRequest):
     return {"ok": True, "job_id": job_id}
 
 
+@router.post("/{job_id}/release-readiness")
+async def release_readiness(job_id: str, req: ReleaseReadinessRequest | None = None):
+    """Audit launch automation before TestFlight/App Store handoff.
+
+    This gives iOS one deterministic answer for Xcode archive state,
+    Apple credentials, privacy/terms artifacts, screenshots, metadata,
+    GitHub readiness, and the Apple-required final confirmation.
+    """
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    result = run_release_readiness(
+        spec=job.spec,
+        workspace=state.config.workspace_root / job_id,
+        ship=req.ship if req else None,
+        github=req.github if req else None,
+    )
+
+    from .memory import Memory
+    Memory(state.config.workspace_root).note_decision(
+        job_id,
+        "release readiness",
+        f"{result['release_gate']} at {result['score']}/100: {result['summary']}",
+    )
+    return result
+
+
+@router.post("/{job_id}/github/sync")
+async def github_sync(job_id: str, req: GitHubSyncRequest):
+    """Push the generated workspace to the user's GitHub repository."""
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    workspace = state.config.workspace_root / job_id
+    try:
+        result = await sync_workspace_to_github(workspace, req)
+    except GitHubSyncError as exc:
+        raise HTTPException(400, str(exc))
+
+    events = await state.bus.stream_for(job_id)
+    await events.emit(
+        "log",
+        message=f"Synced workspace to GitHub branch {result['branch']}",
+        remote=result["remote"],
+    )
+    return result
+
+
 @router.post("/{job_id}/restore")
 async def restore_snapshot(job_id: str, body: dict):
     """Roll the workspace back to a named snapshot.
@@ -409,6 +468,46 @@ async def list_snapshots(job_id: str):
     }
 
 
+@router.post("/{job_id}/perfection")
+async def run_perfection(job_id: str, body: dict | None = None):
+    """Run the deterministic 10,000-probe release matrix.
+
+    This is the "always automated" gate the iOS app can trigger before
+    TestFlight: no token spend, no real simulator required, just a fast
+    senior-review pass over the generated workspace. Critical/error
+    findings block release; warnings ask for polish and a rerun.
+    """
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+
+    raw_probes = (body or {}).get("probes", 10_000)
+    try:
+        requested = int(raw_probes)
+    except (TypeError, ValueError):
+        requested = 10_000
+    workspace = state.config.workspace_root / job_id
+    result = run_perfection_matrix(
+        spec=job.spec,
+        workspace=workspace,
+        requested_probes=requested,
+    )
+
+    from .memory import Memory
+    Memory(state.config.workspace_root).note_decision(
+        job_id,
+        "perfection matrix",
+        f"{result['release_gate']} at {result['score']}/100: {result['summary']}",
+    )
+
+    # Surface the highest-severity findings into any live transcript so
+    # the build screen does not need to poll a second channel.
+    events = await state.bus.stream_for(job_id)
+    for finding in result["findings"][:8]:
+        await events.emit("review.finding", **finding)
+    return result
+
+
 @router.get("/{job_id}/export")
 async def export_workspace(job_id: str):
     """Stream the job's workspace as a zip so the iOS Apps tab can let
@@ -470,6 +569,34 @@ async def list_memory_projects(limit: int = Query(20, ge=1, le=200), only_failed
                 "ts": r.ts,
             }
             for r in rows
+        ]
+    }
+
+
+@router.get("/memory/decisions/search")
+async def search_memory_decisions(
+    q: str = Query(..., min_length=1),
+    job_id: str | None = None,
+    limit: int = Query(30, ge=1, le=100),
+):
+    """Search reasoning decisions across every job.
+
+    This powers the iOS searchable decisions panel: a user can ask
+    "why did we choose RevenueCat?" or "where did offline fail?" and
+    jump back to the runs that made those calls.
+    """
+    from .memory import Memory
+    mem = Memory(state.config.workspace_root)
+    rows = mem.search_decisions(q, job_id=job_id, limit=limit)
+    return {
+        "decisions": [
+            {
+                "job_id": d.job_id,
+                "context": d.context,
+                "decision": d.decision,
+                "ts": d.ts,
+            }
+            for d in rows
         ]
     }
 

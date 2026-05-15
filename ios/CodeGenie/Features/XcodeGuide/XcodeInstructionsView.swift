@@ -73,7 +73,7 @@ struct XcodeInstructionsView: View {
                     aiCaution
                     ForEach(XcodeStep.all) { step in
                         StepCard(step: step, isExpanded: expanded == step.id) {
-                            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                            Motion.run(.spring(response: 0.45, dampingFraction: 0.85)) {
                                 expanded = expanded == step.id ? nil : step.id
                             }
                             Haptics.selection()
@@ -91,7 +91,7 @@ struct XcodeInstructionsView: View {
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 28))
-                    .foregroundStyle(.white.opacity(0.7), .black.opacity(0.4))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7), .black.opacity(0.4))
             }
             .padding(.top, 12)
             .padding(.trailing, 16)
@@ -102,10 +102,10 @@ struct XcodeInstructionsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Xcode in your pocket")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Every step the YouTube tutorial covers — annotated, automated where we can, manual where you want control.")
                 .font(.system(size: 15, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -118,7 +118,7 @@ struct XcodeInstructionsView: View {
                     .foregroundStyle(LiquidGlass.warning)
                 Text("AI can make mistakes. CodeGenie shows you the diff before applying anything, runs SwiftLint + SwiftFormat, and re-builds in the simulator before you ship.")
                     .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                     .lineSpacing(2)
             }
             .padding(14)
@@ -145,10 +145,10 @@ struct XcodeInstructionsView: View {
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
                 .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.18)))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text(desc)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
             Spacer()
         }
     }
@@ -168,35 +168,35 @@ private struct StepCard: View {
                             Circle().fill(LiquidGlass.auroraGradient)
                             Text("\(step.number)")
                                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                         }
                         .frame(width: 38, height: 38)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(step.title)
                                 .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                             Text(step.summary)
                                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                         }
                         Spacer()
                         Image(systemName: step.icon)
                             .font(.system(size: 22))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     }
 
                     if isExpanded {
                         Divider().background(.white.opacity(0.15))
                         Text(step.detail)
                             .font(.system(size: 14, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                             .lineSpacing(3)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         HStack(spacing: 10) {
                             Label(step.timestamp, systemImage: "play.rectangle.fill")
                                 .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                                 .padding(.horizontal, 10).padding(.vertical, 6)
                                 .background(.white.opacity(0.06), in: Capsule())
                             Spacer()

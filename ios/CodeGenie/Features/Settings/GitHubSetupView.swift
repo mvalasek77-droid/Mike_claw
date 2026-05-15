@@ -59,7 +59,7 @@ struct GitHubSetupView: View {
             HStack(spacing: 10) {
                 Image(systemName: "chevron.left.circle.fill")
                     .font(.system(size: 28))
-                    .foregroundStyle(.white.opacity(step > 0 ? 0.9 : 0.25))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(step > 0 ? 0.9 : 0.25))
                     .onTapGesture {
                         guard step > 0 else { return }
                         withAnimation(LiquidGlass.motion) { step -= 1 }
@@ -69,12 +69,12 @@ struct GitHubSetupView: View {
                     .accessibilityHidden(step == 0)
                 Text("Connect GitHub")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Spacer()
             }
             Text(stepSubtitle)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -134,7 +134,7 @@ struct GitHubSetupView: View {
                             Text("No — open github.com/signup in Safari")
                         }
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .padding(.horizontal, 18).padding(.vertical, 12)
                         .frame(maxWidth: .infinity)
                         .background(.white.opacity(0.06), in: Capsule())
@@ -144,7 +144,7 @@ struct GitHubSetupView: View {
 
                     Text("Free. Email + password is enough — you don't need any paid plan.")
                         .font(.system(size: 11, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                         .multilineTextAlignment(.center)
                         .padding(.top, 4)
                 }
@@ -155,7 +155,7 @@ struct GitHubSetupView: View {
                 dismiss()
             }
             .font(.system(size: 13, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white.opacity(0.55))
+            .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             .padding(.top, 4)
             .accessibilityHint("Close without connecting GitHub")
         }
@@ -172,10 +172,10 @@ struct GitHubSetupView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text(body)
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
             }
         }
     }
@@ -188,7 +188,7 @@ struct GitHubSetupView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("A token is like a one-time password GitHub creates just for CodeGenie. You can revoke it later from your GitHub settings — your real password never leaves Apple's keyboard.")
                         .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
 
                     Link(destination: URL(string: "https://github.com/settings/tokens/new?scopes=repo&description=CodeGenie")!) {
                         HStack(spacing: 10) {
@@ -200,7 +200,7 @@ struct GitHubSetupView: View {
                         }
                         .padding(.horizontal, 16).padding(.vertical, 12)
                         .background(LiquidGlass.auroraGradient, in: Capsule())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     }
                     .accessibilityHint("Opens GitHub's new token page in your browser, pre-filled for CodeGenie")
                 }
@@ -228,12 +228,12 @@ struct GitHubSetupView: View {
         HStack(alignment: .top, spacing: 10) {
             Text("\(num)")
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .frame(width: 24, height: 24)
                 .background(Circle().fill(LiquidGlass.accent.opacity(0.85)))
             Text(.init(body))
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -246,7 +246,7 @@ struct GitHubSetupView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("The handle on your GitHub profile, e.g. `octocat`.")
                         .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     fieldRow("octocat", text: $usernameDraft, secure: false)
                 }
             }
@@ -255,7 +255,7 @@ struct GitHubSetupView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Starts with `ghp_…`. Stays on this device — never sent to our servers.")
                         .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     HStack {
                         Group {
                             if revealPAT {
@@ -268,14 +268,14 @@ struct GitHubSetupView: View {
                         }
                         .textFieldStyle(.plain)
                         .font(.system(size: 13, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .padding(10)
                         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
                         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
 
                         Button { revealPAT.toggle() } label: {
                             Image(systemName: revealPAT ? "eye.slash" : "eye")
-                                .foregroundStyle(.white.opacity(0.8))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                                 .frame(width: 38, height: 38)
                                 .background(.white.opacity(0.08), in: Circle())
                         }
@@ -288,7 +288,7 @@ struct GitHubSetupView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("If you already created an empty repo on GitHub, paste it as `username/repo`. Leave blank and CodeGenie will pick a name based on your app.")
                         .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     fieldRow("\(usernameDraft.isEmpty ? "octocat" : usernameDraft)/tide-times", text: $repoDraft, secure: false)
                 }
             }
@@ -329,7 +329,7 @@ struct GitHubSetupView: View {
         }
         .textFieldStyle(.plain)
         .font(.system(size: 14, weight: .medium, design: .monospaced))
-        .foregroundStyle(.white)
+        .foregroundStyle(LiquidGlass.primaryText)
         .padding(10)
         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))

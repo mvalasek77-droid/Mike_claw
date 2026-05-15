@@ -13,6 +13,10 @@
 - Describe-your-app flow with chips, suggestions, category, style
 - Build screen with progress orb, log, BitDrop mini-game, live
   transcript, and live cost meter
+- Perfection Mode on successful builds: a 10,000-probe release matrix
+  that gates App Store handoff on Apple review, accessibility,
+  performance, security, offline, Liquid Glass polish, and packaging
+  findings
 - BitDrop mini-game (Tetris-style with Swift glyphs) — standalone
   `GameHomeView` with high score, lines, difficulty picker, and a
   first-launch help overlay
@@ -39,9 +43,11 @@
   recall / decisions), TestFlight upload (altool / ASC API key)**
 - Async EventBus + SSE fan-out at `/api/coding/swarm/{job}/stream`
 - Diff decision route + GET counterpart for the iOS round-trip
+- Zero-token Perfection Matrix at `/api/coding/swarm/{job}/perfection`
+  with memory logging and `review.finding` transcript events
 - Head-to-head model ranker (Cursor-style judge → JSON verdict)
 - SQLite-backed project memory, paste-prepended into every agent prompt
-- 48 pytest tests, all green; agent prompts in `prompts/*.md`
+- 116 pytest tests, all green; agent prompts in `prompts/*.md`
 
 **Mac companion (`mac_companion/`)**
 - Native Swift Package, macOS 14+, Network.framework server

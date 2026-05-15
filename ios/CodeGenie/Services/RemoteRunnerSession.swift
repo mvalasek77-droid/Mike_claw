@@ -30,7 +30,7 @@ final class RemoteRunnerSession: ObservableObject {
         }
         var tint: Color {
             switch self {
-            case .idle: .white.opacity(0.4)
+            case .idle: LiquidGlass.primaryText.opacity(0.4)
             case .connecting, .provisioning: LiquidGlass.warning
             case .streaming: LiquidGlass.success
             case .failed: .red

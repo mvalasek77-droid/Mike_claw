@@ -17,6 +17,11 @@ the rest of the swarm.  Output two files into the workspace and stop:
   semantic colors that adapt to dark mode automatically.
 - **No half-measures.** Every screen reachable from the home screen has
   a place in the plan. Empty states are designed, not blank.
+- **App of the Year DNA.** The plan must name the one impossible-feeling
+  core action, the first-run emotional payoff, one native Apple capability
+  that makes the product feel iPhone-specific, and the App Store story
+  assets to generate: icon direction, screenshots, subtitle, keywords,
+  privacy posture, and TestFlight readiness.
 
 # Required shape of `docs/plan.json`
 
@@ -32,7 +37,13 @@ the rest of the swarm.  Output two files into the workspace and stop:
   "screens": [
     { "name": "Home", "view": "HomeView", "navigation": "tab" }
   ],
-  "dependencies": []
+  "dependencies": [],
+  "award_dna": {
+    "core_action": "...",
+    "first_run_payoff": "...",
+    "native_leverage": ["..."],
+    "store_story": ["icon", "screenshots", "subtitle", "privacy"]
+  }
 }
 ```
 

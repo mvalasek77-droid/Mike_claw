@@ -20,7 +20,7 @@ struct TranscriptView: View {
             }
             .onChange(of: client.events.count) { _, _ in
                 if let last = client.events.last {
-                    withAnimation(.easeOut(duration: 0.2)) {
+                    Motion.run(.easeOut(duration: 0.2)) {
                         proxy.scrollTo(last.id, anchor: .bottom)
                     }
                 }
@@ -34,7 +34,7 @@ struct TranscriptView: View {
                     .frame(width: 6, height: 6)
                 Text(client.isConnected ? "live" : "offline")
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
             }
             .padding(8)
         }
@@ -56,11 +56,11 @@ private struct TranscriptRow: View {
                 if let agent = event.agent {
                     Text(agent)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 }
-                Text(body)
-                    .font(.system(size: 12, weight: .regular, design: bodyDesign))
-                    .foregroundStyle(.white.opacity(0.85))
+                Text(eventBody)
+                    .font(.system(size: 12, weight: .regular, design: eventBodyDesign))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                     .lineLimit(8)
             }
             Spacer(minLength: 0)
@@ -93,7 +93,7 @@ private struct TranscriptRow: View {
         switch event.type {
         case "agent.started":     LiquidGlass.accent
         case "agent.finished":    LiquidGlass.success
-        case "agent.thought":     .white.opacity(0.85)
+        case "agent.thought":     LiquidGlass.primaryText.opacity(0.85)
         case "tool.call":         LiquidGlass.warning
         case "tool.result":       LiquidGlass.success
         case "diff":              LiquidGlass.accentSecondary
@@ -105,18 +105,18 @@ private struct TranscriptRow: View {
         case "error":             .red
         case "job.state":         LiquidGlass.accent
         case "done":              LiquidGlass.success
-        default:                  .white.opacity(0.6)
+        default:                  LiquidGlass.primaryText.opacity(0.6)
         }
     }
 
-    private var bodyDesign: Font.Design {
+    private var eventBodyDesign: Font.Design {
         switch event.type {
         case "tool.call", "tool.result", "diff", "testflight.upload.progress": .monospaced
         default: .rounded
         }
     }
 
-    private var body: String {
+    private var eventBody: String {
         switch event.type {
         case "agent.started":   return "started"
         case "agent.finished":

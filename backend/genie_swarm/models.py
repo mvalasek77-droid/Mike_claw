@@ -53,6 +53,22 @@ class ShipRequest(BaseModel):
     poll_after_upload: bool = True
 
 
+class GitHubSyncRequest(BaseModel):
+    """Push a finished workspace to the user's GitHub repository.
+
+    `token` is accepted from the iOS client at call time only. The
+    backend never writes it into the workspace or session metadata.
+    """
+    repo_url: str
+    branch: str = "codegenie-build"
+    base_branch: str = "main"
+    commit_message: str = "Sync CodeGenie workspace"
+    token: str | None = Field(default=None, repr=False)
+    open_pr: bool = False
+    pr_title: str | None = None
+    pr_body: str | None = None
+
+
 class BuildRequest(BaseModel):
     spec: AppSpec
     workspace_root: str | None = None
@@ -70,6 +86,12 @@ class BuildRequest(BaseModel):
     # Per-build snapshot-bytes ceiling. None = use SwarmConfig default
     # (256 MiB). The iOS UI lets the user lift this from Settings.
     max_snapshot_bytes: int | None = None
+
+
+class ReleaseReadinessRequest(BaseModel):
+    """Inputs for the deterministic launch automation audit."""
+    ship: ShipRequest | None = None
+    github: GitHubSyncRequest | None = None
 
 
 class JobState(str, Enum):

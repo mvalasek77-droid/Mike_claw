@@ -29,9 +29,12 @@ final class SwarmClient: ObservableObject {
     private let session: URLSession
     private var streamTask: Task<Void, Never>?
     private let credentials: Credentials
+    private static let maxRetainedEvents = 1_500
+    private static let streamBatchSize = 24
+    private static let streamFlushInterval: TimeInterval = 1.0 / 30.0
 
-    init(credentials: Credentials = .shared, session: URLSession = .shared) {
-        self.credentials = credentials
+    init(credentials: Credentials? = nil, session: URLSession = .shared) {
+        self.credentials = credentials ?? Credentials.shared
         self.session = session
     }
 
@@ -234,6 +237,25 @@ final class SwarmClient: ObservableObject {
         }
     }
 
+    /// Search reasoning decisions across every remembered build.
+    func searchDecisions(query: String, limit: Int = 30) async throws -> [DecisionSearchRecord] {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        let r: [String: Any] = try await getJSON(
+            "/api/coding/swarm/memory/decisions/search?q=\(encoded)&limit=\(limit)"
+        )
+        let entries = (r["decisions"] as? [[String: Any]]) ?? []
+        return entries.compactMap { dict in
+            guard let jobID = dict["job_id"] as? String,
+                  let context = dict["context"] as? String,
+                  let decision = dict["decision"] as? String,
+                  let ts = dict["ts"] as? Double else { return nil }
+            return DecisionSearchRecord(
+                jobID: jobID, context: context, decision: decision,
+                at: Date(timeIntervalSince1970: ts)
+            )
+        }
+    }
+
     func files(jobID: String) async throws -> [String] {
         let r: [String: Any] = try await getJSON("/api/coding/swarm/\(jobID)/files")
         return (r["files"] as? [String]) ?? []
@@ -274,19 +296,42 @@ final class SwarmClient: ObservableObject {
         }
     }
 
+    /// Run the zero-token Perfection Matrix: 10,000 deterministic
+    /// virtual probes across Apple review, accessibility, performance,
+    /// resilience, security, polish, and App Store packaging.
+    func runPerfection(jobID: String, probes: Int = 10_000) async throws -> PerfectionRun {
+        let r = try await postJSON(
+            "/api/coding/swarm/\(jobID)/perfection",
+            body: ["probes": probes]
+        )
+        return try PerfectionRun(json: r)
+    }
+
+    /// Audit Xcode archive, Apple credentials, privacy, terms,
+    /// screenshots, metadata, GitHub, and final Apple-required
+    /// confirmation before attempting TestFlight upload.
+    func runReleaseReadiness(
+        jobID: String,
+        ship: ShipConfig? = nil,
+        github: GitHubSyncConfig? = nil
+    ) async throws -> ReleaseReadinessRun {
+        var body: [String: Any] = [:]
+        if let ship { body["ship"] = ship.wireBody }
+        if let github { body["github"] = github.wireBody }
+        let r = try await postJSON("/api/coding/swarm/\(jobID)/release-readiness", body: body)
+        return ReleaseReadinessRun(json: r)
+    }
+
+    /// Push the generated workspace to the user's GitHub repository.
+    @discardableResult
+    func syncGitHub(jobID: String, config: GitHubSyncConfig) async throws -> GitHubSyncResult {
+        let r = try await postJSON("/api/coding/swarm/\(jobID)/github/sync", body: config.wireBody)
+        return GitHubSyncResult(json: r)
+    }
+
     /// Promote a green build to TestFlight without rebuilding.
     func ship(jobID: String, config: ShipConfig) async throws {
-        var body: [String: Any] = [
-            "ipa_path": config.ipaPath,
-            "bundle_id": config.bundleID,
-            "poll_after_upload": config.pollAfterUpload,
-        ]
-        if let v = config.appleID { body["apple_id"] = v }
-        if let v = config.appSpecificPassword { body["app_specific_password"] = v }
-        if let v = config.ascKeyID { body["asc_api_key_id"] = v }
-        if let v = config.ascIssuerID { body["asc_api_issuer_id"] = v }
-        if let v = config.ascKeyPath { body["asc_api_key_path"] = v }
-        _ = try await postJSON("/api/coding/swarm/\(jobID)/ship", body: body)
+        _ = try await postJSON("/api/coding/swarm/\(jobID)/ship", body: config.wireBody)
     }
 
     /// URL the iOS share sheet can hand off so the user can save the
@@ -350,14 +395,29 @@ final class SwarmClient: ObservableObject {
         }
         await MainActor.run { self.isConnected = true; self.lastError = nil }
 
-        // Naive SSE parser — sufficient for our event format.
+        // Buffered SSE parsing keeps large agent transcripts from invalidating
+        // SwiftUI hundreds of times per second.
         var pendingData: String = ""
+        var bufferedEvents: [SwarmEvent] = []
+        bufferedEvents.reserveCapacity(Self.streamBatchSize)
+        var lastFlush = Date()
+
+        func flushIfNeeded(force: Bool = false) async {
+            guard !bufferedEvents.isEmpty else { return }
+            let elapsed = Date().timeIntervalSince(lastFlush)
+            guard force || bufferedEvents.count >= Self.streamBatchSize || elapsed >= Self.streamFlushInterval else { return }
+            await ingest(bufferedEvents, forward: onEvent)
+            bufferedEvents.removeAll(keepingCapacity: true)
+            lastFlush = Date()
+        }
+
         for try await line in bytes.lines {
             if Task.isCancelled { break }
             if line.isEmpty {
                 if !pendingData.isEmpty,
                    let event = decodeEvent(pendingData) {
-                    await ingest(event, forward: onEvent)
+                    bufferedEvents.append(event)
+                    await flushIfNeeded()
                 }
                 pendingData = ""
                 continue
@@ -367,23 +427,57 @@ final class SwarmClient: ObservableObject {
             }
             // We ignore "event:" / "id:" / "retry:" — the type lives inside the JSON.
         }
+        await flushIfNeeded(force: true)
     }
 
-    private func ingest(_ event: SwarmEvent, forward: ((SwarmEvent) -> Void)?) async {
-        events.append(event)
-        if event.type == "job.state",
-           let s = event.payload["state"] as? String {
-            // Pause / resume are surfaced as job.state changes too —
-            // map them to isPaused so the header badge can react.
-            switch s {
-            case "paused":  isPaused = true
-            case "resumed": isPaused = false
-            default:
-                isPaused = false
-                if let mapped = mapState(s) { stage = mapped }
-            }
+    /// Inject demo state for the first-run canned build. The same
+    /// downstream observers (CostTracker, DiffStream, UploadProgress,
+    /// CustomAgentLog) wake up exactly like they do for a real run —
+    /// they only see published events, not the connection.
+    func setDemoState(jobID: String?, connected: Bool) {
+        self.jobID = jobID
+        self.isConnected = connected
+        if connected {
+            // Clean slate for a fresh demo so we don't replay leftover
+            // events from a previous live run on top.
+            self.events = []
+            self.stage = .planning
+            self.isPaused = false
+            self.lastError = nil
         }
-        forward?(event)
+    }
+
+    /// Push a `SwarmEvent` as if it arrived from the SSE stream.
+    /// Reuses the same `ingest` logic — paused/resumed mapping,
+    /// stage transitions — so demo + live behave identically.
+    func pushDemoEvent(_ event: SwarmEvent) {
+        Task { @MainActor in
+            await self.ingest([event], forward: nil)
+        }
+    }
+
+    private func ingest(_ newEvents: [SwarmEvent], forward: ((SwarmEvent) -> Void)?) async {
+        let overflow = events.count + newEvents.count - Self.maxRetainedEvents
+        if overflow > 0 {
+            events.removeFirst(min(overflow, events.count))
+        }
+        events.append(contentsOf: newEvents)
+
+        for event in newEvents {
+            if event.type == "job.state",
+               let s = event.payload["state"] as? String {
+                // Pause / resume are surfaced as job.state changes too —
+                // map them to isPaused so the header badge can react.
+                switch s {
+                case "paused":  isPaused = true
+                case "resumed": isPaused = false
+                default:
+                    isPaused = false
+                    if let mapped = mapState(s) { stage = mapped }
+                }
+            }
+            forward?(event)
+        }
     }
 
     private func mapState(_ s: String) -> BuildJob.Stage? {
@@ -473,6 +567,14 @@ struct DecisionRecord: Identifiable, Hashable {
     var id: String { "\(context)|\(decision)|\(at.timeIntervalSince1970)" }
 }
 
+struct DecisionSearchRecord: Identifiable, Hashable {
+    let jobID: String
+    let context: String
+    let decision: String
+    let at: Date
+    var id: String { "\(jobID)|\(context)|\(decision)|\(at.timeIntervalSince1970)" }
+}
+
 struct ArchiveSummary: Identifiable, Hashable {
     let jobID: String
     let archivePath: String
@@ -517,6 +619,107 @@ struct ArchivedJob: Identifiable, Hashable {
     let sizeBytes: Int
     let mtime: Date
     var id: String { filename }
+}
+
+struct PerfectionRun: Identifiable, Hashable {
+    let id: String
+    let probesRun: Int
+    let score: Double
+    let releaseGate: String
+    let summary: String
+    let severityCounts: [String: Int]
+    let axes: [PerfectionAxis]
+    let findings: [PerfectionFinding]
+    let nextActions: [String]
+
+    init(json: [String: Any]) throws {
+        guard let runID = json["run_id"] as? String else {
+            throw SwarmError.malformed("missing run_id")
+        }
+        id = runID
+        probesRun = Self.int(json["probes_run"])
+        score = Self.double(json["score"])
+        releaseGate = (json["release_gate"] as? String) ?? "blocked"
+        summary = (json["summary"] as? String) ?? "Perfection Matrix complete."
+        severityCounts = Self.intMap(json["severity_counts"])
+        axes = ((json["axes"] as? [[String: Any]]) ?? []).map(PerfectionAxis.init(json:))
+        findings = ((json["findings"] as? [[String: Any]]) ?? []).map(PerfectionFinding.init(json:))
+        nextActions = (json["next_actions"] as? [String]) ?? []
+    }
+
+    var isReady: Bool { releaseGate == "ready" }
+    var gateLabel: String {
+        switch releaseGate {
+        case "ready": "Ready"
+        case "needs_polish": "Needs polish"
+        default: "Blocked"
+        }
+    }
+
+    fileprivate static func int(_ value: Any?) -> Int {
+        if let int = value as? Int { return int }
+        if let double = value as? Double { return Int(double) }
+        if let string = value as? String { return Int(string) ?? 0 }
+        return 0
+    }
+
+    fileprivate static func double(_ value: Any?) -> Double {
+        if let double = value as? Double { return double }
+        if let int = value as? Int { return Double(int) }
+        if let string = value as? String { return Double(string) ?? 0 }
+        return 0
+    }
+
+    fileprivate static func intMap(_ value: Any?) -> [String: Int] {
+        let raw = (value as? [String: Any]) ?? [:]
+        return raw.reduce(into: [:]) { partial, item in
+            partial[item.key] = int(item.value)
+        }
+    }
+}
+
+struct PerfectionAxis: Identifiable, Hashable {
+    let key: String
+    let title: String
+    let probes: Int
+    let passed: Int
+    let failed: Int
+    let confidence: Double
+    var id: String { key }
+
+    init(json: [String: Any]) {
+        key = (json["key"] as? String) ?? UUID().uuidString
+        title = (json["title"] as? String) ?? key
+        probes = PerfectionRun.int(json["probes"])
+        passed = PerfectionRun.int(json["passed"])
+        failed = PerfectionRun.int(json["failed"])
+        confidence = PerfectionRun.double(json["confidence"])
+    }
+}
+
+struct PerfectionFinding: Identifiable, Hashable {
+    let id = UUID()
+    let severity: String
+    let axis: String
+    let title: String
+    let body: String
+    let file: String?
+    let line: Int?
+    let recommendation: String?
+
+    init(json: [String: Any]) {
+        severity = (json["severity"] as? String) ?? "info"
+        axis = (json["axis"] as? String) ?? "engineering"
+        title = (json["title"] as? String) ?? "Finding"
+        body = (json["body"] as? String) ?? ""
+        file = json["file"] as? String
+        if let rawLine = json["line"], !(rawLine is NSNull) {
+            line = PerfectionRun.int(rawLine)
+        } else {
+            line = nil
+        }
+        recommendation = json["recommendation"] as? String
+    }
 }
 
 struct SwarmEvent: Identifiable {
@@ -573,6 +776,20 @@ struct ShipConfig: Hashable {
     var ascKeyPath: String? = nil
     var pollAfterUpload: Bool = true
 
+    var wireBody: [String: Any] {
+        var body: [String: Any] = [
+            "ipa_path": ipaPath,
+            "bundle_id": bundleID,
+            "poll_after_upload": pollAfterUpload,
+        ]
+        if let v = appleID { body["apple_id"] = v }
+        if let v = appSpecificPassword { body["app_specific_password"] = v }
+        if let v = ascKeyID { body["asc_api_key_id"] = v }
+        if let v = ascIssuerID { body["asc_api_issuer_id"] = v }
+        if let v = ascKeyPath { body["asc_api_key_path"] = v }
+        return body
+    }
+
     /// Build a `ShipConfig` from the user's saved Apple Developer
     /// credentials. Returns nil when none are configured — the caller
     /// should prompt the user to open Apple Developer setup.
@@ -581,8 +798,9 @@ struct ShipConfig: Hashable {
         ipaPath: String = "Build.ipa",
         bundleID: String,
         keyPath: String = "asc-key.p8",
-        credentials: Credentials = .shared
+        credentials: Credentials? = nil
     ) -> ShipConfig? {
+        let credentials = credentials ?? Credentials.shared
         guard credentials.hasAppleDevCreds else { return nil }
         var config = ShipConfig(ipaPath: ipaPath, bundleID: bundleID)
         if !credentials.ascKeyID.isEmpty {
@@ -594,5 +812,83 @@ struct ShipConfig: Hashable {
             config.appSpecificPassword = credentials.appSpecificPassword
         }
         return config
+    }
+}
+
+struct GitHubSyncConfig: Hashable {
+    var repoURL: String
+    var branch: String = "codegenie-build"
+    var baseBranch: String = "main"
+    var commitMessage: String = "Sync CodeGenie workspace"
+    var token: String? = nil
+    var openPR: Bool = false
+    var prTitle: String? = nil
+    var prBody: String? = nil
+
+    var wireBody: [String: Any] {
+        var body: [String: Any] = [
+            "repo_url": repoURL,
+            "branch": branch,
+            "base_branch": baseBranch,
+            "commit_message": commitMessage,
+            "open_pr": openPR,
+        ]
+        if let token, !token.isEmpty { body["token"] = token }
+        if let prTitle, !prTitle.isEmpty { body["pr_title"] = prTitle }
+        if let prBody, !prBody.isEmpty { body["pr_body"] = prBody }
+        return body
+    }
+}
+
+struct GitHubSyncResult: Hashable {
+    var ok: Bool
+    var branch: String
+    var remote: String
+    var prRequested: Bool
+    var prURL: String
+
+    init(json: [String: Any]) {
+        ok = json["ok"] as? Bool ?? false
+        branch = json["branch"] as? String ?? ""
+        remote = json["remote"] as? String ?? ""
+        prRequested = json["pr_requested"] as? Bool ?? false
+        prURL = json["pr_url"] as? String ?? ""
+    }
+}
+
+struct ReleaseReadinessRun: Hashable {
+    var releaseGate: String
+    var score: Int
+    var summary: String
+    var nextActions: [String]
+    var items: [ReleaseReadinessItem]
+
+    var isReadyForTestFlight: Bool { releaseGate == "ready_for_testflight" }
+
+    init(json: [String: Any]) {
+        releaseGate = json["release_gate"] as? String ?? "needs_setup"
+        score = json["score"] as? Int ?? 0
+        summary = json["summary"] as? String ?? ""
+        nextActions = json["next_actions"] as? [String] ?? []
+        items = ((json["items"] as? [[String: Any]]) ?? []).map(ReleaseReadinessItem.init(json:))
+    }
+}
+
+struct ReleaseReadinessItem: Identifiable, Hashable {
+    var key: String
+    var title: String
+    var status: String
+    var detail: String
+    var action: String
+    var required: Bool
+    var id: String { key }
+
+    init(json: [String: Any]) {
+        key = json["key"] as? String ?? UUID().uuidString
+        title = json["title"] as? String ?? key
+        status = json["status"] as? String ?? "needs_setup"
+        detail = json["detail"] as? String ?? ""
+        action = json["action"] as? String ?? ""
+        required = json["required"] as? Bool ?? false
     }
 }

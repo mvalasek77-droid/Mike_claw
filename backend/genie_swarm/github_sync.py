@@ -1,0 +1,200 @@
+"""GitHub workspace sync for finished CodeGenie jobs."""
+from __future__ import annotations
+
+import asyncio
+import json
+from pathlib import Path
+from urllib.parse import quote, urlparse, urlunparse
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+from .models import GitHubSyncRequest
+
+
+class GitHubSyncError(RuntimeError):
+    pass
+
+
+async def sync_workspace_to_github(workspace: Path, request: GitHubSyncRequest) -> dict[str, str | bool]:
+    workspace = Path(workspace)
+    if not workspace.is_dir():
+        raise GitHubSyncError("workspace not found")
+    branch = _validate_branch(request.branch)
+    base_branch = _validate_branch(request.base_branch)
+    repo_url = request.repo_url.strip()
+    if not repo_url:
+        raise GitHubSyncError("repo_url required")
+    if request.open_pr and not request.token:
+        raise GitHubSyncError("GitHub token required to open a pull request")
+
+    _ensure_gitignore(workspace)
+
+    await _git(workspace, "init")
+    await _git(workspace, "config", "user.name", "CodeGenie")
+    await _git(workspace, "config", "user.email", "codegenie@local")
+    await _git(workspace, "checkout", "-B", branch)
+    await _git(workspace, "add", "--all", "--", ".")
+    await _git(workspace, "commit", "--allow-empty", "-m", request.commit_message or "Sync CodeGenie workspace")
+    await _git(workspace, "remote", "remove", "origin", check=False)
+    push_url = _authenticated_remote(repo_url, request.token)
+    await _git(workspace, "remote", "add", "origin", push_url, redact=request.token)
+    await _git(workspace, "push", "-u", "origin", branch, redact=request.token)
+    pr_url = None
+    if request.open_pr:
+        repo_slug = _github_repo_slug(repo_url)
+        if not repo_slug:
+            raise GitHubSyncError("open_pr requires a github.com repository URL")
+        pr_url = await _create_pull_request(
+            repo_slug=repo_slug,
+            branch=branch,
+            base_branch=base_branch,
+            request=request,
+        )
+
+    return {
+        "ok": True,
+        "branch": branch,
+        "remote": _redact(push_url, request.token),
+        "pr_requested": bool(request.open_pr),
+        "pr_url": pr_url or "",
+    }
+
+
+def _ensure_gitignore(workspace: Path) -> None:
+    gitignore = workspace / ".gitignore"
+    existing = ""
+    if gitignore.is_file():
+        try:
+            existing = gitignore.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            existing = ""
+    required = [
+        "/.codegenie/",
+        "/.genie-session.json",
+        "/DerivedData/",
+        "xcuserdata/",
+        "*.xcuserstate",
+        "*.ipa",
+        "*.xcarchive/",
+    ]
+    additions = [line for line in required if line not in existing.splitlines()]
+    if additions:
+        suffix = "" if existing.endswith("\n") or not existing else "\n"
+        gitignore.write_text(existing + suffix + "\n".join(additions) + "\n", encoding="utf-8")
+
+
+def _validate_branch(branch: str) -> str:
+    branch = branch.strip()
+    if not branch or branch.startswith("-"):
+        raise GitHubSyncError("invalid branch")
+    disallowed = {"..", "~", "^", ":", "?", "*", "[", "\\", " "}
+    if any(token in branch for token in disallowed) or branch.endswith("/") or branch.endswith(".lock"):
+        raise GitHubSyncError("invalid branch")
+    return branch
+
+
+def _authenticated_remote(repo_url: str, token: str | None) -> str:
+    if not token or not repo_url.lower().startswith("https://"):
+        return repo_url
+    parsed = urlparse(repo_url)
+    netloc = f"x-access-token:{quote(token, safe='')}@{parsed.netloc}"
+    return urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+
+
+def _github_repo_slug(repo_url: str) -> str | None:
+    cleaned = repo_url.strip()
+    if cleaned.startswith("git@github.com:"):
+        slug = cleaned.removeprefix("git@github.com:")
+    else:
+        parsed = urlparse(cleaned)
+        if parsed.netloc.lower() != "github.com":
+            return None
+        slug = parsed.path.lstrip("/")
+    if slug.endswith(".git"):
+        slug = slug[:-4]
+    parts = [part for part in slug.split("/") if part]
+    if len(parts) < 2:
+        return None
+    return "/".join(parts[:2])
+
+
+async def _create_pull_request(
+    *,
+    repo_slug: str,
+    branch: str,
+    base_branch: str,
+    request: GitHubSyncRequest,
+) -> str:
+    return await asyncio.to_thread(
+        _create_pull_request_sync,
+        repo_slug,
+        branch,
+        base_branch,
+        request,
+    )
+
+
+def _create_pull_request_sync(
+    repo_slug: str,
+    branch: str,
+    base_branch: str,
+    request: GitHubSyncRequest,
+) -> str:
+    assert request.token is not None
+    payload = json.dumps({
+        "title": request.pr_title or request.commit_message or f"CodeGenie sync: {branch}",
+        "head": branch,
+        "base": base_branch,
+        "body": request.pr_body or "Generated by CodeGenie release automation.",
+    }).encode("utf-8")
+    http_request = Request(
+        f"https://api.github.com/repos/{repo_slug}/pulls",
+        data=payload,
+        method="POST",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {request.token}",
+            "Content-Type": "application/json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    try:
+        with urlopen(http_request, timeout=20) as response:
+            body = json.loads(response.read().decode("utf-8"))
+            return str(body.get("html_url") or f"https://github.com/{repo_slug}/pulls")
+    except HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        body = _redact(body, request.token)
+        if exc.code == 422 and "pull request" in body.lower():
+            return f"https://github.com/{repo_slug}/pulls"
+        raise GitHubSyncError(f"GitHub pull request failed: HTTP {exc.code} {body}")
+    except URLError as exc:
+        raise GitHubSyncError(f"GitHub pull request failed: {exc.reason}")
+
+
+async def _git(
+    workspace: Path,
+    *args: str,
+    check: bool = True,
+    redact: str | None = None,
+) -> str:
+    proc = await asyncio.create_subprocess_exec(
+        "git",
+        "-C",
+        str(workspace),
+        *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    text = (stdout + stderr).decode("utf-8", errors="replace")
+    text = _redact(text, redact)
+    if check and proc.returncode != 0:
+        raise GitHubSyncError(text.strip() or f"git {' '.join(args)} failed")
+    return text
+
+
+def _redact(text: str, secret: str | None) -> str:
+    if not secret:
+        return text
+    return text.replace(secret, "********")

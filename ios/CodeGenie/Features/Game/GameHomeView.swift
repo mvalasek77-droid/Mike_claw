@@ -62,16 +62,16 @@ struct GameHomeView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("BitDrop")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text("Stack Swift symbols. Clear rows. Earn build boosts.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
             }
             Spacer()
             Button { showHelp = true } label: {
                 Image(systemName: "questionmark.circle")
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
             }
             .accessibilityLabel("How to play")
         }
@@ -105,7 +105,7 @@ struct GameHomeView: View {
                                 in: Capsule()
                             )
                             .overlay(Capsule().strokeBorder(.white.opacity(d == difficulty ? 0.4 : 0.12)))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(d == difficulty ? .isSelected : [])
@@ -140,10 +140,10 @@ struct GameHomeView: View {
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
                 .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.18)))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text(right)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
             Spacer()
         }
     }
@@ -151,17 +151,17 @@ struct GameHomeView: View {
     private var helpOverlay: some View {
         ZStack {
             Color.black.opacity(0.55).ignoresSafeArea()
-                .onTapGesture { withAnimation(Motion.smooth) { showHelp = false } }
+                .onTapGesture { Motion.run(Motion.smooth) { showHelp = false } }
             GlassSurface(tier: .deep) {
                 VStack(spacing: 14) {
                     Text("BitDrop").font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Text("Stack falling Swift symbols (`{`, `}`, `→`, `•`) to fill rows. Cleared rows earn points and (during a real build) a 2% build-speed boost.")
                         .font(.system(size: 14, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                         .multilineTextAlignment(.center)
                     PrimaryButton(title: "Play", systemImage: "play.fill", style: .filled) {
-                        withAnimation(Motion.smooth) { showHelp = false }
+                        Motion.run(Motion.smooth) { showHelp = false }
                     }
                     .frame(maxWidth: 200)
                 }
@@ -185,10 +185,10 @@ private struct ScoreTile: View {
                     .frame(width: 36, height: 36)
                     .background(Circle().fill(tint.opacity(0.18)))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(label).font(.caption2).foregroundStyle(.white.opacity(0.6))
+                    Text(label).font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     Text(value)
                         .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .contentTransition(.numericText())
                 }
                 Spacer(minLength: 0)

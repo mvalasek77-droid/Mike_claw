@@ -61,7 +61,7 @@ Health check. Round-trip latency budget.
 
 ### `open_xcode_project`
 ```json
-{ "path": "/Users/clawcl/code/codebaby/ios/CodeBaby.xcodeproj" }
+{ "path": "/Users/clawcl/code/codegenie/ios/CodeGenie.xcodeproj" }
 ```
 Opens the project in Xcode. Returns `{ "pid": 1234 }`.
 
@@ -75,7 +75,7 @@ Opens Safari. Returns nothing.
 ```json
 {
   "action": "build|test|archive",
-  "scheme": "CodeBaby",
+  "scheme": "CodeGenie",
   "destination": "platform=iOS Simulator,name=iPhone 16",
   "workspace_or_project": "/path/to/Project.xcodeproj",
   "configuration": "Debug"
