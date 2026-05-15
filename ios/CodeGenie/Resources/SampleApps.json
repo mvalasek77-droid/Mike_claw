@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "samples": [
+    {
+      "id": "tide-times",
+      "title": "Tide Times",
+      "subtitle": "Watch this one build live",
+      "icon_system_name": "wave.3.right.circle.fill",
+      "tint": "accent",
+      "prompt": "A tide times app for surfers. Show today's high + low tides for the nearest beach, with a glanceable Apple Watch complication and a haptic at the next low tide. Calm, ocean-aware UI.",
+      "outcome": "A real surfer would check this before paddling out.",
+      "demo_playable": true,
+      "estimated_seconds": 32
+    },
+    {
+      "id": "habit-flow",
+      "title": "HabitFlow",
+      "subtitle": "Start your first real build",
+      "icon_system_name": "leaf.circle.fill",
+      "tint": "success",
+      "prompt": "A daily habit tracker. Three habits max, streaks shown as a horizontal flame, missed-day forgiveness once a week, a soft chime when the streak grows. Minimal, calming, no analytics.",
+      "outcome": "Tiny, sticky, the kind of thing you actually open every day.",
+      "demo_playable": false,
+      "estimated_seconds": 28
+    },
+    {
+      "id": "podcast-notes",
+      "title": "PodcastNotes",
+      "subtitle": "Start your first real build",
+      "icon_system_name": "waveform.circle.fill",
+      "tint": "accentSecondary",
+      "prompt": "An app that listens alongside Podcasts and captures highlights. Tap the watch face during a listen → marks the moment. Daily digest summarises every highlight with a one-line takeaway.",
+      "outcome": "Stops the 'I heard a great quote and now I can't find it' problem.",
+      "demo_playable": false,
+      "estimated_seconds": 35
+    }
+  ]
+}

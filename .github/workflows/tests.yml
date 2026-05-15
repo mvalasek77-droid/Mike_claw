@@ -1,0 +1,57 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-pytest:
+    name: Backend pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r genie_swarm/requirements.txt
+          # Pull in test-only deps not listed in the runtime requirements
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run pytest
+        working-directory: backend
+        run: pytest -q
+
+  swift-brace-audit:
+    name: Swift brace audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify every Swift file is brace-balanced
+        run: |
+          set -e
+          fail=0
+          for f in $(find ios/CodeGenie mac_companion -name '*.swift'); do
+            open=$(grep -o '{' "$f" | wc -l)
+            close=$(grep -o '}' "$f" | wc -l)
+            if [ "$open" != "$close" ]; then
+              echo "MISMATCH $f: { = $open, } = $close"
+              fail=1
+            fi
+          done
+          if [ $fail -ne 0 ]; then exit 1; fi
+          echo "OK: $(find ios/CodeGenie mac_companion -name '*.swift' | wc -l) Swift files balanced"

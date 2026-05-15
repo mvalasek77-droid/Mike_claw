@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var showCrashLog = false
     @State private var showAdmin = false
     @StateObject private var telemetry = Telemetry.shared
+    @StateObject private var userMode = UserMode.shared
 
     var body: some View {
         ZStack {
@@ -29,14 +30,17 @@ struct SettingsView: View {
                     if creds.authMode == .codegenie { hostedBlock }
                     modelComparison
                     estimatorBlock
-                    costCapBlock
-                    agentRoutingBlock
-                    customAgentsBlock
-                    appleDevBlock
-                    pairMacBlock
+                    modeBlock
+                    if userMode.isPower {
+                        costCapBlock
+                        agentRoutingBlock
+                        customAgentsBlock
+                        appleDevBlock
+                        pairMacBlock
+                        adminBlock
+                    }
                     tutorialBlock
                     telemetryBlock
-                    adminBlock
                     aboutBlock
                     Color.clear.frame(height: 30)
                 }
@@ -179,6 +183,34 @@ struct SettingsView: View {
         let n = creds.agentModels.count
         if n == 0 { return "Send each agent to its best model." }
         return "\(n) of 8 agents overridden."
+    }
+
+    /// Power-user disclosure. Off by default — first-time users see
+    /// a simple Settings surface. Flipping it reveals every advanced
+    /// block (cost cap, per-agent routing, custom agents, Apple
+    /// Developer setup, Pair-your-Mac, Admin).
+    private var modeBlock: some View {
+        GlassCard(title: "Power user mode", icon: "wand.and.rays", tint: LiquidGlass.accentSecondary) {
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(isOn: Binding(
+                    get: { userMode.isPower },
+                    set: { userMode.setTier($0 ? .power : .justBuild) }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(userMode.isPower ? "Showing all controls" : "Simple mode")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text(userMode.isPower
+                             ? "Cost cap, per-agent routing, custom agents, Apple Developer setup, Pair Mac, Admin."
+                             : "Just build apps. The advanced surface is one tap away when you want it.")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .tint(LiquidGlass.accent)
+            }
+        }
     }
 
     private var tutorialBlock: some View {

@@ -119,15 +119,29 @@ class Sandbox:
 
         loop = asyncio.get_running_loop()
         start = loop.time()
-        proc = await asyncio.create_subprocess_exec(
-            *argv,
-            cwd=str(cwd_path),
-            env=env,
-            stdin=asyncio.subprocess.PIPE if stdin is not None else None,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            preexec_fn=_set_limits if sys.platform != "win32" else None,
-        )
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *argv,
+                cwd=str(cwd_path),
+                env=env,
+                stdin=asyncio.subprocess.PIPE if stdin is not None else None,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                preexec_fn=_set_limits if sys.platform != "win32" else None,
+            )
+        except FileNotFoundError as exc:
+            # Missing binary (e.g. `xcodebuild` on a Linux runner, or
+            # `xcrun` on a Mac without command-line tools). Production
+            # callers want a structured failure so they can degrade
+            # gracefully — never an exception bubbling all the way up.
+            duration_ms = int((loop.time() - start) * 1000)
+            return SandboxResult(
+                ok=False, stdout="",
+                stderr=f"executable not found: {argv[0]} ({exc.strerror})",
+                exit_code=127,
+                duration_ms=duration_ms,
+                truncated=False,
+            )
 
         try:
             out_b, err_b = await asyncio.wait_for(
