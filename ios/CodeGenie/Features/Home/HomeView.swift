@@ -16,6 +16,7 @@ struct HomeView: View {
     @State private var showSampleApps = false
     @State private var showAppOfYearDNA = false
     @State private var showAutomationAudit = false
+    @State private var showFirstBuildPrompt = false
 
     var body: some View {
         ScrollView {
@@ -119,6 +120,38 @@ struct HomeView: View {
             GitHubSetupView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showFirstBuildPrompt) {
+            FirstBuildPromptView(
+                onSetUp:   { showFirstBuildPrompt = false; showXcodeReadiness = true },
+                onBuildNow: {
+                    UserDefaults.standard.set(true, forKey: "firstBuild.prompt.shown")
+                    showFirstBuildPrompt = false
+                    showDescribe = true
+                },
+                onCancel: { showFirstBuildPrompt = false }
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
+        }
+    }
+
+    /// First-time gate. If the user has zero ship gates done and hasn't
+    /// already dismissed this prompt, ask whether they want to set
+    /// shipping up before building or proceed straight to the
+    /// describe-an-app flow. After the first time the user is trusted
+    /// to know what they're doing.
+    private func startBuildOrPromptSetup() {
+        let macPaired = !creds.backendToken.isEmpty
+        let appleReady = creds.hasAppleDevCreds
+        let githubReady = creds.hasGithub
+        let done = [xcodeAcknowledged, macPaired, appleReady, githubReady].filter { $0 }.count
+        let promptShown = UserDefaults.standard.bool(forKey: "firstBuild.prompt.shown")
+        if done == 0 && !promptShown {
+            showFirstBuildPrompt = true
+        } else {
+            showDescribe = true
         }
     }
 
@@ -286,7 +319,7 @@ struct HomeView: View {
                     .italic()
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 PrimaryButton(title: "Start a new build", systemImage: "wand.and.stars", style: .filled) {
-                    showDescribe = true
+                    startBuildOrPromptSetup()
                 }
             }
             .padding(20)

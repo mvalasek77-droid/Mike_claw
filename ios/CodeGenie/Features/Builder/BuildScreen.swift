@@ -27,6 +27,8 @@ struct BuildScreen: View {
     @State private var startedAt: Date = .now
     @State private var showAppleDevSetup: Bool = false
     @State private var showReleaseExplainer: Bool = false
+    @State private var showGitHubSetup: Bool = false
+    @State private var githubSyncing: Bool = false
     @State private var shipBanner: String?
     @State private var showSnapshots: Bool = false
     @State private var showSnapshotSettingsSheet: Bool = false
@@ -96,6 +98,11 @@ struct BuildScreen: View {
         }
         .sheet(isPresented: $showAppleDevSetup) {
             AppleDevWalkthroughView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showGitHubSetup) {
+            GitHubSetupView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -383,6 +390,14 @@ struct BuildScreen: View {
                         PrimaryButton(title: "Submit to App Store", systemImage: "paperplane.fill", style: .glass) {
                             Task { await submitToAppStore() }
                         }
+                        PrimaryButton(
+                            title: githubSyncing ? "Pushing to GitHub..." : "Back up to GitHub",
+                            systemImage: "chevron.left.forwardslash.chevron.right",
+                            style: .glass
+                        ) {
+                            Task { await backupToGitHub() }
+                        }
+                        .disabled(githubSyncing)
                         if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
                             ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
                                 HStack(spacing: 8) {
@@ -629,6 +644,55 @@ struct BuildScreen: View {
         perfectionAutostarted = true
         shipBanner = "Perfection Mode is running automatically."
         Task { await runPerfection(jobID: jobID) }
+    }
+
+    /// Wired to the "Back up to GitHub" CTA in the success overlay.
+    /// Pushes the finished workspace to the user's configured GitHub
+    /// repo on a fresh branch. If no GitHub credentials are set yet,
+    /// opens the walkthrough first — same hand-holding policy as
+    /// `submitToAppStore`.
+    private func backupToGitHub() async {
+        let creds = Credentials.shared
+        guard creds.hasGithub else {
+            showGitHubSetup = true
+            Haptics.warning()
+            return
+        }
+        let repoSlug = creds.githubDefaultRepo.isEmpty
+            ? "\(creds.githubUsername)/\(slugify(initialJob.description.title))"
+            : creds.githubDefaultRepo
+        guard let jobID = swarm.jobID else {
+            shipBanner = "No active job to back up."
+            Haptics.error()
+            return
+        }
+        githubSyncing = true
+        defer { githubSyncing = false }
+        let config = GitHubSyncConfig(
+            repoURL: "https://github.com/\(repoSlug).git",
+            branch: "codegenie/\(initialJob.description.title.lowercased().replacingOccurrences(of: " ", with: "-"))",
+            commitMessage: "CodeGenie build: \(initialJob.description.title)",
+            token: creds.githubPAT,
+            openPR: false
+        )
+        do {
+            let result = try await swarm.syncGitHub(jobID: jobID, config: config)
+            shipBanner = result.ok
+                ? "Pushed to \(result.remote) on \(result.branch)"
+                : "GitHub push failed."
+            Haptics.success()
+        } catch {
+            shipBanner = "GitHub push failed: \(error)"
+            Haptics.error()
+        }
+    }
+
+    /// Lowercases + replaces spaces/punctuation with hyphens so we
+    /// produce a repo name that GitHub accepts.
+    private func slugify(_ s: String) -> String {
+        let allowed = CharacterSet.alphanumerics.union(.init(charactersIn: "-_"))
+        let scalars = s.lowercased().replacingOccurrences(of: " ", with: "-").unicodeScalars
+        return String(String.UnicodeScalarView(scalars.map { allowed.contains($0) ? $0 : Unicode.Scalar("-") }))
     }
 
     private func saveCheckpoint(jobID: String) async {
