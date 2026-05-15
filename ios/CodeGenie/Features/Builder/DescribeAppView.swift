@@ -3,10 +3,10 @@ import SwiftUI
 struct DescribeAppView: View {
     var onSubmit: (AppDescription) -> Void
 
-    @State private var title: String = ""
-    @State private var prompt: String = ""
-    @State private var category: AppDescription.Category = .productivity
-    @State private var style: AppDescription.Style = .liquidGlass
+    @State private var title: String
+    @State private var prompt: String
+    @State private var category: AppDescription.Category
+    @State private var style: AppDescription.Style
     @FocusState private var focused: Field?
 
     private enum Field { case title, prompt }
@@ -18,6 +18,14 @@ struct DescribeAppView: View {
         "Read-it-later for podcasts with chapter summaries",
         "Liquid-glass weather widget collection, no ads"
     ]
+
+    init(initial: AppDescription? = nil, onSubmit: @escaping (AppDescription) -> Void) {
+        self.onSubmit = onSubmit
+        _title = State(initialValue: initial?.title ?? "")
+        _prompt = State(initialValue: initial?.prompt ?? "")
+        _category = State(initialValue: initial?.category ?? .productivity)
+        _style = State(initialValue: initial?.style ?? .liquidGlass)
+    }
 
     var body: some View {
         ZStack {

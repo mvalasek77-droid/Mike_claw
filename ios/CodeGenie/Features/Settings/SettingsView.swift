@@ -199,12 +199,12 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(userMode.isPower ? "Showing all controls" : "Simple mode")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text(userMode.isPower
                              ? "Cost cap, per-agent routing, custom agents, Apple Developer setup, Pair Mac, Admin."
                              : "Just build apps. The advanced surface is one tap away when you want it.")
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

@@ -15,6 +15,15 @@ struct SampleApp: Identifiable, Hashable, Codable {
     let demoPlayable: Bool
     let estimatedSeconds: Int
 
+    var description: AppDescription {
+        AppDescription(
+            title: title,
+            prompt: prompt,
+            category: .utility,
+            style: .liquidGlass
+        )
+    }
+
     enum CodingKeys: String, CodingKey {
         case id
         case title
