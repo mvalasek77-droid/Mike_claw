@@ -2,17 +2,24 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var session: AppSession
+    @StateObject private var creds = Credentials.shared
     @State private var showXcodeGuide = false
     @State private var showDescribe = false
     @State private var showSettings = false
     @State private var showTutorial = false
     @State private var showGame = false
+    @State private var showXcodeReadiness = false
+    @State private var showPairMac = false
+    @State private var showAppleDev = false
+    @State private var showGitHub = false
+    @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
 
     var body: some View {
         ScrollView {
             VStack(spacing: 22) {
                 hero
                 primaryAction
+                shipReadinessCard
                 quickGrid
                 if !session.recentJobs.isEmpty { recentJobs }
                 xcodeShortcut
@@ -71,6 +78,144 @@ struct HomeView: View {
             AppStoreConnectGuideView(job: job)
                 .environmentObject(session)
         }
+        .sheet(isPresented: $showXcodeReadiness, onDismiss: {
+            UserDefaults.standard.set(true, forKey: "xcode.readiness.acknowledged")
+            xcodeAcknowledged = true
+        }) {
+            XcodeReadinessView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showPairMac) {
+            PairMacView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAppleDev) {
+            AppleDevWalkthroughView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showGitHub) {
+            GitHubSetupView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+    }
+
+    // MARK: Ship readiness
+
+    /// Live progress card showing how many of the four ship gates are
+    /// configured. Auto-hides once everything is set up.
+    @ViewBuilder
+    private var shipReadinessCard: some View {
+        let macPaired = !creds.backendToken.isEmpty
+        let appleReady = creds.hasAppleDevCreds
+        let githubReady = creds.hasGithub
+        let xcodeReady = xcodeAcknowledged
+        let done = [xcodeReady, macPaired, appleReady, githubReady].filter { $0 }.count
+        if done < 4 {
+            GlassSurface(tier: .raised, corner: 22) {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "shippingbox.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(LiquidGlass.warning)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(LiquidGlass.warning.opacity(0.18)))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Set up shipping")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                            Text("\(done) of 4 done — one-time setup, in plain English.")
+                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        Spacer()
+                    }
+                    progressDots(done: done, total: 4)
+                    VStack(spacing: 6) {
+                        shipRow(
+                            icon: "hammer.fill",
+                            tint: LiquidGlass.accentSecondary,
+                            title: "Xcode",
+                            subtitle: xcodeReady ? "You're caught up." : "What it is, how to install.",
+                            done: xcodeReady
+                        ) { showXcodeReadiness = true }
+
+                        shipRow(
+                            icon: "macbook.and.iphone",
+                            tint: LiquidGlass.accent,
+                            title: "Pair your Mac",
+                            subtitle: macPaired ? "Connected." : "Link this phone to a Mac running Xcode.",
+                            done: macPaired
+                        ) { showPairMac = true }
+
+                        shipRow(
+                            icon: "applelogo",
+                            tint: LiquidGlass.success,
+                            title: "Apple Developer",
+                            subtitle: appleReady ? "Connected — TestFlight enabled." : "The $99/yr program. We walk you through it.",
+                            done: appleReady
+                        ) { showAppleDev = true }
+
+                        shipRow(
+                            icon: "chevron.left.forwardslash.chevron.right",
+                            tint: LiquidGlass.accentSecondary,
+                            title: "GitHub (optional)",
+                            subtitle: githubReady ? "Connected as @\(creds.githubUsername)" : "Back up your code. We'll help you sign up.",
+                            done: githubReady
+                        ) { showGitHub = true }
+                    }
+                }
+                .padding(18)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Ship checklist — \(done) of 4 done")
+        }
+    }
+
+    private func progressDots(done: Int, total: Int) -> some View {
+        HStack(spacing: 6) {
+            ForEach(0..<total, id: \.self) { i in
+                Capsule()
+                    .fill(i < done ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(Color.white.opacity(0.12)))
+                    .frame(height: 4)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func shipRow(icon: String, tint: Color, title: String, subtitle: String, done: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: { Haptics.selection(); action() }) {
+            HStack(spacing: 12) {
+                Image(systemName: done ? "checkmark.circle.fill" : icon)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(done ? LiquidGlass.success : tint)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill((done ? LiquidGlass.success : tint).opacity(0.18)))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(done ? 0.7 : 1))
+                        .strikethrough(done, color: .white.opacity(0.35))
+                    Text(subtitle)
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.45))
+            }
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(done ? "\(title) — done" : title)
+        .accessibilityHint(done ? "" : subtitle)
     }
 
     // MARK: Sections

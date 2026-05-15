@@ -6,6 +6,7 @@ import SwiftUI
 struct BuildScreen: View {
     @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     let initialJob: BuildJob
     /// When non-nil, BuildScreen attaches to an existing backend job
@@ -21,6 +22,7 @@ struct BuildScreen: View {
     @State private var showDiffReview: Bool = false
     @State private var startedAt: Date = .now
     @State private var showAppleDevSetup: Bool = false
+    @State private var showReleaseExplainer: Bool = false
     @State private var shipBanner: String?
     @State private var showSnapshots: Bool = false
     @State private var showSnapshotSettingsSheet: Bool = false
@@ -81,9 +83,31 @@ struct BuildScreen: View {
             .presentationBackground(.ultraThinMaterial)
         }
         .sheet(isPresented: $showAppleDevSetup) {
-            AppleDevSetupView()
+            AppleDevWalkthroughView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showReleaseExplainer) {
+            ReleaseStageExplainer(
+                onChoose: { choice in
+                    UserDefaults.standard.set(true, forKey: "release.explainer.seen")
+                    showReleaseExplainer = false
+                    switch choice {
+                    case .testflight, .appStore:
+                        // Same backend route today — ASC TestFlight is
+                        // the gate either way. The choice text just
+                        // sets the user's intent in the success banner.
+                        Task { await submitToAppStore(skipExplainer: true) }
+                    case .learnMore:
+                        if let url = URL(string: "https://developer.apple.com/distribute/") {
+                            openURL(url)
+                        }
+                    }
+                },
+                onCancel: { showReleaseExplainer = false }
+            )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
         }
         .sheet(isPresented: $showSnapshotSettingsSheet) {
             SnapshotCapSettingsView()
@@ -441,12 +465,24 @@ struct BuildScreen: View {
 
     /// Wired to the "Submit to App Store" CTA in the success overlay.
     /// Runs the orchestrator's `/ship` route on the existing job — no
-    /// rebuild. If Apple Developer creds aren't set, opens the setup
-    /// sheet first so the user can configure them in-place.
-    private func submitToAppStore() async {
+    /// rebuild.
+    ///
+    /// Three preconditions, in order:
+    ///   1. Apple Developer credentials must exist. Otherwise we open
+    ///      the walkthrough — a first-timer doesn't know what's missing.
+    ///   2. The TestFlight-vs-App-Store explainer runs once per device
+    ///      so the user knows which door they're walking through.
+    ///   3. Then `/ship` fires.
+    private func submitToAppStore(skipExplainer: Bool = false) async {
         guard Credentials.shared.hasAppleDevCreds else {
             showAppleDevSetup = true
             Haptics.warning()
+            return
+        }
+        let seenExplainer = UserDefaults.standard.bool(forKey: "release.explainer.seen")
+        if !seenExplainer && !skipExplainer {
+            showReleaseExplainer = true
+            Haptics.selection()
             return
         }
         guard let jobID = swarm.jobID,
