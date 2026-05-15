@@ -50,10 +50,10 @@ struct ArchivedJobsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Archived workspaces")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Job workspaces that were rotated out to a zip. Re-extract to bring one back online.")
                 .font(.system(size: 12, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -61,10 +61,10 @@ struct ArchivedJobsView: View {
     private var loadingCard: some View {
         GlassSurface(tier: .raised) {
             HStack(spacing: 12) {
-                ProgressView().tint(.white)
+                ProgressView().tint(LiquidGlass.primaryText)
                 Text("Loading archives…")
                     .font(.system(size: 13, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
             }
             .padding(20)
             .frame(maxWidth: .infinity)
@@ -75,7 +75,7 @@ struct ArchivedJobsView: View {
         GlassCard(title: "Empty archive", icon: "archivebox", tint: LiquidGlass.success) {
             Text("Nothing rotated out yet. Use Settings → Admin → Run archive to free disk.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
         }
     }
 
@@ -83,7 +83,7 @@ struct ArchivedJobsView: View {
         GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: .red) {
             Text(message)
                 .font(.system(size: 13, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
         }
     }
 
@@ -126,22 +126,22 @@ private struct ArchiveRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(archive.jobID)
                         .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Text("\(formatBytes(archive.sizeBytes)) · \(archive.mtime, format: .relative(presentation: .named))")
                         .font(.system(size: 11, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                 }
                 Spacer()
                 if isExtracting {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(LiquidGlass.primaryText)
                 } else {
                     Button("Re-extract", action: onExtract)
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(.white.opacity(0.10), in: Capsule())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
             }
             .padding(12)

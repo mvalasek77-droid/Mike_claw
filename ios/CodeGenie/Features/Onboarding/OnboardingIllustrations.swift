@@ -7,6 +7,7 @@ struct OnboardingIllustrationView: View {
     let kind: OnboardingSlide.Illustration
     @State private var bob: Bool = false
     @State private var spin: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -21,8 +22,9 @@ struct OnboardingIllustrationView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) { bob = true }
-            withAnimation(.linear(duration: 14).repeatForever(autoreverses: false)) { spin = true }
+            guard !reduceMotion else { return }
+            Motion.run(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) { bob = true }
+            Motion.run(.linear(duration: 14).repeatForever(autoreverses: false)) { spin = true }
         }
         .accessibilityHidden(true)
     }
@@ -95,7 +97,7 @@ struct OnboardingIllustrationView: View {
                 .frame(width: 160, height: 160)
                 .overlay(Image(systemName: "wand.and.stars")
                     .font(.system(size: 70, weight: .bold))
-                    .foregroundStyle(.white))
+                    .foregroundStyle(LiquidGlass.primaryText))
                 .shadow(color: .black.opacity(0.4), radius: 20, y: 12)
                 .rotationEffect(.degrees(bob ? -3 : 3))
             cartoonShape(systemName: "paintbrush.pointed.fill", size: 48, color: .pink, offsetX: -70, offsetY: -70, rotation: -25)

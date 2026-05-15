@@ -46,10 +46,10 @@ struct DescribeAppView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Describe your app").font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Be specific — like you're briefing a designer. CodeGenie scaffolds a full Xcode project from this.")
                 .font(.system(size: 14, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -57,11 +57,11 @@ struct DescribeAppView: View {
     private var titleField: some View {
         GlassSurface(tier: .flat, corner: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("App name").font(.caption).foregroundStyle(.white.opacity(0.65)).textCase(.uppercase)
+                Text("App name").font(.caption).foregroundStyle(LiquidGlass.primaryText.opacity(0.65)).textCase(.uppercase)
                 TextField("e.g. TideRider", text: $title)
                     .textFieldStyle(.plain)
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .submitLabel(.next)
                     .focused($focused, equals: .title)
                     .onSubmit { focused = .prompt }
@@ -74,18 +74,18 @@ struct DescribeAppView: View {
     private var promptField: some View {
         GlassSurface(tier: .raised, corner: 18) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("What should it do?").font(.caption).foregroundStyle(.white.opacity(0.65)).textCase(.uppercase)
+                Text("What should it do?").font(.caption).foregroundStyle(LiquidGlass.primaryText.opacity(0.65)).textCase(.uppercase)
                 TextEditor(text: $prompt)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 140)
                     .font(.system(size: 16, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .focused($focused, equals: .prompt)
                     .accessibilityLabel("App description")
                     .overlay(alignment: .topLeading) {
                         if prompt.isEmpty {
                             Text("Describe screens, features, the vibe…")
-                                .foregroundStyle(.white.opacity(0.45))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.45))
                                 .font(.system(size: 16, weight: .regular, design: .rounded))
                                 .padding(.top, 8).padding(.leading, 5)
                                 .allowsHitTesting(false)
@@ -107,7 +107,7 @@ struct DescribeAppView: View {
                     } label: {
                         Text(s)
                             .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                             .padding(.horizontal, 12).padding(.vertical, 8)
                             .background(.white.opacity(0.08), in: Capsule())
                             .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
@@ -121,7 +121,7 @@ struct DescribeAppView: View {
 
     private var categoryPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Category").font(.caption).foregroundStyle(.white.opacity(0.65)).textCase(.uppercase)
+            Text("Category").font(.caption).foregroundStyle(LiquidGlass.primaryText.opacity(0.65)).textCase(.uppercase)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(AppDescription.Category.allCases) { cat in
@@ -136,7 +136,7 @@ struct DescribeAppView: View {
 
     private var stylePicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Visual style").font(.caption).foregroundStyle(.white.opacity(0.65)).textCase(.uppercase)
+            Text("Visual style").font(.caption).foregroundStyle(LiquidGlass.primaryText.opacity(0.65)).textCase(.uppercase)
             HStack(spacing: 8) {
                 ForEach(AppDescription.Style.allCases) { s in
                     Chip(label: s.label, icon: nil, selected: s == style) {
@@ -163,7 +163,7 @@ struct DescribeAppView: View {
             .opacity(prompt.trimmingCharacters(in: .whitespacesAndNewlines).count < 12 ? 0.5 : 1)
             Text("CodeGenie will generate the Xcode project, ask follow-ups, then run a build.")
                 .font(.system(size: 12, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                 .multilineTextAlignment(.center)
         }
     }
@@ -187,7 +187,7 @@ private struct Chip: View {
                 Text(label).font(.system(size: 13, weight: .semibold, design: .rounded))
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
-            .foregroundStyle(selected ? .white : .white.opacity(0.7))
+            .foregroundStyle(selected ? .white : LiquidGlass.primaryText.opacity(0.7))
             .background(
                 selected
                 ? AnyShapeStyle(LiquidGlass.auroraGradient)

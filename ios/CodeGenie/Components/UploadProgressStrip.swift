@@ -19,12 +19,12 @@ struct UploadProgressStrip: View {
                         HStack(spacing: 6) {
                             Text(label)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                             phasePill
                         }
                         Text(tracker.latestLine ?? "Waiting for first line…")
                             .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.75))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                             .lineLimit(2)
                             .truncationMode(.tail)
                             .accessibilityLabel(tracker.latestLine ?? "")
@@ -32,7 +32,7 @@ struct UploadProgressStrip: View {
                     Spacer()
                     Text("\(tracker.lineCount)")
                         .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                         .accessibilityLabel("\(tracker.lineCount) lines streamed")
                 }
                 .padding(14)

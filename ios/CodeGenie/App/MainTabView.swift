@@ -56,7 +56,7 @@ private struct TabBar: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .foregroundStyle(selected == t ? .white : .white.opacity(0.55))
+            .foregroundStyle(selected == t ? .white : LiquidGlass.primaryText.opacity(0.55))
             .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.vertical, 6)
             .contentShape(Rectangle())

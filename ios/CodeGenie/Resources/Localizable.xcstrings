@@ -1,163 +1,1119 @@
 {
   "sourceLanguage" : "en",
-  "version" : "1.0",
   "strings" : {
-    "CodeGenie" : {
-      "comment" : "App name. Do not translate.",
-      "shouldTranslate" : false,
-      "extractionState" : "manual"
+    ".p8 contents" : {
+
     },
-    "Ship from your pocket." : {
-      "comment" : "Splash subtitle.",
+    "\"A daily habit tracker with streaks and a calm look.\"" : {
+
+    },
+    "(%@)" : {
+
+    },
+    "{" : {
+
+    },
+    "}" : {
+
+    },
+    "%@" : {
+
+    },
+    "%@ · %@" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ship from your pocket." } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Lanza desde tu bolsillo." } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Publiez depuis votre poche." } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Veröffentliche aus deiner Hosentasche." } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "ポケットからリリース。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "随身上架。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
       }
+    },
+    "%@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ changes proposed" : {
+
+    },
+    "%@ complete" : {
+
+    },
+    "%@ day%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ day%2$@"
+          }
+        }
+      }
+    },
+    "%@ files · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ files · %2$@"
+          }
+        }
+      }
+    },
+    "%@ files proposed by the swarm. Accept the ones you want; CodeGenie applies and re-builds." : {
+
+    },
+    "%@ MiB" : {
+
+    },
+    "%@ probes - %@ - %@/100" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ probes - %2$@ - %3$@/100"
+          }
+        }
+      }
+    },
+    "%@, %@ percent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@ percent"
+          }
+        }
+      }
+    },
+    "%@%%" : {
+
+    },
+    "%@ms" : {
+
+    },
+    "+%@ −%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "+%1$@ −%2$@"
+          }
+        }
+      }
+    },
+    "+%@%%" : {
+
+    },
+    "≈ %@ builds for $10. Based on a typical 120k input + 40k output tokens per app." : {
+
+    },
+    "A decade of Apple winners distilled into CodeGenie's launch standard." : {
+
+    },
+    "Accept all" : {
+
+    },
+    "Add one to extend what CodeGenie checks at the end of every build." : {
+
+    },
+    "Add your own swarm member. Runs after the standard test layer with the tools you allowlist." : {
+
+    },
+    "Admin" : {
+
+    },
+    "AI can make mistakes. CodeGenie shows you the diff before applying anything, runs SwiftLint + SwiftFormat, and re-builds in the simulator before you ship." : {
+
+    },
+    "Aim at the pairing QR" : {
+
+    },
+    "App name" : {
+
+    },
+    "App of the Year DNA" : {
+
+    },
+    "Apple Developer Program" : {
+
+    },
+    "Apps" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Apps"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Apps"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Apps"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "アプリ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "应用"
+          }
+        }
+      }
+    },
+    "Archived workspaces" : {
+
+    },
+    "Archives land at <workspace>/.archives/<job>-<ts>.zip on the backend." : {
+
+    },
+    "Automation audit" : {
+
+    },
+    "Backend stops cleanly when rolling USD spend crosses the cap." : {
+
+    },
+    "Be specific — like you're briefing a designer. CodeGenie scaffolds a full Xcode project from this." : {
+
+    },
+    "Best for: %@" : {
+
+    },
+    "BitDrop" : {
+      "comment" : "Game name. Do not translate.",
+      "extractionState" : "manual",
+      "shouldTranslate" : false
+    },
+    "BOOST" : {
+
+    },
+    "Browse and re-extract" : {
+
+    },
+    "Build" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Build"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Compilar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Compiler"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "ビルド"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "构建"
+          }
+        }
+      }
+    },
+    "Build apps from your phone." : {
+
+    },
+    "Build green" : {
+
     },
     "Build your next app\nfrom your phone." : {
       "comment" : "Home hero title.",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Build your next app\nfrom your phone." } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Crea tu próxima app\ndesde tu teléfono." } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Créez votre prochaine app\ndepuis votre téléphone." } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Baue deine nächste App\nvon deinem Handy aus." } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "スマホから\n次のアプリを作ろう。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "用你的手机\n构建下一款应用。" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Baue deine nächste App\nvon deinem Handy aus."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build your next app\nfrom your phone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Crea tu próxima app\ndesde tu teléfono."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Créez votre prochaine app\ndepuis votre téléphone."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "スマホから\n次のアプリを作ろう。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "用你的手机\n构建下一款应用。"
+          }
+        }
       }
     },
-    "Start a new build" : {
-      "comment" : "Home primary CTA.",
+    "Build, quality gates, icon generation, TestFlight upload, and status polling are automated once credentials and an IPA exist. Xcode account setup, Apple sign-in, App Store Connect review fields, screenshots, and final submission still need Mac companion wiring or Apple confirmation." : {
+
+    },
+    "Builds the swarm marked failed. Tap a row to see what it was reasoning about when it broke." : {
+
+    },
+    "Camera access denied" : {
+
+    },
+    "Category" : {
+
+    },
+    "cd ~/code/codegenie/mac_companion\nswift run codegenie-companion" : {
+
+    },
+    "ChatGPT image-1 · ~$0.04 per icon · stripped to App-Store-safe before export" : {
+
+    },
+    "Clear rows of Swift symbols. Every row gives a 2% build-speed boost." : {
+
+    },
+    "CodeGenie" : {
+      "comment" : "App name. Do not translate.",
+      "extractionState" : "manual",
+      "shouldTranslate" : false
+    },
+    "CodeGenie signs builds and uploads to TestFlight using these. Stored in the iOS Keychain — never sent to our servers." : {
+
+    },
+    "CodeGenie will generate the Xcode project, ask follow-ups, then run a build." : {
+
+    },
+    "CodeGenie wires Claude, GPT, and Xcode together so you can ship to the App Store from anywhere." : {
+
+    },
+    "CodeGenie's Mac companion handles the OAuth handshake. We never see your password." : {
+
+    },
+    "Comma-separated. Leave empty for full access. Available: read_file, list_dir, grep, swiftlint, shell, apple_docs, recall_memory." : {
+
+    },
+    "Connected to your Mac" : {
+      "comment" : "Pair Mac status — happy path.",
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start a new build" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Iniciar nueva compilación" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Lancer une compilation" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Neuen Build starten" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "新しいビルドを開始" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "开始新构建" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mit deinem Mac verbunden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected to your Mac"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Conectado a tu Mac"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Connecté à votre Mac"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Macに接続済み"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "已连接到你的 Mac"
+          }
+        }
       }
+    },
+    "Cost cap hit" : {
+
+    },
+    "Costs & keys" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kosten & Schlüssel"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Costs & keys"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Costos y claves"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Coûts et clés"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "コスト & キー"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "费用与密钥"
+          }
+        }
+      }
+    },
+    "Current verdict" : {
+
+    },
+    "Custom agents" : {
+
+    },
+    "Decision memory" : {
+
+    },
+    "Default" : {
+
+    },
+    "Default is 256 MiB. Lower it to halt growth sooner; raise it for big projects." : {
+
     },
     "Describe an app" : {
       "comment" : "Home prompt card title.",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Describe an app" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Describe una app" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Décrivez une app" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "App beschreiben" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "アプリを説明する" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "描述一款应用" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "App beschreiben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe an app"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Describe una app"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Décrivez une app"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "アプリを説明する"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "描述一款应用"
+          }
+        }
       }
     },
-    "Watch the tour" : {
-      "comment" : "Home QuickTile + Settings entry.",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Watch the tour" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Ver el tour" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Voir la visite" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Tour ansehen" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "ツアーを見る" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "查看引导" } }
-      }
+    "Describe an idea and CodeGenie will scaffold a real Xcode project for you." : {
+
     },
-    "Xcode steps" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Xcode steps" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Pasos en Xcode" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Étapes Xcode" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Xcode-Schritte" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "Xcode手順" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "Xcode 步骤" } }
-      }
+    "Describe screens, features, the vibe…" : {
+
     },
-    "Costs & keys" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Costs & keys" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Costos y claves" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Coûts et clés" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Kosten & Schlüssel" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "コスト & キー" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "费用与密钥" } }
-      }
+    "Describe your app" : {
+
     },
-    "BitDrop" : {
-      "comment" : "Game name. Do not translate.",
-      "shouldTranslate" : false,
-      "extractionState" : "manual"
+    "Download workspace" : {
+
+    },
+    "Enable camera in Settings → CodeGenie to scan QR pairing codes. You can also paste the URL manually." : {
+
+    },
+    "Every step the YouTube tutorial covers — annotated, automated where we can, manual where you want control." : {
+
+    },
+    "Fallback path. Generate at appleid.apple.com → Sign-In and Security → App-Specific Passwords." : {
+
+    },
+    "Fastest path — one tap, one scan." : {
+
+    },
+    "Find this at developer.apple.com → Membership. 10-character alphanumeric, e.g. ABCD123456." : {
+
+    },
+    "for all 8 agents combined" : {
+
+    },
+    "Fork" : {
+
+    },
+    "forked · %@" : {
+
+    },
+    "Game over" : {
+
+    },
+    "Generate, refine, and export your App Store icon. CodeGenie strips alpha + exports every required size for you." : {
+
+    },
+    "Get key" : {
+
+    },
+    "Halt the build over $X" : {
+
     },
     "Home" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Home" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Inicio" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Accueil" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Start" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "ホーム" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "首页" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Start"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Inicio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Accueil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "ホーム"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "首页"
+          }
+        }
       }
     },
-    "Build" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Build" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Compilar" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Compiler" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Build" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "ビルド" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "构建" } }
-      }
+    "Hosted runner" : {
+
     },
-    "Play" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Play" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Jugar" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Jouer" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Spielen" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "プレイ" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "游戏" } }
-      }
+    "Icon Forge" : {
+
     },
-    "Apps" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Apps" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Apps" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Apps" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Apps" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "アプリ" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "应用" } }
-      }
+    "If you already pay for Claude Pro/Max or ChatGPT Plus/Pro, route CodeGenie through that session — no per-token charges." : {
+
     },
-    "Settings" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Ajustes" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Réglages" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Einstellungen" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "設定" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "设置" } }
-      }
+    "Issuer ID" : {
+
+    },
+    "It prints a `codegenie://pair?…` URL — paste that here, or scan the QR code shown by the menu bar app once we ship it." : {
+
+    },
+    "Job workspaces that were rotated out to a zip. Re-extract to bring one back online." : {
+
+    },
+    "Key ID" : {
+
+    },
+    "Last run findings" : {
+
+    },
+    "Lift cap × 2" : {
+
+    },
+    "LINES" : {
+
+    },
+    "Loading archives…" : {
+
+    },
+    "Loading decisions…" : {
+
+    },
+    "Loading snapshots…" : {
+
+    },
+    "Loading…" : {
+
+    },
+    "Looking for `_codegenie-companion._tcp` …" : {
+
+    },
+    "Maintenance + storage controls. Active jobs are always skipped." : {
+
+    },
+    "My Apps" : {
+
+    },
+    "New agent" : {
+
+    },
+    "NEXT" : {
+
+    },
+    "No apps yet" : {
+
+    },
+    "No failed builds yet — every run has finished green or been cancelled." : {
+
+    },
+    "No reasoning decisions were logged for this run." : {
+
+    },
+    "No remembered decision matched this query." : {
+
+    },
+    "Notable changes between versions." : {
+
+    },
+    "Nothing rotated out yet. Use Settings → Admin → Run archive to free disk." : {
+
+    },
+    "On your Mac, run:" : {
+
+    },
+    "On-device only. Nothing leaves your phone." : {
+
+    },
+    "Override the backend default" : {
+
     },
     "Pair your Mac" : {
       "comment" : "Settings nav tile + Pair Mac sheet title.",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pair your Mac" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Vincula tu Mac" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Associer votre Mac" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Mac koppeln" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "Macをペアリング" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "配对你的 Mac" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mac koppeln"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pair your Mac"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Vincula tu Mac"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Associer votre Mac"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Macをペアリング"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "配对你的 Mac"
+          }
+        }
       }
     },
-    "Connected to your Mac" : {
-      "comment" : "Pair Mac status — happy path.",
+    "Password" : {
+
+    },
+    "Paste the pairing URL from the Mac terminal:" : {
+
+    },
+    "Paused" : {
+
+    },
+    "Pay-per-token. Set your key once — it stays in the iOS Keychain." : {
+
+    },
+    "per build" : {
+
+    },
+    "Per-build ceiling for snapshot files saved to the workspace. Stages above the cap keep their label but their bytes aren't persisted." : {
+
+    },
+    "Perfection Mode" : {
+
+    },
+    "Pick a point in time. The workspace transcript rolls back; the orchestrator can be resumed from there." : {
+
+    },
+    "Pick a provider, see costs, ship." : {
+
+    },
+    "Play" : {
+      "extractionState" : "stale",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connected to your Mac" } },
-        "es" : { "stringUnit" : { "state" : "new",        "value" : "Conectado a tu Mac" } },
-        "fr" : { "stringUnit" : { "state" : "new",        "value" : "Connecté à votre Mac" } },
-        "de" : { "stringUnit" : { "state" : "new",        "value" : "Mit deinem Mac verbunden" } },
-        "ja" : { "stringUnit" : { "state" : "new",        "value" : "Macに接続済み" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "new",   "value" : "已连接到你的 Mac" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Spielen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Jugar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Jouer"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "プレイ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "游戏"
+          }
+        }
       }
+    },
+    "Print or screenshot from the Mac terminal output." : {
+
+    },
+    "Project → Simulator → Device → App Store" : {
+
+    },
+    "Ready to test in the cloud simulator. Run Perfection Mode before App Store handoff." : {
+
+    },
+    "Reasoning ledger across builds" : {
+
+    },
+    "Recent build failures" : {
+
+    },
+    "Recent builds" : {
+
+    },
+    "Recommended path. Generate at appstoreconnect.apple.com → Users and Access → Keys." : {
+
+    },
+    "Reject all" : {
+
+    },
+    "Restore a snapshot" : {
+
+    },
+    "Retry" : {
+
+    },
+    "Review and apply selectively" : {
+
+    },
+    "Review changes" : {
+
+    },
+    "Route per agent" : {
+
+    },
+    "Run the CodeGenie Companion on your Mac, then pair it once. The phone keeps reaching back into Xcode + Safari from there." : {
+
+    },
+    "Scan QR code" : {
+
+    },
+    "SCORE" : {
+
+    },
+    "Score: %@" : {
+
+    },
+    "Searching memory..." : {
+
+    },
+    "Send each agent to the model that does its job best. The swarm uses the preferred model anywhere you don't override." : {
+
+    },
+    "Settings" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Einstellungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ajustes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Réglages"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "設定"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "设置"
+          }
+        }
+      }
+    },
+    "Ship from your pocket." : {
+      "comment" : "Splash subtitle.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Veröffentliche aus deiner Hosentasche."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ship from your pocket."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Lanza desde tu bolsillo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Publiez depuis votre poche."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "ポケットからリリース。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "随身上架。"
+          }
+        }
+      }
+    },
+    "Sign in" : {
+
+    },
+    "Snapshot storage cap" : {
+
+    },
+    "Snapshot too big — %@" : {
+
+    },
+    "Spend so far" : {
+
+    },
+    "Stack falling Swift symbols (`{`, `}`, `→`, `•`) to fill rows. Cleared rows earn points and (during a real build) a 2% build-speed boost." : {
+
+    },
+    "Stack Swift symbols. Clear rows. Earn build boosts." : {
+
+    },
+    "Start a new build" : {
+      "comment" : "Home primary CTA.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Neuen Build starten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a new build"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Iniciar nueva compilación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Lancer une compilation"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "新しいビルドを開始"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "开始新构建"
+          }
+        }
+      }
+    },
+    "Step %@" : {
+
+    },
+    "Step %@ of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Step %1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "Submit %@" : {
+
+    },
+    "Swarm reasoning ledger across every build." : {
+
+    },
+    "Tap the bookmark in the build header to save your first checkpoint, or wait for the orchestrator to land its automatic ones." : {
+
+    },
+    "Tap to add a polished starting point. You can tweak the name + prompt before saving." : {
+
+    },
+    "Tap to pair" : {
+
+    },
+    "The launch formula" : {
+
+    },
+    "The launch pipeline, separated into real automation, Mac-assisted automation, and Apple-required confirmation." : {
+
+    },
+    "This agent hasn't joined a build yet. Findings will appear here after the next build it participates in." : {
+
+    },
+    "This agent ran but didn't emit any thoughts. The model probably ran tool calls without commentary." : {
+
+    },
+    "Track build outcomes" : {
+
+    },
+    "Visual style" : {
+
+    },
+    "Waiting for first agent to finish…" : {
+
+    },
+    "Watch the tour" : {
+      "comment" : "Home QuickTile + Settings entry.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tour ansehen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Watch the tour"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ver el tour"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Voir la visite"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "ツアーを見る"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "查看引导"
+          }
+        }
+      }
+    },
+    "What should it do?" : {
+
+    },
+    "What's new" : {
+
+    },
+    "Xcode in your pocket" : {
+
+    },
+    "Xcode instructions" : {
+
+    },
+    "Xcode steps" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Xcode-Schritte"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode steps"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pasos en Xcode"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Étapes Xcode"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Xcode手順"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Xcode 步骤"
+          }
+        }
+      }
+    },
+    "Zero setup. We absorb the API cost on a quota." : {
+
+    },
+    "Zip job workspaces whose last activity was more than N days ago, then remove the originals from disk." : {
+
     }
-  }
+  },
+  "version" : "1.0"
 }

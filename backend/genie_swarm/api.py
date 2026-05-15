@@ -21,9 +21,19 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .llm import AnthropicClient, LLMClient
-from .models import AppSpec, BuildJob, BuildRequest, JobState, ShipRequest
+from .github_sync import GitHubSyncError, sync_workspace_to_github
+from .models import (
+    AppSpec,
+    BuildJob,
+    BuildRequest,
+    GitHubSyncRequest,
+    JobState,
+    ReleaseReadinessRequest,
+    ShipRequest,
+)
 from .orchestrator import ShipConfig, SwarmConfig, SwarmOrchestrator
 from .perfection import run_perfection_matrix
+from .release_readiness import run_release_readiness
 from .session import Session
 from .streaming import EventBus
 
@@ -217,6 +227,54 @@ async def ship_now(job_id: str, req: ShipRequest):
     orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=state.config)
     state.tasks[job_id] = asyncio.create_task(orch.ship_only(job, _to_ship_config(req)))
     return {"ok": True, "job_id": job_id}
+
+
+@router.post("/{job_id}/release-readiness")
+async def release_readiness(job_id: str, req: ReleaseReadinessRequest | None = None):
+    """Audit launch automation before TestFlight/App Store handoff.
+
+    This gives iOS one deterministic answer for Xcode archive state,
+    Apple credentials, privacy/terms artifacts, screenshots, metadata,
+    GitHub readiness, and the Apple-required final confirmation.
+    """
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    result = run_release_readiness(
+        spec=job.spec,
+        workspace=state.config.workspace_root / job_id,
+        ship=req.ship if req else None,
+        github=req.github if req else None,
+    )
+
+    from .memory import Memory
+    Memory(state.config.workspace_root).note_decision(
+        job_id,
+        "release readiness",
+        f"{result['release_gate']} at {result['score']}/100: {result['summary']}",
+    )
+    return result
+
+
+@router.post("/{job_id}/github/sync")
+async def github_sync(job_id: str, req: GitHubSyncRequest):
+    """Push the generated workspace to the user's GitHub repository."""
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    workspace = state.config.workspace_root / job_id
+    try:
+        result = await sync_workspace_to_github(workspace, req)
+    except GitHubSyncError as exc:
+        raise HTTPException(400, str(exc))
+
+    events = await state.bus.stream_for(job_id)
+    await events.emit(
+        "log",
+        message=f"Synced workspace to GitHub branch {result['branch']}",
+        remote=result["remote"],
+    )
+    return result
 
 
 @router.post("/{job_id}/restore")

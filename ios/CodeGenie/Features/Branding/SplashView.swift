@@ -20,12 +20,12 @@ struct SplashView: View {
                     .blur(radius: revealed ? 0 : 6)
                 Text("CodeGenie")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .opacity(revealed ? 1 : 0)
                     .offset(y: revealed ? 0 : 8)
                 Text("Ship from your pocket.")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     .opacity(revealed ? 1 : 0)
                     .offset(y: revealed ? 0 : 8)
             }
@@ -42,9 +42,9 @@ struct SplashView: View {
                 try? await Task.sleep(nanoseconds: 800_000_000)
                 fading = true
             } else {
-                withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) { revealed = true }
+                Motion.run(.spring(response: 0.7, dampingFraction: 0.85)) { revealed = true }
                 try? await Task.sleep(nanoseconds: 1_200_000_000)
-                withAnimation(.easeIn(duration: 0.45)) { fading = true }
+                Motion.run(.easeIn(duration: 0.45)) { fading = true }
             }
             try? await Task.sleep(nanoseconds: 500_000_000)
             onFinish()

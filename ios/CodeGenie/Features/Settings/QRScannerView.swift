@@ -20,7 +20,7 @@ struct QRScannerView: View {
             Color.black.ignoresSafeArea()
             switch authorization {
             case .checking:
-                ProgressView().tint(.white)
+                ProgressView().tint(LiquidGlass.primaryText)
             case .authorized:
                 CameraPreview(
                     onScan: { code in
@@ -47,7 +47,7 @@ struct QRScannerView: View {
                 Button { onCancel() } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 30))
-                        .foregroundStyle(.white.opacity(0.85), .black.opacity(0.45))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85), .black.opacity(0.45))
                 }
                 .accessibilityLabel("Cancel scan")
                 Spacer()
@@ -72,10 +72,10 @@ struct QRScannerView: View {
             VStack(spacing: 6) {
                 Text("Aim at the pairing QR")
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text("Print or screenshot from the Mac terminal output.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 if let err = lastError {
                     Text(err)
                         .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -93,10 +93,10 @@ struct QRScannerView: View {
                 .foregroundStyle(LiquidGlass.warning)
             Text("Camera access denied")
                 .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Enable camera in Settings → CodeGenie to scan QR pairing codes. You can also paste the URL manually.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
             PrimaryButton(title: "Close", systemImage: "xmark", style: .glass) { onCancel() }

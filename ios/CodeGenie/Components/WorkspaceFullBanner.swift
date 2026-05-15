@@ -21,10 +21,10 @@ struct WorkspaceFullBanner: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Snapshot too big — \(state.label)")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text(detail(for: state))
                             .font(.system(size: 11, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                             .lineLimit(2)
                     }
                     Spacer()
@@ -32,7 +32,7 @@ struct WorkspaceFullBanner: View {
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(.white.opacity(0.10), in: Capsule())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 .padding(12)
             }

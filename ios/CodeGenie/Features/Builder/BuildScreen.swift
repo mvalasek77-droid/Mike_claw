@@ -139,14 +139,14 @@ struct BuildScreen: View {
                     .font(.system(size: 16, weight: .semibold))
                     .padding(10)
                     .background(.white.opacity(0.08), in: Circle())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
             .accessibilityLabel("Minimize build")
             Spacer()
             VStack(spacing: 4) {
                 Text(initialJob.description.title)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 if useRemote { PauseStatusBadge(swarm: swarm) }
@@ -158,7 +158,7 @@ struct BuildScreen: View {
                         .font(.system(size: 14, weight: .semibold))
                         .padding(10)
                         .background(.white.opacity(0.08), in: Circle())
-                        .foregroundStyle(swarm.isPaused ? LiquidGlass.success : .white)
+                        .foregroundStyle(swarm.isPaused ? LiquidGlass.success : LiquidGlass.primaryText)
                 }
                 .accessibilityLabel(swarm.isPaused ? "Continue build" : "Pause build")
                 Button { showSnapshots = true } label: {
@@ -166,7 +166,7 @@ struct BuildScreen: View {
                         .font(.system(size: 14, weight: .semibold))
                         .padding(10)
                         .background(.white.opacity(0.08), in: Circle())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 .accessibilityLabel("Open snapshots")
                 Button { Task { await saveCheckpoint(jobID: jobID) } } label: {
@@ -174,7 +174,7 @@ struct BuildScreen: View {
                         .font(.system(size: 14, weight: .semibold))
                         .padding(10)
                         .background(.white.opacity(0.08), in: Circle())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 .accessibilityLabel("Save checkpoint")
             }
@@ -183,7 +183,7 @@ struct BuildScreen: View {
                     .font(.system(size: 16, weight: .semibold))
                     .padding(10)
                     .background(.white.opacity(0.08), in: Circle())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
             .accessibilityLabel(showGame ? "Hide BitDrop" : "Show BitDrop")
         }
@@ -225,7 +225,7 @@ struct BuildScreen: View {
                 BitDropView(game: game)
                 Text("Clear rows of Swift symbols. Every row gives a 2% build-speed boost.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     .multilineTextAlignment(.center)
             }
         }
@@ -248,12 +248,12 @@ struct BuildScreen: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Cost cap hit")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Text(costs.backendCapUSD.map {
                         String(format: "Stopped at $%.3f of $%.2f cap", costs.backendSpendUSD, $0)
                     } ?? "Build halted by the cost cap.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 }
                 Spacer()
                 Button { Task { await liftCapAndResume() } } label: {
@@ -261,7 +261,7 @@ struct BuildScreen: View {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .background(LiquidGlass.auroraGradient.opacity(0.85), in: Capsule())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Double the cap and resume the build")
@@ -282,13 +282,13 @@ struct BuildScreen: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(diffStream.pending.count) changes proposed")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("Review and apply selectively")
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.55))
+                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                 }
                 .padding(14)
             }
@@ -303,7 +303,7 @@ struct BuildScreen: View {
                     HStack(alignment: .top, spacing: 8) {
                         Text(line.time)
                             .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.4))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.4))
                         Text(line.text)
                             .font(.system(size: 12, weight: .regular, design: .monospaced))
                             .foregroundStyle(line.tone.color)
@@ -326,10 +326,10 @@ struct BuildScreen: View {
                             .accessibilityHidden(true)
                         Text("Build green")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("Ready to test in the cloud simulator. Run Perfection Mode before App Store handoff.")
                             .font(.system(size: 14, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
                         if let jobID = swarm.jobID {
                             PrimaryButton(
@@ -367,7 +367,7 @@ struct BuildScreen: View {
                                 }
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .padding(.horizontal, 16).padding(.vertical, 10)
-                                .foregroundStyle(.white.opacity(0.85))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                                 .background(.white.opacity(0.06), in: Capsule())
                                 .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
                             }
@@ -401,21 +401,21 @@ struct BuildScreen: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Perfection Mode")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                     Text("\(run.probesRun) probes - \(run.gateLabel) - \(String(format: "%.1f", run.score))/100")
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.65))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                 }
                 Spacer()
             }
             Text(run.summary)
                 .font(.system(size: 12, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                 .fixedSize(horizontal: false, vertical: true)
             if let top = run.findings.first {
                 Text(top.recommendation ?? top.title)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.62))
                     .lineLimit(3)
             }
         }
@@ -437,7 +437,7 @@ struct BuildScreen: View {
         } else {
             builderTask = Task {
                 await builder.start(initialJob) { newStage in
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                    Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
                         stage = newStage
                     }
                     appendLog(for: newStage)
@@ -498,7 +498,7 @@ struct BuildScreen: View {
                             default: .planning
                             }
                         }()
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
+                        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
                         appendLog(for: mapped)
                         if mapped == .readyForTest {
                             startPerfectionIfNeeded(jobID: id)
@@ -517,7 +517,7 @@ struct BuildScreen: View {
         push(.warn, formattedTime(), "remote build unavailable (\(reason)), simulating")
         builderTask = Task {
             await builder.start(initialJob) { newStage in
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
                     stage = newStage
                 }
                 appendLog(for: newStage)
@@ -554,6 +554,12 @@ struct BuildScreen: View {
             return
         }
         do {
+            let readiness = try await swarm.runReleaseReadiness(jobID: jobID, ship: cfg)
+            guard readiness.isReadyForTestFlight else {
+                shipBanner = readiness.nextActions.first ?? readiness.summary
+                Haptics.warning()
+                return
+            }
             try await swarm.ship(jobID: jobID, config: cfg)
             shipBanner = "Submitted — watch the transcript for processing status."
             Haptics.success()
@@ -690,12 +696,12 @@ struct BuildScreen: View {
             case info, accent, ok, warn, err, dim
             var color: Color {
                 switch self {
-                case .info: return .white.opacity(0.85)
+                case .info: return LiquidGlass.primaryText.opacity(0.85)
                 case .accent: return LiquidGlass.accent
                 case .ok: return LiquidGlass.success
                 case .warn: return LiquidGlass.warning
                 case .err: return .red
-                case .dim: return .white.opacity(0.55)
+                case .dim: return LiquidGlass.primaryText.opacity(0.55)
                 }
             }
         }
@@ -730,10 +736,10 @@ private struct PipelineRow: View {
             }
             Text(stage.rawValue)
                 .font(.system(size: 13, weight: status == .active ? .semibold : .regular, design: .rounded))
-                .foregroundStyle(status == .pending ? .white.opacity(0.5) : .white)
+                .foregroundStyle(status == .pending ? LiquidGlass.primaryText.opacity(0.5) : LiquidGlass.primaryText)
             Spacer()
             if status == .active {
-                ProgressView().tint(.white).scaleEffect(0.7)
+                ProgressView().tint(LiquidGlass.primaryText).scaleEffect(0.7)
             }
         }
     }

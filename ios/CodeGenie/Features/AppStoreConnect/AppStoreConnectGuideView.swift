@@ -39,7 +39,7 @@ extension ASCStep {
 
         .init(number: 4,
               title: "Auto-generate screenshots",
-              body: "We render 6.7\" and 6.1\" screenshots from your simulator session, with marketing copy laid over the top. Edit them inline or accept ours.",
+              body: "We render App Store-size screenshots from the simulator walkthrough, then let you review the actual screens before upload.",
               action: .uploadAsset("screenshots/*.png"),
               safariRoute: nil),
 
@@ -51,7 +51,7 @@ extension ASCStep {
 
         .init(number: 6,
               title: "Privacy & data collection",
-              body: "Apple's privacy nutrition label. CodeGenie scans your Info.plist and code for tracking SDKs and pre-checks the right boxes — review before submitting.",
+              body: "CodeGenie scans Info.plist, PrivacyInfo.xcprivacy, dependencies, and code for tracking/data-use clues, then drafts the privacy answers for your confirmation.",
               action: .fillForm,
               safariRoute: "https://appstoreconnect.apple.com/apps#privacy"),
 
@@ -62,9 +62,9 @@ extension ASCStep {
               safariRoute: nil),
 
         .init(number: 8,
-              title: "Upload the build (Xcode → Archive)",
-              body: "On your Mac: Product → Archive → Distribute App → App Store Connect. CodeGenie can run this for you on the remote runner if you give it permission.",
-              action: .manual,
+              title: "Validate and upload the build",
+              body: "Once an App Store IPA exists, CodeGenie runs Apple's validate-app and upload-app flow, streams every line, then polls processing with your ASC API key.",
+              action: .uploadAsset("Build.ipa"),
               safariRoute: nil),
 
         .init(number: 9,
@@ -75,7 +75,7 @@ extension ASCStep {
 
         .init(number: 10,
               title: "Submit for review",
-              body: "Pick the processed build, answer the export-compliance question (almost always 'No'), and tap Submit. Average review time is 24-48 hours.",
+              body: "Pick the processed build, confirm export compliance, privacy, content rights, and legal terms, then tap Submit. CodeGenie guides this step but leaves final approval to you.",
               action: .manual,
               safariRoute: nil)
     ]
@@ -126,12 +126,12 @@ struct AppStoreConnectGuideView: View {
             Button { dismiss() } label: {
                 Image(systemName: "chevron.down")
                     .padding(10).background(.white.opacity(0.08), in: Circle())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
             Spacer()
             Text("Submit \(job.description.title)")
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Spacer()
             Color.clear.frame(width: 40, height: 40)
         }
@@ -143,7 +143,7 @@ struct AppStoreConnectGuideView: View {
             HStack {
                 Text("Step \(current + 1) of \(ASCStep.all.count)")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 Spacer()
                 Text("\(completed.count) complete")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -154,7 +154,7 @@ struct AppStoreConnectGuideView: View {
                     Capsule().fill(.white.opacity(0.1))
                     Capsule().fill(LiquidGlass.auroraGradient)
                         .frame(width: proxy.size.width * Double(completed.count) / Double(ASCStep.all.count))
-                        .animation(.spring(response: 0.5), value: completed.count)
+                        .motion(.spring(response: 0.5), value: completed.count)
                 }
             }
             .frame(height: 6)
@@ -180,9 +180,9 @@ struct AppStoreConnectGuideView: View {
         HStack(alignment: .top, spacing: 12) {
             Text(k).frame(width: 90, alignment: .leading)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             Text(v).font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -191,7 +191,7 @@ struct AppStoreConnectGuideView: View {
         Haptics.success()
         completed.insert(step.id)
         if let i = ASCStep.all.firstIndex(of: step), i + 1 < ASCStep.all.count {
-            withAnimation(.spring(response: 0.4)) { current = i + 1 }
+            Motion.run(.spring(response: 0.4)) { current = i + 1 }
         }
     }
 }
@@ -213,17 +213,17 @@ private struct ASCStepCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Step \(step.number)")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                             .textCase(.uppercase).tracking(1)
                         Text(step.title)
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                     }
                     Spacer()
                 }
                 Text(step.body)
                     .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                     .lineSpacing(3)
 
                 if isCurrent {
@@ -245,7 +245,7 @@ private struct ASCStepCard: View {
                     .foregroundStyle(LiquidGlass.success)
             } else {
                 Text("\(step.number)").font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
             }
         }
         .frame(width: 32, height: 32)
@@ -263,9 +263,9 @@ private struct ASCStepCard: View {
             PrimaryButton(title: "Upload \(asset)", systemImage: "icloud.and.arrow.up", style: .filled) { onAction() }
         case .wait(let detail):
             HStack(spacing: 10) {
-                ProgressView().tint(.white)
+                ProgressView().tint(LiquidGlass.primaryText)
                 Text(detail).font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 Spacer()
                 Button("Mark done") { onAction() }
                     .font(.system(size: 13, weight: .semibold, design: .rounded))

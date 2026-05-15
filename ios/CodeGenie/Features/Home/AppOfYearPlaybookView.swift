@@ -27,17 +27,17 @@ struct AppOfYearPlaybookView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("App of the Year DNA")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text("A decade of Apple winners distilled into CodeGenie's launch standard.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.72))
             }
             .accessibilityLabel("Close App of the Year DNA")
         }
@@ -54,7 +54,7 @@ struct AppOfYearPlaybookView: View {
                         .accessibilityHidden(true)
                     Text("The launch formula")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LiquidGlass.primaryText)
                 }
                 VStack(alignment: .leading, spacing: 10) {
                     FormulaRow(number: "01", title: "One impossible-feeling action", detail: "A moment users could not do this well before.")
@@ -88,10 +88,10 @@ struct AppOfYearPlaybookView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(winner.name)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                             Text(winner.lesson)
                                 .font(.system(size: 12, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.65))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                                 .lineLimit(2)
                         }
                         Spacer()
@@ -192,7 +192,7 @@ private struct SectionLabel: View {
     var body: some View {
         Text(title)
             .font(.system(size: 13, weight: .bold, design: .rounded))
-            .foregroundStyle(.white.opacity(0.78))
+            .foregroundStyle(LiquidGlass.primaryText.opacity(0.78))
             .textCase(.uppercase)
     }
 }
@@ -211,10 +211,10 @@ private struct FormulaRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                 Text(detail)
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.68))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -238,7 +238,7 @@ private struct SegmentCard: View {
                     HStack {
                         Text(segment.title)
                             .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Spacer()
                     }
                     Text(segment.examples)
@@ -246,7 +246,7 @@ private struct SegmentCard: View {
                         .foregroundStyle(segment.tint.opacity(0.95))
                     Text(segment.gate)
                         .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.74))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.74))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -266,7 +266,7 @@ private struct AwardChecklistRow: View {
                 .accessibilityHidden(true)
             Text(text)
                 .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.92))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.92))
             Spacer()
         }
         .accessibilityElement(children: .combine)

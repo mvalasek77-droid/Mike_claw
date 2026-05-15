@@ -52,10 +52,10 @@ struct AgentRoutingView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Route per agent")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Send each agent to the model that does its job best. The swarm uses the preferred model anywhere you don't override.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -70,11 +70,11 @@ struct AgentRoutingView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(String(format: "$%.3f", total))
                     .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LiquidGlass.primaryText)
                     .contentTransition(.numericText())
                 Text("for all 8 agents combined")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 Spacer()
             }
         }
@@ -107,7 +107,7 @@ private struct AgentRow: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(agent.hint)
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         DefaultChip(selected: currentModel == nil, onTap: onClear)
@@ -140,7 +140,7 @@ private struct DefaultChip: View {
                     in: Capsule()
                 )
                 .overlay(Capsule().strokeBorder(.white.opacity(selected ? 0.45 : 0.12)))
-                .foregroundStyle(.white.opacity(selected ? 1 : 0.65))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(selected ? 1 : 0.65))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Use the default model")
@@ -160,7 +160,7 @@ private struct ModelChip: View {
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                 Text(String(format: "$%.0f / $%.0f", model.inputUSDPerMTok, model.outputUSDPerMTok))
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(
@@ -170,7 +170,7 @@ private struct ModelChip: View {
                 in: RoundedRectangle(cornerRadius: 12)
             )
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.white.opacity(selected ? 0.45 : 0.12)))
-            .foregroundStyle(.white)
+            .foregroundStyle(LiquidGlass.primaryText)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(model.displayName)")

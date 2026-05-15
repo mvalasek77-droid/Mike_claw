@@ -29,10 +29,10 @@ struct SnapshotCapSettingsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Snapshot storage cap")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Per-build ceiling for snapshot files saved to the workspace. Stages above the cap keep their label but their bytes aren't persisted.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -50,10 +50,10 @@ struct SnapshotCapSettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Override the backend default")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text("Default is 256 MiB. Lower it to halt growth sooner; raise it for big projects.")
                             .font(.system(size: 11, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     }
                 }
                 .tint(LiquidGlass.warning)
@@ -73,7 +73,7 @@ struct SnapshotCapSettingsView: View {
                         .tint(LiquidGlass.warning)
                         Text("\(mb) MiB")
                             .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                             .frame(width: 84, alignment: .trailing)
                     }
                 }
@@ -102,10 +102,10 @@ struct SnapshotCapSettingsView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(k)
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 Text(v)
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
