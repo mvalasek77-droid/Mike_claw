@@ -101,6 +101,7 @@ struct AppStoreConnectGuideView: View {
                 progressBar
                 ScrollView {
                     VStack(spacing: 16) {
+                        legendCard
                         metadataCard
                         ForEach(ASCStep.all) { step in
                             ASCStepCard(
@@ -163,6 +164,34 @@ struct AppStoreConnectGuideView: View {
         .padding(.bottom, 6)
     }
 
+    /// Three-chip legend explaining the Auto / Hybrid / You badges
+    /// shown next to each step. Saves the user from guessing which
+    /// steps they have to do versus which CodeGenie handles silently.
+    private var legendCard: some View {
+        GlassCard(title: "Who does what", icon: "person.2.and.person", tint: LiquidGlass.accentSecondary) {
+            VStack(alignment: .leading, spacing: 8) {
+                legendRow(label: "Auto",   tint: LiquidGlass.success, text: "CodeGenie runs this end-to-end. You'll see it happen.")
+                legendRow(label: "Hybrid", tint: LiquidGlass.accent,  text: "CodeGenie opens the page and fills the form. You review, then save.")
+                legendRow(label: "You",    tint: LiquidGlass.warning, text: "You do this in App Store Connect. We can't tap Submit on your behalf — Apple requires you to.")
+            }
+        }
+    }
+
+    private func legendRow(label: String, tint: Color, text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(label)
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .foregroundStyle(tint)
+                .background(tint.opacity(0.18), in: Capsule())
+                .overlay(Capsule().strokeBorder(tint.opacity(0.35), lineWidth: 0.5))
+            Text(text)
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private var metadataCard: some View {
         GlassCard(title: "Listing draft", icon: "doc.text.fill", tint: LiquidGlass.accentSecondary) {
             VStack(alignment: .leading, spacing: 8) {
@@ -211,10 +240,13 @@ private struct ASCStepCard: View {
                 HStack(spacing: 12) {
                     statusBadge
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Step \(step.number)")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
-                            .textCase(.uppercase).tracking(1)
+                        HStack(spacing: 6) {
+                            Text("Step \(step.number)")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                                .textCase(.uppercase).tracking(1)
+                            automationBadge
+                        }
                         Text(step.title)
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
@@ -232,6 +264,33 @@ private struct ASCStepCard: View {
             }
             .padding(16)
         }
+    }
+
+    /// Small chip next to the step number that tells the user who is
+    /// actually doing the work: CodeGenie, the user, or both. Closes
+    /// the audit gap where the 10-step list mixed automated +
+    /// user-confirmed actions without flagging which was which.
+    private var automationBadge: some View {
+        let (label, tint): (String, Color) = {
+            switch step.action {
+            case .uploadAsset, .wait:           return ("Auto",   LiquidGlass.success)
+            case .openSafariOnMac, .fillForm:   return ("Hybrid", LiquidGlass.accent)
+            case .manual:                       return ("You",    LiquidGlass.warning)
+            }
+        }()
+        return Text(label)
+            .font(.system(size: 9, weight: .bold, design: .rounded))
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .foregroundStyle(tint)
+            .background(tint.opacity(0.18), in: Capsule())
+            .overlay(Capsule().strokeBorder(tint.opacity(0.35), lineWidth: 0.5))
+            .accessibilityLabel({
+                switch step.action {
+                case .uploadAsset, .wait:         return "Fully automated"
+                case .openSafariOnMac, .fillForm: return "Hybrid — CodeGenie fills, you confirm"
+                case .manual:                     return "You do this manually"
+                }
+            }())
     }
 
     private var statusBadge: some View {

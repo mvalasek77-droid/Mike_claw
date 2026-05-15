@@ -29,7 +29,30 @@ struct BuildScreen: View {
     @State private var showReleaseExplainer: Bool = false
     @State private var showGitHubSetup: Bool = false
     @State private var githubSyncing: Bool = false
+    @State private var jargonHelp: JargonTerm?
     @State private var shipBanner: String?
+
+    enum JargonTerm: String, Identifiable {
+        case pipeline, bitdrop, perfection
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .pipeline:   "Pipeline"
+            case .bitdrop:    "BitDrop"
+            case .perfection: "Perfection Mode"
+            }
+        }
+        var body: String {
+            switch self {
+            case .pipeline:
+                "Your app is built by a team of eight AI specialists working in order — Architect plans the structure, Coder writes Swift, Designer makes it look good, Integrator wires everything together, then Unit Tester, UI Tester, Reviewer, and Security Auditor sign off. The list shows where they are right now."
+            case .bitdrop:
+                "A small built-in puzzle game so you have something to do while the AI works. It's optional — every cleared row gives a tiny build-speed boost as a thank-you, but ignoring it won't slow your app down."
+            case .perfection:
+                "A 10,000-probe quality check across nine axes — Apple Review readiness, accessibility, performance, security, polish, and more. Run it before submitting to the App Store. If it flags blockers, fix them; if it's green, you have a much better shot at getting through App Review on the first try."
+            }
+        }
+    }
     @State private var showSnapshots: Bool = false
     @State private var showSnapshotSettingsSheet: Bool = false
     @State private var perfectionRun: PerfectionRun?
@@ -105,6 +128,12 @@ struct BuildScreen: View {
         }
         .sheet(isPresented: $showGitHubSetup) {
             GitHubSetupView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(item: $jargonHelp) { term in
+            jargonExplainSheet(term)
+                .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -242,9 +271,66 @@ struct BuildScreen: View {
         }
     }
 
+    /// One-line preview row with a "What's this?" link. Tapping the
+    /// link opens a focused explainer sheet so the user can learn the
+    /// term without losing their place in the build.
+    private func jargonTip(_ preview: String, action: @escaping () -> Void) -> some View {
+        Button(action: { Haptics.selection(); action() }) {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(LiquidGlass.accent.opacity(0.9))
+                    .padding(.top, 2)
+                Text(preview)
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(8)
+            .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Open a longer explanation")
+    }
+
+    private func jargonExplainSheet(_ term: JargonTerm) -> some View {
+        ZStack {
+            LiquidGlassBackground().ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(LiquidGlass.accent)
+                        Text(term.title)
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                    }
+                    Text(term.body)
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                        .lineSpacing(3)
+                    PrimaryButton(title: "Got it", systemImage: "checkmark", style: .filled) {
+                        Haptics.selection()
+                        jargonHelp = nil
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 18)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
     private var stageList: some View {
         GlassCard(title: "Pipeline", icon: "list.bullet.rectangle", tint: LiquidGlass.accent) {
             VStack(alignment: .leading, spacing: 8) {
+                jargonTip("Each row is one of the 8 AI agents working on your app — architect, coder, designer, tester. They run in order; the green dot is the current step.") {
+                    jargonHelp = .pipeline
+                }
                 ForEach(BuildJob.Stage.allCases.filter { $0 != .failed && $0 != .shipping }, id: \.self) { s in
                     PipelineRow(stage: s, current: stage)
                 }
@@ -255,6 +341,7 @@ struct BuildScreen: View {
     private var gameBlock: some View {
         GlassCard(title: "BitDrop", icon: "square.stack.3d.up.fill", tint: LiquidGlass.accentSecondary) {
             VStack(spacing: 10) {
+                jargonTip("A small puzzle to play while CodeGenie builds. Totally optional.") { jargonHelp = .bitdrop }
                 BitDropView(game: game)
                 Text("Clear rows of Swift symbols. Every row gives a 2% build-speed boost.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
@@ -462,6 +549,15 @@ struct BuildScreen: View {
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
+                        Button {
+                            Haptics.selection()
+                            jargonHelp = .perfection
+                        } label: {
+                            Label("What's Perfection Mode?", systemImage: "info.circle.fill")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(LiquidGlass.accent)
+                        }
+                        .accessibilityHint("Open a plain-English explainer for Perfection Mode")
                         if let jobID = swarm.jobID {
                             PrimaryButton(
                                 title: perfectionRunning ? "Running Perfection Mode..." : "Run Perfection Mode",
