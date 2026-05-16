@@ -3,10 +3,12 @@ import SwiftUI
 struct DescribeAppView: View {
     var onSubmit: (AppDescription) -> Void
 
-    @State private var title: String = ""
-    @State private var prompt: String = ""
-    @State private var category: AppDescription.Category = .productivity
-    @State private var style: AppDescription.Style = .liquidGlass
+    @StateObject private var creds = Credentials.shared
+    @StateObject private var billing = BillingStore.shared
+    @State private var title: String
+    @State private var prompt: String
+    @State private var category: AppDescription.Category
+    @State private var style: AppDescription.Style
     @FocusState private var focused: Field?
 
     private enum Field { case title, prompt }
@@ -19,6 +21,14 @@ struct DescribeAppView: View {
         "Liquid-glass weather widget collection, no ads"
     ]
 
+    init(initial: AppDescription? = nil, onSubmit: @escaping (AppDescription) -> Void) {
+        self.onSubmit = onSubmit
+        _title = State(initialValue: initial?.title ?? "")
+        _prompt = State(initialValue: initial?.prompt ?? "")
+        _category = State(initialValue: initial?.category ?? .productivity)
+        _style = State(initialValue: initial?.style ?? .liquidGlass)
+    }
+
     var body: some View {
         ZStack {
             LiquidGlassBackground().ignoresSafeArea()
@@ -30,6 +40,7 @@ struct DescribeAppView: View {
                     suggestionRow
                     categoryPicker
                     stylePicker
+                    preflightBlock
                     submitRow
                     Color.clear.frame(height: 60)
                 }
@@ -39,6 +50,7 @@ struct DescribeAppView: View {
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
         }
+        .task { await billing.refresh() }
     }
 
     // MARK: Sections
@@ -148,23 +160,107 @@ struct DescribeAppView: View {
     }
 
     private var submitRow: some View {
-        VStack(spacing: 10) {
+        let cleanPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        let canSubmit = cleanPrompt.count >= 12 && buildAccess.canBuild
+        return VStack(spacing: 10) {
             PrimaryButton(title: "Build it", systemImage: "wand.and.stars", style: .filled) {
                 let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-                let cleanPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard cleanPrompt.count >= 12 else { Haptics.error(); return }
+                guard canSubmit else { Haptics.error(); return }
                 let final = AppDescription(
                     title: cleanTitle.isEmpty ? inferredTitle(from: cleanPrompt) : cleanTitle,
                     prompt: cleanPrompt, category: category, style: style
                 )
                 onSubmit(final)
             }
-            .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).count < 12)
-            .opacity(prompt.trimmingCharacters(in: .whitespacesAndNewlines).count < 12 ? 0.5 : 1)
-            Text("CodeGenie will generate the Xcode project, ask follow-ups, then run a build.")
+            .disabled(!canSubmit)
+            .opacity(canSubmit ? 1 : 0.5)
+            Text(buildAccess.footer)
                 .font(.system(size: 12, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                 .multilineTextAlignment(.center)
+        }
+    }
+
+    private var preflightBlock: some View {
+        let access = buildAccess
+        return GlassSurface(tier: .flat, corner: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: access.canBuild ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(access.tint)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(access.tint.opacity(0.18)))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(access.title)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text(access.detail)
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var buildAccess: BuildAccess {
+        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
+        switch creds.authMode {
+        case .byok:
+            guard creds.hasKey(for: model.provider) else {
+                return BuildAccess(
+                    canBuild: false,
+                    title: "Add a \(model.provider.displayName) API key",
+                    detail: "\(model.displayName) is selected. Add that provider key in Settings, or choose a model for a provider you already connected.",
+                    footer: "Build is locked until the selected model has a key.",
+                    tint: LiquidGlass.warning
+                )
+            }
+            return BuildAccess(
+                canBuild: true,
+                title: "API key ready",
+                detail: "\(model.displayName) will run on your selected build runner. The key is sent for this build only and not stored by the runner.",
+                footer: "CodeGenie will generate the Xcode project, run tests, then report cost and status.",
+                tint: LiquidGlass.success
+            )
+        case .subscription:
+            guard !creds.backendToken.isEmpty else {
+                return BuildAccess(
+                    canBuild: false,
+                    title: "Pair your Mac first",
+                    detail: "Subscription routing needs the Mac companion so CodeGenie can use your signed-in Claude or ChatGPT session.",
+                    footer: "Open Settings -> Pair your Mac to unlock subscription builds.",
+                    tint: LiquidGlass.warning
+                )
+            }
+            return BuildAccess(
+                canBuild: true,
+                title: "Mac companion paired",
+                detail: "This build will route through your paired Mac session.",
+                footer: "CodeGenie will start the paired runner and stream progress back here.",
+                tint: LiquidGlass.success
+            )
+        case .codegenie:
+            guard billing.canStartHostedBuild else {
+                return BuildAccess(
+                    canBuild: false,
+                    title: "Hosted build limit reached",
+                    detail: "Your free hosted builds are used for this month. Upgrade to Pro or Studio in Settings to continue.",
+                    footer: "Upgrade or switch to API key mode to build now.",
+                    tint: LiquidGlass.warning
+                )
+            }
+            return BuildAccess(
+                canBuild: true,
+                title: "Hosted credits ready",
+                detail: billing.hostedStatusText,
+                footer: "CodeGenie will use hosted credits and stop if the backend reports a launch blocker.",
+                tint: LiquidGlass.success
+            )
         }
     }
 
@@ -172,6 +268,14 @@ struct DescribeAppView: View {
         let words = prompt.split(separator: " ").prefix(4)
         return words.joined(separator: " ").capitalized
     }
+}
+
+private struct BuildAccess {
+    let canBuild: Bool
+    let title: String
+    let detail: String
+    let footer: String
+    let tint: Color
 }
 
 private struct Chip: View {

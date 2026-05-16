@@ -39,7 +39,7 @@ struct SampleAppsView: View {
                 .environmentObject(session)
         }
         .sheet(item: $prefillSample) { sample in
-            DescribeAppView { description in
+            DescribeAppView(initial: sample.description) { description in
                 prefillSample = nil
                 _ = session.startBuild(from: description)
                 dismiss()
@@ -53,10 +53,10 @@ struct SampleAppsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Try a sample")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(LiquidGlass.primaryText)
             Text("Pick one to watch a real build happen, or to start your own from that brief.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -91,7 +91,7 @@ private struct SampleCard: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(sample.title)
                                 .font(.system(size: 18, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(LiquidGlass.primaryText)
                             Text(sample.subtitle)
                                 .font(.system(size: 12, weight: .medium, design: .rounded))
                                 .foregroundStyle(tintColor)
@@ -103,15 +103,15 @@ private struct SampleCard: View {
                     }
                     Text(sample.prompt)
                         .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.75))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                         .lineLimit(3)
                     HStack(spacing: 8) {
                         Image(systemName: "quote.opening").font(.system(size: 9))
-                            .foregroundStyle(.white.opacity(0.45))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.45))
                         Text(sample.outcome)
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                             .italic()
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     }
                     HStack {
                         Spacer()

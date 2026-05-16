@@ -21,12 +21,16 @@ from dataclasses import dataclass
 # let costs balloon past the cap).
 DEFAULT_PRICES: dict[str, tuple[float, float]] = {
     # Anthropic
-    "claude-opus-4-7":     (15.0, 75.0),
+    "claude-opus-4-7":     (5.0,  25.0),
     "claude-sonnet-4-6":   (3.0,  15.0),
     "claude-haiku-4-5":    (1.0,  5.0),
     # OpenAI
-    "gpt-5":               (12.5, 50.0),
-    "gpt-5-mini":          (0.25, 2.0),
+    "gpt-5.5":             (5.0,  30.0),
+    "gpt-5.4":             (2.5,  15.0),
+    "gpt-5.4-mini":        (0.75, 4.5),
+    # Legacy aliases kept so older jobs/tests still estimate safely.
+    "gpt-5":               (2.5,  15.0),
+    "gpt-5-mini":          (0.75, 4.5),
 }
 _FALLBACK_PRICE = (15.0, 75.0)
 

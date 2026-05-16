@@ -14,13 +14,7 @@ struct DemoBuildScreen: View {
     @EnvironmentObject private var session: AppSession
 
     var body: some View {
-        let description = AppDescription(
-            title: sample.title,
-            prompt: sample.prompt,
-            category: .utility,
-            style: .liquidGlass
-        )
-        let job = BuildJob(description: description)
+        let job = BuildJob(description: sample.description)
         return BuildScreen(job: job, demoSampleID: sample.id)
             .environmentObject(session)
     }

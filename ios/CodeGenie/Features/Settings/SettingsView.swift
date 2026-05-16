@@ -15,8 +15,10 @@ struct SettingsView: View {
     @State private var showCustomAgents = false
     @State private var showCrashLog = false
     @State private var showAdmin = false
+    @State private var showBugReport = false
     @StateObject private var telemetry = Telemetry.shared
     @StateObject private var userMode = UserMode.shared
+    @StateObject private var billing = BillingStore.shared
 
     var body: some View {
         ZStack {
@@ -41,6 +43,7 @@ struct SettingsView: View {
                     }
                     tutorialBlock
                     telemetryBlock
+                    supportBlock
                     aboutBlock
                     Color.clear.frame(height: 30)
                 }
@@ -89,10 +92,16 @@ struct SettingsView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showBugReport) {
+            BugReportView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .onAppear {
             anthropicDraft = creds.anthropicKey
             openaiDraft    = creds.openaiKey
         }
+        .task { await billing.refresh() }
     }
 
     private var pairMacBlock: some View {
@@ -199,12 +208,12 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(userMode.isPower ? "Showing all controls" : "Simple mode")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LiquidGlass.primaryText)
                         Text(userMode.isPower
                              ? "Cost cap, per-agent routing, custom agents, Apple Developer setup, Pair Mac, Admin."
                              : "Just build apps. The advanced surface is one tap away when you want it.")
                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -381,9 +390,16 @@ struct SettingsView: View {
     private var subscriptionBlock: some View {
         GlassCard(title: "Pair a subscription", icon: "person.crop.circle.badge.checkmark", tint: LiquidGlass.warning) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("If you already pay for Claude Pro/Max or ChatGPT Plus/Pro, route CodeGenie through that session — no per-token charges.")
+                Text("If you already pay for Claude Pro/Max or ChatGPT Plus/Pro, route CodeGenie through the paired Mac companion.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
+
+                Label(
+                    creds.backendToken.isEmpty ? "Pair your Mac before starting a subscription build" : "Mac companion token saved",
+                    systemImage: creds.backendToken.isEmpty ? "exclamationmark.triangle.fill" : "checkmark.seal.fill"
+                )
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(creds.backendToken.isEmpty ? LiquidGlass.warning : LiquidGlass.success)
 
                 ForEach(AIProvider.allCases) { p in
                     HStack(spacing: 10) {
@@ -404,7 +420,7 @@ struct SettingsView: View {
                     .padding(.vertical, 4)
                 }
 
-                Text("CodeGenie's Mac companion handles the OAuth handshake. We never see your password.")
+                Text("The Mac companion owns browser sign-in. CodeGenie never asks for or stores your account password.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             }
@@ -413,18 +429,56 @@ struct SettingsView: View {
 
     private var hostedBlock: some View {
         GlassCard(title: "CodeGenie hosted credits", icon: "sparkles", tint: LiquidGlass.accent) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Zero setup. We absorb the API cost on a quota.")
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Hosted builds use StoreKit entitlement state plus a monthly free-build counter. If App Store Connect products are not live yet, free builds remain available and paid plans show as unavailable.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Label(billing.hostedStatusText, systemImage: billing.canStartHostedBuild ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(billing.canStartHostedBuild ? LiquidGlass.success : LiquidGlass.warning)
+
+                ForEach(BillingPlan.allCases) { plan in
+                    HostedPlanRow(plan: plan, billing: billing)
+                }
 
                 HStack(spacing: 10) {
-                    PlanPill(label: "Free", subtitle: "3 builds / month", price: "$0", highlighted: true)
-                    PlanPill(label: "Pro",  subtitle: "Unlimited Sonnet · 20 Opus", price: "$9.99/mo", highlighted: false)
-                    PlanPill(label: "Studio", subtitle: "Team seats + TestFlight", price: "$29/mo", highlighted: false)
+                    PrimaryButton(title: "Restore", systemImage: "arrow.clockwise", style: .glass) {
+                        Task { await billing.restorePurchases() }
+                    }
+                    .frame(maxWidth: 150)
+                    if billing.isLoading {
+                        ProgressView()
+                            .tint(LiquidGlass.accent)
+                    }
+                    Spacer()
+                }
+
+                HStack(spacing: 14) {
+                    Link("Terms of Use", destination: URL(string: "https://codegenie.app/terms")!)
+                    Link("Privacy Policy", destination: URL(string: "https://codegenie.app/privacy")!)
+                }
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(LiquidGlass.accent)
+
+                if let message = billing.lastMessage {
+                    Text(message)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.62))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
+    }
+
+    private var supportBlock: some View {
+        navTile(
+            title: "Report a bug",
+            subtitle: "Email logs and steps to mvalasek77@gmail.com",
+            icon: "exclamationmark.bubble.fill",
+            tint: LiquidGlass.warning
+        ) { showBugReport = true }
     }
 
     private var modelComparison: some View {
@@ -596,6 +650,77 @@ private struct AuthModeRow: View {
             .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct HostedPlanRow: View {
+    let plan: BillingPlan
+    @ObservedObject var billing: BillingStore
+
+    var body: some View {
+        GlassSurface(tier: billing.isActive(plan) ? .deep : .flat, corner: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 8) {
+                            Text(plan.label)
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundStyle(LiquidGlass.primaryText)
+                            if billing.isActive(plan) {
+                                Text("ACTIVE")
+                                    .font(.system(size: 9, weight: .black, design: .rounded))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(LiquidGlass.success.opacity(0.18), in: Capsule())
+                                    .foregroundStyle(LiquidGlass.success)
+                            }
+                        }
+                        Text(billing.displayPrice(for: plan))
+                            .font(.system(size: 19, weight: .bold, design: .rounded))
+                            .foregroundStyle(plan == .free ? LiquidGlass.success : LiquidGlass.primaryText)
+                        Text(plan.summary)
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
+                    }
+                    Spacer()
+                    if plan != .free {
+                        Button {
+                            Task { await billing.purchase(plan) }
+                        } label: {
+                            Text(buttonTitle)
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(buttonFill, in: Capsule())
+                                .foregroundStyle(LiquidGlass.primaryText)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!billing.canPurchase(plan) || billing.purchaseInFlight != nil)
+                        .opacity((billing.canPurchase(plan) && billing.purchaseInFlight == nil) ? 1 : 0.55)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(plan.features, id: \.self) { feature in
+                        Label(feature, systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
+                    }
+                }
+            }
+            .padding(14)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(plan.label) plan, \(billing.displayPrice(for: plan)), \(plan.summary)")
+    }
+
+    private var buttonTitle: String {
+        if billing.isActive(plan) { return "Active" }
+        if billing.purchaseInFlight == plan { return "Buying..." }
+        return billing.canPurchase(plan) ? "Subscribe" : "Unavailable"
+    }
+
+    private var buttonFill: some ShapeStyle {
+        billing.canPurchase(plan) ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(Color.white.opacity(0.08))
     }
 }
 

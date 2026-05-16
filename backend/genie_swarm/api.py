@@ -20,7 +20,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from .llm import AnthropicClient, LLMClient
+from .llm import AnthropicClient, LLMClient, ProviderRoutingLLMClient
 from .github_sync import GitHubSyncError, sync_workspace_to_github
 from .models import (
     AppSpec,
@@ -86,8 +86,15 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
 
     cfg = state.config
     ship_cfg = _to_ship_config(req.ship) if req.ship else None
+    model_overrides = dict(req.model_overrides)
+    if req.preferred_model:
+        for role in (
+            "architect", "coder", "designer", "integrator",
+            "unit_tester", "ui_tester", "reviewer", "security",
+        ):
+            model_overrides.setdefault(role, req.preferred_model)
 
-    if (req.workspace_root or req.model_overrides or req.skip_tests
+    if (req.workspace_root or model_overrides or req.skip_tests
             or not req.parallel or ship_cfg or req.cost_cap_usd is not None
             or req.custom_agents or req.max_snapshot_bytes is not None):
         cfg = SwarmConfig(
@@ -95,7 +102,7 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
             parallel_build=req.parallel,
             skip_tests=req.skip_tests,
             runtime=cfg.runtime,
-            model_overrides=req.model_overrides,
+            model_overrides=model_overrides,
             ship=ship_cfg,
             cost_cap_usd=req.cost_cap_usd,
             custom_agents=req.custom_agents,
@@ -106,7 +113,15 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
         # Default config also gets the pause gate wired in.
         cfg = dataclasses.replace(cfg, pause_gate=_pause_gate_for_state)
 
-    orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=cfg)
+    llm = state.llm
+    if isinstance(state.llm, AnthropicClient):
+        keys = req.provider_keys
+        llm = ProviderRoutingLLMClient(
+            anthropic_key=keys.anthropic if keys else None,
+            openai_key=keys.openai if keys else None,
+            fallback=state.llm,
+        )
+    orch = SwarmOrchestrator(llm=llm, bus=state.bus, config=cfg)
     state.tasks[job.id] = asyncio.create_task(_drive(orch, job))
     return {"job_id": job.id, "state": job.state.value}
 

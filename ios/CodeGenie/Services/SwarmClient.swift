@@ -53,10 +53,23 @@ final class SwarmClient: ObservableObject {
                 "features": spec.features
             ],
             "parallel": true,
-            "skip_tests": false
+            "skip_tests": false,
+            "auth_mode": credentials.authMode.rawValue,
+            "preferred_model": credentials.preferredModelID,
+            "billing_plan": BillingStore.shared.activePlan.rawValue
         ]
-        let overrides = credentials.agentModels
+        var overrides = Dictionary(uniqueKeysWithValues: [
+            "architect", "coder", "designer", "integrator",
+            "unit_tester", "ui_tester", "reviewer", "security"
+        ].map { ($0, credentials.preferredModelID) })
+        for (role, model) in credentials.agentModels {
+            overrides[role] = model
+        }
         if !overrides.isEmpty { body["model_overrides"] = overrides }
+        if credentials.authMode == .byok {
+            let keys = credentials.providerKeysWireBody
+            if !keys.isEmpty { body["provider_keys"] = keys }
+        }
         if let cap = credentials.costCapUSD, cap > 0 { body["cost_cap_usd"] = cap }
         if let mb = credentials.snapshotCapMB, mb > 0 {
             body["max_snapshot_bytes"] = mb * 1024 * 1024
@@ -70,6 +83,9 @@ final class SwarmClient: ObservableObject {
             throw SwarmError.malformed("missing job_id")
         }
         jobID = id
+        if credentials.authMode == .codegenie {
+            BillingStore.shared.recordHostedBuildStarted()
+        }
         return id
     }
 
