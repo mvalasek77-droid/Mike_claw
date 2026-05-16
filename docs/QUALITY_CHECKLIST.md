@@ -16,7 +16,7 @@ still pending sign-off from a real Mac/device run.
 
 ## 2. Tested rigorously
 
-- [✓] **116 backend pytest tests, all green**
+- [✓] **137 backend pytest tests, all green**
   (sandbox, tools, runtime, streaming, memory, ranker, testflight, e2e)
 - [✓] **Perfection Mode** runs 10,000 deterministic virtual probes across
   Apple review, accessibility, performance, security, offline, Liquid
@@ -29,6 +29,21 @@ still pending sign-off from a real Mac/device run.
 - [□] Memory profile clean (Instruments → Leaks)
 - [□] Cold-start time < 1.5s on iPhone SE
 - [□] MetricKit clean over 10-min soak
+
+## 2a. Systematic agent QA
+
+- [✓] Multi-agent page/process QA protocol documented in
+  `docs/AGENT_QA_PROTOCOL.md`
+- [✓] Page/process matrix template added at
+  `docs/qa/PAGE_PROCESS_MATRIX_TEMPLATE.md`
+- [□] Every UI-changing PR includes `docs/qa/PAGE_PROCESS_MATRIX.md`
+  with every reachable page, sheet, state, and user action
+- [□] Every matrix row has evidence: test, screenshot, log, manual device
+  note, or code reference
+- [□] Final Reviewer and Final Security passes use the strongest available
+  models and independently sign off the completed matrix
+- [□] Release answer reports total rows, passed rows, blocked rows, and
+  untested rows before saying the build is ready
 
 ## 3. Polish
 

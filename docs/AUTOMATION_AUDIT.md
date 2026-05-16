@@ -28,6 +28,9 @@ requires account ownership or review responsibility.
   when a GitHub token is provided. It excludes `.codegenie/`, session
   metadata, archives, and DerivedData.
 - Decision memory: searchable decisions across builds.
+- Agent QA protocol: every release candidate now has a required
+  page/process matrix so agents must inspect every page, state, action,
+  and release process from independent lenses before final sign-off.
 
 ## Mac-Assisted
 
@@ -64,3 +67,7 @@ qualifier "where Apple allows it." The accurate promise is:
 readiness, GitHub branch/PR sync, TestFlight upload, and much of the
 App Store package, while the user keeps control of Apple account, legal,
 privacy, and final submission steps."
+
+The same honesty applies to quality: do not call a build "fully checked"
+unless `docs/qa/PAGE_PROCESS_MATRIX.md` exists, every row has evidence,
+and the final Reviewer/Security passes have signed it off.
