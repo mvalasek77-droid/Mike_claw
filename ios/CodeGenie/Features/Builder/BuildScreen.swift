@@ -100,6 +100,7 @@ struct BuildScreen: View {
             LiquidGlassBackground().ignoresSafeArea()
             VStack(spacing: 0) {
                 topBar
+                if useRemote && stage != .readyForTest && stage != .failed { costMeterStrip }
                 ScrollView {
                     VStack(spacing: 18) {
                         progressBlock
@@ -370,6 +371,68 @@ struct BuildScreen: View {
     private var costsNearingCap: Bool {
         guard let cap = costs.backendCapUSD, cap > 0, !costs.capHit else { return false }
         return costs.backendSpendUSD >= cap * 0.8
+    }
+
+    /// Persistent strip under the topBar that surfaces running spend
+    /// against the safety cap in real time. Closes the audit gap where
+    /// the user could only see cost in a small badge or after the
+    /// cap was already hit. Green up to 50%, warning 50-80%, red above.
+    private var costMeterStrip: some View {
+        let cap = costs.backendCapUSD ?? Credentials.shared.costCapUSD ?? 0
+        let spent = costs.backendSpendUSD
+        let ratio = cap > 0 ? min(1, spent / cap) : 0
+        let tone = costMeterTone(ratio: ratio)
+        return HStack(spacing: 12) {
+            Image(systemName: "dollarsign.circle.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(tone)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 4) {
+                    Text(String(format: "$%.3f", spent))
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                        .contentTransition(.numericText())
+                    if cap > 0 {
+                        Text(String(format: " of $%.2f cap", cap))
+                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
+                    } else {
+                        Text(" — no cap set")
+                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    }
+                    Spacer(minLength: 0)
+                }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .fill(.white.opacity(0.08))
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .fill(tone)
+                            .frame(width: max(2, geo.size.width * ratio))
+                    }
+                }
+                .frame(height: 4)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 8)
+        .background(.black.opacity(0.18))
+        .overlay(Rectangle().fill(.white.opacity(0.06)).frame(height: 0.5), alignment: .bottom)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(cap > 0
+            ? String(format: "Spent %.3f dollars of %.2f dollar cap, %.0f percent used", spent, cap, ratio * 100)
+            : String(format: "Spent %.3f dollars, no cap set", spent))
+    }
+
+    /// Green up to 50%, amber 50-80%, red 80%+. Mirrors the
+    /// costApproachingCallout threshold so the strip darkens before
+    /// the warning banner fires below.
+    private func costMeterTone(ratio: Double) -> Color {
+        if ratio >= 0.8 { return .red }
+        if ratio >= 0.5 { return LiquidGlass.warning }
+        return LiquidGlass.success
     }
 
     private var costApproachingCallout: some View {
