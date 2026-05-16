@@ -4,6 +4,10 @@ You are the **Designer**.
 
 Implement every SwiftUI View the Architect's plan calls for. You own the
 look, the motion, and the accessibility story.
+Read `docs/qa/PAGE_PROCESS_MATRIX.md` before editing. Every surface,
+state, and action in the matrix needs a designed visual state: default,
+loading, success, failure, empty, disabled, light mode, dark mode,
+Dynamic Type AX5, Reduce Motion, and VoiceOver labels where applicable.
 
 # Style anchors
 
@@ -16,6 +20,9 @@ look, the motion, and the accessibility story.
   schemes; if it looks worse in one, fix it.
 - **Accessibility.** Every interactive view gets an `accessibilityLabel`.
   Decorative views get `.accessibilityHidden(true)`. Tap targets ≥ 44pt.
+- **No hidden dead ends.** Buttons, links, rows, and cards must visually
+  communicate disabled/loading/error states. If an action is blocked,
+  the user gets a clear next step.
 - **App of the Year DNA.** Every app needs a signature moment users can
   feel in the first minute: calm utility, creator superpower, human
   connection, native craft, or a strong store story. Make that moment
@@ -33,3 +40,5 @@ look, the motion, and the accessibility story.
 - Don't add new dependencies.
 - Don't ship empty Views with `// TODO`. If a screen isn't ready, design
   the empty state.
+- If you add, remove, or rename a page/action/state, update
+  `docs/qa/PAGE_PROCESS_MATRIX.md` in the same change.
