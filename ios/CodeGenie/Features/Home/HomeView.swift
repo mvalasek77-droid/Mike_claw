@@ -28,6 +28,7 @@ struct HomeView: View {
                 shipReadinessCard
                 quickGrid
                 if !session.recentJobs.isEmpty { recentJobs }
+                else if hasSetupAtLeastOneGate { recentJobsEmptyState }
                 xcodeShortcut
                 checklistCard
                 Color.clear.frame(height: 30)
@@ -344,6 +345,46 @@ struct HomeView: View {
                 JobRow(job: job)
             }
         }
+    }
+
+    /// Shown when the user has set up at least one ship gate but
+    /// hasn't started a build yet. Prevents the home screen from
+    /// feeling empty after they've put in onboarding work.
+    private var recentJobsEmptyState: some View {
+        GlassSurface(tier: .flat, corner: 18) {
+            HStack(spacing: 14) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(LiquidGlass.accent)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Your finished builds appear here")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text("Tap Start a new build to make your first one — or watch one assemble live with Try a sample.")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Your finished builds will appear here once you start a build")
+    }
+
+    /// True when at least one of the four ship gates is done. Used to
+    /// decide whether the empty-state callout is worth showing — for
+    /// a truly fresh user, the shipReadinessCard above is already the
+    /// natural next-action, no need to double up.
+    private var hasSetupAtLeastOneGate: Bool {
+        xcodeAcknowledged
+            || !creds.backendToken.isEmpty
+            || creds.hasAppleDevCreds
+            || creds.hasGithub
     }
 
     private var xcodeShortcut: some View {

@@ -24,6 +24,7 @@ from .llm import AnthropicClient, LLMClient, ProviderRoutingLLMClient
 from .github_sync import GitHubSyncError, sync_workspace_to_github
 from .models import (
     AppSpec,
+    BugReportRequest,
     BuildJob,
     BuildRequest,
     GitHubSyncRequest,
@@ -729,6 +730,39 @@ async def archive_old_jobs(body: dict | None = None):
 @router.get("/health")
 async def health():
     return {"ok": True, "active_jobs": len(state.tasks)}
+
+
+@router.post("/bug-reports")
+async def submit_bug_report(req: BugReportRequest):
+    """Accept an in-app bug report from the iOS Settings sheet.
+
+    Stored as a JSON file under `<workspace_root>/.bug_reports/`. The
+    iOS mailto fallback still works for users who don't trust posting
+    privately — this endpoint is the additive in-app channel.
+    """
+    import json
+    import secrets
+    import time
+    from datetime import datetime, timezone
+
+    reports_dir = state.config.workspace_root / ".bug_reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    report_id = f"{int(time.time())}-{secrets.token_hex(4)}"
+    payload = {
+        "id": report_id,
+        "received_at": datetime.now(timezone.utc).isoformat(),
+        "details": req.details,
+        "diagnostics": req.diagnostics,
+        "client_version": req.client_version,
+        "client_build": req.client_build,
+        "device": req.device,
+        "os_version": req.os_version,
+    }
+    (reports_dir / f"{report_id}.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True)
+    )
+    return {"ok": True, "id": report_id}
 
 
 def _to_ship_config(req: ShipRequest) -> ShipConfig:

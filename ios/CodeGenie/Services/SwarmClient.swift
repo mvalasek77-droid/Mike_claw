@@ -309,6 +309,18 @@ final class SwarmClient: ObservableObject {
         return GitHubSyncResult(json: r)
     }
 
+    /// In-app bug report. The user can also still email — this is the
+    /// private POST channel so they don't need Mail configured.
+    /// Returns the report id assigned by the backend.
+    @discardableResult
+    func submitBugReport(_ report: BugReport) async throws -> String {
+        let r = try await postJSON("/api/coding/swarm/bug-reports", body: report.wireBody)
+        guard let id = r["id"] as? String else {
+            throw SwarmError.malformed("missing report id")
+        }
+        return id
+    }
+
     /// Promote a green build to TestFlight without rebuilding.
     func ship(jobID: String, config: ShipConfig) async throws {
         _ = try await postJSON("/api/coding/swarm/\(jobID)/ship", body: config.wireBody)
@@ -804,6 +816,25 @@ struct GitHubSyncResult: Hashable {
         remote = json["remote"] as? String ?? ""
         prRequested = json["pr_requested"] as? Bool ?? false
         prURL = json["pr_url"] as? String ?? ""
+    }
+}
+
+struct BugReport: Hashable {
+    var details: String
+    var diagnostics: String?
+    var clientVersion: String?
+    var clientBuild: String?
+    var device: String?
+    var osVersion: String?
+
+    var wireBody: [String: Any] {
+        var body: [String: Any] = ["details": details]
+        if let diagnostics, !diagnostics.isEmpty { body["diagnostics"] = diagnostics }
+        if let clientVersion, !clientVersion.isEmpty { body["client_version"] = clientVersion }
+        if let clientBuild,   !clientBuild.isEmpty   { body["client_build"]   = clientBuild }
+        if let device,        !device.isEmpty        { body["device"]         = device }
+        if let osVersion,     !osVersion.isEmpty     { body["os_version"]     = osVersion }
+        return body
     }
 }
 
