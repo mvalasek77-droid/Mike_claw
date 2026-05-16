@@ -301,9 +301,6 @@
         }
       }
     },
-    "Build, quality gates, icon generation, TestFlight upload, and status polling are automated once credentials and an IPA exist. Xcode account setup, Apple sign-in, App Store Connect review fields, screenshots, and final submission still need Mac companion wiring or Apple confirmation." : {
-
-    },
     "Builds the swarm marked failed. Tap a row to see what it was reasoning about when it broke." : {
 
     },
@@ -326,6 +323,9 @@
       "comment" : "App name. Do not translate.",
       "extractionState" : "manual",
       "shouldTranslate" : false
+    },
+    "CodeGenie now has a backend release-readiness gate for Xcode archive state, Apple credentials, privacy, terms, metadata, screenshots, GitHub sync, and TestFlight upload. It automates what Apple allows and keeps account ownership, legal truthfulness, 2FA, and final App Review submit explicit." : {
+
     },
     "CodeGenie signs builds and uploads to TestFlight using these. Stored in the iOS Keychain — never sent to our servers." : {
 
@@ -725,6 +725,9 @@
     "Pick a provider, see costs, ship." : {
 
     },
+    "Pick one to watch a real build happen, or to start your own from that brief." : {
+
+    },
     "Play" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1005,6 +1008,9 @@
 
     },
     "Track build outcomes" : {
+
+    },
+    "Try a sample" : {
 
     },
     "Visual style" : {
