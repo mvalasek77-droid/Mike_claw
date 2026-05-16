@@ -25,6 +25,7 @@ struct PairMacView: View {
                 VStack(spacing: 16) {
                     header
                     statusBlock
+                    prereqBlock
                     scanQRBlock
                     discoveredBlock
                     manualBlock
@@ -79,6 +80,57 @@ struct PairMacView: View {
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(.white.opacity(0.08), in: Capsule())
                 }
+            }
+        }
+    }
+
+    /// Spelled-out prerequisites so a first-timer knows what
+    /// "Companion" means and where to download it before they hit a
+    /// confusing "Could not connect" error from the scan flow.
+    private var prereqBlock: some View {
+        GlassCard(title: "What you need first", icon: "questionmark.circle.fill", tint: LiquidGlass.warning) {
+            VStack(alignment: .leading, spacing: 10) {
+                prereqRow(
+                    icon: "hammer.fill",
+                    title: "Xcode installed on your Mac",
+                    body: "It's free in the Mac App Store. Open it once and sign in with your Apple ID so it can finish setup."
+                )
+                prereqRow(
+                    icon: "menubar.dock.rectangle",
+                    title: "CodeGenie Companion running",
+                    body: "Small free Mac app that lets your phone reach into Xcode. Download from our site, run it once — it lives in the menu bar."
+                )
+                Link(destination: URL(string: "https://codegenie.app/companion")!) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.circle.fill")
+                        Text("Download CodeGenie Companion")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 12)
+                    .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                }
+                .accessibilityHint("Opens the Companion download page in Safari")
+            }
+        }
+    }
+
+    private func prereqRow(icon: String, title: String, body: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(LiquidGlass.accent)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                Text(body)
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
             }
         }
     }

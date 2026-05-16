@@ -6,6 +6,7 @@ import SwiftUI
 struct BuildScreen: View {
     @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     let initialJob: BuildJob
     /// When non-nil, BuildScreen attaches to an existing backend job
@@ -25,7 +26,31 @@ struct BuildScreen: View {
     @State private var showDiffReview: Bool = false
     @State private var startedAt: Date = .now
     @State private var showAppleDevSetup: Bool = false
+    @State private var showReleaseExplainer: Bool = false
+    @State private var jargonHelp: JargonTerm?
     @State private var shipBanner: String?
+
+    enum JargonTerm: String, Identifiable {
+        case pipeline, bitdrop, perfection
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .pipeline:   "Pipeline"
+            case .bitdrop:    "BitDrop"
+            case .perfection: "Perfection Mode"
+            }
+        }
+        var body: String {
+            switch self {
+            case .pipeline:
+                "Your app is built by a team of eight AI specialists working in order — Architect plans the structure, Coder writes Swift, Designer makes it look good, Integrator wires everything together, then Unit Tester, UI Tester, Reviewer, and Security Auditor sign off. The list shows where they are right now."
+            case .bitdrop:
+                "A small built-in puzzle game so you have something to do while the AI works. It's optional — every cleared row gives a tiny build-speed boost as a thank-you, but ignoring it won't slow your app down."
+            case .perfection:
+                "A 10,000-probe quality check across nine axes — Apple Review readiness, accessibility, performance, security, polish, and more. Run it before submitting to the App Store. If it flags blockers, fix them; if it's green, you have a much better shot at getting through App Review on the first try."
+            }
+        }
+    }
     @State private var showSnapshots: Bool = false
     @State private var showSnapshotSettingsSheet: Bool = false
     @State private var perfectionRun: PerfectionRun?
@@ -75,6 +100,7 @@ struct BuildScreen: View {
                         if showGame { gameBlock }
                         if useRemote { transcriptBlock }
                         if costs.capHit { costCapCallout }
+                        else if costsNearingCap { costApproachingCallout }
                         WorkspaceFullBanner(tracker: costs) { showSnapshotSettingsSheet = true }
                         UploadProgressStrip(tracker: uploadProgress)
                         if !diffStream.pending.isEmpty { diffReviewCallout }
@@ -87,6 +113,7 @@ struct BuildScreen: View {
                 .scrollIndicators(.hidden)
             }
             if stage == .readyForTest { successOverlay }
+            if stage == .failed { failureOverlay }
         }
         .task { await runBuild() }
         .onChange(of: swarm.stage) { _, newStage in
@@ -103,10 +130,35 @@ struct BuildScreen: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
         }
-        .sheet(isPresented: $showAppleDevSetup) {
-            AppleDevSetupView()
+        .sheet(item: $jargonHelp) { term in
+            jargonExplainSheet(term)
+                .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAppleDevSetup) {
+            AppleDevWalkthroughView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showReleaseExplainer) {
+            ReleaseStageExplainer(
+                onChoose: { choice in
+                    UserDefaults.standard.set(true, forKey: "release.explainer.seen")
+                    showReleaseExplainer = false
+                    switch choice {
+                    case .testflight, .appStore:
+                        Task { await submitToAppStore(skipExplainer: true) }
+                    case .learnMore:
+                        if let url = URL(string: "https://developer.apple.com/distribute/") {
+                            openURL(url)
+                        }
+                    }
+                },
+                onCancel: { showReleaseExplainer = false }
+            )
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
         }
         .sheet(isPresented: $showSnapshotSettingsSheet) {
             SnapshotCapSettingsView()
@@ -223,6 +275,9 @@ struct BuildScreen: View {
     private var stageList: some View {
         GlassCard(title: "Pipeline", icon: "list.bullet.rectangle", tint: LiquidGlass.accent) {
             VStack(alignment: .leading, spacing: 8) {
+                jargonTip("Each row is one of the 8 AI agents working on your app — architect, coder, designer, tester. They run in order; the green dot is the current step.") {
+                    jargonHelp = .pipeline
+                }
                 ForEach(BuildJob.Stage.allCases.filter { $0 != .failed && $0 != .shipping }, id: \.self) { s in
                     PipelineRow(stage: s, current: stage)
                 }
@@ -233,6 +288,7 @@ struct BuildScreen: View {
     private var gameBlock: some View {
         GlassCard(title: "BitDrop", icon: "square.stack.3d.up.fill", tint: LiquidGlass.accentSecondary) {
             VStack(spacing: 10) {
+                jargonTip("A small puzzle to play while CodeGenie builds. Totally optional.") { jargonHelp = .bitdrop }
                 BitDropView(game: game)
                 Text("Clear rows of Swift symbols. Every row gives a 2% build-speed boost.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
@@ -245,6 +301,157 @@ struct BuildScreen: View {
     private var transcriptBlock: some View {
         GlassCard(title: "Live transcript", icon: "waveform", tint: LiquidGlass.accent) {
             TranscriptView(client: swarm)
+        }
+    }
+
+    /// True once live spend has crossed 80% of the cap but the cap
+    /// itself hasn't been hit. Gives the user a chance to react before
+    /// the build halts mid-agent.
+    private var costsNearingCap: Bool {
+        guard let cap = costs.backendCapUSD, cap > 0 else { return false }
+        return costs.backendSpendUSD >= cap * 0.8
+    }
+
+    private var costApproachingCallout: some View {
+        GlassSurface(tier: .raised, corner: 18) {
+            HStack(spacing: 12) {
+                Image(systemName: "gauge.with.dots.needle.67percent")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(LiquidGlass.warning)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(LiquidGlass.warning.opacity(0.18)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Spend approaching cap")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text(costs.backendCapUSD.map {
+                        String(format: "$%.2f of $%.2f used. Build will pause if it crosses.", costs.backendSpendUSD, $0)
+                    } ?? "Approaching the safety cap.")
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                }
+                Spacer()
+            }
+            .padding(12)
+        }
+    }
+
+    /// Shown when `stage` flips to `.failed`. Replaces the silent log
+    /// line with an actionable surface: last 5 log lines, retry,
+    /// resume from checkpoint, escape hatch.
+    private var failureOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.55).ignoresSafeArea()
+            GlassSurface(tier: .deep) {
+                ScrollView {
+                    VStack(spacing: 14) {
+                        Image(systemName: "xmark.octagon.fill")
+                            .font(.system(size: 56, weight: .bold))
+                            .foregroundStyle(.red.opacity(0.85))
+                            .accessibilityHidden(true)
+                        Text("Build failed")
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("Something tripped during the build. The transcript below has the last few lines — usually that's enough to spot what went wrong.")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                        recentLogTail
+                        PrimaryButton(title: "Try again", systemImage: "arrow.clockwise", style: .filled) {
+                            Task { await runBuild() }
+                        }
+                        if let jobID = swarm.jobID {
+                            PrimaryButton(title: "Resume from last checkpoint", systemImage: "clock.arrow.circlepath", style: .glass) {
+                                Task {
+                                    do { try await swarm.resume(jobID: jobID); Haptics.success() }
+                                    catch { Haptics.error() }
+                                }
+                            }
+                        }
+                        Button("Close — I'll look at this later") {
+                            Haptics.selection()
+                            dismiss()
+                        }
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    }
+                    .padding(24)
+                }
+                .frame(maxHeight: 540)
+                .scrollIndicators(.hidden)
+            }
+            .padding(.horizontal, 28)
+        }
+        .transition(.opacity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Build failed. Try again, resume from checkpoint, or close.")
+    }
+
+    private var recentLogTail: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(displayedLog.suffix(5)) { line in
+                Text(line.text)
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// One-line preview that opens a focused jargon-explainer sheet
+    /// when tapped. Used inside Pipeline / BitDrop / Perfection cards.
+    private func jargonTip(_ preview: String, action: @escaping () -> Void) -> some View {
+        Button(action: { Haptics.selection(); action() }) {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(LiquidGlass.accent.opacity(0.9))
+                    .padding(.top, 2)
+                Text(preview)
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(8)
+            .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Open a longer explanation")
+    }
+
+    private func jargonExplainSheet(_ term: JargonTerm) -> some View {
+        ZStack {
+            LiquidGlassBackground().ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(LiquidGlass.accent)
+                        Text(term.title)
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                    }
+                    Text(term.body)
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                        .lineSpacing(3)
+                    PrimaryButton(title: "Got it", systemImage: "checkmark", style: .filled) {
+                        Haptics.selection()
+                        jargonHelp = nil
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 18)
+            }
+            .scrollIndicators(.hidden)
         }
     }
 
@@ -544,9 +751,12 @@ struct BuildScreen: View {
 
     /// Wired to the "Submit to App Store" CTA in the success overlay.
     /// Runs the orchestrator's `/ship` route on the existing job — no
-    /// rebuild. If Apple Developer creds aren't set, opens the setup
-    /// sheet first so the user can configure them in-place.
-    private func submitToAppStore() async {
+    /// rebuild. Four preconditions in order:
+    ///   1. Perfection Mode must be green.
+    ///   2. Apple Developer credentials must exist.
+    ///   3. The TestFlight-vs-App-Store explainer runs once per device.
+    ///   4. Then `/ship` fires.
+    private func submitToAppStore(skipExplainer: Bool = false) async {
         if swarm.jobID != nil && perfectionRun?.isReady != true {
             shipBanner = "Run Perfection Mode and clear blockers before App Store submission."
             Haptics.warning()
@@ -555,6 +765,12 @@ struct BuildScreen: View {
         guard Credentials.shared.hasAppleDevCreds else {
             showAppleDevSetup = true
             Haptics.warning()
+            return
+        }
+        let seenExplainer = UserDefaults.standard.bool(forKey: "release.explainer.seen")
+        if !seenExplainer && !skipExplainer {
+            showReleaseExplainer = true
+            Haptics.selection()
             return
         }
         guard let jobID = swarm.jobID,

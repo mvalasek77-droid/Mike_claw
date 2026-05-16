@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4343948AA20A7BAF14848F02 /* TermsAndPrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8688FD57791F6F792AB0CFF8 /* TermsAndPrivacyView.swift */; };
+		D2AF674365A4ED6EEAC0E929 /* AppleDevWalkthroughView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFB3CB6C66AE56FAEEF51D8 /* AppleDevWalkthroughView.swift */; };
+		1720696AEEDE75E07CFB6ADB /* GitHubSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 638A86F74907A943191226DB /* GitHubSetupView.swift */; };
+		8CF73674EFBC9F51BF07FE32 /* XcodeReadinessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FB758DDA3DA7608F66AA5F /* XcodeReadinessView.swift */; };
+		04526C45080E9DA0DB39F771 /* ReleaseStageExplainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B035AA5C627F15E2F0E255C /* ReleaseStageExplainer.swift */; };
+		255CCD3FE2D798320D3BF9D0 /* FirstBuildPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27C10EC536E6B78255A61C4 /* FirstBuildPromptView.swift */; };
 		057A352148EBBC38D604EE4D /* IconForgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FB93A893802DAC7BC814C0 /* IconForgeView.swift */; };
 		09FF2FEB536C55F10F6C9111 /* CustomAgentLastRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B3AF2C4566EA809502EE72 /* CustomAgentLastRunView.swift */; };
 		0FF11DFE96CE8660B876ACA9 /* BitDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1078962AFAC6A326AA9D51 /* BitDropView.swift */; };
@@ -87,6 +93,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		8688FD57791F6F792AB0CFF8 /* TermsAndPrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermsAndPrivacyView.swift; sourceTree = "<group>"; };
+		6DFB3CB6C66AE56FAEEF51D8 /* AppleDevWalkthroughView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleDevWalkthroughView.swift; sourceTree = "<group>"; };
+		638A86F74907A943191226DB /* GitHubSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubSetupView.swift; sourceTree = "<group>"; };
+		75FB758DDA3DA7608F66AA5F /* XcodeReadinessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeReadinessView.swift; sourceTree = "<group>"; };
+		0B035AA5C627F15E2F0E255C /* ReleaseStageExplainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseStageExplainer.swift; sourceTree = "<group>"; };
+		F27C10EC536E6B78255A61C4 /* FirstBuildPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstBuildPromptView.swift; sourceTree = "<group>"; };
 		02A10ABE7F2F28539D3A753C /* UserMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserMode.swift; sourceTree = "<group>"; };
 		02B2329792B762190449F7EF /* SampleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleApp.swift; sourceTree = "<group>"; };
 		0470A104286F16FDE7209992 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -227,6 +239,7 @@
 		33871921EDD660BDC286A0B7 /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
+				8688FD57791F6F792AB0CFF8 /* TermsAndPrivacyView.swift */,
 				943A143D99DC2D5357144450 /* OnboardingIllustrations.swift */,
 				4DFDD0187FC8567803BAB2B2 /* OnboardingSlide.swift */,
 				4258927DAA703F01022B1002 /* OnboardingView.swift */,
@@ -301,6 +314,7 @@
 		94BE033707FD88857A783A75 /* Home */ = {
 			isa = PBXGroup;
 			children = (
+				F27C10EC536E6B78255A61C4 /* FirstBuildPromptView.swift */,
 				61A50E8C6B31B68AAD9F39DB /* AppOfYearPlaybookView.swift */,
 				21443221403AECDF67D9F1DE /* DemoBuildScreen.swift */,
 				A90A0CF90092EDC662A84D67 /* HomeView.swift */,
@@ -327,6 +341,10 @@
 		A64F2FA38F3FE482E2588B30 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				6DFB3CB6C66AE56FAEEF51D8 /* AppleDevWalkthroughView.swift */,
+				638A86F74907A943191226DB /* GitHubSetupView.swift */,
+				75FB758DDA3DA7608F66AA5F /* XcodeReadinessView.swift */,
+				0B035AA5C627F15E2F0E255C /* ReleaseStageExplainer.swift */,
 				CE40DCBA42A92BAF77D807B6 /* AdminView.swift */,
 				E2A99169333B742BC7E15770 /* AgentRoutingView.swift */,
 				A0881F123A4B806263C20916 /* AppleDevSetupView.swift */,
@@ -510,6 +528,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4343948AA20A7BAF14848F02 /* TermsAndPrivacyView.swift in Sources */,
+				D2AF674365A4ED6EEAC0E929 /* AppleDevWalkthroughView.swift in Sources */,
+				1720696AEEDE75E07CFB6ADB /* GitHubSetupView.swift in Sources */,
+				8CF73674EFBC9F51BF07FE32 /* XcodeReadinessView.swift in Sources */,
+				04526C45080E9DA0DB39F771 /* ReleaseStageExplainer.swift in Sources */,
+				255CCD3FE2D798320D3BF9D0 /* FirstBuildPromptView.swift in Sources */,
 				3328327281568756392B795A /* AdminView.swift in Sources */,
 				B6FCAE4790A8EE4377261754 /* AgentRoutingView.swift in Sources */,
 				50DC006E829C00B927CA65A2 /* AppOfYearPlaybookView.swift in Sources */,

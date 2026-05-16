@@ -32,6 +32,13 @@ final class Credentials: ObservableObject {
     @Published private(set) var ascP8PEM: String = ""
     @Published private(set) var appSpecificPassword: String = ""
 
+    /// GitHub identity. Username is non-secret (UserDefaults); PAT
+    /// lives in the Keychain. `defaultRepo` is the repo we auto-target
+    /// when the user taps "Back up to GitHub" on a finished build.
+    @Published var githubUsername: String = ""
+    @Published private(set) var githubPAT: String = ""
+    @Published var githubDefaultRepo: String = ""
+
     enum AuthMode: String, CaseIterable, Identifiable, Codable {
         case byok          // Bring your own API key
         case subscription  // Use Claude Pro / ChatGPT Plus session
@@ -77,6 +84,12 @@ final class Credentials: ObservableObject {
         if UserDefaults.standard.object(forKey: "cost.cap.usd") != nil {
             let raw = UserDefaults.standard.double(forKey: "cost.cap.usd")
             costCapUSD = raw > 0 ? raw : nil
+        } else {
+            // First launch: opt the user into a $5 safety cap rather
+            // than letting an unbounded build run them into a $50
+            // bill. They can disable it explicitly in Settings.
+            costCapUSD = 5.0
+            UserDefaults.standard.set(5.0, forKey: "cost.cap.usd")
         }
         if UserDefaults.standard.object(forKey: "snapshot.cap.mb") != nil {
             let raw = UserDefaults.standard.integer(forKey: "snapshot.cap.mb")
@@ -91,7 +104,28 @@ final class Credentials: ObservableObject {
         ascIssuerID  = UserDefaults.standard.string(forKey: "apple.ascIssuer") ?? ""
         ascP8PEM     = readAppleSecret(account: "asc.p8") ?? ""
         appSpecificPassword = readAppleSecret(account: "apple.appSpecific") ?? ""
+        githubUsername    = UserDefaults.standard.string(forKey: "github.username") ?? ""
+        githubDefaultRepo = UserDefaults.standard.string(forKey: "github.defaultRepo") ?? ""
+        githubPAT         = readAppleSecret(account: "github.pat") ?? ""
     }
+
+    func setGithubUsername(_ name: String) {
+        githubUsername = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(githubUsername, forKey: "github.username")
+    }
+
+    func setGithubDefaultRepo(_ repo: String) {
+        githubDefaultRepo = repo.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(githubDefaultRepo, forKey: "github.defaultRepo")
+    }
+
+    func setGithubPAT(_ token: String) {
+        let clean = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        githubPAT = clean
+        writeAppleSecret(clean, account: "github.pat")
+    }
+
+    var hasGithub: Bool { !githubUsername.isEmpty && !githubPAT.isEmpty }
 
     func setAppleTeamID(_ id: String) {
         appleTeamID = id.trimmingCharacters(in: .whitespacesAndNewlines)
