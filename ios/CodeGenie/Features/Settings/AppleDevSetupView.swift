@@ -61,7 +61,7 @@ struct AppleDevSetupView: View {
             Text("Apple Developer Program")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
-            Text("CodeGenie signs builds and uploads to TestFlight using these. Stored in the iOS Keychain — never sent to our servers.")
+            Text("Stored in the iOS Keychain and used only when you ask CodeGenie to sign or upload a build.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }

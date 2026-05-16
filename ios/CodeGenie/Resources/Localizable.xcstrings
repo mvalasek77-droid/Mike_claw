@@ -327,7 +327,7 @@
       "extractionState" : "manual",
       "shouldTranslate" : false
     },
-    "CodeGenie signs builds and uploads to TestFlight using these. Stored in the iOS Keychain — never sent to our servers." : {
+    "Stored in the iOS Keychain and used only when you ask CodeGenie to sign or upload a build." : {
 
     },
     "CodeGenie will generate the Xcode project, ask follow-ups, then run a build." : {
