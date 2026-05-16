@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var showSampleApps = false
     @State private var showAppOfYearDNA = false
     @State private var showAutomationAudit = false
+    @State private var showBugReport = false
 
     var body: some View {
         ScrollView {
@@ -65,6 +66,11 @@ struct HomeView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showBugReport) {
+            BugReportView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .fullScreenCover(isPresented: $showGame) {
             ZStack(alignment: .topTrailing) {
                 GameHomeView()
@@ -104,7 +110,7 @@ struct HomeView: View {
                         .foregroundStyle(LiquidGlass.primaryText)
                 }
                 Spacer()
-                Button { } label: {
+                Button { showSettings = true } label: {
                     Image(systemName: "person.crop.circle")
                         .font(.system(size: 22))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
@@ -157,6 +163,7 @@ struct HomeView: View {
             QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
             QuickTile(title: "Award DNA",        subtitle: "App of Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
             QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
+            QuickTile(title: "Report bug",       subtitle: "Email support",         icon: "exclamationmark.bubble.fill", tint: LiquidGlass.warning) { showBugReport = true }
         }
     }
 
@@ -200,12 +207,12 @@ struct HomeView: View {
     private var checklistCard: some View {
         GlassCard(title: "Quality checklist", icon: "checkmark.seal.fill", tint: LiquidGlass.success) {
             VStack(alignment: .leading, spacing: 8) {
-                ChecklistRow(text: "All features work seamlessly", done: true)
-                ChecklistRow(text: "Tested on iPhone flows + edge cases", done: true)
+                ChecklistRow(text: "Build path verified on Xcode 26", done: true)
+                ChecklistRow(text: "Sample demo completes without backend", done: true)
                 ChecklistRow(text: "Animations, accessibility, dark mode", done: true)
                 ChecklistRow(text: "iOS 26 Liquid Glass theme", done: true)
-                ChecklistRow(text: "Senior-engineer code review (no vibe)", done: true)
-                ChecklistRow(text: "Perfection Mode: 10,000 virtual probes", done: true)
+                ChecklistRow(text: "Pricing gate blocks unready paths", done: true)
+                ChecklistRow(text: "Perfection Mode: 10,000 virtual probes", done: false)
                 ChecklistRow(text: "Submission-ready for App Store", done: false)
             }
         }

@@ -48,11 +48,11 @@ final class Credentials: ObservableObject {
         var blurb: String {
             switch self {
             case .byok:
-                "Paste your own Anthropic / OpenAI key. CodeGenie never sees the bill — you pay providers directly. Best price."
+                "Paste your own Anthropic / OpenAI key. It is sent only to the build runner you choose when a build starts, and is never stored there."
             case .subscription:
-                "Sign into Claude Pro / Max or ChatGPT Plus on your Mac and we'll route through your existing subscription. No per-token cost."
+                "Use a paired Mac session for Claude Pro / Max or ChatGPT Plus / Pro. Requires the Mac companion."
             case .codegenie:
-                "Use our hosted credits. 3 builds free, then $9.99/mo for unlimited Sonnet builds + 20 Opus builds."
+                "Use hosted credits. 3 builds free each month, then Pro or Studio unlocks more hosted capacity."
             }
         }
     }
@@ -205,6 +205,20 @@ final class Credentials: ObservableObject {
     }
 
     var hasAnyKey: Bool { !anthropicKey.isEmpty || !openaiKey.isEmpty }
+
+    func hasKey(for provider: AIProvider) -> Bool {
+        switch provider {
+        case .anthropic: !anthropicKey.isEmpty
+        case .openai: !openaiKey.isEmpty
+        }
+    }
+
+    var providerKeysWireBody: [String: String] {
+        var body: [String: String] = [:]
+        if !anthropicKey.isEmpty { body["anthropic"] = anthropicKey }
+        if !openaiKey.isEmpty { body["openai"] = openaiKey }
+        return body
+    }
 
     // MARK: - Keychain plumbing
 

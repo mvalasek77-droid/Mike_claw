@@ -181,3 +181,33 @@ def _parse_args(s: str) -> dict[str, Any]:
         return json.loads(s)
     except json.JSONDecodeError:
         return {}
+
+
+class ProviderRoutingLLMClient(LLMClient):
+    """Route model ids to the matching provider client.
+
+    The API layer uses this for real Anthropic/OpenAI runs. Tests that
+    install a recorded fake client bypass it, so deterministic test
+    transcripts stay untouched.
+    """
+
+    def __init__(
+        self,
+        *,
+        anthropic_key: str | None = None,
+        openai_key: str | None = None,
+        fallback: LLMClient | None = None,
+    ) -> None:
+        self.anthropic = AnthropicClient(api_key=anthropic_key)
+        self.openai = OpenAIClient(api_key=openai_key)
+        self.fallback = fallback
+
+    async def complete(self, **kwargs) -> LLMResponse:
+        model = str(kwargs.get("model", ""))
+        if model.startswith("gpt-"):
+            return await self.openai.complete(**kwargs)
+        if model.startswith("claude-"):
+            return await self.anthropic.complete(**kwargs)
+        if self.fallback is not None:
+            return await self.fallback.complete(**kwargs)
+        return await self.anthropic.complete(**kwargs)

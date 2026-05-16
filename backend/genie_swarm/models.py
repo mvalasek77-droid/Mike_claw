@@ -69,12 +69,23 @@ class GitHubSyncRequest(BaseModel):
     pr_body: str | None = None
 
 
+class ProviderKeys(BaseModel):
+    """Transient BYOK credentials. Accepted only for the build request
+    that needs them; never persisted into sessions or workspace metadata."""
+    anthropic: str | None = Field(default=None, repr=False)
+    openai: str | None = Field(default=None, repr=False)
+
+
 class BuildRequest(BaseModel):
     spec: AppSpec
     workspace_root: str | None = None
     parallel: bool = True
     skip_tests: bool = False
     model_overrides: dict[str, str] = Field(default_factory=dict)
+    preferred_model: str | None = None
+    auth_mode: str | None = None
+    billing_plan: str | None = None
+    provider_keys: ProviderKeys | None = Field(default=None, repr=False)
     ship: ShipRequest | None = None
     # Halt the build if rolling USD spend crosses this cap. None
     # disables enforcement. Backend computes spend using

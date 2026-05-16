@@ -45,8 +45,16 @@ struct BuildScreen: View {
     /// through `swarm` and the user shouldn't see a different layout.
     private var useRemote: Bool {
         if demoSampleID != nil { return true }
-        let url = Credentials.shared.backendURL
-        return !url.isEmpty && !url.hasPrefix("https://api.codegenie.app")
+        let creds = Credentials.shared
+        guard !creds.backendURL.isEmpty else { return false }
+        switch creds.authMode {
+        case .byok:
+            return creds.hasAnyKey
+        case .subscription:
+            return !creds.backendToken.isEmpty
+        case .codegenie:
+            return BillingStore.shared.canStartHostedBuild
+        }
     }
 
     init(job: BuildJob, attachToBackendID: String? = nil, demoSampleID: String? = nil) {
@@ -81,6 +89,9 @@ struct BuildScreen: View {
             if stage == .readyForTest { successOverlay }
         }
         .task { await runBuild() }
+        .onChange(of: swarm.stage) { _, newStage in
+            mirrorSwarmStage(newStage)
+        }
         .sheet(isPresented: $showDiffReview) {
             DiffPreviewView(diffs: diffStream.pending) { decisions in
                 Task {
@@ -463,7 +474,10 @@ struct BuildScreen: View {
         uploadProgress.bind(to: swarm)
         CustomAgentLog.shared.bind(to: swarm)
         JobCostLog.shared.bind(to: swarm)
-        DemoSwarmDriver.play(into: swarm, sampleID: sampleID)
+        if !DemoSwarmDriver.play(into: swarm, sampleID: sampleID) {
+            push(.err, formattedTime(), "sample script missing: \(sampleID)")
+            mirrorSwarmStage(.failed)
+        }
     }
 
     private func runRemoteBuild() async {
@@ -482,34 +496,32 @@ struct BuildScreen: View {
             } else {
                 id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
             }
-            swarm.openStream(jobID: id) { event in
-                Task { @MainActor in
-                    // Mirror backend stage into the local UI, append to the
-                    // simulated log so users see continuity.
-                    if event.type == "job.state",
-                       let s = event.payload["state"] as? String {
-                        let mapped: BuildJob.Stage = {
-                            switch s {
-                            case "planning": .planning
-                            case "building": .generatingUI
-                            case "testing":  .linting
-                            case "succeeded": .readyForTest
-                            case "failed":    .failed
-                            default: .planning
-                            }
-                        }()
-                        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
-                        appendLog(for: mapped)
-                        if mapped == .readyForTest {
-                            startPerfectionIfNeeded(jobID: id)
-                        }
-                    }
-                }
-            }
+            swarm.openStream(jobID: id)
         } catch {
             // Fall back to the local simulator so the user always sees progress.
             appendLog(for: .planning)
             await runLocalFallback(reason: "\(error)")
+        }
+    }
+
+    private func mirrorSwarmStage(_ newStage: BuildJob.Stage) {
+        guard useRemote else { return }
+        guard stage != newStage else { return }
+        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
+            stage = newStage
+        }
+        appendLog(for: newStage)
+        if newStage == .readyForTest,
+           let jobID = swarm.jobID,
+           demoSampleID == nil {
+            startPerfectionIfNeeded(jobID: jobID)
+        }
+        if newStage == .readyForTest || newStage == .failed {
+            Telemetry.shared.recordBuildFinished(
+                succeeded: newStage == .readyForTest,
+                retries: costs.retryAttempts,
+                secondsElapsed: Date().timeIntervalSince(startedAt)
+            )
         }
     }
 

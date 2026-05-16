@@ -13,8 +13,11 @@ enum DemoSwarmDriver {
     /// Start replaying the script with `sampleID` into `client`.
     /// Returns immediately; emission continues on a background task
     /// until the last frame's `after_ms` elapses.
-    static func play(into client: SwarmClient, sampleID: String) {
-        guard let frames = loadScript(sampleID: sampleID) else { return }
+    @discardableResult
+    static func play(into client: SwarmClient, sampleID: String) -> Bool {
+        guard let frames = loadScript(sampleID: sampleID), !frames.isEmpty else {
+            return false
+        }
 
         client.setDemoState(jobID: "demo_\(sampleID)", connected: true)
 
@@ -32,6 +35,7 @@ enum DemoSwarmDriver {
             }
             client.setDemoState(jobID: "demo_\(sampleID)", connected: false)
         }
+        return true
     }
 
     // MARK: - Loading

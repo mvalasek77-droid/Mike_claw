@@ -89,7 +89,7 @@ enum ModelCatalogue {
             id: "claude-opus-4-7", provider: .anthropic,
             displayName: "Claude Opus 4.7",
             tagline: "Best Swift code, deepest reasoning",
-            inputUSDPerMTok: 15.0, outputUSDPerMTok: 75.0,
+            inputUSDPerMTok: 5.0, outputUSDPerMTok: 25.0,
             contextWindow: 200_000,
             bestFor: "Architecture, hard refactors, gnarly bugs",
             tier: .flagship
@@ -114,19 +114,28 @@ enum ModelCatalogue {
         ),
         // — OpenAI —
         .init(
-            id: "gpt-5", provider: .openai,
-            displayName: "GPT-5",
-            tagline: "OpenAI's flagship, sharp at design copy",
-            inputUSDPerMTok: 12.5, outputUSDPerMTok: 50.0,
+            id: "gpt-5.5", provider: .openai,
+            displayName: "GPT-5.5",
+            tagline: "OpenAI flagship for hard product work",
+            inputUSDPerMTok: 5.0, outputUSDPerMTok: 30.0,
             contextWindow: 256_000,
-            bestFor: "Naming, marketing copy, second-opinion review",
+            bestFor: "Deep review, planning, launch copy",
             tier: .flagship
         ),
         .init(
-            id: "gpt-5-mini", provider: .openai,
-            displayName: "GPT-5 mini",
-            tagline: "Compact GPT-5 — half the price, most of the polish",
-            inputUSDPerMTok: 0.25, outputUSDPerMTok: 2.0,
+            id: "gpt-5.4", provider: .openai,
+            displayName: "GPT-5.4",
+            tagline: "Balanced OpenAI coding model",
+            inputUSDPerMTok: 2.5, outputUSDPerMTok: 15.0,
+            contextWindow: 256_000,
+            bestFor: "Design polish, second-opinion review",
+            tier: .balanced
+        ),
+        .init(
+            id: "gpt-5.4-mini", provider: .openai,
+            displayName: "GPT-5.4 mini",
+            tagline: "Fast OpenAI routing for bulk tasks",
+            inputUSDPerMTok: 0.75, outputUSDPerMTok: 4.5,
             contextWindow: 128_000,
             bestFor: "Bulk transformations, batch tasks",
             tier: .fast
