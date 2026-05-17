@@ -12,14 +12,15 @@ struct OnboardingIllustrationView: View {
     var body: some View {
         ZStack {
             switch kind {
-            case .macWithXcode:        macWithXcode
-            case .projectInitialized:  projectInitialized
-            case .cursorLink:          cursorLink
-            case .aiTraining:          aiTraining
-            case .appBuilding:         appBuilding
-            case .iconForge:           iconForge
-            case .pricing:             pricing
-            case .simulatorToDevice:   simulatorToDevice
+            case .macWithXcode:                            macWithXcode
+            case .projectInitialized:                      projectInitialized
+            case .cursorLink:                              cursorLink
+            case .aiTraining:                              aiTraining
+            case .appBuilding:                             appBuilding
+            case .iconForge:                               iconForge
+            case .pricing:                                 pricing
+            case .simulatorToDevice:                       simulatorToDevice
+            case let .videoPlaceholder(caption, videoURL): videoPlaceholder(caption: caption, videoURL: videoURL)
             }
         }
         .onAppear {
@@ -131,6 +132,49 @@ struct OnboardingIllustrationView: View {
     }
 
     // MARK: Helpers
+
+    // MARK: Video placeholder slot
+
+    /// Rendered when a slide opts into a video-style frame instead of
+    /// a hand-built cartoon. Until a real `videoURL` is supplied we
+    /// show a styled "video coming soon" pane with the slide's
+    /// caption. Drop in an `AVPlayer`-backed view once bundled clips
+    /// land and the caption can become a play-state badge.
+    @ViewBuilder
+    private func videoPlaceholder(caption: String, videoURL: URL?) -> some View {
+        ZStack {
+            cartoonOrbits
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.black.opacity(0.55))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22)
+                        .strokeBorder(.white.opacity(0.18), lineWidth: 0.8)
+                )
+                .frame(width: 260, height: 156)
+                .overlay(
+                    VStack(spacing: 10) {
+                        Image(systemName: videoURL == nil ? "play.rectangle" : "play.rectangle.fill")
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundStyle(.white.opacity(videoURL == nil ? 0.55 : 0.95))
+                            .accessibilityHidden(true)
+                        Text(videoURL == nil ? "Video coming soon" : "Tap to play")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .textCase(.uppercase)
+                            .tracking(1.2)
+                        Text(caption)
+                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 18)
+                            .lineLimit(2)
+                    }
+                )
+                .shadow(color: .black.opacity(0.45), radius: 22, x: 0, y: 12)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(videoURL == nil ? "Video placeholder. \(caption). Real clip coming soon." : "Tutorial video: \(caption)")
+    }
 
     private var cartoonOrbits: some View {
         ZStack {
