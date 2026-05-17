@@ -19,6 +19,8 @@ struct HomeView: View {
     @State private var showAppOfYearDNA = false
     @State private var showAutomationAudit = false
     @State private var showBugReport = false
+    @State private var showChangelog = false
+    @AppStorage("lastSeenChangelogVersion") private var lastSeenChangelogVersion: String = ""
 
     var body: some View {
         ScrollView {
@@ -37,6 +39,12 @@ struct HomeView: View {
             .padding(.top, 14)
         }
         .scrollIndicators(.hidden)
+        .task { surfaceChangelogIfBumped() }
+        .sheet(isPresented: $showChangelog) {
+            ChangelogView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .sheet(isPresented: $showXcodeGuide) {
             XcodeInstructionsView()
                 .presentationDragIndicator(.visible)
@@ -145,6 +153,25 @@ struct HomeView: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
+        }
+    }
+
+    /// Surface "What's new" once per version bump, but never on the
+    /// very first install — that user already just sat through 8
+    /// onboarding slides + the terms gate, the last thing they need
+    /// is another sheet.
+    private func surfaceChangelogIfBumped() {
+        let current = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? ""
+        guard !current.isEmpty else { return }
+        if lastSeenChangelogVersion.isEmpty {
+            // First install — silently mark this version as seen so
+            // the next bump triggers, not this one.
+            lastSeenChangelogVersion = current
+            return
+        }
+        if lastSeenChangelogVersion != current {
+            lastSeenChangelogVersion = current
+            showChangelog = true
         }
     }
 

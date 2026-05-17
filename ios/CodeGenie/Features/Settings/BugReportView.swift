@@ -130,7 +130,7 @@ struct BugReportView: View {
         let report = BugReport(
             details: details.trimmingCharacters(in: .whitespacesAndNewlines),
             diagnostics: includeDiagnostics ? diagnostics : nil,
-            clientVersion: "0.1.0",
+            clientVersion: "0.2.0",
             clientBuild: "1",
             device: UIDevice.current.model,
             osVersion: UIDevice.current.systemVersion
@@ -186,7 +186,7 @@ struct BugReportView: View {
         let creds = Credentials.shared
         let billing = BillingStore.shared
         return """
-        App: CodeGenie 0.1.0 (1)
+        App: CodeGenie 0.2.0 (1)
         iOS: \(ProcessInfo.processInfo.operatingSystemVersionString)
         Auth mode: \(creds.authMode.rawValue)
         Billing plan: \(billing.activePlan.rawValue)

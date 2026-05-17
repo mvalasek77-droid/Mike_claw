@@ -10,6 +10,30 @@ import SwiftUI
 struct ChangelogView: View {
     private let entries: [ChangelogEntry] = [
         .init(
+            version: "0.2.0",
+            date: "May 2026",
+            highlights: [
+                "First-timer walkthroughs for Xcode, Apple Developer ($99/yr explained), App Store Connect, GitHub, and the TestFlight vs App Store choice — no prior knowledge assumed.",
+                "Terms & Privacy gate after onboarding with a plain-English costs card up front (CodeGenie tiers, Apple $99/yr, App Store cut, GitHub free).",
+                "Onboarding now has a dedicated pricing slide (Step 7 of 8) so you see costs before the legal gate.",
+                "Live cost meter strip in the build screen — running USD spend vs cap, tone shifts green/amber/red.",
+                "Build cost cap defaults to $5 on first launch — no more surprise bills.",
+                "Pre-build confirmation sheet shows estimated cost, model, and current cap before the build starts.",
+                "80%-of-cap warning fires before the build halts, so you can lift the cap deliberately.",
+                "Build failure overlay with last 5 log lines, Try again, and Resume from checkpoint.",
+                "Submit flow now opens a TestFlight vs App Store explainer once per device.",
+                "Back up to GitHub button on the success screen — pushes to your default repo with the Keychain-stored PAT.",
+                "Ship readiness card on Home tracks your four setup gates (Xcode / Mac / Apple / GitHub) and auto-hides at 4/4.",
+                "Bug report sheet now submits privately to the backend (with diagnostics), with the email path kept as a fallback.",
+                "PairMacView prereq card with a clear Companion download link.",
+                "App Store Connect guide steps each tagged Auto / Hybrid / You so you know who's actually doing the work.",
+                "Jargon explainer sheets for Pipeline / BitDrop / Perfection Mode — tap What's this? on any card.",
+                "Accessibility: section headers flagged for VoiceOver, all CTAs have hints, decorative icons hidden, cards become contain-children elements.",
+                "Backend: bug-report endpoint with persistence + 3 tests, github sync, release readiness audit (13 ship gates), bounded SSE queues.",
+                "QA: docs/AGENT_QA_PROTOCOL.md + docs/qa/PAGE_PROCESS_MATRIX.md baseline (99 rows) so every release ships with evidence.",
+            ]
+        ),
+        .init(
             version: "0.1.0",
             date: "May 2026",
             highlights: [
