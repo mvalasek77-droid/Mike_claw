@@ -76,6 +76,20 @@ class ProviderKeys(BaseModel):
     openai: str | None = Field(default=None, repr=False)
 
 
+class BugReportRequest(BaseModel):
+    """User-submitted bug report from the iOS Settings > Report a bug
+    sheet. We accept these privately so users can send feedback without
+    going through their own Mail app — the mailto fallback still
+    works, this is the in-app channel.
+    """
+    details: str = Field(..., min_length=10, max_length=5_000)
+    diagnostics: str | None = Field(default=None, max_length=10_000)
+    client_version: str | None = None
+    client_build: str | None = None
+    device: str | None = None
+    os_version: str | None = None
+
+
 class BuildRequest(BaseModel):
     spec: AppSpec
     workspace_root: str | None = None

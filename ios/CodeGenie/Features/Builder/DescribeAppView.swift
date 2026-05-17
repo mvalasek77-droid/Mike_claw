@@ -9,6 +9,7 @@ struct DescribeAppView: View {
     @State private var prompt: String
     @State private var category: AppDescription.Category
     @State private var style: AppDescription.Style
+    @State private var showCostConfirm: Bool = false
     @FocusState private var focused: Field?
 
     private enum Field { case title, prompt }
@@ -164,13 +165,9 @@ struct DescribeAppView: View {
         let canSubmit = cleanPrompt.count >= 12 && buildAccess.canBuild
         return VStack(spacing: 10) {
             PrimaryButton(title: "Build it", systemImage: "wand.and.stars", style: .filled) {
-                let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard canSubmit else { Haptics.error(); return }
-                let final = AppDescription(
-                    title: cleanTitle.isEmpty ? inferredTitle(from: cleanPrompt) : cleanTitle,
-                    prompt: cleanPrompt, category: category, style: style
-                )
-                onSubmit(final)
+                showCostConfirm = true
+                Haptics.selection()
             }
             .disabled(!canSubmit)
             .opacity(canSubmit ? 1 : 0.5)
@@ -179,6 +176,117 @@ struct DescribeAppView: View {
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                 .multilineTextAlignment(.center)
         }
+        .sheet(isPresented: $showCostConfirm) {
+            costConfirmSheet
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+    }
+
+    private var estimatedCost: Double {
+        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
+        return model.estimatedBuildCostUSD()
+    }
+
+    private var costConfirmSheet: some View {
+        let model = ModelCatalogue.model(id: creds.preferredModelID) ?? ModelCatalogue.all[0]
+        return ZStack {
+            LiquidGlassBackground().ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 16) {
+                    Image(systemName: "dollarsign.circle.fill")
+                        .font(.system(size: 42, weight: .bold))
+                        .foregroundStyle(LiquidGlass.success)
+                        .padding(.top, 12)
+                        .accessibilityHidden(true)
+                    VStack(spacing: 6) {
+                        Text(confirmTitle)
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
+                        Text(confirmHeadline)
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                            .multilineTextAlignment(.center)
+                        Text(confirmDetail(modelName: model.displayName))
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                    }
+                    GlassCard(title: "Safety cap", icon: "shield.lefthalf.filled", tint: LiquidGlass.warning) {
+                        Text(costCapCopy)
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    PrimaryButton(title: "Confirm and build", systemImage: "wand.and.stars", style: .filled) {
+                        submitConfirmedBuild()
+                    }
+                    Button("Cancel") {
+                        Haptics.selection()
+                        showCostConfirm = false
+                    }
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    Color.clear.frame(height: 20)
+                }
+                .padding(.horizontal, 22)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private var confirmTitle: String {
+        switch creds.authMode {
+        case .byok: "This build will cost about"
+        case .subscription: "This build will use"
+        case .codegenie: "This build will use"
+        }
+    }
+
+    private var confirmHeadline: String {
+        switch creds.authMode {
+        case .byok:
+            String(format: "$%.2f", estimatedCost)
+        case .subscription:
+            "Your paired Mac"
+        case .codegenie:
+            billing.activePlan == .free ? "1 hosted credit" : "\(billing.activePlan.label) hosting"
+        }
+    }
+
+    private func confirmDetail(modelName: String) -> String {
+        switch creds.authMode {
+        case .byok:
+            return "Estimated with \(modelName). Final provider cost depends on complexity and token use."
+        case .subscription:
+            return "CodeGenie routes through your existing Claude or ChatGPT session on the Mac companion."
+        case .codegenie:
+            return billing.activePlan == .free
+                ? "\(billing.hostedStatusText). CodeGenie stops if the backend reports a launch blocker."
+                : "\(billing.hostedStatusText). CodeGenie still applies backend safety gates."
+        }
+    }
+
+    private var costCapCopy: String {
+        if let cap = creds.costCapUSD {
+            return String(format: "Builds halt automatically at $%.2f. You can lift the cap mid-build if the backend pauses before completion.", cap)
+        }
+        return "No cap is set. Turn on Build cost cap in Settings if you want a hard ceiling before starting."
+    }
+
+    private func submitConfirmedBuild() {
+        showCostConfirm = false
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        let final = AppDescription(
+            title: cleanTitle.isEmpty ? inferredTitle(from: cleanPrompt) : cleanTitle,
+            prompt: cleanPrompt,
+            category: category,
+            style: style
+        )
+        onSubmit(final)
     }
 
     private var preflightBlock: some View {

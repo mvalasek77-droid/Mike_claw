@@ -18,6 +18,7 @@ struct OnboardingIllustrationView: View {
             case .aiTraining:          aiTraining
             case .appBuilding:         appBuilding
             case .iconForge:           iconForge
+            case .pricing:             pricing
             case .simulatorToDevice:   simulatorToDevice
             }
         }
@@ -105,7 +106,20 @@ struct OnboardingIllustrationView: View {
         }
     }
 
-    // MARK: Slide 7 — Simulator to device
+    // MARK: Slide 7 — Pricing
+
+    private var pricing: some View {
+        ZStack {
+            cartoonOrbits
+            cartoonShape(systemName: "dollarsign.circle.fill", size: 120, color: LiquidGlass.success, offsetY: bob ? -6 : 6)
+            cartoonShape(systemName: "checkmark.seal.fill",     size: 44,  color: LiquidGlass.success, offsetX: -68, offsetY: -54, rotation: bob ? -6 : 6)
+            cartoonShape(systemName: "shield.lefthalf.filled",  size: 44,  color: LiquidGlass.warning, offsetX: 70,  offsetY: -50, rotation: bob ? 6 : -6)
+            cartoonShape(systemName: "sparkles",                size: 30,  color: LiquidGlass.accent,  offsetX: -52, offsetY: 60,  rotation: bob ? 8 : -8)
+            cartoonShape(systemName: "applelogo",               size: 32,  color: .white.opacity(0.85), offsetX: 56, offsetY: 60, rotation: bob ? -4 : 4)
+        }
+    }
+
+    // MARK: Slide 8 — Simulator to device
 
     private var simulatorToDevice: some View {
         ZStack {

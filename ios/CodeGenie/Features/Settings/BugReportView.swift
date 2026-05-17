@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BugReportView: View {
     @Environment(\.openURL) private var openURL
@@ -6,6 +7,8 @@ struct BugReportView: View {
     @State private var details = ""
     @State private var includeDiagnostics = true
     @State private var status: String?
+    @State private var submitting: Bool = false
+    private let client = SwarmClient()
 
     private let address = "mvalasek77@gmail.com"
 
@@ -45,7 +48,7 @@ struct BugReportView: View {
             Label("Report a bug", systemImage: "exclamationmark.bubble.fill")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
-            Text("Tell us what broke, what you tapped, and what you expected. It opens a pre-filled email to \(address).")
+            Text("Tell us what broke, what you tapped, and what you expected. You can submit privately to us, or open a pre-filled email to \(address) — whichever you prefer.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
@@ -92,17 +95,55 @@ struct BugReportView: View {
     }
 
     private var sendButton: some View {
-        PrimaryButton(title: "Email bug report", systemImage: "envelope.fill", style: .filled) {
-            guard let url = mailURL else {
-                status = "Could not create the email link. Send manually to \(address)."
-                Haptics.error()
-                return
+        VStack(spacing: 10) {
+            PrimaryButton(
+                title: submitting ? "Submitting…" : "Submit privately",
+                systemImage: "paperplane.fill",
+                style: .filled
+            ) {
+                Task { await submitPrivately() }
             }
-            openURL(url) { accepted in
-                status = accepted ? "Opening Mail..." : "Mail is not configured. Send manually to \(address)."
+            .disabled(submitting || details.trimmingCharacters(in: .whitespacesAndNewlines).count < 10)
+            .opacity(details.trimmingCharacters(in: .whitespacesAndNewlines).count < 10 ? 0.5 : 1)
+            .accessibilityHint("POSTs the report to the CodeGenie backend — no email client needed.")
+
+            PrimaryButton(title: "Or email it instead", systemImage: "envelope.fill", style: .glass) {
+                guard let url = mailURL else {
+                    status = "Could not create the email link. Send manually to \(address)."
+                    Haptics.error()
+                    return
+                }
+                openURL(url) { accepted in
+                    status = accepted ? "Opening Mail..." : "Mail is not configured. Send manually to \(address)."
+                }
             }
+            .accessibilityHint("Opens Mail with a pre-filled bug report.")
         }
-        .accessibilityHint("Opens Mail with a pre-filled bug report")
+    }
+
+    /// Posts the bug report to the backend. Falls back gracefully to
+    /// the email path with a clear error if the POST fails — the user
+    /// should never lose their words because the network blipped.
+    private func submitPrivately() async {
+        submitting = true
+        defer { submitting = false }
+        let report = BugReport(
+            details: details.trimmingCharacters(in: .whitespacesAndNewlines),
+            diagnostics: includeDiagnostics ? diagnostics : nil,
+            clientVersion: "0.1.0",
+            clientBuild: "1",
+            device: UIDevice.current.model,
+            osVersion: UIDevice.current.systemVersion
+        )
+        do {
+            let id = try await client.submitBugReport(report)
+            status = "Sent — reference \(id). Thank you."
+            Haptics.success()
+            details = ""
+        } catch {
+            status = "Could not send: \(error.localizedDescription). Try the email path."
+            Haptics.error()
+        }
     }
 
     private var mailURL: URL? {

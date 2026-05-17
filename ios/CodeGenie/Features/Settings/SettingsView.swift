@@ -16,6 +16,9 @@ struct SettingsView: View {
     @State private var showCrashLog = false
     @State private var showAdmin = false
     @State private var showBugReport = false
+    @State private var showAppleDevWalkthrough = false
+    @State private var showGitHubSetup = false
+    @State private var showXcodeReadiness = false
     @StateObject private var telemetry = Telemetry.shared
     @StateObject private var userMode = UserMode.shared
     @StateObject private var billing = BillingStore.shared
@@ -32,6 +35,7 @@ struct SettingsView: View {
                     if creds.authMode == .codegenie { hostedBlock }
                     modelComparison
                     estimatorBlock
+                    setupGuidesBlock
                     modeBlock
                     if userMode.isPower {
                         costCapBlock
@@ -94,6 +98,21 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showBugReport) {
             BugReportView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showAppleDevWalkthrough) {
+            AppleDevWalkthroughView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showGitHubSetup) {
+            GitHubSetupView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showXcodeReadiness) {
+            XcodeReadinessView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -164,6 +183,63 @@ struct SettingsView: View {
             icon: "arrow.triangle.branch",
             tint: LiquidGlass.warning
         ) { showAgentRouting = true }
+    }
+
+    private var setupGuidesBlock: some View {
+        GlassCard(title: "Setup guides", icon: "list.bullet.clipboard", tint: LiquidGlass.accentSecondary) {
+            VStack(spacing: 4) {
+                setupGuideRow(
+                    title: "Xcode readiness",
+                    subtitle: "Plain-English primer for the Mac build requirement.",
+                    icon: "hammer.fill",
+                    tint: LiquidGlass.warning
+                ) { showXcodeReadiness = true }
+                setupGuideRow(
+                    title: "Apple Developer walkthrough",
+                    subtitle: "$99/year, Team ID, and App Store Connect API key.",
+                    icon: "applelogo",
+                    tint: LiquidGlass.success
+                ) { showAppleDevWalkthrough = true }
+                setupGuideRow(
+                    title: "GitHub setup",
+                    subtitle: "Create a PAT and repo backup target for Studio sync.",
+                    icon: "chevron.left.forwardslash.chevron.right",
+                    tint: LiquidGlass.accent
+                ) { showGitHubSetup = true }
+            }
+        }
+    }
+
+    private func setupGuideRow(title: String, subtitle: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: { Haptics.selection(); action() }) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(tint)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(tint.opacity(0.18)))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text(subtitle)
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.62))
+                        .lineLimit(2)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.45))
+            }
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityHint(subtitle)
     }
 
     private var customAgentsBlock: some View {
