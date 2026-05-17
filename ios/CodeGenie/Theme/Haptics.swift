@@ -1,4 +1,5 @@
 import UIKit
+import Foundation
 import CoreHaptics
 
 /// Adaptive haptics. We use Core Haptics where available (iPhone 8+),
@@ -44,6 +45,14 @@ enum Haptics {
         if let pattern = try? CHHapticPattern(events: [event], parameters: []),
            let player  = try? engine.makePlayer(with: pattern) {
             try? player.start(atTime: 0)
+        }
+    }
+
+    /// Soft two-step confirmation for moments where a build experience begins.
+    static func experienceStart() {
+        tap(intensity: 0.34, sharpness: 0.28)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
+            tap(intensity: 0.46, sharpness: 0.36)
         }
     }
 

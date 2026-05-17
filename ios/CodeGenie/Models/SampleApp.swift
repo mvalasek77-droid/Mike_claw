@@ -12,6 +12,11 @@ struct SampleApp: Identifiable, Hashable, Codable {
     let tint: String
     let prompt: String
     let outcome: String
+    let category: AppDescription.Category?
+    let style: AppDescription.Style?
+    let gradeScore: Int?
+    let gradeLabel: String?
+    let gradeSignals: [String]?
     let demoPlayable: Bool
     let estimatedSeconds: Int
 
@@ -19,9 +24,21 @@ struct SampleApp: Identifiable, Hashable, Codable {
         AppDescription(
             title: title,
             prompt: prompt,
-            category: .utility,
-            style: .liquidGlass
+            category: category ?? .utility,
+            style: style ?? .liquidGlass
         )
+    }
+
+    var instantGradeScore: Int {
+        min(max(gradeScore ?? 6, 1), 10)
+    }
+
+    var instantGradeLabel: String {
+        gradeLabel ?? "Needs sharper hook"
+    }
+
+    var instantGradeSignals: [String] {
+        gradeSignals ?? []
     }
 
     enum CodingKeys: String, CodingKey {
@@ -32,6 +49,11 @@ struct SampleApp: Identifiable, Hashable, Codable {
         case tint
         case prompt
         case outcome
+        case category
+        case style
+        case gradeScore = "grade_score"
+        case gradeLabel = "grade_label"
+        case gradeSignals = "grade_signals"
         case demoPlayable = "demo_playable"
         case estimatedSeconds = "estimated_seconds"
     }

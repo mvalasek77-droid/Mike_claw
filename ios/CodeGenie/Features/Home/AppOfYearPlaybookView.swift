@@ -10,6 +10,7 @@ struct AppOfYearPlaybookView: View {
                 VStack(spacing: 16) {
                     header
                     formulaCard
+                    recentPattern
                     segments
                     winners
                     launchGate
@@ -76,6 +77,16 @@ struct AppOfYearPlaybookView: View {
         }
     }
 
+    private var recentPattern: some View {
+        GlassCard(title: "What the last 5 teach us", icon: "sparkles", tint: LiquidGlass.accentSecondary) {
+            VStack(spacing: 10) {
+                ForEach(RecentWinnerMove.all) { move in
+                    RecentWinnerMoveRow(move: move)
+                }
+            }
+        }
+    }
+
     private var winners: some View {
         GlassCard(title: "Last 10 iPhone winners", icon: "trophy.fill", tint: LiquidGlass.warning) {
             VStack(spacing: 8) {
@@ -113,6 +124,53 @@ struct AppOfYearPlaybookView: View {
             }
         }
     }
+}
+
+private struct RecentWinnerMove: Identifiable {
+    let winner: String
+    let move: String
+    let codegenieUse: String
+    let icon: String
+    let tint: Color
+    var id: String { winner }
+
+    static let all: [RecentWinnerMove] = [
+        .init(
+            winner: "Tiimo",
+            move: "Make chaos feel calm.",
+            codegenieUse: "Grade for a soothing first loop, not just task count.",
+            icon: "calendar.badge.clock",
+            tint: LiquidGlass.success
+        ),
+        .init(
+            winner: "Kino",
+            move: "Turn iPhone hardware into craft.",
+            codegenieUse: "Reward camera, haptics, widgets, watch, and on-device moments.",
+            icon: "camera.filters",
+            tint: LiquidGlass.accent
+        ),
+        .init(
+            winner: "AllTrails",
+            move: "Give real-world confidence.",
+            codegenieUse: "Prefer prompts with a clear place, timing, or action outside the app.",
+            icon: "map.fill",
+            tint: Color(red: 0.31, green: 0.78, blue: 0.48)
+        ),
+        .init(
+            winner: "BeReal",
+            move: "Own one honest daily ritual.",
+            codegenieUse: "Score recurring emotional moments above broad feature sets.",
+            icon: "clock.badge.checkmark.fill",
+            tint: LiquidGlass.warning
+        ),
+        .init(
+            winner: "Toca Life World",
+            move: "Let identity and play emerge.",
+            codegenieUse: "Push samples toward self-expression, memory, and personal worlds.",
+            icon: "paintpalette.fill",
+            tint: Color(red: 1.00, green: 0.47, blue: 0.66)
+        )
+    ]
 }
 
 private struct AppOfYearWinner: Identifiable, Hashable {
@@ -180,6 +238,36 @@ private struct AppOfYearSegment: Identifiable {
             gate: "The App Store package must explain the payoff before review."
         )
     ]
+}
+
+private struct RecentWinnerMoveRow: View {
+    let move: RecentWinnerMove
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: move.icon)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(move.tint)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(move.tint.opacity(0.16)))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(move.winner)
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+                    .foregroundStyle(move.tint)
+                Text(move.move)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(move.codegenieUse)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+    }
 }
 
 private struct SectionLabel: View {

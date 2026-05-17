@@ -25,6 +25,7 @@ struct HomeView: View {
             VStack(spacing: 22) {
                 hero
                 primaryAction
+                experienceCompass
                 shipReadinessCard
                 quickGrid
                 if !session.recentJobs.isEmpty { recentJobs }
@@ -273,11 +274,11 @@ struct HomeView: View {
             .padding(.horizontal, 4)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Build your next app\nfrom your phone.")
+                Text("Build an experience\nfrom your phone.")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
                     .lineSpacing(2)
-                Text("CodeGenie wires Claude, GPT, and Xcode together so you can ship to the App Store from anywhere.")
+                Text("CodeGenie turns a product feeling into SwiftUI, Xcode, tests, accessibility checks, and an App Store path.")
                     .font(.system(size: 15, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
             }
@@ -290,21 +291,83 @@ struct HomeView: View {
         GlassSurface(tier: .deep) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Text("Describe an app").font(.system(size: 18, weight: .semibold, design: .rounded))
+                    Text("Brief the experience").font(.system(size: 18, weight: .semibold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
                     Spacer()
                     Image(systemName: "sparkles").foregroundStyle(LiquidGlass.accent)
                 }
-                Text("\"A daily habit tracker with streaks and a calm look.\"")
+                Text("\"A warm habit ritual with streaks, haptics, privacy, and a lock-screen moment.\"")
                     .font(.system(size: 15, weight: .regular, design: .rounded))
                     .italic()
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 PrimaryButton(title: "Start a new build", systemImage: "wand.and.stars", style: .filled) {
+                    Haptics.experienceStart()
                     startBuildOrPromptSetup()
                 }
             }
             .padding(20)
         }
+    }
+
+    private var experienceCompass: some View {
+        GlassSurface(tier: .raised, corner: 22) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(LiquidGlass.warning)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(LiquidGlass.warning.opacity(0.18)))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("App of Year studio")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("Every build should have a feeling, ritual, native Apple hook, accessible feedback, and trust story.")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                    ExperiencePillar(title: "Feeling", icon: "heart.fill", tint: Color(red: 1.00, green: 0.47, blue: 0.66))
+                    ExperiencePillar(title: "Ritual", icon: "repeat.circle.fill", tint: LiquidGlass.warning)
+                    ExperiencePillar(title: "Native", icon: "iphone.gen3.radiowaves.left.and.right", tint: LiquidGlass.accent)
+                    ExperiencePillar(title: "Access", icon: "accessibility.fill", tint: LiquidGlass.success)
+                }
+                HStack(spacing: 10) {
+                    studioButton(title: "Open DNA", icon: "trophy.fill", tint: LiquidGlass.warning) {
+                        Haptics.selection()
+                        showAppOfYearDNA = true
+                    }
+                    studioButton(title: "Try samples", icon: "sparkles", tint: LiquidGlass.accent) {
+                        Haptics.selection()
+                        showSampleApps = true
+                    }
+                }
+            }
+            .padding(17)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("App of Year studio")
+        .accessibilityHint("Opens award DNA or curated samples")
+    }
+
+    private func studioButton(title: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(tint.opacity(0.12), in: Capsule())
+                .overlay(Capsule().strokeBorder(tint.opacity(0.24)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 
     private var quickGrid: some View {
@@ -377,7 +440,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 8) {
                 ChecklistRow(text: "Build path verified on Xcode 26", done: true)
                 ChecklistRow(text: "Sample demo completes without backend", done: true)
-                ChecklistRow(text: "Animations, accessibility, dark mode", done: true)
+                ChecklistRow(text: "Experience DNA, accessibility, haptics", done: true)
                 ChecklistRow(text: "iOS 26 Liquid Glass theme", done: true)
                 ChecklistRow(text: "Pricing gate blocks unready paths", done: true)
                 ChecklistRow(text: "Perfection Mode: 10,000 virtual probes", done: false)
@@ -417,6 +480,38 @@ private struct QuickTile: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityHint(subtitle)
+    }
+}
+
+private struct ExperiencePillar: View {
+    let title: String
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(tint.opacity(0.15)))
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.82))
+                .lineLimit(1)
+                .minimumScaleFactor(0.86)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
+        .background(.white.opacity(0.07), in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.12)))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
     }
 }
 

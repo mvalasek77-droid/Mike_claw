@@ -15,11 +15,11 @@ struct DescribeAppView: View {
     private enum Field { case title, prompt }
 
     private let suggestions: [String] = [
-        "A tide times app for surfers with a clean Apple-style UI",
-        "Daily habit tracker with streaks and a calm, minimal look",
-        "AI-powered pantry that suggests recipes from photos of my fridge",
-        "Read-it-later for podcasts with chapter summaries",
-        "Liquid-glass weather widget collection, no ads"
+        "Warm habit tracker with a candle-like streak, lock-screen widget, kind recovery copy, and a soft haptic when the flame grows",
+        "Pastel mood journal with one nightly reflection, private weekly patterns, breathing haptics, offline storage, and no streak pressure",
+        "Tide times app for surfers with Apple Watch glance, next-low-tide haptic, calm ocean UI, and offline beach favorites",
+        "Podcast note taker where a Watch tap marks the moment and a daily digest turns highlights into one-line takeaways",
+        "Camera helper that makes cinematic focus pulls feel simple with haptics, presets, and accessible large controls"
     ]
 
     init(initial: AppDescription? = nil, onSubmit: @escaping (AppDescription) -> Void) {
@@ -39,6 +39,7 @@ struct DescribeAppView: View {
                     titleField
                     promptField
                     suggestionRow
+                    experienceDNAReadout
                     categoryPicker
                     stylePicker
                     preflightBlock
@@ -58,9 +59,9 @@ struct DescribeAppView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Describe your app").font(.system(size: 28, weight: .bold, design: .rounded))
+            Text("Shape the experience").font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
-            Text("Be specific — like you're briefing a designer. CodeGenie scaffolds a full Xcode project from this.")
+            Text("Brief the feeling, ritual, native Apple moments, accessibility, and trust story before CodeGenie writes code.")
                 .font(.system(size: 14, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
@@ -97,7 +98,7 @@ struct DescribeAppView: View {
                     .accessibilityLabel("App description")
                     .overlay(alignment: .topLeading) {
                         if prompt.isEmpty {
-                            Text("Describe screens, features, the vibe…")
+                            Text("Describe the ritual, feeling, native hooks, and trust details...")
                                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.45))
                                 .font(.system(size: 16, weight: .regular, design: .rounded))
                                 .padding(.top, 8).padding(.leading, 5)
@@ -130,6 +131,56 @@ struct DescribeAppView: View {
             }
             .padding(.horizontal, 4)
         }
+    }
+
+    private var experienceDNAReadout: some View {
+        let cues = experienceCues
+        let matched = cues.filter(\.matched).count
+        return GlassSurface(tier: .raised, corner: 18) {
+            VStack(alignment: .leading, spacing: 13) {
+                HStack(alignment: .center, spacing: 10) {
+                    Image(systemName: "sparkles.rectangle.stack.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accentSecondary)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(LiquidGlass.accentSecondary.opacity(0.16)))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Experience DNA")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("\(matched) of \(cues.count) signals detected")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.66))
+                    }
+                    Spacer()
+                    VStack(spacing: 0) {
+                        Text("\(experienceScore)")
+                            .font(.system(size: 22, weight: .black, design: .rounded))
+                        Text("/10")
+                            .font(.system(size: 8, weight: .black, design: .rounded))
+                    }
+                    .foregroundStyle(experienceTint)
+                    .frame(width: 48, height: 48)
+                    .background(Circle().fill(experienceTint.opacity(0.14)))
+                    .overlay(Circle().strokeBorder(experienceTint.opacity(0.34)))
+                    .accessibilityHidden(true)
+                }
+                Text(experienceGradeLabel)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.78))
+                    .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 8) {
+                    ForEach(cues) { cue in
+                        ExperienceCueRow(cue: cue)
+                    }
+                }
+            }
+            .padding(15)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Experience DNA score \(experienceScore) out of 10")
+        .accessibilityValue(cues.map { "\($0.title): \($0.matched ? "ready" : "missing")" }.joined(separator: ", "))
     }
 
     private var categoryPicker: some View {
@@ -286,6 +337,7 @@ struct DescribeAppView: View {
             category: category,
             style: style
         )
+        Haptics.experienceStart()
         onSubmit(final)
     }
 
@@ -376,6 +428,78 @@ struct DescribeAppView: View {
         let words = prompt.split(separator: " ").prefix(4)
         return words.joined(separator: " ").capitalized
     }
+
+    private var experienceCues: [ExperienceCue] {
+        [
+            .init(
+                title: "Emotional payoff",
+                detail: "Name the feeling users get first.",
+                icon: "heart.fill",
+                tint: Color(red: 1.00, green: 0.47, blue: 0.66),
+                matched: briefContains(["calm", "warm", "confidence", "delight", "joy", "kind", "relief", "focus", "reflection", "authentic", "play"])
+            ),
+            .init(
+                title: "Return ritual",
+                detail: "Give people a reason to come back.",
+                icon: "repeat.circle.fill",
+                tint: LiquidGlass.warning,
+                matched: briefContains(["daily", "nightly", "weekly", "streak", "ritual", "check-in", "reminder", "digest", "routine", "journal"])
+            ),
+            .init(
+                title: "Native craft",
+                detail: "Use iPhone, Watch, camera, widgets, or haptics.",
+                icon: "iphone.gen3.radiowaves.left.and.right",
+                tint: LiquidGlass.accent,
+                matched: briefContains(["watch", "widget", "haptic", "camera", "shortcut", "lock-screen", "lock screen", "live activity", "siri", "offline"])
+            ),
+            .init(
+                title: "Accessible feedback",
+                detail: "Plan VoiceOver, contrast, motion, and tap feel.",
+                icon: "accessibility.fill",
+                tint: Color(red: 0.22, green: 0.78, blue: 0.65),
+                matched: briefContains(["accessibility", "voiceover", "large type", "contrast", "reduce motion", "haptic", "captions", "screen reader"])
+            ),
+            .init(
+                title: "Trust story",
+                detail: "Say how privacy and failure are handled.",
+                icon: "lock.shield.fill",
+                tint: LiquidGlass.success,
+                matched: briefContains(["private", "privacy", "offline", "secure", "no ads", "local", "encrypted", "forgiveness", "no feeds", "no streak pressure"])
+            )
+        ]
+    }
+
+    private var experienceScore: Int {
+        let cleanPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        let base = cleanPrompt.count >= 12 ? 5 : 3
+        return min(10, base + experienceCues.filter(\.matched).count)
+    }
+
+    private var experienceGradeLabel: String {
+        switch experienceScore {
+        case 9...10:
+            return "This is starting to feel like a product experience, not a feature list."
+        case 7...8:
+            return "Strong shape. Add one more native, accessible, or emotional signal."
+        case 5...6:
+            return "The utility is visible. Sharpen the moment people will remember."
+        default:
+            return "Start with the feeling, then name the daily loop and device magic."
+        }
+    }
+
+    private var experienceTint: Color {
+        switch experienceScore {
+        case 9...10: return LiquidGlass.success
+        case 7...8: return LiquidGlass.warning
+        default: return LiquidGlass.accentSecondary
+        }
+    }
+
+    private func briefContains(_ terms: [String]) -> Bool {
+        let haystack = "\(title) \(prompt)".lowercased()
+        return terms.contains { haystack.contains($0) }
+    }
 }
 
 private struct BuildAccess {
@@ -384,6 +508,43 @@ private struct BuildAccess {
     let detail: String
     let footer: String
     let tint: Color
+}
+
+private struct ExperienceCue: Identifiable {
+    let title: String
+    let detail: String
+    let icon: String
+    let tint: Color
+    let matched: Bool
+    var id: String { title }
+}
+
+private struct ExperienceCueRow: View {
+    let cue: ExperienceCue
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: cue.matched ? "checkmark.circle.fill" : cue.icon)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(cue.matched ? LiquidGlass.success : cue.tint)
+                .frame(width: 26, height: 26)
+                .background(Circle().fill((cue.matched ? LiquidGlass.success : cue.tint).opacity(0.14)))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(cue.title)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                Text(cue.detail)
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.62))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(cue.title), \(cue.matched ? "ready" : "missing")")
+        .accessibilityHint(cue.detail)
+    }
 }
 
 private struct Chip: View {
