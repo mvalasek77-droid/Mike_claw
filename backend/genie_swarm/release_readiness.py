@@ -208,6 +208,19 @@ def run_release_readiness(
         "Generate name, subtitle, keywords, description, support URL, and category.",
     )
 
+    icon = _app_icon(workspace)
+    add(
+        "app_icon",
+        "1024×1024 App Store icon",
+        "automated" if icon else "needs_setup",
+        (
+            f"Found {icon.name} ({icon.stat().st_size} bytes)."
+            if icon
+            else "No 1024×1024 icon in Assets.xcassets/AppIcon.appiconset."
+        ),
+        "Tap Generate Icon on the build screen or POST /api/coding/swarm/<job>/icon/generate.",
+    )
+
     screenshots = _screenshot_files(workspace)
     add(
         "screenshots",
@@ -342,6 +355,21 @@ def _screenshot_files(workspace: Path) -> list[Path]:
         if "screenshot" in path.name.lower() or any("screenshot" in part for part in parts):
             out.append(path)
     return out
+
+
+def _app_icon(workspace: Path) -> Path | None:
+    """Find the 1024×1024 App Store icon if one's been generated.
+    We match by location (`Assets.xcassets/AppIcon.appiconset/`) +
+    a 1024 hint in the filename so newly-generated icons are picked
+    up alongside any manually-placed ones."""
+    appiconset_glob = workspace.rglob("AppIcon.appiconset")
+    for appiconset in appiconset_glob:
+        if not appiconset.is_dir():
+            continue
+        for candidate in appiconset.glob("*.png"):
+            if "1024" in candidate.name.lower() or candidate.name.lower() == "icon.png":
+                return candidate
+    return None
 
 
 def _github_status(

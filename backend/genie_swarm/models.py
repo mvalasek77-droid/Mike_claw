@@ -76,6 +76,19 @@ class ProviderKeys(BaseModel):
     openai: str | None = Field(default=None, repr=False)
 
 
+class IconGenerateRequest(BaseModel):
+    """Generate an App Store icon via OpenAI's image API.
+
+    Title is required; description is the natural-language brief the
+    user supplied. `prompt_override` lets advanced users substitute
+    a fully-formed prompt — by default we build one from title +
+    description with sensible iOS-icon constraints baked in.
+    """
+    title: str = Field(..., min_length=1, max_length=120)
+    description: str = Field(default="", max_length=2_000)
+    prompt_override: str | None = Field(default=None, max_length=2_000)
+
+
 class BugReportRequest(BaseModel):
     """User-submitted bug report from the iOS Settings > Report a bug
     sheet. We accept these privately so users can send feedback without

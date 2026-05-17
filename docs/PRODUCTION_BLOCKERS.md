@@ -14,8 +14,8 @@ Last audited at the `claude/finish-line` branch, after the 0.2.0 polish pass.
 
 | Surface | Promise | Status | What's actually missing |
 |---|---|---|---|
-| OnboardingSlide step 6 | "Icon forged with ChatGPT" | **stubbed** | No code anywhere in `backend/` calls an image-generation API. Grep confirms zero hits for `dall-e`, `image_gen`, `app_icon`, `generate_icon`. The marketing copy promises an icon; nothing generates one. |
-| OnboardingSlide step 6 / ASC step 3 | "1024×1024 PNG, no alpha, no rounded corners. CodeGenie strips alpha automatically" | **stubbed** | No icon transformation code exists. ASC step 3 has the user upload an icon they have to provide themselves. |
+| OnboardingSlide step 6 | "Icon forged with ChatGPT" | **wired** (v0.2.1) | `backend/genie_swarm/icon_gen.py` calls OpenAI's `gpt-image-1` model, drops the PNG into `Assets.xcassets/AppIcon.appiconset/icon-1024.png`. Route: `POST /api/coding/swarm/<job>/icon/generate`. iOS surface: `SwarmClient.generateAppIcon(...)`. Needs `OPENAI_API_KEY` in the backend env. |
+| OnboardingSlide step 6 / ASC step 3 | "1024×1024 PNG, no alpha, no rounded corners. CodeGenie strips alpha automatically" | **wired** (v0.2.1) | `_strip_alpha_if_possible()` flattens transparency onto white when Pillow is installed; gracefully passes raw bytes through with a logged warning when not. Pillow added to `requirements.txt`. |
 | ASC step 4 | "Auto-generate screenshots" | **stubbed** | `screenshot_diff.py` exists for *comparing* screenshots; nothing actually captures them. Orchestrator prompts mention `simctl io booted screenshot` but no Python code drives it. |
 | OnboardingSlide step 5 | "iterates until the UI is correct, the data flows, and the build is green" | **partial** | The 8-agent orchestrator is real. Whether it actually produces a green build for arbitrary user prompts has never been verified end-to-end on a real Apple Dev account. |
 
@@ -89,5 +89,5 @@ A simple v0.2.0 dogfood pass: build a TideTimes app, submit it to your own TestF
 4. Ship `PrivacyInfo.xcprivacy` — unblocks App Review
 5. Dogfood once: ship TideTimes via CodeGenie to your own TestFlight
 6. Mac Companion app source + signed build — unblocks the pair-your-Mac flow
-7. Implement icon generation (call OpenAI's image API) or remove the promise from onboarding
+7. ~~Implement icon generation (call OpenAI's image API)~~ — done in v0.2.1.
 8. Implement simctl screenshot capture or remove the promise from ASC step 4
