@@ -48,6 +48,9 @@ def _write_release_workspace(root: Path, job_id: str = "job_release") -> Path:
     )
     (ws / "TermsOfUse.md").write_text("# Terms\n", encoding="utf-8")
     (ws / "Screenshots" / "iphone-67-screenshot.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    appiconset = ws / "Assets.xcassets" / "AppIcon.appiconset"
+    appiconset.mkdir(parents=True)
+    (appiconset / "icon-1024.png").write_bytes(b"\x89PNG\r\n\x1a\n")
     (ws / "Build.ipa").write_bytes(b"ipa")
     (ws / "Sources").mkdir()
     (ws / "Sources" / "App.swift").write_text("import SwiftUI\n", encoding="utf-8")

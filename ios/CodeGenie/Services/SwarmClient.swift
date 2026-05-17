@@ -309,6 +309,28 @@ final class SwarmClient: ObservableObject {
         return GitHubSyncResult(json: r)
     }
 
+    /// Generate the 1024×1024 App Store icon via OpenAI's image API
+    /// and write it into the workspace's AppIcon.appiconset. Closes
+    /// the "icon forged with ChatGPT" promise from onboarding — the
+    /// backend now actually calls the image API.
+    @discardableResult
+    func generateAppIcon(
+        jobID: String,
+        title: String,
+        description: String,
+        promptOverride: String? = nil
+    ) async throws -> IconGenerationResult {
+        var body: [String: Any] = [
+            "title": title,
+            "description": description,
+        ]
+        if let promptOverride, !promptOverride.isEmpty {
+            body["prompt_override"] = promptOverride
+        }
+        let r = try await postJSON("/api/coding/swarm/\(jobID)/icon/generate", body: body)
+        return IconGenerationResult(json: r)
+    }
+
     /// In-app bug report. The user can also still email — this is the
     /// private POST channel so they don't need Mail configured.
     /// Returns the report id assigned by the backend.
@@ -816,6 +838,22 @@ struct GitHubSyncResult: Hashable {
         remote = json["remote"] as? String ?? ""
         prRequested = json["pr_requested"] as? Bool ?? false
         prURL = json["pr_url"] as? String ?? ""
+    }
+}
+
+struct IconGenerationResult: Hashable {
+    var ok: Bool
+    var path: String
+    var bytesWritten: Int
+    var alphaStripped: Bool
+    var promptUsed: String
+
+    init(json: [String: Any]) {
+        ok = json["ok"] as? Bool ?? false
+        path = json["path"] as? String ?? ""
+        bytesWritten = json["bytes_written"] as? Int ?? 0
+        alphaStripped = json["alpha_stripped"] as? Bool ?? false
+        promptUsed = json["prompt_used"] as? String ?? ""
     }
 }
 

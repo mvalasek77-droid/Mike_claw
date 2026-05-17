@@ -22,12 +22,14 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from .llm import AnthropicClient, LLMClient, ProviderRoutingLLMClient
 from .github_sync import GitHubSyncError, sync_workspace_to_github
+from .icon_gen import IconGenError, generate_app_icon
 from .models import (
     AppSpec,
     BugReportRequest,
     BuildJob,
     BuildRequest,
     GitHubSyncRequest,
+    IconGenerateRequest,
     JobState,
     ReleaseReadinessRequest,
     ShipRequest,
@@ -270,6 +272,44 @@ async def release_readiness(job_id: str, req: ReleaseReadinessRequest | None = N
         f"{result['release_gate']} at {result['score']}/100: {result['summary']}",
     )
     return result
+
+
+@router.post("/{job_id}/icon/generate")
+async def icon_generate(job_id: str, req: IconGenerateRequest):
+    """Generate a 1024×1024 App Store icon via OpenAI's image API
+    and drop it into the job's `Assets.xcassets/AppIcon.appiconset`.
+
+    Closes the "icon forged with ChatGPT" promise from onboarding —
+    previously a placeholder, now wired end-to-end."""
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    workspace = state.config.workspace_root / job_id
+    workspace.mkdir(parents=True, exist_ok=True)
+    try:
+        result = await generate_app_icon(
+            title=req.title,
+            description=req.description,
+            workspace=workspace,
+            prompt_override=req.prompt_override,
+        )
+    except IconGenError as exc:
+        raise HTTPException(400, str(exc))
+
+    events = await state.bus.stream_for(job_id)
+    await events.emit(
+        "log",
+        message=f"Generated app icon ({result.bytes_written} bytes, "
+                f"alpha_stripped={result.alpha_stripped})",
+        path=str(result.path.relative_to(workspace)),
+    )
+    return {
+        "ok": True,
+        "path": str(result.path.relative_to(workspace)),
+        "bytes_written": result.bytes_written,
+        "alpha_stripped": result.alpha_stripped,
+        "prompt_used": result.prompt_used,
+    }
 
 
 @router.post("/{job_id}/github/sync")
