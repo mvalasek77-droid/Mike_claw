@@ -341,6 +341,18 @@ final class SwarmClient: ObservableObject {
         return entries.compactMap(CapturedScreenshot.init(json:))
     }
 
+    /// Ask the Mac Companion to drive App Store Connect via Safari
+    /// on the user's Mac while the iPhone shows narrated progress.
+    /// Returns the count of steps successfully driven. Throws if no
+    /// Companion is paired so the iOS side can fall back to the
+    /// manual walkthrough.
+    @discardableResult
+    func driveASC(jobID: String, steps: [String] = []) async throws -> ASCDriveResult {
+        let body: [String: Any] = ["steps": steps]
+        let r = try await postJSON("/api/coding/swarm/\(jobID)/asc/drive", body: body)
+        return ASCDriveResult(json: r)
+    }
+
     /// In-app bug report. The user can also still email — this is the
     /// private POST channel so they don't need Mail configured.
     /// Returns the report id assigned by the backend.
@@ -848,6 +860,20 @@ struct GitHubSyncResult: Hashable {
         remote = json["remote"] as? String ?? ""
         prRequested = json["pr_requested"] as? Bool ?? false
         prURL = json["pr_url"] as? String ?? ""
+    }
+}
+
+struct ASCDriveResult: Hashable {
+    var ok: Bool
+    var stepsDriven: Int
+    var manualSteps: [String]
+    var companionPaired: Bool
+
+    init(json: [String: Any]) {
+        ok = json["ok"] as? Bool ?? false
+        stepsDriven = json["steps_driven"] as? Int ?? 0
+        manualSteps = json["manual_steps"] as? [String] ?? []
+        companionPaired = json["companion_paired"] as? Bool ?? false
     }
 }
 

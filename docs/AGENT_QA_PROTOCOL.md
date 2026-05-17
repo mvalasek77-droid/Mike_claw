@@ -94,7 +94,7 @@ For CodeGenie itself, the matrix must always include these flows:
 
 - First launch: splash, onboarding, tutorial replay, terms/privacy gate.
 - Home: sample build, start new build, recent project, automation audit,
-  app-of-year playbook, settings entry, account/settings entry.
+  settings entry, account/settings entry.
 - Builder: prompt entry, model/auth preflight, cost confirmation, build start,
   pause, resume, snapshot, fork, retry, cost cap, failure overlay, success
   overlay, Perfection Mode, simulator preview, GitHub backup, App Store submit.

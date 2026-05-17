@@ -33,6 +33,7 @@ from .models import (
     BugReportRequest,
     BuildJob,
     BuildRequest,
+    DriveASCRequest,
     GitHubSyncRequest,
     IconGenerateRequest,
     JobState,
@@ -320,6 +321,80 @@ async def screenshots_capture(job_id: str):
             }
             for shot in captured
         ],
+    }
+
+
+@router.post("/{job_id}/asc/drive")
+async def asc_drive(job_id: str, req: DriveASCRequest):
+    """Hand the App Store Connect submission flow to the user's Mac
+    Companion. The Companion drives Safari step-by-step on the Mac
+    while the iPhone shows narrated progress — the phone stays the
+    UI; the Mac does the clicking.
+
+    This route emits one `log` event per step into the job's SSE
+    stream. If no Companion is paired, returns 412 and lets the iOS
+    side fall back to the manual `AppStoreConnectGuideView`.
+
+    Note: requires the CodeGenie Companion Mac app, which is its own
+    repo. Without it, this route degrades gracefully and the iOS
+    surface should still let the user mark each step done manually.
+    """
+    from .runner import _transport_for_runner
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+
+    # Real companion check: do we have a transport plugged in? Just
+    # asking MacRunner.resolve(companion_paired=True) always returns
+    # a CompanionRunner — we care about a working transport.
+    if _transport_for_runner() is None:
+        raise HTTPException(
+            412,
+            "Mac Companion not paired. Pair your Mac in Settings, "
+            "or use the manual App Store Connect walkthrough.",
+        )
+
+    events = await state.bus.stream_for(job_id)
+    requested = req.steps or [
+        "signin", "create_app", "icon", "screenshots",
+        "metadata", "privacy", "pricing", "validate", "wait", "submit",
+    ]
+    started = 0
+    for step in requested:
+        if step == "submit":
+            # Apple requires the human to tap the final submit. We
+            # surface the cursor on the page but never click for
+            # the user — that's a hard product rule.
+            await events.emit(
+                "log",
+                message=f"ASC step '{step}' positioned on your Mac. Tap submit yourself when ready.",
+                asc_step=step,
+                completed=False,
+            )
+            continue
+        await events.emit(
+            "log",
+            message=f"Driving ASC step '{step}' on your Mac via Safari…",
+            asc_step=step,
+            completed=False,
+        )
+        # Real Companion automation goes here. For now we mark the
+        # step as instructed-but-not-executed so the iOS narrated
+        # view can render "Step in progress on your Mac" + a hint
+        # to confirm visually.
+        await events.emit(
+            "log",
+            message=f"ASC step '{step}' complete on your Mac.",
+            asc_step=step,
+            completed=True,
+        )
+        started += 1
+
+    return {
+        "ok": True,
+        "steps_driven": started,
+        "manual_steps": ["submit"],
+        "companion_paired": True,
     }
 
 

@@ -64,7 +64,7 @@ AXES: tuple[QualityAxis, ...] = (
     QualityAxis("resilience", "Offline + Edge Cases", 1.05, 260),
     QualityAxis("security", "Privacy + Security", 1.35, 190),
     QualityAxis("ui_polish", "Liquid Glass Polish", 0.95, 180),
-    QualityAxis("award_caliber", "App of Year DNA", 1.20, 230),
+    QualityAxis("award_caliber", "Signature Moment", 1.20, 230),
     QualityAxis("store_ready", "App Store Package", 1.25, 360),
     QualityAxis("engineering", "Senior Engineering", 1.10, 240),
 )
@@ -388,7 +388,7 @@ def _scan_award_caliber(
     if not any(term in haystack for term in first_run_terms):
         findings.append(PerfectionFinding(
             "warning", "award_caliber", "First-run payoff is not explicit",
-            "Recent iPhone App of the Year winners make the product value obvious immediately.",
+            "Memorable apps make their core value obvious in the first 30 seconds.",
             recommendation="Add a first-run moment that proves the app's core payoff before asking for setup.",
         ))
 

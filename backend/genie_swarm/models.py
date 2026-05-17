@@ -89,6 +89,19 @@ class IconGenerateRequest(BaseModel):
     prompt_override: str | None = Field(default=None, max_length=2_000)
 
 
+class DriveASCRequest(BaseModel):
+    """Ask the Mac Companion to drive App Store Connect via Safari
+    on the user's Mac while the iPhone shows narrated progress. The
+    iOS app stays the UI; the Mac does the clicking.
+
+    `steps` is a list of step ids the user wants to run. Empty list =
+    run the entire 10-step flow. Each step the Companion executes
+    streams a `log` event back through the job's SSE bus so the iOS
+    side can render live progress."""
+    steps: list[str] = Field(default_factory=list)
+    asc_team_id: str | None = None
+
+
 class BugReportRequest(BaseModel):
     """User-submitted bug report from the iOS Settings > Report a bug
     sheet. We accept these privately so users can send feedback without
