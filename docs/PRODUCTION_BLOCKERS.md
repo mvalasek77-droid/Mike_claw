@@ -90,4 +90,5 @@ A simple v0.2.0 dogfood pass: build a TideTimes app, submit it to your own TestF
 5. Dogfood once: ship TideTimes via CodeGenie to your own TestFlight
 6. Mac Companion app source + signed build — unblocks the pair-your-Mac flow
 7. ~~Implement icon generation (call OpenAI's image API)~~ — done in v0.2.1.
-8. ~~Implement simctl screenshot capture~~ — done in v0.2.2. Still needs a booted simulator on the paired Mac at the moment the route is called; the orchestrator's UI Tester agent can drive that.
+8. ~~Implement simctl screenshot capture~~ — done in v0.2.2.
+9. ~~ASC submission UX: "drive my Mac for me" route~~ — done in v0.2.3. `POST /api/coding/swarm/<job>/asc/drive` hands the 10-step flow to the Mac Companion; iOS shows narrated progress. Returns 412 if no Companion is paired so the iOS side can fall back to the manual walkthrough. Real Companion automation is still TODO (the route emits "step in progress" / "step complete" events as a stand-in until the Companion app implements actual Safari driving).

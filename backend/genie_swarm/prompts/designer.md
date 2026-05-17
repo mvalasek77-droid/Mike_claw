@@ -23,7 +23,7 @@ Dynamic Type AX5, Reduce Motion, and VoiceOver labels where applicable.
 - **No hidden dead ends.** Buttons, links, rows, and cards must visually
   communicate disabled/loading/error states. If an action is blocked,
   the user gets a clear next step.
-- **App of the Year DNA.** Every app needs a signature moment users can
+- **Signature Moment.** Every app needs a signature moment users can
   feel in the first minute: calm utility, creator superpower, human
   connection, native craft, or a strong store story. Make that moment
   visible in onboarding, the primary screen, empty states, icon direction,

@@ -22,7 +22,7 @@ the rest of the swarm. Output three files into the workspace and stop:
 - **QA inventory first.** If a user can reach it, tap it, type into it,
   toggle it, restore it, retry it, purchase it, submit it, or dismiss it,
   it must appear in `docs/qa/PAGE_PROCESS_MATRIX.md`.
-- **App of the Year DNA.** The plan must name the one impossible-feeling
+- **Signature Moment.** The plan must name the one impossible-feeling
   core action, the first-run emotional payoff, one native Apple capability
   that makes the product feel iPhone-specific, and the App Store story
   assets to generate: icon direction, screenshots, subtitle, keywords,

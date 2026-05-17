@@ -87,6 +87,10 @@ struct AppStoreConnectGuideView: View {
     @State private var current: Int = 0
     @State private var completed: Set<UUID> = []
     @State private var metadata: AppStoreMetadata
+    @State private var driving: Bool = false
+    @State private var driveError: String?
+    @State private var liveStepID: String?
+    private let client = SwarmClient()
 
     init(job: BuildJob) {
         self.job = job
@@ -101,6 +105,7 @@ struct AppStoreConnectGuideView: View {
                 progressBar
                 ScrollView {
                     VStack(spacing: 16) {
+                        driveMyMacCard
                         legendCard
                         metadataCard
                         ForEach(ASCStep.all) { step in
@@ -162,6 +167,77 @@ struct AppStoreConnectGuideView: View {
         }
         .padding(.horizontal, 18)
         .padding(.bottom, 6)
+    }
+
+    /// New in v0.2.3: phone-side "Drive my Mac for me" CTA. The user
+    /// stays on their phone watching narrated progress while the
+    /// CodeGenie Companion on the Mac drives Safari + ASC for them.
+    /// Apple's final-submit step is left untouched — only the user
+    /// taps that.
+    @ViewBuilder
+    private var driveMyMacCard: some View {
+        GlassCard(title: "Let your Mac do the clicking", icon: "macbook.and.iphone", tint: LiquidGlass.accent) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Stay on your phone. We'll open Safari on your paired Mac and walk through ASC step by step. You'll see live progress here.")
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+
+                if let liveStepID, driving {
+                    HStack(spacing: 10) {
+                        ProgressView().tint(LiquidGlass.primaryText)
+                        Text("On your Mac: \(liveStepID)")
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                        Spacer()
+                    }
+                    .padding(10)
+                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+                }
+
+                PrimaryButton(
+                    title: driving ? "Driving on your Mac…" : "Run on my Mac",
+                    systemImage: driving ? "ellipsis" : "play.fill",
+                    style: .filled
+                ) {
+                    Task { await driveOnMac() }
+                }
+                .disabled(driving)
+                .opacity(driving ? 0.7 : 1)
+                .accessibilityHint("Hands the App Store Connect flow to your paired Mac. Your phone shows live progress.")
+
+                if let driveError {
+                    Text(driveError)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Text("Final submit is yours — Apple requires you to tap that one. We line everything up so it's a single confirm.")
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+            }
+        }
+    }
+
+    /// Calls the backend's /asc/drive route which fans out to the
+    /// Mac Companion. Each step's progress streams back as a `log`
+    /// SSE event — the BuildScreen's transcript surface picks those
+    /// up, and `liveStepID` mirrors the latest one for the user.
+    private func driveOnMac() async {
+        driving = true; driveError = nil
+        defer { driving = false; liveStepID = nil }
+        do {
+            let result = try await client.driveASC(jobID: job.id, steps: [])
+            // Mark every non-manual step complete on the iOS side so
+            // the user sees the same green checks the Mac produced.
+            for step in ASCStep.all where !result.manualSteps.contains("submit") || step.action != .manual {
+                completed.insert(step.id)
+            }
+            Haptics.success()
+        } catch {
+            driveError = "Couldn't reach your Mac Companion: \(error.localizedDescription). Use the manual steps below."
+            Haptics.error()
+        }
     }
 
     private var legendCard: some View {

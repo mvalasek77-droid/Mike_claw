@@ -16,10 +16,10 @@ struct HomeView: View {
     @State private var showFirstBuildPrompt = false
     @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
     @State private var showSampleApps = false
-    @State private var showAppOfYearDNA = false
     @State private var showAutomationAudit = false
     @State private var showBugReport = false
     @State private var showChangelog = false
+    @State private var showShipSetup = false
     @AppStorage("lastSeenChangelogVersion") private var lastSeenChangelogVersion: String = ""
 
     var body: some View {
@@ -27,12 +27,10 @@ struct HomeView: View {
             VStack(spacing: 22) {
                 hero
                 primaryAction
-                shipReadinessCard
                 quickGrid
                 if !session.recentJobs.isEmpty { recentJobs }
                 else if hasSetupAtLeastOneGate { recentJobsEmptyState }
-                xcodeShortcut
-                checklistCard
+                shipWhenReadyCallout
                 Color.clear.frame(height: 30)
             }
             .padding(.horizontal, 20)
@@ -71,11 +69,6 @@ struct HomeView: View {
         .sheet(isPresented: $showSampleApps) {
             SampleAppsView()
                 .environmentObject(session)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
-        }
-        .sheet(isPresented: $showAppOfYearDNA) {
-            AppOfYearPlaybookView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -137,6 +130,11 @@ struct HomeView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showShipSetup) {
+            shipSetupSheet
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .sheet(isPresented: $showFirstBuildPrompt) {
             FirstBuildPromptView(
                 onSetUp: {
@@ -186,53 +184,104 @@ struct HomeView: View {
         }
     }
 
+    /// Small, calm callout that lives at the bottom of the home view
+    /// rather than the noisy "Set up shipping — 0 of 4 done" card the
+    /// old build used to push at first launch. Tapping it opens a
+    /// dedicated setup sheet — the same rows, just out of the way.
+    /// Auto-hides once all four gates are done.
     @ViewBuilder
-    private var shipReadinessCard: some View {
+    private var shipWhenReadyCallout: some View {
         let macPaired = !creds.backendToken.isEmpty
         let appleReady = creds.hasAppleDevCreds
         let githubReady = creds.hasGithub
         let done = [xcodeAcknowledged, macPaired, appleReady, githubReady].filter { $0 }.count
         if done < 4 {
-            GlassSurface(tier: .raised, corner: 22) {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "shippingbox.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(LiquidGlass.warning)
-                            .frame(width: 32, height: 32)
-                            .background(Circle().fill(LiquidGlass.warning.opacity(0.18)))
+            Button {
+                Haptics.selection()
+                showShipSetup = true
+            } label: {
+                GlassSurface(tier: .flat, corner: 18) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "shippingbox")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(.white.opacity(0.08)))
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Set up shipping")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                            Text("Ready to share with the world?")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText)
-                            Text("\(done) of 4 done")
-                                .font(.system(size: 12, weight: .regular, design: .rounded))
-                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                            Text(done == 0
+                                 ? "We'll walk you through what you need."
+                                 : "\(done) of 4 set up.")
+                                .font(.system(size: 11, weight: .regular, design: .rounded))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                         }
                         Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.4))
+                    }
+                    .padding(14)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(done == 0 ? "Set up shipping when you're ready" : "\(done) of 4 ship setup steps done")
+            .accessibilityHint("Opens an optional setup sheet — needed only when you're ready to send your app to the App Store.")
+        }
+    }
+
+    /// The full setup sheet, opened from the calm home callout or
+    /// from Settings → Ship checklist. Same rows as the old in-line
+    /// card, just out of the daily flow.
+    @ViewBuilder
+    private var shipSetupSheet: some View {
+        let macPaired = !creds.backendToken.isEmpty
+        let appleReady = creds.hasAppleDevCreds
+        let githubReady = creds.hasGithub
+        let done = [xcodeAcknowledged, macPaired, appleReady, githubReady].filter { $0 }.count
+        ZStack {
+            LiquidGlassBackground().ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("When you're ready to share")
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                            .accessibilityAddTraits(.isHeader)
+                        Text("Four things to set up once. None of them are needed to build — only to send your finished app to other people.")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                     }
                     progressDots(done: done, total: 4)
-                    VStack(spacing: 6) {
-                        shipRow(icon: "hammer.fill", tint: LiquidGlass.accentSecondary, title: "Xcode", subtitle: xcodeAcknowledged ? "You're caught up." : "What it is, how to install.", done: xcodeAcknowledged) {
-                            showXcodeReadiness = true
+                    GlassSurface(tier: .raised, corner: 18) {
+                        VStack(spacing: 6) {
+                            shipRow(icon: "hammer.fill", tint: LiquidGlass.accentSecondary, title: "Xcode", subtitle: xcodeAcknowledged ? "You're caught up." : "What it is, how to install.", done: xcodeAcknowledged) {
+                                showXcodeReadiness = true
+                            }
+                            shipRow(icon: "macbook.and.iphone", tint: LiquidGlass.accent, title: "Pair your Mac", subtitle: macPaired ? "Connected." : "Link this phone to a Mac running Xcode.", done: macPaired) {
+                                showPairMac = true
+                            }
+                            shipRow(icon: "applelogo", tint: LiquidGlass.success, title: "Apple Developer", subtitle: appleReady ? "Connected. TestFlight upload enabled." : "$99/yr program. We'll walk you through it.", done: appleReady) {
+                                showAppleDev = true
+                            }
+                            shipRow(icon: "chevron.left.forwardslash.chevron.right", tint: LiquidGlass.accentSecondary, title: "GitHub", subtitle: githubReady ? "Connected as @\(creds.githubUsername)" : "Back up your code. Studio sync uses this.", done: githubReady) {
+                                showGitHub = true
+                            }
                         }
-                        shipRow(icon: "macbook.and.iphone", tint: LiquidGlass.accent, title: "Pair your Mac", subtitle: macPaired ? "Connected." : "Link this phone to a Mac running Xcode.", done: macPaired) {
-                            showPairMac = true
-                        }
-                        shipRow(icon: "applelogo", tint: LiquidGlass.success, title: "Apple Developer", subtitle: appleReady ? "Connected. TestFlight upload enabled." : "$99/yr program. We'll walk you through it.", done: appleReady) {
-                            showAppleDev = true
-                        }
-                        shipRow(icon: "chevron.left.forwardslash.chevron.right", tint: LiquidGlass.accentSecondary, title: "GitHub", subtitle: githubReady ? "Connected as @\(creds.githubUsername)" : "Back up your code. Studio sync uses this.", done: githubReady) {
-                            showGitHub = true
-                        }
+                        .padding(14)
                     }
+                    Color.clear.frame(height: 30)
                 }
-                .padding(18)
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Ship checklist, \(done) of 4 done")
+            .scrollIndicators(.hidden)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Ship setup sheet, \(done) of 4 done")
     }
 
     private func progressDots(done: Int, total: Int) -> some View {
@@ -344,7 +393,6 @@ struct HomeView: View {
                 QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
                 if showAdvancedTiles || !session.recentJobs.isEmpty {
                     QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
-                    QuickTile(title: "Award DNA",        subtitle: "App of the Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
                     QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
                     QuickTile(title: "Report bug",       subtitle: "Email support",         icon: "exclamationmark.bubble.fill", tint: LiquidGlass.warning) { showBugReport = true }
                 }
@@ -405,7 +453,7 @@ struct HomeView: View {
 
     /// True when at least one of the four ship gates is done. Used to
     /// decide whether the empty-state callout is worth showing — for
-    /// a truly fresh user, the shipReadinessCard above is already the
+    /// a truly fresh user, the shipWhenReadyCallout below is already the
     /// natural next-action, no need to double up.
     private var hasSetupAtLeastOneGate: Bool {
         xcodeAcknowledged
