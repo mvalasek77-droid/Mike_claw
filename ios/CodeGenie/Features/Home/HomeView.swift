@@ -344,7 +344,7 @@ struct HomeView: View {
                 QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
                 if showAdvancedTiles || !session.recentJobs.isEmpty {
                     QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
-                    QuickTile(title: "Award DNA",        subtitle: "App of Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
+                    QuickTile(title: "Award DNA",        subtitle: "App of the Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
                     QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
                     QuickTile(title: "Report bug",       subtitle: "Email support",         icon: "exclamationmark.bubble.fill", tint: LiquidGlass.warning) { showBugReport = true }
                 }
@@ -427,7 +427,7 @@ struct HomeView: View {
                         Text("Xcode instructions")
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                        Text("What it is, what to install, and what to open once")
+                        Text("What it is, how to install it, and what to open it for")
                             .font(.system(size: 13, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }

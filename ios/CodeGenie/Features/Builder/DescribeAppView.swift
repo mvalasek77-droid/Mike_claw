@@ -10,6 +10,7 @@ struct DescribeAppView: View {
     @State private var category: AppDescription.Category
     @State private var style: AppDescription.Style
     @State private var showCostConfirm: Bool = false
+    @State private var showCustomize: Bool = false
     @FocusState private var focused: Field?
 
     private enum Field { case title, prompt }
@@ -39,8 +40,7 @@ struct DescribeAppView: View {
                     titleField
                     promptField
                     suggestionRow
-                    categoryPicker
-                    stylePicker
+                    customizeDisclosure
                     preflightBlock
                     submitRow
                     Color.clear.frame(height: 60)
@@ -130,6 +130,38 @@ struct DescribeAppView: View {
             }
             .padding(.horizontal, 4)
         }
+    }
+
+    /// Optional category + style pickers behind a disclosure. The
+    /// simplification audit found that ~95% of users keep the
+    /// defaults — showing the pickers inline forced everyone to
+    /// scan past them. Now they unfold only when the user wants to
+    /// override defaults.
+    private var customizeDisclosure: some View {
+        DisclosureGroup(isExpanded: $showCustomize) {
+            VStack(spacing: 14) {
+                categoryPicker
+                stylePicker
+            }
+            .padding(.top, 6)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(LiquidGlass.accent)
+                Text("Customize (optional)")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                if !showCustomize {
+                    Text("· \(category.label) · \(style.label)")
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                }
+                Spacer()
+            }
+        }
+        .tint(LiquidGlass.accent)
+        .accessibilityHint("Optional pickers for app category and visual style. Defaults work for most apps.")
     }
 
     private var categoryPicker: some View {

@@ -28,7 +28,7 @@ struct FirstBuildPromptView: View {
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
                         .accessibilityAddTraits(.isHeader)
-                    Text("CodeGenie can build your app on its own. Sending it to the App Store needs a Mac with Xcode and an Apple Developer account ($99/yr). We'll walk you through that — but it's also OK to build first and decide later.")
+                    Text("CodeGenie can build your app on its own. To send it to the App Store, you'll need a Mac with Xcode and an Apple Developer account ($99/yr). We'll walk you through that — but it's also OK to build first and decide later.")
                         .font(.system(size: 14, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                         .multilineTextAlignment(.center)
