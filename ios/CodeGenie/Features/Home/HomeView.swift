@@ -16,6 +16,7 @@ struct HomeView: View {
     @State private var showFirstBuildPrompt = false
     @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
     @State private var showSampleApps = false
+    @State private var showTideTimesPreview = false
     @State private var showAutomationAudit = false
     @State private var showBugReport = false
     @State private var showChangelog = false
@@ -129,6 +130,9 @@ struct HomeView: View {
             GitHubSetupView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
+        }
+        .fullScreenCover(isPresented: $showTideTimesPreview) {
+            TideTimesPreview()
         }
         .sheet(isPresented: $showShipSetup) {
             shipSetupSheet
@@ -387,7 +391,7 @@ struct HomeView: View {
     private var quickGrid: some View {
         VStack(spacing: 12) {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                QuickTile(title: "Try a sample",    subtitle: "Watch one build live",  icon: "sparkles",            tint: LiquidGlass.accent)          { showSampleApps = true }
+                QuickTile(title: "Try a sample",    subtitle: "Open a finished one",   icon: "sparkles",            tint: LiquidGlass.accent)          { showTideTimesPreview = true }
                 QuickTile(title: "Watch the tour",  subtitle: "7-step tutorial",       icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
                 QuickTile(title: "Xcode steps",     subtitle: "Plain-English primer",  icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeReadiness = true }
                 QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
@@ -438,7 +442,7 @@ struct HomeView: View {
                     Text("Your finished builds appear here")
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
-                    Text("Tap Start a new build to make your first one — or watch one assemble live with Try a sample.")
+                    Text("Tap Start a new build to make your first one — or open Try a sample to see a finished CodeGenie app right now.")
                         .font(.system(size: 12, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                         .fixedSize(horizontal: false, vertical: true)

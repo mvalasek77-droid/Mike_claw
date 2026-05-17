@@ -18,6 +18,11 @@ struct OnboardingSlide: Identifiable, Hashable {
         case iconForge
         case pricing
         case simulatorToDevice
+        /// Placeholder slot for a future bundled tutorial video. Renders
+        /// a TV-frame UI with a "Video coming soon" caption — the
+        /// videoURL is plumbed through but optional, so we can drop in
+        /// real .mp4 / .m3u8 assets later without changing call sites.
+        case videoPlaceholder(caption: String, videoURL: URL?)
     }
 }
 
@@ -63,7 +68,10 @@ extension OnboardingSlide {
             chapter: "Step 5 of 8",
             title: "Describe → build",
             body: "Tell CodeGenie what you want (\"a tide times app for surfers\") and it iterates until the UI is correct, the data flows, and the build is green.",
-            illustration: .appBuilding,
+            illustration: .videoPlaceholder(
+                caption: "Watch a real prompt-to-app build in 30 seconds",
+                videoURL: nil
+            ),
             palette: [.orange, .pink],
             xcodeTip: "While we build, play BitDrop — our take on Tetris with Swift symbols. Earn boosts that speed up the build."
         ),
@@ -86,8 +94,11 @@ extension OnboardingSlide {
         .init(
             chapter: "Step 8 of 8",
             title: "Simulator → device → App Store",
-            body: "Tap to test in the cloud simulator, then we walk you through App Store Connect step-by-step on your Mac's Safari.",
-            illustration: .simulatorToDevice,
+            body: "Tap to test in the cloud simulator. When you're ready to ship, your Mac drives App Store Connect while you watch on your phone.",
+            illustration: .videoPlaceholder(
+                caption: "See a finished build run end-to-end on a real iPhone",
+                videoURL: nil
+            ),
             palette: [.green, .mint],
             xcodeTip: "Free Apple ID = re-sign every 7 days. $99/year Developer Program = 1-year + App Store. We'll prompt when needed."
         )
