@@ -1,4 +1,12 @@
 import SwiftUI
+import UIKit
+
+private struct BottomVisibilityKey: PreferenceKey {
+    static var defaultValue: Bool = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
 
 /// Legal gate shown after onboarding, before the user reaches the main
 /// app. They must scroll through the Terms summary + Privacy summary
@@ -30,16 +38,36 @@ struct TermsAndPrivacyView: View {
                         termsCard
                         privacyCard
                         costsCard
+                        // Real scroll-position detection. The previous
+                        // implementation used `.onAppear` on a 1pt
+                        // sentinel, which fires the moment the view
+                        // joins the hierarchy — bypassable on tall
+                        // screens. GeometryReader reports the frame
+                        // every time it moves, so we only flip the
+                        // flag once the sentinel actually enters the
+                        // visible window.
                         Color.clear
                             .frame(height: 1)
                             .id("bottom")
-                            .onAppear { scrolledToBottom = true }
+                            .background(
+                                GeometryReader { proxy in
+                                    let minY = proxy.frame(in: .global).minY
+                                    let height = UIScreen.main.bounds.height
+                                    Color.clear.preference(
+                                        key: BottomVisibilityKey.self,
+                                        value: minY < height
+                                    )
+                                }
+                            )
                         Color.clear.frame(height: 60)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 6)
                 }
                 .scrollIndicators(.visible)
+                .onPreferenceChange(BottomVisibilityKey.self) { visible in
+                    if visible && !scrolledToBottom { scrolledToBottom = true }
+                }
 
                 acceptBar
                     .padding(.horizontal, 20)

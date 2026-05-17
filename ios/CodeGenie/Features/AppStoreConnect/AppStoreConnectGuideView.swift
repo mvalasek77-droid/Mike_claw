@@ -313,27 +313,65 @@ private struct ASCStepCard: View {
     }
 
     @ViewBuilder
+    /// Action row is honest about reality: until the iOS app can drive
+    /// ASC directly (a v0.3+ feature blocked on the Companion app +
+    /// codegenie.app backend), every step is "you do it on your Mac,
+    /// then tap to advance". Previous copy ("Upload icon", "Auto-fill
+    /// this step") implied automation that wasn't there — closing
+    /// that lie was the first-timer audit's top finding.
     private var actionRow: some View {
-        switch step.action {
-        case .openSafariOnMac(let url):
-            PrimaryButton(title: "Open on my Mac", systemImage: "macbook", style: .filled) { onAction() }
-                .accessibilityHint("Opens \(url) in your Mac's Safari")
-        case .fillForm:
-            PrimaryButton(title: "Auto-fill this step", systemImage: "wand.and.stars", style: .filled) { onAction() }
-        case .uploadAsset(let asset):
-            PrimaryButton(title: "Upload \(asset)", systemImage: "icloud.and.arrow.up", style: .filled) { onAction() }
-        case .wait(let detail):
-            HStack(spacing: 10) {
-                ProgressView().tint(LiquidGlass.primaryText)
-                Text(detail).font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
-                Spacer()
-                Button("Mark done") { onAction() }
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(LiquidGlass.accent)
+        VStack(alignment: .leading, spacing: 8) {
+            macInstruction
+            switch step.action {
+            case .openSafariOnMac:
+                PrimaryButton(title: "Mark step done", systemImage: "checkmark.circle.fill", style: .filled) { onAction() }
+                    .accessibilityHint("Mark this step complete and move to the next one.")
+            case .fillForm:
+                PrimaryButton(title: "Mark step done", systemImage: "checkmark.circle.fill", style: .filled) { onAction() }
+                    .accessibilityHint("Mark this step complete and move to the next one.")
+            case .uploadAsset:
+                PrimaryButton(title: "Mark step done", systemImage: "checkmark.circle.fill", style: .filled) { onAction() }
+                    .accessibilityHint("Mark this step complete and move to the next one.")
+            case .wait(let detail):
+                HStack(spacing: 10) {
+                    ProgressView().tint(LiquidGlass.primaryText)
+                    Text(detail).font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                    Spacer()
+                    Button("Done") { onAction() }
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.accent)
+                        .accessibilityHint("Mark this step complete.")
+                }
+            case .manual:
+                PrimaryButton(title: "I did this", systemImage: "checkmark.circle.fill", style: .glass) { onAction() }
+                    .accessibilityHint("Mark this step complete.")
             }
-        case .manual:
-            PrimaryButton(title: "I did this", systemImage: "checkmark.circle.fill", style: .glass) { onAction() }
+        }
+    }
+
+    @ViewBuilder
+    private var macInstruction: some View {
+        let copy: String? = {
+            switch step.action {
+            case .openSafariOnMac(let url):       return "On your Mac, open \(url) in Safari and complete this step."
+            case .fillForm:                       return "Fill this form on your Mac. Use the draft above as a starting point."
+            case .uploadAsset(let asset):         return "Upload \(asset) on your Mac. We've prepared the file in the workspace."
+            case .wait:                           return nil
+            case .manual:                         return "Do this manually on your Mac when ready — Apple requires you, not us."
+            }
+        }()
+        if let copy {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "macbook")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(LiquidGlass.accent)
+                    .padding(.top, 3)
+                Text(copy)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

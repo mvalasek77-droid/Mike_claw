@@ -31,6 +31,7 @@ struct BuildScreen: View {
     @State private var githubSyncing: Bool = false
     @State private var jargonHelp: JargonTerm?
     @State private var shipBanner: String?
+    @State private var showSuccessMore: Bool = false
     @State private var showSnapshots: Bool = false
     @State private var showSnapshotSettingsSheet: Bool = false
     @State private var perfectionRun: PerfectionRun?
@@ -63,7 +64,7 @@ struct BuildScreen: View {
             case .pipeline:
                 "Your app moves through specialized agents: planning, SwiftUI generation, logic wiring, linting, packaging, and release checks. The list shows which step is active now."
             case .bitdrop:
-                "A small optional puzzle for the wait. Clearing rows gives a tiny build-speed boost, but ignoring it does not hurt the build."
+                "A small optional puzzle for the wait. Clearing rows gives a tiny build-speed boost, but ignoring it doesn't hurt the build."
             case .perfection:
                 "A 10,000-probe quality pass across Apple review readiness, accessibility, performance, security, polish, packaging, and resilience. Run it before TestFlight or App Store handoff."
             }
@@ -615,7 +616,7 @@ struct BuildScreen: View {
                             .font(.system(size: 56, weight: .bold))
                             .foregroundStyle(LiquidGlass.success)
                             .accessibilityHidden(true)
-                        Text("Build green")
+                        Text("Build complete")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
                         Text("Ready to test in the cloud simulator. Run Perfection Mode before App Store handoff.")
@@ -653,35 +654,62 @@ struct BuildScreen: View {
                                 .multilineTextAlignment(.center)
                                 .accessibilityLabel("Perfection Mode failed: \(perfectionError)")
                         }
+                        // Primary path: preview the build first.
                         PrimaryButton(title: "Open simulator preview", systemImage: "play.rectangle.fill", style: .filled) {
                             let job = BuildJob(description: initialJob.description, stage: .readyForTest)
                             session.openPreview(for: job)
                         }
+                        // Secondary primary: submit. Perfection Mode
+                        // gate runs inside submitToAppStore().
                         PrimaryButton(title: "Submit to App Store", systemImage: "paperplane.fill", style: .glass) {
                             Task { await submitToAppStore() }
                         }
-                        PrimaryButton(
-                            title: githubSyncing ? "Pushing to GitHub..." : "Back up to GitHub",
-                            systemImage: "chevron.left.forwardslash.chevron.right",
-                            style: .glass
-                        ) {
-                            Task { await backupToGitHub() }
-                        }
-                        .disabled(githubSyncing)
-                        if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
-                            ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "square.and.arrow.down")
-                                    Text("Download workspace")
+                        // Everything else folds behind a single
+                        // "More actions" disclosure. The simplification
+                        // audit found 8 stacked CTAs here — agent 3
+                        // and 4 both flagged it as decision overload
+                        // at the moment of celebration.
+                        DisclosureGroup(isExpanded: $showSuccessMore) {
+                            VStack(spacing: 10) {
+                                PrimaryButton(
+                                    title: githubSyncing ? "Pushing to GitHub..." : "Back up to GitHub",
+                                    systemImage: "chevron.left.forwardslash.chevron.right",
+                                    style: .glass
+                                ) {
+                                    Task { await backupToGitHub() }
                                 }
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .padding(.horizontal, 16).padding(.vertical, 10)
-                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
-                                .background(.white.opacity(0.06), in: Capsule())
-                                .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+                                .disabled(githubSyncing)
+                                if let url = swarm.jobID.flatMap({ swarm.exportURL(jobID: $0) }) {
+                                    ShareLink(item: url, preview: SharePreview("\(initialJob.description.title).zip", image: Image(systemName: "shippingbox.fill"))) {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "square.and.arrow.down")
+                                            Text("Download workspace")
+                                        }
+                                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                        .padding(.horizontal, 16).padding(.vertical, 10)
+                                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                                        .background(.white.opacity(0.06), in: Capsule())
+                                        .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+                                        .frame(maxWidth: .infinity)
+                                    }
+                                    .accessibilityLabel("Download workspace zip")
+                                }
                             }
-                            .accessibilityLabel("Download workspace zip")
+                            .padding(.top, 6)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "ellipsis.circle")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                                Text("More actions")
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                                Spacer()
+                            }
                         }
+                        .tint(LiquidGlass.primaryText.opacity(0.7))
+                        .padding(.horizontal, 4)
+                        .accessibilityHint("Expand to back up to GitHub or download the workspace.")
                         if let banner = shipBanner {
                             Text(banner)
                                 .font(.system(size: 12, weight: .medium, design: .rounded))
