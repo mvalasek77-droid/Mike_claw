@@ -70,6 +70,7 @@ struct GitHubSetupView: View {
                 Text("Connect GitHub")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
             }
             Text(stepSubtitle)

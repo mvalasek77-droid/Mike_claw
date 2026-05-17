@@ -33,6 +33,7 @@ struct XcodeReadinessView: View {
             Text("Xcode")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
+                .accessibilityAddTraits(.isHeader)
             Text("The free Apple program that turns CodeGenie's output into a real iPhone app.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
@@ -92,20 +93,24 @@ struct XcodeReadinessView: View {
                 Link(destination: URL(string: "macappstores://apps.apple.com/app/xcode/id497799835")!) {
                     HStack(spacing: 10) {
                         Image(systemName: "arrow.down.app.fill")
+                            .accessibilityHidden(true)
                         Text("Open in Mac App Store")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
+                            .accessibilityHidden(true)
                     }
                     .padding(.horizontal, 14).padding(.vertical, 12)
                     .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
                     .foregroundStyle(LiquidGlass.primaryText)
                 }
+                .accessibilityLabel("Open Xcode in Mac App Store")
                 .accessibilityHint("Opens the Mac App Store on your paired Mac")
 
                 Link(destination: URL(string: "https://apps.apple.com/app/xcode/id497799835")!) {
                     HStack(spacing: 6) {
                         Image(systemName: "safari")
+                            .accessibilityHidden(true)
                         Text("Or open in Safari")
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                     }

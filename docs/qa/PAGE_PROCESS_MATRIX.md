@@ -19,7 +19,7 @@ block the release gate.
 | ONB-005 | TermsAndPrivacyView | Not scrolled to bottom | Tap agreement toggle | Toggle stays off, copy reads "Scroll to the bottom to enable" | UI Tester |  | not tested |
 | ONB-006 | TermsAndPrivacyView | Scrolled, toggle off | Tap "Agree & continue" | Button is disabled | UI Tester |  | not tested |
 | ONB-007 | TermsAndPrivacyView | Toggle on | Tap "Agree & continue" | `hasAcceptedTerms` flips, MainTabView appears, never re-prompted on relaunch | Reviewer |  | not tested |
-| ONB-008 | TermsAndPrivacyView | Any | Tap "Read the full terms / privacy" links | Opens codegenie.app URL in Safari | Security Auditor |  | not tested |
+| ONB-008 | TermsAndPrivacyView | Any | Tap "Read the full terms / privacy" links | Opens codegenie.app URL in Safari | Security Auditor | code:TermsAndPrivacyView.termsCard,privacyCard (accessibilityHint added) | code-review |
 | ONB-009 | OnboardingView | Reduce Motion on | Swipe slides | No parallax, transitions are simple opacity | Designer |  | not tested |
 
 ## Home
@@ -156,17 +156,17 @@ block the release gate.
 ## Coverage Summary
 
 - **Total rows**: 99
-- **Passed rows**: 0
+- **Passed rows**: 1 (ONB-008, code review only — runtime evidence pending on device)
 - **Blocked rows**: 0
-- **Untested rows**: 99
+- **Untested rows**: 98
 - **Light mode screenshots**: pending
 - **Dark mode screenshots**: pending
 - **AX5 Dynamic Type pass**: pending
 - **Reduce Motion pass**: pending
-- **VoiceOver pass**: pending
+- **VoiceOver pass**: code-level — section headers, hints, and decorative-image hiding added to TermsAndPrivacyView, XcodeReadinessView, ReleaseStageExplainer, FirstBuildPromptView, AppleDevWalkthroughView, GitHubSetupView. Runtime sweep with VoiceOver on device still pending.
 - **Final Reviewer model**: pending
 - **Final Security model**: pending
-- **Final gate**: **blocked** (no evidence)
+- **Final gate**: **blocked** (runtime evidence pending — code-level a11y baseline in place)
 
 ## How to fill this in
 

@@ -41,6 +41,7 @@ struct ReleaseStageExplainer: View {
             Text("Where should this go?")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
+                .accessibilityAddTraits(.isHeader)
             Text("Apple gives you two doors. Same build — different audience.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
@@ -98,10 +99,12 @@ struct ReleaseStageExplainer: View {
                 Haptics.success()
                 onChoose(.testflight)
             }
+            .accessibilityHint("Uploads the build to TestFlight — a small private beta visible only to people you invite.")
             PrimaryButton(title: "Submit to the App Store", systemImage: "globe", style: .glass) {
                 Haptics.selection()
                 onChoose(.appStore)
             }
+            .accessibilityHint("Sends the build to Apple's full App Store review — visible to everyone once approved.")
             HStack {
                 Button("Tell me more about App Review") {
                     Haptics.selection()
@@ -109,6 +112,7 @@ struct ReleaseStageExplainer: View {
                 }
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(LiquidGlass.accent)
+                .accessibilityHint("Opens Apple's distribution overview in Safari.")
                 Spacer()
                 Button("Not yet — go back") {
                     Haptics.selection()
@@ -116,6 +120,7 @@ struct ReleaseStageExplainer: View {
                 }
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                .accessibilityHint("Closes this sheet without uploading.")
             }
             .padding(.top, 4)
         }

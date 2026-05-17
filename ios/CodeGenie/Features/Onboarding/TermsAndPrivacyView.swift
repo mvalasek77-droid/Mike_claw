@@ -56,6 +56,7 @@ struct TermsAndPrivacyView: View {
             Text("Before we start")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
+                .accessibilityAddTraits(.isHeader)
             Text("Three things to read. Plain-English summary first, full versions linked.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
@@ -77,8 +78,10 @@ struct TermsAndPrivacyView: View {
                         .foregroundStyle(LiquidGlass.accent)
                 }
                 .padding(.top, 4)
+                .accessibilityHint("Opens the full Terms of Use in Safari")
             }
         }
+        .accessibilityElement(children: .contain)
     }
 
     private var privacyCard: some View {
@@ -95,8 +98,10 @@ struct TermsAndPrivacyView: View {
                         .foregroundStyle(LiquidGlass.success)
                 }
                 .padding(.top, 4)
+                .accessibilityHint("Opens the full Privacy Policy in Safari")
             }
         }
+        .accessibilityElement(children: .contain)
     }
 
     private var costsCard: some View {
@@ -109,6 +114,7 @@ struct TermsAndPrivacyView: View {
                 bullet("You can set a hard spending cap in Settings → Build cost cap. We default it to $5 to protect you from runaway bills.")
             }
         }
+        .accessibilityElement(children: .contain)
     }
 
     private var acceptBar: some View {
@@ -126,6 +132,8 @@ struct TermsAndPrivacyView: View {
                 }
                 .tint(LiquidGlass.success)
                 .disabled(!scrolledToBottom)
+                .accessibilityLabel("I've read and agree to the Terms and Privacy")
+                .accessibilityHint(scrolledToBottom ? "Toggle to enable the continue button." : "You must scroll to the bottom of this screen before this toggle becomes available.")
 
                 PrimaryButton(title: "Agree & continue", systemImage: "checkmark.circle.fill", style: .filled) {
                     Haptics.success()
@@ -133,6 +141,7 @@ struct TermsAndPrivacyView: View {
                 }
                 .disabled(!agreed)
                 .opacity(agreed ? 1 : 0.5)
+                .accessibilityHint(agreed ? "Saves your acceptance and takes you to the main app." : "Enable the I've read and agree toggle above to activate this button.")
             }
             .padding(16)
         }
