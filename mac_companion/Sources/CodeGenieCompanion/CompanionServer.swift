@@ -40,7 +40,7 @@ public final class CompanionServer {
         let port = try await waitForPort()
         // Bonjour
         listener.service = NWListener.Service(name: "CodeGenie", type: "_codegenie-companion._tcp")
-        return Pairing(host: "127.0.0.1", port: port, token: token)
+        return Pairing(host: localPairingHost(), port: port, token: token)
     }
 
     public func stop() {
@@ -70,5 +70,12 @@ public final class CompanionServer {
         })
         connections[id] = client
         client.start()
+    }
+
+    private func localPairingHost() -> String {
+        let host = ProcessInfo.processInfo.hostName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !host.isEmpty, host != "localhost" else { return "127.0.0.1" }
+        if host.hasSuffix(".local") || host.contains(".") { return host }
+        return host + ".local"
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// UI flow for pairing the iPhone with the user's Mac companion daemon.
 ///
@@ -16,7 +17,14 @@ struct PairMacView: View {
     @State private var manualPort: String = ""
     @State private var manualToken: String = ""
     @State private var showScanner: Bool = false
+    @State private var copiedCommand: Bool = false
     @Environment(\.dismiss) private var dismiss
+
+    private let companionCommand = """
+    cd /Users/clawcl/codegenie_app_of_year/mac_companion
+    CODEGENIE_PORT=17337 swift run codegenie-companion
+    """
+    private let companionGitHubURL = URL(string: "https://github.com/mvalasek77-droid/Mike_claw/tree/replay-codegenie-ux-safety/mac_companion")!
 
     var body: some View {
         ZStack {
@@ -97,20 +105,43 @@ struct PairMacView: View {
                     title: "CodeGenie Companion running",
                     body: "The Mac companion lets your phone reach Xcode and Safari. Run it before scanning or pasting a pairing URL."
                 )
-                Link(destination: URL(string: "https://codegenie.app/companion")!) {
+                Button {
+                    UIPasteboard.general.string = companionCommand
+                    copiedCommand = true
+                    Haptics.success()
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_500_000_000)
+                        await MainActor.run { copiedCommand = false }
+                    }
+                } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: "arrow.down.circle.fill")
-                        Text("Download CodeGenie Companion")
+                        Image(systemName: copiedCommand ? "checkmark.circle.fill" : "doc.on.doc.fill")
+                        Text(copiedCommand ? "Copied Mac command" : "Copy Mac command")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                         Spacer()
-                        Image(systemName: "arrow.up.right.square")
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
                     .foregroundStyle(LiquidGlass.primaryText)
                 }
-                .accessibilityHint("Opens the Companion download page in Safari")
+                .buttonStyle(.plain)
+                .accessibilityHint("Copies the Terminal command that starts the local Mac companion")
+                Link(destination: companionGitHubURL) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        Text("Open companion on GitHub")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.14)))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.88))
+                }
+                .accessibilityHint("Opens the CodeGenie Mac companion source on GitHub")
             }
         }
     }
@@ -182,7 +213,7 @@ struct PairMacView: View {
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText)
                             Spacer()
-                            Text("Tap to pair")
+                            Text("Detected")
                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                         }
@@ -225,14 +256,19 @@ struct PairMacView: View {
                 Text("On your Mac, run:")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                Text("cd ~/code/codegenie/mac_companion\nswift run codegenie-companion")
+                Text(companionCommand)
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .foregroundStyle(LiquidGlass.primaryText)
                     .padding(10)
                     .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
-                Text("It prints a `codegenie://pair?…` URL — paste that here, or scan the QR code shown by the menu bar app once we ship it.")
+                Text("It prints a `codegenie://pair?…` URL. Paste that here, or scan it if you show the URL as a QR code.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                Link(destination: companionGitHubURL) {
+                    Label("View companion source on GitHub", systemImage: "arrow.up.right.square")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.accent)
+                }
             }
         }
     }

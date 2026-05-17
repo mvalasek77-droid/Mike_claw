@@ -12,3 +12,4 @@ codegenie-*-check.png
 .venv/
 .venv*/
 venv/
+mac_companion/.build/

@@ -1,4 +1,6 @@
 import Foundation
+import Darwin
+import Dispatch
 
 /// Entry point for the CodeGenie Companion daemon.
 ///
@@ -12,18 +14,14 @@ import Foundation
 /// In a shipping product this is a menu-bar app. For now it's a CLI so
 /// it builds and runs anywhere with the Swift toolchain.
 
-@main
-struct Main {
-    static func main() async throws {
-        let port = UInt16(ProcessInfo.processInfo.environment["CODEGENIE_PORT"].flatMap(UInt16.init) ?? 0)
-        let server = try CompanionServer(port: port)
-        let pairing = try await server.start()
-        let qrPayload = "codegenie://pair?host=\(pairing.host)&port=\(pairing.port)&token=\(pairing.token)"
-        print("CodeGenie Companion ready.")
-        print("Pairing URL: \(qrPayload)")
-        print("Token: \(pairing.token)")
-        print("Use ⌃C to stop.")
-        // Keep the run loop alive — server is held by the task.
-        try await Task.sleep(for: .seconds(60 * 60 * 24 * 365))
-    }
-}
+let port = UInt16(ProcessInfo.processInfo.environment["CODEGENIE_PORT"].flatMap(UInt16.init) ?? 0)
+let server = try CompanionServer(port: port)
+let pairing = try await server.start()
+let qrPayload = "codegenie://pair?host=\(pairing.host)&port=\(pairing.port)&token=\(pairing.token)"
+print("CodeGenie Companion ready.")
+print("Pairing URL: \(qrPayload)")
+print("Token: \(pairing.token)")
+print("Use Ctrl-C to stop.")
+fflush(stdout)
+// Keep the process alive. The server is held by this process.
+DispatchSemaphore(value: 0).wait()
