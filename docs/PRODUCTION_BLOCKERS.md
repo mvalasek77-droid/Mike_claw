@@ -16,7 +16,7 @@ Last audited at the `claude/finish-line` branch, after the 0.2.0 polish pass.
 |---|---|---|---|
 | OnboardingSlide step 6 | "Icon forged with ChatGPT" | **wired** (v0.2.1) | `backend/genie_swarm/icon_gen.py` calls OpenAI's `gpt-image-1` model, drops the PNG into `Assets.xcassets/AppIcon.appiconset/icon-1024.png`. Route: `POST /api/coding/swarm/<job>/icon/generate`. iOS surface: `SwarmClient.generateAppIcon(...)`. Needs `OPENAI_API_KEY` in the backend env. |
 | OnboardingSlide step 6 / ASC step 3 | "1024×1024 PNG, no alpha, no rounded corners. CodeGenie strips alpha automatically" | **wired** (v0.2.1) | `_strip_alpha_if_possible()` flattens transparency onto white when Pillow is installed; gracefully passes raw bytes through with a logged warning when not. Pillow added to `requirements.txt`. |
-| ASC step 4 | "Auto-generate screenshots" | **stubbed** | `screenshot_diff.py` exists for *comparing* screenshots; nothing actually captures them. Orchestrator prompts mention `simctl io booted screenshot` but no Python code drives it. |
+| ASC step 4 | "Auto-generate screenshots" | **wired** (v0.2.2) | `backend/genie_swarm/screenshot_capture.py` drives `xcrun simctl io booted screenshot` via the `MacRunner` abstraction (companion or local sandbox), writing one PNG per required App Store device size into `<workspace>/Screenshots/`. Route: `POST /api/coding/swarm/<job>/screenshots/capture`. iOS surface: `SwarmClient.captureScreenshots(jobID:)`. Needs a booted simulator on the paired Mac. |
 | OnboardingSlide step 5 | "iterates until the UI is correct, the data flows, and the build is green" | **partial** | The 8-agent orchestrator is real. Whether it actually produces a green build for arbitrary user prompts has never been verified end-to-end on a real Apple Dev account. |
 
 ## 2. StoreKit + payments
@@ -90,4 +90,4 @@ A simple v0.2.0 dogfood pass: build a TideTimes app, submit it to your own TestF
 5. Dogfood once: ship TideTimes via CodeGenie to your own TestFlight
 6. Mac Companion app source + signed build — unblocks the pair-your-Mac flow
 7. ~~Implement icon generation (call OpenAI's image API)~~ — done in v0.2.1.
-8. Implement simctl screenshot capture or remove the promise from ASC step 4
+8. ~~Implement simctl screenshot capture~~ — done in v0.2.2. Still needs a booted simulator on the paired Mac at the moment the route is called; the orchestrator's UI Tester agent can drive that.

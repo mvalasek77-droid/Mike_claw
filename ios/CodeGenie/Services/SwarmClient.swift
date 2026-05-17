@@ -331,6 +331,16 @@ final class SwarmClient: ObservableObject {
         return IconGenerationResult(json: r)
     }
 
+    /// Drive `simctl io booted screenshot` once per required App
+    /// Store device size, landing PNGs in `<workspace>/Screenshots/`.
+    /// Closes the "Auto-generate screenshots" promise from ASC step 4.
+    @discardableResult
+    func captureScreenshots(jobID: String) async throws -> [CapturedScreenshot] {
+        let r = try await postJSON("/api/coding/swarm/\(jobID)/screenshots/capture", body: [:])
+        let entries = (r["screenshots"] as? [[String: Any]]) ?? []
+        return entries.compactMap(CapturedScreenshot.init(json:))
+    }
+
     /// In-app bug report. The user can also still email — this is the
     /// private POST channel so they don't need Mail configured.
     /// Returns the report id assigned by the backend.
@@ -838,6 +848,22 @@ struct GitHubSyncResult: Hashable {
         remote = json["remote"] as? String ?? ""
         prRequested = json["pr_requested"] as? Bool ?? false
         prURL = json["pr_url"] as? String ?? ""
+    }
+}
+
+struct CapturedScreenshot: Hashable {
+    var deviceID: String
+    var deviceLabel: String
+    var path: String
+    var bytesWritten: Int
+
+    init?(json: [String: Any]) {
+        guard let deviceID = json["device_id"] as? String,
+              let path = json["path"] as? String else { return nil }
+        self.deviceID = deviceID
+        self.deviceLabel = json["device_label"] as? String ?? ""
+        self.path = path
+        self.bytesWritten = json["bytes_written"] as? Int ?? 0
     }
 }
 

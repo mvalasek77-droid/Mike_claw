@@ -23,6 +23,11 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from .llm import AnthropicClient, LLMClient, ProviderRoutingLLMClient
 from .github_sync import GitHubSyncError, sync_workspace_to_github
 from .icon_gen import IconGenError, generate_app_icon
+from .runner import MacRunner
+from .screenshot_capture import (
+    ScreenshotCaptureError,
+    capture_app_store_set,
+)
 from .models import (
     AppSpec,
     BugReportRequest,
@@ -272,6 +277,50 @@ async def release_readiness(job_id: str, req: ReleaseReadinessRequest | None = N
         f"{result['release_gate']} at {result['score']}/100: {result['summary']}",
     )
     return result
+
+
+@router.post("/{job_id}/screenshots/capture")
+async def screenshots_capture(job_id: str):
+    """Drive `xcrun simctl io booted screenshot` on the paired Mac
+    (or the local sandbox on a dev Mac) once per required App Store
+    device size, writing PNGs into `<workspace>/Screenshots/`.
+
+    Closes the "Auto-generate screenshots" promise from ASC step 4.
+    Returns the list of paths the iOS surface can render."""
+    from .sandbox import Sandbox, SandboxPolicy
+    job = state.jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "unknown job")
+    workspace = state.config.workspace_root / job_id
+    workspace.mkdir(parents=True, exist_ok=True)
+    sandbox = Sandbox(SandboxPolicy(workspace=workspace))
+    runner = MacRunner.resolve(job_id=job_id, companion_paired=False)
+    try:
+        captured = await capture_app_store_set(
+            runner=runner,
+            sandbox=sandbox,
+            workspace=workspace,
+        )
+    except ScreenshotCaptureError as exc:
+        raise HTTPException(400, str(exc))
+
+    events = await state.bus.stream_for(job_id)
+    await events.emit(
+        "log",
+        message=f"Captured {len(captured)} App Store screenshots",
+    )
+    return {
+        "ok": True,
+        "screenshots": [
+            {
+                "device_id": shot.device.id,
+                "device_label": shot.device.label,
+                "path": str(shot.path.relative_to(workspace)),
+                "bytes_written": shot.bytes_written,
+            }
+            for shot in captured
+        ],
+    }
 
 
 @router.post("/{job_id}/icon/generate")
