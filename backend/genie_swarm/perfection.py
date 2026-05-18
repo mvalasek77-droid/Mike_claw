@@ -57,6 +57,28 @@ class PerfectionFinding:
         }
 
 
+@dataclass(frozen=True)
+class PerfectionAgentReview:
+    key: str
+    title: str
+    role: str
+    status: Literal["pass", "needs_work", "blocked"]
+    score_out_of_10: float
+    summary: str
+    findings: list[str]
+
+    def wire(self) -> dict[str, Any]:
+        return {
+            "key": self.key,
+            "title": self.title,
+            "role": self.role,
+            "status": self.status,
+            "score_out_of_10": self.score_out_of_10,
+            "summary": self.summary,
+            "findings": self.findings,
+        }
+
+
 AXES: tuple[QualityAxis, ...] = (
     QualityAxis("apple_review", "Apple Review", 1.35, 430),
     QualityAxis("accessibility", "Accessibility", 1.20, 210),
@@ -120,6 +142,7 @@ def run_perfection_matrix(
     counts = _severity_counts(findings)
     score = _score(findings)
     gate = _release_gate(counts)
+    review_agents = _review_agents(spec, workspace, scanned, findings, score)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
 
     return {
@@ -132,6 +155,7 @@ def run_perfection_matrix(
         "severity_counts": counts,
         "axes": axis_reports,
         "findings": [f.wire() for f in sorted(findings, key=_finding_sort_key)],
+        "review_agents": [agent.wire() for agent in review_agents],
         "next_actions": _next_actions(findings, gate),
         "workspace": {
             "path": str(workspace),
@@ -437,6 +461,139 @@ def _scan_award_caliber(
             recommendation="Capture simulator screenshots for the main flow, empty state, and success state.",
         ))
     return findings
+
+
+def _review_agents(
+    spec: AppSpec,
+    workspace: Path,
+    files: list[ScannedFile],
+    findings: list[PerfectionFinding],
+    score: float,
+) -> list[PerfectionAgentReview]:
+    paths = {f.path for f in files}
+    all_text = "\n".join(f.text for f in files)
+    return [
+        _copy_editor_review(spec, files),
+        _process_review(workspace, paths, findings),
+        _app_of_year_review(findings, score),
+        _bug_hang_review(findings, all_text),
+    ]
+
+
+def _copy_editor_review(spec: AppSpec, files: list[ScannedFile]) -> PerfectionAgentReview:
+    text = "\n".join([spec.title, spec.prompt, " ".join(spec.features)] + [f.text for f in files])
+    typo_map = {
+        "teh": "the",
+        "recieve": "receive",
+        "seperate": "separate",
+        "occured": "occurred",
+        "adress": "address",
+        "grammer": "grammar",
+        "expsnd": "expand",
+        "eveyting": "everything",
+        "wierd": "weird",
+        "dont": "don't",
+    }
+    lowered = text.lower()
+    issues = [
+        f"Possible typo: `{wrong}` should probably be `{right}`."
+        for wrong, right in typo_map.items()
+        if re.search(rf"\b{re.escape(wrong)}\b", lowered)
+    ]
+    score = max(0.0, 10.0 - len(issues) * 1.5)
+    return PerfectionAgentReview(
+        key="copy_editor",
+        title="Spelling + Grammar",
+        role="Checks visible copy, prompts, and metadata for obvious spelling or grammar issues.",
+        status=_agent_status(score, blocked=False),
+        score_out_of_10=round(score, 1),
+        summary="No obvious copy issues found." if not issues else f"{len(issues)} copy issue found.",
+        findings=issues[:5] or ["Visible copy passed the obvious typo scan."],
+    )
+
+
+def _process_review(
+    workspace: Path,
+    paths: set[str],
+    findings: list[PerfectionFinding],
+) -> PerfectionAgentReview:
+    lower_paths = {p.lower() for p in paths}
+    checks: list[tuple[str, bool]] = [
+        ("Generated workspace exists", workspace.exists()),
+        ("Swift source is present", any(p.endswith(".swift") for p in paths)),
+        ("Info.plist is present", any(p.endswith("Info.plist") for p in paths)),
+        ("Privacy manifest is present", any(p.endswith("PrivacyInfo.xcprivacy") for p in paths)),
+        ("App icon catalog is present", any("appicon.appiconset" in p for p in lower_paths)),
+        ("Tests are present", any("test" in p.lower() for p in paths)),
+        ("Screenshot plan exists", any("screenshot" in p.lower() for p in paths)),
+    ]
+    missing = [label for label, ok in checks if not ok]
+    blocking = any(f.severity in ("critical", "error") and f.axis in ("engineering", "store_ready", "apple_review") for f in findings)
+    score = max(0.0, 10.0 - len(missing) * 1.1 - (2.0 if blocking else 0.0))
+    return PerfectionAgentReview(
+        key="process_auditor",
+        title="Build Process",
+        role="Checks the path from generated project to tests, package, privacy, screenshots, and App Store handoff.",
+        status=_agent_status(score, blocked=blocking),
+        score_out_of_10=round(score, 1),
+        summary="Every release step is accounted for." if not missing else f"{len(missing)} release step needs attention.",
+        findings=[f"Missing: {label}." for label in missing[:5]] or ["Project, package, tests, privacy, and screenshot steps are present."],
+    )
+
+
+def _app_of_year_review(findings: list[PerfectionFinding], score: float) -> PerfectionAgentReview:
+    award_findings = [f for f in findings if f.axis == "award_caliber"]
+    blockers = any(f.severity in ("critical", "error") for f in award_findings)
+    award_score = max(0.0, min(10.0, round(score / 10.0 - len(award_findings) * 0.45, 1)))
+    if award_score >= 9:
+        summary = f"{award_score:.1f}/10 against recent App of the Year patterns."
+    elif award_score >= 7:
+        summary = f"{award_score:.1f}/10. Strong direction; sharpen the first-run payoff and native hook."
+    else:
+        summary = f"{award_score:.1f}/10. Needs clearer feeling, ritual, native craft, and store story."
+    return PerfectionAgentReview(
+        key="app_of_year_judge",
+        title="App of Year Score",
+        role="Scores the app against recent winners: feeling, ritual, native Apple craft, accessibility, and trust.",
+        status=_agent_status(award_score, blocked=blockers),
+        score_out_of_10=award_score,
+        summary=summary,
+        findings=[f.recommendation or f.title for f in award_findings[:5]]
+            or ["The brief and workspace show first-run payoff, native craft, and store story."],
+    )
+
+
+def _bug_hang_review(findings: list[PerfectionFinding], all_text: str) -> PerfectionAgentReview:
+    risk_axes = {"engineering", "performance", "resilience", "security"}
+    risks = [
+        f for f in findings
+        if f.axis in risk_axes and f.severity in ("warning", "error", "critical")
+    ]
+    hang_markers = [
+        token for token in ("DispatchSemaphore(value: 0).wait", "while true", "Task.sleep(for: .seconds(60 * 60 * 24")
+        if token in all_text
+    ]
+    issue_lines = [f.recommendation or f.title for f in sorted(risks, key=_finding_sort_key)[:4]]
+    issue_lines.extend(f"Potential hang marker found: `{token}`." for token in hang_markers[:2])
+    blocked = any(f.severity in ("critical", "error") for f in risks)
+    score = max(0.0, 10.0 - len(risks) * 0.8 - len(hang_markers) * 1.6 - (2.0 if blocked else 0.0))
+    return PerfectionAgentReview(
+        key="bug_hang_hunter",
+        title="Bugs + Hanging",
+        role="Looks for crash calls, forced failures, stuck loading states, large files, network gaps, and security risk.",
+        status=_agent_status(score, blocked=blocked),
+        score_out_of_10=round(score, 1),
+        summary="No obvious crash or hanging risks found." if not issue_lines else f"{len(issue_lines)} bug or hang risk found.",
+        findings=issue_lines[:5] or ["No fatalError, forced try, obvious hang loop, or release-blocking bug marker found."],
+    )
+
+
+def _agent_status(score: float, *, blocked: bool) -> Literal["pass", "needs_work", "blocked"]:
+    if blocked or score < 6.5:
+        return "blocked"
+    if score < 9.0:
+        return "needs_work"
+    return "pass"
 
 
 def _allocate_probes(total: int) -> dict[str, int]:

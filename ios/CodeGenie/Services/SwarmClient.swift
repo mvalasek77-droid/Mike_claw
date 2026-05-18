@@ -581,6 +581,7 @@ struct PerfectionRun: Identifiable, Hashable {
     let severityCounts: [String: Int]
     let axes: [PerfectionAxis]
     let findings: [PerfectionFinding]
+    let agentReviews: [PerfectionAgentReview]
     let nextActions: [String]
 
     init(json: [String: Any]) throws {
@@ -595,6 +596,7 @@ struct PerfectionRun: Identifiable, Hashable {
         severityCounts = Self.intMap(json["severity_counts"])
         axes = ((json["axes"] as? [[String: Any]]) ?? []).map(PerfectionAxis.init(json:))
         findings = ((json["findings"] as? [[String: Any]]) ?? []).map(PerfectionFinding.init(json:))
+        agentReviews = ((json["review_agents"] as? [[String: Any]]) ?? []).map(PerfectionAgentReview.init(json:))
         nextActions = (json["next_actions"] as? [String]) ?? []
     }
 
@@ -670,6 +672,27 @@ struct PerfectionFinding: Identifiable, Hashable {
             line = nil
         }
         recommendation = json["recommendation"] as? String
+    }
+}
+
+struct PerfectionAgentReview: Identifiable, Hashable {
+    let key: String
+    let title: String
+    let role: String
+    let status: String
+    let scoreOutOf10: Double
+    let summary: String
+    let findings: [String]
+    var id: String { key }
+
+    init(json: [String: Any]) {
+        key = (json["key"] as? String) ?? UUID().uuidString
+        title = (json["title"] as? String) ?? "Agent check"
+        role = (json["role"] as? String) ?? ""
+        status = (json["status"] as? String) ?? "needs_work"
+        scoreOutOf10 = PerfectionRun.double(json["score_out_of_10"])
+        summary = (json["summary"] as? String) ?? ""
+        findings = (json["findings"] as? [String]) ?? []
     }
 }
 

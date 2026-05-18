@@ -388,7 +388,7 @@ struct DescribeAppView: View {
                 tint: LiquidGlass.success
             )
         case .subscription:
-            guard !creds.backendToken.isEmpty else {
+            guard creds.hasCompanionPairing else {
                 return BuildAccess(
                     canBuild: false,
                     title: "Pair your Mac first",

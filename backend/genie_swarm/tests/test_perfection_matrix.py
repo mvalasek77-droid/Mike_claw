@@ -95,6 +95,14 @@ def test_perfection_matrix_green_workspace_is_ready(tmp_path: Path):
     assert result["score"] >= 98
     assert sum(axis["probes"] for axis in result["axes"]) == 10_000
     assert result["severity_counts"]["critical"] == 0
+    assert [agent["key"] for agent in result["review_agents"]] == [
+        "copy_editor",
+        "process_auditor",
+        "app_of_year_judge",
+        "bug_hang_hunter",
+    ]
+    app_score = next(agent for agent in result["review_agents"] if agent["key"] == "app_of_year_judge")
+    assert app_score["score_out_of_10"] >= 9
 
 
 def test_perfection_matrix_blocks_missing_workspace(tmp_path: Path):
@@ -139,6 +147,8 @@ def test_perfection_matrix_finds_release_blockers(tmp_path: Path):
     assert "fatalError call found" in titles
     assert "First-run payoff is not explicit" in titles
     assert result["score"] < 80
+    bug_agent = next(agent for agent in result["review_agents"] if agent["key"] == "bug_hang_hunter")
+    assert bug_agent["status"] == "blocked"
 
 
 def test_perfection_route_records_memory_decision(tmp_path: Path):

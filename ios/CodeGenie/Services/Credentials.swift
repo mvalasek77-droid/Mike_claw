@@ -16,6 +16,8 @@ final class Credentials: ObservableObject {
     @Published var preferredModelID: String = ModelCatalogue.recommendedDefault
     @Published var backendURL: String = "https://api.codegenie.app"
     @Published private(set) var backendToken: String = ""
+    @Published private(set) var companionHost: String = ""
+    @Published private(set) var companionPort: UInt16 = 0
     /// Per-agent model overrides keyed by `AgentRole.rawValue` ("coder", "reviewer", …).
     @Published var agentModels: [String: String] = [:]
     /// Optional per-build USD cap. `nil` disables enforcement.
@@ -74,6 +76,11 @@ final class Credentials: ObservableObject {
         if let url = UserDefaults.standard.string(forKey: "backend.url"),
            !url.isEmpty {
             backendURL = url
+        }
+        companionHost = UserDefaults.standard.string(forKey: "companion.host") ?? ""
+        let storedCompanionPort = UserDefaults.standard.integer(forKey: "companion.port")
+        if storedCompanionPort > 0 {
+            companionPort = UInt16(storedCompanionPort)
         }
         if let data = UserDefaults.standard.data(forKey: "agent.models"),
            let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
@@ -210,6 +217,26 @@ final class Credentials: ObservableObject {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         backendToken = trimmed
         writeBackendToken(trimmed)
+    }
+
+    var hasCompanionPairing: Bool {
+        !backendToken.isEmpty && !companionHost.isEmpty && companionPort > 0
+    }
+
+    func setCompanionPairing(host: String, port: UInt16, token: String) {
+        companionHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        companionPort = port
+        UserDefaults.standard.set(companionHost, forKey: "companion.host")
+        UserDefaults.standard.set(Int(port), forKey: "companion.port")
+        setBackendToken(token)
+    }
+
+    func clearCompanionPairing() {
+        companionHost = ""
+        companionPort = 0
+        UserDefaults.standard.removeObject(forKey: "companion.host")
+        UserDefaults.standard.removeObject(forKey: "companion.port")
+        setBackendToken("")
     }
 
     func setKey(_ key: String, for provider: AIProvider) {

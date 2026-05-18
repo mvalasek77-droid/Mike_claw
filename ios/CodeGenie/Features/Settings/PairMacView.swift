@@ -12,6 +12,7 @@ import UIKit
 /// "connected" status pill.
 struct PairMacView: View {
     @StateObject private var bridge = CompanionBridge()
+    @StateObject private var creds = Credentials.shared
     @State private var pasteURL: String = ""
     @State private var manualHost: String = ""
     @State private var manualPort: String = ""
@@ -81,8 +82,8 @@ struct PairMacView: View {
                 Text(label).font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
                 Spacer()
-                if case .connected = bridge.status {
-                    Button("Disconnect") { bridge.disconnect() }
+                if isPairedOrConnected {
+                    Button("Forget") { bridge.disconnect(forgetPairing: true) }
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
                         .padding(.horizontal, 10).padding(.vertical, 6)
@@ -275,8 +276,8 @@ struct PairMacView: View {
 
     private var label: String {
         switch bridge.status {
-        case .idle:           "Not paired"
-        case .browsing:       "Searching the network…"
+        case .idle:           creds.hasCompanionPairing ? "Paired to \(creds.companionHost)" : "Not paired"
+        case .browsing:       creds.hasCompanionPairing ? "Paired — checking network…" : "Searching the network…"
         case .connecting:     "Connecting…"
         case .authenticating: "Authenticating…"
         case .connected:      "Connected to your Mac"
@@ -289,7 +290,12 @@ struct PairMacView: View {
         case .connected:                       LiquidGlass.success
         case .connecting, .authenticating, .browsing: LiquidGlass.warning
         case .failed:                          .red
-        case .idle:                            LiquidGlass.primaryText.opacity(0.4)
+        case .idle:                            creds.hasCompanionPairing ? LiquidGlass.success : LiquidGlass.primaryText.opacity(0.4)
         }
+    }
+
+    private var isPairedOrConnected: Bool {
+        if case .connected = bridge.status { return true }
+        return creds.hasCompanionPairing
     }
 }

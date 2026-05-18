@@ -88,8 +88,20 @@ final class CompanionBridge: ObservableObject {
         await connect(host: host, port: port, token: token)
     }
 
+    func connectStoredPairing() async -> Bool {
+        let creds = Credentials.shared
+        guard creds.hasCompanionPairing else {
+            status = .failed("pair your Mac first")
+            return false
+        }
+        await connect(host: creds.companionHost, port: creds.companionPort, token: creds.backendToken)
+        if case .connected = status { return true }
+        return false
+    }
+
     func connect(host: String, port: UInt16, token: String) async {
         status = .connecting
+        conn?.cancel()
         let nwHost = NWEndpoint.Host(host)
         let nwPort = NWEndpoint.Port(rawValue: port) ?? .any
         let conn = NWConnection(host: nwHost, port: nwPort, using: .tcp)
@@ -101,7 +113,7 @@ final class CompanionBridge: ObservableObject {
         }
 
         // Persist token so the user doesn't re-pair each launch.
-        Credentials.shared.setBackendToken(token)
+        Credentials.shared.setCompanionPairing(host: host, port: port, token: token)
 
         startReadLoop(conn)
 
@@ -116,10 +128,12 @@ final class CompanionBridge: ObservableObject {
         }
     }
 
-    func disconnect() {
+    func disconnect(forgetPairing: Bool = false) {
         conn?.cancel(); conn = nil
         pending.values.forEach { $0.resume(throwing: BridgeError.disconnected) }
         pending.removeAll()
+        if forgetPairing { Credentials.shared.clearCompanionPairing() }
+        if forgetPairing { status = .idle; return }
         if case .connected = status { status = .idle }
     }
 
@@ -131,6 +145,10 @@ final class CompanionBridge: ObservableObject {
 
     func openSafari(_ url: String, newWindow: Bool = false) async throws {
         _ = try await request(type: "open_safari", payload: ["url": url, "new_window": newWindow])
+    }
+
+    func openURLOnMac(_ url: String) async throws {
+        _ = try await request(type: "open_url", payload: ["url": url])
     }
 
     func ping() async throws -> Bool {

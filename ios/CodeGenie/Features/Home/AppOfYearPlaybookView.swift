@@ -116,11 +116,10 @@ struct AppOfYearPlaybookView: View {
     private var launchGate: some View {
         GlassCard(title: "Perfection Mode addition", icon: "checkmark.shield.fill", tint: LiquidGlass.success) {
             VStack(alignment: .leading, spacing: 8) {
-                AwardChecklistRow(text: "First-run payoff visible")
-                AwardChecklistRow(text: "App Store story drafted")
-                AwardChecklistRow(text: "Icon and screenshots planned")
-                AwardChecklistRow(text: "Native Apple capability used")
-                AwardChecklistRow(text: "Cultural or personal utility named")
+                AwardChecklistRow(text: "Spelling and grammar reviewer")
+                AwardChecklistRow(text: "Build process reviewer")
+                AwardChecklistRow(text: "App of Year score out of 10")
+                AwardChecklistRow(text: "Bug and hanging-state reviewer")
             }
         }
     }
@@ -228,7 +227,7 @@ private struct AppOfYearSegment: Identifiable {
             icon: "iphone.gen3.radiowaves.left.and.right",
             tint: LiquidGlass.warning,
             examples: "Camera, haptics, widgets, accessibility, watch",
-            gate: "The product should feel impossible as a generic web wrapper."
+            gate: "Use the iPhone itself: haptics, camera, widgets, Watch, VoiceOver, offline data, or other Apple features that make the app feel made for iPhone."
         ),
         .init(
             title: "Store story",

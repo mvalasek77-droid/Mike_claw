@@ -65,7 +65,7 @@ struct BuildScreen: View {
             case .bitdrop:
                 "A small optional puzzle for the wait. Clearing rows gives a tiny build-speed boost, but ignoring it does not hurt the build."
             case .perfection:
-                "A 10,000-probe quality pass across Apple review readiness, accessibility, performance, security, polish, packaging, and resilience. Run it before TestFlight or App Store handoff."
+                "A final review pass before TestFlight. Four reviewers check spelling and grammar, the full release process, App of the Year strength out of 10, and bugs or hanging states."
             }
         }
     }
@@ -83,7 +83,7 @@ struct BuildScreen: View {
         case .byok:
             return creds.hasAnyKey
         case .subscription:
-            return !creds.backendToken.isEmpty
+            return creds.hasCompanionPairing
         case .codegenie:
             return BillingStore.shared.canStartHostedBuild
         }
@@ -578,7 +578,7 @@ struct BuildScreen: View {
                                 Task { await runPerfection(jobID: jobID) }
                             }
                             .disabled(perfectionRunning)
-                            .accessibilityLabel("Run ten thousand probe Perfection Mode")
+                            .accessibilityLabel("Run Perfection Mode four reviewer checks")
                         }
                         if let perfectionRun {
                             perfectionSummary(perfectionRun)
@@ -658,6 +658,14 @@ struct BuildScreen: View {
                 .font(.system(size: 12, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                 .fixedSize(horizontal: false, vertical: true)
+            if !run.agentReviews.isEmpty {
+                VStack(spacing: 7) {
+                    ForEach(run.agentReviews.prefix(4)) { review in
+                        PerfectionAgentReviewRow(review: review)
+                    }
+                }
+                .padding(.top, 2)
+            }
             if let top = run.findings.first {
                 Text(top.recommendation ?? top.title)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -1048,5 +1056,63 @@ private struct PipelineRow: View {
                 ProgressView().tint(LiquidGlass.primaryText).scaleEffect(0.7)
             }
         }
+    }
+}
+
+private struct PerfectionAgentReviewRow: View {
+    let review: PerfectionAgentReview
+
+    private var tint: Color {
+        switch review.status {
+        case "pass": return LiquidGlass.success
+        case "blocked": return .red
+        default: return LiquidGlass.warning
+        }
+    }
+
+    private var icon: String {
+        switch review.key {
+        case "copy_editor": return "text.magnifyingglass"
+        case "process_auditor": return "list.bullet.clipboard.fill"
+        case "app_of_year_judge": return "trophy.fill"
+        case "bug_hang_hunter": return "exclamationmark.triangle.fill"
+        default: return "checkmark.seal.fill"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(tint)
+                    .frame(width: 24, height: 24)
+                    .background(Circle().fill(tint.opacity(0.16)))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(review.title)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text("\(String(format: "%.1f", review.scoreOutOf10))/10 - \(review.summary)")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.62))
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
+            }
+            if let first = review.findings.first {
+                Text(first)
+                    .font(.system(size: 10, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.58))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 32)
+            }
+        }
+        .padding(8)
+        .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.10)))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(review.title), \(String(format: "%.1f", review.scoreOutOf10)) out of 10, \(review.summary)")
     }
 }

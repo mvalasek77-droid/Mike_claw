@@ -471,11 +471,11 @@ struct SettingsView: View {
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
 
                 Label(
-                    creds.backendToken.isEmpty ? "Pair your Mac before starting a subscription build" : "Mac companion token saved",
-                    systemImage: creds.backendToken.isEmpty ? "exclamationmark.triangle.fill" : "checkmark.seal.fill"
+                    creds.hasCompanionPairing ? "Mac companion pairing saved" : "Pair your Mac before starting a subscription build",
+                    systemImage: creds.hasCompanionPairing ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
                 )
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(creds.backendToken.isEmpty ? LiquidGlass.warning : LiquidGlass.success)
+                .foregroundStyle(creds.hasCompanionPairing ? LiquidGlass.success : LiquidGlass.warning)
 
                 ForEach(AIProvider.allCases) { p in
                     HStack(spacing: 10) {

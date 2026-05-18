@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var session: AppSession
     @StateObject private var creds = Credentials.shared
+    @StateObject private var billing = BillingStore.shared
     @AppStorage("home.showAdvancedTiles") private var showAdvancedTiles = false
     @State private var showXcodeGuide = false
     @State private var showDescribe = false
@@ -146,10 +147,24 @@ struct HomeView: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
         }
+        .task { await billing.refresh() }
     }
 
     private func startBuildOrPromptSetup() {
-        let macPaired = !creds.backendToken.isEmpty
+        let gate = buildStartGate
+        guard gate.canStart else {
+            Haptics.warning()
+            switch gate.action {
+            case .pairMac:
+                showPairMac = true
+            case .settings:
+                showSettings = true
+            case .build:
+                break
+            }
+            return
+        }
+        let macPaired = creds.hasCompanionPairing
         let done = [xcodeAcknowledged, macPaired, creds.hasAppleDevCreds, creds.hasGithub].filter { $0 }.count
         let promptShown = UserDefaults.standard.bool(forKey: "firstBuild.prompt.shown")
         if done == 0 && !promptShown {
@@ -161,7 +176,7 @@ struct HomeView: View {
 
     @ViewBuilder
     private var shipReadinessCard: some View {
-        let macPaired = !creds.backendToken.isEmpty
+        let macPaired = creds.hasCompanionPairing
         let appleReady = creds.hasAppleDevCreds
         let githubReady = creds.hasGithub
         let done = [xcodeAcknowledged, macPaired, appleReady, githubReady].filter { $0 }.count
@@ -287,8 +302,113 @@ struct HomeView: View {
         }
     }
 
+    private var selectedModel: AIModel? {
+        ModelCatalogue.model(id: creds.preferredModelID)
+    }
+
+    private var modelRouteReady: Bool {
+        guard let model = selectedModel else { return false }
+        switch creds.authMode {
+        case .byok:
+            return creds.hasKey(for: model.provider)
+        case .subscription:
+            return creds.hasCompanionPairing
+        case .codegenie:
+            return billing.canStartHostedBuild
+        }
+    }
+
+    private var buildStartGate: HomeBuildGate {
+        guard let model = selectedModel else {
+            return HomeBuildGate(
+                canStart: false,
+                title: "Pick an LLM model",
+                detail: "Choose the model CodeGenie should use before starting.",
+                icon: "slider.horizontal.3",
+                action: .settings
+            )
+        }
+        if !modelRouteReady {
+            let detail: String
+            switch creds.authMode {
+            case .byok:
+                detail = "\(model.displayName) needs a \(model.provider.displayName) API key."
+            case .subscription:
+                detail = "Subscription mode needs the paired Mac companion."
+            case .codegenie:
+                detail = "Hosted builds need an active plan or a free credit."
+            }
+            return HomeBuildGate(
+                canStart: false,
+                title: "Set up model access",
+                detail: detail,
+                icon: "key.fill",
+                action: creds.authMode == .subscription ? .pairMac : .settings
+            )
+        }
+        guard creds.hasCompanionPairing else {
+            return HomeBuildGate(
+                canStart: false,
+                title: "Pair Mac first",
+                detail: "CodeGenie needs your Mac companion before it can build and run Xcode.",
+                icon: "macbook.and.iphone",
+                action: .pairMac
+            )
+        }
+        return HomeBuildGate(
+            canStart: true,
+            title: "Start a new build",
+            detail: "\(model.displayName), \(creds.authMode.label), and Mac pairing are ready.",
+            icon: "wand.and.stars",
+            action: .build
+        )
+    }
+
+    private var buildStartChecks: [BuildStartCheck] {
+        let model = selectedModel
+        let modelReady = model != nil
+        let routeTitle: String
+        let routeDetail: String
+        let routeReady: Bool
+        switch creds.authMode {
+        case .byok:
+            routeTitle = "API key"
+            routeDetail = model.flatMap { creds.hasKey(for: $0.provider) ? "\($0.provider.displayName) ready" : "Add \($0.provider.displayName) key" } ?? "Pick a model first"
+            routeReady = modelRouteReady
+        case .subscription:
+            routeTitle = "Subscription"
+            routeDetail = creds.hasCompanionPairing ? "Paired Mac session ready" : "Pair Mac for Claude or ChatGPT"
+            routeReady = modelRouteReady
+        case .codegenie:
+            routeTitle = "Hosted plan"
+            routeDetail = billing.hostedStatusText
+            routeReady = modelRouteReady
+        }
+        return [
+            BuildStartCheck(
+                title: "Model",
+                detail: model?.displayName ?? "Choose Claude or GPT",
+                ready: modelReady,
+                icon: "brain.head.profile"
+            ),
+            BuildStartCheck(
+                title: routeTitle,
+                detail: routeDetail,
+                ready: routeReady,
+                icon: creds.authMode == .byok ? "key.fill" : "person.crop.circle.badge.checkmark"
+            ),
+            BuildStartCheck(
+                title: "Mac paired",
+                detail: creds.hasCompanionPairing ? "\(creds.companionHost):\(creds.companionPort)" : "Pair before building",
+                ready: creds.hasCompanionPairing,
+                icon: "macbook.and.iphone"
+            )
+        ]
+    }
+
     private var primaryAction: some View {
-        GlassSurface(tier: .deep) {
+        let gate = buildStartGate
+        return GlassSurface(tier: .deep) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text("Brief the experience").font(.system(size: 18, weight: .semibold, design: .rounded))
@@ -300,10 +420,20 @@ struct HomeView: View {
                     .font(.system(size: 15, weight: .regular, design: .rounded))
                     .italic()
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                PrimaryButton(title: "Start a new build", systemImage: "wand.and.stars", style: .filled) {
+                VStack(spacing: 7) {
+                    ForEach(buildStartChecks) { check in
+                        BuildStartCheckRow(check: check)
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                PrimaryButton(title: gate.title, systemImage: gate.icon, style: .filled) {
                     Haptics.experienceStart()
                     startBuildOrPromptSetup()
                 }
+                Text(gate.detail)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(gate.canStart ? LiquidGlass.success.opacity(0.85) : LiquidGlass.warning.opacity(0.9))
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(20)
         }
@@ -443,7 +573,7 @@ struct HomeView: View {
                 ChecklistRow(text: "Experience DNA, accessibility, haptics", done: true)
                 ChecklistRow(text: "iOS 26 Liquid Glass theme", done: true)
                 ChecklistRow(text: "Pricing gate blocks unready paths", done: true)
-                ChecklistRow(text: "Perfection Mode: 10,000 virtual probes", done: false)
+                ChecklistRow(text: "Perfection Mode: 4 reviewer checks", done: false)
                 ChecklistRow(text: "Submission-ready for App Store", done: false)
             }
         }
@@ -512,6 +642,60 @@ private struct ExperiencePillar: View {
         .overlay(Capsule().strokeBorder(.white.opacity(0.12)))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
+    }
+}
+
+private enum HomeBuildAction {
+    case settings
+    case pairMac
+    case build
+}
+
+private struct HomeBuildGate {
+    let canStart: Bool
+    let title: String
+    let detail: String
+    let icon: String
+    let action: HomeBuildAction
+}
+
+private struct BuildStartCheck: Identifiable {
+    let id = UUID()
+    let title: String
+    let detail: String
+    let ready: Bool
+    let icon: String
+}
+
+private struct BuildStartCheckRow: View {
+    let check: BuildStartCheck
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: check.ready ? "checkmark.circle.fill" : check.icon)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(check.ready ? LiquidGlass.success : LiquidGlass.warning)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill((check.ready ? LiquidGlass.success : LiquidGlass.warning).opacity(0.16)))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(check.title)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                Text(check.detail)
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.58))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.10)))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(check.title), \(check.ready ? "ready" : "not ready"), \(check.detail)")
     }
 }
 

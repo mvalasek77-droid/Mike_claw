@@ -29,10 +29,10 @@ extension OnboardingSlide {
         .init(
             chapter: "Step 1 of 7",
             title: "Meet your pocket Xcode",
-            body: "All you need is your iPhone. CodeGenie talks to a Mac with Xcode in the cloud, so you can ship apps without owning a laptop.",
+            body: "Start from your iPhone. CodeGenie talks to a paired Mac with Xcode, then streams the build back to you.",
             illustration: .macWithXcode,
             palette: [.indigo, .purple],
-            xcodeTip: "Need your own Mac? Open Xcode → Settings → Accounts and add your Apple ID. CodeGenie can also run remote."
+            xcodeTip: "Need your own Mac? Install Xcode, open Settings → Accounts, and add your Apple ID."
         ),
         .init(
             chapter: "Step 2 of 7",
@@ -40,7 +40,7 @@ extension OnboardingSlide {
             body: "We spin up a real Xcode project for you — App target, asset catalog, SwiftUI entry point, the works.",
             illustration: .projectInitialized,
             palette: [.blue, .cyan],
-            xcodeTip: "Manually: File → New → Project → iOS App → SwiftUI / Swift. CodeGenie does this for you in 8 seconds."
+            xcodeTip: "Xcode normally asks you to create an iOS app project by hand. CodeGenie creates the app target, asset catalog, SwiftUI starter, and project files for you."
         ),
         .init(
             chapter: "Step 3 of 7",

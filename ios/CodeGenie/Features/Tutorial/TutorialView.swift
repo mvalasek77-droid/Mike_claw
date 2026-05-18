@@ -18,6 +18,7 @@ struct TutorialView: View {
     var onFinish: () -> Void
 
     @State private var index: Int = 0
+    @State private var expandedTipIDs: Set<UUID> = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dismiss) private var dismiss
 
@@ -71,11 +72,12 @@ struct TutorialView: View {
     }
 
     private func slideCard(_ slide: OnboardingSlide) -> some View {
-        VStack(spacing: 20) {
+        let tipExpanded = expandedTipIDs.contains(slide.id)
+        return VStack(spacing: 20) {
             GlassSurface(tier: .raised) {
                 VStack(spacing: 16) {
                     OnboardingIllustrationView(kind: slide.illustration)
-                        .frame(height: 320)
+                        .frame(height: 280)
                         .frame(maxWidth: .infinity)
                         .background(
                             RadialGradient(
@@ -108,24 +110,45 @@ struct TutorialView: View {
                     .lineSpacing(3)
 
                 if let tip = slide.xcodeTip {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "hammer.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(LiquidGlass.warning)
-                            .accessibilityHidden(true)
-                        Text(tip)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
-                            .multilineTextAlignment(.leading)
+                    Button {
+                        Haptics.selection()
+                        withAnimation(LiquidGlass.motion) {
+                            if tipExpanded {
+                                expandedTipIDs.remove(slide.id)
+                            } else {
+                                expandedTipIDs.insert(slide.id)
+                            }
+                        }
+                    } label: {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "hammer.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(LiquidGlass.warning)
+                                .accessibilityHidden(true)
+                            Text(tip)
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(tipExpanded ? nil : 2)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                            Image(systemName: tipExpanded ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.45))
+                                .padding(.top, 3)
+                                .accessibilityHidden(true)
+                        }
+                        .padding(12)
+                        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(LiquidGlass.warning.opacity(0.25), lineWidth: 0.7)
+                        )
                     }
-                    .padding(12)
-                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(LiquidGlass.warning.opacity(0.25), lineWidth: 0.7)
-                    )
+                    .buttonStyle(.plain)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Xcode tip: \(tip)")
+                    .accessibilityHint(tipExpanded ? "Collapse this note" : "Expand this note")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

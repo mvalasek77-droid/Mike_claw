@@ -33,6 +33,12 @@ final class Commands {
             try await runApp(args)
             return ["opened": url]
 
+        case "open_url":
+            guard let url = payload["url"] as? String else { throw CmdError.bad("url missing") }
+            guard isAllowedURL(url) else { throw CmdError.bad("url scheme not allowed") }
+            try await runApp(["/usr/bin/open", url])
+            return ["opened": url]
+
         case "xcodebuild":
             return try await runXcodeBuild(payload: payload, requestID: requestID, send: send)
 
@@ -65,6 +71,11 @@ final class Commands {
         if process.terminationStatus != 0 {
             throw CmdError.bad("\(argv[0]) exited \(process.terminationStatus)")
         }
+    }
+
+    private func isAllowedURL(_ raw: String) -> Bool {
+        guard let scheme = URLComponents(string: raw)?.scheme?.lowercased() else { return false }
+        return ["https", "http", "macappstores"].contains(scheme)
     }
 
     private func runXcodeBuild(

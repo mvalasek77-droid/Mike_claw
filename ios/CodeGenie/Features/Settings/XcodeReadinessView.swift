@@ -7,7 +7,11 @@ import SwiftUI
 /// shows a live status pulled from the Mac companion if one is paired.
 struct XcodeReadinessView: View {
     @StateObject private var creds = Credentials.shared
+    @StateObject private var bridge = CompanionBridge()
     @Environment(\.dismiss) private var dismiss
+    @State private var showPairMac: Bool = false
+    @State private var openingMacStore: Bool = false
+    @State private var macStoreMessage: String?
 
     var body: some View {
         ZStack {
@@ -26,6 +30,11 @@ struct XcodeReadinessView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .sheet(isPresented: $showPairMac) {
+            PairMacView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
     }
 
     private var header: some View {
@@ -41,11 +50,7 @@ struct XcodeReadinessView: View {
     }
 
     private var statusCard: some View {
-        // We treat "backend token in keychain" as the proxy for "Mac
-        // companion is paired". Live reachability is checked at the
-        // moment of build by SwarmClient; this screen is a primer, not
-        // a probe.
-        let paired = !creds.backendToken.isEmpty
+        let paired = creds.hasCompanionPairing
         return GlassCard(
             title: paired ? "Mac paired — Xcode reachable" : "Pair a Mac first",
             icon: paired ? "checkmark.seal.fill" : "exclamationmark.triangle.fill",
@@ -71,8 +76,8 @@ struct XcodeReadinessView: View {
                 )
                 explainerRow(
                     icon: "macbook",
-                    title: "Mac-only — that's an Apple rule",
-                    body: "Apple won't let any other operating system build iOS apps. CodeGenie hides this by running Xcode on your Mac in the background; you never have to open it."
+                    title: "Why the Mac is involved",
+                    body: "Apple requires iPhone apps to be built with Xcode on a Mac. CodeGenie streamlines that process by sending the build to your paired Mac and bringing the result back to your phone."
                 )
                 explainerRow(
                     icon: "gift.fill",
@@ -89,10 +94,12 @@ struct XcodeReadinessView: View {
                 Text("It's a 7-15 GB download. Plan for 30 minutes the first time.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
-                Link(destination: URL(string: "macappstores://apps.apple.com/app/xcode/id497799835")!) {
+                Button {
+                    Task { await openXcodeOnMac() }
+                } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "arrow.down.app.fill")
-                        Text("Open in Mac App Store")
+                        Text(openingMacStore ? "Opening on Mac..." : "Download on Mac")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
@@ -101,12 +108,21 @@ struct XcodeReadinessView: View {
                     .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
                     .foregroundStyle(LiquidGlass.primaryText)
                 }
-                .accessibilityHint("Opens the Mac App Store on your paired Mac")
+                .buttonStyle(.plain)
+                .disabled(openingMacStore)
+                .accessibilityHint("Opens the Xcode page in the Mac App Store on your paired Mac")
+
+                if let macStoreMessage {
+                    Text(macStoreMessage)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.62))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 Link(destination: URL(string: "https://apps.apple.com/app/xcode/id497799835")!) {
                     HStack(spacing: 6) {
                         Image(systemName: "safari")
-                        Text("Or open in Safari")
+                        Text("Open web page here")
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(LiquidGlass.accent)
@@ -120,7 +136,7 @@ struct XcodeReadinessView: View {
             VStack(alignment: .leading, spacing: 10) {
                 walkRow(num: 1, body: "Open Xcode once. Click Agree on the license — Apple won't let it build until you do.")
                 walkRow(num: 2, body: "Xcode → Settings → Accounts → tap **+** → sign in with the same Apple ID you use on your iPhone.")
-                walkRow(num: 3, body: "Quit Xcode. CodeGenie takes it from there — you never have to open it again.")
+                walkRow(num: 3, body: "After setup, CodeGenie can run Xcode for you from the phone.")
                 Text("Skipping any of these steps causes a cryptic build error later. Doing them once saves the headache.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
@@ -130,6 +146,38 @@ struct XcodeReadinessView: View {
     }
 
     // MARK: Helpers
+
+    private func openXcodeOnMac() async {
+        guard creds.hasCompanionPairing else {
+            macStoreMessage = "Pair your Mac first, then CodeGenie can open Xcode there."
+            showPairMac = true
+            Haptics.warning()
+            return
+        }
+        openingMacStore = true
+        macStoreMessage = nil
+        defer { openingMacStore = false }
+        do {
+            if !isBridgeConnected {
+                guard await bridge.connectStoredPairing() else {
+                    macStoreMessage = "Could not reach the Mac companion. Start it on your Mac, then try again."
+                    Haptics.error()
+                    return
+                }
+            }
+            try await bridge.openURLOnMac("macappstores://apps.apple.com/app/xcode/id497799835")
+            macStoreMessage = "Opened the Xcode download on your Mac."
+            Haptics.success()
+        } catch {
+            macStoreMessage = "Could not open Xcode on the Mac: \(error)"
+            Haptics.error()
+        }
+    }
+
+    private var isBridgeConnected: Bool {
+        if case .connected = bridge.status { return true }
+        return false
+    }
 
     private func explainerRow(icon: String, title: String, body: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
