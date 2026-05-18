@@ -19,6 +19,7 @@ struct SettingsView: View {
     @State private var showAppleDevWalkthrough = false
     @State private var showGitHubSetup = false
     @State private var showXcodeReadiness = false
+    @State private var showSubscriptionActivation = false
     @StateObject private var telemetry = Telemetry.shared
     @StateObject private var userMode = UserMode.shared
     @StateObject private var billing = BillingStore.shared
@@ -113,6 +114,11 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showXcodeReadiness) {
             XcodeReadinessView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(isPresented: $showSubscriptionActivation) {
+            SubscriptionActivationView()
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -373,10 +379,18 @@ struct SettingsView: View {
                     AuthModeRow(
                         mode: mode,
                         selected: creds.authMode == mode,
-                        action: { creds.setAuthMode(mode); Haptics.selection() }
+                        action: { pickAuthMode(mode) }
                     )
                 }
             }
+        }
+    }
+
+    private func pickAuthMode(_ mode: Credentials.AuthMode) {
+        Haptics.selection()
+        creds.setAuthMode(mode)
+        if mode == .subscription {
+            showSubscriptionActivation = true
         }
     }
 
@@ -485,18 +499,34 @@ struct SettingsView: View {
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
                         Spacer()
-                        Link(destination: p.subscriptionURL) {
-                            Text("Sign in")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(LiquidGlass.auroraGradient, in: Capsule())
-                                .foregroundStyle(LiquidGlass.primaryText)
+                        Button {
+                            showSubscriptionActivation = true
+                            Haptics.selection()
+                        } label: {
+                            HStack(spacing: 5) {
+                                Text("Activate")
+                                Image(systemName: "macbook.and.iphone")
+                            }
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(LiquidGlass.auroraGradient, in: Capsule())
+                            .foregroundStyle(.white)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Activate \(p.subscriptionName) on your Mac")
                     }
                     .padding(.vertical, 4)
                 }
 
-                Text("The Mac companion owns browser sign-in. CodeGenie never asks for or stores your account password.")
+                PrimaryButton(
+                    title: creds.hasCompanionPairing ? "Open activation on Mac" : "Pair Mac to activate",
+                    systemImage: creds.hasCompanionPairing ? "safari.fill" : "link",
+                    style: .filled
+                ) {
+                    showSubscriptionActivation = true
+                }
+
+                Text("Activation happens on the paired Mac so Claude or ChatGPT can use the subscription browser session already signed in there.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             }
@@ -797,6 +827,242 @@ private struct HostedPlanRow: View {
 
     private var buttonFill: some ShapeStyle {
         billing.canPurchase(plan) ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(Color.white.opacity(0.08))
+    }
+}
+
+private struct SubscriptionActivationView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var creds = Credentials.shared
+    @StateObject private var bridge = CompanionBridge()
+    @State private var provider: AIProvider = .anthropic
+    @State private var showPairMac = false
+    @State private var isOpening = false
+    @State private var message: String?
+
+    var body: some View {
+        ZStack {
+            LiquidGlassBackground().ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    modeCard
+                    providerCard
+                    activationCard
+                    Color.clear.frame(height: 22)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .onAppear {
+            creds.setAuthMode(.subscription)
+        }
+        .sheet(isPresented: $showPairMac) {
+            PairMacView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            CodeGenieLogo(size: 42, animate: false)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Subscription activation")
+                    .font(.system(size: 25, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                Text("Use Claude or ChatGPT through your paired Mac.")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.68))
+            }
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Text("Close")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .background(.white.opacity(0.08), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+        }
+    }
+
+    private var modeCard: some View {
+        GlassCard(title: "Mode synced", icon: "checkmark.seal.fill", tint: LiquidGlass.success) {
+            VStack(alignment: .leading, spacing: 10) {
+                statusRow(
+                    title: "Subscription mode",
+                    body: "Builds will use the Mac browser session instead of an API key or hosted credits.",
+                    icon: "person.crop.circle.badge.checkmark",
+                    tint: LiquidGlass.success,
+                    isDone: creds.authMode == .subscription
+                )
+                statusRow(
+                    title: "Mac companion",
+                    body: creds.hasCompanionPairing
+                        ? "Pairing is saved. CodeGenie can open the sign-in page on your Mac."
+                        : "Pair your Mac before starting a subscription build.",
+                    icon: "macbook.and.iphone",
+                    tint: creds.hasCompanionPairing ? LiquidGlass.success : LiquidGlass.warning,
+                    isDone: creds.hasCompanionPairing
+                )
+
+                if !creds.hasCompanionPairing {
+                    PrimaryButton(title: "Pair my Mac", systemImage: "link", style: .filled) {
+                        showPairMac = true
+                    }
+                }
+            }
+        }
+    }
+
+    private var providerCard: some View {
+        GlassCard(title: "Choose account", icon: "person.crop.circle", tint: LiquidGlass.accentSecondary) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Pick the subscription you want CodeGenie to use, then sign in on the Mac that runs the companion.")
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.72))
+
+                HStack(spacing: 10) {
+                    ForEach(AIProvider.allCases) { candidate in
+                        providerButton(candidate)
+                    }
+                }
+            }
+        }
+    }
+
+    private var activationCard: some View {
+        GlassCard(title: "Open on Mac", icon: "safari.fill", tint: LiquidGlass.accent) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("CodeGenie opens \(provider.subscriptionName) on your Mac. Sign in there once; future subscription builds use that session.")
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                PrimaryButton(
+                    title: isOpening ? "Opening..." : "Open \(providerShortName) on Mac",
+                    systemImage: creds.hasCompanionPairing ? "arrow.up.right.square" : "link",
+                    style: .filled
+                ) {
+                    Task { await openProviderOnMac() }
+                }
+                .disabled(isOpening)
+                .opacity(isOpening ? 0.65 : 1)
+
+                if let message {
+                    Label(message, systemImage: messageIcon)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(messageTint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func providerButton(_ candidate: AIProvider) -> some View {
+        let selected = provider == candidate
+        return Button {
+            provider = candidate
+            Haptics.selection()
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: candidate == .anthropic ? "a.circle.fill" : "o.circle.fill")
+                    .font(.system(size: 20, weight: .bold))
+                Text(candidate.subscriptionName)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+            }
+            .foregroundStyle(selected ? .white : LiquidGlass.primaryText.opacity(0.82))
+            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(selected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(Color.white.opacity(0.07)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(selected ? .white.opacity(0.38) : .white.opacity(0.12))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func statusRow(title: String, body: String, icon: String, tint: Color, isDone: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: isDone ? "checkmark.circle.fill" : icon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(tint.opacity(0.18)))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                Text(body)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func openProviderOnMac() async {
+        guard creds.hasCompanionPairing else {
+            message = "Pair your Mac first, then CodeGenie can open the sign-in page there."
+            showPairMac = true
+            Haptics.warning()
+            return
+        }
+
+        isOpening = true
+        message = nil
+        defer { isOpening = false }
+
+        do {
+            if !isBridgeConnected {
+                guard await bridge.connectStoredPairing() else {
+                    message = "Could not reach the Mac companion. Start it on your Mac, then try again."
+                    Haptics.error()
+                    return
+                }
+            }
+            try await bridge.openSafari(provider.subscriptionURL.absoluteString, newWindow: true)
+            creds.setAuthMode(.subscription)
+            message = "Opened \(providerShortName) on your Mac. Sign in there, then return to CodeGenie."
+            Haptics.success()
+        } catch {
+            message = "Could not open \(providerShortName) on the Mac: \(error)"
+            Haptics.error()
+        }
+    }
+
+    private var isBridgeConnected: Bool {
+        if case .connected = bridge.status { return true }
+        return false
+    }
+
+    private var providerShortName: String {
+        switch provider {
+        case .anthropic: "Claude"
+        case .openai: "ChatGPT"
+        }
+    }
+
+    private var messageIcon: String {
+        guard let message else { return "info.circle.fill" }
+        return message.hasPrefix("Opened") ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
+    }
+
+    private var messageTint: Color {
+        guard let message else { return LiquidGlass.accent }
+        return message.hasPrefix("Opened") ? LiquidGlass.success : LiquidGlass.warning
     }
 }
 

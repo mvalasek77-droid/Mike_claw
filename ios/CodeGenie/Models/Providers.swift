@@ -28,8 +28,8 @@ enum AIProvider: String, CaseIterable, Identifiable, Codable {
 
     var subscriptionURL: URL {
         switch self {
-        case .anthropic: URL(string: "https://www.anthropic.com/pricing")!
-        case .openai:    URL(string: "https://chatgpt.com/#pricing")!
+        case .anthropic: URL(string: "https://claude.ai/")!
+        case .openai:    URL(string: "https://chatgpt.com/")!
         }
     }
 
