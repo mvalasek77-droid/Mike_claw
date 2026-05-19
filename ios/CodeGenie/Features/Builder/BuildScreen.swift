@@ -837,6 +837,9 @@ struct BuildScreen: View {
         do {
             let run = try await swarm.runPerfection(jobID: jobID)
             perfectionRun = run
+            // Live signal for HomeView.checklistCard — flips the
+            // "Perfection Mode passed last build" row in real time.
+            UserDefaults.standard.set(run.isReady, forKey: "perfection.last.green")
             shipBanner = run.isReady
                 ? "Perfection Mode passed — App Store handoff unlocked."
                 : "Perfection Mode found blockers. Fix them, then rerun."

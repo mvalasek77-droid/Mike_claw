@@ -16,6 +16,11 @@ struct HomeView: View {
     @State private var showGitHub = false
     @State private var showFirstBuildPrompt = false
     @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
+    /// Live signals for the Quality checklist. @AppStorage so SwiftUI
+    /// observes them — bare UserDefaults reads wouldn't trigger the
+    /// re-render that turned the rows from "stuck" into real-time.
+    @AppStorage("sample.viewed") private var sampleViewed: Bool = false
+    @AppStorage("perfection.last.green") private var perfectionLastGreen: Bool = false
     @State private var showSampleApps = false
     @State private var showAppOfYearDNA = false
     @State private var showAutomationAudit = false
@@ -30,7 +35,6 @@ struct HomeView: View {
                 shipReadinessCard
                 quickGrid
                 if !session.recentJobs.isEmpty { recentJobs }
-                xcodeShortcut
                 checklistCard
                 Color.clear.frame(height: 30)
             }
@@ -63,6 +67,7 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showSampleApps) {
             SampleAppsView()
+                .onAppear { sampleViewed = true }
                 .environmentObject(session)
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
@@ -545,45 +550,41 @@ struct HomeView: View {
         }
     }
 
-    private var xcodeShortcut: some View {
-        Button { showXcodeReadiness = true } label: {
-            GlassSurface(tier: .flat) {
-                HStack(spacing: 14) {
-                    Image(systemName: "book.pages.fill")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(LiquidGlass.warning)
-                        .frame(width: 48, height: 48)
-                        .background(Circle().fill(LiquidGlass.warning.opacity(0.18)))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Xcode instructions")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText)
-                        Text("What it is, what to install, and what to open once")
-                            .font(.system(size: 13, weight: .regular, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
-                }
-                .padding(16)
+    /// Live progress tracker — each row flips automatically as the
+    /// user does the corresponding thing. Was previously hardcoded
+    /// release-spec rows that never updated; user feedback: "seems
+    /// stuck". Now driven entirely from Credentials + a couple of
+    /// @AppStorage flags set elsewhere in the app.
+    private var checklistCard: some View {
+        let macReady = creds.hasCompanionPairing
+        let capActive = creds.costCapUSD != nil
+        let modelReady = (creds.authMode == .byok)
+            ? (!creds.anthropicKey.isEmpty || !creds.openaiKey.isEmpty)
+            : true
+        let appleReady = creds.hasAppleDevCreds
+        let perfectionGreen = perfectionLastGreen
+        let submissionReady = macReady && modelReady && appleReady && perfectionGreen
+        let done = [macReady, sampleViewed, capActive, modelReady, appleReady, perfectionGreen, submissionReady].filter { $0 }.count
+        let total = 7
+        return GlassCard(
+            title: done == total ? "All checks passing" : "Quality checklist · \(done) of \(total)",
+            icon: done == total ? "checkmark.seal.fill" : "checkmark.circle",
+            tint: done == total ? LiquidGlass.success : LiquidGlass.accent
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                ChecklistRow(text: "Mac paired and reachable",            done: macReady)
+                ChecklistRow(text: "Try a sample — finished app explored", done: sampleViewed)
+                ChecklistRow(text: "Build cost cap protecting your spend", done: capActive)
+                ChecklistRow(text: "Model access set up",                  done: modelReady)
+                ChecklistRow(text: "Apple Developer connected",            done: appleReady)
+                ChecklistRow(text: "Perfection Mode passed last build",    done: perfectionGreen)
+                ChecklistRow(text: "Submission-ready for App Store",       done: submissionReady)
             }
         }
-        .buttonStyle(.plain)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Quality checklist, \(done) of \(total) done")
     }
 
-    private var checklistCard: some View {
-        GlassCard(title: "Quality checklist", icon: "checkmark.seal.fill", tint: LiquidGlass.success) {
-            VStack(alignment: .leading, spacing: 8) {
-                ChecklistRow(text: "Build path verified on Xcode 26", done: true)
-                ChecklistRow(text: "Sample demo completes without backend", done: true)
-                ChecklistRow(text: "Experience DNA, accessibility, haptics", done: true)
-                ChecklistRow(text: "iOS 26 Liquid Glass theme", done: true)
-                ChecklistRow(text: "Pricing gate blocks unready paths", done: true)
-                ChecklistRow(text: "Perfection Mode: 4 reviewer checks", done: false)
-                ChecklistRow(text: "Submission-ready for App Store", done: false)
-            }
-        }
-    }
 }
 
 // MARK: - Sub-views
