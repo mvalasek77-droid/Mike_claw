@@ -166,7 +166,7 @@ struct XcodeReadinessView: View {
                 }
             }
             try await bridge.openURLOnMac("macappstores://apps.apple.com/app/xcode/id497799835")
-            macStoreMessage = "Opened the Xcode download on your Mac."
+            macStoreMessage = "Mac App Store is open on your Mac. Tap Get there to start the 7-15 GB download."
             Haptics.success()
         } catch {
             macStoreMessage = "Could not open Xcode on the Mac: \(error)"
