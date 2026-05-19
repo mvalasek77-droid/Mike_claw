@@ -118,15 +118,6 @@ struct XcodeReadinessView: View {
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.62))
                         .fixedSize(horizontal: false, vertical: true)
                 }
-
-                Link(destination: URL(string: "https://apps.apple.com/app/xcode/id497799835")!) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "safari")
-                        Text("Open web page here")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundStyle(LiquidGlass.accent)
-                }
             }
         }
     }
