@@ -514,7 +514,7 @@ struct HomeView: View {
                 QuickTile(title: "Xcode steps",     subtitle: "Plain-English primer",  icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeReadiness = true }
                 QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
                 if showAdvancedTiles || !session.recentJobs.isEmpty {
-                    QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
+                    QuickTile(title: "BitDrop",         subtitle: "A game while your code builds", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
                     QuickTile(title: "Award DNA",        subtitle: "App of Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
                     QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
                     QuickTile(title: "Report bug",       subtitle: "Email support",         icon: "exclamationmark.bubble.fill", tint: LiquidGlass.warning) { showBugReport = true }
