@@ -41,9 +41,11 @@ struct AutomatedPreviewView: View {
             // below.
             .allowsHitTesting(false)
 
-            // Tiny escape hatch in the corner — same size + opacity
-            // as a system close. Deliberately not a primary control;
-            // the experience is supposed to feel like a clip.
+            // Clearly-labeled close at the top + a "swipe down to
+            // close" footer so users always have a discoverable
+            // exit. The previous build only had a tiny corner × at
+            // 26pt/0.55 opacity that users couldn't find — feedback:
+            // "no way to get out of preview video state".
             VStack {
                 HStack {
                     Spacer()
@@ -51,22 +53,50 @@ struct AutomatedPreviewView: View {
                         Haptics.selection()
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.55))
-                            .frame(width: 26, height: 26)
-                            .background(Circle().fill(.white.opacity(0.08)))
+                        HStack(spacing: 6) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .bold))
+                            Text("Close")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(.white.opacity(0.16), in: Capsule())
+                        .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.6))
                     }
                     .accessibilityLabel("Stop preview and close")
-                    .padding(.trailing, 16).padding(.top, 16)
+                    .padding(.trailing, 18).padding(.top, 18)
                 }
                 Spacer()
+                Text("Swipe down or tap the background to close")
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .padding(.bottom, 24)
+                    .accessibilityHidden(true)
             }
         }
         .preferredColorScheme(.dark)
         .task { await runFlow() }
+        // Tap on the dark backdrop to dismiss. The macWindow itself
+        // already has hit-testing disabled so the tap falls through.
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Haptics.selection()
+            dismiss()
+        }
+        // Swipe-down-to-dismiss to match the system sheet pattern
+        // users already expect on fullScreenCover-style surfaces.
+        .gesture(
+            DragGesture(minimumDistance: 30)
+                .onEnded { value in
+                    if value.translation.height > 80 {
+                        Haptics.selection()
+                        dismiss()
+                    }
+                }
+        )
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Watching your Mac build \(job.description.title). \(steps[stepIndex].title).")
+        .accessibilityLabel("Watching your Mac build \(job.description.title). \(steps[stepIndex].title). Tap Close, swipe down, or tap the background to exit.")
     }
 
     // MARK: - Sections
