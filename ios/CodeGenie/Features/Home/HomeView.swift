@@ -411,7 +411,7 @@ struct HomeView: View {
         return GlassSurface(tier: .deep) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Text("Brief the experience").font(.system(size: 18, weight: .semibold, design: .rounded))
+                    Text("Get started.").font(.system(size: 18, weight: .semibold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
                     Spacer()
                     Image(systemName: "sparkles").foregroundStyle(LiquidGlass.accent)
@@ -450,7 +450,7 @@ struct HomeView: View {
                         .background(Circle().fill(LiquidGlass.warning.opacity(0.18)))
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("App of Year studio")
+                        Text("App of the Year Studio")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
                         Text("Every build should have a feeling, ritual, native Apple hook, accessible feedback, and trust story.")
@@ -467,7 +467,7 @@ struct HomeView: View {
                     ExperiencePillar(title: "Access", icon: "accessibility.fill", tint: LiquidGlass.success)
                 }
                 HStack(spacing: 10) {
-                    studioButton(title: "Open DNA", icon: "trophy.fill", tint: LiquidGlass.warning) {
+                    studioButton(title: "Discover what makes a great app", icon: "trophy.fill", tint: LiquidGlass.warning) {
                         Haptics.selection()
                         showAppOfYearDNA = true
                     }
@@ -480,7 +480,7 @@ struct HomeView: View {
             .padding(17)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("App of Year studio")
+        .accessibilityLabel("App of the Year Studio")
         .accessibilityHint("Opens award DNA or curated samples")
     }
 
