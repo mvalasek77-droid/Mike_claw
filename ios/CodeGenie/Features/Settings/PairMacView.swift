@@ -1,30 +1,14 @@
 import SwiftUI
-import UIKit
 
 /// UI flow for pairing the iPhone with the user's Mac companion daemon.
 ///
-/// Two paths in:
-///  • **Bonjour list** — happy path on a shared Wi-Fi network.
-///  • **Manual paste** — for advanced users tunneling over Tailscale,
-///    or when Bonjour is blocked by a router.
-///
-/// Both end at the same place: a stored bearer token + a green
-/// "connected" status pill.
+/// The path is Wi-Fi discovery plus one tap.
 struct PairMacView: View {
     @StateObject private var bridge = CompanionBridge()
     @StateObject private var creds = Credentials.shared
-    @State private var pasteURL: String = ""
-    @State private var manualHost: String = ""
-    @State private var manualPort: String = ""
-    @State private var manualToken: String = ""
-    @State private var showScanner: Bool = false
-    @State private var copiedCommand: Bool = false
+    @State private var pairingMessage: String?
     @Environment(\.dismiss) private var dismiss
 
-    private let companionCommand = """
-    cd /Users/clawcl/codegenie_app_of_year/mac_companion
-    CODEGENIE_PORT=17337 swift run codegenie-companion
-    """
     private let companionGitHubURL = URL(string: "https://github.com/mvalasek77-droid/Mike_claw/tree/replay-codegenie-ux-safety/mac_companion")!
 
     var body: some View {
@@ -34,11 +18,9 @@ struct PairMacView: View {
                 VStack(spacing: 16) {
                     header
                     statusBlock
-                    prereqBlock
-                    scanQRBlock
-                    discoveredBlock
-                    manualBlock
-                    helpBlock
+                    oneStepPairBlock
+                    explanationBlock
+                    macSetupBlock
                     Color.clear.frame(height: 30)
                 }
                 .padding(.horizontal, 18)
@@ -46,21 +28,10 @@ struct PairMacView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .onAppear { bridge.startBrowsing() }
-        .onDisappear { bridge.stopBrowsing() }
-        .fullScreenCover(isPresented: $showScanner) {
-            QRScannerView(
-                onScan: { payload in
-                    showScanner = false
-                    if let url = URL(string: payload), payload.hasPrefix("codegenie://") {
-                        Task { await bridge.connect(pairingURL: url) }
-                    } else {
-                        pasteURL = payload
-                    }
-                },
-                onCancel: { showScanner = false }
-            )
+        .onAppear {
+            bridge.startBrowsing()
         }
+        .onDisappear { bridge.stopBrowsing() }
     }
 
     private var header: some View {
@@ -68,7 +39,7 @@ struct PairMacView: View {
             Text("Pair your Mac")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
-            Text("Run the CodeGenie Companion on your Mac, then pair it once. The phone keeps reaching back into Xcode + Safari from there.")
+            Text("Connect over Wi-Fi. Keep your iPhone and Mac on the same network, then tap your Mac name when it appears.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
@@ -93,61 +64,159 @@ struct PairMacView: View {
         }
     }
 
-    private var prereqBlock: some View {
-        GlassCard(title: "What you need first", icon: "questionmark.circle.fill", tint: LiquidGlass.warning) {
-            VStack(alignment: .leading, spacing: 10) {
-                prereqRow(
-                    icon: "hammer.fill",
-                    title: "Xcode installed on your Mac",
-                    body: "Open it once and sign in with your Apple ID so Apple can finish setup."
-                )
-                prereqRow(
-                    icon: "menubar.dock.rectangle",
-                    title: "CodeGenie Companion running",
-                    body: "The Mac companion lets your phone reach Xcode and Safari. Run it before scanning or pasting a pairing URL."
-                )
-                Button {
-                    UIPasteboard.general.string = companionCommand
-                    copiedCommand = true
-                    Haptics.success()
-                    Task {
-                        try? await Task.sleep(nanoseconds: 1_500_000_000)
-                        await MainActor.run { copiedCommand = false }
+    private var oneStepPairBlock: some View {
+        GlassCard(title: "Wi-Fi pairing", icon: "wifi", tint: LiquidGlass.accent) {
+            VStack(alignment: .leading, spacing: 12) {
+                if case .connected = bridge.status {
+                    Label("This iPhone is paired. You can close this screen.", systemImage: "checkmark.seal.fill")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.success)
+                    PrimaryButton(title: "Done", systemImage: "checkmark", style: .filled) {
+                        dismiss()
                     }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: copiedCommand ? "checkmark.circle.fill" : "doc.on.doc.fill")
-                        Text(copiedCommand ? "Copied Mac command" : "Copy Mac command")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        Spacer()
+                } else if creds.hasCompanionPairing && pairingMessage == nil {
+                    Label("This iPhone already trusts \(creds.companionHost).", systemImage: "checkmark.seal.fill")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.success)
+                    Text("To use a different Mac, tap Forget in the Status card, then pick the new Mac here.")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                    PrimaryButton(title: "Done", systemImage: "checkmark", style: .filled) {
+                        dismiss()
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
-                    .foregroundStyle(LiquidGlass.primaryText)
+                } else if bridge.discovered.isEmpty {
+                    HStack(alignment: .top, spacing: 10) {
+                        ProgressView().tint(LiquidGlass.primaryText)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Looking for your Mac on Wi-Fi...")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(LiquidGlass.primaryText)
+                            Text("If your Mac is not listed, open the Mac companion on your Mac, keep both devices on the same Wi-Fi, then come back here.")
+                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                } else {
+                    Text("Found \(bridge.discovered.count == 1 ? "your Mac" : "\(bridge.discovered.count) Macs"). Tap the Mac name you recognize.")
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.72))
+
+                    ForEach(bridge.discovered) { entry in
+                        Button {
+                            Task { await pair(entry) }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "macbook")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundStyle(LiquidGlass.accent)
+                                    .frame(width: 34, height: 34)
+                                    .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("Your Mac: \(macName(entry))")
+                                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(LiquidGlass.primaryText)
+                                    Text("Pair \(macName(entry))")
+                                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.62))
+                                }
+                                Spacer()
+                                Image(systemName: "link.circle.fill")
+                                    .font(.system(size: 22, weight: .bold))
+                                    .foregroundStyle(LiquidGlass.success)
+                            }
+                            .padding(12)
+                            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.14)))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Pair \(macName(entry))")
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint("Copies the Terminal command that starts the local Mac companion")
-                Link(destination: companionGitHubURL) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "chevron.left.forwardslash.chevron.right")
-                        Text("Open companion on GitHub")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        Spacer()
-                        Image(systemName: "arrow.up.right.square")
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.14)))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.88))
+
+                if let pairingMessage {
+                    Label(pairingMessage, systemImage: messageIcon)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(messageTint)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .accessibilityHint("Opens the CodeGenie Mac companion source on GitHub")
             }
         }
     }
 
-    private func prereqRow(icon: String, title: String, body: String) -> some View {
+    private var macSetupBlock: some View {
+        GlassCard(title: "Mac not showing?", icon: "questionmark.circle.fill", tint: LiquidGlass.warning) {
+            VStack(alignment: .leading, spacing: 10) {
+                explainerRow(
+                    icon: "1.circle.fill",
+                    title: "Open the companion on your Mac",
+                    body: "The companion is the small Mac helper that lets CodeGenie use Xcode and Safari."
+                )
+                explainerRow(
+                    icon: "2.circle.fill",
+                    title: "Stay on the same Wi-Fi",
+                    body: "Keep the Mac and iPhone on the same network. Leave the companion open."
+                )
+                explainerRow(
+                    icon: "3.circle.fill",
+                    title: "Return to this screen",
+                    body: "Your Mac appears above by name. Tap it once to pair."
+                )
+                Link(destination: setupEmailURL) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "envelope.fill")
+                        Text("Email setup link to my Mac")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
+                    .foregroundStyle(.white)
+                }
+                Link(destination: companionGitHubURL) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.app.fill")
+                        Text("Open Mac setup page")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.14)))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.9))
+                }
+            }
+        }
+    }
+
+    private var explanationBlock: some View {
+        GlassCard(title: "What happens", icon: "list.number", tint: LiquidGlass.accentSecondary) {
+            VStack(alignment: .leading, spacing: 10) {
+                explainerRow(
+                    icon: "1.circle.fill",
+                    title: "Same Wi-Fi",
+                    body: "Your Mac announces its name on your Wi-Fi. You should see something like 'Your Mac: Mike's MacBook Pro'. Nothing is sent to the cloud."
+                )
+                explainerRow(
+                    icon: "2.circle.fill",
+                    title: "One tap approval",
+                    body: "Tapping the Mac saves a private pairing token on this iPhone."
+                )
+                explainerRow(
+                    icon: "3.circle.fill",
+                    title: "Build from the phone",
+                    body: "CodeGenie can ask that Mac to open Safari, run Xcode, and bring the finished app back."
+                )
+            }
+        }
+    }
+
+    private func explainerRow(icon: String, title: String, body: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .bold))
@@ -166,112 +235,53 @@ struct PairMacView: View {
         }
     }
 
-    private var scanQRBlock: some View {
-        Button { showScanner = true } label: {
-            GlassSurface(tier: .raised, corner: 22) {
-                HStack(spacing: 14) {
-                    Image(systemName: "qrcode.viewfinder")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(LiquidGlass.accent)
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Scan QR code")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText)
-                        Text("Fastest path — one tap, one scan.")
-                            .font(.system(size: 12, weight: .regular, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
-                }
-                .padding(14)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Scan QR code to pair")
-    }
-
-    private var discoveredBlock: some View {
-        GlassCard(title: "On your network", icon: "wifi", tint: LiquidGlass.accent) {
-            if bridge.discovered.isEmpty {
-                HStack(spacing: 8) {
-                    ProgressView().tint(LiquidGlass.primaryText)
-                    Text("Looking for `_codegenie-companion._tcp` …")
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(bridge.discovered) { entry in
-                        HStack(spacing: 10) {
-                            Image(systemName: "macbook")
-                                .foregroundStyle(LiquidGlass.accent)
-                            Text(entry.name)
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(LiquidGlass.primaryText)
-                            Spacer()
-                            Text("Detected")
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
-                        }
-                        .padding(10)
-                        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
-                    }
-                }
-            }
+    private func pair(_ entry: CompanionBridge.Discovered) async {
+        pairingMessage = "Pairing \(macName(entry))..."
+        let paired = await bridge.connect(discovered: entry)
+        if paired {
+            pairingMessage = "\(macName(entry)) is paired. CodeGenie can use this Mac for Xcode and Safari."
+            Haptics.success()
+        } else {
+            pairingMessage = "Could not pair \(macName(entry)). Keep the companion open on your Mac and try again."
+            Haptics.error()
         }
     }
 
-    private var manualBlock: some View {
-        GlassCard(title: "Or pair manually", icon: "qrcode.viewfinder", tint: LiquidGlass.accentSecondary) {
-            VStack(spacing: 10) {
-                Text("Paste the pairing URL from the Mac terminal:")
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                TextField("codegenie://pair?host=…&port=…&token=…", text: $pasteURL, axis: .vertical)
-                    .lineLimit(2...3)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundStyle(LiquidGlass.primaryText)
-                    .padding(10)
-                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.12)))
-
-                PrimaryButton(title: "Connect", systemImage: "link", style: .filled) {
-                    guard let url = URL(string: pasteURL) else { return }
-                    Task { await bridge.connect(pairingURL: url) }
-                }
-                .disabled(pasteURL.isEmpty)
-                .opacity(pasteURL.isEmpty ? 0.5 : 1)
-            }
-        }
+    private func macName(_ entry: CompanionBridge.Discovered) -> String {
+        entry.name
+            .replacingOccurrences(of: "CodeGenie on ", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var helpBlock: some View {
-        GlassCard(title: "Install the companion", icon: "terminal.fill", tint: LiquidGlass.warning) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("On your Mac, run:")
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                Text(companionCommand)
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(LiquidGlass.primaryText)
-                    .padding(10)
-                    .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
-                Text("It prints a `codegenie://pair?…` URL. Paste that here, or scan it if you show the URL as a QR code.")
-                    .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
-                Link(destination: companionGitHubURL) {
-                    Label("View companion source on GitHub", systemImage: "arrow.up.right.square")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LiquidGlass.accent)
-                }
-            }
-        }
+    private var setupEmailURL: URL {
+        let body = """
+        Open this email on your Mac, then do this:
+
+        1. Open the CodeGenie Mac setup page:
+        \(companionGitHubURL.absoluteString)
+
+        2. Open CodeGenie Companion on the Mac and leave it open.
+        3. Return to CodeGenie on your iPhone.
+        4. Your Mac name should appear on the Pair Mac screen.
+        5. Tap your Mac name once to finish Wi-Fi pairing.
+        """
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: "CodeGenie Mac companion setup"),
+            URLQueryItem(name: "body", value: body),
+        ]
+        return components.url ?? companionGitHubURL
+    }
+
+    private var messageIcon: String {
+        guard let pairingMessage else { return "info.circle.fill" }
+        return pairingMessage.contains("is paired") ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
+    }
+
+    private var messageTint: Color {
+        guard let pairingMessage else { return LiquidGlass.accent }
+        return pairingMessage.contains("is paired") ? LiquidGlass.success : LiquidGlass.warning
     }
 
     private var label: String {

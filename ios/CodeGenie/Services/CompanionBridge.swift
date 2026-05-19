@@ -26,11 +26,10 @@ final class CompanionBridge: ObservableObject {
         case idle, browsing, connecting, authenticating, connected, failed(String)
     }
 
-    struct Discovered: Identifiable, Hashable {
-        let id = UUID()
+    struct Discovered: Identifiable {
+        let id: String
         let name: String
-        let host: String
-        let port: UInt16
+        fileprivate let endpoint: NWEndpoint
     }
 
     // MARK: - Discovery
@@ -61,10 +60,10 @@ final class CompanionBridge: ObservableObject {
         var entries: [Discovered] = []
         for r in browseResults {
             guard case let .service(name, _, _, _) = r.endpoint else { continue }
-            entries.append(Discovered(name: name, host: name + ".local", port: 0))
+            entries.append(Discovered(id: name, name: name, endpoint: r.endpoint))
         }
         // De-dupe by name; sort for stable UI.
-        let unique = Array(Dictionary(grouping: entries, by: { $0.name })
+        let unique = Array(Dictionary(grouping: entries, by: { $0.id })
             .map { _, vs in vs[0] })
             .sorted { $0.name < $1.name }
         self.discovered = unique
@@ -86,6 +85,39 @@ final class CompanionBridge: ObservableObject {
             status = .failed("malformed pairing URL"); return
         }
         await connect(host: host, port: port, token: token)
+    }
+
+    func connect(discovered entry: Discovered) async -> Bool {
+        status = .connecting
+        conn?.cancel()
+        let conn = NWConnection(to: entry.endpoint, using: .tcp)
+        self.conn = conn
+
+        let ready = await waitForReady(conn)
+        if !ready {
+            status = .failed("could not reach \(entry.name)")
+            return false
+        }
+
+        startReadLoop(conn)
+
+        status = .authenticating
+        do {
+            let response = try await request(type: "pair", payload: ["device": "iPhone"])
+            guard let token = response["token"] as? String,
+                  let host = response["host"] as? String,
+                  let port = CompanionBridge.port(from: response["port"]) else {
+                throw BridgeError.malformed
+            }
+            Credentials.shared.setCompanionPairing(host: host, port: port, token: token)
+            status = .connected
+            lastError = nil
+            return true
+        } catch {
+            status = .failed("pairing failed: \(error)")
+            disconnect()
+            return false
+        }
     }
 
     func connectStoredPairing() async -> Bool {
@@ -128,6 +160,14 @@ final class CompanionBridge: ObservableObject {
         }
     }
 
+    private static func port(from value: Any?) -> UInt16? {
+        if let int = value as? Int { return UInt16(int) }
+        if let double = value as? Double { return UInt16(double) }
+        if let string = value as? String { return UInt16(string) }
+        if let number = value as? NSNumber { return UInt16(truncating: number) }
+        return nil
+    }
+
     func disconnect(forgetPairing: Bool = false) {
         conn?.cancel(); conn = nil
         pending.values.forEach { $0.resume(throwing: BridgeError.disconnected) }
@@ -166,10 +206,16 @@ final class CompanionBridge: ObservableObject {
         ]
         return try await withCheckedThrowingContinuation { cont in
             pending[id] = cont
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                if let timedOut = self.pending.removeValue(forKey: id) {
+                    timedOut.resume(throwing: BridgeError.timedOut)
+                }
+            }
             send(conn: conn, envelope: envelope) { error in
                 if let error {
-                    self.pending.removeValue(forKey: id)
-                    cont.resume(throwing: error)
+                    if let failed = self.pending.removeValue(forKey: id) {
+                        failed.resume(throwing: error)
+                    }
                 }
             }
         }
@@ -196,6 +242,12 @@ final class CompanionBridge: ObservableObject {
                 }
             }
             conn.start(queue: .main)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                if gate.claim() {
+                    conn.cancel()
+                    cont.resume(returning: false)
+                }
+            }
         }
     }
 
@@ -274,12 +326,13 @@ private extension URL {
 }
 
 enum BridgeError: Error, CustomStringConvertible {
-    case notConnected, disconnected, malformed, remote(String)
+    case notConnected, disconnected, malformed, timedOut, remote(String)
     var description: String {
         switch self {
         case .notConnected: "not connected"
         case .disconnected: "connection dropped"
         case .malformed:    "malformed message"
+        case .timedOut:     "timed out"
         case .remote(let m): m
         }
     }

@@ -7,14 +7,22 @@ final class ClientConnection {
     let id: UUID
     private let conn: NWConnection
     private let expectedToken: String
+    private let pairingProvider: () -> CompanionServer.Pairing
     private let onClose: () -> Void
     private let queue = DispatchQueue(label: "com.codegenie.companion.client")
     private var authenticated: Bool = false
 
-    init(id: UUID, conn: NWConnection, token: String, onClose: @escaping () -> Void) {
+    init(
+        id: UUID,
+        conn: NWConnection,
+        token: String,
+        pairingProvider: @escaping () -> CompanionServer.Pairing,
+        onClose: @escaping () -> Void
+    ) {
         self.id = id
         self.conn = conn
         self.expectedToken = token
+        self.pairingProvider = pairingProvider
         self.onClose = onClose
     }
 
@@ -78,7 +86,19 @@ final class ClientConnection {
         let payload = (message["payload"] as? [String: Any]) ?? [:]
 
         if !authenticated {
-            if type == "auth", let provided = payload["token"] as? String, provided == expectedToken {
+            if type == "pair" {
+                let pairing = pairingProvider()
+                authenticated = true
+                send(envelope: [
+                    "v": 1, "kind": "response", "in_response_to": id, "ok": true,
+                    "payload": [
+                        "paired": true,
+                        "host": pairing.host,
+                        "port": Int(pairing.port),
+                        "token": pairing.token,
+                    ],
+                ])
+            } else if type == "auth", let provided = payload["token"] as? String, provided == expectedToken {
                 authenticated = true
                 send(envelope: [
                     "v": 1, "kind": "response", "in_response_to": id, "ok": true,
