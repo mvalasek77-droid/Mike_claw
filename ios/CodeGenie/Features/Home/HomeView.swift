@@ -399,9 +399,10 @@ struct HomeView: View {
             ),
             BuildStartCheck(
                 title: "Mac paired",
-                detail: creds.hasCompanionPairing ? "\(creds.companionHost):\(creds.companionPort)" : "Pair before building",
+                detail: creds.hasCompanionPairing ? "\(creds.companionHost):\(creds.companionPort)" : "Tap to pair",
                 ready: creds.hasCompanionPairing,
-                icon: "macbook.and.iphone"
+                icon: "macbook.and.iphone",
+                action: { showPairMac = true }
             )
         ]
     }
@@ -665,12 +666,33 @@ private struct BuildStartCheck: Identifiable {
     let detail: String
     let ready: Bool
     let icon: String
+    /// Optional tap action — when the check fails the row becomes a
+    /// button into the relevant setup sheet so the user can act on
+    /// it without hunting through Settings. Older callers passed nil
+    /// and got a passive status row.
+    var action: (() -> Void)? = nil
 }
 
 private struct BuildStartCheckRow: View {
     let check: BuildStartCheck
 
     var body: some View {
+        if let action = check.action, !check.ready {
+            Button(action: { Haptics.selection(); action() }) {
+                rowContent
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(check.title): \(check.detail)")
+            .accessibilityHint("Tap to set this up.")
+        } else {
+            rowContent
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(check.title): \(check.detail)")
+        }
+    }
+
+    private var rowContent: some View {
         HStack(spacing: 9) {
             Image(systemName: check.ready ? "checkmark.circle.fill" : check.icon)
                 .font(.system(size: 12, weight: .bold))
@@ -689,13 +711,17 @@ private struct BuildStartCheckRow: View {
                     .minimumScaleFactor(0.82)
             }
             Spacer(minLength: 0)
+            if !check.ready, check.action != nil {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.45))
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.10)))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(check.title), \(check.ready ? "ready" : "not ready"), \(check.detail)")
     }
 }
 
