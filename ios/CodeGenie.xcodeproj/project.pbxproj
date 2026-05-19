@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		401467A13C2F6393690F1B12 /* AutomatedPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFC9459DA443B2B5C110F97 /* AutomatedPreviewView.swift */; };
 		057A352148EBBC38D604EE4D /* IconForgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FB93A893802DAC7BC814C0 /* IconForgeView.swift */; };
 		09FF2FEB536C55F10F6C9111 /* CustomAgentLastRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B3AF2C4566EA809502EE72 /* CustomAgentLastRunView.swift */; };
 		0FF11DFE96CE8660B876ACA9 /* BitDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1078962AFAC6A326AA9D51 /* BitDropView.swift */; };
@@ -93,6 +94,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		ECFC9459DA443B2B5C110F97 /* AutomatedPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomatedPreviewView.swift; sourceTree = "<group>"; };
 		02A10ABE7F2F28539D3A753C /* UserMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserMode.swift; sourceTree = "<group>"; };
 		02B2329792B762190449F7EF /* SampleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleApp.swift; sourceTree = "<group>"; };
 		0470A104286F16FDE7209992 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -435,6 +437,7 @@
 		ED85026EFEA2FA14F21C04E1 /* RemoteBuild */ = {
 			isa = PBXGroup;
 			children = (
+				ECFC9459DA443B2B5C110F97 /* AutomatedPreviewView.swift */,
 				F39D7E0A289A7D948EF2A259 /* RemoteBuildView.swift */,
 			);
 			path = RemoteBuild;
@@ -528,6 +531,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				401467A13C2F6393690F1B12 /* AutomatedPreviewView.swift in Sources */,
 				3328327281568756392B795A /* AdminView.swift in Sources */,
 				B6FCAE4790A8EE4377261754 /* AgentRoutingView.swift in Sources */,
 				50DC006E829C00B927CA65A2 /* AppOfYearPlaybookView.swift in Sources */,

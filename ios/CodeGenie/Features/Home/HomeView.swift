@@ -100,7 +100,12 @@ struct HomeView: View {
                 .environmentObject(session)
         }
         .fullScreenCover(item: $session.pendingPreview) { job in
-            RemoteBuildView(job: job)
+            // Replaces the old interactive RemoteBuildView path which
+            // tried to reach a hosted runner that doesn't exist yet
+            // (caused a hang on the device). AutomatedPreviewView is
+            // pure-local synthetic playback, no network, no buttons
+            // mid-flow — auto-dismisses when the clip finishes.
+            AutomatedPreviewView(job: job)
                 .environmentObject(session)
         }
         .fullScreenCover(item: $session.pendingASC) { job in
