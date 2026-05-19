@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		ED9E901B02FC8E55555E3E44 /* PricingSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 217A6E623E36409A94FDD17B /* PricingSetupView.swift */; };
 		401467A13C2F6393690F1B12 /* AutomatedPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFC9459DA443B2B5C110F97 /* AutomatedPreviewView.swift */; };
 		057A352148EBBC38D604EE4D /* IconForgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FB93A893802DAC7BC814C0 /* IconForgeView.swift */; };
 		09FF2FEB536C55F10F6C9111 /* CustomAgentLastRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B3AF2C4566EA809502EE72 /* CustomAgentLastRunView.swift */; };
@@ -94,6 +95,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		217A6E623E36409A94FDD17B /* PricingSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PricingSetupView.swift; sourceTree = "<group>"; };
 		ECFC9459DA443B2B5C110F97 /* AutomatedPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomatedPreviewView.swift; sourceTree = "<group>"; };
 		02A10ABE7F2F28539D3A753C /* UserMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserMode.swift; sourceTree = "<group>"; };
 		02B2329792B762190449F7EF /* SampleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleApp.swift; sourceTree = "<group>"; };
@@ -241,6 +243,7 @@
 		33871921EDD660BDC286A0B7 /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
+				217A6E623E36409A94FDD17B /* PricingSetupView.swift */,
 				943A143D99DC2D5357144450 /* OnboardingIllustrations.swift */,
 				4DFDD0187FC8567803BAB2B2 /* OnboardingSlide.swift */,
 				4258927DAA703F01022B1002 /* OnboardingView.swift */,
@@ -531,6 +534,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ED9E901B02FC8E55555E3E44 /* PricingSetupView.swift in Sources */,
 				401467A13C2F6393690F1B12 /* AutomatedPreviewView.swift in Sources */,
 				3328327281568756392B795A /* AdminView.swift in Sources */,
 				B6FCAE4790A8EE4377261754 /* AgentRoutingView.swift in Sources */,
