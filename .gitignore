@@ -12,3 +12,6 @@ codegenie-*-check.png
 .venv/
 .venv*/
 venv/
+trading/storage/cache/
+trading/storage/journal/
+trading/storage/state/
