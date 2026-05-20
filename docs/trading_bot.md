@@ -76,16 +76,48 @@ python -m trading.bot          # live 30-min loop, console alerts
 python -m trading.backtest --years 2
 ```
 
-### Webhook (push to phone)
+### Push alerts to your phone
 
-Set `alert_channel = "webhook"` and `alert_webhook_url` in `trading/config.py`
-or via env override. Compatible payload (`{title, body, ts}`) works with:
+Each channel uses its native API shape — no relay needed for Telegram, Slack, Discord, or Pushover. Configure with env vars (recommended, keeps secrets out of source) or by editing `trading/config.py`.
 
-- Slack incoming webhooks
-- Discord webhooks
-- Pushover (wrap into their schema)
-- Telegram (point at `https://api.telegram.org/bot<TOKEN>/sendMessage` with chat_id)
-- Any self-hosted relay
+**Telegram (recommended for phone alerts):**
+
+1. Open Telegram, message **@BotFather**, `/newbot`, follow prompts → you get a token like `123456:ABC-DEF...`.
+2. Message **@userinfobot** to get your numeric chat id.
+3. Send your new bot any message first (otherwise it can't DM you).
+4. Configure and test:
+
+```bash
+export TRADING_ALERT_CHANNEL=telegram
+export TRADING_TELEGRAM_TOKEN="123456:ABC-DEF..."
+export TRADING_TELEGRAM_CHAT_ID="123456789"
+python -m trading.alert_test            # one test message to your phone
+python -m trading.bot                   # live 30-min alerts
+```
+
+**Slack / Discord:**
+
+```bash
+export TRADING_ALERT_CHANNEL=slack       # or discord
+export TRADING_ALERT_WEBHOOK_URL="https://hooks.slack.com/services/..."
+python -m trading.alert_test
+```
+
+**Pushover:**
+
+```bash
+export TRADING_ALERT_CHANNEL=pushover
+export TRADING_PUSHOVER_TOKEN=...
+export TRADING_PUSHOVER_USER=...
+python -m trading.alert_test
+```
+
+**Generic webhook** (your own relay receiving `{title, body, ts}`):
+
+```bash
+export TRADING_ALERT_CHANNEL=webhook
+export TRADING_ALERT_WEBHOOK_URL=https://yourserver.example/hook
+```
 
 ## What this bot will *not* do
 

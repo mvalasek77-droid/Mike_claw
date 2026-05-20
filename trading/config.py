@@ -1,4 +1,17 @@
-"""Single source of truth for tickers, parameters, risk limits, schedule."""
+"""Single source of truth for tickers, parameters, risk limits, schedule.
+
+Sensitive fields (Telegram token, Pushover token, webhook URL) can be set
+via environment variables instead of editing this file:
+
+    TRADING_ALERT_CHANNEL      telegram|slack|discord|pushover|webhook|file|console
+    TRADING_ALERT_WEBHOOK_URL  slack/discord/webhook URL
+    TRADING_TELEGRAM_TOKEN     bot token from @BotFather
+    TRADING_TELEGRAM_CHAT_ID   chat id from @userinfobot
+    TRADING_PUSHOVER_TOKEN
+    TRADING_PUSHOVER_USER
+    TRADING_ACCOUNT_CAD        account size override (default 180)
+"""
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -73,8 +86,12 @@ class TradingConfig:
     eia_blackout_minutes: int = 20         # +/- minutes around EIA Wed 10:30 ET
 
     # ---- Execution / alerts ----
-    alert_channel: str = "console"     # console | file | webhook
-    alert_webhook_url: str | None = None
+    alert_channel: str = "console"     # console | file | telegram | slack | discord | pushover | webhook
+    alert_webhook_url: str | None = None      # used by slack | discord | webhook
+    telegram_bot_token: str | None = None     # from @BotFather
+    telegram_chat_id: str | None = None       # from @userinfobot or getUpdates
+    pushover_token: str | None = None
+    pushover_user: str | None = None
     paper_starting_cash: float = 180.0
 
     # ---- Schedule (TSX) ----
@@ -89,3 +106,22 @@ class TradingConfig:
 
 
 CFG = TradingConfig()
+
+
+def _apply_env_overrides(cfg: TradingConfig) -> None:
+    mapping = {
+        "TRADING_ALERT_CHANNEL": ("alert_channel", str),
+        "TRADING_ALERT_WEBHOOK_URL": ("alert_webhook_url", str),
+        "TRADING_TELEGRAM_TOKEN": ("telegram_bot_token", str),
+        "TRADING_TELEGRAM_CHAT_ID": ("telegram_chat_id", str),
+        "TRADING_PUSHOVER_TOKEN": ("pushover_token", str),
+        "TRADING_PUSHOVER_USER": ("pushover_user", str),
+        "TRADING_ACCOUNT_CAD": ("account_size_cad", float),
+    }
+    for env, (attr, caster) in mapping.items():
+        val = os.environ.get(env)
+        if val is not None and val != "":
+            setattr(cfg, attr, caster(val))
+
+
+_apply_env_overrides(CFG)

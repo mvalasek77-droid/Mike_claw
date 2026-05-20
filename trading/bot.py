@@ -230,6 +230,10 @@ def main(poll_seconds: int | None = None, learn_every: int = 20) -> None:
         channel=CFG.alert_channel,
         webhook_url=CFG.alert_webhook_url,
         log_path=CFG.journal_dir / "alerts.log",
+        telegram_bot_token=CFG.telegram_bot_token,
+        telegram_chat_id=CFG.telegram_chat_id,
+        pushover_token=CFG.pushover_token,
+        pushover_user=CFG.pushover_user,
     )
     journal = Journal(CFG.journal_dir / "signals.jsonl")
     cap = DailyLossCap(CFG.daily_loss_cap_pct, CFG.account_size_cad)
