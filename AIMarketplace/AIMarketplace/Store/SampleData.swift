@@ -1,0 +1,80 @@
+import Foundation
+
+/// Seed catalogue of accepted, marketplace-live titles. Every entry has
+/// already cleared the AI Editor's 85% commercial bar.
+enum SampleData {
+    static func catalog() -> [MediaItem] {
+        [
+            // MARK: Films
+            MediaItem(title: "Echoes of Tomorrow", creator: "Nova Mercer", type: .movie,
+                      genre: "Sci-Fi Thriller",
+                      synopsis: "A memory archivist discovers her own recordings are being rewritten in real time, and the only person who can help her is a version of herself she has never met.",
+                      aiTools: ["Sora", "ElevenLabs Music"], commercialScore: 94, price: 6.99,
+                      length: 108, maturity: "16+", purchases: 48210, trending: 97),
+            MediaItem(title: "The Last Lighthouse", creator: "Idris Vale", type: .movie,
+                      genre: "Drama",
+                      synopsis: "On a fog-bound coast, the final human lighthouse keeper trains the AI meant to replace him, and learns what it means to keep a light burning for no one.",
+                      aiTools: ["Runway Gen-4", "Suno v4"], commercialScore: 91, price: 5.99,
+                      length: 96, maturity: "13+", purchases: 33980, trending: 88),
+            MediaItem(title: "Neon Province", creator: "Kaya Lin", type: .movie,
+                      genre: "Cyberpunk Action",
+                      synopsis: "A courier with an illegal memory implant runs the last analogue package across a city that has outlawed forgetting.",
+                      aiTools: ["Google Veo", "Kling"], commercialScore: 89, price: 5.99,
+                      length: 102, maturity: "16+", purchases: 41200, trending: 95),
+            MediaItem(title: "Salt & Static", creator: "Marlowe Reyes", type: .movie,
+                      genre: "Mystery",
+                      synopsis: "A radio drifting on a dead frequency keeps broadcasting a town that burned down forty years ago — and tonight it's taking requests.",
+                      aiTools: ["Pika", "Stable Audio"], commercialScore: 87, price: 4.99,
+                      length: 88, maturity: "13+", purchases: 18750, trending: 79),
+
+            // MARK: Novels
+            MediaItem(title: "The Cartographer of Silence", creator: "Imogen Hart", type: .novel,
+                      genre: "Literary Fiction",
+                      synopsis: "A mapmaker who can only chart places that no longer exist is commissioned to draw the borders of a country that was never allowed to be remembered.",
+                      aiTools: ["Claude Opus 4", "Sudowrite"], commercialScore: 96, price: 4.99,
+                      length: 348, maturity: "Everyone", purchases: 52640, trending: 92),
+            MediaItem(title: "Gravewater", creator: "Soren Ash", type: .novel,
+                      genre: "Horror",
+                      synopsis: "When the reservoir is drained for the first time in a century, the town it drowned comes up still keeping its appointments.",
+                      aiTools: ["GPT-5"], commercialScore: 90, price: 3.99,
+                      length: 296, maturity: "16+", purchases: 29400, trending: 84),
+            MediaItem(title: "Saffron & Steel", creator: "Priya Nandakumar", type: .novel,
+                      genre: "Epic Fantasy",
+                      synopsis: "A spice merchant's daughter inherits a debt paid in storms and must broker peace between two empires who each believe she belongs to them.",
+                      aiTools: ["Gemini Ultra", "Claude Opus 4"], commercialScore: 93, price: 5.99,
+                      length: 512, maturity: "13+", purchases: 37810, trending: 90),
+            MediaItem(title: "Quietly, the Machines", creator: "Theo Brandt", type: .novel,
+                      genre: "Speculative",
+                      synopsis: "An obituary writer for decommissioned AIs starts receiving thank-you notes from the ones he has not written about yet.",
+                      aiTools: ["Llama 4"], commercialScore: 88, price: 3.99,
+                      length: 268, maturity: "13+", purchases: 21300, trending: 81),
+            MediaItem(title: "The Inheritance Algorithm", creator: "Wren Okafor", type: .novel,
+                      genre: "Thriller",
+                      synopsis: "A grief counsellor learns her late mother left her a fortune locked behind a password only the dead were ever told.",
+                      aiTools: ["GPT-5", "Mistral Large"], commercialScore: 86, price: 4.49,
+                      length: 312, maturity: "16+", purchases: 16500, trending: 74),
+
+            // MARK: Music
+            MediaItem(title: "Midnight Cartography", creator: "VELLUM", type: .music,
+                      genre: "Synthwave",
+                      synopsis: "Nine instrumental nocturnes mapping an imaginary coastline, built for headphones at 2 a.m.",
+                      aiTools: ["Suno v4"], commercialScore: 92, price: 7.99,
+                      length: 9, maturity: "Everyone", purchases: 44120, trending: 96),
+            MediaItem(title: "Paper Cathedrals", creator: "Lune Aubert", type: .music,
+                      genre: "Ambient Classical",
+                      synopsis: "Modern compositions for piano and choir, written to score the architecture you only visit in dreams.",
+                      aiTools: ["AIVA", "Udio"], commercialScore: 90, price: 6.99,
+                      length: 11, maturity: "Everyone", purchases: 26980, trending: 83),
+            MediaItem(title: "Gravity Optional", creator: "ORBITAL DECAY", type: .music,
+                      genre: "Electronic",
+                      synopsis: "A high-energy set engineered for festival sound systems, mixed and mastered for club-grade low end.",
+                      aiTools: ["Udio", "Stable Audio"], commercialScore: 88, price: 5.99,
+                      length: 10, maturity: "13+", purchases: 31240, trending: 89),
+            MediaItem(title: "Songs for an Empty House", creator: "Hazel Crowe", type: .music,
+                      genre: "Indie Folk",
+                      synopsis: "Eight intimate folk tracks about leaving, recorded to sound like a single take in a warm room.",
+                      aiTools: ["Suno v4", "ElevenLabs Music"], commercialScore: 86, price: 4.99,
+                      length: 8, maturity: "Everyone", purchases: 14870, trending: 72),
+        ]
+    }
+}

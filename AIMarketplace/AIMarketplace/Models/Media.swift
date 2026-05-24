@@ -1,0 +1,158 @@
+import SwiftUI
+
+/// The three media categories the marketplace trades in.
+enum MediaType: String, CaseIterable, Identifiable, Hashable {
+    case novel, music, movie
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .novel: return "Novel"
+        case .music: return "Album"
+        case .movie: return "Film"
+        }
+    }
+
+    var plural: String {
+        switch self {
+        case .novel: return "Novels"
+        case .music: return "Music"
+        case .movie: return "Films"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .novel: return "book.closed.fill"
+        case .music: return "music.note"
+        case .movie: return "film.fill"
+        }
+    }
+
+    /// The consumption verb shown on the action button.
+    var verb: String {
+        switch self {
+        case .novel: return "Read"
+        case .music: return "Listen"
+        case .movie: return "Watch"
+        }
+    }
+
+    var accent: Color {
+        switch self {
+        case .novel: return Color(red: 0.98, green: 0.62, blue: 0.18)
+        case .music: return Color(red: 0.74, green: 0.36, blue: 0.98)
+        case .movie: return Color(red: 0.30, green: 0.62, blue: 1.00)
+        }
+    }
+
+    /// Label used for the "length" metadata line on a detail screen.
+    func lengthNoun(_ value: Int) -> String {
+        switch self {
+        case .novel: return "\(value) pages"
+        case .music: return "\(value) tracks"
+        case .movie: return "\(value) min"
+        }
+    }
+}
+
+/// A live, accepted piece of media available in the marketplace.
+struct MediaItem: Identifiable, Hashable {
+    let id: UUID
+    var title: String
+    var creator: String
+    var type: MediaType
+    var genre: String
+    var synopsis: String
+    /// Which AI systems produced the work (creator-disclosed).
+    var aiTools: [String]
+    /// AI Editor commercial-readiness score, 0–100.
+    var commercialScore: Int
+    var price: Double
+    var releaseYear: Int
+    /// Pages / tracks / minutes depending on `type`.
+    var length: Int
+    var maturity: String
+    /// Lifetime purchases — drives the Top 10.
+    var purchases: Int
+    /// 0–100 momentum metric — drives Trending.
+    var trending: Int
+    var addedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        creator: String,
+        type: MediaType,
+        genre: String,
+        synopsis: String,
+        aiTools: [String],
+        commercialScore: Int,
+        price: Double,
+        releaseYear: Int = 2026,
+        length: Int,
+        maturity: String = "13+",
+        purchases: Int = 0,
+        trending: Int = 0,
+        addedAt: Date = .now
+    ) {
+        self.id = id
+        self.title = title
+        self.creator = creator
+        self.type = type
+        self.genre = genre
+        self.synopsis = synopsis
+        self.aiTools = aiTools
+        self.commercialScore = commercialScore
+        self.price = price
+        self.releaseYear = releaseYear
+        self.length = length
+        self.maturity = maturity
+        self.purchases = purchases
+        self.trending = trending
+        self.addedAt = addedAt
+    }
+
+    static func == (lhs: MediaItem, rhs: MediaItem) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+
+    var priceLabel: String { String(format: "$%.2f", price) }
+    var lengthLabel: String { type.lengthNoun(length) }
+    var scoreLabel: String { "\(commercialScore)/100" }
+
+    /// A short, human "grade" for the commercial score badge.
+    var grade: String {
+        switch commercialScore {
+        case 95...: return "Flagship"
+        case 90..<95: return "Commercial+"
+        case 85..<90: return "Commercial"
+        default: return "Below bar"
+        }
+    }
+}
+
+/// Stable, launch-independent hash used to seed procedural artwork.
+func stableHash(_ string: String) -> Int {
+    var hash = 5381
+    for byte in string.utf8 { hash = (hash &* 33) &+ Int(byte) }
+    return abs(hash)
+}
+
+extension MediaItem {
+    var seed: Int { stableHash(id.uuidString + title) }
+}
+
+/// Curated AI-tool suggestions surfaced in the disclosure step, grouped by
+/// the kind of media they typically generate.
+enum AIToolCatalog {
+    static func suggestions(for type: MediaType) -> [String] {
+        switch type {
+        case .novel:
+            return ["GPT-5", "Claude Opus 4", "Gemini Ultra", "Llama 4", "Mistral Large", "Sudowrite"]
+        case .music:
+            return ["Suno v4", "Udio", "Stable Audio", "ElevenLabs Music", "AIVA", "Soundraw"]
+        case .movie:
+            return ["Sora", "Runway Gen-4", "Google Veo", "Kling", "Pika", "Luma Dream Machine"]
+        }
+    }
+}
