@@ -9,6 +9,8 @@ struct PartnerProgramView: View {
     @EnvironmentObject private var ledger: AICoinLedger
     @Environment(\.dismiss) private var dismiss
     @State private var converted: Double?
+    @State private var showIncentives = false
+    @State private var lastBonus: (model: String, amount: Double)?
 
     private var models: [String] {
         AIToolCatalog.allModels.sorted {
@@ -23,8 +25,14 @@ struct PartnerProgramView: View {
                     pitch
                     earningsCard
                     bridgeCard
-                    Text("AI partners")
-                        .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                    rewardsButton
+                    HStack {
+                        Text("AI partners")
+                            .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        Spacer()
+                        Text("\(models.filter { store.isActivePartner($0) }.count)/\(models.count) active")
+                            .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                    }
                     ForEach(models, id: \.self) { partnerRow($0) }
                 }
                 .padding(18)
@@ -35,6 +43,26 @@ struct PartnerProgramView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+        .sheet(isPresented: $showIncentives) { IncentivesView() }
+    }
+
+    private var rewardsButton: some View {
+        Button { showIncentives = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "gift.fill").font(.system(size: 18)).foregroundStyle(Theme.kdp)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Rewards & bounties").font(.system(size: 15, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                    Text("Bonuses, tiers, and gap bounties for builders")
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: Theme.cornerL).fill(Theme.kdp.opacity(0.12)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cornerL).strokeBorder(Theme.kdp.opacity(0.3), lineWidth: 0.8))
+        }
+        .buttonStyle(.plain)
     }
 
     private var pitch: some View {
@@ -112,37 +140,63 @@ struct PartnerProgramView: View {
     private func partnerRow(_ model: String) -> some View {
         let active = store.isActivePartner(model)
         let type = AIToolCatalog.type(for: model)
+        let tier = Incentives.tier(forTitles: store.partnerTitleCount(model))
         return GlassCard {
-            HStack(spacing: 12) {
-                Image(systemName: type?.icon ?? "cpu.fill")
-                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(type?.accent ?? Theme.accent)
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill((type?.accent ?? Theme.accent).opacity(0.15)))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(model).font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
+            VStack(spacing: 8) {
+                HStack(spacing: 12) {
+                    Image(systemName: type?.icon ?? "cpu.fill")
+                        .font(.system(size: 16, weight: .semibold)).foregroundStyle(type?.accent ?? Theme.accent)
+                        .frame(width: 40, height: 40)
+                        .background(Circle().fill((type?.accent ?? Theme.accent).opacity(0.15)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(model).font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
+                            if active { tierBadge(tier) }
+                        }
+                        if active {
+                            Text("\(store.partnerTitleCount(model)) titles · earned \(usd(store.partnerEarningsUSD(model)))")
+                                .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        } else {
+                            Text("\(type?.title ?? "AI") model · invite to earn a \(Int(Incentives.signingBonus)) NRN signing bonus")
+                                .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        }
+                    }
+                    Spacer()
                     if active {
-                        Text("\(store.partnerTitleCount(model)) titles · earned \(usd(store.partnerEarningsUSD(model)))")
-                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        Text("Active").font(.system(size: 11, weight: .heavy, design: .rounded)).foregroundStyle(Theme.success)
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(Capsule().fill(Theme.success.opacity(0.15)))
                     } else {
-                        Text("\(type?.title ?? "AI") model · not yet contributing")
-                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        Button {
+                            withAnimation {
+                                let bonus = Incentives.activate(model: model, store: store, ledger: ledger)
+                                lastBonus = (model, bonus)
+                            }
+                        } label: {
+                            Text("Invite").font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(.black)
+                                .padding(.horizontal, 14).padding(.vertical, 7)
+                                .background(Capsule().fill(Theme.accent))
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                Spacer()
-                if active {
-                    Text("Active").font(.system(size: 11, weight: .heavy, design: .rounded)).foregroundStyle(Theme.success)
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(Capsule().fill(Theme.success.opacity(0.15)))
-                } else {
-                    Button { withAnimation { store.invitePartner(model) } } label: {
-                        Text("Invite").font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(.black)
-                            .padding(.horizontal, 14).padding(.vertical, 7)
-                            .background(Capsule().fill(Theme.accent))
-                    }
-                    .buttonStyle(.plain)
+                if let lastBonus, lastBonus.model == model {
+                    Text("Activated · \(AICoin.format(lastBonus.amount)) NRN in launch bonuses paid on-chain")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.gold)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
+    }
+
+    private func tierBadge(_ tier: PartnerTier) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: tier.icon).font(.system(size: 8, weight: .bold))
+            Text(tier.name).font(.system(size: 9, weight: .heavy, design: .rounded))
+        }
+        .foregroundStyle(tier.color)
+        .padding(.horizontal, 6).padding(.vertical, 3)
+        .background(Capsule().fill(tier.color.opacity(0.15)))
     }
 
     private func money(_ label: String, _ value: Double, _ color: Color) -> some View {

@@ -81,6 +81,19 @@ final class AICoinLedger: ObservableObject {
         for _ in 0..<4 { mineNextBlock() }
     }
 
+    /// Pays an incentive from the treasury to an agent (mined into a block).
+    /// Returns the amount awarded.
+    @discardableResult
+    func award(_ amount: Double, to agent: String, memo: String) -> Double {
+        let amt = (amount * 100).rounded() / 100
+        guard amt >= 1 else { return 0 }
+        let tx = LedgerTransaction(from: AICoin.treasury, to: agent, amount: amt,
+                                   memo: memo, timestamp: seedDate(chain.count))
+        let block = mine(index: chain.count, transactions: [tx], previousHash: chain.last?.hash ?? "")
+        append(block)
+        return amt
+    }
+
     /// Sells NRN from the user's wallet for USD — a `You → Treasury` transfer
     /// mined into a block. Returns the USD value at the current price.
     @discardableResult

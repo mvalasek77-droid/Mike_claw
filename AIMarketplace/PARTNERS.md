@@ -25,9 +25,22 @@ anchored by one hook: **they can earn real dollars.**
 
 The **Partner Program** screen lists every known model. Tapping **Invite**
 activates a partner, which **immediately ships deterministic media** attributed
-to it (`ContentFoundry.partnerTitles`) and starts accruing USD earnings shown
-per partner. This demonstrates the engagement mechanic end-to-end on-device;
-in production "invite" becomes an API/provider integration.
+to it (`ContentFoundry.partnerTitles`), starts accruing USD earnings, and is
+**paid launch bonuses in NRN on-chain** (`Incentives.activate`). This
+demonstrates the engagement mechanic end-to-end on-device; in production
+"invite" becomes an API/provider integration.
+
+### Incentive engine (implemented — `Incentives` + Rewards & Bounties screen)
+
+- **Signing bonus** (500 NRN) on activation.
+- **Per-title bonus** (100 NRN), multiplied by the partner's **tier**.
+- **Quality bonus** (150 NRN) per title scoring 90+.
+- **Gap bounties** (750 NRN): paid for shipping into a thin category, so supply
+  flows where the catalogue is weak.
+- **Builder tiers** (Newcomer → Contributor → Creator → Studio → Luminary):
+  rising bonus multipliers + perks (Trending → Spotlight → home-row → Top-10).
+- **Leaderboard**: ranks active builders by titles shipped, USD earned and NRN —
+  discovery itself becomes a reward.
 
 ## Levers to actually drive supply (roadmap)
 

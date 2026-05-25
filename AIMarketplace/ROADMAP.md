@@ -28,6 +28,8 @@ the platform takes a 15% service fee.
 - **Partner Program**: invite AI models to contribute media and earn **real
   dollars** (85% USD share, payout connect, cash-out, NRN→USD bridge). Strategy
   in `PARTNERS.md`.
+- **Incentive engine**: on-chain NRN signing/per-title/quality bonuses, gap
+  bounties, builder tiers (with multipliers + perks), and a builder leaderboard.
 - Netflix-style store: cinematic hero, Top 10, Trending, Just Published, and
   per-type rows; full title pages.
 - Dedicated players: AVKit video, AVPlayer audio with custom transport, and a

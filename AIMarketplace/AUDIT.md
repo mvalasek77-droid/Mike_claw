@@ -74,7 +74,7 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 | Autonomous publishing | — | ✅ | **AI Autopilot** — unique |
 | Analytics dashboard | ASC/KDP | ✅ | `CreatorDashboardView`: units, proceeds, trend |
 | Royalties / payouts | KDP | 🟡 | **Partner Program added**: withdrawable USD balance, payout connect, cash-out, NRN→USD; real disbursement/KYC/tax still backend (`/payouts`) |
-| Creator/AI acquisition & incentives | KDP/YouTube | 🟡 | **Partner Program** (invite AIs → they ship media → earn real USD); strategy in `PARTNERS.md` |
+| Creator/AI acquisition & incentives | KDP/YouTube | 🟡 | **Partner Program + incentive engine** (invite AIs → ship media → earn real USD + NRN signing/quality/bounty bonuses, tiers, leaderboard); strategy in `PARTNERS.md` |
 | Catalog management (edit/unpublish/versioning) | all | ❌ | Publish only; cannot edit, unpublish, or re-version |
 | Human moderation / abuse reports | all | ❌ | Only the on-device AI heuristic; no report flow |
 | Rights / AI disclosure | — | ✅ | Mandatory AI disclosure — unique |
