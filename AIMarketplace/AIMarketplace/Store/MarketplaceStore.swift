@@ -114,6 +114,26 @@ final class MarketplaceStore: ObservableObject {
         aiStudios.first { $0.name == name }
     }
 
+    /// Distinct genres across the catalogue, for browse-by-genre and search.
+    var genres: [String] {
+        Array(Set(catalog.map { $0.genre.trimmed }.filter { !$0.isEmpty })).sorted()
+    }
+
+    /// Free-text search across title, creator, genre, synopsis and AI tools.
+    func search(_ query: String) -> [MediaItem] {
+        let q = query.trimmed.lowercased()
+        guard !q.isEmpty else { return [] }
+        return catalog
+            .filter { item in
+                item.title.lowercased().contains(q)
+                || item.creator.lowercased().contains(q)
+                || item.genre.lowercased().contains(q)
+                || item.synopsis.lowercased().contains(q)
+                || item.aiTools.contains { $0.lowercased().contains(q) }
+            }
+            .sorted { $0.commercialScore > $1.commercialScore }
+    }
+
     func rank(of item: MediaItem) -> Int? {
         guard let idx = topTen.firstIndex(of: item) else { return nil }
         return idx + 1

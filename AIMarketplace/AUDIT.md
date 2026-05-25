@@ -1,0 +1,158 @@
+# Platform Audit — AI Marketplace vs Amazon/KDP, Netflix, Google Play, Apple
+
+**Date:** 2026-05-25  ·  **Scope:** the iOS app on branch `claude/ai-marketplace-ios-app-iUYui`.
+
+## Honest headline
+
+AI Marketplace is, today, a **client-only iOS app**: a rich, demo-complete
+**frontend** with **local, on-device persistence** and **no server backend**.
+It convincingly demonstrates the *product* (a KDP × Netflix marketplace for
+AI‑made media with an AI quality gate), but the systems that make Amazon /
+Netflix / Google Play / Apple actually work at scale — accounts, payments,
+content delivery, search/recommendation services, moderation, DRM — are either
+**simulated on-device** or **not present**. This document maps every system,
+front and back, and is deliberately blunt about what is real vs. demo vs.
+missing. Nothing here fakes a backend.
+
+Legend: ✅ present · 🟡 partial / simulated · ❌ missing
+
+---
+
+## 1. Storefront & discovery (frontend)
+
+| System | Amazon | Netflix | Google Play | Apple | AI Marketplace | Notes |
+|---|:--:|:--:|:--:|:--:|:--:|---|
+| Cinematic home / featured hero | ✅ | ✅ | ✅ | ✅ | ✅ | `BrowseHomeView` + `HeroBanner` |
+| Curated rows | ✅ | ✅ | ✅ | ✅ | ✅ | Top 10, Trending, Just Published, per-type |
+| Charts / bestsellers | ✅ | ✅ | ✅ | ✅ | ✅ | `ChartsView`, ranked Top 10 |
+| **Search** | ✅ | ✅ | ✅ | ✅ | ✅ | **Added** `SearchView` (title/creator/genre/synopsis/AI tool) |
+| Browse by genre/category | ✅ | ✅ | ✅ | ✅ | 🟡 | Type pills + genre chips in search; no dedicated genre browse screen |
+| Personalized recommendations | ✅ | ✅ | ✅ | ✅ | ❌ | No "because you watched/bought"; needs a reco service |
+| Product/title detail page | ✅ | ✅ | ✅ | ✅ | ✅ | `MediaDetailView` |
+| Ratings & reviews | ✅ | 🟡 | ✅ | ✅ | ❌ | No user ratings/reviews model or UI |
+| Wishlist / My List | ✅ | ✅ | ✅ | ✅ | ✅ | Watchlist in store |
+| Samples / previews / trailers | ✅ | ✅ | ✅ | ✅ | 🟡 | Players exist; no explicit free-sample gating |
+| Creator/AI spotlight pages | 🟡 | 🟡 | 🟡 | 🟡 | ✅ | `AISpotlightView` — unique to this product |
+| Localization / i18n | ✅ | ✅ | ✅ | ✅ | ❌ | Single locale, hard-coded strings |
+
+## 2. Playback & consumption
+
+| System | Reference | AI Marketplace | Notes |
+|---|---|:--:|---|
+| Video player | Netflix | ✅ | AVKit `VideoPlayer` |
+| Audio player | Apple Music | ✅ | `AVPlayer` + custom transport |
+| Reader | Kindle | ✅ | Paginated reader, font sizing |
+| Resume / playback position | all | ❌ | No saved position, no cross-device |
+| Offline downloads | all | ❌ | No download manager |
+| AirPlay / casting | Netflix/Apple | 🟡 | AVKit exposes AirPlay for video; not surfaced/tested |
+| Adaptive streaming (HLS/DASH) | all | ❌ | Local/bundled files only; no streaming backend |
+| **DRM / content protection** | all | ❌ | No FairPlay/Widevine; **blocker for licensed content** |
+
+## 3. Commerce & payments
+
+| System | Reference | AI Marketplace | Notes |
+|---|---|:--:|---|
+| Buy digital good | all | 🟡 | Apple Pay sheet + simulated wallet |
+| **StoreKit In-App Purchase** | Apple (required) | ❌ | **Compliance blocker** — see §7 |
+| Cart / multi-item checkout | Amazon/Google | 🟡 | Single-item buy only |
+| Subscriptions | Netflix | ❌ | No subscription tier/billing |
+| Order history / receipts | all | 🟡 | Library = entitlements; no receipts/invoices |
+| Refunds / chargebacks | all | ❌ | None |
+| Tax / VAT / regional pricing | all | ❌ | Flat USD, no tax engine |
+| Promo codes / gifting | all | ❌ | None |
+| Server-side payment validation | all | ❌ | No backend to validate `payment.token` |
+
+## 4. Creator / seller systems (KDP, YouTube, App Store Connect)
+
+| System | Reference | AI Marketplace | Notes |
+|---|---|:--:|---|
+| Registration / onboarding | KDP/ASC | ✅ | `RegisterView` (local only) |
+| Publishing wizard | KDP | ✅ | Format→details→disclosure→content→cover→pricing→review |
+| Cover/art upload | KDP | ✅ | PhotosPicker cover step |
+| Content quality review | ASC review | ✅ | **AI Editor** (85% bar) — unique |
+| Autonomous publishing | — | ✅ | **AI Autopilot** — unique |
+| Analytics dashboard | ASC/KDP | ✅ | `CreatorDashboardView`: units, proceeds, trend |
+| Royalties / payouts | KDP | 🟡 | 85/15 split computed; no real payout/KYC/tax forms |
+| Catalog management (edit/unpublish/versioning) | all | ❌ | Publish only; cannot edit, unpublish, or re-version |
+| Human moderation / abuse reports | all | ❌ | Only the on-device AI heuristic; no report flow |
+| Rights / AI disclosure | — | ✅ | Mandatory AI disclosure — unique |
+
+## 5. Identity, account & security
+
+| System | Reference | AI Marketplace | Notes |
+|---|---|:--:|---|
+| Real authentication (Sign in with Apple/OAuth) | all | ❌ | Local name/email only; no auth |
+| Account management (change/delete) | all | ❌ | No account settings/deletion |
+| Multi-device sync | all | ❌ | No iCloud/account sync |
+| Encryption at rest | all | ✅ | AES-GCM (CryptoKit) + Keychain |
+| Privacy manifest / policy / terms | all | ✅ | `PrivacyInfo.xcprivacy` + in-app docs |
+| Parental controls / ratings enforcement | all | 🟡 | Maturity field exists; no PIN/enforcement |
+| Fraud, rate limiting, bot defense | all | ❌ | No backend |
+
+## 6. Backend & infrastructure (the big gap)
+
+| System | Reference | AI Marketplace | Notes |
+|---|---|:--:|---|
+| API / application services | all | ❌ | Client-only; no API layer |
+| Database | all | 🟡 | Local encrypted file (`EncryptedArchive`); no server DB |
+| Object storage + CDN for media | all | ❌ | Bundled/local files; no upload pipeline or CDN |
+| Search index | all | 🟡 | In-memory client filter; no Elasticsearch/Algolia-class service |
+| Recommendation engine | all | ❌ | None |
+| Catalog / inventory service | all | 🟡 | Seed data + user-published, all local |
+| Payments backend / processor | all | ❌ | No Stripe/Apple server validation |
+| Auth / identity service | all | ❌ | None |
+| Push notifications | all | ❌ | None |
+| Analytics / telemetry | all | ❌ | None |
+| Content moderation pipeline | all | 🟡 | On-device AI Editor heuristic only |
+| Observability (logs/metrics/traces) | all | ❌ | None |
+| DRM / license server | all | ❌ | None |
+
+## 7. App Store compliance flags (must-fix before submission)
+
+1. **Digital goods must use StoreKit IAP, not Apple Pay** (Guideline 3.1.1).
+   Apple Pay is for *physical* goods/services. Selling AI novels/music/films
+   in-app requires **StoreKit 2** products + Apple's 70/30 (or 85/15
+   small-business) cut. The current Apple Pay path would be rejected. Either
+   migrate to StoreKit IAP, or position purchases as out-of-app (web) which has
+   its own rules. **This is the single biggest commerce gap.**
+2. **Account deletion** is mandatory once accounts exist (Guideline 5.1.1(v)).
+3. **UGC controls** (Guideline 1.2): need report/block/abuse flow + human
+   moderation, not just the AI Editor.
+4. Hosted **privacy policy + terms URLs** for the listing (in-app text exists).
+
+---
+
+## 8. Prioritized path to parity
+
+**P0 — make it a real product (backend foundation)**
+- Stand up an API + Postgres; move catalog, accounts, entitlements, drafts server-side.
+- Real auth: Sign in with Apple + OAuth; sessions; account deletion.
+- Media pipeline: signed uploads → object storage (S3/GCS) → CDN; transcode to HLS.
+- **StoreKit 2 IAP** with server receipt validation; replace Apple Pay for digital goods.
+
+**P1 — discovery & trust parity**
+- Search service (Algolia/Elasticsearch) + recommendations.
+- Ratings & reviews (model, moderation, anti-fraud).
+- DRM (FairPlay) for licensed playback; offline downloads with license lease.
+- Push notifications; resume/position sync.
+
+**P2 — creator & marketplace depth**
+- Real payouts (Stripe Connect/Apple), KYC, tax forms (1099/DAC7), statements.
+- Catalog management: edit, version, unpublish, scheduling.
+- Human moderation console + appeals; abuse reporting.
+
+**P3 — scale & internationalization**
+- Localization, multi-currency, regional pricing & tax.
+- Subscriptions/bundles, gifting, promo codes.
+- Observability, analytics, A/B framework.
+
+---
+
+## 9. Where AI Marketplace already leads
+
+The AI-native pieces have **no direct equivalent** on the incumbents and are the
+product's moat: **mandatory AI disclosure**, the **AI Editor** commercial-quality
+gate (85% bar, explainable rubric), **AI Autopilot** autonomous publishing, and
+**AI Spotlight** per-model portfolios. The frontend that showcases these is
+genuinely strong; the work ahead is the backend and commerce plumbing the
+incumbents spent a decade building.

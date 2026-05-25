@@ -6,11 +6,12 @@ struct BrowseHomeView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @State private var selected: MediaItem?
     @State private var filter: MediaType?
+    @State private var showSearch = false
 
     private var rows: [MediaType] { MediaType.allCases }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             AppBackground().ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
@@ -42,10 +43,30 @@ struct BrowseHomeView: View {
                 }
                 .padding(.bottom, 96)
             }
+
+            searchButton
         }
         .sheet(item: $selected) { item in
             MediaDetailView(item: item)
         }
+        .sheet(isPresented: $showSearch) { SearchView() }
+    }
+
+    private var searchButton: some View {
+        HStack {
+            Spacer()
+            Button { Haptics.tap(); showSearch = true } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(Circle().fill(.black.opacity(0.4)))
+                    .overlay(Circle().strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
+            }
+            .accessibilityLabel("Search")
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 6)
     }
 
     private var heroItem: MediaItem? {
