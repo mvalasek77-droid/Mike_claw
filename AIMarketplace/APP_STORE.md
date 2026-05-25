@@ -24,6 +24,8 @@ Top 10, a Trending list, and dedicated players for reading, listening and
 watching. Buy what you love; creators keep 85% of every sale.
 
 ## Capabilities / entitlements
+- **Sign in with Apple:** entitlement `com.apple.developer.applesignin = [Default]`
+  (in `AIMarketplace.entitlements`). Enable the capability in the App ID.
 - **In-App Purchase (StoreKit 2):** consumable wallet-credit products. Define
   these in App Store Connect mirroring `Products.storekit`:
   `com.aimarketplace.credits.5/.10/.25/.50`. No special entitlements file key is
@@ -53,6 +55,9 @@ Declared in `Resources/PrivacyInfo.xcprivacy`:
   no Apple Pay for digital goods and no external purchase links.
 - **5.1.1 (Privacy):** privacy policy + terms are in-app (Profile → Privacy &
   legal) and must also be hosted at a public URL for the listing.
+- **5.1.1(v) (Account deletion):** in-app account deletion is implemented
+  (Profile → Account → Delete account).
+- **4.8 (Sign in with Apple):** offered as a login option in registration.
 - **1.2 / UGC:** AI disclosure is mandatory per title; report/removal flow and
   maturity ratings are present; expand moderation before scale.
 - **2.3 (Accurate metadata):** screenshots should show the store, a title page,

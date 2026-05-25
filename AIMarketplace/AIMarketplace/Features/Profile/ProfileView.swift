@@ -9,6 +9,7 @@ struct ProfileView: View {
     @State private var showDashboard = false
     @State private var showRoadmap = false
     @State private var showCoin = false
+    @State private var showDeleteConfirm = false
     @State private var legalDoc: LegalDoc?
 
     var body: some View {
@@ -23,6 +24,7 @@ struct ProfileView: View {
                     if !store.liveTitles.isEmpty { liveTitlesCard }
                     legalCard
                     aboutCard
+                    accountCard
                 }
                 .screenPadding()
                 .padding(.top, 8)
@@ -34,6 +36,47 @@ struct ProfileView: View {
         .sheet(isPresented: $showTopUp) { TopUpView() }
         .sheet(isPresented: $showCoin) { AICoinView() }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
+        .alert("Delete account?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) { withAnimation { store.deleteAccount() } }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This permanently removes your account, library, drafts and wallet from this device. This can't be undone.")
+        }
+    }
+
+    private var accountCard: some View {
+        GlassCard(title: "Account", icon: "person.crop.circle.fill", tint: Theme.inkSoft) {
+            VStack(spacing: 0) {
+                if !store.appleUserID.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "applelogo").font(.system(size: 13)).foregroundStyle(Theme.ink)
+                        Text("Signed in with Apple").font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(Theme.inkSoft)
+                        Spacer()
+                    }
+                    .padding(.vertical, 10)
+                    divider
+                }
+                Button { withAnimation { store.signOut() } } label: {
+                    rowLabel("Sign out", "rectangle.portrait.and.arrow.right", tint: Theme.ink)
+                }
+                .buttonStyle(.plain)
+                divider
+                Button { showDeleteConfirm = true } label: {
+                    rowLabel("Delete account", "trash.fill", tint: Theme.warning)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func rowLabel(_ title: String, _ icon: String, tint: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon).font(.system(size: 14, weight: .semibold)).foregroundStyle(tint).frame(width: 22)
+            Text(title).font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundStyle(tint)
+            Spacer()
+        }
+        .padding(.vertical, 11)
+        .contentShape(Rectangle())
     }
 
     private var coinCard: some View {

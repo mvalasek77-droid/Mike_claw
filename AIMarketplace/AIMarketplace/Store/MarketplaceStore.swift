@@ -11,6 +11,8 @@ final class MarketplaceStore: ObservableObject {
     @Published var accountName: String = "" { didSet { persist() } }
     @Published var accountEmail: String = "" { didSet { persist() } }
     @Published var isRegistered: Bool = false { didSet { persist() } }
+    /// Stable Sign in with Apple user identifier, when used.
+    @Published var appleUserID: String = "" { didSet { persist() } }
 
     // Marketplace
     @Published private(set) var catalog: [MediaItem]
@@ -54,6 +56,7 @@ final class MarketplaceStore: ObservableObject {
         var accountName: String
         var accountEmail: String
         var isRegistered: Bool
+        var appleUserID: String
         var walletBalance: Double
         var creatorEarnings: Double
         var aiAutopilotEnabled: Bool
@@ -61,6 +64,39 @@ final class MarketplaceStore: ObservableObject {
         var watchlistIDs: [UUID]
         var submissions: [Submission]
         var publishedItems: [MediaItem]
+
+        init(accountName: String, accountEmail: String, isRegistered: Bool, appleUserID: String,
+             walletBalance: Double, creatorEarnings: Double, aiAutopilotEnabled: Bool,
+             libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem]) {
+            self.accountName = accountName
+            self.accountEmail = accountEmail
+            self.isRegistered = isRegistered
+            self.appleUserID = appleUserID
+            self.walletBalance = walletBalance
+            self.creatorEarnings = creatorEarnings
+            self.aiAutopilotEnabled = aiAutopilotEnabled
+            self.libraryIDs = libraryIDs
+            self.watchlistIDs = watchlistIDs
+            self.submissions = submissions
+            self.publishedItems = publishedItems
+        }
+
+        /// Tolerant decoding: new fields default instead of failing the whole
+        /// load, so adding state in a future version never logs a user out.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            accountName = try c.decodeIfPresent(String.self, forKey: .accountName) ?? ""
+            accountEmail = try c.decodeIfPresent(String.self, forKey: .accountEmail) ?? ""
+            isRegistered = try c.decodeIfPresent(Bool.self, forKey: .isRegistered) ?? false
+            appleUserID = try c.decodeIfPresent(String.self, forKey: .appleUserID) ?? ""
+            walletBalance = try c.decodeIfPresent(Double.self, forKey: .walletBalance) ?? 50
+            creatorEarnings = try c.decodeIfPresent(Double.self, forKey: .creatorEarnings) ?? 0
+            aiAutopilotEnabled = try c.decodeIfPresent(Bool.self, forKey: .aiAutopilotEnabled) ?? false
+            libraryIDs = try c.decodeIfPresent([UUID].self, forKey: .libraryIDs) ?? []
+            watchlistIDs = try c.decodeIfPresent([UUID].self, forKey: .watchlistIDs) ?? []
+            submissions = try c.decodeIfPresent([Submission].self, forKey: .submissions) ?? []
+            publishedItems = try c.decodeIfPresent([MediaItem].self, forKey: .publishedItems) ?? []
+        }
     }
 
     private func restore() {
@@ -72,6 +108,7 @@ final class MarketplaceStore: ObservableObject {
         accountName = state.accountName
         accountEmail = state.accountEmail
         isRegistered = state.isRegistered
+        appleUserID = state.appleUserID
         walletBalance = state.walletBalance
         creatorEarnings = state.creatorEarnings
         aiAutopilotEnabled = state.aiAutopilotEnabled
@@ -89,6 +126,7 @@ final class MarketplaceStore: ObservableObject {
             accountName: accountName,
             accountEmail: accountEmail,
             isRegistered: isRegistered,
+            appleUserID: appleUserID,
             walletBalance: walletBalance,
             creatorEarnings: creatorEarnings,
             aiAutopilotEnabled: aiAutopilotEnabled,
@@ -98,6 +136,44 @@ final class MarketplaceStore: ObservableObject {
             publishedItems: publishedItems
         )
         archive.save(state)
+    }
+
+    // MARK: - Account lifecycle
+
+    /// Completes registration from either the manual form or Sign in with Apple.
+    func register(name: String, email: String, appleUserID: String = "") {
+        loading = true
+        accountName = name.trimmed.isEmpty ? "Creator" : name.trimmed
+        accountEmail = email.trimmed
+        self.appleUserID = appleUserID
+        loading = false
+        isRegistered = true   // triggers persist
+    }
+
+    /// Signs out but keeps the encrypted account on device for re-entry.
+    func signOut() {
+        isRegistered = false
+    }
+
+    /// Permanently deletes the account and all on-device data (App Store
+    /// Guideline 5.1.1(v)). Removes the encrypted archive and resets state.
+    func deleteAccount() {
+        loading = true
+        accountName = ""
+        accountEmail = ""
+        appleUserID = ""
+        walletBalance = 50
+        creatorEarnings = 0
+        aiAutopilotEnabled = false
+        libraryIDs = []
+        watchlistIDs = []
+        submissions = []
+        // Drop the user's published titles, keeping seed + Editor Originals.
+        let seedIDs = Set(SampleData.catalog().map(\.id))
+        catalog.removeAll { !$0.isEditorOriginal && !seedIDs.contains($0.id) }
+        loading = false
+        archive.delete()
+        isRegistered = false
     }
 
     // MARK: - Derived feeds

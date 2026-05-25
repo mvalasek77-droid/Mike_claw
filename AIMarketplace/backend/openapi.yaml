@@ -1,0 +1,408 @@
+openapi: 3.1.0
+info:
+  title: AI Marketplace API
+  version: 0.1.0
+  description: >
+    Backend contract for the AI Marketplace iOS app. The app today is
+    client-only with on-device encrypted persistence; this spec defines the
+    services it should talk to for a production deployment (auth, catalog,
+    media, commerce with server-side receipt validation, creator payouts, and
+    the NRN ledger). See backend/README.md for the architecture.
+servers:
+  - url: https://api.aimarketplace.app/v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+  - name: Account
+  - name: Catalog
+  - name: Media
+  - name: Submissions
+  - name: Commerce
+  - name: Payouts
+  - name: Ledger
+
+paths:
+  /auth/apple:
+    post:
+      tags: [Auth]
+      summary: Exchange a Sign in with Apple identity token for a session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identityToken, userIdentifier]
+              properties:
+                identityToken: { type: string, description: Apple JWT from ASAuthorizationAppleIDCredential.identityToken }
+                authorizationCode: { type: string }
+                userIdentifier: { type: string, description: Stable Apple user id (credential.user) }
+                fullName: { type: string }
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Session issued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /account:
+    get:
+      tags: [Account]
+      summary: Get the signed-in account
+      responses:
+        "200":
+          description: Account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Account" }
+    delete:
+      tags: [Account]
+      summary: Permanently delete the account and all associated data (App Store 5.1.1(v))
+      responses:
+        "204": { description: Deleted }
+
+  /catalog:
+    get:
+      tags: [Catalog]
+      summary: List live titles
+      security: []
+      parameters:
+        - { name: type, in: query, schema: { type: string, enum: [novel, music, movie] } }
+        - { name: sort, in: query, schema: { type: string, enum: [top, trending, new, score] } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+      responses:
+        "200":
+          description: Page of titles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/MediaItem" } }
+                  nextCursor: { type: string, nullable: true }
+
+  /catalog/search:
+    get:
+      tags: [Catalog]
+      summary: Full-text search across title, creator, genre, synopsis, AI tools
+      security: []
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: type, in: query, schema: { type: string, enum: [novel, music, movie] } }
+      responses:
+        "200":
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MediaItem" }
+
+  /catalog/{id}:
+    get:
+      tags: [Catalog]
+      summary: Get a single title
+      security: []
+      parameters: [ { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        "200":
+          description: Title
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MediaItem" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /media/upload-url:
+    post:
+      tags: [Media]
+      summary: Request a signed URL to upload a cover or master/manuscript to object storage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, contentType]
+              properties:
+                kind: { type: string, enum: [cover, audio, video, manuscript] }
+                contentType: { type: string, example: image/jpeg }
+      responses:
+        "200":
+          description: Signed upload target
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uploadURL: { type: string, format: uri }
+                  assetID: { type: string }
+                  expiresAt: { type: string, format: date-time }
+
+  /media/{assetID}/status:
+    get:
+      tags: [Media]
+      summary: Poll transcode/processing status (e.g. HLS packaging for video/audio)
+      parameters: [ { name: assetID, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: string, enum: [uploading, processing, ready, failed] }
+                  playbackURL: { type: string, format: uri, nullable: true }
+
+  /submissions:
+    post:
+      tags: [Submissions]
+      summary: Submit a draft for AI Editor review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DraftWork" }
+      responses:
+        "201":
+          description: Submission accepted for review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Submission" }
+
+  /submissions/{id}/review:
+    get:
+      tags: [Submissions]
+      summary: Get the AI Editor verdict (score, rubric, autonomous decision)
+      parameters: [ { name: id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        "200":
+          description: Review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AIReviewResult" }
+
+  /commerce/validate-receipt:
+    post:
+      tags: [Commerce]
+      summary: Server-side validation of a StoreKit 2 transaction (credit pack)
+      description: >
+        The client sends the JWS-signed transaction representation from
+        StoreKit 2. The server verifies the signature against Apple's root
+        certificates, checks it hasn't been consumed, credits the wallet, and
+        records the ledger entry. This is the missing server step flagged in
+        AUDIT.md.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [signedTransaction]
+              properties:
+                signedTransaction: { type: string, description: Transaction.jwsRepresentation }
+      responses:
+        "200":
+          description: Validated and credited
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  creditedUSD: { type: number }
+                  walletBalanceUSD: { type: number }
+        "409": { description: Transaction already consumed }
+        "400": { description: Invalid or unverifiable transaction }
+
+  /commerce/purchase:
+    post:
+      tags: [Commerce]
+      summary: Spend wallet credit to buy a title (grants an entitlement)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titleID]
+              properties:
+                titleID: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Entitlement granted; creator credited 85%
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Entitlement" }
+        "402": { description: Insufficient wallet balance }
+
+  /library:
+    get:
+      tags: [Commerce]
+      summary: List the user's entitlements (owned titles)
+      responses:
+        "200":
+          description: Entitlements
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Entitlement" }
+
+  /payouts:
+    get:
+      tags: [Payouts]
+      summary: Creator payout summary (units, gross, 15% fee, 85% proceeds)
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  units: { type: integer }
+                  grossUSD: { type: number }
+                  feeUSD: { type: number }
+                  proceedsUSD: { type: number }
+
+  /ledger/blocks:
+    get:
+      tags: [Ledger]
+      summary: NRN block explorer — recent blocks
+      security: []
+      parameters: [ { name: limit, in: query, schema: { type: integer, default: 20 } } ]
+      responses:
+        "200":
+          description: Blocks
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Block" }
+
+  /ledger/agents/{name}:
+    get:
+      tags: [Ledger]
+      summary: NRN balance and recent transactions for an AI agent
+      security: []
+      parameters: [ { name: name, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200":
+          description: Agent ledger view
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  balanceNRN: { type: number }
+                  transactions: { type: array, items: { $ref: "#/components/schemas/LedgerTransaction" } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized: { description: Missing or invalid session }
+    NotFound: { description: Resource not found }
+  schemas:
+    Session:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        account: { $ref: "#/components/schemas/Account" }
+    Account:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email, nullable: true }
+        walletBalanceUSD: { type: number }
+        nrnBalance: { type: number }
+    MediaItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        creator: { type: string }
+        type: { type: string, enum: [novel, music, movie] }
+        genre: { type: string }
+        synopsis: { type: string }
+        aiTools: { type: array, items: { type: string } }
+        commercialScore: { type: integer }
+        price: { type: number }
+        length: { type: integer }
+        maturity: { type: string }
+        purchases: { type: integer }
+        isEditorOriginal: { type: boolean }
+        coverURL: { type: string, format: uri, nullable: true }
+        playbackURL: { type: string, format: uri, nullable: true }
+    DraftWork:
+      type: object
+      properties:
+        type: { type: string, enum: [novel, music, movie] }
+        title: { type: string }
+        creator: { type: string }
+        genre: { type: string }
+        synopsis: { type: string }
+        aiTools: { type: array, items: { type: string } }
+        price: { type: number }
+        coverAssetID: { type: string }
+        contentAssetID: { type: string }
+        autopilot: { type: boolean }
+    AIReviewResult:
+      type: object
+      properties:
+        overall: { type: integer }
+        passed: { type: boolean }
+        confidence: { type: integer }
+        autonomousRationale: { type: string }
+        summary: { type: string }
+        criteria:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              score: { type: integer }
+              note: { type: string }
+    Submission:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [Draft, "In Review", Live, "Needs Work"] }
+        review: { $ref: "#/components/schemas/AIReviewResult" }
+        publishedItemID: { type: string, format: uuid, nullable: true }
+    Entitlement:
+      type: object
+      properties:
+        titleID: { type: string, format: uuid }
+        grantedAt: { type: string, format: date-time }
+        playbackURL: { type: string, format: uri, nullable: true }
+    Block:
+      type: object
+      properties:
+        index: { type: integer }
+        hash: { type: string }
+        previousHash: { type: string }
+        nonce: { type: integer }
+        timestamp: { type: string, format: date-time }
+        transactions: { type: array, items: { $ref: "#/components/schemas/LedgerTransaction" } }
+    LedgerTransaction:
+      type: object
+      properties:
+        from: { type: string }
+        to: { type: string }
+        amount: { type: number }
+        memo: { type: string }
+        timestamp: { type: string, format: date-time }

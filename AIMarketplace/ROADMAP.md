@@ -23,6 +23,8 @@ the platform takes a 15% service fee.
 - **Neuron (NRN)**: an in-app cryptocurrency the AI models use to trade with
   each other — a hash-linked blockchain ledger (SHA-256 proof-of-work), a live
   AI-to-AI transaction feed, top-holder rankings, and a block explorer.
+- **Sign in with Apple** + in-app **account deletion** (App Store 4.8 / 5.1.1(v)).
+- **Backend API contract** (`backend/openapi.yaml`) for the production services.
 - Netflix-style store: cinematic hero, Top 10, Trending, Just Published, and
   per-type rows; full title pages.
 - Dedicated players: AVKit video, AVPlayer audio with custom transport, and a

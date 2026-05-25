@@ -98,4 +98,9 @@ struct EncryptedArchive {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? CryptoBox.open(type, from: data, key: key)
     }
+
+    /// Permanently removes the on-device encrypted store (used by account deletion).
+    func delete() {
+        try? FileManager.default.removeItem(at: url)
+    }
 }

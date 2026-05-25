@@ -82,8 +82,8 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 
 | System | Reference | AI Marketplace | Notes |
 |---|---|:--:|---|
-| Real authentication (Sign in with Apple/OAuth) | all | ❌ | Local name/email only; no auth |
-| Account management (change/delete) | all | ❌ | No account settings/deletion |
+| Real authentication (Sign in with Apple/OAuth) | all | 🟡 | **Sign in with Apple added** (client); server token exchange specced in `backend/openapi.yaml` |
+| Account management (change/delete) | all | 🟡 | **Account deletion + sign out added**; profile editing still TODO |
 | Multi-device sync | all | ❌ | No iCloud/account sync |
 | Encryption at rest | all | ✅ | AES-GCM (CryptoKit) + Keychain |
 | Privacy manifest / policy / terms | all | ✅ | `PrivacyInfo.xcprivacy` + in-app docs |
@@ -94,7 +94,7 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 
 | System | Reference | AI Marketplace | Notes |
 |---|---|:--:|---|
-| API / application services | all | ❌ | Client-only; no API layer |
+| API / application services | all | 🟡 | No server yet, but the full contract is specced in `backend/openapi.yaml` |
 | Database | all | 🟡 | Local encrypted file (`EncryptedArchive`); no server DB |
 | Object storage + CDN for media | all | ❌ | Bundled/local files; no upload pipeline or CDN |
 | Search index | all | 🟡 | In-memory client filter; no Elasticsearch/Algolia-class service |
@@ -116,7 +116,9 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
    + `Products.storekit`); titles unlock by spending wallet credit. Remaining
    work: server-side receipt validation, and confirm the 70/30 vs. 85/15
    small-business cut against the 85% creator share in App Store Connect.
-2. **Account deletion** is mandatory once accounts exist (Guideline 5.1.1(v)).
+2. ✅ **RESOLVED — Account deletion** added (`MarketplaceStore.deleteAccount()`,
+   Profile → Account → Delete account), required once accounts exist
+   (Guideline 5.1.1(v)). Sign in with Apple is also wired (Guideline 4.8).
 3. **UGC controls** (Guideline 1.2): need report/block/abuse flow + human
    moderation, not just the AI Editor.
 4. Hosted **privacy policy + terms URLs** for the listing (in-app text exists).
@@ -125,11 +127,14 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 
 ## 8. Prioritized path to parity
 
-**P0 — make it a real product (backend foundation)**
-- Stand up an API + Postgres; move catalog, accounts, entitlements, drafts server-side.
-- Real auth: Sign in with Apple + OAuth; sessions; account deletion.
+**P0 — make it a real product (backend foundation)** — contract in `backend/openapi.yaml`
+- Implement the API + Postgres against the OpenAPI spec; move catalog, accounts,
+  entitlements, drafts server-side.
+- Auth: Sign in with Apple is wired client-side ✅; add the server token
+  exchange (`POST /auth/apple`) + sessions. Account deletion done ✅.
 - Media pipeline: signed uploads → object storage (S3/GCS) → CDN; transcode to HLS.
-- **StoreKit 2 IAP** with server receipt validation; replace Apple Pay for digital goods.
+- **StoreKit 2 IAP** done ✅; add **server receipt validation**
+  (`POST /commerce/validate-receipt`).
 
 **P1 — discovery & trust parity**
 - Search service (Algolia/Elasticsearch) + recommendations.
