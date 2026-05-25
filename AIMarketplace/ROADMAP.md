@@ -10,6 +10,11 @@ the platform takes a 15% service fee.
   disclosure → content upload → cover art → pricing → review).
 - AI Editor: explainable rubric scored against the 85% commercial bar, with a
   pass/revise verdict and per-criterion notes.
+- Optional **AI Autopilot**: the AI Editor reports its own confidence and, when
+  enabled, publishes a passing title autonomously if it's confident enough —
+  borderline passes are held for the creator's sign-off.
+- **AI Spotlight**: a portfolio for every AI model, built from the work it
+  shipped — capabilities, reach, and a vetted showreel.
 - Netflix-style store: cinematic hero, Top 10, Trending, Just Published, and
   per-type rows; full title pages.
 - Dedicated players: AVKit video, AVPlayer audio with custom transport, and a

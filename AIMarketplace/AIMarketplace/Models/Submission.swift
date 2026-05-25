@@ -63,9 +63,20 @@ struct AIReviewResult: Identifiable, Hashable, Codable {
     let strengths: [String]
     let improvements: [String]
     let summary: String
+    /// How confident the AI Editor is in its own verdict, 0–100. Drives whether
+    /// it will act autonomously.
+    let confidence: Int
+    /// Plain-language explanation of the autonomous publishing decision.
+    let autonomousRationale: String
 
     static let threshold = 85
+    /// Minimum self-confidence before the AI Editor will publish on its own.
+    static let autoPublishConfidence = 80
+
     var passed: Bool { overall >= AIReviewResult.threshold }
+    /// Whether the AI Editor, acting on its own judgement, elects to publish.
+    /// It passes the bar *and* is confident enough to stand behind it unaided.
+    var aiChoosesToPublish: Bool { passed && confidence >= AIReviewResult.autoPublishConfidence }
 }
 
 enum SubmissionStatus: String, Codable {

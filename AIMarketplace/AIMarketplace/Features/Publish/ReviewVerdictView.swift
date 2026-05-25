@@ -7,11 +7,14 @@ struct ReviewVerdictView: View {
     let draft: DraftWork
     let result: AIReviewResult
     let submissionID: UUID
+    var autoPublished: Bool = false
     var onReviseAgain: () -> Void
     var onClose: () -> Void
 
     @EnvironmentObject private var store: MarketplaceStore
     @State private var published = false
+
+    private var isLive: Bool { published || autoPublished }
 
     var body: some View {
         ZStack {
@@ -19,7 +22,8 @@ struct ReviewVerdictView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
                     verdictHeader
-                    if published {
+                    autonomyCard
+                    if isLive {
                         publishedBanner
                     }
                     breakdown
@@ -55,7 +59,7 @@ struct ReviewVerdictView: View {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill").font(.system(size: 28)).foregroundStyle(Theme.success)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Live on the marketplace")
+                    Text(autoPublished ? "Published by AI Autopilot" : "Live on the marketplace")
                         .font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
                     Text("\(draft.title) is now available to buy and \(draft.type.verb.lowercased()).")
                         .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
@@ -64,6 +68,30 @@ struct ReviewVerdictView: View {
             }
         }
         .transition(.scale.combined(with: .opacity))
+    }
+
+    /// The AI Editor's own confidence and its autonomous publish decision.
+    @ViewBuilder private var autonomyCard: some View {
+        let confident = result.aiChoosesToPublish
+        GlassCard(title: "AI Editor decision", icon: "sparkles", tint: confident ? Theme.success : Theme.kdp) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Self-confidence")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(Theme.inkSoft)
+                    Spacer()
+                    Text("\(result.confidence)%")
+                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+                        .foregroundStyle(confident ? Theme.success : Theme.kdp)
+                }
+                ScoreBar(score: result.confidence, threshold: AIReviewResult.autoPublishConfidence)
+                Text(result.autonomousRationale)
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ink.opacity(0.9))
+                if result.passed, !autoPublished, confident, !store.aiAutopilotEnabled {
+                    Text("Turn on AI Autopilot in the Review step to let it publish titles like this without you.")
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
     }
 
     private var breakdown: some View {
@@ -112,7 +140,7 @@ struct ReviewVerdictView: View {
     @ViewBuilder private var actions: some View {
         VStack(spacing: 10) {
             if result.passed {
-                if published {
+                if isLive {
                     PrimaryButton(title: "Done", systemImage: "checkmark", style: .light) { onClose() }
                 } else {
                     PrimaryButton(title: "Publish to Marketplace", systemImage: "tray.and.arrow.up.fill",

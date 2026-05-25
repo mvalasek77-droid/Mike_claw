@@ -22,6 +22,9 @@ final class MarketplaceStore: ObservableObject {
     @Published var walletBalance: Double = 50.00 { didSet { persist() } }
     /// Lifetime royalties paid out to the creator for their live titles.
     @Published var creatorEarnings: Double = 0 { didSet { persist() } }
+    /// When on, the AI Editor may publish a passing title on its own, without
+    /// the creator tapping Publish — but only when it's confident enough.
+    @Published var aiAutopilotEnabled: Bool = false { didSet { persist() } }
 
     private let archive = EncryptedArchive()
     private var loading = false
@@ -39,6 +42,7 @@ final class MarketplaceStore: ObservableObject {
         var isRegistered: Bool
         var walletBalance: Double
         var creatorEarnings: Double
+        var aiAutopilotEnabled: Bool
         var libraryIDs: [UUID]
         var watchlistIDs: [UUID]
         var submissions: [Submission]
@@ -56,6 +60,7 @@ final class MarketplaceStore: ObservableObject {
         isRegistered = state.isRegistered
         walletBalance = state.walletBalance
         creatorEarnings = state.creatorEarnings
+        aiAutopilotEnabled = state.aiAutopilotEnabled
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
@@ -72,6 +77,7 @@ final class MarketplaceStore: ObservableObject {
             isRegistered: isRegistered,
             walletBalance: walletBalance,
             creatorEarnings: creatorEarnings,
+            aiAutopilotEnabled: aiAutopilotEnabled,
             libraryIDs: Array(libraryIDs),
             watchlistIDs: Array(watchlistIDs),
             submissions: submissions,
@@ -99,6 +105,13 @@ final class MarketplaceStore: ObservableObject {
 
     func items(of type: MediaType) -> [MediaItem] {
         catalog.filter { $0.type == type }.sorted { $0.commercialScore > $1.commercialScore }
+    }
+
+    /// Per-model portfolios, ranked by reach — the AI Spotlight.
+    var aiStudios: [AIStudio] { AIStudioCatalog.build(from: catalog) }
+
+    func studio(named name: String) -> AIStudio? {
+        aiStudios.first { $0.name == name }
     }
 
     func rank(of item: MediaItem) -> Int? {

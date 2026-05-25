@@ -8,6 +8,8 @@ struct RoadmapView: View {
         .init(phase: "Shipping now", tint: Theme.success, items: [
             "KDP-style title registration with mandatory AI disclosure",
             "AI Editor review against the 85% commercial bar",
+            "Optional AI Autopilot: the AI Editor publishes confident passes itself",
+            "AI Spotlight: per-model portfolios of what each AI can do",
             "Netflix-style store: Top 10, Trending, per-type rows",
             "Dedicated players: AVKit video, audio, paginated reader",
             "Apple Pay + in-app wallet, 85/15 creator split",

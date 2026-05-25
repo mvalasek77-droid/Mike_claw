@@ -13,6 +13,7 @@ struct SubmitWorkView: View {
     @State private var phase: Phase = .form
     @State private var submissionID: UUID?
     @State private var result: AIReviewResult?
+    @State private var autoPublished = false
 
     enum Phase { case form, reviewing, verdict }
 
@@ -30,13 +31,19 @@ struct SubmitWorkView: View {
             case .reviewing:
                 AIReviewProgressView(draft: draft) {
                     if let id = submissionID {
-                        result = store.runReview(for: id)
+                        let verdict = store.runReview(for: id)
+                        result = verdict
+                        if let verdict, store.aiAutopilotEnabled, verdict.aiChoosesToPublish {
+                            store.publish(submissionID: id)
+                            autoPublished = true
+                        }
                     }
                     Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
                 }
             case .verdict:
                 if let result, let id = submissionID {
                     ReviewVerdictView(draft: draft, result: result, submissionID: id,
+                                      autoPublished: autoPublished,
                                       onReviseAgain: { phase = .form; step = 1 },
                                       onClose: { dismiss() })
                 }
@@ -575,6 +582,7 @@ private struct PricingStep: View {
 
 private struct ReviewStep: View {
     let draft: DraftWork
+    @EnvironmentObject private var store: MarketplaceStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -607,6 +615,21 @@ private struct ReviewStep: View {
                     summaryRow("File", draft.fileName ?? "—")
                     summaryRow("Price", String(format: "$%.2f", draft.price))
                     summaryRow("You earn", String(format: "$%.2f per sale (85%%)", Commerce.creatorEarning(on: draft.price)))
+                }
+            }
+
+            GlassCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle(isOn: $store.aiAutopilotEnabled) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "sparkles").foregroundStyle(Theme.kdp)
+                            Text("AI Autopilot")
+                                .font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
+                        }
+                    }
+                    .tint(Theme.kdp)
+                    Text("Let the AI Editor publish this for you the moment it clears the 85% bar — but only when it's confident in its own verdict. Borderline passes are held for your sign-off.")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
                 }
             }
 

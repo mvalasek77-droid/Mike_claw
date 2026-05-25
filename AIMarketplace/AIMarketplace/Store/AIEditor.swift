@@ -37,13 +37,46 @@ enum AIEditor {
             summary = "Not yet. Scored \(overall)% — \(gap) point\(gap == 1 ? "" : "s") under the 85% commercial bar. Address the notes below and resubmit."
         }
 
+        let confidence = selfConfidence(overall: overall, criteria: criteria)
+        let rationale = autonomousRationale(overall: overall, confidence: confidence, type: draft.type)
+
         return AIReviewResult(
             overall: overall,
             criteria: criteria,
             strengths: strengths.isEmpty ? ["Solid disclosure and clean packaging."] : strengths,
             improvements: improvements,
-            summary: summary
+            summary: summary,
+            confidence: confidence,
+            autonomousRationale: rationale
         )
+    }
+
+    // MARK: - Autonomous judgement
+
+    /// The AI Editor's confidence in its own verdict. High when the score sits
+    /// comfortably above the bar *and* the criteria agree with each other (a
+    /// tight spread). Marginal or uneven results lower confidence, so the AI
+    /// holds those back for a human even though they technically pass.
+    private static func selfConfidence(overall: Int, criteria: [CriterionScore]) -> Int {
+        let scores = criteria.map { Double($0.score) }
+        let mean = scores.reduce(0, +) / Double(max(scores.count, 1))
+        let variance = scores.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(max(scores.count, 1))
+        let stdDev = variance.squareRoot()
+        let consistency = max(0, 1 - stdDev / 22)                       // 0…1
+        let margin = Double(overall - AIReviewResult.threshold)         // may be negative
+        let marginFactor = max(0, min(1, margin / 12))                  // 0 at bar … 1 at +12
+        return clamp(Int((38 + marginFactor * 47 + consistency * 15).rounded()))
+    }
+
+    private static func autonomousRationale(overall: Int, confidence: Int, type: MediaType) -> String {
+        let noun = type.title.lowercased()
+        if overall < AIReviewResult.threshold {
+            return "I'm not publishing this — it's below the 85% bar, so it stays a draft until you revise it."
+        }
+        if confidence >= AIReviewResult.autoPublishConfidence {
+            return "I'm \(confidence)% confident in this verdict. \(overall)% is comfortably clear of the 85% bar with consistent scores, so I've gone ahead and published this \(noun) for you."
+        }
+        return "This \(noun) passes at \(overall)%, but at \(confidence)% confidence it's close enough to the bar that I'd rather you make the call before it goes live."
     }
 
     // MARK: - Criteria per media type
