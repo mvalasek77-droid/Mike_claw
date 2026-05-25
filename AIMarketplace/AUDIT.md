@@ -33,6 +33,7 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 | Wishlist / My List | ✅ | ✅ | ✅ | ✅ | ✅ | Watchlist in store |
 | Samples / previews / trailers | ✅ | ✅ | ✅ | ✅ | 🟡 | Players exist; no explicit free-sample gating |
 | Creator/AI spotlight pages | 🟡 | 🟡 | 🟡 | 🟡 | ✅ | `AISpotlightView` — unique to this product |
+| Editor-generated catalogue fill | — | 🟡 | — | — | ✅ | `ContentFoundry` Originals fill thin categories — unique |
 | Localization / i18n | ✅ | ✅ | ✅ | ✅ | ❌ | Single locale, hard-coded strings |
 
 ## 2. Playback & consumption
@@ -52,15 +53,15 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 
 | System | Reference | AI Marketplace | Notes |
 |---|---|:--:|---|
-| Buy digital good | all | 🟡 | Apple Pay sheet + simulated wallet |
-| **StoreKit In-App Purchase** | Apple (required) | ❌ | **Compliance blocker** — see §7 |
+| Buy digital good | all | 🟡 | Wallet credit (StoreKit-funded) → title unlock |
+| **StoreKit In-App Purchase** | Apple (required) | ✅ | **Fixed** — `StoreKitService` consumable credit packs; Apple Pay removed |
 | Cart / multi-item checkout | Amazon/Google | 🟡 | Single-item buy only |
 | Subscriptions | Netflix | ❌ | No subscription tier/billing |
 | Order history / receipts | all | 🟡 | Library = entitlements; no receipts/invoices |
 | Refunds / chargebacks | all | ❌ | None |
 | Tax / VAT / regional pricing | all | ❌ | Flat USD, no tax engine |
 | Promo codes / gifting | all | ❌ | None |
-| Server-side payment validation | all | ❌ | No backend to validate `payment.token` |
+| Server-side receipt validation | all | ❌ | Client verifies tx; no server validation yet |
 
 ## 4. Creator / seller systems (KDP, YouTube, App Store Connect)
 
@@ -109,12 +110,12 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 
 ## 7. App Store compliance flags (must-fix before submission)
 
-1. **Digital goods must use StoreKit IAP, not Apple Pay** (Guideline 3.1.1).
-   Apple Pay is for *physical* goods/services. Selling AI novels/music/films
-   in-app requires **StoreKit 2** products + Apple's 70/30 (or 85/15
-   small-business) cut. The current Apple Pay path would be rejected. Either
-   migrate to StoreKit IAP, or position purchases as out-of-app (web) which has
-   its own rules. **This is the single biggest commerce gap.**
+1. ✅ **RESOLVED — Digital goods now use StoreKit IAP** (Guideline 3.1.1).
+   Apple Pay (which is for *physical* goods) has been removed. Real money now
+   enters only through **StoreKit 2 consumable credit packs** (`StoreKitService`
+   + `Products.storekit`); titles unlock by spending wallet credit. Remaining
+   work: server-side receipt validation, and confirm the 70/30 vs. 85/15
+   small-business cut against the 85% creator share in App Store Connect.
 2. **Account deletion** is mandatory once accounts exist (Guideline 5.1.1(v)).
 3. **UGC controls** (Guideline 1.2): need report/block/abuse flow + human
    moderation, not just the AI Editor.
@@ -152,7 +153,9 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 
 The AI-native pieces have **no direct equivalent** on the incumbents and are the
 product's moat: **mandatory AI disclosure**, the **AI Editor** commercial-quality
-gate (85% bar, explainable rubric), **AI Autopilot** autonomous publishing, and
-**AI Spotlight** per-model portfolios. The frontend that showcases these is
-genuinely strong; the work ahead is the backend and commerce plumbing the
-incumbents spent a decade building.
+gate (85% bar, explainable rubric), **AI Autopilot** autonomous publishing,
+**AI Spotlight** per-model portfolios, and the **AI Editor's content foundry**,
+which produces its own high-quality Originals to keep the catalogue full when
+creators haven't uploaded. The frontend that showcases these is genuinely
+strong; the work ahead is the backend and commerce plumbing the incumbents
+spent a decade building.

@@ -32,6 +32,20 @@ final class MarketplaceStore: ObservableObject {
     init(catalog: [MediaItem] = SampleData.catalog()) {
         self.catalog = catalog
         restore()
+        fillEditorOriginals()
+    }
+
+    /// Lets the AI Editor top up any thin categories with its own high-quality
+    /// Originals, counting whatever creators have already published.
+    private func fillEditorOriginals() {
+        let existing = Set(catalog.map(\.id))
+        let originals = ContentFoundry.fillGaps(in: catalog).filter { !existing.contains($0.id) }
+        catalog.append(contentsOf: originals)
+    }
+
+    /// Titles the AI Editor produced itself to fill open space.
+    var editorOriginals: [MediaItem] {
+        catalog.filter { $0.isEditorOriginal }.sorted { $0.commercialScore > $1.commercialScore }
     }
 
     // MARK: - Persistence

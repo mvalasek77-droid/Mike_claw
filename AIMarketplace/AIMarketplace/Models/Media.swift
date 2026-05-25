@@ -84,6 +84,9 @@ struct MediaItem: Identifiable, Hashable, Codable {
     var coverAssetName: String?
     /// Bundled playable media file (audio/video) for seed catalogue titles.
     var mediaFileName: String?
+    /// True when the AI Editor produced this title itself to fill open space in
+    /// the catalogue (no creator upload). Surfaced transparently in the UI.
+    var isEditorOriginal: Bool
 
     init(
         id: UUID = UUID(),
@@ -103,7 +106,8 @@ struct MediaItem: Identifiable, Hashable, Codable {
         addedAt: Date = .now,
         coverImageData: Data? = nil,
         coverAssetName: String? = nil,
-        mediaFileName: String? = nil
+        mediaFileName: String? = nil,
+        isEditorOriginal: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -123,6 +127,7 @@ struct MediaItem: Identifiable, Hashable, Codable {
         self.coverImageData = coverImageData
         self.coverAssetName = coverAssetName
         self.mediaFileName = mediaFileName
+        self.isEditorOriginal = isEditorOriginal
     }
 
     static func == (lhs: MediaItem, rhs: MediaItem) -> Bool { lhs.id == rhs.id }

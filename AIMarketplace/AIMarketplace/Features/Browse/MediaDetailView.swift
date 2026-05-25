@@ -9,6 +9,7 @@ struct MediaDetailView: View {
 
     @State private var showPlayer = false
     @State private var showInsufficientFunds = false
+    @State private var showTopUp = false
 
     private var owned: Bool { store.owns(item) }
 
@@ -40,10 +41,12 @@ struct MediaDetailView: View {
         .fullScreenCover(isPresented: $showPlayer) {
             PlayerView(item: item)
         }
+        .sheet(isPresented: $showTopUp) { TopUpView() }
         .alert("Not enough balance", isPresented: $showInsufficientFunds) {
-            Button("OK", role: .cancel) { }
+            Button("Top Up") { showTopUp = true }
+            Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Top up your wallet from the You tab to buy this title.")
+            Text("Add wallet credit to buy this title.")
         }
     }
 
@@ -72,6 +75,9 @@ struct MediaDetailView: View {
             Text("by \(item.creator)")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Theme.inkSoft)
+            if item.isEditorOriginal {
+                Chip(text: "AI Editor Original", systemImage: "sparkles", color: Theme.kdp, filled: true)
+            }
             HStack(spacing: 8) {
                 Chip(text: item.genre, color: item.type.accent)
                 Chip(text: "\(item.releaseYear)", color: .white)
@@ -92,15 +98,7 @@ struct MediaDetailView: View {
                 PrimaryButton(title: "Buy · \(item.priceLabel)", systemImage: "cart.fill") {
                     if !store.purchase(item) { showInsufficientFunds = true }
                 }
-                if PaymentService.canUseApplePay {
-                    ApplePayButton {
-                        PaymentService.shared.pay(for: item) { success in
-                            if success { store.grantPurchase(item, chargeWallet: false) }
-                        }
-                    }
-                    .frame(height: 48)
-                }
-                Text("One-time purchase · grants a personal licence to \(item.type.verb.lowercased()) this title in-app.")
+                Text("Buys with wallet credit (added via the App Store). Grants a personal licence to \(item.type.verb.lowercased()) this title in-app.")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
                     .multilineTextAlignment(.center)

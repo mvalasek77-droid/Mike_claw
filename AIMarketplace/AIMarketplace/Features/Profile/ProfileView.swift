@@ -28,10 +28,8 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showDashboard) { CreatorDashboardView() }
         .sheet(isPresented: $showRoadmap) { RoadmapView() }
+        .sheet(isPresented: $showTopUp) { TopUpView() }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
-        .alert("Wallet topped up", isPresented: $showTopUp) {
-            Button("Nice", role: .cancel) { }
-        } message: { Text("$25.00 added to your demo balance.") }
     }
 
     private var header: some View {
@@ -58,7 +56,6 @@ struct ProfileView: View {
                     .font(.system(size: 34, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
                 Spacer()
                 PrimaryButton(title: "Top up", systemImage: "plus", style: .ghost) {
-                    store.walletBalance += 25
                     showTopUp = true
                 }
                 .frame(width: 130)

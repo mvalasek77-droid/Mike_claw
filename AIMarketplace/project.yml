@@ -72,5 +72,6 @@ schemes:
         AIMarketplace: all
     run:
       config: Debug
+      storeKitConfiguration: Products.storekit
     archive:
       config: Release

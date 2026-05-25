@@ -24,9 +24,13 @@ Top 10, a Trending list, and dedicated players for reading, listening and
 watching. Buy what you love; creators keep 85% of every sale.
 
 ## Capabilities / entitlements
-- **Apple Pay (In-App Payments):** `merchant.com.aimarketplace.app`
-  (replace with your real merchant ID; register it in the Apple Developer
-  portal and create a Merchant ID + payment processing certificate).
+- **In-App Purchase (StoreKit 2):** consumable wallet-credit products. Define
+  these in App Store Connect mirroring `Products.storekit`:
+  `com.aimarketplace.credits.5/.10/.25/.50`. No special entitlements file key is
+  required for IAP. (Apple Pay has been removed — it is not permitted for
+  digital goods under Guideline 3.1.1.)
+- For local testing: set **Edit Scheme → Run → Options → StoreKit
+  Configuration** to `Products.storekit`.
 - No HealthKit / location / contacts / tracking.
 
 ## Privacy (App Privacy "nutrition label")
@@ -45,8 +49,8 @@ Declared in `Resources/PrivacyInfo.xcprivacy`:
 - `UIUserInterfaceStyle = Dark`.
 
 ## Review notes (guideline mapping)
-- **3.1.1 (IAP):** purchases of digital content use Apple Pay / in-app
-  commerce; no external purchase links.
+- **3.1.1 (IAP):** digital purchases use StoreKit IAP (consumable credit packs);
+  no Apple Pay for digital goods and no external purchase links.
 - **5.1.1 (Privacy):** privacy policy + terms are in-app (Profile → Privacy &
   legal) and must also be hosted at a public URL for the listing.
 - **1.2 / UGC:** AI disclosure is mandatory per title; report/removal flow and
@@ -55,8 +59,9 @@ Declared in `Resources/PrivacyInfo.xcprivacy`:
   the publishing flow, and the AI Editor verdict.
 
 ## Pre-submit checklist
-- [ ] Replace placeholder merchant ID and wire real payment processing.
+- [ ] Create the credit-pack IAP products in App Store Connect (match `Products.storekit`).
+- [ ] Add server-side receipt validation for the credit purchases.
 - [ ] Host privacy policy + terms at public URLs; add to the listing.
 - [ ] Provide a 1024×1024 marketing icon and device screenshots.
 - [ ] Set the real `DEVELOPMENT_TEAM` in `project.yml`.
-- [ ] Run on device; verify Apple Pay sheet with a sandbox account.
+- [ ] Run on device with a sandbox account; verify a credit purchase + a title unlock.

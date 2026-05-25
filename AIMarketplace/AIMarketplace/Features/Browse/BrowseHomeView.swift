@@ -33,6 +33,9 @@ struct BrowseHomeView: View {
                         MediaRow(title: "Trending Now", subtitle: "Climbing the charts",
                                  items: store.trending) { selected = $0 }
                         AISpotlightRow()
+                        MediaRow(title: "AI Editor Originals",
+                                 subtitle: "Produced by the Editor to fill the catalogue",
+                                 items: store.editorOriginals) { selected = $0 }
                         MediaRow(title: "Just Published", subtitle: "Fresh off the AI Editor",
                                  items: store.newReleases) { selected = $0 }
                         ForEach(rows) { type in

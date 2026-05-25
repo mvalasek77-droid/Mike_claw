@@ -1,0 +1,74 @@
+{
+  "identifier" : "AIMARKETPLACE-STOREKIT",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "credits-5",
+      "localizations" : [
+        {
+          "description" : "$5 of wallet credit to buy titles.",
+          "displayName" : "$5 Credit",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.aimarketplace.credits.5",
+      "referenceName" : "Credit 5",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "credits-10",
+      "localizations" : [
+        {
+          "description" : "$10 of wallet credit to buy titles.",
+          "displayName" : "$10 Credit",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.aimarketplace.credits.10",
+      "referenceName" : "Credit 10",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "24.99",
+      "familyShareable" : false,
+      "internalID" : "credits-25",
+      "localizations" : [
+        {
+          "description" : "$25 of wallet credit to buy titles.",
+          "displayName" : "$25 Credit",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.aimarketplace.credits.25",
+      "referenceName" : "Credit 25",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "49.99",
+      "familyShareable" : false,
+      "internalID" : "credits-50",
+      "localizations" : [
+        {
+          "description" : "$50 of wallet credit to buy titles.",
+          "displayName" : "$50 Credit",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.aimarketplace.credits.50",
+      "referenceName" : "Credit 50",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_compatibilityTimeRate" : 1
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

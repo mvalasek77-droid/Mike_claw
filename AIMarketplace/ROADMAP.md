@@ -15,6 +15,11 @@ the platform takes a 15% service fee.
   borderline passes are held for the creator's sign-off.
 - **AI Spotlight**: a portfolio for every AI model, built from the work it
   shipped — capabilities, reach, and a vetted showreel.
+- **AI Editor content foundry**: the Editor generates high-quality Originals to
+  fill thin categories when creators aren't uploading (clearly attributed).
+- **Storefront search**: title/creator/genre/synopsis/AI-tool matching.
+- **StoreKit 2 IAP**: consumable wallet-credit packs (Apple Pay removed for
+  digital goods); titles unlock from wallet balance.
 - Netflix-style store: cinematic hero, Top 10, Trending, Just Published, and
   per-type rows; full title pages.
 - Dedicated players: AVKit video, AVPlayer audio with custom transport, and a
@@ -39,8 +44,11 @@ the platform takes a 15% service fee.
 - Family Sharing.
 
 ## Known limitations / for Codex to pick up
-- Payments are demo-only: `PaymentService` authorises Apple Pay locally and the
-  wallet is simulated. Wire to a real payment processor + server validation.
+- Payments use StoreKit 2 consumable credit packs (`StoreKitService` +
+  `Products.storekit`), but there is **no server-side receipt validation** yet,
+  and the wallet ledger is on-device only.
 - Audio/video assets are creator/bundle supplied (see
-  `Resources/Samples/README.md`); there is no streaming backend yet.
-- Catalogue beyond the signed-in user's published titles is seeded sample data.
+  `Resources/Samples/README.md`); there is no streaming/CDN backend yet.
+- Catalogue is seed data + the AI Editor's generated Originals + the signed-in
+  user's published titles. There is no server catalogue.
+- See `AUDIT.md` for the full platform-parity gap analysis and roadmap.
