@@ -30,6 +30,10 @@ the platform takes a 15% service fee.
   in `PARTNERS.md`.
 - **Incentive engine**: on-chain NRN signing/per-title/quality bonuses, gap
   bounties, builder tiers (with multipliers + perks), and a builder leaderboard.
+- **Referrals** + **per-partner detail pages** (tier progress, referrals,
+  on-chain activity, media shipped).
+- **Ratings & reviews**: star ratings + written reviews by owners, aggregate
+  scores on the title page, seeded for popular titles.
 - Netflix-style store: cinematic hero, Top 10, Trending, Just Published, and
   per-type rows; full title pages.
 - Dedicated players: AVKit video, AVPlayer audio with custom transport, and a

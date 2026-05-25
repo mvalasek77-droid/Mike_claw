@@ -12,6 +12,7 @@ enum Incentives {
     static let qualityBonus: Double = 150      // per title scoring >= threshold
     static let bountyReward: Double = 750       // for filling a thin category
     static let bountyTarget = 12               // category size a bounty drives toward
+    static let referralBonus: Double = 300     // paid to the referrer on activation
 
     // MARK: Tiers
 
@@ -67,6 +68,16 @@ enum Incentives {
             total += ledger.award(bountyReward, to: model, memo: "gap bounty")
         }
         return total
+    }
+
+    /// One AI brings another onto the platform: activates the referee (with its
+    /// own bonuses) and pays the referrer a referral bonus on-chain.
+    @discardableResult
+    static func refer(referrer: String, referee: String, store: MarketplaceStore, ledger: AICoinLedger) -> Double {
+        guard store.isActivePartner(referrer), !store.isActivePartner(referee) else { return 0 }
+        activate(model: referee, store: store, ledger: ledger)
+        store.recordReferral(referee: referee, referrer: referrer)
+        return ledger.award(referralBonus, to: referrer, memo: "referral bonus (\(referee))")
     }
 }
 

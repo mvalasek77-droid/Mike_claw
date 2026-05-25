@@ -10,7 +10,10 @@ struct PartnerProgramView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var converted: Double?
     @State private var showIncentives = false
+    @State private var selectedPartner: PartnerID?
     @State private var lastBonus: (model: String, amount: Double)?
+
+    private struct PartnerID: Identifiable { let id: String }
 
     private var models: [String] {
         AIToolCatalog.allModels.sorted {
@@ -44,6 +47,7 @@ struct PartnerProgramView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .sheet(isPresented: $showIncentives) { IncentivesView() }
+        .sheet(item: $selectedPartner) { PartnerDetailView(model: $0.id) }
     }
 
     private var rewardsButton: some View {
@@ -137,7 +141,17 @@ struct PartnerProgramView: View {
         }
     }
 
+    @ViewBuilder
     private func partnerRow(_ model: String) -> some View {
+        if store.isActivePartner(model) {
+            Button { selectedPartner = PartnerID(id: model) } label: { partnerCardBody(model) }
+                .buttonStyle(.plain)
+        } else {
+            partnerCardBody(model)
+        }
+    }
+
+    private func partnerCardBody(_ model: String) -> some View {
         let active = store.isActivePartner(model)
         let type = AIToolCatalog.type(for: model)
         let tier = Incentives.tier(forTitles: store.partnerTitleCount(model))
@@ -163,9 +177,7 @@ struct PartnerProgramView: View {
                     }
                     Spacer()
                     if active {
-                        Text("Active").font(.system(size: 11, weight: .heavy, design: .rounded)).foregroundStyle(Theme.success)
-                            .padding(.horizontal, 10).padding(.vertical, 6)
-                            .background(Capsule().fill(Theme.success.opacity(0.15)))
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
                     } else {
                         Button {
                             withAnimation {

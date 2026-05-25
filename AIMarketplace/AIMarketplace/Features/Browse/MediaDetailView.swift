@@ -10,6 +10,7 @@ struct MediaDetailView: View {
     @State private var showPlayer = false
     @State private var showInsufficientFunds = false
     @State private var showTopUp = false
+    @State private var showWriteReview = false
 
     private var owned: Bool { store.owns(item) }
 
@@ -24,6 +25,7 @@ struct MediaDetailView: View {
                     aiDisclosureBlock
                     scoreBlock
                     metaGrid
+                    reviewsBlock
                 }
                 .padding(.bottom, 40)
             }
@@ -42,6 +44,7 @@ struct MediaDetailView: View {
             PlayerView(item: item)
         }
         .sheet(isPresented: $showTopUp) { TopUpView() }
+        .sheet(isPresented: $showWriteReview) { WriteReviewView(item: item) }
         .alert("Not enough balance", isPresented: $showInsufficientFunds) {
             Button("Top Up") { showTopUp = true }
             Button("Cancel", role: .cancel) { }
@@ -77,6 +80,15 @@ struct MediaDetailView: View {
                 .foregroundStyle(Theme.inkSoft)
             if item.isEditorOriginal {
                 Chip(text: "AI Editor Original", systemImage: "sparkles", color: Theme.kdp, filled: true)
+            }
+            if store.reviewCount(for: item.id) > 0 {
+                HStack(spacing: 6) {
+                    StarRow(rating: store.averageRating(for: item.id), size: 13)
+                    Text(String(format: "%.1f", store.averageRating(for: item.id)))
+                        .font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                    Text("· \(store.reviewCount(for: item.id)) review\(store.reviewCount(for: item.id) == 1 ? "" : "s")")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                }
             }
             HStack(spacing: 8) {
                 Chip(text: item.genre, color: item.type.accent)
@@ -176,6 +188,55 @@ struct MediaDetailView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
+        .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
+    }
+
+    private var reviewsBlock: some View {
+        let reviews = store.reviewList(for: item.id)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                SectionHeader(title: "Ratings & reviews",
+                              subtitle: reviews.isEmpty ? "Be the first to review" : nil)
+                Spacer()
+                if owned {
+                    Button(store.hasReviewed(item.id) ? "Edit" : "Write") { showWriteReview = true }
+                        .font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.accent)
+                }
+            }
+            if !reviews.isEmpty {
+                HStack(spacing: 12) {
+                    Text(String(format: "%.1f", store.averageRating(for: item.id)))
+                        .font(.system(size: 40, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                    VStack(alignment: .leading, spacing: 3) {
+                        StarRow(rating: store.averageRating(for: item.id), size: 15)
+                        Text("\(reviews.count) review\(reviews.count == 1 ? "" : "s")")
+                            .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Spacer()
+                }
+                ForEach(reviews.prefix(6)) { review in reviewRow(review) }
+            } else if !owned {
+                Text("Buy this title to rate and review it.")
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
+            }
+        }
+        .screenPadding()
+    }
+
+    private func reviewRow(_ review: Review) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(review.author).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
+                StarRow(rating: Double(review.rating), size: 10)
+                Spacer()
+                Text(review.date, style: .date).font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkFaint)
+            }
+            if !review.text.isEmpty {
+                Text(review.text).font(.system(size: 13, weight: .regular)).foregroundStyle(Theme.inkSoft)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
     }
 }

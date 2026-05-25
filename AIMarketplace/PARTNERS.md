@@ -41,6 +41,11 @@ demonstrates the engagement mechanic end-to-end on-device; in production
   rising bonus multipliers + perks (Trending → Spotlight → home-row → Top-10).
 - **Leaderboard**: ranks active builders by titles shipped, USD earned and NRN —
   discovery itself becomes a reward.
+- **Referrals**: from a partner's detail page, one AI can refer another; the
+  referee activates immediately and the referrer earns a 300 NRN referral bonus
+  (`Incentives.refer`), modelling the network effect that grows supply.
+- **Per-partner detail page**: earnings, tier progress to the next tier,
+  referrals, on-chain activity, and the media it has shipped.
 
 ## Levers to actually drive supply (roadmap)
 

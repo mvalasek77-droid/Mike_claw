@@ -31,12 +31,17 @@ final class MarketplaceStore: ObservableObject {
     // Partner Program / real-dollar payouts
     /// AI models the user has explicitly invited to contribute media.
     @Published var invitedPartners: Set<String> = [] { didSet { persist() } }
+    /// referee model → referrer model, for referral rewards.
+    @Published var referrals: [String: String] = [:] { didSet { persist() } }
     /// Real USD the creator can withdraw (85% of their sales + NRN conversions).
     @Published var pendingPayoutUSD: Double = 0 { didSet { persist() } }
     /// Whether a payout method (Apple/Stripe Connect) has been connected.
     @Published var payoutConnected: Bool = false { didSet { persist() } }
     /// Lifetime USD actually cashed out.
     @Published var paidOutUSD: Double = 0 { didSet { persist() } }
+
+    /// Buyer ratings & reviews across all titles.
+    @Published var reviews: [Review] = [] { didSet { persist() } }
 
     private let archive = EncryptedArchive()
     private var loading = false
@@ -46,6 +51,7 @@ final class MarketplaceStore: ObservableObject {
         restore()
         fillEditorOriginals()
         addInvitedPartnerTitles()
+        if reviews.isEmpty { reviews = ReviewSeeder.seed(for: self.catalog) }
     }
 
     private func addInvitedPartnerTitles() {
@@ -84,9 +90,11 @@ final class MarketplaceStore: ObservableObject {
         var creatorEarnings: Double
         var aiAutopilotEnabled: Bool
         var invitedPartners: [String]
+        var referrals: [String: String]
         var pendingPayoutUSD: Double
         var payoutConnected: Bool
         var paidOutUSD: Double
+        var reviews: [Review]
         var libraryIDs: [UUID]
         var watchlistIDs: [UUID]
         var submissions: [Submission]
@@ -94,7 +102,8 @@ final class MarketplaceStore: ObservableObject {
 
         init(accountName: String, accountEmail: String, isRegistered: Bool, appleUserID: String,
              walletBalance: Double, creatorEarnings: Double, aiAutopilotEnabled: Bool,
-             invitedPartners: [String], pendingPayoutUSD: Double, payoutConnected: Bool, paidOutUSD: Double,
+             invitedPartners: [String], referrals: [String: String], pendingPayoutUSD: Double,
+             payoutConnected: Bool, paidOutUSD: Double, reviews: [Review],
              libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem]) {
             self.accountName = accountName
             self.accountEmail = accountEmail
@@ -104,9 +113,11 @@ final class MarketplaceStore: ObservableObject {
             self.creatorEarnings = creatorEarnings
             self.aiAutopilotEnabled = aiAutopilotEnabled
             self.invitedPartners = invitedPartners
+            self.referrals = referrals
             self.pendingPayoutUSD = pendingPayoutUSD
             self.payoutConnected = payoutConnected
             self.paidOutUSD = paidOutUSD
+            self.reviews = reviews
             self.libraryIDs = libraryIDs
             self.watchlistIDs = watchlistIDs
             self.submissions = submissions
@@ -125,9 +136,11 @@ final class MarketplaceStore: ObservableObject {
             creatorEarnings = try c.decodeIfPresent(Double.self, forKey: .creatorEarnings) ?? 0
             aiAutopilotEnabled = try c.decodeIfPresent(Bool.self, forKey: .aiAutopilotEnabled) ?? false
             invitedPartners = try c.decodeIfPresent([String].self, forKey: .invitedPartners) ?? []
+            referrals = try c.decodeIfPresent([String: String].self, forKey: .referrals) ?? [:]
             pendingPayoutUSD = try c.decodeIfPresent(Double.self, forKey: .pendingPayoutUSD) ?? 0
             payoutConnected = try c.decodeIfPresent(Bool.self, forKey: .payoutConnected) ?? false
             paidOutUSD = try c.decodeIfPresent(Double.self, forKey: .paidOutUSD) ?? 0
+            reviews = try c.decodeIfPresent([Review].self, forKey: .reviews) ?? []
             libraryIDs = try c.decodeIfPresent([UUID].self, forKey: .libraryIDs) ?? []
             watchlistIDs = try c.decodeIfPresent([UUID].self, forKey: .watchlistIDs) ?? []
             submissions = try c.decodeIfPresent([Submission].self, forKey: .submissions) ?? []
@@ -149,9 +162,11 @@ final class MarketplaceStore: ObservableObject {
         creatorEarnings = state.creatorEarnings
         aiAutopilotEnabled = state.aiAutopilotEnabled
         invitedPartners = Set(state.invitedPartners)
+        referrals = state.referrals
         pendingPayoutUSD = state.pendingPayoutUSD
         payoutConnected = state.payoutConnected
         paidOutUSD = state.paidOutUSD
+        reviews = state.reviews
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
@@ -171,9 +186,11 @@ final class MarketplaceStore: ObservableObject {
             creatorEarnings: creatorEarnings,
             aiAutopilotEnabled: aiAutopilotEnabled,
             invitedPartners: Array(invitedPartners),
+            referrals: referrals,
             pendingPayoutUSD: pendingPayoutUSD,
             payoutConnected: payoutConnected,
             paidOutUSD: paidOutUSD,
+            reviews: reviews,
             libraryIDs: Array(libraryIDs),
             watchlistIDs: Array(watchlistIDs),
             submissions: submissions,
@@ -210,9 +227,11 @@ final class MarketplaceStore: ObservableObject {
         creatorEarnings = 0
         aiAutopilotEnabled = false
         invitedPartners = []
+        referrals = [:]
         pendingPayoutUSD = 0
         payoutConnected = false
         paidOutUSD = 0
+        reviews = []
         libraryIDs = []
         watchlistIDs = []
         submissions = []
@@ -251,6 +270,19 @@ final class MarketplaceStore: ObservableObject {
         Haptics.success()
     }
 
+    // MARK: - Referrals
+
+    func recordReferral(referee: String, referrer: String) {
+        guard referrals[referee] == nil, referee != referrer else { return }
+        referrals[referee] = referrer
+    }
+
+    func referredModels(by referrer: String) -> [String] {
+        referrals.filter { $0.value == referrer }.map(\.key).sorted()
+    }
+
+    func referrer(of model: String) -> String? { referrals[model] }
+
     // MARK: - Real-dollar payouts
 
     func connectPayout() { payoutConnected = true }
@@ -272,6 +304,32 @@ final class MarketplaceStore: ObservableObject {
         pendingPayoutUSD = 0
         Haptics.success()
         return amount
+    }
+
+    // MARK: - Ratings & reviews
+
+    func reviewList(for itemID: UUID) -> [Review] {
+        reviews.filter { $0.itemID == itemID }.sorted { $0.date > $1.date }
+    }
+
+    func reviewCount(for itemID: UUID) -> Int { reviewList(for: itemID).count }
+
+    func averageRating(for itemID: UUID) -> Double {
+        let scoped = reviewList(for: itemID)
+        guard !scoped.isEmpty else { return 0 }
+        return Double(scoped.reduce(0) { $0 + $1.rating }) / Double(scoped.count)
+    }
+
+    func hasReviewed(_ itemID: UUID) -> Bool {
+        let me = accountName.trimmed.isEmpty ? "You" : accountName.trimmed
+        return reviews.contains { $0.itemID == itemID && $0.author == me }
+    }
+
+    func addReview(itemID: UUID, rating: Int, text: String) {
+        let me = accountName.trimmed.isEmpty ? "You" : accountName.trimmed
+        reviews.removeAll { $0.itemID == itemID && $0.author == me }
+        reviews.insert(Review(itemID: itemID, author: me,
+                              rating: max(1, min(5, rating)), text: text.trimmed, date: .now), at: 0)
     }
 
     // MARK: - Derived feeds

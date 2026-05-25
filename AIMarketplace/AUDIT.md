@@ -29,7 +29,7 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 | Browse by genre/category | ✅ | ✅ | ✅ | ✅ | 🟡 | Type pills + genre chips in search; no dedicated genre browse screen |
 | Personalized recommendations | ✅ | ✅ | ✅ | ✅ | ❌ | No "because you watched/bought"; needs a reco service |
 | Product/title detail page | ✅ | ✅ | ✅ | ✅ | ✅ | `MediaDetailView` |
-| Ratings & reviews | ✅ | 🟡 | ✅ | ✅ | ❌ | No user ratings/reviews model or UI |
+| Ratings & reviews | ✅ | 🟡 | ✅ | ✅ | ✅ | **Added**: star ratings + written reviews (owners only), aggregate score, seeded reviews |
 | Wishlist / My List | ✅ | ✅ | ✅ | ✅ | ✅ | Watchlist in store |
 | Samples / previews / trailers | ✅ | ✅ | ✅ | ✅ | 🟡 | Players exist; no explicit free-sample gating |
 | Creator/AI spotlight pages | 🟡 | 🟡 | 🟡 | 🟡 | ✅ | `AISpotlightView` — unique to this product |
@@ -139,7 +139,8 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 
 **P1 — discovery & trust parity**
 - Search service (Algolia/Elasticsearch) + recommendations.
-- Ratings & reviews (model, moderation, anti-fraud).
+- Ratings & reviews server-side (moderation, anti-fraud, verified-purchase) —
+  client model/UI is done.
 - DRM (FairPlay) for licensed playback; offline downloads with license lease.
 - Push notifications; resume/position sync.
 
