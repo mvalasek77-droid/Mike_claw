@@ -1,22 +1,7 @@
 import Foundation
 
-/// Royalty plans, mirroring KDP's 35% / 70% split choices.
-enum RoyaltyPlan: String, CaseIterable, Identifiable {
-    case standard = "35%"
-    case premium = "70%"
-    var id: String { rawValue }
-
-    var rate: Double { self == .standard ? 0.35 : 0.70 }
-    var blurb: String {
-        switch self {
-        case .standard: return "Available at any list price. No delivery fee."
-        case .premium: return "Best for $2.99–$9.99 titles. Higher payout per sale."
-        }
-    }
-}
-
 /// The in-progress work a creator assembles in the KDP-style publishing flow.
-struct DraftWork {
+struct DraftWork: Codable {
     var type: MediaType = .novel
     var title: String = ""
     var subtitle: String = ""
@@ -30,9 +15,11 @@ struct DraftWork {
     var length: Int = 0
     var maturity: String = "Everyone"
     var price: Double = 4.99
-    var royalty: RoyaltyPlan = .premium
+    /// Cover art (book cover / album cover / film poster), captured as encoded
+    /// image data during upload. Required to publish.
+    var coverImageData: Data? = nil
 
-    /// Minimum gate before the work can even be sent to the AI Editor.
+    /// Minimum gate before the work can be sent to the AI Editor.
     var canSubmit: Bool {
         !title.trimmed.isEmpty
         && !creator.trimmed.isEmpty
@@ -40,6 +27,7 @@ struct DraftWork {
         && synopsis.trimmed.count >= 20
         && !aiTools.isEmpty
         && fileName != nil
+        && coverImageData != nil
     }
 
     var contentVerbed: String {
@@ -49,19 +37,27 @@ struct DraftWork {
         case .movie: return "film file"
         }
     }
+
+    var coverNoun: String {
+        switch type {
+        case .novel: return "book cover"
+        case .music: return "album cover"
+        case .movie: return "film poster"
+        }
+    }
 }
 
 /// One scored dimension in the AI Editor's report.
-struct CriterionScore: Identifiable, Hashable {
-    let id = UUID()
+struct CriterionScore: Identifiable, Hashable, Codable {
+    var id = UUID()
     let name: String
     let score: Int
     let note: String
 }
 
 /// The AI Editor's verdict on a submission.
-struct AIReviewResult: Identifiable, Hashable {
-    let id = UUID()
+struct AIReviewResult: Identifiable, Hashable, Codable {
+    var id = UUID()
     let overall: Int
     let criteria: [CriterionScore]
     let strengths: [String]
@@ -72,7 +68,7 @@ struct AIReviewResult: Identifiable, Hashable {
     var passed: Bool { overall >= AIReviewResult.threshold }
 }
 
-enum SubmissionStatus: String {
+enum SubmissionStatus: String, Codable {
     case draft = "Draft"
     case reviewing = "In Review"
     case accepted = "Live"
@@ -80,8 +76,8 @@ enum SubmissionStatus: String {
 }
 
 /// A creator's title as it moves through the publishing pipeline.
-struct Submission: Identifiable {
-    let id = UUID()
+struct Submission: Identifiable, Codable {
+    var id = UUID()
     var draft: DraftWork
     var status: SubmissionStatus
     var review: AIReviewResult?

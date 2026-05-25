@@ -3,7 +3,27 @@ import Foundation
 /// Seed catalogue of accepted, marketplace-live titles. Every entry has
 /// already cleared the AI Editor's 85% commercial bar.
 enum SampleData {
+    /// Wires each seed title to a bundled cover/media slug so that dropping
+    /// `the-slug.jpg` / `the-slug.m4a` / `the-slug.mp4` into `Resources/Samples`
+    /// lights it up with real art and playback. See that folder's README.
     static func catalog() -> [MediaItem] {
+        rawCatalog().map { item in
+            var resolved = item
+            let slug = slugify(item.title)
+            resolved.coverAssetName = slug
+            resolved.mediaFileName = item.type == .novel ? nil : slug
+            return resolved
+        }
+    }
+
+    static func slugify(_ title: String) -> String {
+        let lowered = title.lowercased()
+        let allowed = lowered.map { $0.isLetter || $0.isNumber ? $0 : "-" }
+        let collapsed = String(allowed).split(separator: "-").joined(separator: "-")
+        return collapsed
+    }
+
+    private static func rawCatalog() -> [MediaItem] {
         [
             // MARK: Films
             MediaItem(title: "Echoes of Tomorrow", creator: "Nova Mercer", type: .movie,

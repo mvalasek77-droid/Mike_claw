@@ -27,6 +27,10 @@ struct MediaCard: View {
         }
         .buttonStyle(.plain)
         .frame(width: width)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(item.title), \(item.type.title) by \(item.creator)")
+        .accessibilityValue(store.owns(item) ? "In your library" : "\(item.priceLabel), AI Editor score \(item.commercialScore)")
+        .accessibilityAddTraits(.isButton)
     }
 
     private var ownedTag: some View {

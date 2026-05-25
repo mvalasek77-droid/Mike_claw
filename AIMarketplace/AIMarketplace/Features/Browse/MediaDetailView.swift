@@ -92,6 +92,18 @@ struct MediaDetailView: View {
                 PrimaryButton(title: "Buy · \(item.priceLabel)", systemImage: "cart.fill") {
                     if !store.purchase(item) { showInsufficientFunds = true }
                 }
+                if PaymentService.canUseApplePay {
+                    ApplePayButton {
+                        PaymentService.shared.pay(for: item) { success in
+                            if success { store.grantPurchase(item, chargeWallet: false) }
+                        }
+                    }
+                    .frame(height: 48)
+                }
+                Text("One-time purchase · grants a personal licence to \(item.type.verb.lowercased()) this title in-app.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+                    .multilineTextAlignment(.center)
             }
             HStack(spacing: 10) {
                 PrimaryButton(

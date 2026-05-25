@@ -14,10 +14,10 @@ struct GlassSurface<Content: View>: View {
                         .fill(.ultraThinMaterial)
                     RoundedRectangle(cornerRadius: corner, style: .continuous)
                         .fill(tint.opacity(0.06))
-                    RoundedRectangle(cornerRadius: corner, style: .continuous)
-                        .strokeBorder(.white.opacity(0.10), lineWidth: 0.6)
                 }
+                .liquidGlass(cornerRadius: corner)
             }
+            .depth(corner)
     }
 }
 

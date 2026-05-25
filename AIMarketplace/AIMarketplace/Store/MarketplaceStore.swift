@@ -2,26 +2,82 @@ import SwiftUI
 
 /// Single source of truth for the catalogue, the signed-in creator's account,
 /// their publishing pipeline, and their purchased library.
+///
+/// All user-owned state (identity, entitlements, drafts, earnings) is persisted
+/// encrypted-at-rest via ``EncryptedArchive``.
 @MainActor
 final class MarketplaceStore: ObservableObject {
     // Account (KDP-style registration)
-    @Published var accountName: String = ""
-    @Published var accountEmail: String = ""
-    @Published var isRegistered: Bool = false
+    @Published var accountName: String = "" { didSet { persist() } }
+    @Published var accountEmail: String = "" { didSet { persist() } }
+    @Published var isRegistered: Bool = false { didSet { persist() } }
 
     // Marketplace
     @Published private(set) var catalog: [MediaItem]
-    @Published var submissions: [Submission] = []
+    @Published var submissions: [Submission] = [] { didSet { persist() } }
     @Published private(set) var libraryIDs: Set<UUID> = []
-    @Published var watchlistIDs: Set<UUID> = []
+    @Published var watchlistIDs: Set<UUID> = [] { didSet { persist() } }
 
     /// Simulated wallet so purchases feel real in the demo.
-    @Published var walletBalance: Double = 50.00
+    @Published var walletBalance: Double = 50.00 { didSet { persist() } }
     /// Lifetime royalties paid out to the creator for their live titles.
-    @Published var creatorEarnings: Double = 0
+    @Published var creatorEarnings: Double = 0 { didSet { persist() } }
+
+    private let archive = EncryptedArchive()
+    private var loading = false
 
     init(catalog: [MediaItem] = SampleData.catalog()) {
         self.catalog = catalog
+        restore()
+    }
+
+    // MARK: - Persistence
+
+    private struct PersistedState: Codable {
+        var accountName: String
+        var accountEmail: String
+        var isRegistered: Bool
+        var walletBalance: Double
+        var creatorEarnings: Double
+        var libraryIDs: [UUID]
+        var watchlistIDs: [UUID]
+        var submissions: [Submission]
+        var publishedItems: [MediaItem]
+    }
+
+    private func restore() {
+        guard let state = archive.load(PersistedState.self) else { return }
+        loading = true
+        // Merge any user-published titles back into the live catalogue.
+        let existingIDs = Set(catalog.map(\.id))
+        catalog.append(contentsOf: state.publishedItems.filter { !existingIDs.contains($0.id) })
+        accountName = state.accountName
+        accountEmail = state.accountEmail
+        isRegistered = state.isRegistered
+        walletBalance = state.walletBalance
+        creatorEarnings = state.creatorEarnings
+        libraryIDs = Set(state.libraryIDs)
+        watchlistIDs = Set(state.watchlistIDs)
+        submissions = state.submissions
+        loading = false
+    }
+
+    private func persist() {
+        guard !loading else { return }
+        let publishedIDs = Set(submissions.compactMap(\.publishedItemID))
+        let publishedItems = catalog.filter { publishedIDs.contains($0.id) }
+        let state = PersistedState(
+            accountName: accountName,
+            accountEmail: accountEmail,
+            isRegistered: isRegistered,
+            walletBalance: walletBalance,
+            creatorEarnings: creatorEarnings,
+            libraryIDs: Array(libraryIDs),
+            watchlistIDs: Array(watchlistIDs),
+            submissions: submissions,
+            publishedItems: publishedItems
+        )
+        archive.save(state)
     }
 
     // MARK: - Derived feeds
@@ -56,18 +112,25 @@ final class MarketplaceStore: ObservableObject {
 
     var library: [MediaItem] { catalog.filter { libraryIDs.contains($0.id) } }
 
+    /// Grants the entitlement after a successful payment (wallet or Apple Pay).
+    func grantPurchase(_ item: MediaItem, chargeWallet: Bool) {
+        guard !owns(item) else { return }
+        if chargeWallet { walletBalance = max(0, walletBalance - item.price) }
+        libraryIDs.insert(item.id)
+        bumpPurchase(item.id)
+        if submissions.contains(where: { $0.publishedItemID == item.id }) {
+            creatorEarnings += Commerce.creatorEarning(on: item.price)
+        }
+        persist()
+        Haptics.success()
+    }
+
+    /// Wallet purchase. Returns false if the balance is insufficient.
     @discardableResult
     func purchase(_ item: MediaItem) -> Bool {
         guard !owns(item) else { return true }
         guard walletBalance >= item.price else { return false }
-        walletBalance -= item.price
-        libraryIDs.insert(item.id)
-        bumpPurchase(item.id)
-        // Royalty flows to the creator if it's one of the user's own titles.
-        if submissions.contains(where: { $0.publishedItemID == item.id }) {
-            creatorEarnings += item.price * 0.70
-        }
-        Haptics.success()
+        grantPurchase(item, chargeWallet: true)
         return true
     }
 
@@ -84,7 +147,6 @@ final class MarketplaceStore: ObservableObject {
 
     // MARK: - Publishing pipeline
 
-    /// Runs the AI Editor over a draft and records the outcome on a submission.
     @discardableResult
     func runReview(for submissionID: UUID) -> AIReviewResult? {
         guard let idx = submissions.firstIndex(where: { $0.id == submissionID }) else { return nil }
@@ -94,14 +156,12 @@ final class MarketplaceStore: ObservableObject {
         return result
     }
 
-    /// Creates a submission record from a freshly assembled draft.
     func createSubmission(_ draft: DraftWork) -> UUID {
         let submission = Submission(draft: draft, status: .reviewing)
         submissions.insert(submission, at: 0)
         return submission.id
     }
 
-    /// Pushes an accepted submission live to the marketplace catalogue.
     func publish(submissionID: UUID) {
         guard let idx = submissions.firstIndex(where: { $0.id == submissionID }),
               let review = submissions[idx].review, review.passed,
@@ -122,14 +182,22 @@ final class MarketplaceStore: ObservableObject {
             maturity: d.maturity,
             purchases: 0,
             trending: 60,
-            addedAt: .now
+            addedAt: .now,
+            coverImageData: d.coverImageData
         )
         catalog.insert(item, at: 0)
         submissions[idx].publishedItemID = item.id
+        persist()
         Haptics.success()
     }
 
     func submission(withPublishedID id: UUID) -> Submission? {
         submissions.first { $0.publishedItemID == id }
+    }
+
+    /// Titles the signed-in creator has published live.
+    var liveTitles: [MediaItem] {
+        let ids = Set(submissions.compactMap(\.publishedItemID))
+        return catalog.filter { ids.contains($0.id) }
     }
 }

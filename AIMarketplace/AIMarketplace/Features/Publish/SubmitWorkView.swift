@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 /// The KDP-style title registration wizard. Walks the creator through type,
 /// details, AI disclosure, content upload and pricing, then hands the draft to
@@ -15,7 +16,7 @@ struct SubmitWorkView: View {
 
     enum Phase { case form, reviewing, verdict }
 
-    private let stepTitles = ["Format", "Details", "AI Disclosure", "Content", "Pricing", "Review"]
+    private let stepTitles = ["Format", "Details", "AI Disclosure", "Content", "Cover Art", "Pricing", "Review"]
     private var lastStep: Int { stepTitles.count - 1 }
 
     var body: some View {
@@ -91,7 +92,8 @@ struct SubmitWorkView: View {
         case 1: DetailsStep(draft: $draft)
         case 2: DisclosureStep(draft: $draft)
         case 3: ContentStep(draft: $draft)
-        case 4: PricingStep(draft: $draft)
+        case 4: CoverStep(draft: $draft)
+        case 5: PricingStep(draft: $draft)
         default: ReviewStep(draft: draft)
         }
     }
@@ -130,7 +132,8 @@ struct SubmitWorkView: View {
             && !draft.genre.trimmed.isEmpty && draft.synopsis.trimmed.count >= 20
         case 2: return !draft.aiTools.isEmpty
         case 3: return draft.fileName != nil
-        case 4: return draft.price >= 0.99
+        case 4: return draft.coverImageData != nil
+        case 5: return draft.price >= 0.99
         default: return true
         }
     }
@@ -451,12 +454,69 @@ private struct ContentStep: View {
     }
 }
 
-// MARK: - Step 4: Pricing
+// MARK: - Step 4: Cover art
+
+private struct CoverStep: View {
+    @Binding var draft: DraftWork
+    @State private var selection: PhotosPickerItem?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Add your \(draft.coverNoun). This is the artwork buyers see across the store, the Top 10 and their library. Square or portrait art looks best.")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+
+            PhotosPicker(selection: $selection, matching: .images) {
+                if let data = draft.coverImageData, let image = UIImage(data: data) {
+                    ZStack(alignment: .bottomTrailing) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 300)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerL, style: .continuous))
+                        Chip(text: "Change", systemImage: "photo", color: .white, filled: true).padding(12)
+                    }
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: "photo.badge.plus").font(.system(size: 40)).foregroundStyle(Theme.kdp)
+                        Text("Choose \(draft.coverNoun)")
+                            .font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
+                        Text("From your photo library")
+                            .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 50)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.cornerL)
+                            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [7]))
+                            .foregroundStyle(Theme.kdp.opacity(0.5))
+                    )
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .onChange(of: selection) { _, newValue in
+            guard let newValue else { return }
+            Task {
+                if let data = try? await newValue.loadTransferable(type: Data.self) {
+                    await MainActor.run {
+                        draft.coverImageData = data
+                        Haptics.success()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Step 5: Pricing
 
 private struct PricingStep: View {
     @Binding var draft: DraftWork
 
-    private var royalty: Double { draft.price * draft.royalty.rate }
+    private var fee: Double { Commerce.platformFee(on: draft.price) }
+    private var earning: Double { Commerce.creatorEarning(on: draft.price) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -476,36 +536,30 @@ private struct PricingStep: View {
                     .tint(Theme.kdp)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Royalty plan").font(.system(size: 12, weight: .semibold, design: .rounded)).foregroundStyle(Theme.inkSoft)
-                ForEach(RoyaltyPlan.allCases) { plan in
-                    Button { Haptics.selection(); draft.royalty = plan } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: draft.royalty == plan ? "largecircle.fill.circle" : "circle")
-                                .foregroundStyle(draft.royalty == plan ? Theme.kdp : Theme.inkFaint)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("\(plan.rawValue) royalty").font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
-                                Text(plan.blurb).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
-                            }
-                            Spacer()
-                        }
-                        .padding(12)
-                        .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(draft.royalty == plan ? Theme.kdp.opacity(0.12) : .white.opacity(0.05)))
-                    }.buttonStyle(.plain)
+            GlassCard(title: "How you get paid", icon: "percent", tint: Theme.kdp) {
+                VStack(spacing: 10) {
+                    payoutRow("List price", draft.price, color: Theme.ink)
+                    payoutRow("AI Marketplace fee (15%)", -fee, color: Theme.warning)
+                    Divider().overlay(Theme.hairline)
+                    payoutRow("You earn per sale (85%)", earning, color: Theme.success, bold: true)
                 }
             }
 
-            GlassCard {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("You earn per sale").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
-                        Text(String(format: "$%.2f", royalty))
-                            .font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(Theme.success)
-                    }
-                    Spacer()
-                    Image(systemName: "dollarsign.circle.fill").font(.system(size: 30)).foregroundStyle(Theme.success.opacity(0.8))
-                }
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle.fill").foregroundStyle(Theme.kdp)
+                Text(Commerce.explainer)
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
             }
+        }
+    }
+
+    private func payoutRow(_ label: String, _ amount: Double, color: Color, bold: Bool = false) -> some View {
+        HStack {
+            Text(label).font(.system(size: 13, weight: bold ? .bold : .medium, design: .rounded)).foregroundStyle(Theme.inkSoft)
+            Spacer()
+            Text(String(format: "%@$%.2f", amount < 0 ? "−" : "", abs(amount)))
+                .font(.system(size: bold ? 17 : 14, weight: .heavy, design: .rounded))
+                .foregroundStyle(color)
         }
     }
 
@@ -517,7 +571,7 @@ private struct PricingStep: View {
     }
 }
 
-// MARK: - Step 5: Review
+// MARK: - Step 6: Review
 
 private struct ReviewStep: View {
     let draft: DraftWork
@@ -528,16 +582,31 @@ private struct ReviewStep: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Theme.inkSoft)
 
+            HStack(alignment: .top, spacing: 14) {
+                if let data = draft.coverImageData, let image = UIImage(data: data) {
+                    Image(uiImage: image)
+                        .resizable().scaledToFill()
+                        .frame(width: 84, height: 124)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerM, style: .continuous))
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(draft.title.trimmed.isEmpty ? "Untitled" : draft.title.trimmed)
+                        .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                    Text("by \(draft.creator.trimmed.isEmpty ? "—" : draft.creator.trimmed)")
+                        .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    Chip(text: draft.type.title, systemImage: draft.type.icon, color: draft.type.accent)
+                }
+                Spacer()
+            }
+
             GlassCard {
                 VStack(alignment: .leading, spacing: 10) {
-                    summaryRow("Format", draft.type.title, icon: draft.type.icon)
-                    summaryRow("Title", draft.title.trimmed.isEmpty ? "—" : draft.title.trimmed)
-                    summaryRow("Creator", draft.creator.trimmed.isEmpty ? "—" : draft.creator.trimmed)
                     summaryRow("Genre", draft.genre.isEmpty ? "—" : draft.genre)
                     summaryRow("Length", "\(draft.length) \(draft.type == .novel ? "pages" : draft.type == .music ? "tracks" : "min")")
                     summaryRow("AI tools", draft.aiTools.joined(separator: ", "))
                     summaryRow("File", draft.fileName ?? "—")
-                    summaryRow("Price", String(format: "$%.2f · %@", draft.price, draft.royalty.rawValue))
+                    summaryRow("Price", String(format: "$%.2f", draft.price))
+                    summaryRow("You earn", String(format: "$%.2f per sale (85%%)", Commerce.creatorEarning(on: draft.price)))
                 }
             }
 

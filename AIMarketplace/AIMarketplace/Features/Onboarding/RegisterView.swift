@@ -9,7 +9,7 @@ struct RegisterView: View {
     @State private var name = ""
     @State private var email = ""
     @State private var agreed = false
-    @State private var showTerms = false
+    @State private var legalDoc: LegalDoc?
 
     private var canContinue: Bool {
         !name.trimmed.isEmpty && email.contains("@") && agreed
@@ -60,9 +60,12 @@ struct RegisterView: View {
                             }
                             .buttonStyle(.plain)
 
-                            Button("Read the terms") { showTerms = true }
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Theme.kdp)
+                            HStack(spacing: 16) {
+                                Button("Terms of Use") { legalDoc = .terms }
+                                Button("Privacy Policy") { legalDoc = .privacy }
+                            }
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.kdp)
                         }
                     }
 
@@ -80,7 +83,7 @@ struct RegisterView: View {
                 .padding(.bottom, 40)
             }
         }
-        .sheet(isPresented: $showTerms) { TermsSheet() }
+        .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
     }
 
     private var header: some View {
@@ -105,7 +108,7 @@ struct RegisterView: View {
 
     private var benefitRow: some View {
         HStack(spacing: 10) {
-            benefit("70%", "royalties")
+            benefit("85%", "you keep")
             benefit("85%", "quality bar")
             benefit("3", "media types")
         }
@@ -155,34 +158,5 @@ struct LabeledField: View {
             .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
             .overlay(RoundedRectangle(cornerRadius: Theme.cornerS).strokeBorder(.white.opacity(0.10), lineWidth: 0.6))
         }
-    }
-}
-
-struct TermsSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    termsBlock("AI Disclosure", "Every title must declare which AI systems produced it. Undisclosed or misattributed AI use is grounds for removal.")
-                    termsBlock("Rights & Originality", "You confirm you hold the rights to publish the work and its underlying prompts, and that it does not infringe third-party IP.")
-                    termsBlock("Quality Bar", "Submissions are scored by the AI Editor. Only works reaching 85% commercial readiness are accepted for sale.")
-                    termsBlock("Royalties", "Creators earn up to 70% of list price on each sale, paid to the registered publisher account.")
-                }
-                .padding(20)
-            }
-            .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Publishing Terms")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        }
-    }
-
-    private func termsBlock(_ title: String, _ body: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title).font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
-            Text(body).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

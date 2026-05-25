@@ -1,16 +1,13 @@
 import SwiftUI
 
-/// Account + creator dashboard: wallet, royalties, published titles and a
-/// snapshot of the publishing pipeline.
+/// Account hub: wallet, a creator earnings snapshot, quick access to the
+/// App Store Connect-style dashboard, legal documents and the roadmap.
 struct ProfileView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @State private var showTopUp = false
-
-    private var liveTitles: [MediaItem] {
-        store.submissions.compactMap { sub in
-            sub.publishedItemID.flatMap { id in store.catalog.first { $0.id == id } }
-        }
-    }
+    @State private var showDashboard = false
+    @State private var showRoadmap = false
+    @State private var legalDoc: LegalDoc?
 
     var body: some View {
         ZStack {
@@ -20,7 +17,8 @@ struct ProfileView: View {
                     header
                     walletCard
                     creatorCard
-                    if !liveTitles.isEmpty { liveTitlesCard }
+                    if !store.liveTitles.isEmpty { liveTitlesCard }
+                    legalCard
                     aboutCard
                 }
                 .screenPadding()
@@ -28,6 +26,9 @@ struct ProfileView: View {
                 .padding(.bottom, 96)
             }
         }
+        .sheet(isPresented: $showDashboard) { CreatorDashboardView() }
+        .sheet(isPresented: $showRoadmap) { RoadmapView() }
+        .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
         .alert("Wallet topped up", isPresented: $showTopUp) {
             Button("Nice", role: .cancel) { }
         } message: { Text("$25.00 added to your demo balance.") }
@@ -37,17 +38,13 @@ struct ProfileView: View {
         HStack(spacing: 14) {
             ZStack {
                 Circle().fill(Theme.brandGradient).frame(width: 64, height: 64)
-                Text(initials)
-                    .font(.system(size: 24, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                Text(initials).font(.system(size: 24, weight: .heavy, design: .rounded)).foregroundStyle(.white)
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text(store.accountName.isEmpty ? "Creator" : store.accountName)
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Theme.ink)
+                    .font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
                 Text(store.accountEmail.isEmpty ? "Publisher account" : store.accountEmail)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.inkSoft)
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
             }
             Spacer()
         }
@@ -58,8 +55,7 @@ struct ProfileView: View {
         GlassCard(title: "Wallet", icon: "creditcard.fill", tint: Theme.accent) {
             HStack(alignment: .firstTextBaseline) {
                 Text(String(format: "$%.2f", store.walletBalance))
-                    .font(.system(size: 34, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Theme.ink)
+                    .font(.system(size: 34, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
                 Spacer()
                 PrimaryButton(title: "Top up", systemImage: "plus", style: .ghost) {
                     store.walletBalance += 25
@@ -71,11 +67,15 @@ struct ProfileView: View {
     }
 
     private var creatorCard: some View {
-        GlassCard(title: "Creator earnings", icon: "chart.line.uptrend.xyaxis", tint: Theme.kdp) {
-            HStack(spacing: 12) {
-                stat(String(format: "$%.2f", store.creatorEarnings), "Royalties")
-                stat("\(liveTitles.count)", "Live titles")
-                stat("\(store.submissions.count)", "Submissions")
+        GlassCard(title: "Creator Studio", icon: "chart.line.uptrend.xyaxis", tint: Theme.kdp) {
+            VStack(spacing: 14) {
+                HStack(spacing: 12) {
+                    stat(String(format: "$%.2f", store.creatorEarnings), "Royalties (85%)")
+                    stat("\(store.liveTitles.count)", "Live titles")
+                    stat("\(store.submissions.count)", "Submissions")
+                }
+                PrimaryButton(title: "Open Creator Dashboard", systemImage: "square.grid.2x2.fill",
+                              style: .ghost, tint: Theme.kdp) { showDashboard = true }
             }
         }
     }
@@ -85,16 +85,34 @@ struct ProfileView: View {
             SectionHeader(title: "Your published titles")
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    ForEach(liveTitles) { item in
+                    ForEach(store.liveTitles) { item in
                         VStack(alignment: .leading, spacing: 4) {
                             PosterArt(item: item).frame(width: 96, height: 142)
-                            Text("\(item.purchases) sold")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(Theme.inkSoft)
+                            Text("\(item.purchases) sold").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkSoft)
                         }
                         .frame(width: 96)
                     }
                 }
+            }
+        }
+    }
+
+    private var legalCard: some View {
+        GlassCard(title: "Privacy & legal", icon: "lock.shield.fill", tint: Theme.success) {
+            VStack(spacing: 0) {
+                row("Privacy Policy", "hand.raised.fill") { legalDoc = .privacy }
+                divider
+                row("Terms of Use", "doc.text.fill") { legalDoc = .terms }
+                divider
+                row("Feature Roadmap", "map.fill") { showRoadmap = true }
+                divider
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.shield.fill").font(.system(size: 14)).foregroundStyle(Theme.success)
+                    Text("Your account, library and drafts are encrypted on device (AES-GCM).")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 10)
             }
         }
     }
@@ -104,23 +122,38 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: 8) {
                 aboutRow("Every title discloses the AI that made it.")
                 aboutRow("The AI Editor only passes work at 85%+ commercial quality.")
-                aboutRow("Creators earn up to 70% royalties on each sale.")
+                aboutRow("You keep 85% of every sale; we take a 15% service fee.")
             }
         }
     }
 
+    private func row(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.inkSoft).frame(width: 22)
+                Text(title).font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundStyle(Theme.ink)
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+            }
+            .padding(.vertical, 11)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var divider: some View { Rectangle().fill(Theme.hairline).frame(height: 0.5) }
+
     private func aboutRow(_ text: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.success)
+            Image(systemName: "checkmark.circle.fill").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.success)
             Text(text).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
         }
     }
 
     private func stat(_ value: String, _ label: String) -> some View {
         VStack(spacing: 3) {
-            Text(value).font(.system(size: 19, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+            Text(value).font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                .lineLimit(1).minimumScaleFactor(0.7)
             Text(label).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
         }
         .frame(maxWidth: .infinity)

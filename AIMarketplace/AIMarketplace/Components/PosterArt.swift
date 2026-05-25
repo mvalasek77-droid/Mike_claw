@@ -16,31 +16,22 @@ struct PosterArt: View {
         )
     }
 
+    private var cover: UIImage? { ContentResolver.coverImage(for: item) }
+
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
             let h = geo.size.height
             ZStack {
-                LinearGradient(colors: [palette.top, palette.bottom],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-
-                // Soft seeded orbs for depth.
-                Circle()
-                    .fill(item.type.accent.opacity(0.55))
-                    .frame(width: w * 0.9)
-                    .blur(radius: 42)
-                    .offset(x: CGFloat((item.seed % 60)) - 30, y: -h * 0.28)
-                Circle()
-                    .fill(Color.white.opacity(0.10))
-                    .frame(width: w * 0.6)
-                    .blur(radius: 30)
-                    .offset(x: w * 0.28, y: h * 0.30)
-
-                // Giant faint category glyph.
-                Image(systemName: item.type.icon)
-                    .font(.system(size: min(w, h) * 0.5, weight: .black))
-                    .foregroundStyle(.white.opacity(0.14))
-                    .rotationEffect(.degrees(-8))
+                if let cover {
+                    Image(uiImage: cover)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: w, height: h)
+                        .clipped()
+                } else {
+                    proceduralArt(w: w, h: h)
+                }
 
                 if showsTitle {
                     LinearGradient(colors: [.clear, .black.opacity(0.72)],
@@ -68,5 +59,31 @@ struct PosterArt: View {
             RoundedRectangle(cornerRadius: Theme.cornerM, style: .continuous)
                 .strokeBorder(.white.opacity(0.10), lineWidth: 0.5)
         )
+    }
+
+    @ViewBuilder
+    private func proceduralArt(w: CGFloat, h: CGFloat) -> some View {
+        ZStack {
+            LinearGradient(colors: [palette.top, palette.bottom],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+
+            // Soft seeded orbs for depth.
+            Circle()
+                .fill(item.type.accent.opacity(0.55))
+                .frame(width: w * 0.9)
+                .blur(radius: 42)
+                .offset(x: CGFloat((item.seed % 60)) - 30, y: -h * 0.28)
+            Circle()
+                .fill(Color.white.opacity(0.10))
+                .frame(width: w * 0.6)
+                .blur(radius: 30)
+                .offset(x: w * 0.28, y: h * 0.30)
+
+            // Giant faint category glyph.
+            Image(systemName: item.type.icon)
+                .font(.system(size: min(w, h) * 0.5, weight: .black))
+                .foregroundStyle(.white.opacity(0.14))
+                .rotationEffect(.degrees(-8))
+        }
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The three media categories the marketplace trades in.
-enum MediaType: String, CaseIterable, Identifiable, Hashable {
+enum MediaType: String, CaseIterable, Identifiable, Hashable, Codable {
     case novel, music, movie
     var id: String { rawValue }
 
@@ -57,7 +57,7 @@ enum MediaType: String, CaseIterable, Identifiable, Hashable {
 }
 
 /// A live, accepted piece of media available in the marketplace.
-struct MediaItem: Identifiable, Hashable {
+struct MediaItem: Identifiable, Hashable, Codable {
     let id: UUID
     var title: String
     var creator: String
@@ -78,6 +78,12 @@ struct MediaItem: Identifiable, Hashable {
     /// 0–100 momentum metric — drives Trending.
     var trending: Int
     var addedAt: Date
+    /// Creator-supplied cover art (encoded image) for published titles.
+    var coverImageData: Data?
+    /// Bundled cover-art asset name for seed catalogue titles.
+    var coverAssetName: String?
+    /// Bundled playable media file (audio/video) for seed catalogue titles.
+    var mediaFileName: String?
 
     init(
         id: UUID = UUID(),
@@ -94,7 +100,10 @@ struct MediaItem: Identifiable, Hashable {
         maturity: String = "13+",
         purchases: Int = 0,
         trending: Int = 0,
-        addedAt: Date = .now
+        addedAt: Date = .now,
+        coverImageData: Data? = nil,
+        coverAssetName: String? = nil,
+        mediaFileName: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -111,6 +120,9 @@ struct MediaItem: Identifiable, Hashable {
         self.purchases = purchases
         self.trending = trending
         self.addedAt = addedAt
+        self.coverImageData = coverImageData
+        self.coverAssetName = coverAssetName
+        self.mediaFileName = mediaFileName
     }
 
     static func == (lhs: MediaItem, rhs: MediaItem) -> Bool { lhs.id == rhs.id }

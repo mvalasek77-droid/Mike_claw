@@ -76,4 +76,35 @@ extension Font {
 extension View {
     /// Standard horizontal page padding.
     func screenPadding() -> some View { self.padding(.horizontal, 18) }
+
+    /// Applies Apple's iOS 26 Liquid Glass material when the SDK/runtime
+    /// supports it, and is a no-op everywhere else so the app builds and runs
+    /// coherently on iOS 17–25.
+    @ViewBuilder
+    func liquidGlass(cornerRadius: CGFloat = Theme.cornerL) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    /// Subtle depth: layered shadow + a top-light highlight stroke. Used on
+    /// raised glass surfaces to give the fluid-glass parallax feel.
+    func depth(_ corner: CGFloat = Theme.cornerL, strong: Bool = false) -> some View {
+        self
+            .shadow(color: .black.opacity(strong ? 0.45 : 0.28), radius: strong ? 26 : 16, x: 0, y: strong ? 14 : 8)
+            .overlay(
+                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(colors: [.white.opacity(0.45), .white.opacity(0.04)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 0.8
+                    )
+            )
+    }
 }

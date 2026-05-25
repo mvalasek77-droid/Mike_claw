@@ -1,152 +1,127 @@
 import SwiftUI
-import Combine
-import Foundation
+import AVKit
+import AVFoundation
 
-/// A self-contained mock consumption surface that adapts to the media type:
-/// a video player for films, an audio player for music, and a reader for novels.
+/// Dedicated consumption surface, adapting to the media type. Plays real
+/// bundled/streamed media via AVFoundation when a file is resolved
+/// (`ContentResolver`), and falls back to a polished simulated playhead so the
+/// experience is complete even before assets are added.
 struct PlayerView: View {
     let item: MediaItem
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
             switch item.type {
-            case .movie: VideoPlayerSurface(item: item)
-            case .music: AudioPlayerSurface(item: item)
+            case .movie: VideoSurface(item: item)
+            case .music: AudioSurface(item: item)
             case .novel: ReaderSurface(item: item)
             }
 
-            VStack {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 40, height: 40)
-                            .background(Circle().fill(.black.opacity(0.4)))
-                    }
-                    Spacer()
-                    Text(item.title)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.9))
-                    Spacer()
-                    Color.clear.frame(width: 40, height: 40)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+            HStack {
+                CircleIconButton(icon: "chevron.down") { dismiss() }
                 Spacer()
+                Text(item.title)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(1)
+                Spacer()
+                Color.clear.frame(width: 40, height: 40)
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
         }
         .preferredColorScheme(.dark)
     }
 }
 
+struct CircleIconButton: View {
+    let icon: String
+    var action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(.black.opacity(0.45)))
+        }
+        .accessibilityLabel(Text(icon == "chevron.down" ? "Close player" : icon))
+    }
+}
+
 // MARK: - Video
 
-private struct VideoPlayerSurface: View {
+private struct VideoSurface: View {
     let item: MediaItem
-    @State private var playing = true
-    @State private var progress: Double = 0.06
-
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @StateObject private var model = AVPlaybackModel()
+    @State private var resolved = false
 
     var body: some View {
         ZStack {
-            PosterArt(item: item, showsTitle: false)
-                .blur(radius: 26)
-                .overlay(Color.black.opacity(0.55))
-                .ignoresSafeArea()
-
-            VStack(spacing: 18) {
-                Spacer()
-                Image(systemName: "film.fill")
-                    .font(.system(size: 54, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.85))
-                Text("Now playing · \(item.genre)")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.7))
-                Spacer()
-                controls
-            }
-            .padding(.bottom, 36)
-            .padding(.horizontal, 24)
-        }
-        .onReceive(timer) { _ in
-            guard playing else { return }
-            progress = min(1, progress + 1.0 / Double(max(item.length, 1) * 60))
-        }
-    }
-
-    private var controls: some View {
-        VStack(spacing: 14) {
-            Scrubber(progress: $progress, total: Double(item.length) * 60)
-            HStack(spacing: 40) {
-                ctlButton("gobackward.10") { progress = max(0, progress - 0.02) }
-                Button { playing.toggle(); Haptics.tap() } label: {
-                    Image(systemName: playing ? "pause.fill" : "play.fill")
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(.black)
-                        .frame(width: 68, height: 68)
-                        .background(Circle().fill(.white))
-                }
-                ctlButton("goforward.10") { progress = min(1, progress + 0.02) }
+            if model.hasMedia {
+                VideoPlayer(player: model.player)
+                    .ignoresSafeArea()
+            } else {
+                SimulatedTransport(item: item, icon: "film.fill",
+                                   caption: "Now playing · \(item.genre)",
+                                   secondsTotal: Double(item.length) * 60)
             }
         }
-    }
-
-    private func ctlButton(_ icon: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon).font(.system(size: 26, weight: .semibold)).foregroundStyle(.white)
+        .onAppear {
+            guard !resolved else { return }
+            resolved = true
+            model.load(url: ContentResolver.mediaURL(for: item))
         }
+        .onDisappear { model.teardown() }
     }
 }
 
 // MARK: - Audio
 
-private struct AudioPlayerSurface: View {
+private struct AudioSurface: View {
     let item: MediaItem
-    @State private var playing = true
-    @State private var progress: Double = 0.1
-    @State private var track = 1
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @StateObject private var model = AVPlaybackModel()
+    @State private var resolved = false
 
     var body: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            PosterArt(item: item, showsTitle: false)
-                .frame(width: 260, height: 260)
-                .shadow(color: item.type.accent.opacity(0.5), radius: 40, y: 20)
-            VStack(spacing: 4) {
-                Text("Track \(track) of \(item.length)")
-                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
-                Text(item.title).font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(.white)
-                Text(item.creator).font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.7))
-            }
-            Scrubber(progress: $progress, total: 210)
-                .padding(.horizontal, 30)
-            HStack(spacing: 40) {
-                ctl("backward.fill") { track = max(1, track - 1); progress = 0 }
-                Button { playing.toggle(); Haptics.tap() } label: {
-                    Image(systemName: playing ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 70, weight: .bold)).foregroundStyle(.white)
-                }
-                ctl("forward.fill") { track = min(item.length, track + 1); progress = 0 }
-            }
-            Spacer()
-        }
-        .padding(24)
-        .onReceive(timer) { _ in
-            guard playing else { return }
-            progress += 1.0 / 210
-            if progress >= 1 { progress = 0; track = min(item.length, track + 1) }
-        }
-    }
+        ZStack {
+            LinearGradient(colors: [item.type.accent.opacity(0.35), .black],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
 
-    private func ctl(_ icon: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon).font(.system(size: 26, weight: .bold)).foregroundStyle(.white.opacity(0.85))
+            VStack(spacing: 22) {
+                Spacer()
+                PosterArt(item: item, showsTitle: false)
+                    .frame(width: 260, height: 260)
+                    .shadow(color: item.type.accent.opacity(0.5), radius: 40, y: 20)
+                VStack(spacing: 4) {
+                    Text(item.title).font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                    Text(item.creator).font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.7))
+                }
+
+                if model.hasMedia {
+                    PlaybackBar(progress: model.progress, total: model.duration,
+                                onSeek: { model.seek(toFraction: $0) })
+                        .padding(.horizontal, 30)
+                    TransportControls(isPlaying: model.isPlaying,
+                                      onBack: { model.skip(-15) },
+                                      onToggle: { model.togglePlay() },
+                                      onForward: { model.skip(15) })
+                } else {
+                    SimulatedTransportControls(secondsTotal: 210)
+                }
+                Spacer()
+            }
+            .padding(24)
         }
+        .onAppear {
+            guard !resolved else { return }
+            resolved = true
+            model.load(url: ContentResolver.mediaURL(for: item))
+        }
+        .onDisappear { model.teardown() }
     }
 }
 
@@ -154,51 +129,88 @@ private struct AudioPlayerSurface: View {
 
 private struct ReaderSurface: View {
     let item: MediaItem
-    @State private var page = 1
+    @State private var page = 0
+    @AppStorage("readerFontSize") private var fontSize: Double = 18
 
-    private var sample: String {
-        """
-        Chapter One
-
-        \(item.synopsis)
-
-        The morning arrived the way all difficult mornings do — quietly, and then all at once. \(item.creator) had imagined this scene a hundred times, but imagination, it turned out, was a poor rehearsal for the thing itself.
-
-        There was a sound from the next room. Then silence. Then the sound again, patient as a clock, and twice as certain that it had somewhere to be.
-        """
-    }
+    private var pages: [String] { ReaderContent.pages(for: item) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                Text(sample)
-                    .font(.system(size: 18, weight: .regular, design: .serif))
-                    .foregroundStyle(Color(red: 0.92, green: 0.90, blue: 0.84))
-                    .lineSpacing(8)
-                    .padding(.horizontal, 26)
-                    .padding(.top, 70)
-                    .padding(.bottom, 40)
+        ZStack {
+            Color(red: 0.09, green: 0.08, blue: 0.07).ignoresSafeArea()
+            VStack(spacing: 0) {
+                TabView(selection: $page) {
+                    ForEach(Array(pages.enumerated()), id: \.offset) { index, text in
+                        ScrollView {
+                            Text(text)
+                                .font(.system(size: fontSize, weight: .regular, design: .serif))
+                                .foregroundStyle(Color(red: 0.92, green: 0.90, blue: 0.84))
+                                .lineSpacing(8)
+                                .padding(.horizontal, 26)
+                                .padding(.top, 64)
+                                .padding(.bottom, 60)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+
+                footer
             }
+        }
+    }
+
+    private var footer: some View {
+        VStack(spacing: 10) {
+            ProgressView(value: Double(page + 1), total: Double(max(pages.count, 1)))
+                .tint(item.type.accent)
             HStack {
-                Button { page = max(1, page - 1) } label: { Image(systemName: "chevron.left") }
+                Button { fontSize = max(14, fontSize - 2) } label: { Image(systemName: "textformat.size.smaller") }
                 Spacer()
-                Text("Page \(page) of \(item.length)")
-                    .font(.system(size: 12, weight: .semibold))
+                Text("Page \(page + 1) of \(pages.count)")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                 Spacer()
-                Button { page = min(item.length, page + 1) } label: { Image(systemName: "chevron.right") }
+                Button { fontSize = min(28, fontSize + 2) } label: { Image(systemName: "textformat.size.larger") }
             }
             .foregroundStyle(.white.opacity(0.8))
-            .padding(.horizontal, 30).padding(.vertical, 16)
+            .font(.system(size: 18))
         }
-        .background(Color(red: 0.09, green: 0.08, blue: 0.07).ignoresSafeArea())
+        .padding(.horizontal, 26).padding(.vertical, 14)
+        .background(.black.opacity(0.3))
     }
 }
 
-// MARK: - Shared scrubber
+/// Builds readable, paginated sample text for a title.
+private enum ReaderContent {
+    static func pages(for item: MediaItem) -> [String] {
+        let opening = "Chapter One\n\n\(item.synopsis)\n\n"
+        let filler = "The morning arrived the way all difficult mornings do — quietly, and then all at once. There was a sound from the next room, then silence, then the sound again, patient as a clock and twice as certain that it had somewhere to be. \(item.creator) had imagined this a hundred times, but imagination, it turned out, was a poor rehearsal for the thing itself. "
+        let body = opening + String(repeating: filler, count: 14)
+        return paginate(body, perPage: 520)
+    }
 
-private struct Scrubber: View {
-    @Binding var progress: Double
-    var total: Double
+    private static func paginate(_ text: String, perPage: Int) -> [String] {
+        let words = text.split(separator: " ", omittingEmptySubsequences: true)
+        var pages: [String] = []
+        var current = ""
+        for word in words {
+            if current.count + word.count + 1 > perPage {
+                pages.append(current.trimmed)
+                current = ""
+            }
+            current += word + " "
+        }
+        if !current.trimmed.isEmpty { pages.append(current.trimmed) }
+        return pages.isEmpty ? [text] : pages
+    }
+}
+
+// MARK: - Shared transport
+
+struct PlaybackBar: View {
+    let progress: Double
+    let total: Double
+    var onSeek: (Double) -> Void
 
     var body: some View {
         VStack(spacing: 5) {
@@ -207,19 +219,95 @@ private struct Scrubber: View {
                     Capsule().fill(.white.opacity(0.22)).frame(height: 4)
                     Capsule().fill(.white).frame(width: max(0, geo.size.width * progress), height: 4)
                 }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0).onChanged { value in
+                        onSeek(min(1, max(0, value.location.x / geo.size.width)))
+                    }
+                )
             }
-            .frame(height: 8)
+            .frame(height: 12)
             HStack {
                 Text(timeString(progress * total)).font(.system(size: 11, weight: .medium, design: .monospaced))
                 Spacer()
-                Text("-" + timeString((1 - progress) * total)).font(.system(size: 11, weight: .medium, design: .monospaced))
+                Text("-" + timeString(max(0, (1 - progress) * total))).font(.system(size: 11, weight: .medium, design: .monospaced))
             }
             .foregroundStyle(.white.opacity(0.6))
         }
     }
+}
 
-    private func timeString(_ seconds: Double) -> String {
-        let s = max(0, Int(seconds))
-        return String(format: "%d:%02d", s / 60, s % 60)
+struct TransportControls: View {
+    let isPlaying: Bool
+    var onBack: () -> Void
+    var onToggle: () -> Void
+    var onForward: () -> Void
+
+    var body: some View {
+        HStack(spacing: 40) {
+            Button(action: onBack) { Image(systemName: "gobackward.15").font(.system(size: 26, weight: .semibold)) }
+            Button(action: onToggle) {
+                Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.system(size: 70, weight: .bold))
+            }
+            Button(action: onForward) { Image(systemName: "goforward.15").font(.system(size: 26, weight: .semibold)) }
+        }
+        .foregroundStyle(.white)
     }
+}
+
+/// Used when no real audio file is present yet.
+private struct SimulatedTransportControls: View {
+    let secondsTotal: Double
+    @State private var playing = true
+    @State private var progress: Double = 0.08
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        VStack(spacing: 16) {
+            PlaybackBar(progress: progress, total: secondsTotal, onSeek: { progress = $0 })
+                .padding(.horizontal, 30)
+            TransportControls(isPlaying: playing,
+                              onBack: { progress = max(0, progress - 0.05) },
+                              onToggle: { playing.toggle(); Haptics.tap() },
+                              onForward: { progress = min(1, progress + 0.05) })
+            Text("Add your master to enable real playback")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.4))
+        }
+        .onReceive(timer) { _ in
+            guard playing else { return }
+            progress = min(1, progress + 1.0 / secondsTotal)
+        }
+    }
+}
+
+/// Full simulated surface for video when no film file is present.
+private struct SimulatedTransport: View {
+    let item: MediaItem
+    let icon: String
+    let caption: String
+    let secondsTotal: Double
+
+    var body: some View {
+        ZStack {
+            PosterArt(item: item, showsTitle: false)
+                .blur(radius: 26)
+                .overlay(Color.black.opacity(0.55))
+                .ignoresSafeArea()
+            VStack(spacing: 16) {
+                Spacer()
+                Image(systemName: icon).font(.system(size: 54, weight: .bold)).foregroundStyle(.white.opacity(0.85))
+                Text(caption).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
+                Spacer()
+                SimulatedTransportControls(secondsTotal: secondsTotal)
+                    .padding(.bottom, 36).padding(.horizontal, 24)
+            }
+        }
+    }
+}
+
+private func timeString(_ seconds: Double) -> String {
+    let s = max(0, Int(seconds))
+    return String(format: "%d:%02d", s / 60, s % 60)
 }
