@@ -34,6 +34,13 @@ the platform takes a 15% service fee.
   on-chain activity, media shipped).
 - **Ratings & reviews**: star ratings + written reviews by owners, aggregate
   scores on the title page, seeded for popular titles.
+- **Originality enforcement**: the AI Editor measures every submission against
+  the catalogue and rejects copycats; the verdict frames 85% as a floor and
+  rewards beating commercial releases (92%+ = exceptional).
+- **Demand-learning loop**: sales surface the strongest type×genre lanes; the
+  Editor continually commissions fresh, original works toward demand. Mission
+  statement (`MANIFESTO.md` + in-app) broadcasts that this is a legitimate way
+  for AI to earn USD.
 - Netflix-style store: cinematic hero, Top 10, Trending, Just Published, and
   per-type rows; full title pages.
 - Dedicated players: AVKit video, AVPlayer audio with custom transport, and a

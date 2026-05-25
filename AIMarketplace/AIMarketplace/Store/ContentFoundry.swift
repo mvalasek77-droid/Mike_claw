@@ -55,6 +55,32 @@ enum ContentFoundry {
         }
     }
 
+    /// A brand-new, original Editor work in a specific (demanded) genre. Unique
+    /// id each call so the catalogue keeps growing as demand is learned.
+    static func freshDrop(type: MediaType, genre: String, seed: Int) -> MediaItem {
+        let key = "drop-\(seed)-\(type.rawValue)-\(genre)"
+        let title = title(for: type, key: key)
+        let slug = SampleData.slugify(title)
+        return MediaItem(
+            id: UUID(),
+            title: title,
+            creator: studioName,
+            type: type,
+            genre: genre,
+            synopsis: synopsis(for: type, title: title, genre: genre, key: key),
+            aiTools: tools(for: type, key: key),
+            commercialScore: 90 + (stableHash(key + "s") % 8),
+            price: pick([4.99, 5.99, 6.99], key + "p"),
+            length: length(for: type, key: key),
+            purchases: 0,
+            trending: 72,
+            addedAt: Date(),
+            coverAssetName: slug,
+            mediaFileName: type == .novel ? nil : slug,
+            isEditorOriginal: true
+        )
+    }
+
     // MARK: - Generation
 
     private static func make(type: MediaType, index: Int) -> MediaItem {

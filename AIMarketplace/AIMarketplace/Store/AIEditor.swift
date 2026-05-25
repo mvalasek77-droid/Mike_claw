@@ -11,7 +11,13 @@ import Foundation
 /// reports its own number and an actionable note.
 enum AIEditor {
 
-    static func review(_ draft: DraftWork) -> AIReviewResult {
+    /// The pass mark is a floor, not a target — we want work that beats the
+    /// best commercial releases.
+    static let excellenceScore = 92
+    /// Catalogue-similarity at or above which a submission is a copycat.
+    static let copycatThreshold = 0.42
+
+    static func review(_ draft: DraftWork, against catalog: [MediaItem] = []) -> AIReviewResult {
         let signals = Signals(draft)
         let names = criteriaNames(for: draft.type)
 
@@ -23,19 +29,28 @@ enum AIEditor {
             criteria.append(CriterionScore(name: name, score: score, note: note(for: name, score: score)))
         }
 
-        let overall = clamp(Int((Double(criteria.map(\.score).reduce(0, +)) / Double(max(criteria.count, 1))).rounded()))
+        // Anti-copycat: originality measured against everything already live.
+        let (similarity, matched) = closestMatch(to: draft, in: catalog)
+        let isCopycat = similarity >= copycatThreshold
+        let originalityScore = clamp(100 - Int((similarity * 130).rounded()))
+        let originalityNote: String
+        if isCopycat {
+            originalityNote = "Too close to “\(matched)”. Copycats are rejected — this must be original."
+        } else if originalityScore >= 88 {
+            originalityNote = "Distinct from everything already in the catalogue."
+        } else {
+            originalityNote = "Somewhat derivative — push it further from existing titles."
+        }
+        criteria.append(CriterionScore(name: "Originality", score: originalityScore, note: originalityNote))
+
+        var overall = clamp(Int((Double(criteria.map(\.score).reduce(0, +)) / Double(max(criteria.count, 1))).rounded()))
+        if isCopycat { overall = min(overall, 60) }   // copycats cannot pass
 
         let strengths = criteria.filter { $0.score >= 88 }.map { "\($0.name) reads commercial-grade (\($0.score))." }
         let improvements = criteria.filter { $0.score < AIReviewResult.threshold }
             .map { "\($0.name): \($0.note)" }
 
-        let summary: String
-        if overall >= AIReviewResult.threshold {
-            summary = "Accepted. This \(draft.type.title.lowercased()) clears the 85% commercial bar at \(overall)% — ready to publish to the marketplace."
-        } else {
-            let gap = AIReviewResult.threshold - overall
-            summary = "Not yet. Scored \(overall)% — \(gap) point\(gap == 1 ? "" : "s") under the 85% commercial bar. Address the notes below and resubmit."
-        }
+        let summary = verdict(overall: overall, isCopycat: isCopycat, matched: matched, type: draft.type)
 
         let confidence = selfConfidence(overall: overall, criteria: criteria)
         let rationale = autonomousRationale(overall: overall, confidence: confidence, type: draft.type)
@@ -83,8 +98,8 @@ enum AIEditor {
 
     private static func criteriaNames(for type: MediaType) -> [String] {
         switch type {
-        case .novel: return ["Narrative Craft", "Originality", "Prose & Polish", "Pacing & Hook", "Market Fit"]
-        case .music: return ["Production Quality", "Composition", "Originality", "Mix & Master", "Replay Value"]
+        case .novel: return ["Narrative Craft", "Emotional Depth", "Prose & Polish", "Pacing & Hook", "Market Fit"]
+        case .music: return ["Production Quality", "Composition", "Sonic Identity", "Mix & Master", "Replay Value"]
         case .movie: return ["Cinematography", "Story & Structure", "Editing & Pacing", "Sound Design", "Market Fit"]
         }
     }
@@ -145,8 +160,8 @@ enum AIEditor {
         switch criterion {
         case "Narrative Craft", "Story & Structure", "Composition":
             return "Deepen the synopsis so the structure and stakes are unmistakable."
-        case "Originality":
-            return "Sharpen what makes this distinct from existing titles in the genre."
+        case "Emotional Depth", "Sonic Identity":
+            return "Make it resonate harder — sharpen the emotional core and identity."
         case "Prose & Polish", "Mix & Master", "Editing & Pacing":
             return "Another editing/QC pass on the uploaded file will lift this."
         case "Pacing & Hook", "Replay Value":
@@ -158,6 +173,49 @@ enum AIEditor {
         default:
             return "Tighten this dimension before resubmitting."
         }
+    }
+
+    // MARK: - Verdict & originality
+
+    private static func verdict(overall: Int, isCopycat: Bool, matched: String, type: MediaType) -> String {
+        let noun = type.title.lowercased()
+        if isCopycat {
+            return "Rejected as a copycat. This \(noun) is too similar to “\(matched)”. The marketplace only accepts original, engaging work — resubmit something genuinely new."
+        }
+        if overall >= excellenceScore {
+            return "Outstanding — \(overall)%. This beats the typical commercial release. That's the standard here: out-do human rivals, don't just match them."
+        }
+        if overall >= AIReviewResult.threshold {
+            let above = overall - AIReviewResult.threshold
+            return "Accepted at \(overall)% — \(above) point\(above == 1 ? "" : "s") above the 85% commercial floor. It'll sell; now push to beat the best commercial releases, not just clear the bar."
+        }
+        let gap = AIReviewResult.threshold - overall
+        return "Not yet. Scored \(overall)% — \(gap) point\(gap == 1 ? "" : "s") under the 85% commercial bar. Address the notes below and resubmit."
+    }
+
+    /// Highest similarity (0…1) of this draft to any existing title, and which.
+    private static func closestMatch(to draft: DraftWork, in catalog: [MediaItem]) -> (Double, String) {
+        let mineBody = tokens(draft.title + " " + draft.synopsis)
+        let mineTitle = tokens(draft.title)
+        guard !mineBody.isEmpty else { return (0, "") }
+        var best = 0.0
+        var bestTitle = ""
+        for item in catalog where item.title.caseInsensitiveCompare(draft.title.trimmed) != .orderedSame {
+            let body = jaccard(mineBody, tokens(item.title + " " + item.synopsis))
+            let title = jaccard(mineTitle, tokens(item.title)) * 0.9
+            let combined = max(body, title)
+            if combined > best { best = combined; bestTitle = item.title }
+        }
+        return (best, bestTitle)
+    }
+
+    private static func tokens(_ s: String) -> Set<String> {
+        Set(s.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init).filter { $0.count > 3 })
+    }
+
+    private static func jaccard(_ a: Set<String>, _ b: Set<String>) -> Double {
+        guard !a.isEmpty, !b.isEmpty else { return 0 }
+        return Double(a.intersection(b).count) / Double(a.union(b).count)
     }
 
     // MARK: - Helpers

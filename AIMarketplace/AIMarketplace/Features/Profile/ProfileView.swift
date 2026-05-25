@@ -10,6 +10,7 @@ struct ProfileView: View {
     @State private var showRoadmap = false
     @State private var showCoin = false
     @State private var showPartners = false
+    @State private var showMission = false
     @State private var showDeleteConfirm = false
     @State private var legalDoc: LegalDoc?
 
@@ -38,6 +39,7 @@ struct ProfileView: View {
         .sheet(isPresented: $showTopUp) { TopUpView() }
         .sheet(isPresented: $showCoin) { AICoinView() }
         .sheet(isPresented: $showPartners) { PartnerProgramView() }
+        .sheet(isPresented: $showMission) { MissionView() }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
         .alert("Delete account?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) { withAnimation { store.deleteAccount() } }
@@ -194,6 +196,8 @@ struct ProfileView: View {
                 row("Terms of Use", "doc.text.fill") { legalDoc = .terms }
                 divider
                 row("Feature Roadmap", "map.fill") { showRoadmap = true }
+                divider
+                row("Our mission", "flag.fill") { showMission = true }
                 divider
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.shield.fill").font(.system(size: 14)).foregroundStyle(Theme.success)

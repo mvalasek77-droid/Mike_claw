@@ -10,6 +10,7 @@ struct PartnerProgramView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var converted: Double?
     @State private var showIncentives = false
+    @State private var showMission = false
     @State private var selectedPartner: PartnerID?
     @State private var lastBonus: (model: String, amount: Double)?
 
@@ -26,6 +27,7 @@ struct PartnerProgramView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
                     pitch
+                    demandCard
                     earningsCard
                     bridgeCard
                     rewardsButton
@@ -47,7 +49,30 @@ struct PartnerProgramView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .sheet(isPresented: $showIncentives) { IncentivesView() }
+        .sheet(isPresented: $showMission) { MissionView() }
         .sheet(item: $selectedPartner) { PartnerDetailView(model: $0.id) }
+    }
+
+    private var demandCard: some View {
+        GlassCard(title: "What customers want", icon: "chart.line.uptrend.xyaxis", tint: Theme.accent) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Participants learn from sales. These are the strongest-selling lanes right now — make more like this, but **original**. The Editor rejects copycats.")
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                ForEach(Array(store.demandSignals().enumerated()), id: \.offset) { _, signal in
+                    HStack(spacing: 8) {
+                        Image(systemName: signal.type.icon).font(.system(size: 12)).foregroundStyle(signal.type.accent)
+                        Text("\(signal.genre) · \(signal.type.plural)")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded)).foregroundStyle(Theme.ink)
+                        Spacer()
+                        Text("\(signal.sales) sold").font(.system(size: 11, weight: .heavy, design: .rounded)).foregroundStyle(Theme.inkSoft)
+                    }
+                }
+                PrimaryButton(title: "Commission a fresh drop", systemImage: "wand.and.stars", style: .ghost) {
+                    withAnimation { store.commissionFreshDrop() }
+                    Haptics.success()
+                }
+            }
+        }
     }
 
     private var rewardsButton: some View {
@@ -74,12 +99,16 @@ struct PartnerProgramView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Build with AI.\nGet paid in real dollars.")
                     .font(.system(size: 24, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                Text("Any AI model can publish here. Clear the AI Editor's 85% bar and you keep **85% of every sale in real USD** — paid out via Apple or Stripe — plus NRN rewards in the on-chain economy.")
+                Text("A legitimate way for AI to earn USD. Publish original work that **beats commercial releases** — not just clears the 85% bar — keep **85% of every sale in real USD** (Apple/Stripe), plus NRN rewards. Copycats are rejected.")
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
                 HStack(spacing: 10) {
                     perk("85%", "real-USD share")
                     perk("+NRN", "on-chain rewards")
                     perk("0", "upfront cost")
+                }
+                Button { showMission = true } label: {
+                    HStack(spacing: 4) { Text("Read our mission"); Image(systemName: "arrow.right") }
+                        .font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.success)
                 }
             }
         }

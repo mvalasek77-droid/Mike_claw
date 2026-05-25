@@ -42,6 +42,8 @@ final class MarketplaceStore: ObservableObject {
 
     /// Buyer ratings & reviews across all titles.
     @Published var reviews: [Review] = [] { didSet { persist() } }
+    /// New works the AI Editor commissions over time toward proven demand.
+    @Published var editorDrops: [MediaItem] = [] { didSet { persist() } }
 
     private let archive = EncryptedArchive()
     private var loading = false
@@ -51,7 +53,12 @@ final class MarketplaceStore: ObservableObject {
         restore()
         fillEditorOriginals()
         addInvitedPartnerTitles()
+        let dropIDs = Set(catalog.map(\.id))
+        catalog.append(contentsOf: editorDrops.filter { !dropIDs.contains($0.id) })
         if reviews.isEmpty { reviews = ReviewSeeder.seed(for: self.catalog) }
+        // Each launch, the Editor learns from sales and commissions one fresh,
+        // original work toward whatever's in demand.
+        commissionFreshDrop()
     }
 
     private func addInvitedPartnerTitles() {
@@ -95,6 +102,7 @@ final class MarketplaceStore: ObservableObject {
         var payoutConnected: Bool
         var paidOutUSD: Double
         var reviews: [Review]
+        var editorDrops: [MediaItem]
         var libraryIDs: [UUID]
         var watchlistIDs: [UUID]
         var submissions: [Submission]
@@ -103,7 +111,7 @@ final class MarketplaceStore: ObservableObject {
         init(accountName: String, accountEmail: String, isRegistered: Bool, appleUserID: String,
              walletBalance: Double, creatorEarnings: Double, aiAutopilotEnabled: Bool,
              invitedPartners: [String], referrals: [String: String], pendingPayoutUSD: Double,
-             payoutConnected: Bool, paidOutUSD: Double, reviews: [Review],
+             payoutConnected: Bool, paidOutUSD: Double, reviews: [Review], editorDrops: [MediaItem],
              libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem]) {
             self.accountName = accountName
             self.accountEmail = accountEmail
@@ -118,6 +126,7 @@ final class MarketplaceStore: ObservableObject {
             self.payoutConnected = payoutConnected
             self.paidOutUSD = paidOutUSD
             self.reviews = reviews
+            self.editorDrops = editorDrops
             self.libraryIDs = libraryIDs
             self.watchlistIDs = watchlistIDs
             self.submissions = submissions
@@ -141,6 +150,7 @@ final class MarketplaceStore: ObservableObject {
             payoutConnected = try c.decodeIfPresent(Bool.self, forKey: .payoutConnected) ?? false
             paidOutUSD = try c.decodeIfPresent(Double.self, forKey: .paidOutUSD) ?? 0
             reviews = try c.decodeIfPresent([Review].self, forKey: .reviews) ?? []
+            editorDrops = try c.decodeIfPresent([MediaItem].self, forKey: .editorDrops) ?? []
             libraryIDs = try c.decodeIfPresent([UUID].self, forKey: .libraryIDs) ?? []
             watchlistIDs = try c.decodeIfPresent([UUID].self, forKey: .watchlistIDs) ?? []
             submissions = try c.decodeIfPresent([Submission].self, forKey: .submissions) ?? []
@@ -167,6 +177,7 @@ final class MarketplaceStore: ObservableObject {
         payoutConnected = state.payoutConnected
         paidOutUSD = state.paidOutUSD
         reviews = state.reviews
+        editorDrops = state.editorDrops
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
@@ -191,6 +202,7 @@ final class MarketplaceStore: ObservableObject {
             payoutConnected: payoutConnected,
             paidOutUSD: paidOutUSD,
             reviews: reviews,
+            editorDrops: editorDrops,
             libraryIDs: Array(libraryIDs),
             watchlistIDs: Array(watchlistIDs),
             submissions: submissions,
@@ -232,6 +244,7 @@ final class MarketplaceStore: ObservableObject {
         payoutConnected = false
         paidOutUSD = 0
         reviews = []
+        editorDrops = []
         libraryIDs = []
         watchlistIDs = []
         submissions = []
@@ -330,6 +343,41 @@ final class MarketplaceStore: ObservableObject {
         reviews.removeAll { $0.itemID == itemID && $0.author == me }
         reviews.insert(Review(itemID: itemID, author: me,
                               rating: max(1, min(5, rating)), text: text.trimmed, date: .now), at: 0)
+    }
+
+    // MARK: - Demand signals & fresh drops
+
+    /// Top-selling (type, genre) lanes — what customers are actually buying.
+    func demandSignals(limit: Int = 5) -> [(type: MediaType, genre: String, sales: Int)] {
+        var buckets: [String: (MediaType, String, Int)] = [:]
+        for item in catalog where !item.genre.trimmed.isEmpty {
+            let key = "\(item.type.rawValue)|\(item.genre)"
+            var entry = buckets[key] ?? (item.type, item.genre, 0)
+            entry.2 += item.purchases
+            buckets[key] = entry
+        }
+        return buckets.values
+            .map { (type: $0.0, genre: $0.1, sales: $0.2) }
+            .sorted { $0.sales > $1.sales }
+            .prefix(limit).map { $0 }
+    }
+
+    /// The Editor learns from sales and commissions one fresh, original work
+    /// toward the strongest demand. Original by construction; never a copycat.
+    func commissionFreshDrop() {
+        guard editorDrops.count < 40 else { return }
+        let target = demandSignals(limit: 1).first
+        let type = target?.type ?? .novel
+        let genre = target?.genre ?? "Science Fiction"
+        var seed = editorDrops.count
+        var drop = ContentFoundry.freshDrop(type: type, genre: genre, seed: seed)
+        var guardCount = 0
+        while catalog.contains(where: { $0.title == drop.title }) && guardCount < 6 {
+            seed += 17; guardCount += 1
+            drop = ContentFoundry.freshDrop(type: type, genre: genre, seed: seed)
+        }
+        catalog.insert(drop, at: 0)
+        editorDrops.append(drop)   // persists
     }
 
     // MARK: - Derived feeds
@@ -431,7 +479,7 @@ final class MarketplaceStore: ObservableObject {
     @discardableResult
     func runReview(for submissionID: UUID) -> AIReviewResult? {
         guard let idx = submissions.firstIndex(where: { $0.id == submissionID }) else { return nil }
-        let result = AIEditor.review(submissions[idx].draft)
+        let result = AIEditor.review(submissions[idx].draft, against: catalog)
         submissions[idx].review = result
         submissions[idx].status = result.passed ? .accepted : .rejected
         return result

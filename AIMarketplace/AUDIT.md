@@ -70,7 +70,9 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 | Registration / onboarding | KDP/ASC | ✅ | `RegisterView` (local only) |
 | Publishing wizard | KDP | ✅ | Format→details→disclosure→content→cover→pricing→review |
 | Cover/art upload | KDP | ✅ | PhotosPicker cover step |
-| Content quality review | ASC review | ✅ | **AI Editor** (85% bar) — unique |
+| Content quality review | ASC review | ✅ | **AI Editor** (85% floor, rewards beating commercial) — unique |
+| Originality / anti-plagiarism | ✅ | ✅ | ✅ | ✅ | ✅ | **AI Editor rejects copycats** (catalogue similarity) — unique enforcement |
+| Demand-driven supply | 🟡 | ✅ | 🟡 | 🟡 | ✅ | Editor learns from sales and commissions fresh original works — unique |
 | Autonomous publishing | — | ✅ | **AI Autopilot** — unique |
 | Analytics dashboard | ASC/KDP | ✅ | `CreatorDashboardView`: units, proceeds, trend |
 | Royalties / payouts | KDP | 🟡 | **Partner Program added**: withdrawable USD balance, payout connect, cash-out, NRN→USD; real disbursement/KYC/tax still backend (`/payouts`) |
