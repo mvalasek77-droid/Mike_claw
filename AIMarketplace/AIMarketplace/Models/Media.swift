@@ -162,6 +162,16 @@ extension MediaItem {
 /// Curated AI-tool suggestions surfaced in the disclosure step, grouped by
 /// the kind of media they typically generate.
 enum AIToolCatalog {
+    /// Every model the marketplace knows about, across all media types.
+    static var allModels: [String] {
+        MediaType.allCases.flatMap { suggestions(for: $0) }
+    }
+
+    /// The media type a given model produces (first match wins).
+    static func type(for tool: String) -> MediaType? {
+        MediaType.allCases.first { suggestions(for: $0).contains(tool) }
+    }
+
     static func suggestions(for type: MediaType) -> [String] {
         switch type {
         case .novel:

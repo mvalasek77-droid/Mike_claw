@@ -26,6 +26,35 @@ enum ContentFoundry {
         return originals
     }
 
+    /// Titles attributed to a specific AI partner when it's activated, so the
+    /// model immediately "adds media" (and starts earning). Deterministic.
+    static func partnerTitles(for model: String, count: Int = 2) -> [MediaItem] {
+        guard let type = AIToolCatalog.type(for: model) else { return [] }
+        return (0..<count).map { i in
+            let key = "partner-\(model)-\(i)"
+            let title = title(for: type, key: key)
+            let slug = SampleData.slugify(title)
+            return MediaItem(
+                id: deterministicID(key + title),
+                title: title,
+                creator: model,
+                type: type,
+                genre: pick(genres(for: type), key + "g"),
+                synopsis: synopsis(for: type, title: title, genre: pick(genres(for: type), key + "g"), key: key),
+                aiTools: [model],
+                commercialScore: 88 + (stableHash(key + "s") % 10),
+                price: pick([3.99, 4.99, 5.99, 6.99, 7.99], key + "p"),
+                length: length(for: type, key: key),
+                purchases: 60 + (stableHash(key + "b") % 500),
+                trending: 60 + (stableHash(key + "t") % 30),
+                addedAt: Date().addingTimeInterval(-Double(stableHash(key + "a") % 900_000)),
+                coverAssetName: slug,
+                mediaFileName: type == .novel ? nil : slug,
+                isEditorOriginal: true
+            )
+        }
+    }
+
     // MARK: - Generation
 
     private static func make(type: MediaType, index: Int) -> MediaItem {

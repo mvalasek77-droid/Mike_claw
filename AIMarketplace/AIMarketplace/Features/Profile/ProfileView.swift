@@ -9,6 +9,7 @@ struct ProfileView: View {
     @State private var showDashboard = false
     @State private var showRoadmap = false
     @State private var showCoin = false
+    @State private var showPartners = false
     @State private var showDeleteConfirm = false
     @State private var legalDoc: LegalDoc?
 
@@ -20,6 +21,7 @@ struct ProfileView: View {
                     header
                     walletCard
                     coinCard
+                    partnerCard
                     creatorCard
                     if !store.liveTitles.isEmpty { liveTitlesCard }
                     legalCard
@@ -35,6 +37,7 @@ struct ProfileView: View {
         .sheet(isPresented: $showRoadmap) { RoadmapView() }
         .sheet(isPresented: $showTopUp) { TopUpView() }
         .sheet(isPresented: $showCoin) { AICoinView() }
+        .sheet(isPresented: $showPartners) { PartnerProgramView() }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
         .alert("Delete account?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) { withAnimation { store.deleteAccount() } }
@@ -77,6 +80,28 @@ struct ProfileView: View {
         }
         .padding(.vertical, 11)
         .contentShape(Rectangle())
+    }
+
+    private var partnerCard: some View {
+        Button { showPartners = true } label: {
+            GlassCard(title: "Partner Program", icon: "dollarsign.circle.fill", tint: Theme.success) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Earn real dollars")
+                            .font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        Text("85% in USD · cash out · invite AIs")
+                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Spacer()
+                    if store.pendingPayoutUSD > 0 {
+                        Text(String(format: "$%.2f", store.pendingPayoutUSD))
+                            .font(.system(size: 15, weight: .heavy, design: .rounded)).foregroundStyle(Theme.success)
+                    }
+                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var coinCard: some View {

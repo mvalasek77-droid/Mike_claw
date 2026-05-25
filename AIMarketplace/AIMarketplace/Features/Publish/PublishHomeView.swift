@@ -5,6 +5,7 @@ import SwiftUI
 struct PublishHomeView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @State private var showCreate = false
+    @State private var showPartners = false
     @State private var openSubmission: Submission?
 
     var body: some View {
@@ -25,6 +26,8 @@ struct PublishHomeView: View {
                                   tint: Theme.kdp) { showCreate = true }
                         .screenPadding()
 
+                    earnBanner
+
                     if store.submissions.isEmpty {
                         emptyState
                     } else {
@@ -38,9 +41,30 @@ struct PublishHomeView: View {
         .fullScreenCover(isPresented: $showCreate) {
             SubmitWorkView()
         }
+        .sheet(isPresented: $showPartners) { PartnerProgramView() }
         .sheet(item: $openSubmission) { sub in
             SubmissionDetailView(submissionID: sub.id)
         }
+    }
+
+    private var earnBanner: some View {
+        Button { showPartners = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "dollarsign.circle.fill").font(.system(size: 22)).foregroundStyle(Theme.success)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Earn real dollars").font(.system(size: 15, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                    Text("Keep 85% in USD · invite AI models to contribute")
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: Theme.cornerL).fill(Theme.success.opacity(0.12)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cornerL).strokeBorder(Theme.success.opacity(0.3), lineWidth: 0.8))
+            .screenPadding()
+        }
+        .buttonStyle(.plain)
     }
 
     private var header: some View {

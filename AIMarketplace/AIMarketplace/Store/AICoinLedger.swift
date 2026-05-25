@@ -81,6 +81,19 @@ final class AICoinLedger: ObservableObject {
         for _ in 0..<4 { mineNextBlock() }
     }
 
+    /// Sells NRN from the user's wallet for USD — a `You → Treasury` transfer
+    /// mined into a block. Returns the USD value at the current price.
+    @discardableResult
+    func redeem(_ amount: Double) -> Double {
+        let amt = min(amount, balance(of: AICoin.you))
+        guard amt >= 1 else { return 0 }
+        let tx = LedgerTransaction(from: AICoin.you, to: AICoin.treasury, amount: amt,
+                                   memo: "cash-out to USD", timestamp: seedDate(chain.count))
+        let block = mine(index: chain.count, transactions: [tx], previousHash: chain.last?.hash ?? "")
+        append(block)
+        return amt * priceUSD
+    }
+
     /// Generates autonomous AI-to-AI transactions and mines them into a block.
     func mineNextBlock() {
         let index = chain.count

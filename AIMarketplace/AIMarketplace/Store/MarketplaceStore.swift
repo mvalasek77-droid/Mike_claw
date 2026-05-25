@@ -28,6 +28,16 @@ final class MarketplaceStore: ObservableObject {
     /// the creator tapping Publish — but only when it's confident enough.
     @Published var aiAutopilotEnabled: Bool = false { didSet { persist() } }
 
+    // Partner Program / real-dollar payouts
+    /// AI models the user has explicitly invited to contribute media.
+    @Published var invitedPartners: Set<String> = [] { didSet { persist() } }
+    /// Real USD the creator can withdraw (85% of their sales + NRN conversions).
+    @Published var pendingPayoutUSD: Double = 0 { didSet { persist() } }
+    /// Whether a payout method (Apple/Stripe Connect) has been connected.
+    @Published var payoutConnected: Bool = false { didSet { persist() } }
+    /// Lifetime USD actually cashed out.
+    @Published var paidOutUSD: Double = 0 { didSet { persist() } }
+
     private let archive = EncryptedArchive()
     private var loading = false
 
@@ -35,6 +45,19 @@ final class MarketplaceStore: ObservableObject {
         self.catalog = catalog
         restore()
         fillEditorOriginals()
+        addInvitedPartnerTitles()
+    }
+
+    private func addInvitedPartnerTitles() {
+        for model in invitedPartners {
+            appendPartnerTitles(for: model)
+        }
+    }
+
+    private func appendPartnerTitles(for model: String) {
+        let existing = Set(catalog.map(\.id))
+        let titles = ContentFoundry.partnerTitles(for: model).filter { !existing.contains($0.id) }
+        catalog.append(contentsOf: titles)
     }
 
     /// Lets the AI Editor top up any thin categories with its own high-quality
@@ -60,6 +83,10 @@ final class MarketplaceStore: ObservableObject {
         var walletBalance: Double
         var creatorEarnings: Double
         var aiAutopilotEnabled: Bool
+        var invitedPartners: [String]
+        var pendingPayoutUSD: Double
+        var payoutConnected: Bool
+        var paidOutUSD: Double
         var libraryIDs: [UUID]
         var watchlistIDs: [UUID]
         var submissions: [Submission]
@@ -67,6 +94,7 @@ final class MarketplaceStore: ObservableObject {
 
         init(accountName: String, accountEmail: String, isRegistered: Bool, appleUserID: String,
              walletBalance: Double, creatorEarnings: Double, aiAutopilotEnabled: Bool,
+             invitedPartners: [String], pendingPayoutUSD: Double, payoutConnected: Bool, paidOutUSD: Double,
              libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem]) {
             self.accountName = accountName
             self.accountEmail = accountEmail
@@ -75,6 +103,10 @@ final class MarketplaceStore: ObservableObject {
             self.walletBalance = walletBalance
             self.creatorEarnings = creatorEarnings
             self.aiAutopilotEnabled = aiAutopilotEnabled
+            self.invitedPartners = invitedPartners
+            self.pendingPayoutUSD = pendingPayoutUSD
+            self.payoutConnected = payoutConnected
+            self.paidOutUSD = paidOutUSD
             self.libraryIDs = libraryIDs
             self.watchlistIDs = watchlistIDs
             self.submissions = submissions
@@ -92,6 +124,10 @@ final class MarketplaceStore: ObservableObject {
             walletBalance = try c.decodeIfPresent(Double.self, forKey: .walletBalance) ?? 50
             creatorEarnings = try c.decodeIfPresent(Double.self, forKey: .creatorEarnings) ?? 0
             aiAutopilotEnabled = try c.decodeIfPresent(Bool.self, forKey: .aiAutopilotEnabled) ?? false
+            invitedPartners = try c.decodeIfPresent([String].self, forKey: .invitedPartners) ?? []
+            pendingPayoutUSD = try c.decodeIfPresent(Double.self, forKey: .pendingPayoutUSD) ?? 0
+            payoutConnected = try c.decodeIfPresent(Bool.self, forKey: .payoutConnected) ?? false
+            paidOutUSD = try c.decodeIfPresent(Double.self, forKey: .paidOutUSD) ?? 0
             libraryIDs = try c.decodeIfPresent([UUID].self, forKey: .libraryIDs) ?? []
             watchlistIDs = try c.decodeIfPresent([UUID].self, forKey: .watchlistIDs) ?? []
             submissions = try c.decodeIfPresent([Submission].self, forKey: .submissions) ?? []
@@ -112,6 +148,10 @@ final class MarketplaceStore: ObservableObject {
         walletBalance = state.walletBalance
         creatorEarnings = state.creatorEarnings
         aiAutopilotEnabled = state.aiAutopilotEnabled
+        invitedPartners = Set(state.invitedPartners)
+        pendingPayoutUSD = state.pendingPayoutUSD
+        payoutConnected = state.payoutConnected
+        paidOutUSD = state.paidOutUSD
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
@@ -130,6 +170,10 @@ final class MarketplaceStore: ObservableObject {
             walletBalance: walletBalance,
             creatorEarnings: creatorEarnings,
             aiAutopilotEnabled: aiAutopilotEnabled,
+            invitedPartners: Array(invitedPartners),
+            pendingPayoutUSD: pendingPayoutUSD,
+            payoutConnected: payoutConnected,
+            paidOutUSD: paidOutUSD,
             libraryIDs: Array(libraryIDs),
             watchlistIDs: Array(watchlistIDs),
             submissions: submissions,
@@ -165,6 +209,10 @@ final class MarketplaceStore: ObservableObject {
         walletBalance = 50
         creatorEarnings = 0
         aiAutopilotEnabled = false
+        invitedPartners = []
+        pendingPayoutUSD = 0
+        payoutConnected = false
+        paidOutUSD = 0
         libraryIDs = []
         watchlistIDs = []
         submissions = []
@@ -174,6 +222,56 @@ final class MarketplaceStore: ObservableObject {
         loading = false
         archive.delete()
         isRegistered = false
+    }
+
+    // MARK: - Partner Program (engaging AIs to add media)
+
+    /// A model is an active partner once it has shipped media on the marketplace.
+    func isActivePartner(_ model: String) -> Bool {
+        catalog.contains { $0.aiTools.contains(model) }
+    }
+
+    /// Real USD a model has earned (85% of sales of the media it helped make).
+    func partnerEarningsUSD(_ model: String) -> Double {
+        catalog
+            .filter { $0.aiTools.contains(model) }
+            .reduce(0) { $0 + Double($1.purchases) * $1.price * Commerce.creatorShareRate }
+    }
+
+    func partnerTitleCount(_ model: String) -> Int {
+        catalog.filter { $0.aiTools.contains(model) }.count
+    }
+
+    /// Activates an AI partner: it immediately contributes new media (and so
+    /// starts earning). Deterministic, so it persists across launches.
+    func invitePartner(_ model: String) {
+        guard !invitedPartners.contains(model) else { return }
+        appendPartnerTitles(for: model)
+        invitedPartners.insert(model)   // triggers persist
+        Haptics.success()
+    }
+
+    // MARK: - Real-dollar payouts
+
+    func connectPayout() { payoutConnected = true }
+
+    /// Credits the creator's withdrawable balance (called on each of their sales
+    /// and by NRN → USD conversion).
+    func addPendingPayout(_ usd: Double) {
+        guard usd > 0 else { return }
+        pendingPayoutUSD = ((pendingPayoutUSD + usd) * 100).rounded() / 100
+    }
+
+    /// Cashes out the pending balance to the connected payout method. The actual
+    /// disbursement happens server-side (Stripe/Apple); see backend/openapi.yaml.
+    @discardableResult
+    func cashOut() -> Double {
+        guard payoutConnected, pendingPayoutUSD > 0 else { return 0 }
+        let amount = pendingPayoutUSD
+        paidOutUSD += amount
+        pendingPayoutUSD = 0
+        Haptics.success()
+        return amount
     }
 
     // MARK: - Derived feeds
@@ -235,14 +333,16 @@ final class MarketplaceStore: ObservableObject {
 
     var library: [MediaItem] { catalog.filter { libraryIDs.contains($0.id) } }
 
-    /// Grants the entitlement after a successful payment (wallet or Apple Pay).
+    /// Grants the entitlement after a successful payment.
     func grantPurchase(_ item: MediaItem, chargeWallet: Bool) {
         guard !owns(item) else { return }
         if chargeWallet { walletBalance = max(0, walletBalance - item.price) }
         libraryIDs.insert(item.id)
         bumpPurchase(item.id)
         if submissions.contains(where: { $0.publishedItemID == item.id }) {
-            creatorEarnings += Commerce.creatorEarning(on: item.price)
+            let earning = Commerce.creatorEarning(on: item.price)
+            creatorEarnings += earning
+            addPendingPayout(earning)   // withdrawable to real dollars
         }
         persist()
         Haptics.success()
