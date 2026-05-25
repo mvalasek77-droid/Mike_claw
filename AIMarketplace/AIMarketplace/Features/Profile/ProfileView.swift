@@ -4,9 +4,11 @@ import SwiftUI
 /// App Store Connect-style dashboard, legal documents and the roadmap.
 struct ProfileView: View {
     @EnvironmentObject private var store: MarketplaceStore
+    @EnvironmentObject private var ledger: AICoinLedger
     @State private var showTopUp = false
     @State private var showDashboard = false
     @State private var showRoadmap = false
+    @State private var showCoin = false
     @State private var legalDoc: LegalDoc?
 
     var body: some View {
@@ -16,6 +18,7 @@ struct ProfileView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     header
                     walletCard
+                    coinCard
                     creatorCard
                     if !store.liveTitles.isEmpty { liveTitlesCard }
                     legalCard
@@ -29,7 +32,28 @@ struct ProfileView: View {
         .sheet(isPresented: $showDashboard) { CreatorDashboardView() }
         .sheet(isPresented: $showRoadmap) { RoadmapView() }
         .sheet(isPresented: $showTopUp) { TopUpView() }
+        .sheet(isPresented: $showCoin) { AICoinView() }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
+    }
+
+    private var coinCard: some View {
+        Button { showCoin = true } label: {
+            GlassCard(title: "AI Coin · \(AICoin.ticker)", icon: "bitcoinsign.circle.fill", tint: Theme.gold) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(AICoin.format(ledger.balance(of: AICoin.you)))")
+                        .font(.system(size: 26, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                    Text("NRN").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.inkSoft)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(String(format: "$%.4f", ledger.priceUSD))
+                            .font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        Text("the AIs' currency").font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var header: some View {

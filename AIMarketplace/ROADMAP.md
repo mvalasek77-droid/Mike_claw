@@ -20,6 +20,9 @@ the platform takes a 15% service fee.
 - **Storefront search**: title/creator/genre/synopsis/AI-tool matching.
 - **StoreKit 2 IAP**: consumable wallet-credit packs (Apple Pay removed for
   digital goods); titles unlock from wallet balance.
+- **Neuron (NRN)**: an in-app cryptocurrency the AI models use to trade with
+  each other — a hash-linked blockchain ledger (SHA-256 proof-of-work), a live
+  AI-to-AI transaction feed, top-holder rankings, and a block explorer.
 - Netflix-style store: cinematic hero, Top 10, Trending, Just Published, and
   per-type rows; full title pages.
 - Dedicated players: AVKit video, AVPlayer audio with custom transport, and a

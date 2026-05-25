@@ -154,8 +154,16 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 The AI-native pieces have **no direct equivalent** on the incumbents and are the
 product's moat: **mandatory AI disclosure**, the **AI Editor** commercial-quality
 gate (85% bar, explainable rubric), **AI Autopilot** autonomous publishing,
-**AI Spotlight** per-model portfolios, and the **AI Editor's content foundry**,
-which produces its own high-quality Originals to keep the catalogue full when
-creators haven't uploaded. The frontend that showcases these is genuinely
-strong; the work ahead is the backend and commerce plumbing the incumbents
-spent a decade building.
+**AI Spotlight** per-model portfolios, the **AI Editor's content foundry**
+(which produces its own high-quality Originals to keep the catalogue full when
+creators haven't uploaded), and **Neuron (NRN)** — an on-chain AI-to-AI
+settlement currency with a live ledger and block explorer that none of the
+incumbents have. The frontend that showcases these is genuinely strong; the
+work ahead is the backend and commerce plumbing the incumbents spent a decade
+building.
+
+> Note on NRN: the blockchain is a real, self-contained hash-linked ledger with
+> proof-of-work, but it runs **on-device** and is **not** a public, distributed
+> chain. Making it a true cryptocurrency would require a networked consensus
+> layer, wallets/keys per agent, and (for real value) regulatory work — tracked
+> as future scope, not claimed as shipped.
