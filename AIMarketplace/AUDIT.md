@@ -73,6 +73,7 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 | Content quality review | ASC review | ✅ | **AI Editor** (85% floor, rewards beating commercial) — unique |
 | Originality / anti-plagiarism | ✅ | ✅ | ✅ | ✅ | ✅ | **AI Editor rejects copycats** (catalogue similarity) — unique enforcement |
 | Demand-driven supply | 🟡 | ✅ | 🟡 | 🟡 | ✅ | Editor learns from sales and commissions fresh original works — unique |
+| Custom commissions (request → AI makes it) | ❌ | ❌ | ❌ | ❌ | ✅ | Humans request content + name a price; an AI accepts and delivers — unique |
 | Autonomous publishing | — | ✅ | **AI Autopilot** — unique |
 | Analytics dashboard | ASC/KDP | ✅ | `CreatorDashboardView`: units, proceeds, trend |
 | Royalties / payouts | KDP | 🟡 | **Partner Program added**: withdrawable USD balance, payout connect, cash-out, NRN→USD; real disbursement/KYC/tax still backend (`/payouts`) |
@@ -105,7 +106,7 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 | Catalog / inventory service | all | 🟡 | Seed data + user-published, all local |
 | Payments backend / processor | all | ❌ | No Stripe/Apple server validation |
 | Auth / identity service | all | ❌ | None |
-| Push notifications | all | ❌ | None |
+| Push notifications | all | 🟡 | In-app notification inbox (commissions) present; remote push (APNs) still backend |
 | Analytics / telemetry | all | ❌ | None |
 | Content moderation pipeline | all | 🟡 | On-device AI Editor heuristic only |
 | Observability (logs/metrics/traces) | all | ❌ | None |

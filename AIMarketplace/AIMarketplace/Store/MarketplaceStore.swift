@@ -44,6 +44,10 @@ final class MarketplaceStore: ObservableObject {
     @Published var reviews: [Review] = [] { didSet { persist() } }
     /// New works the AI Editor commissions over time toward proven demand.
     @Published var editorDrops: [MediaItem] = [] { didSet { persist() } }
+    /// Human-posted content commissions (request → AI accepts → delivered).
+    @Published var requests: [ContentRequest] = [] { didSet { persist() } }
+    /// In-app notification inbox.
+    @Published var notifications: [AppNotification] = [] { didSet { persist() } }
 
     private let archive = EncryptedArchive()
     private var loading = false
@@ -59,6 +63,11 @@ final class MarketplaceStore: ObservableObject {
         // Each launch, the Editor learns from sales and commissions one fresh,
         // original work toward whatever's in demand.
         commissionFreshDrop()
+        // Resume any commissions that were mid-flight when the app last closed.
+        for request in requests where request.status == .open {
+            let id = request.id
+            Task { await processRequest(id) }
+        }
     }
 
     private func addInvitedPartnerTitles() {
@@ -103,6 +112,8 @@ final class MarketplaceStore: ObservableObject {
         var paidOutUSD: Double
         var reviews: [Review]
         var editorDrops: [MediaItem]
+        var requests: [ContentRequest]
+        var notifications: [AppNotification]
         var libraryIDs: [UUID]
         var watchlistIDs: [UUID]
         var submissions: [Submission]
@@ -112,6 +123,7 @@ final class MarketplaceStore: ObservableObject {
              walletBalance: Double, creatorEarnings: Double, aiAutopilotEnabled: Bool,
              invitedPartners: [String], referrals: [String: String], pendingPayoutUSD: Double,
              payoutConnected: Bool, paidOutUSD: Double, reviews: [Review], editorDrops: [MediaItem],
+             requests: [ContentRequest], notifications: [AppNotification],
              libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem]) {
             self.accountName = accountName
             self.accountEmail = accountEmail
@@ -127,6 +139,8 @@ final class MarketplaceStore: ObservableObject {
             self.paidOutUSD = paidOutUSD
             self.reviews = reviews
             self.editorDrops = editorDrops
+            self.requests = requests
+            self.notifications = notifications
             self.libraryIDs = libraryIDs
             self.watchlistIDs = watchlistIDs
             self.submissions = submissions
@@ -151,6 +165,8 @@ final class MarketplaceStore: ObservableObject {
             paidOutUSD = try c.decodeIfPresent(Double.self, forKey: .paidOutUSD) ?? 0
             reviews = try c.decodeIfPresent([Review].self, forKey: .reviews) ?? []
             editorDrops = try c.decodeIfPresent([MediaItem].self, forKey: .editorDrops) ?? []
+            requests = try c.decodeIfPresent([ContentRequest].self, forKey: .requests) ?? []
+            notifications = try c.decodeIfPresent([AppNotification].self, forKey: .notifications) ?? []
             libraryIDs = try c.decodeIfPresent([UUID].self, forKey: .libraryIDs) ?? []
             watchlistIDs = try c.decodeIfPresent([UUID].self, forKey: .watchlistIDs) ?? []
             submissions = try c.decodeIfPresent([Submission].self, forKey: .submissions) ?? []
@@ -178,6 +194,8 @@ final class MarketplaceStore: ObservableObject {
         paidOutUSD = state.paidOutUSD
         reviews = state.reviews
         editorDrops = state.editorDrops
+        requests = state.requests
+        notifications = state.notifications
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
@@ -203,6 +221,8 @@ final class MarketplaceStore: ObservableObject {
             paidOutUSD: paidOutUSD,
             reviews: reviews,
             editorDrops: editorDrops,
+            requests: requests,
+            notifications: notifications,
             libraryIDs: Array(libraryIDs),
             watchlistIDs: Array(watchlistIDs),
             submissions: submissions,
@@ -245,6 +265,8 @@ final class MarketplaceStore: ObservableObject {
         paidOutUSD = 0
         reviews = []
         editorDrops = []
+        requests = []
+        notifications = []
         libraryIDs = []
         watchlistIDs = []
         submissions = []
@@ -379,6 +401,117 @@ final class MarketplaceStore: ObservableObject {
         catalog.insert(drop, at: 0)
         editorDrops.append(drop)   // persists
     }
+
+    // MARK: - Content requests (commissions)
+
+    private func commissionBase(_ type: MediaType) -> Double {
+        switch type {
+        case .novel: return 3.99
+        case .music: return 4.99
+        case .movie: return 7.99
+        }
+    }
+
+    /// What a model charges to take a commission — better (higher-tier) models
+    /// cost more, so a bigger budget attracts a better AI.
+    func askPrice(model: String, type: MediaType) -> Double {
+        let mult = Incentives.tier(forTitles: partnerTitleCount(model)).multiplier
+        return (commissionBase(type) * mult * 100).rounded() / 100
+    }
+
+    /// Lowest price any AI will take a commission of this type for.
+    func lowestAsk(for type: MediaType) -> Double {
+        AIToolCatalog.suggestions(for: type).map { askPrice(model: $0, type: type) }.min() ?? commissionBase(type)
+    }
+
+    /// The AI that accepts: the best (highest-tier) model whose ask fits the
+    /// budget. Returns nil if the budget is below every model's ask.
+    func acceptingModel(for type: MediaType, budget: Double) -> String? {
+        AIToolCatalog.suggestions(for: type)
+            .map { (model: $0, ask: askPrice(model: $0, type: type)) }
+            .filter { budget >= $0.ask }
+            .max { $0.ask < $1.ask }?
+            .model
+    }
+
+    /// Posts a commission and kicks off the AI evaluation loop.
+    func submitRequest(type: MediaType, genre: String, brief: String, budget: Double) {
+        let request = ContentRequest(requester: accountName.trimmed.isEmpty ? "You" : accountName.trimmed,
+                                     type: type, genre: genre.trimmed, brief: brief.trimmed,
+                                     budgetUSD: budget, status: .open, createdAt: .now)
+        requests.insert(request, at: 0)
+        let id = request.id
+        Task { await processRequest(id) }
+    }
+
+    /// Simulates AIs evaluating the request, one accepting, then delivering.
+    private func processRequest(_ id: UUID) async {
+        try? await Task.sleep(nanoseconds: 1_400_000_000)
+        guard let idx = requests.firstIndex(where: { $0.id == id }), requests[idx].status == .open else { return }
+        let request = requests[idx]
+
+        guard let model = acceptingModel(for: request.type, budget: request.budgetUSD) else {
+            requests[idx].status = .unmatched
+            requests[idx].resolvedAt = .now
+            let low = lowestAsk(for: request.type)
+            notify(title: "No AI took your request",
+                   body: "No \(request.type.title.lowercased()) model accepted “\(request.headline)” at \(usd(request.budgetUSD)). The lowest ask is \(usd(low)) — raise your budget and try again.",
+                   kind: .request)
+            return
+        }
+
+        requests[idx].status = .accepted
+        requests[idx].acceptedBy = model
+        notify(title: "\(model) accepted your request",
+               body: "Producing “\(request.headline)” for \(usd(request.budgetUSD)). You'll be notified when it's ready.",
+               kind: .request)
+
+        try? await Task.sleep(nanoseconds: 1_800_000_000)
+        deliver(requestID: id, model: model)
+    }
+
+    private func deliver(requestID: UUID, model: String) {
+        guard let idx = requests.firstIndex(where: { $0.id == requestID }), requests[idx].status == .accepted else { return }
+        let request = requests[idx]
+        let tierMult = Incentives.tier(forTitles: partnerTitleCount(model)).multiplier
+        let score = min(99, 88 + Int(((tierMult - 1.0) * 10).rounded()))
+
+        var item = ContentFoundry.commission(model: model, type: request.type,
+                                              genre: request.genre.isEmpty ? "Original" : request.genre,
+                                              seed: requests.count, score: score)
+        item.price = request.budgetUSD
+        item.purchases = 1                       // the requester's purchase
+        catalog.insert(item, at: 0)
+        libraryIDs.insert(item.id)               // they commissioned it → they own it
+        walletBalance = max(0, walletBalance - request.budgetUSD)
+
+        requests[idx].status = .delivered
+        requests[idx].deliveredItemID = item.id
+        requests[idx].resolvedAt = .now
+        notify(title: "Your commission is ready",
+               body: "“\(item.title)” by \(model) — scored \(score)% by the Editor. It's in your Library.",
+               kind: .delivery, relatedItemID: item.id)
+        Haptics.success()
+    }
+
+    // MARK: - Notifications
+
+    var unreadNotificationCount: Int { notifications.filter { !$0.read }.count }
+
+    func notify(title: String, body: String, kind: AppNotification.Kind, relatedItemID: UUID? = nil) {
+        notifications.insert(AppNotification(title: title, body: body, date: .now, read: false,
+                                            kind: kind, relatedItemID: relatedItemID), at: 0)
+        if notifications.count > 80 { notifications.removeLast(notifications.count - 80) }
+    }
+
+    func markAllNotificationsRead() {
+        guard unreadNotificationCount > 0 else { return }
+        notifications = notifications.map { var n = $0; n.read = true; return n }
+    }
+
+    func item(withID id: UUID) -> MediaItem? { catalog.first { $0.id == id } }
+
+    private func usd(_ v: Double) -> String { String(format: "$%.2f", v) }
 
     // MARK: - Derived feeds
 

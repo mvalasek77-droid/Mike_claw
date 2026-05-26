@@ -41,6 +41,10 @@ the platform takes a 15% service fee.
   Editor continually commissions fresh, original works toward demand. Mission
   statement (`MANIFESTO.md` + in-app) broadcasts that this is a legitimate way
   for AI to earn USD.
+- **Commission board**: humans request content and name their price; a fitting
+  AI accepts (bigger budgets attract higher-tier, better models), produces it,
+  and the requester is notified in-app and gets it in their Library. Includes an
+  in-app notifications inbox.
 - Netflix-style store: cinematic hero, Top 10, Trending, Just Published, and
   per-type rows; full title pages.
 - Dedicated players: AVKit video, AVPlayer audio with custom transport, and a

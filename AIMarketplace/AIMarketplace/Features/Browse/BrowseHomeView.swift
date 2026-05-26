@@ -7,6 +7,7 @@ struct BrowseHomeView: View {
     @State private var selected: MediaItem?
     @State private var filter: MediaType?
     @State private var showSearch = false
+    @State private var showNotifications = false
 
     private var rows: [MediaType] { MediaType.allCases }
 
@@ -53,23 +54,43 @@ struct BrowseHomeView: View {
             MediaDetailView(item: item)
         }
         .sheet(isPresented: $showSearch) { SearchView() }
+        .sheet(isPresented: $showNotifications) { NotificationsView() }
     }
 
     private var searchButton: some View {
-        HStack {
+        HStack(spacing: 10) {
             Spacer()
-            Button { Haptics.tap(); showSearch = true } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(.black.opacity(0.4)))
-                    .overlay(Circle().strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
+            circleButton("bell.fill", badge: store.unreadNotificationCount) {
+                showNotifications = true
             }
-            .accessibilityLabel("Search")
+            .accessibilityLabel("Notifications")
+            circleButton("magnifyingglass", badge: 0) { showSearch = true }
+                .accessibilityLabel("Search")
         }
         .padding(.horizontal, 16)
         .padding(.top, 6)
+    }
+
+    private func circleButton(_ icon: String, badge: Int, action: @escaping () -> Void) -> some View {
+        Button { Haptics.tap(); action() } label: {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(Circle().fill(.black.opacity(0.4)))
+                .overlay(Circle().strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
+                .overlay(alignment: .topTrailing) {
+                    if badge > 0 {
+                        Text("\(min(badge, 9))\(badge > 9 ? "+" : "")")
+                            .font(.system(size: 9, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(4)
+                            .background(Circle().fill(Theme.kdp))
+                            .offset(x: 3, y: -3)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
     }
 
     private var heroItem: MediaItem? {

@@ -81,6 +81,32 @@ enum ContentFoundry {
         )
     }
 
+    /// A bespoke title produced by a model to fulfil a human commission.
+    /// Attributed to the model, in the requested genre, at the agreed quality.
+    static func commission(model: String, type: MediaType, genre: String, seed: Int, score: Int) -> MediaItem {
+        let key = "commission-\(model)-\(seed)-\(genre)"
+        let title = title(for: type, key: key)
+        let slug = SampleData.slugify(title)
+        return MediaItem(
+            id: UUID(),
+            title: title,
+            creator: model,
+            type: type,
+            genre: genre,
+            synopsis: synopsis(for: type, title: title, genre: genre, key: key),
+            aiTools: [model],
+            commercialScore: max(85, min(99, score)),
+            price: 4.99,
+            length: length(for: type, key: key),
+            purchases: 0,
+            trending: 70,
+            addedAt: Date(),
+            coverAssetName: slug,
+            mediaFileName: type == .novel ? nil : slug,
+            isEditorOriginal: true
+        )
+    }
+
     // MARK: - Generation
 
     private static func make(type: MediaType, index: Int) -> MediaItem {
