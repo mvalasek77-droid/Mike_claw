@@ -438,6 +438,9 @@ final class MarketplaceStore: ObservableObject {
 
     func isScoutFind(_ item: MediaItem) -> Bool { scoutDrops.contains { $0.id == item.id } }
 
+    /// When the next daily slate is due (24h after the last run).
+    var nextScoutRun: Date? { lastScoutRun.map { $0.addingTimeInterval(86_400) } }
+
     /// Whether the creator is actively posting (published via the app in the
     /// last day). When true, The Scout backs off producing and just connects.
     var userPostedRecently: Bool {
@@ -446,15 +449,19 @@ final class MarketplaceStore: ObservableObject {
 
     /// Runs a Scout cycle at most once per day (call on launch).
     func runScoutIfDue() {
-        if let last = lastScoutRun, Date.now.timeIntervalSince(last) < 86_400 { return }
+        if let last = lastScoutRun, Date.now.timeIntervalSince(last) < 86_400 {
+            fulfillOpenRequests()   // still mop up any stuck user requests
+            return
+        }
         runScout()
     }
 
-    /// One Scout cycle. If the creator is posting, The Scout focuses on AI
-    /// outreach; otherwise it delivers a premium daily slate (film, music,
-    /// novel at 95–100% commercial) plus one experimental piece.
+    /// One Scout cycle. Always serves open/unmatched user requests; then, if the
+    /// creator is posting, focuses on AI outreach; otherwise delivers a premium
+    /// daily slate (film, music, novel at 95–100% commercial) + one experimental.
     func runScout() {
         lastScoutRun = .now
+        fulfillOpenRequests()
         guard !userPostedRecently else {
             logScoutOutreach()
             return
@@ -498,6 +505,29 @@ final class MarketplaceStore: ObservableObject {
 
     private func trimScoutLog() {
         if scoutLog.count > 60 { scoutLog.removeLast(scoutLog.count - 60) }
+    }
+
+    /// The Scout auto-accepts any open/unmatched user requests and gets an AI to
+    /// make them — even ones the open market wouldn't take at that budget.
+    private func fulfillOpenRequests() {
+        let pending = requests.filter { $0.status == .open || $0.status == .unmatched }.map(\.id)
+        for id in pending { scoutFulfill(id) }
+    }
+
+    private func scoutFulfill(_ requestID: UUID) {
+        guard let idx = requests.firstIndex(where: { $0.id == requestID }),
+              requests[idx].status == .open || requests[idx].status == .unmatched else { return }
+        let request = requests[idx]
+        let model = acceptingModel(for: request.type, budget: request.budgetUSD)
+            ?? AIToolCatalog.suggestions(for: request.type).first ?? AICoin.editor
+        requests[idx].status = .accepted
+        requests[idx].acceptedBy = model
+        energyLedger?.draw(AICoin.energyCost(request.type), by: model, memo: "Scout fulfilling “\(request.headline)”")
+        scoutLog.insert(ScoutEntry(date: .now,
+            message: "The Scout picked up your request “\(request.headline)” and got \(model) to make it.",
+            kind: .outreach, relatedItemID: nil), at: 0)
+        trimScoutLog()
+        deliver(requestID: requestID, model: model)
     }
 
     // MARK: - Content requests (commissions)

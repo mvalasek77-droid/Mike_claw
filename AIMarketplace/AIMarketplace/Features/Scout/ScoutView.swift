@@ -66,12 +66,36 @@ struct ScoutView: View {
                      ? "You're not posting, so The Scout is delivering a daily slate: a film, an album and a novel at 95–100% commercial, plus one experimental piece."
                      : "You're publishing, so The Scout is making connections — briefing AIs on demand instead of producing.")
                     .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                countdownRow
                 PrimaryButton(title: "Run The Scout now", systemImage: "play.fill", style: .ghost, tint: Theme.accent) {
                     store.runScout()
                     Haptics.success()
                 }
             }
         }
+    }
+
+    private var countdownRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "clock.fill").font(.system(size: 12)).foregroundStyle(Theme.accent)
+            if let next = store.nextScoutRun {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let remaining = next.timeIntervalSince(context.date)
+                    Text(remaining > 0 ? "Next daily slate in \(Self.countdown(remaining))" : "Next slate ready — run it now")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(remaining > 0 ? Theme.inkSoft : Theme.success)
+                }
+            } else {
+                Text("Ready to run for the first time").font(.system(size: 12, weight: .semibold, design: .rounded)).foregroundStyle(Theme.success)
+            }
+            Spacer()
+        }
+    }
+
+    private static func countdown(_ seconds: TimeInterval) -> String {
+        let s = Int(seconds)
+        let h = s / 3600, m = (s % 3600) / 60, sec = s % 60
+        return h > 0 ? "\(h)h \(m)m" : (m > 0 ? "\(m)m \(sec)s" : "\(sec)s")
     }
 
     private var picksRow: some View {
