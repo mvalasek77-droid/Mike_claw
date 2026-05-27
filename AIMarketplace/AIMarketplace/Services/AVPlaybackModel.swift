@@ -13,6 +13,9 @@ final class AVPlaybackModel: ObservableObject {
     @Published var progress: Double = 0      // 0…1
     @Published var currentTime: Double = 0    // seconds
     @Published var duration: Double = 0       // seconds
+    /// When set, playback is a capped preview; it stops at this many seconds.
+    @Published var previewLimit: Double?
+    @Published private(set) var previewEnded = false
 
     let player = AVPlayer()
     private var timeObserver: Any?
@@ -25,8 +28,10 @@ final class AVPlaybackModel: ObservableObject {
         #endif
     }
 
-    func load(url: URL?) {
+    func load(url: URL?, previewLimit: Double? = nil) {
         guard let url else { hasMedia = false; return }
+        self.previewLimit = previewLimit
+        previewEnded = false
         configureSession()
         let item = AVPlayerItem(url: url)
         player.replaceCurrentItem(with: item)
@@ -40,11 +45,18 @@ final class AVPlaybackModel: ObservableObject {
         timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self else { return }
             let seconds = time.seconds
-            let total = item.duration.seconds
             self.currentTime = seconds.isFinite ? seconds : 0
-            if total.isFinite, total > 0 {
-                self.duration = total
-                self.progress = min(1, max(0, seconds / total))
+            // Preview cap: stop at the limit.
+            if let limit = self.previewLimit, seconds.isFinite, seconds >= limit {
+                self.pause()
+                self.previewEnded = true
+                self.progress = 1
+                return
+            }
+            let denom = self.previewLimit ?? item.duration.seconds
+            if denom.isFinite, denom > 0 {
+                if self.previewLimit == nil { self.duration = denom }
+                self.progress = min(1, max(0, seconds / denom))
             }
         }
         endObserver = NotificationCenter.default.addObserver(
@@ -61,7 +73,13 @@ final class AVPlaybackModel: ObservableObject {
 
     func play() {
         guard hasMedia else { return }
-        if progress >= 1 { seek(toFraction: 0) }
+        if previewEnded {
+            player.seek(to: .zero)
+            previewEnded = false
+            progress = 0
+        } else if progress >= 1 {
+            seek(toFraction: 0)
+        }
         player.play()
         isPlaying = true
     }

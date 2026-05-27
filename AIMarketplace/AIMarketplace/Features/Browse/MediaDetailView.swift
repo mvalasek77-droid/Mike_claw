@@ -8,6 +8,7 @@ struct MediaDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showPlayer = false
+    @State private var previewMode = false
     @State private var showInsufficientFunds = false
     @State private var showTopUp = false
     @State private var showWriteReview = false
@@ -41,7 +42,7 @@ struct MediaDetailView: View {
             }
         }
         .fullScreenCover(isPresented: $showPlayer) {
-            PlayerView(item: item)
+            PlayerView(item: item, preview: previewMode)
         }
         .sheet(isPresented: $showTopUp) { TopUpView() }
         .sheet(isPresented: $showWriteReview) { WriteReviewView(item: item) }
@@ -106,11 +107,15 @@ struct MediaDetailView: View {
         VStack(spacing: 10) {
             if owned {
                 PrimaryButton(title: "\(item.type.verb) now", systemImage: "play.fill", style: .light) {
-                    showPlayer = true
+                    previewMode = false; showPlayer = true
                 }
             } else {
                 PrimaryButton(title: "Buy · \(item.priceLabel)", systemImage: "cart.fill") {
                     if !store.purchase(item) { showInsufficientFunds = true }
+                }
+                PrimaryButton(title: item.type == .novel ? "Read a sample" : "Preview",
+                              systemImage: "eye.fill", style: .ghost) {
+                    previewMode = true; showPlayer = true
                 }
                 Text("Buys with wallet credit (added via the App Store). Grants a personal licence to \(item.type.verb.lowercased()) this title in-app.")
                     .font(.system(size: 11, weight: .medium))

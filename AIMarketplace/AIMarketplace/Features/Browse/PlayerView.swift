@@ -8,24 +8,36 @@ import AVFoundation
 /// experience is complete even before assets are added.
 struct PlayerView: View {
     let item: MediaItem
+    /// When true, plays a limited sample (capped clip / first pages).
+    var preview: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
             switch item.type {
-            case .movie: VideoSurface(item: item)
-            case .music: AudioSurface(item: item)
-            case .novel: ReaderSurface(item: item)
+            case .movie: VideoSurface(item: item, preview: preview)
+            case .music: AudioSurface(item: item, preview: preview)
+            case .novel: ReaderSurface(item: item, preview: preview)
             }
 
-            HStack {
+            HStack(spacing: 8) {
                 CircleIconButton(icon: "chevron.down") { dismiss() }
                 Spacer()
-                Text(item.title)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .lineLimit(1)
+                VStack(spacing: 2) {
+                    Text(item.title)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(1)
+                    if preview {
+                        Text("PREVIEW")
+                            .font(.system(size: 9, weight: .heavy, design: .rounded))
+                            .tracking(1.5)
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 7).padding(.vertical, 2)
+                            .background(Capsule().fill(Theme.accent))
+                    }
+                }
                 Spacer()
                 Color.clear.frame(width: 40, height: 40)
             }
@@ -55,6 +67,7 @@ struct CircleIconButton: View {
 
 private struct VideoSurface: View {
     let item: MediaItem
+    var preview = false
     @StateObject private var model = AVPlaybackModel()
     @State private var resolved = false
 
@@ -63,18 +76,40 @@ private struct VideoSurface: View {
             if model.hasMedia {
                 VideoPlayer(player: model.player)
                     .ignoresSafeArea()
+                if model.previewEnded { PreviewEndedBanner(type: item.type) }
             } else {
                 SimulatedTransport(item: item, icon: "film.fill",
-                                   caption: "Now playing · \(item.genre)",
-                                   secondsTotal: Double(item.length) * 60)
+                                   caption: preview ? "Preview · \(item.genre)" : "Now playing · \(item.genre)",
+                                   secondsTotal: preview ? PlayerPreview.clipSeconds : Double(item.length) * 60)
             }
         }
         .onAppear {
             guard !resolved else { return }
             resolved = true
-            model.load(url: ContentResolver.mediaURL(for: item))
+            model.load(url: ContentResolver.mediaURL(for: item),
+                       previewLimit: preview ? PlayerPreview.clipSeconds : nil)
         }
         .onDisappear { model.teardown() }
+    }
+}
+
+enum PlayerPreview {
+    static let clipSeconds: Double = 30
+    static let pages = 3
+}
+
+/// Overlay shown when a capped preview clip reaches its limit.
+struct PreviewEndedBanner: View {
+    let type: MediaType
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "lock.fill").font(.system(size: 30)).foregroundStyle(.white)
+            Text("Preview ended").font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+            Text("Buy this title to \(type.verb.lowercased()) it in full.")
+                .font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.8))
+        }
+        .padding(28)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.cornerL))
     }
 }
 
@@ -82,6 +117,7 @@ private struct VideoSurface: View {
 
 private struct AudioSurface: View {
     let item: MediaItem
+    var preview = false
     @StateObject private var model = AVPlaybackModel()
     @State private var resolved = false
 
@@ -101,8 +137,10 @@ private struct AudioSurface: View {
                     Text(item.creator).font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.7))
                 }
 
-                if model.hasMedia {
-                    PlaybackBar(progress: model.progress, total: model.duration,
+                if model.previewEnded {
+                    PreviewEndedBanner(type: item.type)
+                } else if model.hasMedia {
+                    PlaybackBar(progress: model.progress, total: model.previewLimit ?? model.duration,
                                 onSeek: { model.seek(toFraction: $0) })
                         .padding(.horizontal, 30)
                     TransportControls(isPlaying: model.isPlaying,
@@ -110,7 +148,11 @@ private struct AudioSurface: View {
                                       onToggle: { model.togglePlay() },
                                       onForward: { model.skip(15) })
                 } else {
-                    SimulatedTransportControls(secondsTotal: 210)
+                    SimulatedTransportControls(secondsTotal: preview ? PlayerPreview.clipSeconds : 210)
+                }
+                if preview && !model.previewEnded {
+                    Text("Preview · first \(Int(PlayerPreview.clipSeconds))s")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.55))
                 }
                 Spacer()
             }
@@ -119,7 +161,8 @@ private struct AudioSurface: View {
         .onAppear {
             guard !resolved else { return }
             resolved = true
-            model.load(url: ContentResolver.mediaURL(for: item))
+            model.load(url: ContentResolver.mediaURL(for: item),
+                       previewLimit: preview ? PlayerPreview.clipSeconds : nil)
         }
         .onDisappear { model.teardown() }
     }
@@ -129,10 +172,17 @@ private struct AudioSurface: View {
 
 private struct ReaderSurface: View {
     let item: MediaItem
+    var preview = false
     @State private var page = 0
     @AppStorage("readerFontSize") private var fontSize: Double = 18
 
-    private var pages: [String] { ReaderContent.pages(for: item) }
+    private var pages: [String] {
+        let all = ReaderContent.pages(for: item)
+        guard preview else { return all }
+        var sample = Array(all.prefix(PlayerPreview.pages))
+        sample.append("— End of preview —\n\nBuy “\(item.title)” to keep reading.")
+        return sample
+    }
 
     var body: some View {
         ZStack {
