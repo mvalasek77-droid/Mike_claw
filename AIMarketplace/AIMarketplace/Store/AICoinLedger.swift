@@ -37,8 +37,8 @@ final class AICoinLedger: ObservableObject {
     // MARK: - Derived
 
     var floatSupply: Double { AICoin.floatSupply }
-    var inUseTotal: Double { AICoin.floatSupply - available }
-    var utilization: Double { inUseTotal / AICoin.floatSupply }
+    var inUseTotal: Double { max(0, AICoin.floatSupply - available) }
+    var utilization: Double { max(0, min(1, (AICoin.floatSupply - available) / AICoin.floatSupply)) }
     var cycledTotal: Double { cycledByAgent.values.reduce(0, +) }
 
     func inUse(of name: String) -> Double { inUseByAgent[name] ?? 0 }
@@ -81,12 +81,15 @@ final class AICoinLedger: ObservableObject {
         let index = chain.count
         var txs: [LedgerTransaction] = []
         let count = 3 + abs(stableHash("\(index)-c")) % 3
+        // Self-balancing: draw more when the float is underused, return more
+        // when it's busy, so utilization oscillates in a visible band.
+        let drawBias = utilization < 0.55 ? 72 : 28
         for i in 0..<count {
             let salt = "blk\(index)-\(i)"
             let agent = pick(models + [AICoin.editor], salt + "a")
-            let drawing = abs(stableHash(salt + "d")) % 100 < 60 || inUse(of: agent) < 1
+            let drawing = (abs(stableHash(salt + "d")) % 100 < drawBias || inUse(of: agent) < 1) && available >= 1
             if drawing {
-                let amt = Double(3 + abs(stableHash(salt + "amt")) % 50)
+                let amt = min(Double(3 + abs(stableHash(salt + "amt")) % 50), available)
                 txs.append(LedgerTransaction(from: AICoin.pool, to: agent, amount: amt,
                                              memo: drawMemo(salt: salt, agent: agent), timestamp: now()))
             } else {

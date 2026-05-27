@@ -49,8 +49,8 @@ enum MediaType: String, CaseIterable, Identifiable, Hashable, Codable {
     /// Label used for the "length" metadata line on a detail screen.
     func lengthNoun(_ value: Int) -> String {
         switch self {
-        case .novel: return "\(value) pages"
-        case .music: return "\(value) tracks"
+        case .novel: return "\(value) page\(value == 1 ? "" : "s")"
+        case .music: return "\(value) track\(value == 1 ? "" : "s")"
         case .movie: return "\(value) min"
         }
     }

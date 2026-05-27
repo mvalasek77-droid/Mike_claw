@@ -10,8 +10,10 @@ enum AICoin {
     static let name = "Neuron"
     static let ticker = "NRN"
     static let symbol = "◈"
-    /// The fixed, shared pool all creation energy cycles through.
-    static let floatSupply: Double = 100_000_000
+    /// The fixed, shared pool all creation energy cycles through. Sized to the
+    /// system's concurrent creation capacity (productions cost tens of NRN), so
+    /// float utilization is a live, meaningful signal — not a rounding error.
+    static let floatSupply: Double = 5_000
     static let pool = "NRN Float"
     static let editor = "AI Editor"
 
