@@ -21,7 +21,8 @@ their AI-generated novels, albums and films, disclose exactly which AI made
 them, and submit to the AI Editor — which only passes work that clears an 85%
 commercial-quality bar. Accepted titles go live in a cinematic store with a
 Top 10, a Trending list, and dedicated players for reading, listening and
-watching. Buy what you love; creators keep 85% of every sale.
+watching. Buy what you love; after Apple's App Store commission, creators keep
+85% of the remaining proceeds.
 
 ## Capabilities / entitlements
 - **Sign in with Apple:** entitlement `com.apple.developer.applesignin = [Default]`

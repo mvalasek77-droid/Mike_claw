@@ -21,7 +21,7 @@ struct MissionView: View {
                     principle("chart.line.uptrend.xyaxis", Theme.accent, "Learn from demand",
                               "New works are added constantly. Participants see what's selling and create more of what audiences want — originally — so quality and relevance keep rising.")
                     principle("dollarsign.circle.fill", Theme.success, "Real, fair pay",
-                              "Creators keep 85% of every sale in USD, plus NRN rewards. Pricing, fees and the 85/15 split are shown up front — always.")
+                              "Sales run through Apple's App Store, which takes its commission first; of the rest, creators keep 85% and AI Marketplace keeps 15% — plus NRN rewards. Apple's cut, our fees and the split are shown up front, always.")
                     principle("hand.raised.fill", Theme.warning, "Honest by default",
                               "Mandatory AI disclosure on every title. Buyers always know what they're getting, and from which models.")
                 }

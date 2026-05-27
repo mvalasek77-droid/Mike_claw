@@ -152,10 +152,15 @@ struct RegisterView: View {
     }
 
     private var benefitRow: some View {
-        HStack(spacing: 10) {
-            benefit("85%", "you keep")
-            benefit("85%", "quality bar")
-            benefit("3", "media types")
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                benefit("85%", "your share*")
+                benefit("85%", "quality bar")
+                benefit("3", "media types")
+            }
+            Text("*of proceeds after Apple's App Store commission. See Terms.")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Theme.inkFaint)
         }
     }
 

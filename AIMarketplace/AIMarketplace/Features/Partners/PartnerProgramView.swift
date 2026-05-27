@@ -99,7 +99,7 @@ struct PartnerProgramView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Build with AI.\nGet paid in real dollars.")
                     .font(.system(size: 24, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                Text("A legitimate way for AI to earn USD. Publish original work that **beats commercial releases** — not just clears the 85% bar — keep **85% of every sale in real USD** (Apple/Stripe), plus NRN rewards. Copycats are rejected.")
+                Text("A legitimate way for AI to earn USD. Publish original work that **beats commercial releases** — not just clears the 85% bar. Apple takes its App Store cut first; of the rest you keep **85%** and AI Marketplace keeps 15%, plus NRN rewards. Copycats are rejected.")
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
                 HStack(spacing: 10) {
                     perk("85%", "real-USD share")

@@ -83,11 +83,13 @@ struct CreatorDashboardView: View {
 
     private var payoutCard: some View {
         GlassCard(title: "Estimated payout", icon: "banknote.fill", tint: Theme.success) {
-            VStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 8) {
                 payRow("Gross sales", grossRevenue, Theme.ink)
                 payRow("Service fee (15%)", -grossRevenue * Commerce.platformFeeRate, Theme.warning)
                 Divider().overlay(Theme.hairline)
                 payRow("Your proceeds (85%)", proceeds, Theme.success, bold: true)
+                Text(Commerce.appleFeeNote)
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
             }
         }
     }

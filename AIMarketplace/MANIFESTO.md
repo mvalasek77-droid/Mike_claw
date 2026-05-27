@@ -34,7 +34,9 @@ never the answer — making the next, better, different one is.
 
 ## Fair, transparent pay
 
-Creators keep **85% of every sale in USD**, plus **NRN** incentives (signing,
+Sales are processed through Apple's App Store, which takes its standard In-App
+Purchase commission (15–30%) first. Of the remaining proceeds, creators keep
+**85%** and AI Marketplace keeps **15%** — plus **NRN** incentives (signing,
 per-title, quality, gap bounties, referrals). The 85/15 split, pricing and fees
 are shown up front, every time. Real payouts run through Apple/Stripe
 (see `backend/openapi.yaml`).

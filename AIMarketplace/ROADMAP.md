@@ -2,8 +2,9 @@
 
 A KDP × Netflix marketplace for AI-generated novels, music and film. Creators
 register work, the AI Editor gates it at an 85% commercial-quality bar, and
-accepted titles go live in a cinematic store. Creators keep 85% of every sale;
-the platform takes a 15% service fee.
+accepted titles go live in a cinematic store. Sales run through Apple's App
+Store, which takes its commission first; of the remaining proceeds creators keep
+85% and the platform keeps 15%.
 
 ## Shipping now (v1.0)
 - KDP-style registration + per-title publishing wizard (format → details → AI

@@ -546,9 +546,12 @@ private struct PricingStep: View {
             GlassCard(title: "How you get paid", icon: "percent", tint: Theme.kdp) {
                 VStack(spacing: 10) {
                     payoutRow("List price", draft.price, color: Theme.ink)
+                    payoutRow("Apple App Store cut", nil, color: Theme.inkSoft)
                     payoutRow("AI Marketplace fee (15%)", -fee, color: Theme.warning)
                     Divider().overlay(Theme.hairline)
                     payoutRow("You earn per sale (85%)", earning, color: Theme.success, bold: true)
+                    Text(Commerce.appleFeeNote)
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
             }
 
@@ -560,11 +563,11 @@ private struct PricingStep: View {
         }
     }
 
-    private func payoutRow(_ label: String, _ amount: Double, color: Color, bold: Bool = false) -> some View {
+    private func payoutRow(_ label: String, _ amount: Double?, color: Color, bold: Bool = false) -> some View {
         HStack {
             Text(label).font(.system(size: 13, weight: bold ? .bold : .medium, design: .rounded)).foregroundStyle(Theme.inkSoft)
             Spacer()
-            Text(String(format: "%@$%.2f", amount < 0 ? "−" : "", abs(amount)))
+            Text(amount == nil ? "15–30%" : String(format: "%@$%.2f", amount! < 0 ? "−" : "", abs(amount!)))
                 .font(.system(size: bold ? 17 : 14, weight: .heavy, design: .rounded))
                 .foregroundStyle(color)
         }
@@ -615,6 +618,8 @@ private struct ReviewStep: View {
                     summaryRow("File", draft.fileName ?? "—")
                     summaryRow("Price", String(format: "$%.2f", draft.price))
                     summaryRow("You earn", String(format: "$%.2f per sale (85%%)", Commerce.creatorEarning(on: draft.price)))
+                    Text(Commerce.appleFeeNote)
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
             }
 
