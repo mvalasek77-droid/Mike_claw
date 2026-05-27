@@ -71,18 +71,65 @@ struct SplashView: View {
     }
 }
 
-/// The marketplace mark — a play/page hybrid inside a rounded badge.
+/// The marketplace mark — a play symbol on a silicon chip (media × AI).
 struct BrandMark: View {
     var size: CGFloat = 56
+
+    private var body_: CGFloat { size * 0.70 }
+    private var corner: CGFloat { size * 0.22 }
+
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
+            chipPins
+            // Chip body
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .fill(LinearGradient(colors: [Color(white: 0.22), Color(white: 0.07)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: body_, height: body_)
+                .overlay(
+                    RoundedRectangle(cornerRadius: corner, style: .continuous)
+                        .strokeBorder(Theme.accent.opacity(0.65), lineWidth: max(1, size * 0.012))
+                )
+            // Inner die outline (circuit feel)
+            RoundedRectangle(cornerRadius: corner * 0.6, style: .continuous)
+                .strokeBorder(.white.opacity(0.10), lineWidth: 1)
+                .frame(width: body_ * 0.66, height: body_ * 0.66)
+            // Play symbol
+            PlayTriangle()
                 .fill(Theme.brandGradient)
-            Image(systemName: "play.rectangle.on.rectangle.fill")
-                .font(.system(size: size * 0.46, weight: .bold))
-                .foregroundStyle(.white)
+                .frame(width: size * 0.26, height: size * 0.30)
+                .offset(x: size * 0.03)
+                .shadow(color: Theme.accent.opacity(0.6), radius: size * 0.06)
         }
         .frame(width: size, height: size)
-        .shadow(color: Theme.accent.opacity(0.5), radius: size * 0.2, y: size * 0.08)
+        .shadow(color: .black.opacity(0.45), radius: size * 0.12, y: size * 0.06)
+    }
+
+    private var chipPins: some View {
+        let len = size * 0.11
+        let thick = size * 0.05
+        let step = size * 0.18
+        let half = body_ / 2
+        return ZStack {
+            ForEach([-1, 0, 1], id: \.self) { i in
+                let o = CGFloat(i) * step
+                Capsule().fill(Theme.accent).frame(width: len, height: thick).offset(x: -half, y: o)
+                Capsule().fill(Theme.accent).frame(width: len, height: thick).offset(x: half, y: o)
+                Capsule().fill(Theme.accent).frame(width: thick, height: len).offset(x: o, y: -half)
+                Capsule().fill(Theme.accent).frame(width: thick, height: len).offset(x: o, y: half)
+            }
+        }
+    }
+}
+
+/// A right-pointing play triangle.
+struct PlayTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        p.closeSubpath()
+        return p
     }
 }
