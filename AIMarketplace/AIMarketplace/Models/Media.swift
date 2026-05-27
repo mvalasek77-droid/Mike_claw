@@ -175,11 +175,11 @@ enum AIToolCatalog {
     static func suggestions(for type: MediaType) -> [String] {
         switch type {
         case .novel:
-            return ["GPT-5", "Claude Opus 4", "Gemini Ultra", "Llama 4", "Mistral Large", "Sudowrite"]
+            return ["Claude Opus 4.7", "GPT-4", "Gemini", "Llama 3", "Mistral Large"]
         case .music:
-            return ["Suno v4", "Udio", "Stable Audio", "ElevenLabs Music", "AIVA", "Soundraw"]
+            return ["Suno", "Udio", "Stable Audio", "ElevenLabs"]
         case .movie:
-            return ["Sora", "Runway Gen-4", "Google Veo", "Kling", "Pika", "Luma Dream Machine"]
+            return ["Sora", "Runway", "Google Veo", "Kling", "Pika"]
         }
     }
 }

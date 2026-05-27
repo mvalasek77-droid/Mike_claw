@@ -6,9 +6,9 @@ import SwiftUI
 /// while the publishing side borrows Amazon KDP's warm "ink + amber" palette.
 /// Both share the same neutral foundation so the app reads as one product.
 enum Theme {
-    // Cinematic accent (consumption side)
-    static let accent = Color(red: 0.90, green: 0.12, blue: 0.20)
-    static let accentSoft = Color(red: 1.00, green: 0.33, blue: 0.38)
+    // Cinematic accent (consumption side) — lime green
+    static let accent = Color(red: 0.42, green: 0.86, blue: 0.20)
+    static let accentSoft = Color(red: 0.62, green: 0.95, blue: 0.40)
 
     // KDP / publishing accent (creation side)
     static let kdp = Color(red: 0.96, green: 0.62, blue: 0.12)
@@ -33,7 +33,7 @@ enum Theme {
     static let cornerS: CGFloat = 9
 
     static let brandGradient = LinearGradient(
-        colors: [accent, Color(red: 0.62, green: 0.10, blue: 0.42)],
+        colors: [accent, Color(red: 0.09, green: 0.52, blue: 0.34)],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )

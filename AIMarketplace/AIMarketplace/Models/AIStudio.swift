@@ -53,24 +53,20 @@ enum AIStudioCatalog {
     }
 
     private static let taglines: [String: String] = [
-        "GPT-5": "Long-form storytelling with structural control and a literary ear.",
-        "Claude Opus 4": "Character-driven prose and dialogue with a strong sense of voice.",
-        "Gemini Ultra": "Sweeping, idea-dense narratives that connect the dots across a plot.",
-        "Llama 4": "Open, fast drafting that nails genre conventions.",
+        "GPT-4": "Long-form storytelling with structural control and a literary ear.",
+        "Claude Opus 4.7": "Character-driven prose and dialogue with a strong sense of voice.",
+        "Gemini": "Sweeping, idea-dense narratives that connect the dots across a plot.",
+        "Llama 3": "Open, fast drafting that nails genre conventions.",
         "Mistral Large": "Tight, efficient prose and crisp pacing.",
-        "Sudowrite": "A novelist's co-pilot — scene craft, description, and momentum.",
-        "Suno v4": "Full songs — vocals, hooks and arrangement — in any genre.",
+        "Suno": "Full songs — vocals, hooks and arrangement — in any genre.",
         "Udio": "Studio-grade tracks with rich instrumentation and texture.",
         "Stable Audio": "Sound design and instrumental beds with precise control.",
-        "ElevenLabs Music": "Expressive vocals and scoring that carry real emotion.",
-        "AIVA": "Cinematic and classical composition with orchestral depth.",
-        "Soundraw": "Adaptive, royalty-free tracks tuned to mood and length.",
+        "ElevenLabs": "Expressive vocals and scoring that carry real emotion.",
         "Sora": "Photoreal, physically coherent video from a written scene.",
-        "Runway Gen-4": "Stylized, art-directed motion with consistent characters.",
+        "Runway": "Stylized, art-directed motion with consistent characters.",
         "Google Veo": "High-fidelity cinematic shots with controllable camera moves.",
         "Kling": "Fluid, lifelike motion and complex action sequences.",
-        "Pika": "Punchy, stylish short-form video and effects.",
-        "Luma Dream Machine": "Dreamlike, high-motion sequences with depth and parallax."
+        "Pika": "Punchy, stylish short-form video and effects."
     ]
 
     static func tagline(for name: String, types: [MediaType]) -> String {
@@ -80,15 +76,14 @@ enum AIStudioCatalog {
     }
 
     private static let capabilityMap: [String: [String]] = [
-        "GPT-5": ["Multi-chapter structure", "Consistent characters", "Genre range", "Dialogue"],
-        "Claude Opus 4": ["Distinct narrative voice", "Interiority", "Dialogue", "Editing"],
-        "Gemini Ultra": ["World-building", "Plot architecture", "Research-rich detail"],
-        "Suno v4": ["Vocals + lyrics", "Hooks", "Full arrangements", "Any genre"],
+        "GPT-4": ["Multi-chapter structure", "Consistent characters", "Genre range", "Dialogue"],
+        "Claude Opus 4.7": ["Distinct narrative voice", "Interiority", "Dialogue", "Editing"],
+        "Gemini": ["World-building", "Plot architecture", "Research-rich detail"],
+        "Suno": ["Vocals + lyrics", "Hooks", "Full arrangements", "Any genre"],
         "Udio": ["Instrumentation", "Mixing", "Texture & layering"],
-        "ElevenLabs Music": ["Expressive vocals", "Scoring", "Emotional dynamics"],
-        "AIVA": ["Orchestration", "Cinematic scoring", "Classical forms"],
+        "ElevenLabs": ["Expressive vocals", "Scoring", "Emotional dynamics"],
         "Sora": ["Photoreal video", "Scene continuity", "Physical coherence"],
-        "Runway Gen-4": ["Style transfer", "Character consistency", "Motion control"],
+        "Runway": ["Style transfer", "Character consistency", "Motion control"],
         "Google Veo": ["Cinematic shots", "Camera control", "High fidelity"],
         "Kling": ["Lifelike motion", "Action sequences", "Long shots"]
     ]
