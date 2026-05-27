@@ -78,7 +78,9 @@ struct MediaDetailView: View {
             Text("by \(item.creator)")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Theme.inkSoft)
-            if item.isEditorOriginal {
+            if store.isScoutFind(item) {
+                Chip(text: "Scout Pick", systemImage: "binoculars.fill", color: Theme.accent, filled: true)
+            } else if item.isEditorOriginal {
                 Chip(text: "AI Editor Original", systemImage: "sparkles", color: Theme.kdp, filled: true)
             }
             if store.reviewCount(for: item.id) > 0 {

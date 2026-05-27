@@ -70,7 +70,7 @@ struct AIReviewProgressView: View {
             .screenPadding()
 
             Spacer()
-            Text("Scoring against the 85% commercial bar…")
+            Text("The trained AI Editor is scoring against the 85% commercial bar…")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Theme.inkFaint)
                 .padding(.bottom, 30)

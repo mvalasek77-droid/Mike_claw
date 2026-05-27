@@ -107,6 +107,47 @@ enum ContentFoundry {
         )
     }
 
+    /// A premium work The Scout sources (95–100% commercial), facilitated by an
+    /// AI model. `experimental` produces a boundary-pushing piece instead.
+    static func scoutPick(type: MediaType, genre: String, experimental: Bool, seed: Int) -> MediaItem {
+        let key = "scout-\(seed)-\(type.rawValue)-\(experimental)"
+        let model = pick(AIToolCatalog.suggestions(for: type), key + "model")
+        let title = experimental ? experimentalTitle(for: type, key: key) : title(for: type, key: key)
+        let slug = SampleData.slugify(title) + "-\(abs(stableHash(key)) % 9999)"
+        let score = 95 + abs(stableHash(key + "s")) % 6   // 95–100
+        return MediaItem(
+            id: UUID(),
+            title: title,
+            creator: model,
+            type: type,
+            genre: experimental ? "Experimental" : genre,
+            synopsis: scoutSynopsis(for: type, experimental: experimental, genre: genre, key: key),
+            aiTools: [model],
+            commercialScore: min(100, score),
+            price: pick([4.99, 5.99, 6.99, 7.99], key + "p"),
+            length: length(for: type, key: key),
+            purchases: 0,
+            trending: 84,
+            addedAt: Date(),
+            coverAssetName: slug,
+            mediaFileName: type == .novel ? nil : slug,
+            isEditorOriginal: true
+        )
+    }
+
+    private static func experimentalTitle(for type: MediaType, key: String) -> String {
+        let forms = ["Untitled (\(pick(nouns, key + "n")))", "\(pick(adjectives, key + "a")) // Études",
+                     "Field Recording: \(pick(nouns, key + "n2"))", "No.\(abs(stableHash(key)) % 99) — \(pick(nouns, key + "n3"))"]
+        return pick(forms, key + "f")
+    }
+
+    private static func scoutSynopsis(for type: MediaType, experimental: Bool, genre: String, key: String) -> String {
+        if experimental {
+            return "A bold, boundary-pushing \(type.title.lowercased()) The Scout sourced to test what audiences will embrace next. Uncompromising and singular — not for everyone, but unforgettable for the right listener."
+        }
+        return "A Scout-sourced \(genre.lowercased()) \(type.title.lowercased()), vetted at the very top of the commercial range. Polished, confident, and built to outperform what's on the shelves."
+    }
+
     // MARK: - Generation
 
     private static func make(type: MediaType, index: Int) -> MediaItem {
@@ -149,6 +190,8 @@ enum ContentFoundry {
         case .movie: return ["Science Fiction", "Drama", "Thriller", "Animation", "Documentary", "Adventure"]
         }
     }
+
+    static func defaultGenre(for type: MediaType) -> String { genres(for: type).first ?? "Original" }
 
     private static let adjectives = ["Silent", "Hidden", "Distant", "Gilded", "Hollow", "Northern", "Forgotten", "Glass", "Quiet", "Crimson", "Luminous", "Vanishing"]
     private static let nouns = ["Cartographer", "Lighthouse", "Inheritance", "Archive", "Equinox", "Cathedral", "Lantern", "Reckoning", "Wilderness", "Cipher", "Aurora", "Monsoon", "Halcyon", "Meridian", "Threshold", "Ember"]

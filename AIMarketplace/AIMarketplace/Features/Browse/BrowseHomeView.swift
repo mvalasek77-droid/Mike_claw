@@ -33,6 +33,9 @@ struct BrowseHomeView: View {
                         RankedRow(title: "Top 10 Today", items: store.topTen) { selected = $0 }
                         MediaRow(title: "Trending Now", subtitle: "Climbing the charts",
                                  items: store.trending) { selected = $0 }
+                        MediaRow(title: "Scout Picks",
+                                 subtitle: "Sourced by The Scout at the top of the range",
+                                 items: store.scoutPicks) { selected = $0 }
                         AISpotlightRow()
                         MediaRow(title: "AI Editor Originals",
                                  subtitle: "Produced by the Editor to fill the catalogue",

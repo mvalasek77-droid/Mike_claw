@@ -40,7 +40,10 @@ struct RootView: View {
         }
         .motion(.easeInOut(duration: 0.4), value: showSplash)
         .motion(.easeInOut(duration: 0.4), value: store.isRegistered)
-        .onAppear { store.attachEnergy(ledger) }
+        .onAppear {
+            store.attachEnergy(ledger)
+            store.runScoutIfDue()
+        }
     }
 }
 

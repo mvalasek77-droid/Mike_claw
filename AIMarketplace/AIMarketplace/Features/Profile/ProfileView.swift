@@ -11,6 +11,7 @@ struct ProfileView: View {
     @State private var showCoin = false
     @State private var showPartners = false
     @State private var showMission = false
+    @State private var showScout = false
     @State private var showDeleteConfirm = false
     @State private var legalDoc: LegalDoc?
 
@@ -23,6 +24,7 @@ struct ProfileView: View {
                     walletCard
                     coinCard
                     partnerCard
+                    scoutCard
                     creatorCard
                     if !store.liveTitles.isEmpty { liveTitlesCard }
                     legalCard
@@ -40,6 +42,7 @@ struct ProfileView: View {
         .sheet(isPresented: $showCoin) { AICoinView() }
         .sheet(isPresented: $showPartners) { PartnerProgramView() }
         .sheet(isPresented: $showMission) { MissionView() }
+        .sheet(isPresented: $showScout) { ScoutView() }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
         .alert("Delete account?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) { withAnimation { store.deleteAccount() } }
@@ -82,6 +85,24 @@ struct ProfileView: View {
         }
         .padding(.vertical, 11)
         .contentShape(Rectangle())
+    }
+
+    private var scoutCard: some View {
+        Button { showScout = true } label: {
+            GlassCard(title: "The Scout", icon: "binoculars.fill", tint: Theme.accent) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(store.userPostedRecently ? "Connecting with AIs" : "Sourcing premium media")
+                            .font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        Text("\(store.scoutPicks.count) scout picks · briefs the market")
+                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var partnerCard: some View {

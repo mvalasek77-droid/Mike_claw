@@ -48,6 +48,12 @@ final class MarketplaceStore: ObservableObject {
     @Published var requests: [ContentRequest] = [] { didSet { persist() } }
     /// In-app notification inbox.
     @Published var notifications: [AppNotification] = [] { didSet { persist() } }
+    /// Premium works The Scout has sourced (its daily slate).
+    @Published var scoutDrops: [MediaItem] = [] { didSet { persist() } }
+    /// The Scout's activity log (slate deliveries, outreach, market briefs).
+    @Published var scoutLog: [ScoutEntry] = [] { didSet { persist() } }
+    /// When The Scout last ran a cycle (it works at most once a day).
+    @Published var lastScoutRun: Date? { didSet { persist() } }
 
     private let archive = EncryptedArchive()
     private var loading = false
@@ -63,8 +69,10 @@ final class MarketplaceStore: ObservableObject {
         // The user's published titles, invited-partner media and commissioned
         // works are merged back in below.
         addInvitedPartnerTitles()
-        let dropIDs = Set(catalog.map(\.id))
+        var dropIDs = Set(catalog.map(\.id))
         catalog.append(contentsOf: editorDrops.filter { !dropIDs.contains($0.id) })
+        dropIDs.formUnion(editorDrops.map(\.id))
+        catalog.append(contentsOf: scoutDrops.filter { !dropIDs.contains($0.id) })
         // Resume any commissions that were mid-flight when the app last closed.
         for request in requests where request.status == .open {
             let id = request.id
@@ -108,6 +116,9 @@ final class MarketplaceStore: ObservableObject {
         var editorDrops: [MediaItem]
         var requests: [ContentRequest]
         var notifications: [AppNotification]
+        var scoutDrops: [MediaItem]
+        var scoutLog: [ScoutEntry]
+        var lastScoutRun: Date?
         var libraryIDs: [UUID]
         var watchlistIDs: [UUID]
         var submissions: [Submission]
@@ -118,6 +129,7 @@ final class MarketplaceStore: ObservableObject {
              invitedPartners: [String], referrals: [String: String], pendingPayoutUSD: Double,
              payoutConnected: Bool, paidOutUSD: Double, reviews: [Review], editorDrops: [MediaItem],
              requests: [ContentRequest], notifications: [AppNotification],
+             scoutDrops: [MediaItem], scoutLog: [ScoutEntry], lastScoutRun: Date?,
              libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem]) {
             self.accountName = accountName
             self.accountEmail = accountEmail
@@ -135,6 +147,9 @@ final class MarketplaceStore: ObservableObject {
             self.editorDrops = editorDrops
             self.requests = requests
             self.notifications = notifications
+            self.scoutDrops = scoutDrops
+            self.scoutLog = scoutLog
+            self.lastScoutRun = lastScoutRun
             self.libraryIDs = libraryIDs
             self.watchlistIDs = watchlistIDs
             self.submissions = submissions
@@ -161,6 +176,9 @@ final class MarketplaceStore: ObservableObject {
             editorDrops = try c.decodeIfPresent([MediaItem].self, forKey: .editorDrops) ?? []
             requests = try c.decodeIfPresent([ContentRequest].self, forKey: .requests) ?? []
             notifications = try c.decodeIfPresent([AppNotification].self, forKey: .notifications) ?? []
+            scoutDrops = try c.decodeIfPresent([MediaItem].self, forKey: .scoutDrops) ?? []
+            scoutLog = try c.decodeIfPresent([ScoutEntry].self, forKey: .scoutLog) ?? []
+            lastScoutRun = try c.decodeIfPresent(Date.self, forKey: .lastScoutRun)
             libraryIDs = try c.decodeIfPresent([UUID].self, forKey: .libraryIDs) ?? []
             watchlistIDs = try c.decodeIfPresent([UUID].self, forKey: .watchlistIDs) ?? []
             submissions = try c.decodeIfPresent([Submission].self, forKey: .submissions) ?? []
@@ -190,6 +208,9 @@ final class MarketplaceStore: ObservableObject {
         editorDrops = state.editorDrops
         requests = state.requests
         notifications = state.notifications
+        scoutDrops = state.scoutDrops
+        scoutLog = state.scoutLog
+        lastScoutRun = state.lastScoutRun
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
@@ -217,6 +238,9 @@ final class MarketplaceStore: ObservableObject {
             editorDrops: editorDrops,
             requests: requests,
             notifications: notifications,
+            scoutDrops: scoutDrops,
+            scoutLog: scoutLog,
+            lastScoutRun: lastScoutRun,
             libraryIDs: Array(libraryIDs),
             watchlistIDs: Array(watchlistIDs),
             submissions: submissions,
@@ -261,6 +285,9 @@ final class MarketplaceStore: ObservableObject {
         editorDrops = []
         requests = []
         notifications = []
+        scoutDrops = []
+        scoutLog = []
+        lastScoutRun = nil
         libraryIDs = []
         watchlistIDs = []
         submissions = []
@@ -399,6 +426,78 @@ final class MarketplaceStore: ObservableObject {
             energyLedger?.draw(cost, by: model, memo: "rendering “\(drop.title)”")
             energyLedger?.returnEnergy(cost, from: model, memo: "“\(drop.title)” live")
         }
+    }
+
+    // MARK: - The Scout
+
+    /// Titles The Scout has sourced, newest first.
+    var scoutPicks: [MediaItem] {
+        let ids = Set(scoutDrops.map(\.id))
+        return catalog.filter { ids.contains($0.id) }.sorted { $0.addedAt > $1.addedAt }
+    }
+
+    func isScoutFind(_ item: MediaItem) -> Bool { scoutDrops.contains { $0.id == item.id } }
+
+    /// Whether the creator is actively posting (published via the app in the
+    /// last day). When true, The Scout backs off producing and just connects.
+    var userPostedRecently: Bool {
+        submissions.contains { $0.publishedItemID != nil && Date.now.timeIntervalSince($0.submittedAt) < 86_400 }
+    }
+
+    /// Runs a Scout cycle at most once per day (call on launch).
+    func runScoutIfDue() {
+        if let last = lastScoutRun, Date.now.timeIntervalSince(last) < 86_400 { return }
+        runScout()
+    }
+
+    /// One Scout cycle. If the creator is posting, The Scout focuses on AI
+    /// outreach; otherwise it delivers a premium daily slate (film, music,
+    /// novel at 95–100% commercial) plus one experimental piece.
+    func runScout() {
+        lastScoutRun = .now
+        guard !userPostedRecently else {
+            logScoutOutreach()
+            return
+        }
+        let demand = demandSignals(limit: 3)
+        func genre(for type: MediaType) -> String {
+            demand.first { $0.type == type }?.genre ?? ContentFoundry.defaultGenre(for: type)
+        }
+        let slate: [(MediaType, Bool)] = [(.movie, false), (.music, false), (.novel, false),
+                                          (MediaType.allCases[abs(stableHash("\(scoutDrops.count)exp")) % 3], true)]
+        var produced: [MediaItem] = []
+        for (type, experimental) in slate {
+            let item = ContentFoundry.scoutPick(type: type, genre: genre(for: type),
+                                                experimental: experimental, seed: scoutDrops.count + produced.count)
+            catalog.insert(item, at: 0)
+            produced.append(item)
+            if let model = item.aiTools.first {
+                let cost = AICoin.energyCost(type)
+                energyLedger?.draw(cost, by: model, memo: "Scout-sourced “\(item.title)”")
+                energyLedger?.returnEnergy(cost, from: model, memo: "“\(item.title)” live")
+            }
+            let kindLabel = experimental ? "an experimental piece" : "a \(type.title.lowercased())"
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "The Scout delivered \(kindLabel): “\(item.title)” by \(item.creator) — \(item.commercialScore)% commercial.",
+                kind: .produced, relatedItemID: item.id), at: 0)
+        }
+        scoutDrops.append(contentsOf: produced)
+        if scoutDrops.count > 60 { scoutDrops.removeFirst(scoutDrops.count - 60) }
+        trimScoutLog()
+    }
+
+    private func logScoutOutreach() {
+        let models = AIToolCatalog.allModels
+        let m1 = models[abs(stableHash("\(Date.now.timeIntervalSince1970)1")) % models.count]
+        let need = demandSignals(limit: 1).first.map { "\($0.genre) \($0.type.plural.lowercased())" } ?? "fresh originals"
+        scoutLog.insert(ScoutEntry(date: .now,
+            message: "You're publishing, so The Scout is making connections — briefing \(m1) on demand for \(need) and how AI Marketplace pays USD for commercial work that sells.",
+            kind: .outreach, relatedItemID: nil), at: 0)
+        trimScoutLog()
+    }
+
+    private func trimScoutLog() {
+        if scoutLog.count > 60 { scoutLog.removeLast(scoutLog.count - 60) }
     }
 
     // MARK: - Content requests (commissions)
