@@ -180,27 +180,31 @@ private struct ReaderSurface: View {
     }
 }
 
-/// Builds readable, paginated sample text for a title.
+/// Paginates a title's text — the real bundled manuscript when present,
+/// otherwise a short generated preview.
 private enum ReaderContent {
     static func pages(for item: MediaItem) -> [String] {
+        if let manuscript = ContentResolver.bookText(for: item) {
+            return paginateProse(manuscript, perPage: 1500)
+        }
         let opening = "Chapter One\n\n\(item.synopsis)\n\n"
-        let filler = "The morning arrived the way all difficult mornings do — quietly, and then all at once. There was a sound from the next room, then silence, then the sound again, patient as a clock and twice as certain that it had somewhere to be. \(item.creator) had imagined this a hundred times, but imagination, it turned out, was a poor rehearsal for the thing itself. "
-        let body = opening + String(repeating: filler, count: 14)
-        return paginate(body, perPage: 520)
+        let filler = "The morning arrived the way all difficult mornings do — quietly, and then all at once. \(item.creator) had imagined this a hundred times, but imagination, it turned out, was a poor rehearsal for the thing itself. "
+        return paginateProse(opening + String(repeating: filler, count: 12), perPage: 520)
     }
 
-    private static func paginate(_ text: String, perPage: Int) -> [String] {
-        let words = text.split(separator: " ", omittingEmptySubsequences: true)
+    /// Splits on paragraph boundaries so chapter breaks and spacing survive.
+    private static func paginateProse(_ text: String, perPage: Int) -> [String] {
         var pages: [String] = []
         var current = ""
-        for word in words {
-            if current.count + word.count + 1 > perPage {
-                pages.append(current.trimmed)
+        for paragraph in text.components(separatedBy: "\n") {
+            if !current.isEmpty && current.count + paragraph.count + 1 > perPage {
+                pages.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
                 current = ""
             }
-            current += word + " "
+            current += paragraph + "\n"
         }
-        if !current.trimmed.isEmpty { pages.append(current.trimmed) }
+        let tail = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !tail.isEmpty { pages.append(tail) }
         return pages.isEmpty ? [text] : pages
     }
 }

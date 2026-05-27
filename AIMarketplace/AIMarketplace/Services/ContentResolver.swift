@@ -33,6 +33,14 @@ enum ContentResolver {
 
     // MARK: Playable media
 
+    /// Full manuscript text for a novel, from a bundled `<slug>.txt`.
+    static func bookText(for item: MediaItem) -> String? {
+        guard item.type == .novel, let name = item.mediaFileName ?? item.coverAssetName else { return nil }
+        guard let url = Bundle.main.url(forResource: name, withExtension: "txt", subdirectory: "Samples")
+                ?? Bundle.main.url(forResource: name, withExtension: "txt") else { return nil }
+        return try? String(contentsOf: url, encoding: .utf8)
+    }
+
     static func mediaURL(for item: MediaItem) -> URL? {
         guard let name = item.mediaFileName else { return nil }
         let extensions: [String]

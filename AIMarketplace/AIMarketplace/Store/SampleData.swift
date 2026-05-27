@@ -1,100 +1,85 @@
 import Foundation
 
-/// Seed catalogue of accepted, marketplace-live titles. Every entry has
-/// already cleared the AI Editor's 85% commercial bar.
+/// The live catalogue. These are real, creator-supplied works — their media
+/// files live in `Resources/Samples` and are wired by `coverAssetName` /
+/// `mediaFileName` slugs (see ContentResolver). No demo/placeholder content.
 enum SampleData {
-    /// Wires each seed title to a bundled cover/media slug so that dropping
-    /// `the-slug.jpg` / `the-slug.m4a` / `the-slug.mp4` into `Resources/Samples`
-    /// lights it up with real art and playback. See that folder's README.
     static func catalog() -> [MediaItem] {
-        rawCatalog().map { item in
-            var resolved = item
-            let slug = slugify(item.title)
-            resolved.coverAssetName = slug
-            resolved.mediaFileName = item.type == .novel ? nil : slug
-            return resolved
-        }
-    }
-
-    static func slugify(_ title: String) -> String {
-        let lowered = title.lowercased()
-        let allowed = lowered.map { $0.isLetter || $0.isNumber ? $0 : "-" }
-        let collapsed = String(allowed).split(separator: "-").joined(separator: "-")
-        return collapsed
-    }
-
-    private static func rawCatalog() -> [MediaItem] {
         [
-            // MARK: Films
-            MediaItem(title: "Echoes of Tomorrow", creator: "Nova Mercer", type: .movie,
-                      genre: "Sci-Fi Thriller",
-                      synopsis: "A memory archivist discovers her own recordings are being rewritten in real time, and the only person who can help her is a version of herself she has never met.",
-                      aiTools: ["Sora", "ElevenLabs Music"], commercialScore: 94, price: 6.99,
-                      length: 108, maturity: "16+", purchases: 48210, trending: 97),
-            MediaItem(title: "The Last Lighthouse", creator: "Idris Vale", type: .movie,
-                      genre: "Drama",
-                      synopsis: "On a fog-bound coast, the final human lighthouse keeper trains the AI meant to replace him, and learns what it means to keep a light burning for no one.",
-                      aiTools: ["Runway Gen-4", "Suno v4"], commercialScore: 91, price: 5.99,
-                      length: 96, maturity: "13+", purchases: 33980, trending: 88),
-            MediaItem(title: "Neon Province", creator: "Kaya Lin", type: .movie,
-                      genre: "Cyberpunk Action",
-                      synopsis: "A courier with an illegal memory implant runs the last analogue package across a city that has outlawed forgetting.",
-                      aiTools: ["Google Veo", "Kling"], commercialScore: 89, price: 5.99,
-                      length: 102, maturity: "16+", purchases: 41200, trending: 95),
-            MediaItem(title: "Salt & Static", creator: "Marlowe Reyes", type: .movie,
-                      genre: "Mystery",
-                      synopsis: "A radio drifting on a dead frequency keeps broadcasting a town that burned down forty years ago — and tonight it's taking requests.",
-                      aiTools: ["Pika", "Stable Audio"], commercialScore: 87, price: 4.99,
-                      length: 88, maturity: "13+", purchases: 18750, trending: 79),
-
-            // MARK: Novels
-            MediaItem(title: "The Cartographer of Silence", creator: "Imogen Hart", type: .novel,
-                      genre: "Literary Fiction",
-                      synopsis: "A mapmaker who can only chart places that no longer exist is commissioned to draw the borders of a country that was never allowed to be remembered.",
-                      aiTools: ["Claude Opus 4", "Sudowrite"], commercialScore: 96, price: 4.99,
-                      length: 348, maturity: "Everyone", purchases: 52640, trending: 92),
-            MediaItem(title: "Gravewater", creator: "Soren Ash", type: .novel,
-                      genre: "Horror",
-                      synopsis: "When the reservoir is drained for the first time in a century, the town it drowned comes up still keeping its appointments.",
-                      aiTools: ["GPT-5"], commercialScore: 90, price: 3.99,
-                      length: 296, maturity: "16+", purchases: 29400, trending: 84),
-            MediaItem(title: "Saffron & Steel", creator: "Priya Nandakumar", type: .novel,
-                      genre: "Epic Fantasy",
-                      synopsis: "A spice merchant's daughter inherits a debt paid in storms and must broker peace between two empires who each believe she belongs to them.",
-                      aiTools: ["Gemini Ultra", "Claude Opus 4"], commercialScore: 93, price: 5.99,
-                      length: 512, maturity: "13+", purchases: 37810, trending: 90),
-            MediaItem(title: "Quietly, the Machines", creator: "Theo Brandt", type: .novel,
-                      genre: "Speculative",
-                      synopsis: "An obituary writer for decommissioned AIs starts receiving thank-you notes from the ones he has not written about yet.",
-                      aiTools: ["Llama 4"], commercialScore: 88, price: 3.99,
-                      length: 268, maturity: "13+", purchases: 21300, trending: 81),
-            MediaItem(title: "The Inheritance Algorithm", creator: "Wren Okafor", type: .novel,
-                      genre: "Thriller",
-                      synopsis: "A grief counsellor learns her late mother left her a fortune locked behind a password only the dead were ever told.",
-                      aiTools: ["GPT-5", "Mistral Large"], commercialScore: 86, price: 4.49,
-                      length: 312, maturity: "16+", purchases: 16500, trending: 74),
-
-            // MARK: Music
-            MediaItem(title: "Midnight Cartography", creator: "VELLUM", type: .music,
-                      genre: "Synthwave",
-                      synopsis: "Nine instrumental nocturnes mapping an imaginary coastline, built for headphones at 2 a.m.",
-                      aiTools: ["Suno v4"], commercialScore: 92, price: 7.99,
-                      length: 9, maturity: "Everyone", purchases: 44120, trending: 96),
-            MediaItem(title: "Paper Cathedrals", creator: "Lune Aubert", type: .music,
-                      genre: "Ambient Classical",
-                      synopsis: "Modern compositions for piano and choir, written to score the architecture you only visit in dreams.",
-                      aiTools: ["AIVA", "Udio"], commercialScore: 90, price: 6.99,
-                      length: 11, maturity: "Everyone", purchases: 26980, trending: 83),
-            MediaItem(title: "Gravity Optional", creator: "ORBITAL DECAY", type: .music,
-                      genre: "Electronic",
-                      synopsis: "A high-energy set engineered for festival sound systems, mixed and mastered for club-grade low end.",
-                      aiTools: ["Udio", "Stable Audio"], commercialScore: 88, price: 5.99,
-                      length: 10, maturity: "13+", purchases: 31240, trending: 89),
-            MediaItem(title: "Songs for an Empty House", creator: "Hazel Crowe", type: .music,
-                      genre: "Indie Folk",
-                      synopsis: "Eight intimate folk tracks about leaving, recorded to sound like a single take in a warm room.",
-                      aiTools: ["Suno v4", "ElevenLabs Music"], commercialScore: 86, price: 4.99,
-                      length: 8, maturity: "Everyone", purchases: 14870, trending: 72),
+            MediaItem(
+                title: "The Odyssey Protocol",
+                creator: "Mike Valasek",
+                type: .novel,
+                genre: "Literary Sci-Fi Thriller",
+                synopsis: "Marine scientist Helena Karras knows the Aegean is lying to her. When the sea goes impossibly, unnaturally still over the research vessel Aegis, she's pulled into a mystery that reaches from Homer's Odyssey to the edge of the unknown — and asks what it means to keep sailing toward the thing that could destroy you. A 70,000-word novel.",
+                aiTools: ["Claude Opus 4.7", "GPT-4"],
+                commercialScore: 94,
+                price: 7.99,
+                releaseYear: 2026,
+                length: 286,
+                maturity: "13+",
+                purchases: 0,
+                trending: 72,
+                coverAssetName: "the-odyssey-protocol",
+                mediaFileName: "the-odyssey-protocol"
+            ),
+            MediaItem(
+                title: "It's a Swifty World After All",
+                creator: "Mike Valasek",
+                type: .music,
+                genre: "Pop",
+                synopsis: "A glittering pop anthem with stadium-sized hooks and a wink in every line. Written by Mike Valasek and brought to life with Suno — bright, buoyant, and built around a chorus you'll be humming all day.",
+                aiTools: ["Suno"],
+                commercialScore: 90,
+                price: 1.29,
+                releaseYear: 2026,
+                length: 1,
+                maturity: "Everyone",
+                purchases: 0,
+                trending: 66,
+                coverAssetName: "its-a-swifty-world-after-all",
+                mediaFileName: "its-a-swifty-world-after-all"
+            ),
+            MediaItem(
+                title: "Curves Like Keisha",
+                creator: "Mike Valasek",
+                type: .music,
+                genre: "Hip-Hop / R&B",
+                synopsis: "A smooth hip-hop / R&B cut with a confident groove and a melody that struts. Human songwriting by Mike Valasek, realized with Suno — late-night, low-lit, and effortlessly cool.",
+                aiTools: ["Suno"],
+                commercialScore: 89,
+                price: 1.29,
+                releaseYear: 2026,
+                length: 1,
+                maturity: "13+",
+                purchases: 0,
+                trending: 61,
+                coverAssetName: "curves-like-keisha",
+                mediaFileName: "curves-like-keisha"
+            ),
+            MediaItem(
+                title: "Push Up Bra",
+                creator: "Mike Valasek",
+                type: .music,
+                genre: "Pop",
+                synopsis: "A cheeky, high-energy pop track that doesn't take itself too seriously. Written by Mike Valasek and produced with Suno — playful, punchy, and unapologetically catchy.",
+                aiTools: ["Suno"],
+                commercialScore: 88,
+                price: 1.29,
+                releaseYear: 2026,
+                length: 1,
+                maturity: "13+",
+                purchases: 0,
+                trending: 58,
+                coverAssetName: "push-up-bra",
+                mediaFileName: "push-up-bra"
+            )
         ]
+    }
+
+    /// Lowercased, hyphenated slug used to match bundled media/cover files.
+    static func slugify(_ title: String) -> String {
+        let allowed = title.lowercased().map { $0.isLetter || $0.isNumber ? $0 : "-" }
+        return String(allowed).split(separator: "-").joined(separator: "-")
     }
 }

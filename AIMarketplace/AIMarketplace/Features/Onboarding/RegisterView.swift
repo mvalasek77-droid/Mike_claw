@@ -39,7 +39,7 @@ struct RegisterView: View {
                                 .foregroundStyle(Theme.ink)
 
                             LabeledField(label: "Publisher / pen name", text: $name,
-                                         placeholder: "e.g. Nova Mercer", icon: "person.text.rectangle")
+                                         placeholder: "e.g. Mike Valasek", icon: "person.text.rectangle")
                             LabeledField(label: "Email", text: $email,
                                          placeholder: "you@example.com", icon: "envelope",
                                          keyboard: .emailAddress)

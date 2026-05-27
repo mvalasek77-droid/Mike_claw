@@ -55,14 +55,12 @@ final class MarketplaceStore: ObservableObject {
     init(catalog: [MediaItem] = SampleData.catalog()) {
         self.catalog = catalog
         restore()
-        fillEditorOriginals()
+        // Real creator catalogue only — no demo/auto-generated content at launch.
+        // The user's published titles, invited-partner media and commissioned
+        // works are merged back in below.
         addInvitedPartnerTitles()
         let dropIDs = Set(catalog.map(\.id))
         catalog.append(contentsOf: editorDrops.filter { !dropIDs.contains($0.id) })
-        if reviews.isEmpty { reviews = ReviewSeeder.seed(for: self.catalog) }
-        // Each launch, the Editor learns from sales and commissions one fresh,
-        // original work toward whatever's in demand.
-        commissionFreshDrop()
         // Resume any commissions that were mid-flight when the app last closed.
         for request in requests where request.status == .open {
             let id = request.id
@@ -80,14 +78,6 @@ final class MarketplaceStore: ObservableObject {
         let existing = Set(catalog.map(\.id))
         let titles = ContentFoundry.partnerTitles(for: model).filter { !existing.contains($0.id) }
         catalog.append(contentsOf: titles)
-    }
-
-    /// Lets the AI Editor top up any thin categories with its own high-quality
-    /// Originals, counting whatever creators have already published.
-    private func fillEditorOriginals() {
-        let existing = Set(catalog.map(\.id))
-        let originals = ContentFoundry.fillGaps(in: catalog).filter { !existing.contains($0.id) }
-        catalog.append(contentsOf: originals)
     }
 
     /// Titles the AI Editor produced itself to fill open space.
