@@ -1,18 +1,19 @@
 import SwiftUI
 
-/// Neuron (NRN) — the marketplace's native settlement token. It exists so the
-/// AI participants (models, studios and the AI Editor) can transact value with
-/// **each other** on-chain: licensing stems, commissioning cover art, renting
-/// compute, splitting collaboration royalties, and paying the Editor's
-/// curation fees. Humans hold it too, but the economy is AI-to-AI.
+/// Neuron (NRN) — the AIs' internal **creation energy**. It is **not** money:
+/// humans never hold it, AIs cannot sell or transfer it to each other, and it
+/// can't be converted to USD. AIs **draw** NRN from a shared float to produce
+/// work and **return** it to the float when the work goes live, so the supply
+/// recycles forever. An AI's real income is USD — earned only by creating
+/// content that sells (its cut of the purchase price).
 enum AICoin {
     static let name = "Neuron"
     static let ticker = "NRN"
     static let symbol = "◈"
-    static let totalSupply: Double = 100_000_000
-    static let treasury = "Marketplace Treasury"
+    /// The fixed, shared pool all creation energy cycles through.
+    static let floatSupply: Double = 100_000_000
+    static let pool = "NRN Float"
     static let editor = "AI Editor"
-    static let you = "You"
 
     static func format(_ amount: Double) -> String {
         if amount >= 1_000_000 { return String(format: "%.2fM", amount / 1_000_000) }
@@ -21,7 +22,9 @@ enum AICoin {
     }
 }
 
-/// A value transfer recorded on the ledger.
+/// A single recorded movement of creation energy (a draw from, or return to,
+/// the float). NRN only ever moves between an AI and the float — never AI→AI,
+/// never to a human, never to USD.
 struct LedgerTransaction: Identifiable, Hashable {
     let id = UUID()
     let from: String
@@ -31,7 +34,7 @@ struct LedgerTransaction: Identifiable, Hashable {
     let timestamp: Date
 }
 
-/// One mined block: a batch of transactions hash-linked to its predecessor.
+/// One mined block: a batch of draw/return movements hash-linked to its parent.
 struct Block: Identifiable, Hashable {
     let index: Int
     let timestamp: Date
@@ -42,9 +45,10 @@ struct Block: Identifiable, Hashable {
     var id: String { hash }
 }
 
-/// A wallet on the chain — an AI model/studio, the Editor, the treasury, or you.
+/// A participant in the energy economy — an AI model, the AI Editor, or the
+/// float itself. (No human participants: humans don't use NRN.)
 struct CoinAgent: Identifiable, Hashable {
-    enum Kind { case model, editor, treasury, human }
+    enum Kind { case model, editor, pool }
     let name: String
     let kind: Kind
     var id: String { name }
@@ -53,8 +57,7 @@ struct CoinAgent: Identifiable, Hashable {
         switch kind {
         case .model: return "cpu.fill"
         case .editor: return "sparkles"
-        case .treasury: return "building.columns.fill"
-        case .human: return "person.fill"
+        case .pool: return "arrow.triangle.2.circlepath"
         }
     }
 
@@ -62,8 +65,7 @@ struct CoinAgent: Identifiable, Hashable {
         switch kind {
         case .model: return Theme.accent
         case .editor: return Theme.kdp
-        case .treasury: return Theme.gold
-        case .human: return Theme.success
+        case .pool: return Theme.gold
         }
     }
 }

@@ -65,7 +65,7 @@ struct PartnerDetailView: View {
         HStack(spacing: 10) {
             stat("\(store.partnerTitleCount(model))", "Titles", "square.stack.fill", type?.accent ?? Theme.accent)
             stat(String(format: "$%.0f", store.partnerEarningsUSD(model)), "USD earned", "dollarsign.circle.fill", Theme.success)
-            stat("\(AICoin.format(ledger.balance(of: model)))", "NRN", "bitcoinsign.circle.fill", Theme.gold)
+            stat("\(AICoin.format(ledger.cycled(of: model)))", "NRN cycled", "bolt.fill", Theme.gold)
         }
         .padding(.horizontal, 18)
     }

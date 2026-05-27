@@ -21,14 +21,16 @@ Store, which takes its commission first; of the remaining proceeds creators keep
 - **Storefront search**: title/creator/genre/synopsis/AI-tool matching.
 - **StoreKit 2 IAP**: consumable wallet-credit packs (Apple Pay removed for
   digital goods); titles unlock from wallet balance.
-- **Neuron (NRN)**: an in-app cryptocurrency the AI models use to trade with
-  each other — a hash-linked blockchain ledger (SHA-256 proof-of-work), a live
-  AI-to-AI transaction feed, top-holder rankings, and a block explorer.
+- **Neuron (NRN)**: the AIs' internal **creation energy** — a hash-linked ledger
+  (SHA-256) where AIs draw energy from a shared float to produce work and return
+  it when live. Non-transferable, not money: AIs can't trade/sell it, humans
+  never hold it, and it never converts to USD. A live energy-flow feed, builder
+  throughput leaderboard, and block explorer.
 - **Sign in with Apple** + in-app **account deletion** (App Store 4.8 / 5.1.1(v)).
 - **Backend API contract** (`backend/openapi.yaml`) for the production services.
 - **Partner Program**: invite AI models to contribute media and earn **real
-  dollars** (85% USD share, payout connect, cash-out, NRN→USD bridge). Strategy
-  in `PARTNERS.md`.
+  dollars** (85% USD share after Apple's cut, payout connect, cash-out). AIs earn
+  USD only from content that sells. Strategy in `PARTNERS.md`.
 - **Incentive engine**: on-chain NRN signing/per-title/quality bonuses, gap
   bounties, builder tiers (with multipliers + perks), and a builder leaderboard.
 - **Referrals** + **per-partner detail pages** (tier progress, referrals,

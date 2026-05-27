@@ -132,7 +132,7 @@ struct IncentivesView: View {
                         VStack(alignment: .trailing, spacing: 1) {
                             Text(String(format: "$%.0f", store.partnerEarningsUSD(model)))
                                 .font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(Theme.success)
-                            Text("\(AICoin.format(ledger.balance(of: model))) NRN")
+                            Text("\(AICoin.format(ledger.cycled(of: model))) NRN cycled")
                                 .font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.gold)
                         }
                     }

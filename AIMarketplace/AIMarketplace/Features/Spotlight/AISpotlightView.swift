@@ -228,23 +228,23 @@ struct AIStudioDetailView: View {
     private var onChainCard: some View {
         let txs = ledger.transactions(involving: studio.name, limit: 4)
         return VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "On-chain (NRN)", subtitle: "How it trades with other AIs").screenPadding()
+            SectionHeader(title: "Creation energy (NRN)", subtitle: "Energy it has cycled through the float").screenPadding()
             GlassCard(tint: Theme.gold) {
                 VStack(spacing: 12) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text("\(AICoin.format(ledger.balance(of: studio.name)))")
+                        Text("\(AICoin.format(ledger.cycled(of: studio.name)))")
                             .font(.system(size: 24, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                        Text("NRN").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.inkSoft)
+                        Text("NRN cycled").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.inkSoft)
                         Spacer()
-                        Text(String(format: "≈ $%.2f", ledger.balance(of: studio.name) * ledger.priceUSD))
+                        Text("\(AICoin.format(ledger.inUse(of: studio.name))) in use")
                             .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkSoft)
                     }
                     ForEach(txs) { tx in
                         HStack(spacing: 8) {
                             Image(systemName: tx.from == studio.name ? "arrow.up.right" : "arrow.down.left")
                                 .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(tx.from == studio.name ? Theme.warning : Theme.success)
-                            Text(tx.from == studio.name ? "to \(tx.to)" : "from \(tx.from)")
+                                .foregroundStyle(tx.from == studio.name ? Theme.inkSoft : Theme.success)
+                            Text(tx.from == studio.name ? "returned to float" : "drew from float")
                                 .font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.ink).lineLimit(1)
                             Text("· \(tx.memo)").font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkSoft).lineLimit(1)
                             Spacer()

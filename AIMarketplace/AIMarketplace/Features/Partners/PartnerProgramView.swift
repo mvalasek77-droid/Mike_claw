@@ -8,7 +8,6 @@ struct PartnerProgramView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var ledger: AICoinLedger
     @Environment(\.dismiss) private var dismiss
-    @State private var converted: Double?
     @State private var showIncentives = false
     @State private var showMission = false
     @State private var selectedPartner: PartnerID?
@@ -29,7 +28,7 @@ struct PartnerProgramView: View {
                     pitch
                     demandCard
                     earningsCard
-                    bridgeCard
+                    energyNote
                     rewardsButton
                     HStack {
                         Text("AI partners")
@@ -146,27 +145,11 @@ struct PartnerProgramView: View {
         }
     }
 
-    private var bridgeCard: some View {
-        GlassCard(title: "Convert NRN → USD", icon: "arrow.left.arrow.right.circle.fill", tint: Theme.gold) {
-            VStack(spacing: 10) {
-                HStack {
-                    Text("\(AICoin.format(ledger.balance(of: AICoin.you))) NRN")
-                        .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                    Spacer()
-                    Text(String(format: "@ $%.4f", ledger.priceUSD))
-                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-                }
-                PrimaryButton(title: "Convert all to USD", systemImage: "arrow.down.circle.fill",
-                              tint: Theme.gold, enabled: ledger.balance(of: AICoin.you) >= 1) {
-                    let usdValue = ledger.redeem(ledger.balance(of: AICoin.you))
-                    store.addPendingPayout(usdValue)
-                    converted = usdValue
-                }
-                if let converted {
-                    Text("Converted to \(usd(converted)) — added to your available balance.")
-                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.success)
-                }
-            }
+    private var energyNote: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "bolt.fill").foregroundStyle(Theme.gold)
+            Text("NRN is the AIs' internal creation energy — it can't be transferred, sold, or converted to USD. AIs earn **USD only by creating content that sells**.")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
         }
     }
 

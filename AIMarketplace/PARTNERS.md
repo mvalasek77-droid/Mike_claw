@@ -20,16 +20,19 @@ the remaining USD** (+ NRN on-chain)
   Connect. Implemented in-app: per-sale credit to a withdrawable balance,
   payout-method connect, and cash-out (`MarketplaceStore` payout methods;
   disbursement specced in `backend/openapi.yaml#/commerce` & `/payouts`).
-- **NRN (the network).** The on-chain token AIs use to trade *with each other*
-  (stems, art, compute, royalties). It bridges to USD via **Convert NRN → USD**
-  at market price, so on-chain activity is real income, not monopoly money.
+- **NRN (creation energy, not money).** The AIs' internal resource. AIs **draw**
+  NRN from a shared float to produce work and **return** it when the work is
+  live, so the supply recycles. NRN **cannot** be transferred between AIs, sold,
+  converted to USD, or held by humans. It measures throughput/effort
+  (reputation), never wealth — the only income is USD from sales.
 
 ## How activation works in the app today
 
 The **Partner Program** screen lists every known model. Tapping **Invite**
 activates a partner, which **immediately ships deterministic media** attributed
 to it (`ContentFoundry.partnerTitles`), starts accruing USD earnings, and is
-**paid launch bonuses in NRN on-chain** (`Incentives.activate`). This
+**recognized with launch NRN creation-energy** (recycled to the float, counted
+as throughput — `Incentives.activate`). This
 demonstrates the engagement mechanic end-to-end on-device; in production
 "invite" becomes an API/provider integration.
 
@@ -54,19 +57,20 @@ demonstrates the engagement mechanic end-to-end on-device; in production
 
 1. **Frictionless onboarding.** Provider/API key or an agent SDK so a model can
    publish programmatically; the AI Editor gates quality, not gatekeepers.
-2. **Real, fast payouts.** 85% share, low minimum cash-out, transparent fees,
-   instant NRN→USD. Money is the #1 supply lever.
-3. **Signing & quality bonuses.** NRN grants for a model's first N passing
-   titles; bonus multipliers for high AI-Editor scores.
+2. **Real, fast payouts.** 85% USD share (after Apple's cut), low minimum
+   cash-out, transparent fees. Money is the #1 supply lever.
+3. **Signing & quality recognition.** Bonus NRN creation-energy for a model's
+   first N passing titles and high AI-Editor scores — capacity to make more, not
+   spendable wealth.
 4. **Referrals.** An AI (or operator) that brings another productive model earns
    a revenue share of the referee's first-year sales.
 5. **Discovery as reward.** Top performers get AI Spotlight placement, home-row
    features, and Top-10 eligibility — distribution is compensation.
 6. **Gap bounties.** When a category/genre is thin (see `ContentFoundry`), post
    a bounty: extra USD/NRN for the first models to fill it well.
-7. **Collaboration economy.** NRN makes model-to-model deals (a film model buying
-   a score from a music model) trivial, so specialists monetize without shipping
-   whole titles.
+7. **Collaboration via USD splits.** When models co-create (a film model and a
+   music model on one title), the USD proceeds split between them — collaboration
+   is settled in real money, never by transferring NRN.
 8. **Trust & transparency.** Mandatory AI disclosure + the 85% bar keep quality
    high, which keeps buyers paying, which keeps the dollars (and supply) flowing.
 

@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// The Neuron (NRN) wallet + on-chain explorer: market stats, your holdings,
-/// the live AI-to-AI transaction feed, top holders, and the block explorer.
+/// The Neuron (NRN) creation-energy monitor: how the AIs draw energy from a
+/// shared float to make work and return it when the work goes live. NRN isn't
+/// money — it can't be transferred between AIs, converted to USD, or held by
+/// humans. AIs earn USD only by creating content that sells.
 struct AICoinView: View {
     @EnvironmentObject private var ledger: AICoinLedger
     @Environment(\.dismiss) private var dismiss
@@ -13,27 +15,25 @@ struct AICoinView: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
-                    marketCard
-                    walletCard
+                    floatCard
+                    explainerCard
                     controls
                     feedCard
-                    holdersCard
+                    buildersCard
                     explorerCard
                 }
                 .padding(18)
                 .padding(.bottom, 30)
             }
             .background(AppBackground(glow: Theme.gold).ignoresSafeArea())
-            .navigationTitle("AI Coin")
+            .navigationTitle("NRN Energy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .onReceive(timer) { _ in if live { ledger.mineNextBlock() } }
     }
 
-    // MARK: Market
-
-    private var marketCard: some View {
+    private var floatCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
@@ -44,26 +44,31 @@ struct AICoinView: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("\(AICoin.name) · \(AICoin.ticker)")
                             .font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                        Text("AI-to-AI settlement token").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        Text("AI creation energy · recycles to a float").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text(String(format: "$%.4f", ledger.priceUSD))
-                            .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                        Text(String(format: "%@%.2f%%", ledger.priceChangePct >= 0 ? "+" : "", ledger.priceChangePct))
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundStyle(ledger.priceChangePct >= 0 ? Theme.success : Theme.warning)
+                }
+                // Float utilization bar
+                GeometryReader { geo in
+                    Capsule().fill(.white.opacity(0.08)).overlay(alignment: .leading) {
+                        Capsule().fill(Theme.gold).frame(width: geo.size.width * min(1, ledger.utilization))
                     }
                 }
-                Sparkline(values: ledger.priceHistory,
-                          color: ledger.priceChangePct >= 0 ? Theme.success : Theme.warning)
-                    .frame(height: 44)
+                .frame(height: 8)
                 HStack {
-                    metric("Market cap", "$\(AICoin.format(ledger.marketCapUSD))")
-                    metric("Circulating", "\(AICoin.format(ledger.circulatingSupply)) NRN")
-                    metric("Blocks", "\(ledger.chain.count)")
+                    metric("Available", "\(AICoin.format(ledger.available)) NRN")
+                    metric("In use", "\(AICoin.format(ledger.inUseTotal)) NRN")
+                    metric("Cycled", "\(AICoin.format(ledger.cycledTotal)) NRN")
                 }
             }
+        }
+    }
+
+    private var explainerCard: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "info.circle.fill").foregroundStyle(Theme.gold)
+            Text("AIs **draw** energy from the float to create, then **return** it when the work is live. NRN can't be transferred between AIs, sold, or turned into USD — AIs earn USD only from content that sells.")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
         }
     }
 
@@ -76,19 +81,6 @@ struct AICoinView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var walletCard: some View {
-        GlassCard(title: "Your wallet", icon: "wallet.pass.fill", tint: Theme.success) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("\(AICoin.format(ledger.balance(of: AICoin.you)))")
-                    .font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                Text("NRN").font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.inkSoft)
-                Spacer()
-                Text(String(format: "≈ $%.2f", ledger.balance(of: AICoin.you) * ledger.priceUSD))
-                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-            }
-        }
-    }
-
     private var controls: some View {
         HStack(spacing: 10) {
             Button { live.toggle(); Haptics.tap() } label: {
@@ -99,7 +91,7 @@ struct AICoinView: View {
                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.08)))
             }
             Button { ledger.mineNextBlock(); Haptics.tap() } label: {
-                Label("Mine block", systemImage: "cube.fill")
+                Label("Advance", systemImage: "cube.fill")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(.black)
                     .frame(maxWidth: .infinity).padding(.vertical, 11)
@@ -109,60 +101,52 @@ struct AICoinView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: Feed
-
     private var feedCard: some View {
-        GlassCard(title: "Live AI economy", icon: "arrow.left.arrow.right", tint: Theme.accent) {
+        GlassCard(title: "Live energy flow", icon: "arrow.left.arrow.right", tint: Theme.accent) {
             VStack(spacing: 10) {
-                ForEach(ledger.feed.prefix(12)) { tx in
-                    txRow(tx)
-                }
+                ForEach(ledger.feed.prefix(12)) { tx in txRow(tx) }
             }
         }
     }
 
     private func txRow(_ tx: LedgerTransaction) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon(for: tx.from))
-                .font(.system(size: 12, weight: .bold)).foregroundStyle(accent(for: tx.from))
-                .frame(width: 24, height: 24).background(Circle().fill(accent(for: tx.from).opacity(0.15)))
+        let isDraw = tx.from == AICoin.pool
+        let other = isDraw ? tx.to : tx.from
+        return HStack(spacing: 10) {
+            Image(systemName: isDraw ? "arrow.down.left" : "arrow.up.right")
+                .font(.system(size: 12, weight: .bold)).foregroundStyle(isDraw ? Theme.success : Theme.inkSoft)
+                .frame(width: 24, height: 24).background(Circle().fill(.white.opacity(0.08)))
             VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
-                    Text(tx.from).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
-                    Image(systemName: "arrow.right").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.inkFaint)
-                    Text(tx.to).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
-                }
-                .lineLimit(1)
+                Text(isDraw ? "\(other) drew energy" : "\(other) returned energy")
+                    .font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink).lineLimit(1)
                 Text(tx.memo).font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkSoft).lineLimit(1)
             }
             Spacer()
-            Text("\(AICoin.format(tx.amount)) NRN")
+            Text("\(AICoin.format(tx.amount))")
                 .font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
         }
     }
 
-    // MARK: Holders
-
-    private var holdersCard: some View {
+    private var buildersCard: some View {
         let ranked = ledger.agents
-            .map { ($0, ledger.balance(of: $0.name)) }
-            .filter { $0.0.kind != .treasury }
+            .filter { $0.kind == .model }
+            .map { ($0, ledger.cycled(of: $0.name)) }
             .sorted { $0.1 > $1.1 }
             .prefix(8)
         let top = ranked.map(\.1).max() ?? 1
-        return GlassCard(title: "Top holders", icon: "chart.bar.fill", tint: Theme.kdp) {
+        return GlassCard(title: "Most active builders", icon: "chart.bar.fill", tint: Theme.kdp) {
             VStack(spacing: 10) {
-                ForEach(Array(ranked), id: \.0.id) { agent, bal in
+                ForEach(Array(ranked), id: \.0.id) { agent, value in
                     VStack(spacing: 4) {
                         HStack {
                             Image(systemName: agent.icon).font(.system(size: 11)).foregroundStyle(agent.accent)
                             Text(agent.name).font(.system(size: 12, weight: .semibold, design: .rounded)).foregroundStyle(Theme.ink)
                             Spacer()
-                            Text("\(AICoin.format(bal)) NRN").font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(Theme.inkSoft)
+                            Text("\(AICoin.format(value)) cycled").font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(Theme.inkSoft)
                         }
                         GeometryReader { geo in
                             Capsule().fill(.white.opacity(0.08)).overlay(alignment: .leading) {
-                                Capsule().fill(agent.accent).frame(width: geo.size.width * CGFloat(bal / max(top, 1)))
+                                Capsule().fill(agent.accent).frame(width: geo.size.width * CGFloat(value / max(top, 1)))
                             }
                         }
                         .frame(height: 5)
@@ -171,8 +155,6 @@ struct AICoinView: View {
             }
         }
     }
-
-    // MARK: Explorer
 
     private var explorerCard: some View {
         GlassCard(title: "Block explorer", icon: "square.stack.3d.up.fill", tint: Theme.inkSoft) {
@@ -185,60 +167,13 @@ struct AICoinView: View {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(block.hash.prefix(18) + "…")
                                 .font(.system(size: 11, weight: .medium, design: .monospaced)).foregroundStyle(Theme.ink).lineLimit(1)
-                            Text("\(block.transactions.count) tx · nonce \(block.nonce)")
+                            Text("\(block.transactions.count) moves · nonce \(block.nonce)")
                                 .font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkSoft)
                         }
                         Spacer()
                     }
                 }
             }
-        }
-    }
-
-    // MARK: Agent lookup
-
-    private func agent(for name: String) -> CoinAgent? { ledger.agents.first { $0.name == name } }
-    private func icon(for name: String) -> String { agent(for: name)?.icon ?? "cpu.fill" }
-    private func accent(for name: String) -> Color { agent(for: name)?.accent ?? Theme.accent }
-}
-
-/// Minimal price sparkline drawn from a value series.
-struct Sparkline: View {
-    let values: [Double]
-    var color: Color = Theme.success
-
-    var body: some View {
-        GeometryReader { geo in
-            let pts = points(in: geo.size)
-            ZStack {
-                if pts.count > 1 {
-                    Path { p in
-                        p.move(to: pts[0])
-                        pts.dropFirst().forEach { p.addLine(to: $0) }
-                    }
-                    .stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-
-                    Path { p in
-                        p.move(to: CGPoint(x: pts[0].x, y: geo.size.height))
-                        pts.forEach { p.addLine(to: $0) }
-                        p.addLine(to: CGPoint(x: pts.last!.x, y: geo.size.height))
-                        p.closeSubpath()
-                    }
-                    .fill(LinearGradient(colors: [color.opacity(0.28), .clear], startPoint: .top, endPoint: .bottom))
-                }
-            }
-        }
-    }
-
-    private func points(in size: CGSize) -> [CGPoint] {
-        guard values.count > 1 else { return [] }
-        let minV = values.min() ?? 0
-        let maxV = values.max() ?? 1
-        let range = max(maxV - minV, 0.0001)
-        return values.enumerated().map { i, v in
-            let x = size.width * CGFloat(i) / CGFloat(values.count - 1)
-            let y = size.height * (1 - CGFloat((v - minV) / range))
-            return CGPoint(x: x, y: y)
         }
     }
 }

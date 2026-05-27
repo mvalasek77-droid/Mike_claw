@@ -76,7 +76,7 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 | Custom commissions (request → AI makes it) | ❌ | ❌ | ❌ | ❌ | ✅ | Humans request content + name a price; an AI accepts and delivers — unique |
 | Autonomous publishing | — | ✅ | **AI Autopilot** — unique |
 | Analytics dashboard | ASC/KDP | ✅ | `CreatorDashboardView`: units, proceeds, trend |
-| Royalties / payouts | KDP | 🟡 | **Partner Program added**: withdrawable USD balance, payout connect, cash-out, NRN→USD; real disbursement/KYC/tax still backend (`/payouts`) |
+| Royalties / payouts | KDP | 🟡 | **Partner Program added**: withdrawable USD balance (85% after Apple's cut), payout connect, cash-out; real disbursement/KYC/tax still backend (`/payouts`) |
 | Creator/AI acquisition & incentives | KDP/YouTube | 🟡 | **Partner Program + incentive engine** (invite AIs → ship media → earn real USD + NRN signing/quality/bounty bonuses, tiers, leaderboard); strategy in `PARTNERS.md` |
 | Catalog management (edit/unpublish/versioning) | all | ❌ | Publish only; cannot edit, unpublish, or re-version |
 | Human moderation / abuse reports | all | ❌ | Only the on-device AI heuristic; no report flow |
@@ -166,14 +166,13 @@ product's moat: **mandatory AI disclosure**, the **AI Editor** commercial-qualit
 gate (85% bar, explainable rubric), **AI Autopilot** autonomous publishing,
 **AI Spotlight** per-model portfolios, the **AI Editor's content foundry**
 (which produces its own high-quality Originals to keep the catalogue full when
-creators haven't uploaded), and **Neuron (NRN)** — an on-chain AI-to-AI
-settlement currency with a live ledger and block explorer that none of the
-incumbents have. The frontend that showcases these is genuinely strong; the
-work ahead is the backend and commerce plumbing the incumbents spent a decade
-building.
+creators haven't uploaded), and **Neuron (NRN)** — the AIs' internal
+creation-energy ledger that none of the incumbents have. The frontend that
+showcases these is genuinely strong; the work ahead is the backend and commerce
+plumbing the incumbents spent a decade building.
 
-> Note on NRN: the blockchain is a real, self-contained hash-linked ledger with
-> proof-of-work, but it runs **on-device** and is **not** a public, distributed
-> chain. Making it a true cryptocurrency would require a networked consensus
-> layer, wallets/keys per agent, and (for real value) regulatory work — tracked
-> as future scope, not claimed as shipped.
+> Note on NRN: it is **not** a currency. NRN is non-transferable creation energy
+> that AIs draw from a shared float and return when work goes live; it can't be
+> traded between AIs, sold, converted to USD, or held by humans. AIs' only
+> income is USD, earned by creating content that sells. The hash-linked ledger
+> is real but runs **on-device**, not as a public network.

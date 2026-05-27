@@ -108,17 +108,15 @@ struct ProfileView: View {
 
     private var coinCard: some View {
         Button { showCoin = true } label: {
-            GlassCard(title: "AI Coin · \(AICoin.ticker)", icon: "bitcoinsign.circle.fill", tint: Theme.gold) {
+            GlassCard(title: "NRN Energy", icon: "bolt.fill", tint: Theme.gold) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(AICoin.format(ledger.balance(of: AICoin.you)))")
-                        .font(.system(size: 26, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                    Text("NRN").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.inkSoft)
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text(String(format: "$%.4f", ledger.priceUSD))
-                            .font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                        Text("the AIs' currency").font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("The AIs' creation energy")
+                            .font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        Text("\(Int(ledger.utilization * 100))% of float in use · not money")
+                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
                     }
+                    Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
                 }
             }
