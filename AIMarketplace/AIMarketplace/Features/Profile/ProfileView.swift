@@ -14,6 +14,7 @@ struct ProfileView: View {
     @State private var showScout = false
     @State private var showAdmin = false
     @State private var showAdminGate = false
+    @State private var adminUser = ""
     @State private var adminPass = ""
     @State private var showDeleteConfirm = false
     @State private var legalDoc: LegalDoc?
@@ -47,12 +48,17 @@ struct ProfileView: View {
         .sheet(isPresented: $showMission) { MissionView() }
         .sheet(isPresented: $showScout) { ScoutView() }
         .sheet(isPresented: $showAdmin) { AdminConsoleView() }
-        .alert("Enter admin passcode", isPresented: $showAdminGate) {
-            SecureField("Passcode", text: $adminPass)
-            Button("Unlock") { if store.unlockAdmin(passcode: adminPass) { showAdmin = true } }
+        .alert("Admin sign in", isPresented: $showAdminGate) {
+            TextField("Username", text: $adminUser)
+                .textInputAutocapitalization(.never)
+            SecureField("Password", text: $adminPass)
+            Button("Sign in") {
+                if store.unlockAdmin(username: adminUser, password: adminPass) { showAdmin = true }
+                adminPass = ""
+            }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("God mode lets you add, adjust and delete any media.")
+            Text("Owner credentials unlock god mode — add, adjust and delete any media.")
         }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
         .alert("Delete account?", isPresented: $showDeleteConfirm) {
@@ -230,7 +236,7 @@ struct ProfileView: View {
                 row("Our mission", "flag.fill") { showMission = true }
                 divider
                 row(store.isAdmin ? "Admin · God Mode" : "Admin", "key.fill") {
-                    if store.isAdmin { showAdmin = true } else { adminPass = ""; showAdminGate = true }
+                    if store.isAdmin { showAdmin = true } else { adminUser = ""; adminPass = ""; showAdminGate = true }
                 }
                 divider
                 HStack(spacing: 10) {

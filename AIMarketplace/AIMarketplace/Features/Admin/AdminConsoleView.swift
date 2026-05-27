@@ -8,6 +8,7 @@ struct AdminConsoleView: View {
     @State private var editing: MediaItem?
     @State private var creatingNew = false
     @State private var query = ""
+    @State private var confirmReset = false
 
     private var items: [MediaItem] {
         let base = store.catalog.sorted { $0.addedAt > $1.addedAt }
@@ -42,6 +43,12 @@ struct AdminConsoleView: View {
         }
         .sheet(item: $editing) { AdminEditView(original: $0) }
         .sheet(isPresented: $creatingNew) { AdminEditView(original: nil) }
+        .alert("Reset catalogue?", isPresented: $confirmReset) {
+            Button("Reset", role: .destructive) { store.adminResetCatalog() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Removes all admin edits, Editor Originals and Scout picks, and rebuilds from the base catalogue plus your published titles. Your account, wallet and library are untouched.")
+        }
     }
 
     private var automationCard: some View {
@@ -55,6 +62,8 @@ struct AdminConsoleView: View {
                               style: .ghost, tint: Theme.accent) {
                     store.runScout(); Haptics.success()
                 }
+                PrimaryButton(title: "Reset catalogue to defaults", systemImage: "arrow.counterclockwise",
+                              style: .ghost, tint: Theme.warning) { confirmReset = true }
             }
         }
     }

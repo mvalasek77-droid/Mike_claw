@@ -288,16 +288,39 @@ final class MarketplaceStore: ObservableObject {
         catalog.append(contentsOf: adminAdded.filter { !existing.contains($0.id) && !adminDeleted.contains($0.id) })
     }
 
-    /// Unlocks god mode with the admin passcode.
+    /// Unlocks god mode with the owner's admin credentials.
     @discardableResult
-    func unlockAdmin(passcode: String) -> Bool {
-        guard passcode == Admin.passcode else { return false }
+    func unlockAdmin(username: String, password: String) -> Bool {
+        guard Admin.validate(username: username, password: password) else { return false }
         isAdmin = true
         Haptics.success()
         return true
     }
 
     func lockAdmin() { isAdmin = false }
+
+    /// Wipes all generated + admin-overridden content and rebuilds the catalogue
+    /// from the base works plus the user's own published titles. Does not touch
+    /// the account, wallet or library entitlements.
+    func adminResetCatalog() {
+        loading = true
+        adminAdded = []
+        adminEdits = [:]
+        adminDeleted = []
+        editorDrops = []
+        scoutDrops = []
+        scoutLog = []
+        lastScoutRun = nil
+        let publishedIDs = Set(submissions.compactMap(\.publishedItemID))
+        let published = catalog.filter { publishedIDs.contains($0.id) }
+        var rebuilt = SampleData.catalog()
+        let baseIDs = Set(rebuilt.map(\.id))
+        rebuilt.append(contentsOf: published.filter { !baseIDs.contains($0.id) })
+        catalog = rebuilt
+        loading = false
+        persist()
+        Haptics.warning()
+    }
 
     /// Adds a new title to the live catalogue (persists across launches).
     func adminAdd(_ item: MediaItem) {
