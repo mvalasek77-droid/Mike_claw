@@ -560,6 +560,11 @@ private struct PricingStep: View {
                 Text(Commerce.explainer)
                     .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
             }
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(Theme.accent)
+                Text(Commerce.dynamicPricingNote)
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+            }
         }
     }
 

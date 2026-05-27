@@ -20,9 +20,11 @@ struct MediaCard: View {
                         ownedTag.padding(6).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                     }
                 }
-                Text(item.priceLabel)
+                Text(store.owns(item) ? item.priceLabel : String(format: "$%.2f", store.effectivePrice(for: item)))
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(store.owns(item) ? Theme.success : Theme.inkSoft)
+                    .foregroundStyle(store.owns(item) ? Theme.success
+                                     : (store.priceDeltaPercent(for: item) > 0 ? Theme.warning
+                                        : store.priceDeltaPercent(for: item) < 0 ? Theme.success : Theme.inkSoft))
             }
         }
         .buttonStyle(.plain)

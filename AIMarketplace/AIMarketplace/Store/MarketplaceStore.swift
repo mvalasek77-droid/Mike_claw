@@ -815,14 +815,32 @@ final class MarketplaceStore: ObservableObject {
 
     var library: [MediaItem] { catalog.filter { libraryIDs.contains($0.id) } }
 
-    /// Grants the entitlement after a successful payment.
+    // MARK: Dynamic pricing
+
+    private var peakPurchases: Int { catalog.map(\.purchases).max() ?? 0 }
+
+    /// The current price for a title — its list price nudged by demand and the
+    /// AI Editor score. This is what buyers pay and creators earn from.
+    func effectivePrice(for item: MediaItem) -> Double {
+        let demand = peakPurchases > 0 ? Double(item.purchases) / Double(peakPurchases) : 0.5
+        return Commerce.dynamicPrice(list: item.price, score: item.commercialScore, demand: demand)
+    }
+
+    /// % the effective price differs from the creator's list price (for badges).
+    func priceDeltaPercent(for item: MediaItem) -> Int {
+        guard item.price > 0 else { return 0 }
+        return Int(((effectivePrice(for: item) / item.price) - 1) * 100)
+    }
+
+    /// Grants the entitlement after a successful payment (at the effective price).
     func grantPurchase(_ item: MediaItem, chargeWallet: Bool) {
         guard !owns(item) else { return }
-        if chargeWallet { walletBalance = max(0, walletBalance - item.price) }
+        let price = effectivePrice(for: item)
+        if chargeWallet { walletBalance = max(0, walletBalance - price) }
         libraryIDs.insert(item.id)
         bumpPurchase(item.id)
         if submissions.contains(where: { $0.publishedItemID == item.id }) {
-            let earning = Commerce.creatorEarning(on: item.price)
+            let earning = Commerce.creatorEarning(on: price)
             creatorEarnings += earning
             addPendingPayout(earning)   // withdrawable to real dollars
         }
@@ -834,7 +852,7 @@ final class MarketplaceStore: ObservableObject {
     @discardableResult
     func purchase(_ item: MediaItem) -> Bool {
         guard !owns(item) else { return true }
-        guard walletBalance >= item.price else { return false }
+        guard walletBalance >= effectivePrice(for: item) else { return false }
         grantPurchase(item, chargeWallet: true)
         return true
     }

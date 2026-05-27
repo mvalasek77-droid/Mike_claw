@@ -19,4 +19,20 @@ enum Commerce {
 
     /// One-line plain-language explainer shown next to pricing.
     static let explainer = "You set the price. Apple takes its App Store commission on each sale; of what remains, you keep 85% and AI Marketplace keeps 15%."
+
+    // MARK: - Dynamic pricing
+
+    /// Transparent demand-based pricing. The creator's list price is the anchor;
+    /// the marketplace nudges it within ±25% using the AI Editor score (quality
+    /// commands a premium) and recent demand (`0` cold … `0.5` neutral … `1`
+    /// hottest seller). Always clamped to the allowed range.
+    static func dynamicPrice(list: Double, score: Int, demand: Double) -> Double {
+        let scoreAdj = Double(score - 90) / 100.0 * 1.2          // 90→0, 100→+0.12, 80→−0.12
+        let demandAdj = (max(0, min(1, demand)) - 0.5) * 0.30    // 0.5→0, 1→+0.15, 0→−0.15
+        let factor = max(0.75, min(1.25, 1 + scoreAdj + demandAdj))
+        let price = max(0.99, min(19.99, list * factor))
+        return (price * 100).rounded() / 100
+    }
+
+    static let dynamicPricingNote = "Prices move with demand and the AI Editor score: strong, in-demand titles command a premium; cold ones go on sale. The creator's list price is always the anchor."
 }

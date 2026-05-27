@@ -103,6 +103,20 @@ struct MediaDetailView: View {
         .screenPadding()
     }
 
+    @ViewBuilder private var priceNote: some View {
+        let delta = store.priceDeltaPercent(for: item)
+        if delta != 0 {
+            HStack(spacing: 6) {
+                Text(item.priceLabel).strikethrough().foregroundStyle(Theme.inkFaint)
+                Image(systemName: delta > 0 ? "arrow.up.right" : "arrow.down.right")
+                    .foregroundStyle(delta > 0 ? Theme.warning : Theme.success)
+                Text(delta > 0 ? "In demand · +\(delta)%" : "On sale · \(delta)%")
+                    .foregroundStyle(delta > 0 ? Theme.warning : Theme.success)
+            }
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+        }
+    }
+
     private var actionBlock: some View {
         VStack(spacing: 10) {
             if owned {
@@ -110,9 +124,10 @@ struct MediaDetailView: View {
                     previewMode = false; showPlayer = true
                 }
             } else {
-                PrimaryButton(title: "Buy · \(item.priceLabel)", systemImage: "cart.fill") {
+                PrimaryButton(title: String(format: "Buy · $%.2f", store.effectivePrice(for: item)), systemImage: "cart.fill") {
                     if !store.purchase(item) { showInsufficientFunds = true }
                 }
+                priceNote
                 PrimaryButton(title: item.type == .novel ? "Read a sample" : "Preview",
                               systemImage: "eye.fill", style: .ghost) {
                     previewMode = true; showPlayer = true
