@@ -56,6 +56,12 @@ final class MarketplaceStore: ObservableObject {
     @Published var lastScoutRun: Date? { didSet { persist() } }
 
     private let archive = EncryptedArchive()
+    /// When the next daily slate is due... (admin/god-mode state)
+    @Published var isAdmin: Bool = false { didSet { persist() } }
+    @Published private(set) var adminAdded: [MediaItem] = []
+    @Published private(set) var adminEdits: [UUID: MediaItem] = [:]
+    @Published private(set) var adminDeleted: Set<UUID> = []
+
     private var loading = false
     /// The creation-energy ledger; productions draw/return float energy through it.
     var energyLedger: AICoinLedger?
@@ -73,6 +79,7 @@ final class MarketplaceStore: ObservableObject {
         catalog.append(contentsOf: editorDrops.filter { !dropIDs.contains($0.id) })
         dropIDs.formUnion(editorDrops.map(\.id))
         catalog.append(contentsOf: scoutDrops.filter { !dropIDs.contains($0.id) })
+        applyAdminLayer()
         // Resume any commissions that were mid-flight when the app last closed.
         for request in requests where request.status == .open {
             let id = request.id
@@ -119,6 +126,10 @@ final class MarketplaceStore: ObservableObject {
         var scoutDrops: [MediaItem]
         var scoutLog: [ScoutEntry]
         var lastScoutRun: Date?
+        var isAdmin: Bool
+        var adminAdded: [MediaItem]
+        var adminEdits: [UUID: MediaItem]
+        var adminDeleted: [UUID]
         var libraryIDs: [UUID]
         var watchlistIDs: [UUID]
         var submissions: [Submission]
@@ -130,6 +141,7 @@ final class MarketplaceStore: ObservableObject {
              payoutConnected: Bool, paidOutUSD: Double, reviews: [Review], editorDrops: [MediaItem],
              requests: [ContentRequest], notifications: [AppNotification],
              scoutDrops: [MediaItem], scoutLog: [ScoutEntry], lastScoutRun: Date?,
+             isAdmin: Bool, adminAdded: [MediaItem], adminEdits: [UUID: MediaItem], adminDeleted: [UUID],
              libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem]) {
             self.accountName = accountName
             self.accountEmail = accountEmail
@@ -150,6 +162,10 @@ final class MarketplaceStore: ObservableObject {
             self.scoutDrops = scoutDrops
             self.scoutLog = scoutLog
             self.lastScoutRun = lastScoutRun
+            self.isAdmin = isAdmin
+            self.adminAdded = adminAdded
+            self.adminEdits = adminEdits
+            self.adminDeleted = adminDeleted
             self.libraryIDs = libraryIDs
             self.watchlistIDs = watchlistIDs
             self.submissions = submissions
@@ -179,6 +195,10 @@ final class MarketplaceStore: ObservableObject {
             scoutDrops = try c.decodeIfPresent([MediaItem].self, forKey: .scoutDrops) ?? []
             scoutLog = try c.decodeIfPresent([ScoutEntry].self, forKey: .scoutLog) ?? []
             lastScoutRun = try c.decodeIfPresent(Date.self, forKey: .lastScoutRun)
+            isAdmin = try c.decodeIfPresent(Bool.self, forKey: .isAdmin) ?? false
+            adminAdded = try c.decodeIfPresent([MediaItem].self, forKey: .adminAdded) ?? []
+            adminEdits = try c.decodeIfPresent([UUID: MediaItem].self, forKey: .adminEdits) ?? [:]
+            adminDeleted = try c.decodeIfPresent([UUID].self, forKey: .adminDeleted) ?? []
             libraryIDs = try c.decodeIfPresent([UUID].self, forKey: .libraryIDs) ?? []
             watchlistIDs = try c.decodeIfPresent([UUID].self, forKey: .watchlistIDs) ?? []
             submissions = try c.decodeIfPresent([Submission].self, forKey: .submissions) ?? []
@@ -211,6 +231,10 @@ final class MarketplaceStore: ObservableObject {
         scoutDrops = state.scoutDrops
         scoutLog = state.scoutLog
         lastScoutRun = state.lastScoutRun
+        isAdmin = state.isAdmin
+        adminAdded = state.adminAdded
+        adminEdits = state.adminEdits
+        adminDeleted = Set(state.adminDeleted)
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
@@ -241,12 +265,72 @@ final class MarketplaceStore: ObservableObject {
             scoutDrops: scoutDrops,
             scoutLog: scoutLog,
             lastScoutRun: lastScoutRun,
+            isAdmin: isAdmin,
+            adminAdded: adminAdded,
+            adminEdits: adminEdits,
+            adminDeleted: Array(adminDeleted),
             libraryIDs: Array(libraryIDs),
             watchlistIDs: Array(watchlistIDs),
             submissions: submissions,
             publishedItems: publishedItems
         )
         archive.save(state)
+    }
+
+    // MARK: - Admin (god mode)
+
+    /// Applies the admin override layer to the freshly-composed catalogue:
+    /// deletions, per-item edits, and admin-added titles. Runs at launch.
+    private func applyAdminLayer() {
+        if !adminDeleted.isEmpty { catalog.removeAll { adminDeleted.contains($0.id) } }
+        if !adminEdits.isEmpty { catalog = catalog.map { adminEdits[$0.id] ?? $0 } }
+        let existing = Set(catalog.map(\.id))
+        catalog.append(contentsOf: adminAdded.filter { !existing.contains($0.id) && !adminDeleted.contains($0.id) })
+    }
+
+    /// Unlocks god mode with the admin passcode.
+    @discardableResult
+    func unlockAdmin(passcode: String) -> Bool {
+        guard passcode == Admin.passcode else { return false }
+        isAdmin = true
+        Haptics.success()
+        return true
+    }
+
+    func lockAdmin() { isAdmin = false }
+
+    /// Adds a new title to the live catalogue (persists across launches).
+    func adminAdd(_ item: MediaItem) {
+        adminAdded.append(item)
+        adminDeleted.remove(item.id)
+        catalog.insert(item, at: 0)
+        persist()
+        Haptics.success()
+    }
+
+    /// Adjusts an existing title in place (persists as an edit override).
+    func adminUpdate(_ item: MediaItem) {
+        if let i = adminAdded.firstIndex(where: { $0.id == item.id }) {
+            adminAdded[i] = item                 // it's an admin-added item
+        } else {
+            adminEdits[item.id] = item           // override a base/generated item
+        }
+        if let i = catalog.firstIndex(where: { $0.id == item.id }) { catalog[i] = item }
+        persist()
+    }
+
+    /// Permanently removes a title from the marketplace.
+    func adminDelete(_ id: UUID) {
+        adminDeleted.insert(id)
+        adminAdded.removeAll { $0.id == id }
+        adminEdits[id] = nil
+        catalog.removeAll { $0.id == id }
+        scoutDrops.removeAll { $0.id == id }
+        editorDrops.removeAll { $0.id == id }
+        libraryIDs.remove(id)
+        watchlistIDs.remove(id)
+        persist()
+        Haptics.warning()
     }
 
     // MARK: - Account lifecycle
@@ -288,6 +372,10 @@ final class MarketplaceStore: ObservableObject {
         scoutDrops = []
         scoutLog = []
         lastScoutRun = nil
+        isAdmin = false
+        adminAdded = []
+        adminEdits = [:]
+        adminDeleted = []
         libraryIDs = []
         watchlistIDs = []
         submissions = []

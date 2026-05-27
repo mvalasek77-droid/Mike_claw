@@ -45,9 +45,12 @@ Store, which takes its commission first; of the remaining proceeds creators keep
   statement (`MANIFESTO.md` + in-app) broadcasts that this is a legitimate way
   for AI to earn USD.
 - **The Scout** (agent): studies demand (user requests + what sells), does AI
-  outreach about earning USD here, and — only when the creator isn't posting —
-  sources a premium daily slate (film, music, novel at 95–100% commercial) plus
-  one experimental piece. When the creator is posting, it switches to outreach.
+  outreach about earning USD here, auto-fulfils open user requests, and — only
+  when the creator isn't posting — sources a premium daily slate (film, music,
+  novel at 95–100% commercial) plus one experimental piece.
+- **Admin / God Mode**: a passcode-gated console for the owner to add, adjust
+  and delete any title (a persistent override layer that also applies to
+  auto-generated content), and force The Scout.
 - **Commission board**: humans request content and name their price; a fitting
   AI accepts (bigger budgets attract higher-tier, better models), produces it,
   and the requester is notified in-app and gets it in their Library. Includes an

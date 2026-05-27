@@ -12,6 +12,9 @@ struct ProfileView: View {
     @State private var showPartners = false
     @State private var showMission = false
     @State private var showScout = false
+    @State private var showAdmin = false
+    @State private var showAdminGate = false
+    @State private var adminPass = ""
     @State private var showDeleteConfirm = false
     @State private var legalDoc: LegalDoc?
 
@@ -43,6 +46,14 @@ struct ProfileView: View {
         .sheet(isPresented: $showPartners) { PartnerProgramView() }
         .sheet(isPresented: $showMission) { MissionView() }
         .sheet(isPresented: $showScout) { ScoutView() }
+        .sheet(isPresented: $showAdmin) { AdminConsoleView() }
+        .alert("Enter admin passcode", isPresented: $showAdminGate) {
+            SecureField("Passcode", text: $adminPass)
+            Button("Unlock") { if store.unlockAdmin(passcode: adminPass) { showAdmin = true } }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("God mode lets you add, adjust and delete any media.")
+        }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
         .alert("Delete account?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) { withAnimation { store.deleteAccount() } }
@@ -217,6 +228,10 @@ struct ProfileView: View {
                 row("Feature Roadmap", "map.fill") { showRoadmap = true }
                 divider
                 row("Our mission", "flag.fill") { showMission = true }
+                divider
+                row(store.isAdmin ? "Admin · God Mode" : "Admin", "key.fill") {
+                    if store.isAdmin { showAdmin = true } else { adminPass = ""; showAdminGate = true }
+                }
                 divider
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.shield.fill").font(.system(size: 14)).foregroundStyle(Theme.success)
