@@ -21,6 +21,8 @@ struct RootView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @State private var showSplash = true
 
+    @EnvironmentObject private var ledger: AICoinLedger
+
     var body: some View {
         ZStack {
             AppBackground().ignoresSafeArea()
@@ -38,6 +40,7 @@ struct RootView: View {
         }
         .motion(.easeInOut(duration: 0.4), value: showSplash)
         .motion(.easeInOut(duration: 0.4), value: store.isRegistered)
+        .onAppear { store.attachEnergy(ledger) }
     }
 }
 

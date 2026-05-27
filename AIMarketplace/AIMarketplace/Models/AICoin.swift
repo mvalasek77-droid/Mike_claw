@@ -20,6 +20,15 @@ enum AICoin {
         if amount >= 1_000 { return String(format: "%.1fK", amount / 1_000) }
         return String(format: "%.0f", amount)
     }
+
+    /// Creation energy a single production of this type draws from the float.
+    static func energyCost(_ type: MediaType) -> Double {
+        switch type {
+        case .novel: return 60
+        case .music: return 35
+        case .movie: return 90
+        }
+    }
 }
 
 /// A single recorded movement of creation energy (a draw from, or return to,

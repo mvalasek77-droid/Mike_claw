@@ -55,6 +55,12 @@ enum Incentives {
         store.invitePartner(model)
 
         let titles = store.catalog.filter { $0.aiTools.contains(model) }
+        // The energy spent producing the launch titles, drawn then returned.
+        let energy = titles.reduce(0.0) { $0 + AICoin.energyCost($1.type) }
+        if energy > 0 {
+            ledger.draw(energy, by: model, memo: "producing launch titles")
+            ledger.returnEnergy(energy, from: model, memo: "launch titles live")
+        }
         let tierMultiplier = tier(forTitles: titles.count).multiplier
 
         var total: Double = 0

@@ -51,6 +51,10 @@ final class MarketplaceStore: ObservableObject {
 
     private let archive = EncryptedArchive()
     private var loading = false
+    /// The creation-energy ledger; productions draw/return float energy through it.
+    var energyLedger: AICoinLedger?
+
+    func attachEnergy(_ ledger: AICoinLedger) { energyLedger = ledger }
 
     init(catalog: [MediaItem] = SampleData.catalog()) {
         self.catalog = catalog
@@ -390,6 +394,11 @@ final class MarketplaceStore: ObservableObject {
         }
         catalog.insert(drop, at: 0)
         editorDrops.append(drop)   // persists
+        if let model = drop.aiTools.first {
+            let cost = AICoin.energyCost(type)
+            energyLedger?.draw(cost, by: model, memo: "rendering “\(drop.title)”")
+            energyLedger?.returnEnergy(cost, from: model, memo: "“\(drop.title)” live")
+        }
     }
 
     // MARK: - Content requests (commissions)
@@ -452,6 +461,8 @@ final class MarketplaceStore: ObservableObject {
 
         requests[idx].status = .accepted
         requests[idx].acceptedBy = model
+        // Energy is drawn from the float while the AI produces the work.
+        energyLedger?.draw(AICoin.energyCost(request.type), by: model, memo: "producing “\(request.headline)”")
         notify(title: "\(model) accepted your request",
                body: "Producing “\(request.headline)” for \(usd(request.budgetUSD)). You'll be notified when it's ready.",
                kind: .request)
@@ -475,6 +486,8 @@ final class MarketplaceStore: ObservableObject {
         libraryIDs.insert(item.id)               // they commissioned it → they own it
         walletBalance = max(0, walletBalance - request.budgetUSD)
 
+        // Energy returns to the float now the work is live.
+        energyLedger?.returnEnergy(AICoin.energyCost(request.type), from: model, memo: "“\(item.title)” delivered")
         requests[idx].status = .delivered
         requests[idx].deliveredItemID = item.id
         requests[idx].resolvedAt = .now
