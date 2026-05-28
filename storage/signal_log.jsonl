@@ -1,0 +1,78 @@
+{"ts": "2026-05-26T18:17:22.243984", "sym": "RGTI", "direction": "SELL", "price": 24.71, "stop": 24.9, "target1": 24.33, "score": 8}
+{"ts": "2026-05-26T18:23:03.191161", "sym": "RGTI", "direction": "SELL", "price": 24.88, "stop": 24.98, "target1": 24.68, "score": 7}
+{"ts": "2026-05-26T18:29:22.033111", "sym": "RGTI", "direction": "SELL", "price": 24.74, "stop": 25.05, "target1": 24.11, "score": 8}
+{"ts": "2026-05-26T18:35:39.150422", "sym": "RGTI", "direction": "SELL", "price": 24.73, "stop": 25.02, "target1": 24.14, "score": 8}
+{"ts": "2026-05-26T18:41:54.714502", "sym": "RGTI", "direction": "SELL", "price": 24.74, "stop": 24.93, "target1": 24.35, "score": 6}
+{"ts": "2026-05-26T18:48:15.070237", "sym": "RGTI", "direction": "SELL", "price": 24.63, "stop": 24.86, "target1": 24.16, "score": 8}
+{"ts": "2026-05-26T18:54:32.241497", "sym": "RGTI", "direction": "SELL", "price": 24.57, "stop": 24.86, "target1": 23.98, "score": 8}
+{"ts": "2026-05-26T19:00:46.922820", "sym": "RGTI", "direction": "SELL", "price": 24.57, "stop": 24.85, "target1": 24.02, "score": 8}
+{"ts": "2026-05-26T19:07:18.677881", "sym": "RGTI", "direction": "SELL", "price": 24.72, "stop": 24.9, "target1": 24.36, "score": 6}
+{"ts": "2026-05-26T19:12:27.523891", "sym": "RGTI", "signal": "SELL", "price": 24.72, "stop": 28.41, "target": 21.54, "confidence": 8, "direction": "UP", "range_pct": 75.0}
+{"ts": "2026-05-26T19:21:28.532425", "sym": "RGTI", "signal": "BUY", "price": 24.63, "stop": 21.17, "target": 27.78, "confidence": 10, "direction": "UP", "range_pct": 75.0}
+{"ts": "2026-05-26T19:25:38.474339", "sym": "HOU", "signal": "SELL", "price": 23.57, "stop": 25.17, "target": 22.74, "confidence": 6, "direction": "DOWN", "range_pct": 34.0}
+{"ts": "2026-05-26T19:27:48.036770", "sym": "RGTI", "signal": "BUY", "price": 24.62, "stop": 20.33, "target": 27.78, "confidence": 8, "direction": "UP", "range_pct": 75.0}
+{"ts": "2026-05-26T19:30:57.320777", "sym": "HOD", "signal": "SELL", "price": 27.48, "stop": 30.9, "buy_target": 22.44, "sell_target": 15.26, "confidence": 8, "trend": "UP", "range_pct": 93.0}
+{"ts": "2026-05-26T19:31:27.024527", "sym": "HOD", "signal": "SELL", "price": 27.48, "stop": 30.9, "buy_target": 22.45, "sell_target": 15.27, "confidence": 8, "trend": "UP", "range_pct": 93.0}
+{"ts": "2026-05-26T19:32:14.315681", "sym": "HOD", "signal": "SELL", "price": 27.5, "stop": 30.92, "buy_target": 22.45, "sell_target": 15.27, "confidence": 8, "trend": "UP", "range_pct": 93.0}
+{"ts": "2026-05-26T19:32:17.530933", "sym": "HOD", "signal": "SELL", "price": 27.5, "stop": 30.92, "buy_target": 22.45, "sell_target": 15.27, "confidence": 8, "trend": "UP", "range_pct": 93.0}
+{"ts": "2026-05-26T19:33:14.996305", "sym": "HOD", "signal": "SELL", "price": 27.5, "stop": 30.92, "buy_target": 22.45, "sell_target": 15.27, "confidence": 8, "trend": "UP", "range_pct": 93.0}
+{"ts": "2026-05-26T19:37:22.567554", "sym": "WTI", "signal": "BUY", "price": 93.96, "stop": 92.55, "target": 97.72, "confidence": 6, "trend": "DOWN", "range_pct": 24.0, "trade": "HOU (long oil)"}
+{"ts": "2026-05-26T19:38:38.319380", "sym": "WTI", "signal": "BUY", "price": 93.96, "stop": 92.55, "target": 97.72, "confidence": 6, "trend": "DOWN", "range_pct": 24.0, "trade": "HOU (long oil)"}
+{"ts": "2026-05-26T19:45:12.590569", "sym": "WTI", "signal": "BUY", "price": 93.79, "stop": 92.38, "target": 97.54, "confidence": 6, "trend": "DOWN", "range_pct": 23.0, "trade": "HOU (long oil)"}
+{"ts": "2026-05-26T19:52:18.278854", "sym": "WTI", "signal": "BUY", "price": 93.76, "stop": 92.35, "target": 97.51, "confidence": 6, "trend": "DOWN", "range_pct": 23.0, "trade": "HOU (long oil)"}
+{"ts": "2026-05-26T19:52:26.736561", "sym": "WTI", "signal": "BUY", "price": 93.77, "stop": 92.36, "target": 97.52, "confidence": 6, "trend": "DOWN", "range_pct": 23.0, "trade": "HOU (long oil)"}
+{"ts": "2026-05-26T19:58:42.446706", "sym": "WTI", "signal": "BUY", "price": 93.68, "stop": 92.27, "target": 97.43, "confidence": 6, "trend": "DOWN", "range_pct": 23.0, "trade": "HOU (long oil)"}
+{"ts": "2026-05-28T14:46:53.965906", "sym": "WTI", "signal": "SELL", "price": 89.69, "stop": 91.04, "target": 86.1, "confidence": 10, "trend": "DOWN", "range_pct": 11.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T14:53:36.138101", "sym": "WTI", "signal": "SELL", "price": 89.11, "stop": 90.45, "target": 85.55, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T14:54:01.260179", "sym": "WTI", "signal": "SELL", "price": 89.08, "stop": 90.42, "target": 85.52, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T14:59:32.677150", "sym": "WTI", "signal": "SELL", "price": 89.68, "stop": 91.03, "target": 86.09, "confidence": 10, "trend": "DOWN", "range_pct": 11.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:05:49.199970", "sym": "WTI", "signal": "SELL", "price": 89.55, "stop": 90.89, "target": 85.97, "confidence": 10, "trend": "DOWN", "range_pct": 10.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:11:57.202394", "sym": "WTI", "signal": "SELL", "price": 89.26, "stop": 90.6, "target": 85.69, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:17:58.022655", "sym": "WTI", "signal": "SELL", "price": 89.31, "stop": 90.65, "target": 85.74, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:18:50.836255", "sym": "WTI", "signal": "SELL", "price": 89.63, "stop": 90.97, "target": 86.04, "confidence": 10, "trend": "DOWN", "range_pct": 11.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:24:13.533340", "sym": "WTI", "signal": "SELL", "price": 89.66, "stop": 91.0, "target": 86.07, "confidence": 10, "trend": "DOWN", "range_pct": 11.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:30:13.943875", "sym": "WTI", "signal": "SELL", "price": 89.76, "stop": 91.11, "target": 86.17, "confidence": 10, "trend": "DOWN", "range_pct": 11.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:36:18.043819", "sym": "WTI", "signal": "SELL", "price": 89.76, "stop": 91.11, "target": 86.17, "confidence": 10, "trend": "DOWN", "range_pct": 11.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:42:22.454043", "sym": "WTI", "signal": "SELL", "price": 89.77, "stop": 91.12, "target": 86.18, "confidence": 10, "trend": "DOWN", "range_pct": 11.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:48:18.581542", "sym": "WTI", "signal": "SELL", "price": 89.5, "stop": 90.84, "target": 85.92, "confidence": 10, "trend": "DOWN", "range_pct": 10.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T15:54:01.887611", "sym": "WTI", "signal": "SELL", "price": 89.88, "stop": 91.23, "target": 86.28, "confidence": 10, "trend": "DOWN", "range_pct": 12.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T16:00:12.232036", "sym": "WTI", "signal": "SELL", "price": 89.9, "stop": 91.25, "target": 86.3, "confidence": 10, "trend": "DOWN", "range_pct": 12.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T16:06:27.235647", "sym": "WTI", "signal": "SELL", "price": 89.88, "stop": 91.23, "target": 86.28, "confidence": 10, "trend": "DOWN", "range_pct": 12.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T16:12:47.601069", "sym": "WTI", "signal": "SELL", "price": 89.93, "stop": 91.28, "target": 86.33, "confidence": 10, "trend": "DOWN", "range_pct": 12.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T16:18:50.417151", "sym": "WTI", "signal": "SELL", "price": 89.82, "stop": 91.17, "target": 86.23, "confidence": 10, "trend": "DOWN", "range_pct": 11.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T16:24:42.911467", "sym": "WTI", "signal": "SELL", "price": 89.72, "stop": 91.07, "target": 86.13, "confidence": 10, "trend": "DOWN", "range_pct": 11.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T16:30:45.383838", "sym": "WTI", "signal": "SELL", "price": 89.11, "stop": 90.45, "target": 85.55, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T16:36:50.441059", "sym": "WTI", "signal": "SELL", "price": 88.86, "stop": 90.19, "target": 85.31, "confidence": 10, "trend": "DOWN", "range_pct": 7.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T16:42:52.132323", "sym": "WTI", "signal": "SELL", "price": 89.26, "stop": 90.6, "target": 85.69, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T16:48:50.130171", "sym": "WTI", "signal": "SELL", "price": 89.04, "stop": 90.38, "target": 85.48, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T17:18:48.601161", "sym": "WTI", "signal": "SELL", "price": 88.86, "stop": 90.19, "target": 85.31, "confidence": 10, "trend": "DOWN", "range_pct": 7.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T17:24:50.397205", "sym": "WTI", "signal": "SELL", "price": 89.0, "stop": 90.33, "target": 85.44, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T17:30:32.444951", "sym": "WTI", "signal": "SELL", "price": 88.9, "stop": 90.23, "target": 85.34, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T17:36:42.345243", "sym": "WTI", "signal": "SELL", "price": 88.96, "stop": 90.29, "target": 85.4, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T17:42:46.189478", "sym": "WTI", "signal": "SELL", "price": 89.01, "stop": 90.35, "target": 85.45, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T17:48:52.951763", "sym": "WTI", "signal": "SELL", "price": 88.88, "stop": 90.21, "target": 85.32, "confidence": 10, "trend": "DOWN", "range_pct": 7.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T17:55:18.712853", "sym": "WTI", "signal": "SELL", "price": 88.88, "stop": 90.21, "target": 85.32, "confidence": 10, "trend": "DOWN", "range_pct": 7.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:03:11.810446", "sym": "WTI", "signal": "SELL", "price": 88.8, "stop": 90.13, "target": 85.25, "confidence": 10, "trend": "DOWN", "range_pct": 7.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:08:51.110083", "sym": "WTI", "signal": "SELL", "price": 88.88, "stop": 90.21, "target": 85.32, "confidence": 10, "trend": "DOWN", "range_pct": 7.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:14:39.734235", "sym": "WTI", "signal": "SELL", "price": 88.85, "stop": 90.18, "target": 85.3, "confidence": 10, "trend": "DOWN", "range_pct": 7.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:20:35.969713", "sym": "WTI", "signal": "SELL", "price": 89.0, "stop": 90.33, "target": 85.44, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:26:35.365857", "sym": "WTI", "signal": "SELL", "price": 88.84, "stop": 90.17, "target": 85.29, "confidence": 10, "trend": "DOWN", "range_pct": 7.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:39:01.734823", "sym": "WTI", "signal": "SELL", "price": 88.95, "stop": 90.28, "target": 85.39, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:39:09.392541", "sym": "WTI", "signal": "SELL", "price": 88.92, "stop": 90.25, "target": 85.36, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:45:25.393545", "sym": "WTI", "signal": "SELL", "price": 89.32, "stop": 94.74, "target": 85.75, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:47:27.681659", "sym": "WTI", "signal": "SELL", "price": 89.45, "stop": 94.87, "target": 85.87, "confidence": 10, "trend": "DOWN", "range_pct": 10.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:51:20.214205", "sym": "WTI", "signal": "SELL", "price": 89.41, "stop": 94.83, "target": 85.83, "confidence": 10, "trend": "DOWN", "range_pct": 10.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T18:57:13.446019", "sym": "WTI", "signal": "SELL", "price": 89.34, "stop": 94.76, "target": 85.77, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:03:05.537243", "sym": "WTI", "signal": "SELL", "price": 89.29, "stop": 94.71, "target": 85.72, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:09:19.756591", "sym": "WTI", "signal": "SELL", "price": 89.18, "stop": 94.6, "target": 85.61, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:09:25.088761", "sym": "WTI", "signal": "SELL", "price": 89.18, "stop": 94.6, "target": 85.61, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:15:22.322679", "sym": "WTI", "signal": "SELL", "price": 89.22, "stop": 94.64, "target": 85.65, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:21:21.648166", "sym": "WTI", "signal": "SELL", "price": 89.14, "stop": 94.56, "target": 85.57, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:22:37.041757", "sym": "WTI", "signal": "SELL", "price": 89.2, "stop": 94.62, "target": 85.63, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:27:10.640054", "sym": "WTI", "signal": "SELL", "price": 89.16, "stop": 94.58, "target": 85.59, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:33:03.081980", "sym": "WTI", "signal": "SELL", "price": 89.23, "stop": 94.65, "target": 85.66, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:39:17.743346", "sym": "WTI", "signal": "SELL", "price": 89.29, "stop": 94.71, "target": 85.72, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:45:20.810664", "sym": "WTI", "signal": "SELL", "price": 89.1, "stop": 94.52, "target": 85.54, "confidence": 10, "trend": "DOWN", "range_pct": 8.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:51:11.555761", "sym": "WTI", "signal": "SELL", "price": 89.31, "stop": 94.73, "target": 85.74, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T19:57:10.139355", "sym": "WTI", "signal": "SELL", "price": 89.31, "stop": 94.73, "target": 85.74, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}
+{"ts": "2026-05-28T20:03:05.150169", "sym": "WTI", "signal": "SELL", "price": 89.37, "stop": 94.79, "target": 85.8, "confidence": 10, "trend": "DOWN", "range_pct": 9.0, "trade": "HOD (short oil)"}

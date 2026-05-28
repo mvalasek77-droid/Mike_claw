@@ -445,7 +445,7 @@ private struct ContentStep: View {
                                 .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
                         }
                         Spacer()
-                        Button { draft.fileName = nil } label: {
+                        Button { draft.fileName = nil; draft.fileSizeMB = 0 } label: {
                             Image(systemName: "trash").foregroundStyle(Theme.warning)
                         }
                     }

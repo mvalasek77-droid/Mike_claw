@@ -5,6 +5,7 @@ import SwiftUI
 struct PublishHomeView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @State private var showCreate = false
+    @State private var createID = UUID()   // forces SubmitWorkView to reset each time
     @State private var showPartners = false
     @State private var openSubmission: Submission?
 
@@ -23,7 +24,7 @@ struct PublishHomeView: View {
                     header
 
                     PrimaryButton(title: "Register a new title", systemImage: "plus",
-                                  tint: Theme.kdp) { showCreate = true }
+                                  tint: Theme.kdp) { createID = UUID(); showCreate = true }
                         .screenPadding()
 
                     earnBanner
@@ -39,7 +40,7 @@ struct PublishHomeView: View {
             }
         }
         .fullScreenCover(isPresented: $showCreate) {
-            SubmitWorkView()
+            SubmitWorkView().id(createID)
         }
         .sheet(isPresented: $showPartners) { PartnerProgramView() }
         .sheet(item: $openSubmission) { sub in
