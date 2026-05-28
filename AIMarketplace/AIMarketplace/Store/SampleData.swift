@@ -7,6 +7,7 @@ enum SampleData {
     static func catalog() -> [MediaItem] {
         [
             MediaItem(
+                id: UUID(uuidString: "11111111-1111-4111-8111-111111111111")!,
                 title: "The Odyssey Protocol",
                 creator: "Mike Valasek",
                 type: .novel,
@@ -24,6 +25,7 @@ enum SampleData {
                 mediaFileName: "the-odyssey-protocol"
             ),
             MediaItem(
+                id: UUID(uuidString: "22222222-2222-4222-8222-222222222222")!,
                 title: "It's a Swifty World After All",
                 creator: "Mike Valasek",
                 type: .music,
@@ -41,6 +43,7 @@ enum SampleData {
                 mediaFileName: "its-a-swifty-world-after-all"
             ),
             MediaItem(
+                id: UUID(uuidString: "33333333-3333-4333-8333-333333333333")!,
                 title: "Curves Like Keisha",
                 creator: "Mike Valasek",
                 type: .music,
@@ -58,6 +61,7 @@ enum SampleData {
                 mediaFileName: "curves-like-keisha"
             ),
             MediaItem(
+                id: UUID(uuidString: "44444444-4444-4444-8444-444444444444")!,
                 title: "Push Up Bra",
                 creator: "Mike Valasek",
                 type: .music,
