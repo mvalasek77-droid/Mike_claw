@@ -77,6 +77,16 @@ private struct VideoSurface: View {
             if model.hasMedia {
                 VideoPlayer(player: model.player)
                     .ignoresSafeArea()
+                if !item.aiTools.isEmpty {
+                    Label("Made with \(item.aiTools.joined(separator: " · "))", systemImage: "sparkles")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(Capsule().fill(.black.opacity(0.45)))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                        .padding(20)
+                        .allowsHitTesting(false)
+                }
                 if model.previewEnded { PreviewEndedBanner(type: item.type) }
             } else {
                 SimulatedTransport(item: item, icon: "film.fill",
@@ -140,6 +150,11 @@ private struct AudioSurface: View {
                 VStack(spacing: 4) {
                     Text(item.title).font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(.white)
                     Text(item.creator).font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.7))
+                    if !item.aiTools.isEmpty {
+                        Label("Made with \(item.aiTools.joined(separator: " · "))", systemImage: "sparkles")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(item.type.accent)
+                    }
                 }
 
                 if model.previewEnded {
@@ -223,6 +238,16 @@ private struct ReaderSurface: View {
 
     private var footer: some View {
         VStack(spacing: 10) {
+            HStack(spacing: 6) {
+                Text("by \(item.creator)").font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+                if !item.aiTools.isEmpty {
+                    Text("· Made with \(item.aiTools.joined(separator: " · "))")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(item.type.accent)
+                }
+                Spacer()
+            }
             ProgressView(value: Double(page + 1), total: Double(max(pages.count, 1)))
                 .tint(item.type.accent)
             HStack {
@@ -363,7 +388,16 @@ private struct SimulatedTransport: View {
             VStack(spacing: 16) {
                 Spacer()
                 Image(systemName: icon).font(.system(size: 54, weight: .bold)).foregroundStyle(.white.opacity(0.85))
-                Text(caption).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
+                VStack(spacing: 4) {
+                    Text(item.title).font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                    Text("by \(item.creator)").font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.7))
+                    if !item.aiTools.isEmpty {
+                        Label("Made with \(item.aiTools.joined(separator: " · "))", systemImage: "sparkles")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(item.type.accent)
+                    }
+                }
+                Text(caption).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.5))
                 Spacer()
                 SimulatedTransportControls(secondsTotal: secondsTotal)
                     .padding(.bottom, 36).padding(.horizontal, 24)
