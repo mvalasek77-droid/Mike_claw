@@ -42,7 +42,7 @@ struct RootView: View {
         .motion(.easeInOut(duration: 0.4), value: store.isRegistered)
         .onAppear {
             store.attachEnergy(ledger)
-            store.runScoutIfDue()
+            // No automatic demo content: the Scout only runs when triggered.
         }
     }
 }
