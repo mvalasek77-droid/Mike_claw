@@ -23,6 +23,7 @@ final class AVPlaybackModel: ObservableObject {
     private var endObserver: NSObjectProtocol?
     private var npTitle = ""
     private var npArtist = ""
+    private var npArtwork: UIImage?
     private var remoteConfigured = false
 
     func configureSession() {
@@ -34,7 +35,7 @@ final class AVPlaybackModel: ObservableObject {
 
     /// `title`/`artist` enable lock-screen Now Playing + remote controls so audio
     /// is controllable while the phone is locked.
-    func load(url: URL?, previewLimit: Double? = nil, title: String? = nil, artist: String? = nil) {
+    func load(url: URL?, previewLimit: Double? = nil, title: String? = nil, artist: String? = nil, artwork: UIImage? = nil) {
         guard let url else { hasMedia = false; return }
         self.previewLimit = previewLimit
         previewEnded = false
@@ -42,6 +43,7 @@ final class AVPlaybackModel: ObservableObject {
         if let title {
             npTitle = title
             npArtist = artist ?? ""
+            npArtwork = artwork
             configureRemoteCommands()
         }
         let item = AVPlayerItem(url: url)
@@ -129,6 +131,14 @@ final class AVPlaybackModel: ObservableObject {
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
             Task { @MainActor in self?.togglePlay() }; return .success
         }
+        center.skipForwardCommand.preferredIntervals = [15]
+        center.skipForwardCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.skip(15) }; return .success
+        }
+        center.skipBackwardCommand.preferredIntervals = [15]
+        center.skipBackwardCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.skip(-15) }; return .success
+        }
         remoteConfigured = true
     }
 
@@ -142,6 +152,9 @@ final class AVPlaybackModel: ObservableObject {
         if total > 0 { info[MPMediaItemPropertyPlaybackDuration] = total }
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        if let art = npArtwork {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: art.size) { _ in art }
+        }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 

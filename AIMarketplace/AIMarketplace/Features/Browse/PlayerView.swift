@@ -170,7 +170,8 @@ private struct AudioSurface: View {
             resolved = true
             model.load(url: ContentResolver.mediaURL(for: item),
                        previewLimit: preview ? PlayerPreview.clipSeconds : nil,
-                       title: item.title, artist: item.creator)
+                       title: item.title, artist: item.creator,
+                       artwork: ContentResolver.artworkImage(for: item))
         }
         .onDisappear { model.teardown() }
     }

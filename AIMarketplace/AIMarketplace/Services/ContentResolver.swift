@@ -18,6 +18,18 @@ enum ContentResolver {
         return nil
     }
 
+    /// A UIImage cover for lock-screen artwork: the supplied/bundled image if
+    /// present, otherwise a snapshot of the procedurally generated cover.
+    @MainActor
+    static func artworkImage(for item: MediaItem, size: CGFloat = 600) -> UIImage? {
+        if let image = coverImage(for: item) { return image }
+        let renderer = ImageRenderer(content:
+            GeneratedCover(item: item).frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.06)))
+        renderer.scale = 2
+        return renderer.uiImage
+    }
+
     static func bundledImage(named name: String) -> UIImage? {
         if let asset = UIImage(named: name) { return asset }
         for ext in ["jpg", "jpeg", "png", "heic"] {
