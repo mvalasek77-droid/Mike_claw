@@ -25,8 +25,11 @@ watching. Buy what you love; after Apple's App Store commission, creators keep
 85% of the remaining proceeds.
 
 ## Capabilities / entitlements
-- **Sign in with Apple:** entitlement `com.apple.developer.applesignin = [Default]`
-  (in `AIMarketplace.entitlements`). Enable the capability in the App ID.
+- **Sign in with Apple:** OFF by default so the app builds/signs with a free
+  personal team. It needs a **paid Apple Developer membership**. To enable:
+  Xcode → Signing & Capabilities → + Capability → "Sign in with Apple" (re-adds
+  `com.apple.developer.applesignin`). Until then, use the manual registration
+  form (the Sign in with Apple button fails gracefully if tapped).
 - **In-App Purchase (StoreKit 2):** consumable wallet-credit products. Define
   these in App Store Connect mirroring `Products.storekit`:
   `com.aimarketplace.credits.5/.10/.25/.50`. No special entitlements file key is

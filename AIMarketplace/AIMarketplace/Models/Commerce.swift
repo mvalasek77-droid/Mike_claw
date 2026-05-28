@@ -34,5 +34,5 @@ enum Commerce {
         return (price * 100).rounded() / 100
     }
 
-    static let dynamicPricingNote = "Prices move with demand and the AI Editor score: strong, in-demand titles command a premium; cold ones go on sale. The creator's list price is always the anchor."
+    static let dynamicPricingNote = "Prices move with demand and the AI Editor score: strong, in-demand titles command a premium; cold ones go on sale. The creator's list price is always the anchor. Whatever the final price, Apple takes its App Store cut first and the creator keeps 85% of what remains."
 }
