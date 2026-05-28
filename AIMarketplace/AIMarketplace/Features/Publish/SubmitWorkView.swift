@@ -238,6 +238,7 @@ private struct FormatStep: View {
 
 private struct DetailsStep: View {
     @Binding var draft: DraftWork
+    @State private var aiDrafting = false
 
     private var genres: [String] {
         switch draft.type {
@@ -280,9 +281,41 @@ private struct DetailsStep: View {
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
                     .overlay(RoundedRectangle(cornerRadius: Theme.cornerS).strokeBorder(.white.opacity(0.10), lineWidth: 0.6))
+                onDeviceAIRow
             }
 
             LengthStepper(draft: $draft)
+        }
+    }
+
+    @ViewBuilder private var onDeviceAIRow: some View {
+        switch OnDeviceAI.status {
+        case .ready:
+            Button {
+                aiDrafting = true
+                Task {
+                    if let text = await OnDeviceAI.draftSynopsis(type: draft.type, title: draft.title,
+                                                                 genre: draft.genre, existing: draft.synopsis) {
+                        draft.synopsis = text
+                        Haptics.success()
+                    }
+                    aiDrafting = false
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    if aiDrafting { ProgressView().controlSize(.small) }
+                    else { Image(systemName: "sparkles") }
+                    Text(aiDrafting ? "Drafting on device…" : "Draft with on-device AI")
+                }
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(Theme.accent)
+            }
+            .disabled(aiDrafting)
+        case .unavailable(let reason):
+            Label(reason, systemImage: "exclamationmark.circle")
+                .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+        case .unsupported:
+            EmptyView()   // older OS/toolchain: hide the option entirely
         }
     }
 }
