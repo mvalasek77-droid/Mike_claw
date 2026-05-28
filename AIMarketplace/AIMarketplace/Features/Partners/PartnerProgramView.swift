@@ -10,6 +10,7 @@ struct PartnerProgramView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showIncentives = false
     @State private var showMission = false
+    @State private var showCommission = false
     @State private var selectedPartner: PartnerID?
     @State private var lastBonus: (model: String, amount: Double)?
 
@@ -51,6 +52,7 @@ struct PartnerProgramView: View {
         }
         .sheet(isPresented: $showIncentives) { IncentivesView() }
         .sheet(isPresented: $showMission) { MissionView() }
+        .sheet(isPresented: $showCommission) { RequestContentView() }
         .sheet(item: $selectedPartner) { PartnerDetailView(model: $0.id) }
     }
 
@@ -69,8 +71,7 @@ struct PartnerProgramView: View {
                     }
                 }
                 PrimaryButton(title: "Commission a fresh drop", systemImage: "wand.and.stars", style: .ghost) {
-                    withAnimation { store.commissionFreshDrop() }
-                    Haptics.success()
+                    showCommission = true
                 }
             }
         }
