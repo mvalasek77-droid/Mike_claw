@@ -6,6 +6,7 @@ struct BrowseHomeView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @State private var selected: MediaItem?
     @State private var filter: MediaType?
+    @State private var layerFilter: ContentFoundry.ScoutLayer?
     @State private var showSearch = false
     @State private var showNotifications = false
 
@@ -24,11 +25,12 @@ struct BrowseHomeView: View {
                     }
 
                     filterBar
+                    layerBar
 
-                    if let filter {
-                        MediaRow(title: filter.plural,
+                    if filter != nil || layerFilter != nil {
+                        MediaRow(title: filterTitle,
                                  subtitle: "Sorted by AI Editor score",
-                                 items: store.items(of: filter)) { selected = $0 }
+                                 items: filteredItems) { selected = $0 }
                     } else {
                         RankedRow(title: "Top 10 Today", items: store.topTen) { selected = $0 }
                         MediaRow(title: "Trending Now", subtitle: "Climbing the charts",
@@ -97,8 +99,22 @@ struct BrowseHomeView: View {
     }
 
     private var heroItem: MediaItem? {
-        if let filter { return store.items(of: filter).first }
+        if filter != nil || layerFilter != nil { return filteredItems.first }
         return store.featured
+    }
+
+    private func matches(_ item: MediaItem) -> Bool {
+        (filter == nil || item.type == filter)
+            && (layerFilter == nil || ContentFoundry.layer(forGenre: item.genre) == layerFilter)
+    }
+
+    private var filteredItems: [MediaItem] {
+        store.catalog.filter(matches).sorted { $0.commercialScore > $1.commercialScore }
+    }
+
+    private var filterTitle: String {
+        let layer = layerFilter.map { $0.rawValue.capitalized + " " } ?? ""
+        return layer + (filter?.plural ?? "Titles")
     }
 
     private var filterBar: some View {
@@ -111,6 +127,33 @@ struct BrowseHomeView: View {
             }
             .screenPadding()
         }
+    }
+
+    private var layerBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                layerPill(nil, "Every layer")
+                ForEach(ContentFoundry.ScoutLayer.allCases, id: \.self) { layer in
+                    layerPill(layer, layer.rawValue.capitalized)
+                }
+            }
+            .screenPadding()
+        }
+    }
+
+    private func layerPill(_ layer: ContentFoundry.ScoutLayer?, _ label: String) -> some View {
+        let active = layerFilter == layer
+        return Button {
+            Motion.run(Motion.snap) { layerFilter = layer }
+            Haptics.selection()
+        } label: {
+            Text(label)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(active ? .black : Theme.accentSoft)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Capsule().fill(active ? Theme.accent : Color.white.opacity(0.08)))
+        }
+        .buttonStyle(.plain)
     }
 
     private func pill(_ type: MediaType?, _ label: String) -> some View {
