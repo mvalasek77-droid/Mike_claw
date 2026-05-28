@@ -16,7 +16,7 @@ struct MediaCard: View {
                         .frame(width: width, height: width * 1.48)
                         .opacity(store.isComingSoon(item) ? 0.7 : 1)
                     if store.isComingSoon(item) {
-                        Text("SOON").font(.system(size: 8, weight: .heavy, design: .rounded))
+                        Text("PREMIERING").font(.system(size: 7.5, weight: .heavy, design: .rounded))
                             .foregroundStyle(.black).padding(.horizontal, 6).padding(.vertical, 3)
                             .background(Capsule().fill(Theme.kdp)).padding(6)
                     } else {
@@ -27,7 +27,7 @@ struct MediaCard: View {
                     }
                 }
                 if store.isComingSoon(item) {
-                    Text("Coming soon").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.kdp)
+                    Text("Premiering soon").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.kdp)
                 } else {
                     Text(store.owns(item) ? item.priceLabel : String(format: "$%.2f", store.effectivePrice(for: item)))
                         .font(.system(size: 12, weight: .bold, design: .rounded))

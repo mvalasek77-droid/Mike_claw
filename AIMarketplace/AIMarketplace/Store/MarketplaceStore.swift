@@ -625,7 +625,7 @@ final class MarketplaceStore: ObservableObject {
                 energyLedger?.draw(cost, by: model, memo: "Scout developing “\(item.title)”")
             }
             scoutLog.insert(ScoutEntry(date: .now,
-                message: "The Scout started a \(layer.rawValue) \(type.title.lowercased()): “\(item.title)” by \(item.creator) — Coming Soon, developing to the 85% bar.",
+                message: "The Scout started a \(layer.rawValue) \(type.title.lowercased()): “\(item.title)” by \(item.creator) — premiering soon, in final polish.",
                 kind: .produced, relatedItemID: item.id), at: 0)
         }
         scoutDrops.append(contentsOf: produced)
@@ -650,7 +650,7 @@ final class MarketplaceStore: ObservableObject {
                     energyLedger?.returnEnergy(AICoin.energyCost(drop.type), from: model, memo: "“\(drop.title)” released")
                 }
                 scoutLog.insert(ScoutEntry(date: .now,
-                    message: "“\(drop.title)” cleared the 85% bar (\(after)%) — now live.",
+                    message: "“\(drop.title)” premiered — now live.",
                     kind: .produced, relatedItemID: drop.id), at: 0)
             }
         }

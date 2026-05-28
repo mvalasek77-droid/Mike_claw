@@ -74,6 +74,15 @@ struct MediaDetailView: View {
             }
     }
 
+    /// Experimental / niche layer tag (commercial = default, no tag).
+    private var layerTag: (String, String)? {
+        switch ContentFoundry.layer(forGenre: item.genre) {
+        case .experimental: return ("Experimental", "wand.and.stars")
+        case .niche: return ("Niche", "scope")
+        case .commercial: return nil
+        }
+    }
+
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("by \(item.creator)")
@@ -94,6 +103,9 @@ struct MediaDetailView: View {
                 }
             }
             HStack(spacing: 8) {
+                if let tag = layerTag {
+                    Chip(text: tag.0, systemImage: tag.1, color: Theme.accentSoft, filled: true)
+                }
                 Chip(text: item.genre, color: item.type.accent)
                 Chip(text: "\(item.releaseYear)", color: .white)
                 Chip(text: item.maturity, color: .white)
@@ -167,11 +179,11 @@ struct MediaDetailView: View {
     private var comingSoonCard: some View {
         GlassCard(tint: Theme.kdp) {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Coming Soon", systemImage: "hourglass").font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(Theme.kdp)
-                Text("The Scout is developing this \(item.type.title.lowercased()) to the 85% commercial bar before release. It'll unlock automatically when it's ready.")
+                Label("Premiering soon", systemImage: "sparkles").font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(Theme.kdp)
+                Text("The Scout is putting the finishing touches on this \(item.type.title.lowercased()). It'll unlock automatically the moment it's ready to premiere.")
                     .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
                 ProgressView(value: Double(item.commercialScore), total: 85).tint(Theme.kdp)
-                Text("\(item.commercialScore)% of the 85% bar").font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.inkFaint)
+                Text("Final polish in progress").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkFaint)
             }
         }
     }

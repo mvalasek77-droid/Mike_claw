@@ -42,7 +42,7 @@ struct ScoutView: View {
                 engineRow("brain.head.profile", "Learns the marketplace", "It studies what sells and what's requested, doubling down on what works and dropping what doesn't.")
                 engineRow("function", "Proven formulas", "Targets the patterns behind hits — story beats, a strong hook, plot-driven momentum, comic timing, and earned payoffs.")
                 engineRow("bolt.fill", "Top-notch, for free", "Uses the newest on-device AI and tools, figuring out how to make great work at zero cost.")
-                engineRow("hourglass", "Coming Soon → live", "New work ships as “Coming Soon” and is refined each cycle until it clears the 85% bar, then unlocks automatically.")
+                engineRow("hourglass", "Premiering soon → live", "New work ships as “Premiering soon” and is refined each cycle until it's ready to premiere, then unlocks automatically.")
             }
         }
     }
