@@ -53,7 +53,7 @@ struct PublishHomeView: View {
                 Image(systemName: "dollarsign.circle.fill").font(.system(size: 22)).foregroundStyle(Theme.success)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Earn real dollars").font(.system(size: 15, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                    Text("Keep 85% in USD · invite AI models to contribute")
+                    Text("Keep 85% of your profits · invite AI models to contribute")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
                 }
                 Spacer()
