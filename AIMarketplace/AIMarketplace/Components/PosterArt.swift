@@ -7,15 +7,6 @@ struct PosterArt: View {
     let item: MediaItem
     var showsTitle: Bool = true
 
-    private var palette: (top: Color, bottom: Color) {
-        let hue = Double(item.seed % 360) / 360.0
-        let hueB = (hue + 0.11).truncatingRemainder(dividingBy: 1.0)
-        return (
-            Color(hue: hue, saturation: 0.66, brightness: 0.52),
-            Color(hue: hueB, saturation: 0.82, brightness: 0.22)
-        )
-    }
-
     private var cover: UIImage? { ContentResolver.coverImage(for: item) }
 
     var body: some View {
@@ -30,7 +21,7 @@ struct PosterArt: View {
                         .frame(width: w, height: h)
                         .clipped()
                 } else {
-                    proceduralArt(w: w, h: h)
+                    GeneratedCover(item: item)
                 }
 
                 if showsTitle {
@@ -59,31 +50,5 @@ struct PosterArt: View {
             RoundedRectangle(cornerRadius: Theme.cornerM, style: .continuous)
                 .strokeBorder(.white.opacity(0.10), lineWidth: 0.5)
         )
-    }
-
-    @ViewBuilder
-    private func proceduralArt(w: CGFloat, h: CGFloat) -> some View {
-        ZStack {
-            LinearGradient(colors: [palette.top, palette.bottom],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-
-            // Soft seeded orbs for depth.
-            Circle()
-                .fill(item.type.accent.opacity(0.55))
-                .frame(width: w * 0.9)
-                .blur(radius: 42)
-                .offset(x: CGFloat((item.seed % 60)) - 30, y: -h * 0.28)
-            Circle()
-                .fill(Color.white.opacity(0.10))
-                .frame(width: w * 0.6)
-                .blur(radius: 30)
-                .offset(x: w * 0.28, y: h * 0.30)
-
-            // Giant faint category glyph.
-            Image(systemName: item.type.icon)
-                .font(.system(size: min(w, h) * 0.5, weight: .black))
-                .foregroundStyle(.white.opacity(0.14))
-                .rotationEffect(.degrees(-8))
-        }
     }
 }
