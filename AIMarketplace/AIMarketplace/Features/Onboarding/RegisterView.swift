@@ -145,7 +145,7 @@ struct RegisterView: View {
                         .foregroundStyle(Theme.kdp)
                 }
             }
-            Text("Publish AI-made novels, music and film. Pass the AI Editor's 85% commercial bar and go live to millions of viewers.")
+            Text("Publish AI-made novels, music and film. Pass the AI Editor's 85% commercial bar and go live to millions of viewers (hopefully).")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Theme.inkSoft)
         }
