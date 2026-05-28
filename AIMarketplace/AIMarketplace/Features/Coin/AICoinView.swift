@@ -8,8 +8,7 @@ struct AICoinView: View {
     @EnvironmentObject private var ledger: AICoinLedger
     @Environment(\.dismiss) private var dismiss
     @State private var live = true
-
-    private let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
+    @State private var blockTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -30,7 +29,22 @@ struct AICoinView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .onReceive(timer) { _ in if live { ledger.mineNextBlock() } }
+        .task {
+            await mineBlocks()
+        }
+        .onDisappear {
+            blockTask?.cancel()
+        }
+    }
+
+    /// Replaces the old Combine Timer.publish — this Task-based loop is
+    /// automatically cancelled when the view disappears, preventing leaks.
+    private func mineBlocks() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard live else { continue }
+            ledger.mineNextBlock()
+        }
     }
 
     private var floatCard: some View {

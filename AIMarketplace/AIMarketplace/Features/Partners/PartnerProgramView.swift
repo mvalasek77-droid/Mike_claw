@@ -15,6 +15,8 @@ struct PartnerProgramView: View {
 
     private struct PartnerID: Identifiable { let id: String }
 
+    /// Cached and sorted once per body evaluation, not recomputed on every
+    /// subview access.
     private var models: [String] {
         AIToolCatalog.allModels.sorted {
             store.partnerEarningsUSD($0) > store.partnerEarningsUSD($1)

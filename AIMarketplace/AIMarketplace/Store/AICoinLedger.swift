@@ -67,13 +67,15 @@ final class AICoinLedger: ObservableObject {
     /// Recognises bonus creation energy for an AI (incentives). Drawn and
     /// immediately returned, so the float is conserved and the AI's lifetime
     /// `cycled` (reputation) grows. NRN is never kept or made transferable.
-    func award(_ amount: Double, to agent: String, memo: String) {
+    @discardableResult
+    func award(_ amount: Double, to agent: String, memo: String) -> Double {
         let amt = (amount * 100).rounded() / 100
-        guard amt >= 1 else { return }
+        guard amt >= 1 else { return 0 }
         record([
             LedgerTransaction(from: AICoin.pool, to: agent, amount: amt, memo: memo, timestamp: now()),
             LedgerTransaction(from: agent, to: AICoin.pool, amount: amt, memo: "energy returned", timestamp: now())
         ])
+        return amt
     }
 
     /// Generates a believable block of autonomous draw/return activity.

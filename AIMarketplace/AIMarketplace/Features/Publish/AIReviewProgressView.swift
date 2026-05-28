@@ -19,7 +19,7 @@ struct AIReviewProgressView: View {
         }
     }
 
-    private let tickEvery = 0.62
+    private let tickInterval: Double = 0.62
 
     var body: some View {
         VStack(spacing: 26) {
@@ -34,7 +34,7 @@ struct AIReviewProgressView: View {
                     .stroke(Theme.kdp, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                     .frame(width: 150, height: 150)
                     .rotationEffect(.degrees(-90))
-                    .animation(.easeInOut(duration: tickEvery), value: passIndex)
+                    .animation(.easeInOut(duration: tickInterval), value: passIndex)
                 Image(systemName: "sparkles")
                     .font(.system(size: 46, weight: .bold))
                     .foregroundStyle(Theme.kdp)
@@ -77,7 +77,10 @@ struct AIReviewProgressView: View {
         }
         .onAppear {
             pulse = true
-            advance()
+            advanceAsync()
+        }
+        .onDisappear {
+            reviewTask?.cancel()
         }
     }
 
@@ -85,16 +88,20 @@ struct AIReviewProgressView: View {
         CGFloat(min(passIndex, passes.count)) / CGFloat(passes.count)
     }
 
-    private func advance() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + tickEvery) {
-            if passIndex < passes.count {
-                Motion.run(.easeInOut(duration: 0.3)) { passIndex += 1 }
+    /// Cancels automatically when the view disappears;
+    /// no risk of firing after dismissal.
+    @State private var reviewTask: Task<Void, Never>?
+
+    private func advanceAsync() {
+        reviewTask = Task { @MainActor in
+            for i in 0..<passes.count {
+                try? await Task.sleep(nanoseconds: UInt64(tickInterval * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                passIndex = i + 1
                 Haptics.tap()
-                advance()
-            } else {
-                Haptics.success()
-                onComplete()
             }
+            Haptics.success()
+            onComplete()
         }
     }
 }

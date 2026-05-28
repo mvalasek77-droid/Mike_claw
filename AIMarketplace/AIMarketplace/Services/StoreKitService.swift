@@ -17,22 +17,20 @@ final class StoreKitService: ObservableObject {
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
 
-    static let creditProductIDs = [
-        "com.aimarketplace.credits.5",
-        "com.aimarketplace.credits.10",
-        "com.aimarketplace.credits.25",
-        "com.aimarketplace.credits.50"
+    /// Single source of truth for all credit products.
+    /// Maps product ID → USD credit amount.
+    nonisolated static let products: [(id: String, credit: Double)] = [
+        ("com.aimarketplace.credits.5",  5),
+        ("com.aimarketplace.credits.10", 10),
+        ("com.aimarketplace.credits.25", 25),
+        ("com.aimarketplace.credits.50", 50),
     ]
 
-    /// Wallet credit (USD) granted by each consumable product.
-    static func credit(for productID: String) -> Double {
-        switch productID {
-        case "com.aimarketplace.credits.5": return 5
-        case "com.aimarketplace.credits.10": return 10
-        case "com.aimarketplace.credits.25": return 25
-        case "com.aimarketplace.credits.50": return 50
-        default: return 0
-        }
+    nonisolated static var creditProductIDs: [String] { products.map(\.id) }
+
+    /// Wallet credit (USD) granted by a consumable product.
+    nonisolated static func credit(for productID: String) -> Double {
+        products.first(where: { $0.id == productID })?.credit ?? 0
     }
 
     /// Invoked on the main actor whenever credit is successfully granted.

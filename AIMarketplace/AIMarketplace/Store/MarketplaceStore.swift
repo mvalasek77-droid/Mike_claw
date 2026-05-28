@@ -75,10 +75,10 @@ final class MarketplaceStore: ObservableObject {
         // The user's published titles, invited-partner media and commissioned
         // works are merged back in below.
         addInvitedPartnerTitles()
-        var dropIDs = Set(catalog.map(\.id))
-        catalog.append(contentsOf: editorDrops.filter { !dropIDs.contains($0.id) })
+        var dropIDs = Set(self.catalog.map(\.id))
+        self.catalog.append(contentsOf: editorDrops.filter { !dropIDs.contains($0.id) })
         dropIDs.formUnion(editorDrops.map(\.id))
-        catalog.append(contentsOf: scoutDrops.filter { !dropIDs.contains($0.id) })
+        self.catalog.append(contentsOf: scoutDrops.filter { !dropIDs.contains($0.id) })
         applyAdminLayer()
         purgeNonOwnerContentOnce()
         // Resume any commissions that were mid-flight when the app last closed.

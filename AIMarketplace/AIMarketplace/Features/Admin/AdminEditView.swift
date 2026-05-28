@@ -66,7 +66,7 @@ struct AdminEditView: View {
     }
 
     private func save() {
-        let tools = aiTools.split(separator: ",").map { $0.trimmed }.filter { !$0.isEmpty }
+        let tools = aiTools.split(separator: ",").map { String($0).trimmed }.filter { !$0.isEmpty }
         let item = MediaItem(
             id: original?.id ?? UUID(),
             title: title.trimmed,
