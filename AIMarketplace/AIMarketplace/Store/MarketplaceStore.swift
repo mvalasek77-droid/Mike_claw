@@ -80,11 +80,29 @@ final class MarketplaceStore: ObservableObject {
         dropIDs.formUnion(editorDrops.map(\.id))
         catalog.append(contentsOf: scoutDrops.filter { !dropIDs.contains($0.id) })
         applyAdminLayer()
+        purgeNonOwnerContentOnce()
         // Resume any commissions that were mid-flight when the app last closed.
         for request in requests where request.status == .open {
             let id = request.id
             Task { await processRequest(id) }
         }
+    }
+
+    /// One-time cleanup: wipe all previously auto-generated content so the
+    /// catalogue contains only the owner's real works (+ their published items).
+    /// Runs once per install; afterwards the Scout repopulates fresh.
+    private func purgeNonOwnerContentOnce() {
+        let key = "purgedGeneratedContent_v1"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        loading = true
+        editorDrops = []
+        scoutDrops = []
+        scoutLog = []
+        lastScoutRun = nil
+        catalog.removeAll { $0.isEditorOriginal }   // all AI-generated content is flagged
+        loading = false
+        UserDefaults.standard.set(true, forKey: key)
+        persist()
     }
 
     private func addInvitedPartnerTitles() {
