@@ -1,6 +1,7 @@
 import SwiftUI
 import AVKit
 import AVFoundation
+import UIKit
 
 /// Dedicated consumption surface, adapting to the media type. Plays real
 /// bundled/streamed media via AVFoundation when a file is resolved
@@ -84,12 +85,16 @@ private struct VideoSurface: View {
             }
         }
         .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true   // don't auto-lock while watching
             guard !resolved else { return }
             resolved = true
             model.load(url: ContentResolver.mediaURL(for: item),
                        previewLimit: preview ? PlayerPreview.clipSeconds : nil)
         }
-        .onDisappear { model.teardown() }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+            model.teardown()
+        }
     }
 }
 
@@ -159,10 +164,13 @@ private struct AudioSurface: View {
             .padding(24)
         }
         .onAppear {
+            // Music keeps playing when locked (audio background mode); we do NOT
+            // disable the idle timer here so the phone can lock as usual.
             guard !resolved else { return }
             resolved = true
             model.load(url: ContentResolver.mediaURL(for: item),
-                       previewLimit: preview ? PlayerPreview.clipSeconds : nil)
+                       previewLimit: preview ? PlayerPreview.clipSeconds : nil,
+                       title: item.title, artist: item.creator)
         }
         .onDisappear { model.teardown() }
     }
@@ -208,6 +216,8 @@ private struct ReaderSurface: View {
                 footer
             }
         }
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }   // don't auto-lock while reading
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
     }
 
     private var footer: some View {

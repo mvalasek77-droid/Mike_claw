@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import Combine
+import MediaPlayer
 
 /// Drives real audio/video playback via `AVPlayer`, exposing observable
 /// transport state for SwiftUI. Used by both the audio and video surfaces.
@@ -20,6 +21,9 @@ final class AVPlaybackModel: ObservableObject {
     let player = AVPlayer()
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
+    private var npTitle = ""
+    private var npArtist = ""
+    private var remoteConfigured = false
 
     func configureSession() {
         #if !targetEnvironment(simulator)
@@ -28,11 +32,18 @@ final class AVPlaybackModel: ObservableObject {
         #endif
     }
 
-    func load(url: URL?, previewLimit: Double? = nil) {
+    /// `title`/`artist` enable lock-screen Now Playing + remote controls so audio
+    /// is controllable while the phone is locked.
+    func load(url: URL?, previewLimit: Double? = nil, title: String? = nil, artist: String? = nil) {
         guard let url else { hasMedia = false; return }
         self.previewLimit = previewLimit
         previewEnded = false
         configureSession()
+        if let title {
+            npTitle = title
+            npArtist = artist ?? ""
+            configureRemoteCommands()
+        }
         let item = AVPlayerItem(url: url)
         player.replaceCurrentItem(with: item)
         hasMedia = true
@@ -82,11 +93,13 @@ final class AVPlaybackModel: ObservableObject {
         }
         player.play()
         isPlaying = true
+        updateNowPlaying()
     }
 
     func pause() {
         player.pause()
         isPlaying = false
+        updateNowPlaying()
     }
 
     func seek(toFraction fraction: Double) {
@@ -94,11 +107,42 @@ final class AVPlaybackModel: ObservableObject {
         let target = CMTime(seconds: fraction * duration, preferredTimescale: 600)
         player.seek(to: target)
         progress = fraction
+        updateNowPlaying()
     }
 
     func skip(_ seconds: Double) {
         guard duration > 0 else { return }
         seek(toFraction: min(1, max(0, (currentTime + seconds) / duration)))
+    }
+
+    // MARK: - Lock-screen Now Playing
+
+    private func configureRemoteCommands() {
+        guard !remoteConfigured else { return }
+        let center = MPRemoteCommandCenter.shared()
+        center.playCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.play() }; return .success
+        }
+        center.pauseCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.pause() }; return .success
+        }
+        center.togglePlayPauseCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.togglePlay() }; return .success
+        }
+        remoteConfigured = true
+    }
+
+    private func updateNowPlaying() {
+        guard remoteConfigured else { return }
+        var info: [String: Any] = [
+            MPMediaItemPropertyTitle: npTitle,
+            MPMediaItemPropertyArtist: npArtist
+        ]
+        let total = previewLimit ?? duration
+        if total > 0 { info[MPMediaItemPropertyPlaybackDuration] = total }
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
     func teardown() {
@@ -107,6 +151,14 @@ final class AVPlaybackModel: ObservableObject {
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         endObserver = nil
         player.pause()
+        if remoteConfigured {
+            let center = MPRemoteCommandCenter.shared()
+            center.playCommand.removeTarget(nil)
+            center.pauseCommand.removeTarget(nil)
+            center.togglePlayPauseCommand.removeTarget(nil)
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            remoteConfigured = false
+        }
     }
 
     deinit {

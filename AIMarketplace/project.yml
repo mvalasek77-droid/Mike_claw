@@ -35,6 +35,8 @@ targets:
         LSApplicationCategoryType: public.app-category.entertainment
         LSRequiresIPhoneOS: true
         NSPhotoLibraryUsageDescription: Choose cover art for the books, music and films you publish.
+        UIBackgroundModes:
+          - audio
         UILaunchScreen:
           UIColorName: AccentColor
         UIStatusBarStyle: UIStatusBarStyleLightContent
