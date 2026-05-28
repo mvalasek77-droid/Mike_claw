@@ -14,17 +14,27 @@ struct MediaCard: View {
                 ZStack(alignment: .topTrailing) {
                     PosterArt(item: item)
                         .frame(width: width, height: width * 1.48)
-                    ScoreBadge(score: item.commercialScore, compact: true)
-                        .padding(6)
+                        .opacity(store.isComingSoon(item) ? 0.7 : 1)
+                    if store.isComingSoon(item) {
+                        Text("SOON").font(.system(size: 8, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.black).padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(Capsule().fill(Theme.kdp)).padding(6)
+                    } else {
+                        ScoreBadge(score: item.commercialScore, compact: true).padding(6)
+                    }
                     if store.owns(item) {
                         ownedTag.padding(6).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                     }
                 }
-                Text(store.owns(item) ? item.priceLabel : String(format: "$%.2f", store.effectivePrice(for: item)))
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(store.owns(item) ? Theme.success
-                                     : (store.priceDeltaPercent(for: item) > 0 ? Theme.warning
-                                        : store.priceDeltaPercent(for: item) < 0 ? Theme.success : Theme.inkSoft))
+                if store.isComingSoon(item) {
+                    Text("Coming soon").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.kdp)
+                } else {
+                    Text(store.owns(item) ? item.priceLabel : String(format: "$%.2f", store.effectivePrice(for: item)))
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(store.owns(item) ? Theme.success
+                                         : (store.priceDeltaPercent(for: item) > 0 ? Theme.warning
+                                            : store.priceDeltaPercent(for: item) < 0 ? Theme.success : Theme.inkSoft))
+                }
             }
         }
         .buttonStyle(.plain)

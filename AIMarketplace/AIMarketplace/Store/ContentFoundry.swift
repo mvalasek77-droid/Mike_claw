@@ -107,23 +107,50 @@ enum ContentFoundry {
         )
     }
 
-    /// A premium work The Scout sources (95–100% commercial), facilitated by an
-    /// AI model. `experimental` produces a boundary-pushing piece instead.
-    static func scoutPick(type: MediaType, genre: String, experimental: Bool, seed: Int) -> MediaItem {
-        let key = "scout-\(seed)-\(type.rawValue)-\(experimental)"
+    /// The three release layers the Scout always mixes across.
+    enum ScoutLayer: String, CaseIterable { case commercial, experimental, niche }
+
+    static let nicheGenres: [MediaType: [String]] = [
+        .novel: ["Slipstream", "Solarpunk", "Cli-Fi", "Bizarro", "New Weird"],
+        .music: ["Vaporwave", "Drone", "Hyperpop", "Field Recording", "Microtonal"],
+        .movie: ["Avant-Garde", "Slow Cinema", "Mockumentary", "Anthology", "Arthouse"]
+    ]
+
+    static func layer(forGenre genre: String) -> ScoutLayer {
+        if genre == "Experimental" { return .experimental }
+        if MediaType.allCases.contains(where: { nicheGenres[$0]?.contains(genre) == true }) { return .niche }
+        return .commercial
+    }
+
+    /// A Scout-sourced work in a given layer. `developing` items start below the
+    /// 85% bar ("Coming Soon") and the Scout raises them over cycles until live.
+    static func scoutPick(type: MediaType, layer: ScoutLayer, genre: String, developing: Bool, seed: Int) -> MediaItem {
+        let key = "scout-\(seed)-\(type.rawValue)-\(layer.rawValue)"
         let model = pick(AIToolCatalog.suggestions(for: type), key + "model")
-        let title = experimental ? experimentalTitle(for: type, key: key) : title(for: type, key: key)
+        let resolvedGenre: String
+        switch layer {
+        case .experimental: resolvedGenre = "Experimental"
+        case .niche: resolvedGenre = pick(nicheGenres[type] ?? ["Niche"], key + "ng")
+        case .commercial: resolvedGenre = genre
+        }
+        let title = layer == .experimental ? experimentalTitle(for: type, key: key) : title(for: type, key: key)
         let slug = SampleData.slugify(title) + "-\(abs(stableHash(key)) % 9999)"
-        let score = 95 + abs(stableHash(key + "s")) % 6   // 95–100
+        let target: Int
+        switch layer {
+        case .commercial: target = 95 + abs(stableHash(key + "s")) % 6
+        case .experimental: target = 88 + abs(stableHash(key + "s")) % 8
+        case .niche: target = 86 + abs(stableHash(key + "s")) % 8
+        }
+        let score = developing ? 62 + abs(stableHash(key + "d")) % 18 : min(100, target)
         return MediaItem(
             id: UUID(),
             title: title,
             creator: model,
             type: type,
-            genre: experimental ? "Experimental" : genre,
-            synopsis: scoutSynopsis(for: type, experimental: experimental, genre: genre, key: key),
+            genre: resolvedGenre,
+            synopsis: scoutSynopsis(for: type, layer: layer, genre: resolvedGenre, key: key),
             aiTools: [model],
-            commercialScore: min(100, score),
+            commercialScore: score,
             price: pick([4.99, 5.99, 6.99, 7.99], key + "p"),
             length: length(for: type, key: key),
             purchases: 0,
@@ -141,11 +168,23 @@ enum ContentFoundry {
         return pick(forms, key + "f")
     }
 
-    private static func scoutSynopsis(for type: MediaType, experimental: Bool, genre: String, key: String) -> String {
-        if experimental {
-            return "A bold, boundary-pushing \(type.title.lowercased()) The Scout sourced to test what audiences will embrace next. Uncompromising and singular — not for everyone, but unforgettable for the right listener."
+    /// Formula-aware copy — encodes the proven patterns the Scout targets.
+    private static func scoutSynopsis(for type: MediaType, layer: ScoutLayer, genre: String, key: String) -> String {
+        let formula: String
+        switch type {
+        case .novel: formula = "a first-page hook, a propulsive three-act structure, escalating stakes, and an earned, resonant ending"
+        case .music: formula = "a magnetic hook by 0:20, a tight verse-chorus build, a memorable drop, and replay-ready dynamics"
+        case .movie: formula = "a cold-open hook, clear act breaks, plot-driven momentum, sharp comic timing where it counts, and a satisfying payoff"
         }
-        return "A Scout-sourced \(genre.lowercased()) \(type.title.lowercased()), vetted at the very top of the commercial range. Polished, confident, and built to outperform what's on the shelves."
+        let noun = type.title.lowercased()
+        switch layer {
+        case .commercial:
+            return "A crowd-pleasing \(genre.lowercased()) \(noun) engineered to the proven commercial formula: \(formula). Built to sell."
+        case .experimental:
+            return "A daring, format-bending \(noun) testing what audiences will embrace next - keeping \(formula) where it matters, breaking the rest."
+        case .niche:
+            return "A \(genre.lowercased()) \(noun) for a passionate audience - honoring \(formula) while serving a specific taste superbly."
+        }
     }
 
     // MARK: - Generation

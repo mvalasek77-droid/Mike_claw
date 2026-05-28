@@ -588,9 +588,16 @@ final class MarketplaceStore: ObservableObject {
     /// One Scout cycle. Always serves open/unmatched user requests; then, if the
     /// creator is posting, focuses on AI outreach; otherwise delivers a premium
     /// daily slate (film, music, novel at 95–100% commercial) + one experimental.
+    /// A Scout title still below the 85% bar — shown as "Coming Soon" and not
+    /// yet buyable/playable while the Scout develops it.
+    func isComingSoon(_ item: MediaItem) -> Bool {
+        item.isEditorOriginal && item.commercialScore < AIReviewResult.threshold
+    }
+
     func runScout() {
         lastScoutRun = .now
         fulfillOpenRequests()
+        developScoutContent()
         guard !userPostedRecently else {
             logScoutOutreach()
             return
@@ -599,26 +606,54 @@ final class MarketplaceStore: ObservableObject {
         func genre(for type: MediaType) -> String {
             demand.first { $0.type == type }?.genre ?? ContentFoundry.defaultGenre(for: type)
         }
-        let slate: [(MediaType, Bool)] = [(.movie, false), (.music, false), (.novel, false),
-                                          (MediaType.allCases[abs(stableHash("\(scoutDrops.count)exp")) % 3], true)]
+        func randomType(_ salt: String) -> MediaType {
+            MediaType.allCases[abs(stableHash("\(scoutDrops.count)\(salt)")) % MediaType.allCases.count]
+        }
+        // Always mix the three layers: commercial daily slate + experimental + niche.
+        let plan: [(MediaType, ContentFoundry.ScoutLayer)] = [
+            (.movie, .commercial), (.music, .commercial), (.novel, .commercial),
+            (randomType("exp"), .experimental), (randomType("niche"), .niche)
+        ]
         var produced: [MediaItem] = []
-        for (type, experimental) in slate {
-            let item = ContentFoundry.scoutPick(type: type, genre: genre(for: type),
-                                                experimental: experimental, seed: scoutDrops.count + produced.count)
+        for (type, layer) in plan {
+            let item = ContentFoundry.scoutPick(type: type, layer: layer, genre: genre(for: type),
+                                                developing: true, seed: scoutDrops.count + produced.count)
             catalog.insert(item, at: 0)
             produced.append(item)
             if let model = item.aiTools.first {
                 let cost = AICoin.energyCost(type)
-                energyLedger?.draw(cost, by: model, memo: "Scout-sourced “\(item.title)”")
-                energyLedger?.returnEnergy(cost, from: model, memo: "“\(item.title)” live")
+                energyLedger?.draw(cost, by: model, memo: "Scout developing “\(item.title)”")
             }
-            let kindLabel = experimental ? "an experimental piece" : "a \(type.title.lowercased())"
             scoutLog.insert(ScoutEntry(date: .now,
-                message: "The Scout delivered \(kindLabel): “\(item.title)” by \(item.creator) — \(item.commercialScore)% commercial.",
+                message: "The Scout started a \(layer.rawValue) \(type.title.lowercased()): “\(item.title)” by \(item.creator) — Coming Soon, developing to the 85% bar.",
                 kind: .produced, relatedItemID: item.id), at: 0)
         }
         scoutDrops.append(contentsOf: produced)
-        if scoutDrops.count > 60 { scoutDrops.removeFirst(scoutDrops.count - 60) }
+        if scoutDrops.count > 80 { scoutDrops.removeFirst(scoutDrops.count - 80) }
+        trimScoutLog()
+    }
+
+    /// Each cycle the Scout improves its in-progress (sub-85%) titles; ones that
+    /// cross the 85% bar are released (Coming Soon removed) and energy returns.
+    private func developScoutContent() {
+        for i in scoutDrops.indices where scoutDrops[i].commercialScore < AIReviewResult.threshold {
+            let before = scoutDrops[i].commercialScore
+            let bump = 7 + abs(stableHash(scoutDrops[i].id.uuidString + "\(before)")) % 8   // +7…14
+            let after = min(99, before + bump)
+            scoutDrops[i].commercialScore = after
+            if let idx = catalog.firstIndex(where: { $0.id == scoutDrops[i].id }) {
+                catalog[idx].commercialScore = after
+            }
+            if before < AIReviewResult.threshold && after >= AIReviewResult.threshold {
+                let drop = scoutDrops[i]
+                if let model = drop.aiTools.first {
+                    energyLedger?.returnEnergy(AICoin.energyCost(drop.type), from: model, memo: "“\(drop.title)” released")
+                }
+                scoutLog.insert(ScoutEntry(date: .now,
+                    message: "“\(drop.title)” cleared the 85% bar (\(after)%) — now live.",
+                    kind: .produced, relatedItemID: drop.id), at: 0)
+            }
+        }
         trimScoutLog()
     }
 

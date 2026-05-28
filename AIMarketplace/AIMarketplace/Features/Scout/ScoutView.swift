@@ -18,6 +18,7 @@ struct ScoutView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
                     missionCard
+                    engineCard
                     statusCard
                     if !store.scoutPicks.isEmpty { picksRow }
                     briefsCard
@@ -32,6 +33,28 @@ struct ScoutView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .sheet(item: $selected) { MediaDetailView(item: $0) }
+    }
+
+    private var engineCard: some View {
+        GlassCard(title: "How the Scout works", icon: "gearshape.2.fill", tint: Theme.kdp) {
+            VStack(alignment: .leading, spacing: 10) {
+                engineRow("square.stack.3d.up.fill", "Three layers, always mixing", "Every batch blends commercial, experimental and niche — never one-note.")
+                engineRow("brain.head.profile", "Learns the marketplace", "It studies what sells and what's requested, doubling down on what works and dropping what doesn't.")
+                engineRow("function", "Proven formulas", "Targets the patterns behind hits — story beats, a strong hook, plot-driven momentum, comic timing, and earned payoffs.")
+                engineRow("bolt.fill", "Top-notch, for free", "Uses the newest on-device AI and tools, figuring out how to make great work at zero cost.")
+                engineRow("hourglass", "Coming Soon → live", "New work ships as “Coming Soon” and is refined each cycle until it clears the 85% bar, then unlocks automatically.")
+            }
+        }
+    }
+
+    private func engineRow(_ icon: String, _ title: String, _ body: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon).font(.system(size: 13)).foregroundStyle(Theme.kdp).frame(width: 20)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
+                Text(body).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+            }
+        }
     }
 
     private var missionCard: some View {

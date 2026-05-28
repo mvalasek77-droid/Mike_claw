@@ -87,8 +87,8 @@ private struct VideoSurface: View {
                 if model.previewEnded { PreviewEndedBanner(type: item.type) }
             } else {
                 SimulatedTransport(item: item, icon: "film.fill",
-                                   caption: preview ? "Preview · \(item.genre)" : "Now playing · \(item.genre)",
-                                   secondsTotal: preview ? PlayerPreview.clipSeconds : Double(item.length) * 60)
+                                   caption: preview ? "Free preview · first 30 min" : "Now playing · \(item.genre)",
+                                   secondsTotal: preview ? PlayerPreview.movieFreeSeconds : Double(item.length) * 60)
             }
         }
         .onAppear {
@@ -96,7 +96,7 @@ private struct VideoSurface: View {
             guard !resolved else { return }
             resolved = true
             model.load(url: ContentResolver.mediaURL(for: item),
-                       previewLimit: preview ? PlayerPreview.clipSeconds : nil)
+                       previewLimit: preview ? PlayerPreview.movieFreeSeconds : nil)
         }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
@@ -106,7 +106,8 @@ private struct VideoSurface: View {
 }
 
 enum PlayerPreview {
-    static let clipSeconds: Double = 30
+    static let clipSeconds: Double = 30          // music sample
+    static let movieFreeSeconds: Double = 30 * 60 // films: 30 minutes free
     static let pages = 3
 }
 

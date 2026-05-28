@@ -119,17 +119,19 @@ struct MediaDetailView: View {
 
     private var actionBlock: some View {
         VStack(spacing: 10) {
-            if owned {
+            if store.isComingSoon(item) {
+                comingSoonCard
+            } else if owned {
                 PrimaryButton(title: "\(item.type.verb) now", systemImage: "play.fill", style: .light) {
                     previewMode = false; showPlayer = true
                 }
+                if item.type == .movie { Text("Full film — downloaded to your Library.").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint) }
             } else {
                 PrimaryButton(title: String(format: "Buy · $%.2f", store.effectivePrice(for: item)), systemImage: "cart.fill") {
                     if !store.purchase(item) { showInsufficientFunds = true }
                 }
                 priceNote
-                PrimaryButton(title: item.type == .novel ? "Read a sample" : "Preview",
-                              systemImage: "eye.fill", style: .ghost) {
+                PrimaryButton(title: previewLabel, systemImage: "eye.fill", style: .ghost) {
                     previewMode = true; showPlayer = true
                 }
                 Text("Buys with wallet credit (added via the App Store). Grants a personal licence to \(item.type.verb.lowercased()) this title in-app.")
@@ -137,6 +139,7 @@ struct MediaDetailView: View {
                     .foregroundStyle(Theme.inkFaint)
                     .multilineTextAlignment(.center)
             }
+            if item.type == .movie && !store.isComingSoon(item) { filmPolicyCard }
             HStack(spacing: 10) {
                 PrimaryButton(
                     title: store.watchlistIDs.contains(item.id) ? "In My List" : "My List",
@@ -151,6 +154,44 @@ struct MediaDetailView: View {
             }
         }
         .screenPadding()
+    }
+
+    private var previewLabel: String {
+        switch item.type {
+        case .novel: return "Read a sample"
+        case .movie: return "Watch 30 min free"
+        case .music: return "Preview"
+        }
+    }
+
+    private var comingSoonCard: some View {
+        GlassCard(tint: Theme.kdp) {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Coming Soon", systemImage: "hourglass").font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(Theme.kdp)
+                Text("The Scout is developing this \(item.type.title.lowercased()) to the 85% commercial bar before release. It'll unlock automatically when it's ready.")
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                ProgressView(value: Double(item.commercialScore), total: 85).tint(Theme.kdp)
+                Text("\(item.commercialScore)% of the 85% bar").font(.system(size: 11, weight: .semibold, design: .monospaced)).foregroundStyle(Theme.inkFaint)
+            }
+        }
+    }
+
+    private var filmPolicyCard: some View {
+        GlassCard(title: "How this film works", icon: "film.stack", tint: item.type.accent) {
+            VStack(alignment: .leading, spacing: 6) {
+                policyRow("play.circle", "Watch the first 30 minutes free, in 10-minute segments.")
+                policyRow("cart", "Buy to unlock the rest of the film.")
+                policyRow("arrow.down.circle", "Once the full film is assembled, it downloads to your Library to keep.")
+            }
+        }
+    }
+
+    private func policyRow(_ icon: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon).font(.system(size: 13)).foregroundStyle(item.type.accent).frame(width: 18)
+            Text(text).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+            Spacer(minLength: 0)
+        }
     }
 
     private var synopsisBlock: some View {
