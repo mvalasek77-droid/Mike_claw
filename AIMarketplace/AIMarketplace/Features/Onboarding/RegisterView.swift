@@ -158,7 +158,7 @@ struct RegisterView: View {
                 benefit("85%", "quality bar")
                 benefit("3", "media types")
             }
-            Text("*of proceeds after Apple's App Store commission. See Terms.")
+                Text("*of each sale. See Terms.")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Theme.inkFaint)
         }

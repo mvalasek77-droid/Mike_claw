@@ -1,9 +1,8 @@
 import Foundation
 
-/// Platform economics in one place. Sales are processed through Apple's App
-/// Store, which takes its standard In-App Purchase commission first; of the
-/// remaining proceeds AI Marketplace keeps 15% and the creator keeps 85%.
-/// Surfaced to creators throughout the app so the split is never hidden.
+/// Platform economics in one place. Apple takes its App Store cut from every
+/// sale; of the remaining proceeds the creator keeps 85% and AI Marketplace
+/// keeps 15%. The 85% figure is already net of Apple's commission.
 enum Commerce {
     static let platformFeeRate: Double = 0.15
     static let creatorShareRate: Double = 0.85
@@ -14,11 +13,8 @@ enum Commerce {
     static let feePercentLabel = "15%"
     static let sharePercentLabel = "85%"
 
-    /// Mandatory disclosure: Apple takes its App Store cut before the split.
-    static let appleFeeNote = "Sold through Apple's App Store, which takes its standard In-App Purchase commission (15–30%) first. The 85% / 15% split applies to the remaining proceeds."
-
-    /// One-line plain-language explainer shown next to pricing.
-    static let explainer = "You set the price. Apple takes its App Store commission on each sale; of what remains, you keep 85% and AI Marketplace keeps 15%."
+    /// Plain-language pricing explainer shown next to pricing.
+    static let explainer = "You set the price and keep 85% of each sale. Apple's App Store commission comes out of AI Marketplace's share — your 85% is what you actually receive."
 
     // MARK: - Dynamic pricing
 
@@ -34,5 +30,5 @@ enum Commerce {
         return (price * 100).rounded() / 100
     }
 
-    static let dynamicPricingNote = "Prices move with demand and the AI Editor score: strong, in-demand titles command a premium; cold ones go on sale. The creator's list price is always the anchor. Whatever the final price, Apple takes its App Store cut first and the creator keeps 85% of what remains."
+    static let dynamicPricingNote = "Prices move with demand and the AI Editor score: strong, in-demand titles command a premium; cold ones go on sale. Your list price is always the anchor. Whatever the final price, you keep 85% of each sale."
 }

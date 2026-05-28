@@ -579,11 +579,9 @@ private struct PricingStep: View {
             GlassCard(title: "How you get paid", icon: "percent", tint: Theme.kdp) {
                 VStack(spacing: 10) {
                     payoutRow("List price", draft.price, color: Theme.ink)
-                    payoutRow("Apple App Store cut", nil, color: Theme.inkSoft)
-                    payoutRow("AI Marketplace fee (15%)", -fee, color: Theme.warning)
+                    payoutRow("You earn per sale", earning, color: Theme.success, bold: true)
                     Divider().overlay(Theme.hairline)
-                    payoutRow("You earn per sale (85%)", earning, color: Theme.success, bold: true)
-                    Text(Commerce.appleFeeNote)
+                    Text(Commerce.explainer)
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
             }
@@ -655,9 +653,7 @@ private struct ReviewStep: View {
                     summaryRow("AI tools", draft.aiTools.joined(separator: ", "))
                     summaryRow("File", draft.fileName ?? "—")
                     summaryRow("Price", String(format: "$%.2f", draft.price))
-                    summaryRow("You earn", String(format: "$%.2f per sale (85%%)", Commerce.creatorEarning(on: draft.price)))
-                    Text(Commerce.appleFeeNote)
-                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                    summaryRow("You earn", String(format: "$%.2f per sale", Commerce.creatorEarning(on: draft.price)))
                 }
             }
 

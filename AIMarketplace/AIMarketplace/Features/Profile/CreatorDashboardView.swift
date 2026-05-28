@@ -88,8 +88,6 @@ struct CreatorDashboardView: View {
                 payRow("Service fee (15%)", -grossRevenue * Commerce.platformFeeRate, Theme.warning)
                 Divider().overlay(Theme.hairline)
                 payRow("Your proceeds (85%)", proceeds, Theme.success, bold: true)
-                Text(Commerce.appleFeeNote)
-                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
             }
         }
     }
