@@ -78,14 +78,11 @@ private struct VideoSurface: View {
                 VideoPlayer(player: model.player)
                     .ignoresSafeArea()
                 if !item.aiTools.isEmpty {
-                    Label("Made with \(item.aiTools.joined(separator: " · "))", systemImage: "sparkles")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(Capsule().fill(.black.opacity(0.45)))
+                    AICreditView(item: item, tint: item.type.accent, size: 11)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Capsule().fill(.black.opacity(0.5)))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                         .padding(20)
-                        .allowsHitTesting(false)
                 }
                 if model.previewEnded { PreviewEndedBanner(type: item.type) }
             } else {
@@ -150,11 +147,7 @@ private struct AudioSurface: View {
                 VStack(spacing: 4) {
                     Text(item.title).font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(.white)
                     Text(item.creator).font(.system(size: 14, weight: .medium)).foregroundStyle(.white.opacity(0.7))
-                    if !item.aiTools.isEmpty {
-                        Label("Made with \(item.aiTools.joined(separator: " · "))", systemImage: "sparkles")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(item.type.accent)
-                    }
+                    AICreditView(item: item, tint: item.type.accent)
                 }
 
                 if model.previewEnded {
@@ -238,14 +231,10 @@ private struct ReaderSurface: View {
 
     private var footer: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Text("by \(item.creator)").font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.7))
-                if !item.aiTools.isEmpty {
-                    Text("· Made with \(item.aiTools.joined(separator: " · "))")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(item.type.accent)
-                }
+                AICreditView(item: item, tint: item.type.accent, size: 11)
                 Spacer()
             }
             ProgressView(value: Double(page + 1), total: Double(max(pages.count, 1)))
@@ -391,11 +380,7 @@ private struct SimulatedTransport: View {
                 VStack(spacing: 4) {
                     Text(item.title).font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(.white)
                     Text("by \(item.creator)").font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.7))
-                    if !item.aiTools.isEmpty {
-                        Label("Made with \(item.aiTools.joined(separator: " · "))", systemImage: "sparkles")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(item.type.accent)
-                    }
+                    AICreditView(item: item, tint: item.type.accent)
                 }
                 Text(caption).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.5))
                 Spacer()
@@ -409,4 +394,33 @@ private struct SimulatedTransport: View {
 private func timeString(_ seconds: Double) -> String {
     let s = max(0, Int(seconds))
     return String(format: "%d:%02d", s / 60, s % 60)
+}
+
+/// "Made with <AI>" credit; each AI is tappable and opens its Spotlight page.
+struct AICreditView: View {
+    let item: MediaItem
+    var tint: Color = Theme.accent
+    var size: CGFloat = 12
+    @EnvironmentObject private var store: MarketplaceStore
+    @State private var studio: AIStudio?
+
+    var body: some View {
+        if !item.aiTools.isEmpty {
+            HStack(spacing: 5) {
+                Image(systemName: "sparkles").font(.system(size: size - 1, weight: .semibold)).foregroundStyle(tint)
+                Text("Made with").font(.system(size: size, weight: .semibold, design: .rounded)).foregroundStyle(.white.opacity(0.65))
+                ForEach(Array(item.aiTools.enumerated()), id: \.offset) { idx, tool in
+                    if idx > 0 {
+                        Text("·").font(.system(size: size)).foregroundStyle(.white.opacity(0.4))
+                    }
+                    Button { studio = store.studio(named: tool) } label: {
+                        Text(tool).font(.system(size: size, weight: .heavy, design: .rounded))
+                            .foregroundStyle(tint).underline()
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .sheet(item: $studio) { AIStudioDetailView(studio: $0) }
+        }
+    }
 }
