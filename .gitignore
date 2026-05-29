@@ -12,3 +12,6 @@ codegenie-*-check.png
 .venv/
 .venv*/
 venv/
+
+# Claude Code agent worktrees (isolated, never commit)
+.claude/worktrees/
