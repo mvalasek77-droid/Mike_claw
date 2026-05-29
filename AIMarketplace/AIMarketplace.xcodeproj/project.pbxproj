@@ -32,6 +32,7 @@
 		4CD7BE6FA84D2ECF9E04493C /* kentucky-fire-cover.html in Resources */ = {isa = PBXBuildFile; fileRef = 0B3C34D56F4DCFA8DBFFFBAC /* kentucky-fire-cover.html */; };
 		4DA17180301C0765FCDC22D6 /* AVPlaybackModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3183B7393C1BA778230A235E /* AVPlaybackModel.swift */; };
 		5257A6BC166732F8AB01702A /* its-a-swifty-world-after-all.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 3E3D580E647C888AA628DAD1 /* its-a-swifty-world-after-all.jpg */; };
+		5327284566E471E69DF4628D /* epoch.txt in Resources */ = {isa = PBXBuildFile; fileRef = E1C4BD7F8CADD18776A70FBA /* epoch.txt */; };
 		533BE651D5493DA606CD56BF /* kentucky-fire.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E62D0F121154CA522E11BB92 /* kentucky-fire.jpg */; };
 		57751C536CB17F1C224F02F9 /* Review.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08AD111F89DF6C341EBD25E /* Review.swift */; };
 		5813E726CF3259458DF161A9 /* AICoin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30FC2BA3161CF06260D7D983 /* AICoin.swift */; };
@@ -42,6 +43,7 @@
 		6376A040A7D3045CCDE825C9 /* push-up-bra.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 7E45D93494A76A0E160D7582 /* push-up-bra.mp3 */; };
 		6F678C86A1C938DECB29550B /* kentucky-fire.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = E95958377425855DB08E3F8B /* kentucky-fire.mp3 */; };
 		7715001CE31C9D6D39F90C5C /* GlassKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F5457376B20688C07C88FB7 /* GlassKit.swift */; };
+		7A7B7585F65E8EC03AD752F4 /* AIMarketplace.entitlements.bak in Resources */ = {isa = PBXBuildFile; fileRef = 671A85569C90D0839EC0EC6F /* AIMarketplace.entitlements.bak */; };
 		7BD8F5EDE8F3D3C9C1B0689F /* eli-hayes.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8A45A0B4AF78156078ACE851 /* eli-hayes.jpg */; };
 		7DB12DE8CDDC30F920BD7235 /* sicking-that-thing.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 5720A30852F15B7DA47F636C /* sicking-that-thing.jpg */; };
 		803CBBC410EAECA2D64CD292 /* IncentivesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C06745E5B3EA4DDD77E9BD /* IncentivesView.swift */; };
@@ -79,6 +81,7 @@
 		D44424170F390E1B5EFA2B54 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA39F9D576CE07F705C8A606 /* PlayerView.swift */; };
 		D5B7C59DE248A66B8D15F6EF /* ScoreRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5FB11A2C87E588E80D1496 /* ScoreRing.swift */; };
 		D9605FBABE6ECC0B10B8EAE2 /* AIStudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219CA9BDBAA479753D8CE053 /* AIStudio.swift */; };
+		E23E7DFA0EB10E5E41CCC771 /* epoch.jpg in Resources */ = {isa = PBXBuildFile; fileRef = D2442DFC8E1A5F8BAA4CC9E0 /* epoch.jpg */; };
 		E4503C8EC86F92CEDB49444F /* push-up-bra.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 623152A221F3EC034130BAA2 /* push-up-bra.jpg */; };
 		EB6ED7F38D4248C96F8D2522 /* sicking-that-thing.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3E96AB878B07A59830449A13 /* sicking-that-thing.mp3 */; };
 		EC092A396E6E6B89B647AF89 /* ScoutEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631D98886A2B189622F9E7E4 /* ScoutEntry.swift */; };
@@ -88,6 +91,7 @@
 		F48A35FED30F2B421CACC089 /* MissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6E646F3BB27F3E2B6302145 /* MissionView.swift */; };
 		F5A239F30BA396BB4B57899E /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D146E6CEB99314834A88BB6 /* SampleData.swift */; };
 		F69E6B3612A4F81473FD6E60 /* ContentFoundry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F33EDEC9097CEE09B8B5A6F /* ContentFoundry.swift */; };
+		F99C41B0C1239FDC4F51624C /* epoch-cover.html in Resources */ = {isa = PBXBuildFile; fileRef = D9961B33C97C379D0A2A5FCA /* epoch-cover.html */; };
 		FE04E90A973B387BAB25A422 /* Media.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109E593A168D23A7F39F585E /* Media.swift */; };
 /* End PBXBuildFile section */
 
@@ -135,6 +139,7 @@
 		63CD6FE90EDD9C781A0657EC /* curves-like-keisha.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "curves-like-keisha.mp3"; sourceTree = "<group>"; };
 		65E0CA15D5AAA9CC48D8F198 /* eli-hayes-cover.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "eli-hayes-cover.html"; sourceTree = "<group>"; };
 		66ADD952E329CCC58DF425AB /* AdminEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminEditView.swift; sourceTree = "<group>"; };
+		671A85569C90D0839EC0EC6F /* AIMarketplace.entitlements.bak */ = {isa = PBXFileReference; path = AIMarketplace.entitlements.bak; sourceTree = "<group>"; };
 		700BC2D3F3CC5ECCA34988E1 /* ApplePayService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePayService.swift; sourceTree = "<group>"; };
 		74EE8369D1227F08AC20A6DB /* SubmissionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionDetailView.swift; sourceTree = "<group>"; };
 		7640525382962344E25DC33A /* SubmitWorkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmitWorkView.swift; sourceTree = "<group>"; };
@@ -160,7 +165,10 @@
 		CA3FE56FDDF155B1D2A61EA1 /* AppNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotification.swift; sourceTree = "<group>"; };
 		CD36D1EAF916870BA955A8DE /* ContentRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentRequest.swift; sourceTree = "<group>"; };
 		CF0F947E81C27D3C6D7C3596 /* Incentives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Incentives.swift; sourceTree = "<group>"; };
+		D2442DFC8E1A5F8BAA4CC9E0 /* epoch.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = epoch.jpg; sourceTree = "<group>"; };
 		D47DCB2CF07BAFCA9A11CF57 /* the-odyssey-protocol.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "the-odyssey-protocol.jpg"; sourceTree = "<group>"; };
+		D9961B33C97C379D0A2A5FCA /* epoch-cover.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "epoch-cover.html"; sourceTree = "<group>"; };
+		E1C4BD7F8CADD18776A70FBA /* epoch.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = epoch.txt; sourceTree = "<group>"; };
 		E23FC921C5612F2A39173DF0 /* PartnerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartnerDetailView.swift; sourceTree = "<group>"; };
 		E62D0F121154CA522E11BB92 /* kentucky-fire.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "kentucky-fire.jpg"; sourceTree = "<group>"; };
 		E8542EFB7AE1F41CF4210381 /* GeneratedCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedCover.swift; sourceTree = "<group>"; };
@@ -241,6 +249,7 @@
 				B9A14290A5CA89849EA5F5E9 /* Store */,
 				A9B67D2708E72E4C9C8FE5DA /* Theme */,
 				5D8CEB659ECFA7FA4C8A2CCC /* AIMarketplace.entitlements */,
+				671A85569C90D0839EC0EC6F /* AIMarketplace.entitlements.bak */,
 			);
 			path = AIMarketplace;
 			sourceTree = "<group>";
@@ -378,6 +387,9 @@
 				65E0CA15D5AAA9CC48D8F198 /* eli-hayes-cover.html */,
 				8A45A0B4AF78156078ACE851 /* eli-hayes.jpg */,
 				F1E6C4EBA8D631E5C9EFBD2B /* eli-hayes.mp3 */,
+				D9961B33C97C379D0A2A5FCA /* epoch-cover.html */,
+				D2442DFC8E1A5F8BAA4CC9E0 /* epoch.jpg */,
+				E1C4BD7F8CADD18776A70FBA /* epoch.txt */,
 				3E3D580E647C888AA628DAD1 /* its-a-swifty-world-after-all.jpg */,
 				E9058EF32B8D7936B33615B3 /* its-a-swifty-world-after-all.mp3 */,
 				0B3C34D56F4DCFA8DBFFFBAC /* kentucky-fire-cover.html */,
@@ -539,6 +551,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7A7B7585F65E8EC03AD752F4 /* AIMarketplace.entitlements.bak in Resources */,
 				B0D10316D708A7D8A6CE17D0 /* Assets.xcassets in Resources */,
 				A1BA3E98A5D52CE54173221C /* PrivacyInfo.xcprivacy in Resources */,
 				3EE924547B44540E97FCE678 /* curves-like-keisha.jpg in Resources */,
@@ -546,6 +559,9 @@
 				9818BE598E570B0BB2CA9B52 /* eli-hayes-cover.html in Resources */,
 				7BD8F5EDE8F3D3C9C1B0689F /* eli-hayes.jpg in Resources */,
 				AD5ACDBE20092BB737D7A22C /* eli-hayes.mp3 in Resources */,
+				F99C41B0C1239FDC4F51624C /* epoch-cover.html in Resources */,
+				E23E7DFA0EB10E5E41CCC771 /* epoch.jpg in Resources */,
+				5327284566E471E69DF4628D /* epoch.txt in Resources */,
 				5257A6BC166732F8AB01702A /* its-a-swifty-world-after-all.jpg in Resources */,
 				9E6B958C666F827430EE1A7B /* its-a-swifty-world-after-all.mp3 in Resources */,
 				4CD7BE6FA84D2ECF9E04493C /* kentucky-fire-cover.html in Resources */,

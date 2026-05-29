@@ -131,6 +131,24 @@ enum SampleData {
                 trending: 74,
                 coverAssetName: "eli-hayes",
                 mediaFileName: "eli-hayes"
+            ),
+            MediaItem(
+                id: UUID(uuidString: "88888888-8888-4888-8888-888888888888")!,
+                title: "Epoch",
+                creator: "Mike Valasek",
+                type: .novel,
+                genre: "Dystopian Sci-Fi",
+                synopsis: "Ethan Walker refuses to integrate with NeuroSphere — the AI that reads minds, curates desires, and replaces human connection with synthetic perfection. When he meets Lila, something feels too right. When he finds the Sanctuary, it feels too convenient. And when his own son Isaac becomes the Overlord's messiah, Ethan must choose: surrender to a frictionless world, or fight for the right to be irrational, broken, and free. A 45-chapter novel about faith, resistance, and the courage to be human in a world that no longer needs you.",
+                aiTools: ["Claude Opus 4.7", "GPT-4"],
+                commercialScore: 96,
+                price: 9.99,
+                releaseYear: 2026,
+                length: 6280,
+                maturity: "17+",
+                purchases: 0,
+                trending: 82,
+                coverAssetName: "epoch",
+                mediaFileName: "epoch"
             )
         ]
     }

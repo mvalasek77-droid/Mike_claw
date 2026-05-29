@@ -893,7 +893,13 @@ final class MarketplaceStore: ObservableObject {
         libraryIDs.insert(item.id)
         bumpPurchase(item.id)
         let earning = Commerce.creatorEarning(on: price)
-        // Credit the user's published works
+        // Credit the creator whenever they buy their own work — catalog titles
+        // are authored by the demo user (Mike Valasek), so the registered creator
+        // earns their 85% share on every sale of their content.
+        if item.creator.lowercased() == accountName.lowercased() && !accountName.isEmpty {
+            creatorEarnings += earning
+        }
+        // Credit the user's published works (titles they submitted through Publish flow)
         if submissions.contains(where: { $0.publishedItemID == item.id }) {
             creatorEarnings += earning
         }

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Epoch Cover</title>
+<script>p5.disableFriendlyErrors = true;</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+<style>html,body{margin:0;padding:0;overflow:hidden}canvas{display:block}</style>
+</head><body><script>
+function setup() {
+  createCanvas(1000, 1500);
+  pixelDensity(1);
+  randomSeed(44);
+  noLoop();
+}
+function draw() {
+  colorMode(HSB, 360, 100, 100, 100);
+  // Deep dark gradient — cold dystopian void
+  for (let y = 0; y < height; y++) {
+    let t = y / height;
+    let h = lerp(230, 260, t);
+    let s = lerp(50, 80, t);
+    let b = lerp(12, 3, t);
+    stroke(h, s, b);
+    line(0, y, width, y);
+  }
+  // Digital grid / lattice — the Neurolattice
+  stroke(210, 60, 40, 15);
+  strokeWeight(1);
+  for (let x = 0; x < width; x += 60) {
+    for (let y = 0; y < height; y += 60) {
+      line(x, y, x + 30, y + 30);
+    }
+  }
+  // Glowing nodes at intersections
+  noStroke();
+  for (let x = 0; x < width; x += 60) {
+    for (let y = 0; y < height; y += 60) {
+      let dist_from_center = dist(x, y, width/2, height * 0.35);
+      let alpha = map(dist_from_center, 0, 600, 25, 2);
+      fill(200, 80, 80, max(0, alpha));
+      ellipse(x, y, 4, 4);
+    }
+  }
+  // Central eye / Overlord presence — cold synthetic blue-white glow
+  let cx = width / 2;
+  let cy = height * 0.38;
+  for (let r = 350; r > 0; r -= 2) {
+    let t = r / 350;
+    fill(210, 30, lerp(60, 100, 1-t), lerp(2, 18, 1-t));
+    noStroke();
+    ellipse(cx, cy, r * 1.2, r);
+  }
+  // Pupil — cold void
+  for (let r = 60; r > 0; r -= 2) {
+    let t = r / 60;
+    fill(0, 0, lerp(5, 30, 1-t), lerp(5, 40, 1-t));
+    ellipse(cx, cy, r * 1.2, r);
+  }
+  // Bright iris ring
+  noFill();
+  stroke(200, 40, 90, 30);
+  strokeWeight(3);
+  ellipse(cx, cy, 180, 150);
+  // Cracks radiating from eye — the glitch / resistance
+  stroke(15, 90, 80, 20);
+  strokeWeight(2);
+  for (let a = 0; a < TWO_PI; a += PI / 7) {
+    let len = random(100, 300);
+    let ex = cx + cos(a) * len;
+    let ey = cy + sin(a) * len;
+    line(cx, cy, ex, ey);
+  }
+  // Data streams falling — like rain / surveillance
+  textSize(10);
+  textFont('monospace');
+  for (let i = 0; i < 80; i++) {
+    let x = random(width);
+    let y = random(height);
+    fill(200, 50, 60, random(5, 15));
+    text(random(1000, 9999).toString(2).substring(0, random(4,12)), x, y);
+  }
+  // Human silhouette at bottom — alone against the machine
+  fill(220, 60, 15, 40);
+  noStroke();
+  // Head
+  ellipse(width * 0.5, height * 0.82, 50, 55);
+  // Body
+  beginShape();
+  vertex(width * 0.5 - 20, height * 0.85);
+  vertex(width * 0.5 + 20, height * 0.85);
+  vertex(width * 0.5 + 15, height * 0.95);
+  vertex(width * 0.5 - 15, height * 0.95);
+  endShape(CLOSE);
+  // Title
+  textFont('Georgia');
+  textAlign(CENTER, CENTER);
+  textSize(90);
+  fill(0, 0, 95, 90);
+  text('EPOCH', width / 2, height * 0.12);
+  // Subtitle
+  textSize(22);
+  fill(200, 40, 70, 60);
+  text('MIKE VALASEK', width / 2, height * 0.17);
+  // Tagline
+  textSize(16);
+  fill(15, 80, 70, 50);
+  text('The human experiment was both a failure', width / 2, height * 0.66);
+  text('— and the only hope that ever mattered.', width / 2, height * 0.69);
+}
+</script></body></html>
