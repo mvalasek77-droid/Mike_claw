@@ -13,8 +13,11 @@ struct RegisterView: View {
     @State private var legalDoc: LegalDoc?
     @State private var authError: String?
 
+    private var isDemo: Bool { name.trimmed.lowercased() == "demo" }
+
     private var canContinue: Bool {
-        !name.trimmed.isEmpty && email.contains("@") && agreed
+        if isDemo { return true }
+        return !name.trimmed.isEmpty && email.contains("@") && agreed
     }
 
     var body: some View {
@@ -73,6 +76,11 @@ struct RegisterView: View {
 
                     PrimaryButton(title: "Create account", systemImage: "arrow.right",
                                   tint: Theme.kdp, enabled: canContinue) {
+                        if isDemo {
+                            agreed = true
+                            email = "demo@aimarketplace.app"
+                            name = "Demo User"
+                        }
                         withAnimation { store.register(name: name, email: email) }
                     }
 
