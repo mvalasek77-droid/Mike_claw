@@ -379,6 +379,25 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   return json({ received: true });
 }
 
+// ── Account deletion ───────────────────────────────────────────────────────
+
+/** POST /accounts/delete — close the connected Stripe account.
+ *  Stripe returns 400 if there's an outstanding balance — that's a feature,
+ *  not a bug; the operator must reconcile before deletion in that case. */
+async function handleDeleteAccount(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { account_id?: string };
+  if (!body.account_id) return error("account_id required");
+  const res = await fetch(
+    `https://api.stripe.com/v1/accounts/${encodeURIComponent(body.account_id)}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } }
+  );
+  if (!res.ok) {
+    const t = await res.text();
+    return error(`Stripe ${res.status}: ${t.slice(0, 200)}`, res.status);
+  }
+  return json({ deleted: true });
+}
+
 // ── Moderation ─────────────────────────────────────────────────────────────
 
 /** POST /moderation/report — forward a user report on a title to the operator.
@@ -552,6 +571,12 @@ export default {
       // (Apple Review Guideline 1.2 — UGC apps require an in-app report flow).
       if (path === "/moderation/report" && method === "POST") {
         return await handleReport(request, env);
+      }
+
+      // Account deletion: close the connected Stripe account so user data
+      // doesn't linger server-side after in-app deletion (Apple 5.1.1(v)).
+      if (path === "/accounts/delete" && method === "POST") {
+        return await handleDeleteAccount(request, env);
       }
 
       // Digest: email the operator who's owed (also runs automatically on cron)

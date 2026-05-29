@@ -409,6 +409,12 @@ final class MarketplaceStore: ObservableObject {
     /// Guideline 5.1.1(v)). Removes the encrypted archive and resets state.
     func deleteAccount() {
         loading = true
+        // Best-effort: close the connected Stripe account server-side BEFORE we
+        // wipe the local connectAccountID — otherwise we lose the handle and
+        // the account lingers in Stripe forever.
+        if let accountId = connectAccountID, !accountId.isEmpty {
+            requestRemoteAccountClosure(accountId: accountId)
+        }
         accountName = ""
         accountEmail = ""
         appleUserID = ""
@@ -420,6 +426,8 @@ final class MarketplaceStore: ObservableObject {
         pendingPayoutUSD = 0
         payoutConnected = false
         paidOutUSD = 0
+        connectAccountID = nil
+        lastPayoutError = nil
         reviews = []
         editorDrops = []
         requests = []
@@ -492,6 +500,8 @@ final class MarketplaceStore: ObservableObject {
 
     /// Shared secret for authenticating with the payout worker.
     @Published var payoutSharedSecret: String = "" { didSet { persist() } }
+    /// Transient — surfaces the last payout-API failure to the UI. Not persisted.
+    @Published var lastPayoutError: String? = nil
 
     func connectPayout() {
         guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty else {
@@ -557,22 +567,44 @@ final class MarketplaceStore: ObservableObject {
 
     /// Cashes out the pending balance to the connected payout method. The actual
     /// disbursement happens server-side (Stripe/Apple); see backend/openapi.yaml.
+    ///
+    /// When the Worker is configured, the local balance is held until the server
+    /// confirms success — earlier code zeroed `pendingPayoutUSD` before the
+    /// remote call returned, so a network/Stripe failure silently lost the
+    /// creator's earnings. Now: success → balance moves to `paidOutUSD`;
+    /// failure → balance stays pending and `lastPayoutError` surfaces it.
     @discardableResult
     func cashOut() -> Double {
         guard payoutConnected, pendingPayoutUSD > 0 else { return 0 }
         let amount = pendingPayoutUSD
-        // If worker is configured, cash out server-side
-        if !payoutBaseURL.isEmpty, let accountId = connectAccountID {
-            Task { await cashOutRemote(accountId: accountId, amount: amount) }
+        lastPayoutError = nil
+
+        // Local-only (demo) path — no Worker wired up.
+        guard !payoutBaseURL.isEmpty, let accountId = connectAccountID else {
+            paidOutUSD = ((paidOutUSD + amount) * 100).rounded() / 100
+            pendingPayoutUSD = 0
+            Haptics.success()
+            return amount
         }
-        paidOutUSD += amount
-        pendingPayoutUSD = 0
-        Haptics.success()
+
+        // Remote path — only mutate state on confirmed success.
+        Task { @MainActor in
+            let succeeded = await cashOutRemote(accountId: accountId, amount: amount)
+            if succeeded {
+                paidOutUSD = ((paidOutUSD + amount) * 100).rounded() / 100
+                pendingPayoutUSD = 0
+                lastPayoutError = nil
+                Haptics.success()
+            } else {
+                lastPayoutError = "Payout didn't go through. Your balance is unchanged — try again, or contact support if this keeps happening."
+                Haptics.warning()
+            }
+        }
         return amount
     }
 
-    private func cashOutRemote(accountId: String, amount: Double) async {
-        guard let url = URL(string: "\(payoutBaseURL)/payouts/cash-out") else { return }
+    private func cashOutRemote(accountId: String, amount: Double) async -> Bool {
+        guard let url = URL(string: "\(payoutBaseURL)/payouts/cash-out") else { return false }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
@@ -581,12 +613,27 @@ final class MarketplaceStore: ObservableObject {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
-            if let http = response as? HTTPURLResponse {
-                print("Cash-out response: \(http.statusCode)")
-            }
+            guard let http = response as? HTTPURLResponse else { return false }
+            return (200..<300).contains(http.statusCode)
         } catch {
-            print("Cash-out error: \(error)")
+            return false
         }
+    }
+
+    /// Best-effort: ask the Worker to close the connected Stripe account so
+    /// creator data doesn't outlive the in-app deletion (Apple 5.1.1(v)).
+    /// Fire-and-forget — the local delete proceeds regardless; Apple's rule is
+    /// that the user can initiate deletion in-app, not that propagation is
+    /// instant or transactional.
+    private func requestRemoteAccountClosure(accountId: String) {
+        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
+              let url = URL(string: "\(payoutBaseURL)/accounts/delete") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["account_id": accountId])
+        Task.detached { _ = try? await URLSession.shared.data(for: request) }
     }
 
     // MARK: - Ratings & reviews
