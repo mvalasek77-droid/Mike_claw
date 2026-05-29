@@ -59,7 +59,7 @@ private struct PrivacyBody: View {
             Clause("Payments", "Purchases are processed through Apple. We receive confirmation of a completed transaction, not your card number. We retain a record of which titles you own so you can re-download them.")
             Clause("Your choices", "You can review your library and creator data in-app at any time, and request account deletion by contacting support. Deleting the app removes the on-device encrypted store.")
             Clause("Children", "AI Marketplace is not directed to children under 13. Titles carry a maturity rating set by the creator.")
-            Clause("Contact", "Questions about privacy: privacy@aimarketplace.app")
+            Clause("Contact", "Questions about privacy: mvalasek77@gmail.com")
         }
     }
 }
@@ -77,7 +77,7 @@ private struct TermsBody: View {
             Clause("Purchases & content access", "Buying a title grants you a personal, non-transferable licence to read, listen to, or watch it within the app. You may not redistribute purchased content.")
             Clause("Acceptable use", "No illegal, hateful, infringing, or deceptive content. We may remove titles and suspend accounts that violate these terms.")
             Clause("Disclaimers", "Titles are provided by independent creators. AI Marketplace is the storefront and review service, not the author. Content is provided “as is”.")
-            Clause("Contact", "Questions about these terms: legal@aimarketplace.app")
+            Clause("Contact", "Questions about these terms: mvalasek77@gmail.com")
         }
     }
 }

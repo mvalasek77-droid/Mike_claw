@@ -22,6 +22,7 @@ struct RootView: View {
     @State private var showSplash = true
 
     @EnvironmentObject private var ledger: AICoinLedger
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -43,6 +44,13 @@ struct RootView: View {
         .onAppear {
             store.attachEnergy(ledger)
             store.runScoutIfDue()   // the Scout is loose: sources content daily
+        }
+        // When the creator returns from Stripe onboarding in Safari, the app
+        // foregrounds — pull fresh payout status so the UI reflects completion.
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active && store.isRegistered {
+                Task { await store.refreshPayoutStatus() }
+            }
         }
     }
 }

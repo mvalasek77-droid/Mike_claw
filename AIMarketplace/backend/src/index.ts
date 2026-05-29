@@ -27,12 +27,15 @@ interface Env {
   OPERATOR_EMAIL?: string;     // where digests go (defaults below)
   DIGEST_FROM_EMAIL?: string;  // verified Resend sender (defaults to onboarding)
   TOPUP_BUFFER_USD?: string;   // keep the platform balance at/above this
+  TOPUP_MAX_USD?: string;      // hard cap on any single top-up (safety rail)
+  TOPUP_SOURCE_ID?: string;    // ba_… verified bank source for Stripe Top-ups
   KV?: KVNamespace; // optional: for storing account IDs
 }
 
-const DEFAULT_OPERATOR_EMAIL = "mv19770601@gmail.com";
+const DEFAULT_OPERATOR_EMAIL = "mvalasek77@gmail.com";
 const DEFAULT_FROM_EMAIL = "AI Marketplace <onboarding@resend.dev>";
 const DEFAULT_TOPUP_BUFFER_USD = 100;
+const DEFAULT_TOPUP_MAX_USD = 200;
 
 interface ConnectRequest {
   accountName: string;
@@ -104,13 +107,21 @@ function flatten(obj: Record<string, unknown>, prefix = ""): Record<string, stri
   return out;
 }
 
-/** Verify the app's shared secret from the Authorization header */
-function isAuthenticated(request: Request, sharedSecret: string): boolean {
+/** Verify the app's shared secret from the Authorization header. Compares in
+ *  constant time over SHA-256 digests so request timing can't leak the secret. */
+async function isAuthenticated(request: Request, sharedSecret: string): Promise<boolean> {
   const auth = request.headers.get("Authorization");
   if (!auth) return false;
-  // Accept "Bearer <secret>" or just the raw secret
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
-  return token === sharedSecret;
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(token)),
+    crypto.subtle.digest("SHA-256", enc.encode(sharedSecret)),
+  ]);
+  const av = new Uint8Array(a), bv = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < av.length; i++) diff |= av[i] ^ bv[i];
+  return diff === 0;
 }
 
 /** JSON response helper */
@@ -163,7 +174,7 @@ async function handleConnect(request: Request, env: Env): Promise<Response> {
       platform: "ai-marketplace",
       app_email: accountEmail,
     },
-  }, env.STRIPE_SECRET_KEY);
+  }, env.STRIPE_SECRET_KEY, undefined, `connect_${accountEmail}`);
 
   // Step 2: Create an account link for onboarding
   // The return_url brings the user back into the app via deep link
@@ -395,20 +406,35 @@ async function sendEmail(env: Env, subject: string, text: string): Promise<void>
  *  directly), but it's automatic. */
 async function maybeTopUp(env: Env): Promise<{ toppedUp: number; availableUSD: number }> {
   const buffer = Number(env.TOPUP_BUFFER_USD ?? DEFAULT_TOPUP_BUFFER_USD);
+  const maxTopUp = Number(env.TOPUP_MAX_USD ?? DEFAULT_TOPUP_MAX_USD);
   const balance = await stripeGet(`/balance`, env.STRIPE_SECRET_KEY);
-  const availableCents = balance.available?.[0]?.amount ?? 0;
-  const availableUSD = availableCents / 100;
+  const usd = balance.available?.find((b: any) => b.currency === "usd");
+  const availableUSD = (usd?.amount ?? 0) / 100;
   if (availableUSD >= buffer) return { toppedUp: 0, availableUSD };
 
-  const amountCents = Math.round((buffer - availableUSD) * 100);
-  // Idempotent per UTC day so a re-run can't double-pull.
-  const idem = `topup_${new Date().toISOString().slice(0, 10)}`;
-  await stripe("/topups", {
+  // Skip if a top-up is already in flight — they take days to clear and stacking
+  // them would over-fund the float.
+  const pending = await stripeGet(`/topups?status=pending&limit=1`, env.STRIPE_SECRET_KEY);
+  if (pending.data?.length) return { toppedUp: 0, availableUSD };
+
+  // Hard cap: a refund/chargeback can drive `available` very negative; without
+  // this clamp the formula would request a runaway bank pull.
+  const wantedCents = Math.round((buffer - availableUSD) * 100);
+  const amountCents = Math.min(wantedCents, Math.round(maxTopUp * 100));
+  if (amountCents <= 0) return { toppedUp: 0, availableUSD };
+
+  const body: Record<string, unknown> = {
     amount: amountCents,
     currency: "usd",
     description: "AI Marketplace payout float",
     statement_descriptor: "AIMKT TOPUP",
-  }, env.STRIPE_SECRET_KEY, undefined, idem);
+  };
+  // Stripe requires `source` when multiple verified bank sources exist; if it's
+  // unset we let Stripe pick the default top-up source.
+  if (env.TOPUP_SOURCE_ID) body.source = env.TOPUP_SOURCE_ID;
+
+  const idem = `topup_${new Date().toISOString().slice(0, 10)}`;
+  await stripe("/topups", body, env.STRIPE_SECRET_KEY, undefined, idem);
   return { toppedUp: amountCents / 100, availableUSD };
 }
 
@@ -467,7 +493,7 @@ export default {
     }
 
     // All other endpoints require the shared secret
-    if (!isAuthenticated(request, env.APP_SHARED_SECRET)) {
+    if (!(await isAuthenticated(request, env.APP_SHARED_SECRET))) {
       return error("Unauthorized", 401);
     }
 
@@ -538,12 +564,19 @@ export default {
    *  keep the platform float funded, then email the operator the payout digest. */
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil((async () => {
+      // Isolated try blocks so a top-up failure can't suppress the digest
+      // — the digest is how the operator notices a top-up failed.
+      let topup = { toppedUp: 0, availableUSD: 0 };
       try {
-        const topup = await maybeTopUp(env);
+        topup = await maybeTopUp(env);
+      } catch (err: any) {
+        console.error("cron topup error:", err?.message ?? err);
+      }
+      try {
         const digest = await sendPayoutDigest(env);
         console.log(`cron: topped up $${topup.toppedUp}, ${digest.accounts} creators owed $${digest.owedUSD}`);
       } catch (err: any) {
-        console.error("cron error:", err?.message ?? err);
+        console.error("cron digest error:", err?.message ?? err);
       }
     })());
   },

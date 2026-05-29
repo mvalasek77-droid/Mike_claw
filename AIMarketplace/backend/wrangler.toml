@@ -11,9 +11,14 @@ compatibility_date = "2024-12-01"
 [vars]
 STRIPE_CONNECT_TYPE = "express"
 # Where the payout digest is emailed, and the verified Resend sender:
-OPERATOR_EMAIL = "mv19770601@gmail.com"
+OPERATOR_EMAIL = "mvalasek77@gmail.com"
 # DIGEST_FROM_EMAIL = "payouts@yourdomain.com"   # set once your domain is verified
 TOPUP_BUFFER_USD = "100"
+# Hard cap per top-up; a refund storm can otherwise trigger a large bank pull.
+TOPUP_MAX_USD = "200"
+# Optional: ba_… of the bank source Stripe should pull from (required only if
+# your platform account has multiple verified Top-up sources).
+# TOPUP_SOURCE_ID = "ba_xxx"
 
 # Cron: every 6 hours, fund the float then email the payout digest.
 [triggers]
