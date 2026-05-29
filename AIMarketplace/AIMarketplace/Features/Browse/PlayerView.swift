@@ -106,7 +106,7 @@ private struct VideoSurface: View {
 }
 
 enum PlayerPreview {
-    static let clipSeconds: Double = 30          // music sample
+    static let clipSeconds: Double = 20          // music sample
     static let movieFreeSeconds: Double = 30 * 60 // films: 30 minutes free
     static let pages = 3
 }
