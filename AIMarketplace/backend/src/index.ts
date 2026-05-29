@@ -21,6 +21,7 @@
 interface Env {
   STRIPE_SECRET_KEY: string;
   APP_SHARED_SECRET: string;
+  STRIPE_WEBHOOK_SECRET: string; // whsec_… from the Stripe webhook endpoint
   STRIPE_CONNECT_TYPE: string; // "express" from wrangler.toml [vars]
   KV?: KVNamespace; // optional: for storing account IDs
 }
@@ -39,13 +40,21 @@ interface CashOutRequest {
 const CREATOR_SHARE = 0.85; // creator keeps 85% of net proceeds
 const PLATFORM_SHARE = 0.15;
 
-/** Call the Stripe API. Pass `stripeAccount` to act on a connected account. */
-async function stripe(path: string, body: Record<string, unknown>, secret: string, stripeAccount?: string): Promise<any> {
+/** Call the Stripe API. Pass `stripeAccount` to act on a connected account,
+ *  and `idempotencyKey` to make money-moving calls safe to retry. */
+async function stripe(
+  path: string,
+  body: Record<string, unknown>,
+  secret: string,
+  stripeAccount?: string,
+  idempotencyKey?: string,
+): Promise<any> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${secret}`,
     "Content-Type": "application/x-www-form-urlencoded",
   };
   if (stripeAccount) headers["Stripe-Account"] = stripeAccount;
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
     method: "POST",
     headers,
@@ -247,11 +256,12 @@ async function handleCashOut(request: Request, env: Env): Promise<Response> {
  * Called by the platform after each sale.
  */
 async function handleTransfer(request: Request, env: Env): Promise<Response> {
-  const { account_id, amount_usd, title_id, memo } = await request.json() as {
+  const { account_id, amount_usd, title_id, memo, idempotency_key } = await request.json() as {
     account_id: string;
     amount_usd: number;
     title_id?: string;
     memo?: string;
+    idempotency_key?: string;
   };
 
   if (!account_id || !amount_usd) {
@@ -261,6 +271,11 @@ async function handleTransfer(request: Request, env: Env): Promise<Response> {
   if (amount_usd < 0.50) {
     return error("Minimum transfer is $0.50");
   }
+
+  // Stable key so a retried sale never pays a creator twice. Prefer the
+  // per-sale key the app supplies; fall back to title+account when present.
+  const idem = idempotency_key
+    ?? (title_id ? `xfer_${account_id}_${title_id}` : crypto.randomUUID());
 
   const transfer = await stripe("/transfers", {
     amount: Math.round(amount_usd * 100),
@@ -272,7 +287,7 @@ async function handleTransfer(request: Request, env: Env): Promise<Response> {
       creator_share: String(CREATOR_SHARE),
     },
     description: memo ?? "AI Marketplace creator earnings",
-  }, env.STRIPE_SECRET_KEY);
+  }, env.STRIPE_SECRET_KEY, undefined, idem);
 
   return json({
     transferId: transfer.id,
@@ -282,11 +297,45 @@ async function handleTransfer(request: Request, env: Env): Promise<Response> {
   });
 }
 
+/** Constant-time-ish verify of Stripe's `Stripe-Signature` header (HMAC-SHA256
+ *  of `${timestamp}.${rawBody}`) with a 5-minute timestamp tolerance. */
+async function verifyStripeSignature(rawBody: string, sigHeader: string | null, secret: string): Promise<boolean> {
+  if (!sigHeader || !secret) return false;
+  const parts = Object.fromEntries(
+    sigHeader.split(",").map((p) => p.split("=", 2) as [string, string]),
+  );
+  const timestamp = parts["t"];
+  const signature = parts["v1"];
+  if (!timestamp || !signature) return false;
+
+  // Reject events older than 5 minutes (replay protection).
+  if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${timestamp}.${rawBody}`));
+  const expected = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  // Length-safe comparison.
+  if (expected.length !== signature.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < expected.length; i++) mismatch |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+  return mismatch === 0;
+}
+
 /** POST /payouts/webhook — Stripe webhook for Connect account updates */
 async function handleWebhook(request: Request, env: Env): Promise<Response> {
-  // In production, verify the Stripe-Signature header.
-  // For now, we just log the event.
-  const event = await request.json() as any;
+  // Verify the signature against the raw body before trusting anything.
+  const rawBody = await request.text();
+  const valid = await verifyStripeSignature(rawBody, request.headers.get("Stripe-Signature"), env.STRIPE_WEBHOOK_SECRET);
+  if (!valid) return error("Invalid signature", 400);
+
+  const event = JSON.parse(rawBody) as any;
 
   switch (event.type) {
     case "account.updated": {
