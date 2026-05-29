@@ -38,6 +38,7 @@ struct MediaDetailView: View {
                             .font(.system(size: 24))
                             .foregroundStyle(.white.opacity(0.7))
                     }
+                    .accessibilityLabel("Close")
                 }
             }
         }

@@ -53,14 +53,14 @@ struct CircleIconButton: View {
     let icon: String
     var action: () -> Void
     var body: some View {
-        Button(action: action) {
+        Button { Haptics.tap(); action() } label: {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: 40, height: 40)
                 .background(Circle().fill(.black.opacity(0.45)))
         }
-        .accessibilityLabel(Text(icon == "chevron.down" ? "Close player" : icon))
+        .accessibilityLabel(Text(icon == "chevron.down" ? "Close" : icon))
     }
 }
 
@@ -241,12 +241,15 @@ private struct ReaderSurface: View {
             ProgressView(value: Double(page + 1), total: Double(max(pages.count, 1)))
                 .tint(item.type.accent)
             HStack {
-                Button { fontSize = max(14, fontSize - 2) } label: { Image(systemName: "textformat.size.smaller") }
+                Button { Haptics.tap(); fontSize = max(14, fontSize - 2) } label: { Image(systemName: "textformat.size.smaller") }
+                    .accessibilityLabel("Decrease text size")
                 Spacer()
                 Text("Page \(page + 1) of \(pages.count)")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .accessibilityLabel("Page \(page + 1) of \(pages.count)")
                 Spacer()
-                Button { fontSize = min(28, fontSize + 2) } label: { Image(systemName: "textformat.size.larger") }
+                Button { Haptics.tap(); fontSize = min(28, fontSize + 2) } label: { Image(systemName: "textformat.size.larger") }
+                    .accessibilityLabel("Increase text size")
             }
             .foregroundStyle(.white.opacity(0.8))
             .font(.system(size: 18))
@@ -325,12 +328,15 @@ struct TransportControls: View {
 
     var body: some View {
         HStack(spacing: 40) {
-            Button(action: onBack) { Image(systemName: "gobackward.15").font(.system(size: 26, weight: .semibold)) }
-            Button(action: onToggle) {
+            Button { Haptics.tap(); onBack() } label: { Image(systemName: "gobackward.15").font(.system(size: 26, weight: .semibold)) }
+                .accessibilityLabel("Skip back 15 seconds")
+            Button { Haptics.tap(); onToggle() } label: {
                 Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.system(size: 70, weight: .bold))
             }
-            Button(action: onForward) { Image(systemName: "goforward.15").font(.system(size: 26, weight: .semibold)) }
+            .accessibilityLabel(isPlaying ? "Pause" : "Play")
+            Button { Haptics.tap(); onForward() } label: { Image(systemName: "goforward.15").font(.system(size: 26, weight: .semibold)) }
+                .accessibilityLabel("Skip forward 15 seconds")
         }
         .foregroundStyle(.white)
     }
