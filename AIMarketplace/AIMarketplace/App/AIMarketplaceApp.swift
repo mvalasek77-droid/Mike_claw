@@ -23,6 +23,11 @@ struct RootView: View {
 
     @EnvironmentObject private var ledger: AICoinLedger
 
+    /// Pass --demo at launch to skip onboarding and start with a demo account.
+    private var demoMode: Bool {
+        CommandLine.arguments.contains("--demo")
+    }
+
     var body: some View {
         ZStack {
             AppBackground().ignoresSafeArea()
@@ -30,7 +35,7 @@ struct RootView: View {
             if showSplash {
                 SplashView { withAnimation(.easeInOut(duration: 0.4)) { showSplash = false } }
                     .transition(.opacity)
-            } else if !store.isRegistered {
+            } else if !store.isRegistered && !demoMode {
                 RegisterView()
                     .transition(.opacity)
             } else {
@@ -41,6 +46,9 @@ struct RootView: View {
         .motion(.easeInOut(duration: 0.4), value: showSplash)
         .motion(.easeInOut(duration: 0.4), value: store.isRegistered)
         .onAppear {
+            if demoMode && !store.isRegistered {
+                store.register(name: "Demo User", email: "demo@aimarketplace.app")
+            }
             store.attachEnergy(ledger)
             store.runScoutIfDue()   // the Scout is loose: sources content daily
         }
