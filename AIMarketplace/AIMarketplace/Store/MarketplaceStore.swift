@@ -137,6 +137,9 @@ final class MarketplaceStore: ObservableObject {
         var pendingPayoutUSD: Double
         var payoutConnected: Bool
         var paidOutUSD: Double
+        var connectAccountID: String?
+        var payoutBaseURL: String
+        var payoutSharedSecret: String
         var reviews: [Review]
         var editorDrops: [MediaItem]
         var requests: [ContentRequest]
@@ -156,7 +159,9 @@ final class MarketplaceStore: ObservableObject {
         init(accountName: String, accountEmail: String, isRegistered: Bool, appleUserID: String,
              walletBalance: Double, creatorEarnings: Double, aiAutopilotEnabled: Bool,
              invitedPartners: [String], referrals: [String: String], pendingPayoutUSD: Double,
-             payoutConnected: Bool, paidOutUSD: Double, reviews: [Review], editorDrops: [MediaItem],
+             payoutConnected: Bool, paidOutUSD: Double, connectAccountID: String?,
+             payoutBaseURL: String, payoutSharedSecret: String,
+             reviews: [Review], editorDrops: [MediaItem],
              requests: [ContentRequest], notifications: [AppNotification],
              scoutDrops: [MediaItem], scoutLog: [ScoutEntry], lastScoutRun: Date?,
              isAdmin: Bool, adminAdded: [MediaItem], adminEdits: [UUID: MediaItem], adminDeleted: [UUID],
@@ -173,6 +178,9 @@ final class MarketplaceStore: ObservableObject {
             self.pendingPayoutUSD = pendingPayoutUSD
             self.payoutConnected = payoutConnected
             self.paidOutUSD = paidOutUSD
+            self.connectAccountID = connectAccountID
+            self.payoutBaseURL = payoutBaseURL
+            self.payoutSharedSecret = payoutSharedSecret
             self.reviews = reviews
             self.editorDrops = editorDrops
             self.requests = requests
@@ -206,6 +214,9 @@ final class MarketplaceStore: ObservableObject {
             pendingPayoutUSD = try c.decodeIfPresent(Double.self, forKey: .pendingPayoutUSD) ?? 0
             payoutConnected = try c.decodeIfPresent(Bool.self, forKey: .payoutConnected) ?? false
             paidOutUSD = try c.decodeIfPresent(Double.self, forKey: .paidOutUSD) ?? 0
+            connectAccountID = try c.decodeIfPresent(String.self, forKey: .connectAccountID)
+            payoutBaseURL = try c.decodeIfPresent(String.self, forKey: .payoutBaseURL) ?? ""
+            payoutSharedSecret = try c.decodeIfPresent(String.self, forKey: .payoutSharedSecret) ?? ""
             reviews = try c.decodeIfPresent([Review].self, forKey: .reviews) ?? []
             editorDrops = try c.decodeIfPresent([MediaItem].self, forKey: .editorDrops) ?? []
             requests = try c.decodeIfPresent([ContentRequest].self, forKey: .requests) ?? []
@@ -276,6 +287,9 @@ final class MarketplaceStore: ObservableObject {
             pendingPayoutUSD: pendingPayoutUSD,
             payoutConnected: payoutConnected,
             paidOutUSD: paidOutUSD,
+            connectAccountID: connectAccountID,
+            payoutBaseURL: payoutBaseURL,
+            payoutSharedSecret: payoutSharedSecret,
             reviews: reviews,
             editorDrops: editorDrops,
             requests: requests,
@@ -470,7 +484,69 @@ final class MarketplaceStore: ObservableObject {
 
     // MARK: - Real-dollar payouts
 
-    func connectPayout() { payoutConnected = true }
+    /// Stripe Connect account ID (e.g. acct_xxx) — nil until onboarded.
+    @Published var connectAccountID: String? { didSet { persist() } }
+
+    /// Base URL for the payout Cloudflare Worker (set via PayoutConfig).
+    @Published var payoutBaseURL: String = "" { didSet { persist() } }
+
+    /// Shared secret for authenticating with the payout worker.
+    @Published var payoutSharedSecret: String = "" { didSet { persist() } }
+
+    func connectPayout() {
+        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty else {
+            // No worker configured yet — mark as connected for demo mode
+            payoutConnected = true
+            return
+        }
+        Task { await connectPayoutRemote() }
+    }
+
+    private func connectPayoutRemote() async {
+        guard let url = URL(string: "\(payoutBaseURL)/payouts/connect") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = ["accountName": accountName, "accountEmail": accountEmail]
+        request.httpBody = try? JSONEncoder().encode(body)
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let accountId = json["accountId"] as? String,
+               let onboardingUrl = json["onboardingUrl"] as? String {
+                connectAccountID = accountId
+                // Open the Stripe onboarding link in Safari
+                if let link = URL(string: onboardingUrl) {
+                    await UIApplication.shared.open(link)
+                }
+            }
+        } catch {
+            print("Payout connect error: \(error)")
+        }
+    }
+
+    /// Check Connect account status (called after onboarding returns).
+    func refreshPayoutStatus() async {
+        guard let accountId = connectAccountID, !payoutBaseURL.isEmpty else { return }
+        guard let url = URL(string: "\(payoutBaseURL)/payouts/status?account_id=\(accountId)") else { return }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                let chargesEnabled = json["chargesEnabled"] as? Bool ?? false
+                let payoutsEnabled = json["payoutsEnabled"] as? Bool ?? false
+                payoutConnected = chargesEnabled && payoutsEnabled
+            }
+        } catch {
+            print("Payout status error: \(error)")
+        }
+    }
 
     /// Credits the creator's withdrawable balance (called on each of their sales
     /// and by NRN → USD conversion).
@@ -485,10 +561,32 @@ final class MarketplaceStore: ObservableObject {
     func cashOut() -> Double {
         guard payoutConnected, pendingPayoutUSD > 0 else { return 0 }
         let amount = pendingPayoutUSD
+        // If worker is configured, cash out server-side
+        if !payoutBaseURL.isEmpty, let accountId = connectAccountID {
+            Task { await cashOutRemote(accountId: accountId, amount: amount) }
+        }
         paidOutUSD += amount
         pendingPayoutUSD = 0
         Haptics.success()
         return amount
+    }
+
+    private func cashOutRemote(accountId: String, amount: Double) async {
+        guard let url = URL(string: "\(payoutBaseURL)/payouts/cash-out") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = ["account_id": accountId, "amount": amount]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                print("Cash-out response: \(http.statusCode)")
+            }
+        } catch {
+            print("Cash-out error: \(error)")
+        }
     }
 
     // MARK: - Ratings & reviews

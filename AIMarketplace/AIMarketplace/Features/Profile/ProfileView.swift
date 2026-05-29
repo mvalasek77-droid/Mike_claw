@@ -17,6 +17,7 @@ struct ProfileView: View {
     @State private var adminUser = ""
     @State private var adminPass = ""
     @State private var showDeleteConfirm = false
+    @State private var showPayoutConfig = false
     @State private var legalDoc: LegalDoc?
 
     var body: some View {
@@ -47,6 +48,7 @@ struct ProfileView: View {
         .sheet(isPresented: $showPartners) { PartnerProgramView() }
         .sheet(isPresented: $showMission) { MissionView() }
         .sheet(isPresented: $showScout) { ScoutView() }
+        .sheet(isPresented: $showPayoutConfig) { PayoutConfigView() }
         .sheet(isPresented: $showAdmin) { AdminConsoleView() }
         .alert("Admin sign in", isPresented: $showAdminGate) {
             TextField("Username", text: $adminUser)

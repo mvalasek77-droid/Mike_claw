@@ -13,6 +13,7 @@ struct PartnerProgramView: View {
     @State private var showCommission = false
     @State private var selectedPartner: PartnerID?
     @State private var lastBonus: (model: String, amount: Double)?
+    @State private var showPayoutConfig = false
 
     private struct PartnerID: Identifiable { let id: String }
 
@@ -53,6 +54,7 @@ struct PartnerProgramView: View {
         .sheet(isPresented: $showIncentives) { IncentivesView() }
         .sheet(isPresented: $showMission) { MissionView() }
         .sheet(isPresented: $showCommission) { RequestContentView() }
+        .sheet(isPresented: $showPayoutConfig) { PayoutConfigView() }
         .sheet(item: $selectedPartner) { PartnerDetailView(model: $0.id) }
     }
 
@@ -143,6 +145,18 @@ struct PartnerProgramView: View {
                     }
                     Text("Connect a payout method to withdraw. Disbursement runs server-side (see backend/openapi.yaml).")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                }
+                // Always show payout config link
+                Button {
+                    showPayoutConfig = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 11))
+                        Text("Payout Setup")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(Theme.inkSoft)
                 }
             }
         }

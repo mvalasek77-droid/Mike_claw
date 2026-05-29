@@ -14,7 +14,7 @@ enum Commerce {
     static let sharePercentLabel = "85%"
 
     /// Plain-language pricing explainer shown next to pricing.
-    static let explainer = "You set the price and keep 85% of each sale. Your 85% share is what you actually receive."
+    static let explainer = "You set the price and keep 85% of net proceeds from each sale. Your 85% share is what you actually receive."
 
     // MARK: - Dynamic pricing
 
@@ -30,5 +30,5 @@ enum Commerce {
         return (price * 100).rounded() / 100
     }
 
-    static let dynamicPricingNote = "Prices move with demand and the AI Editor score: strong, in-demand titles command a premium; cold ones go on sale. Your list price is always the anchor. Whatever the final price, you keep 85% of each sale."
+    static let dynamicPricingNote = "Prices move with demand and the AI Editor score: strong, in-demand titles command a premium; cold ones go on sale. Your list price is always the anchor. Whatever the final price, you keep 85% of net proceeds."
 }

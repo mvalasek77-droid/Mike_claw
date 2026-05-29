@@ -1,0 +1,6 @@
+name = "aimarketplace-payout"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[vars]
+STRIPE_CONNECT_TYPE = "express"
