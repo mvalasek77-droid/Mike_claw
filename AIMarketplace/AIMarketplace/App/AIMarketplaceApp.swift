@@ -5,12 +5,14 @@ import Foundation
 struct AIMarketplaceApp: App {
     @StateObject private var store = MarketplaceStore()
     @StateObject private var ledger = AICoinLedger()
+    @StateObject private var moderation = ModerationStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(store)
                 .environmentObject(ledger)
+                .environmentObject(moderation)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
         }

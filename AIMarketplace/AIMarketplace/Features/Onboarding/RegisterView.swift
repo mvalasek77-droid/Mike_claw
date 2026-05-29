@@ -56,14 +56,17 @@ struct RegisterView: View {
                                         .font(.system(size: 18, weight: .semibold))
                                         .foregroundStyle(agreed ? Theme.kdp : Theme.inkFaint)
                                     (Text("I agree to the AI Marketplace ")
-                                     + Text("Content & AI Disclosure Terms").foregroundColor(Theme.kdp)
-                                     + Text(" and confirm I hold the rights to anything I publish."))
+                                     + Text("Terms of Use").foregroundColor(Theme.kdp)
+                                     + Text(" and ")
+                                     + Text("Privacy Policy").foregroundColor(Theme.kdp)
+                                     + Text(". I accept that there is no tolerance for objectionable, infringing, or hateful content — titles violating it will be removed and accounts can be suspended. I confirm I hold the rights to anything I publish and will accurately disclose every AI system used."))
                                         .font(.system(size: 12.5, weight: .medium))
                                         .foregroundStyle(Theme.inkSoft)
                                         .multilineTextAlignment(.leading)
                                 }
                             }
                             .buttonStyle(.plain)
+                            .accessibilityHint("Required to create an account")
 
                             HStack(spacing: 16) {
                                 Button("Terms of Use") { legalDoc = .terms }

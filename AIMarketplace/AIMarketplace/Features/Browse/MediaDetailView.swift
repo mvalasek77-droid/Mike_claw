@@ -5,6 +5,7 @@ import SwiftUI
 struct MediaDetailView: View {
     let item: MediaItem
     @EnvironmentObject private var store: MarketplaceStore
+    @EnvironmentObject private var moderation: ModerationStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var showPlayer = false
@@ -12,6 +13,7 @@ struct MediaDetailView: View {
     @State private var showInsufficientFunds = false
     @State private var showTopUp = false
     @State private var showWriteReview = false
+    @State private var showReportSheet = false
 
     private var owned: Bool { store.owns(item) }
 
@@ -33,6 +35,27 @@ struct MediaDetailView: View {
             .background(AppBackground().ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            showReportSheet = true
+                        } label: {
+                            Label("Report this title", systemImage: "flag")
+                        }
+                        Button(role: .destructive) {
+                            moderation.block(item.creator)
+                        } label: {
+                            Label(moderation.isBlocked(item.creator) ? "Creator blocked" : "Block creator",
+                                  systemImage: "hand.raised")
+                        }
+                        .disabled(moderation.isBlocked(item.creator))
+                    } label: {
+                        Image(systemName: "ellipsis.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    .accessibilityLabel("More")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 24))
@@ -47,6 +70,11 @@ struct MediaDetailView: View {
         }
         .sheet(isPresented: $showTopUp) { TopUpView() }
         .sheet(isPresented: $showWriteReview) { WriteReviewView(item: item) }
+        .sheet(isPresented: $showReportSheet) {
+            ReportSheet(item: item)
+                .environmentObject(store)
+                .environmentObject(moderation)
+        }
         .alert("Not enough balance", isPresented: $showInsufficientFunds) {
             Button("Top Up") { showTopUp = true }
             Button("Cancel", role: .cancel) { }

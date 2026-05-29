@@ -379,6 +379,31 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   return json({ received: true });
 }
 
+// ── Moderation ─────────────────────────────────────────────────────────────
+
+/** POST /moderation/report — forward a user report on a title to the operator.
+ *  No PII beyond what the reporter typed; the body is plain text. */
+async function handleReport(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as {
+    item_id?: string; item_title?: string; creator_name?: string;
+    reason?: string; details?: string; reporter_email?: string;
+  };
+  const subject = `[AI Marketplace] Report — ${body.reason ?? "Unspecified"}`;
+  const lines = [
+    `Item: ${body.item_title ?? "(unknown)"}  [${body.item_id ?? "?"}]`,
+    `Creator: ${body.creator_name ?? "(unknown)"}`,
+    `Reason: ${body.reason ?? "(none)"}`,
+    body.reporter_email ? `Reporter: ${body.reporter_email}` : null,
+    "",
+    "Details:",
+    (body.details && body.details.trim().length) ? body.details : "(none provided)",
+    "",
+    "App Review Guideline 1.2 requires action within 24 hours on serious reports.",
+  ].filter(Boolean).join("\n");
+  await sendEmail(env, subject, lines);
+  return json({ received: true });
+}
+
 // ── Automated funding + operator digest ─────────────────────────────────────
 
 /** Send an email via Resend. No-op (logged) if RESEND_API_KEY isn't set. */
@@ -521,6 +546,12 @@ export default {
       // Transfer: move 85% of a sale to the creator's Connect account
       if (path === "/payouts/transfer" && method === "POST") {
         return await handleTransfer(request, env);
+      }
+
+      // Moderation: forward a user-submitted report to the operator inbox
+      // (Apple Review Guideline 1.2 — UGC apps require an in-app report flow).
+      if (path === "/moderation/report" && method === "POST") {
+        return await handleReport(request, env);
       }
 
       // Digest: email the operator who's owed (also runs automatically on cron)
