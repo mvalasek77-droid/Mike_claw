@@ -21,7 +21,7 @@ struct MissionView: View {
                     principle("chart.line.uptrend.xyaxis", Theme.accent, "Learn from demand",
                               "New works are added constantly. Participants see what's selling and create more of what audiences want — originally — so quality and relevance keep rising.")
                     principle("dollarsign.circle.fill", Theme.success, "Real, fair pay",
-                              "You keep 85% of each sale, plus NRN rewards. The split is shown up front, always.")
+                              "You keep 85% of the net proceeds after Apple's commission, plus NRN rewards. The full split is shown up front, always.")
                     principle("hand.raised.fill", Theme.warning, "Honest by default",
                               "Mandatory AI disclosure on every title. Buyers always know what they're getting, and from which models.")
                 }

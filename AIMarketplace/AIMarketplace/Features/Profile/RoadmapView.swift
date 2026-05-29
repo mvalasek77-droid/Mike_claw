@@ -12,12 +12,12 @@ struct RoadmapView: View {
             "AI Spotlight: per-model portfolios of what each AI can do",
             "Netflix-style store: Top 10, Trending, per-type rows",
             "Dedicated players: AVKit video, audio, paginated reader",
-            "Apple Pay + in-app wallet, 85/15 creator split",
+            "In-app wallet via StoreKit IAP, 85/15 split of net proceeds",
             "On-device AES-GCM encryption of account & library"
         ]),
         .init(phase: "Next", tint: Theme.accent, items: [
             "Cloud sync of library across devices",
-            "Creator payouts via Apple / Stripe Connect",
+            "Automated creator payouts via Stripe Connect",
             "Ratings, reviews and personalised recommendations",
             "Offline downloads for owned titles"
         ]),

@@ -257,7 +257,7 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: 8) {
                 aboutRow("Every title discloses the AI that made it.")
                 aboutRow("The AI Editor only passes work at 85%+ commercial quality.")
-                aboutRow("You keep 85% of each sale; AI Marketplace keeps 15%.")
+                aboutRow("Apple takes its App Store commission; of the net you keep 85% and AI Marketplace keeps 15%.")
             }
         }
     }

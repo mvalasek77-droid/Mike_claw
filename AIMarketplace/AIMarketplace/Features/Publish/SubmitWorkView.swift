@@ -555,8 +555,7 @@ private struct CoverStep: View {
 private struct PricingStep: View {
     @Binding var draft: DraftWork
 
-    private var fee: Double { Commerce.platformFee(on: draft.price) }
-    private var earning: Double { Commerce.creatorEarning(on: draft.price) }
+    private var split: Commerce.Breakdown { Commerce.breakdown(for: draft.price) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -576,12 +575,16 @@ private struct PricingStep: View {
                     .tint(Theme.kdp)
             }
 
-            GlassCard(title: "How you get paid", icon: "percent", tint: Theme.kdp) {
+            GlassCard(title: "Where each $\(String(format: "%.2f", draft.price)) goes", icon: "percent", tint: Theme.kdp) {
                 VStack(spacing: 10) {
-                    payoutRow("List price", draft.price, color: Theme.ink)
-                    payoutRow("You earn per sale", earning, color: Theme.success, bold: true)
+                    payoutRow("Buyer pays", split.gross, color: Theme.ink, bold: true)
+                    payoutRow("Apple's commission (\(Commerce.appleCutLabel))", -split.appleCut, color: Theme.inkSoft)
                     Divider().overlay(Theme.hairline)
-                    Text(Commerce.explainer)
+                    payoutRow("Net proceeds", split.net, color: Theme.ink)
+                    payoutRow("You keep (85%)", split.creator, color: Theme.success, bold: true)
+                    payoutRow("AI Marketplace (15%)", split.marketplace, color: Theme.inkSoft)
+                    Divider().overlay(Theme.hairline)
+                    Text("Apple takes its App Store commission on every sale; the 85/15 split applies to what's left.")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
             }
@@ -599,11 +602,11 @@ private struct PricingStep: View {
         }
     }
 
-    private func payoutRow(_ label: String, _ amount: Double?, color: Color, bold: Bool = false) -> some View {
+    private func payoutRow(_ label: String, _ amount: Double, color: Color, bold: Bool = false) -> some View {
         HStack {
             Text(label).font(.system(size: 13, weight: bold ? .bold : .medium, design: .rounded)).foregroundStyle(Theme.inkSoft)
             Spacer()
-            Text(amount == nil ? "15–30%" : String(format: "%@$%.2f", amount! < 0 ? "−" : "", abs(amount!)))
+            Text(String(format: "%@$%.2f", amount < 0 ? "−" : "", abs(amount)))
                 .font(.system(size: bold ? 17 : 14, weight: .heavy, design: .rounded))
                 .foregroundStyle(color)
         }

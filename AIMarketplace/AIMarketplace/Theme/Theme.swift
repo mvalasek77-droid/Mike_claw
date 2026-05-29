@@ -93,11 +93,13 @@ extension View {
         #endif
     }
 
-    /// Subtle depth: layered shadow + a top-light highlight stroke. Used on
-    /// raised glass surfaces to give the fluid-glass parallax feel.
+    /// Subtle depth: a two-layer cast shadow (tight contact + soft ambient) plus
+    /// a top-light highlight stroke. Used on raised glass surfaces to give the
+    /// fluid-glass parallax feel.
     func depth(_ corner: CGFloat = Theme.cornerL, strong: Bool = false) -> some View {
         self
-            .shadow(color: .black.opacity(strong ? 0.45 : 0.28), radius: strong ? 26 : 16, x: 0, y: strong ? 14 : 8)
+            .shadow(color: .black.opacity(strong ? 0.35 : 0.22), radius: strong ? 8 : 5, x: 0, y: strong ? 4 : 2)
+            .shadow(color: .black.opacity(strong ? 0.45 : 0.28), radius: strong ? 30 : 18, x: 0, y: strong ? 16 : 9)
             .overlay(
                 RoundedRectangle(cornerRadius: corner, style: .continuous)
                     .strokeBorder(

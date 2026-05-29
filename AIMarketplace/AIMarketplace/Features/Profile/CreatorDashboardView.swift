@@ -10,7 +10,9 @@ struct CreatorDashboardView: View {
     private var titles: [MediaItem] { store.liveTitles }
     private var totalUnits: Int { titles.reduce(0) { $0 + $1.purchases } }
     private var grossRevenue: Double { titles.reduce(0) { $0 + Double($1.purchases) * $1.price } }
-    private var proceeds: Double { grossRevenue * Commerce.creatorShareRate }
+    private var appleCut: Double { Commerce.appleCut(on: grossRevenue) }
+    private var netRevenue: Double { grossRevenue - appleCut }
+    private var proceeds: Double { titles.reduce(0) { $0 + Double($1.purchases) * Commerce.creatorEarning(on: $1.price) } }
 
     var body: some View {
         NavigationStack {
@@ -73,7 +75,7 @@ struct CreatorDashboardView: View {
                             Text("\(item.purchases) units · \(item.scoreLabel) score").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
                         }
                         Spacer()
-                        Text(String(format: "$%.0f", Double(item.purchases) * item.price * Commerce.creatorShareRate))
+                        Text(String(format: "$%.0f", Double(item.purchases) * Commerce.creatorEarning(on: item.price)))
                             .font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(Theme.success)
                     }
                 }
@@ -85,9 +87,10 @@ struct CreatorDashboardView: View {
         GlassCard(title: "Estimated payout", icon: "banknote.fill", tint: Theme.success) {
             VStack(alignment: .leading, spacing: 8) {
                 payRow("Gross sales", grossRevenue, Theme.ink)
-                payRow("Service fee (15%)", -grossRevenue * Commerce.platformFeeRate, Theme.warning)
+                payRow("Apple's commission (15%)", -appleCut, Theme.inkSoft)
+                payRow("Service fee (15% of net)", -(netRevenue - proceeds), Theme.warning)
                 Divider().overlay(Theme.hairline)
-                payRow("Your proceeds (85%)", proceeds, Theme.success, bold: true)
+                payRow("Your proceeds (85% of net)", proceeds, Theme.success, bold: true)
             }
         }
     }

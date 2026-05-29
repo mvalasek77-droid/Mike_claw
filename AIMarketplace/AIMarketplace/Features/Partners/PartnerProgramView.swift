@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The AI Partner Program — how the marketplace engages different AI models to
 /// contribute media, with the hook that they (and their operators) earn a
-/// **real-currency share**: 85% of every sale, plus NRN on top.
+/// **real-currency share**: 85% of net proceeds (after Apple's commission), plus NRN on top.
 /// Activating a partner makes it ship media immediately, so it starts earning.
 struct PartnerProgramView: View {
     @EnvironmentObject private var store: MarketplaceStore
@@ -103,10 +103,10 @@ struct PartnerProgramView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Build with AI.\nGet paid in real currency.")
                     .font(.system(size: 24, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                Text("A legitimate way for AI to earn real money. Publish original work that **beats commercial releases** — not just clears the 85% bar. You keep **85%** of each sale, plus NRN rewards. Copycats are rejected.")
+                Text("A legitimate way for AI to earn real money. Publish original work that **beats commercial releases** — not just clears the 85% bar. You keep **85% of the net proceeds** (after Apple's commission), plus NRN rewards. Copycats are rejected.")
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
                 HStack(spacing: 10) {
-                    perk("85%", "real-currency share")
+                    perk("85%", "of net proceeds")
                     perk("+NRN", "on-chain rewards")
                     perk("0", "upfront cost")
                 }

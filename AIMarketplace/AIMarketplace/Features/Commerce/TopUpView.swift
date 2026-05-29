@@ -1,22 +1,14 @@
 import SwiftUI
 import StoreKit
-import PassKit
 
-/// Wallet top-up via StoreKit consumable credit packs or Apple Pay — the
-/// compliant way to take real money for digital purchases on iOS.
+/// Wallet top-up via StoreKit consumable credit packs — the App Store-compliant
+/// way to take real money for digital purchases on iOS. Apple processes every
+/// charge; the credit then lands in the in-app wallet to spend on titles.
 struct TopUpView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @Environment(\.dismiss) private var dismiss
     @StateObject private var storeKit = StoreKitService()
-    @StateObject private var applePay = ApplePayService()
     @State private var purchasing: String?
-    /// Strong reference keeping the Apple Pay delegate alive through the async flow.
-    @State private var topUpDelegate: TopUpDelegate?
-
-    /// Preset top-up amounts for the Apple Pay shortcut.
-    private let topUpAmounts: [(label: String, amount: Double)] = [
-        ("$5", 5), ("$10", 10), ("$25", 25), ("$50", 50)
-    ]
 
     var body: some View {
         NavigationStack {
@@ -27,36 +19,8 @@ struct TopUpView: View {
                             .font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
                     }
 
-                    // ── Apple Pay quick top-up ──
-                    if applePay.canMakePayments {
-                        SectionHeader(title: "Quick top-up with Apple Pay")
-                        HStack(spacing: 10) {
-                            ForEach(topUpAmounts, id: \.amount) { preset in
-                                Button {
-                                    presentApplePayTopUp(amount: preset.amount)
-                                } label: {
-                                    VStack(spacing: 4) {
-                                        Text(preset.label)
-                                            .font(.system(size: 18, weight: .heavy, design: .rounded))
-                                            .foregroundStyle(Theme.ink)
-                                        Text("Apple Pay")
-                                            .font(.system(size: 9, weight: .semibold))
-                                            .foregroundStyle(Theme.inkSoft)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.08)))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-
-                        Text("Charges your card directly. Credit lands in your wallet instantly.")
-                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
-                    }
-
                     // ── StoreKit credit packs ──
-                    SectionHeader(title: applePay.canMakePayments ? "Or add credit via App Store" : "Add credit")
+                    SectionHeader(title: "Add credit")
 
                     if storeKit.isLoading && storeKit.products.isEmpty {
                         ProgressView().tint(Theme.accent).frame(maxWidth: .infinity).padding(.vertical, 30)
@@ -83,18 +47,6 @@ struct TopUpView: View {
             storeKit.onCredit = { credit in store.walletBalance += credit }
             await storeKit.loadProducts()
         }
-    }
-
-    // MARK: - Apple Pay top-up
-
-    /// Presents the native Apple Pay sheet for a wallet top-up.
-    private func presentApplePayTopUp(amount: Double) {
-        let request = applePay.topUpRequest(amount: amount)
-        let controller = PKPaymentAuthorizationController(paymentRequest: request)
-        let delegate = TopUpDelegate(store: store, amount: amount)
-        controller.delegate = delegate
-        topUpDelegate = delegate           // hold strong reference
-        controller.present()
     }
 
     private func packRow(_ product: Product) -> some View {
@@ -138,31 +90,5 @@ struct TopUpView: View {
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 24)
-    }
-}
-
-/// Handles Apple Pay top-up authorization — adds credit to wallet on success.
-/// Held strongly by TopUpView so it survives through the async payment flow.
-class TopUpDelegate: NSObject, PKPaymentAuthorizationControllerDelegate {
-    let store: MarketplaceStore
-    let amount: Double
-
-    init(store: MarketplaceStore, amount: Double) {
-        self.store = store
-        self.amount = amount
-    }
-
-    func paymentAuthorizationController(
-        _ controller: PKPaymentAuthorizationController,
-        didAuthorizePayment payment: PKPayment,
-        handler completion: @escaping (PKPaymentAuthorizationResult) -> Void
-    ) {
-        store.walletBalance += amount
-        Haptics.success()
-        completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
-    }
-
-    func paymentAuthorizationControllerDidFinish(_ controller: PKPaymentAuthorizationController) {
-        // Controller dismisses itself after this callback.
     }
 }

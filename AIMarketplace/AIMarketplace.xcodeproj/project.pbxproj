@@ -63,7 +63,6 @@
 		9EC9B125E26E50446A38EE17 /* AIReviewProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CCEDC2B782843226F2B1F2B /* AIReviewProgressView.swift */; };
 		A0B183D893C4F57B1DB1D96A /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E0575C41F507994E65DC997 /* ProfileView.swift */; };
 		A1BA3E98A5D52CE54173221C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 358756C8BE6D023AC51630BF /* PrivacyInfo.xcprivacy */; };
-		A251D43B4B3E45A539771728 /* ApplePayService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700BC2D3F3CC5ECCA34988E1 /* ApplePayService.swift */; };
 		A9F40C8A121E1110EB544865 /* Submission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03AA3290671F8FC070E2ED33 /* Submission.swift */; };
 		AA197D7F7D0BDD30C7AD388D /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D18F5A2B426861D9E34A3C7 /* NotificationsView.swift */; };
 		ACF15F72065FC70E6E908CB2 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6BEA4453558B84506A3836 /* RegisterView.swift */; };
@@ -144,7 +143,6 @@
 		65E0CA15D5AAA9CC48D8F198 /* eli-hayes-cover.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "eli-hayes-cover.html"; sourceTree = "<group>"; };
 		66ADD952E329CCC58DF425AB /* AdminEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminEditView.swift; sourceTree = "<group>"; };
 		671A85569C90D0839EC0EC6F /* AIMarketplace.entitlements.bak */ = {isa = PBXFileReference; path = AIMarketplace.entitlements.bak; sourceTree = "<group>"; };
-		700BC2D3F3CC5ECCA34988E1 /* ApplePayService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePayService.swift; sourceTree = "<group>"; };
 		74EE8369D1227F08AC20A6DB /* SubmissionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionDetailView.swift; sourceTree = "<group>"; };
 		7640525382962344E25DC33A /* SubmitWorkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmitWorkView.swift; sourceTree = "<group>"; };
 		797A418249FDCF50F5750BA3 /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
@@ -341,7 +339,6 @@
 		92E1D7DF5A6B1F46B5F1F629 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				700BC2D3F3CC5ECCA34988E1 /* ApplePayService.swift */,
 				3183B7393C1BA778230A235E /* AVPlaybackModel.swift */,
 				86C78A508D08CD72E2DFB916 /* ContentResolver.swift */,
 				0A1EE65FC3E2EEAB077E5674 /* OnDeviceAI.swift */,
@@ -612,7 +609,6 @@
 				EEC36A315B0B1169C1FB84D8 /* AdminConsoleView.swift in Sources */,
 				C812E96A74744ADCC15DBB8F /* AdminEditView.swift in Sources */,
 				422ECC04DD79D159C41585A4 /* AppNotification.swift in Sources */,
-				A251D43B4B3E45A539771728 /* ApplePayService.swift in Sources */,
 				400ED0CB493A35DD06E97E11 /* BrowseHomeView.swift in Sources */,
 				07751F2EFB47C584B59015AB /* ChartsView.swift in Sources */,
 				11CE199D7A65F976D9CFA840 /* Commerce.swift in Sources */,

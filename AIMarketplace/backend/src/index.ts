@@ -39,14 +39,16 @@ interface CashOutRequest {
 const CREATOR_SHARE = 0.85; // creator keeps 85% of net proceeds
 const PLATFORM_SHARE = 0.15;
 
-/** Call the Stripe API */
-async function stripe(path: string, body: Record<string, unknown>, secret: string): Promise<any> {
+/** Call the Stripe API. Pass `stripeAccount` to act on a connected account. */
+async function stripe(path: string, body: Record<string, unknown>, secret: string, stripeAccount?: string): Promise<any> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${secret}`,
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  if (stripeAccount) headers["Stripe-Account"] = stripeAccount;
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers,
     body: new URLSearchParams(
       flatten(body) as Record<string, string>
     ).toString(),
@@ -220,21 +222,17 @@ async function handleCashOut(request: Request, env: Env): Promise<Response> {
     return error("Minimum cash-out is $1.00", 402);
   }
 
-  // Create the payout
+  // Create the payout ON THE CONNECTED ACCOUNT (Stripe-Account header), so it
+  // draws from that account's balance and lands in the creator's own bank.
+  // (For Express accounts Stripe also auto-pays on a schedule; this is an
+  // explicit "pay me now".)
   const payout = await stripe("/payouts", {
     amount: payoutAmount,
     currency: "usd",
-    destination: "default", // their connected bank account
     metadata: {
       platform: "ai-marketplace",
     },
-  }, env.STRIPE_SECRET_KEY);
-
-  // Note: this creates a payout on the *platform* account.
-  // For Connect Express, payouts happen automatically when payouts_enabled.
-  // To transfer from platform → connected account and then payout:
-  // you'd use /transfers first, then the connected account auto-payouts.
-  // We'll handle both flows below.
+  }, env.STRIPE_SECRET_KEY, account_id);
 
   return json({
     payoutId: payout.id,

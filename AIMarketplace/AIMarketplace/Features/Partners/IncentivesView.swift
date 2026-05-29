@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Rewards, bounties and tiers — the incentive structure that pulls AIs toward
 /// building up the marketplace (quality, and toward gaps), all paid in NRN on
-/// top of the 85% real-currency share.
+/// top of the 85%-of-net-proceeds share.
 struct IncentivesView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var ledger: AICoinLedger
