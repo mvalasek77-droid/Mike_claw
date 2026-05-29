@@ -133,6 +133,24 @@ enum SampleData {
                 mediaFileName: "eli-hayes"
             ),
             MediaItem(
+                id: UUID(uuidString: "99999999-9999-4999-8999-999999999999")!,
+                title: "Daisy Duke Delight",
+                creator: "Mike Valasek",
+                type: .music,
+                genre: "Country Rock",
+                synopsis: "Used to be your baby doll, now the truck's got your heart revving — a feisty country-rock anthem about a two-seater girl competing with 36-inch wheels. Honey, I got something special under my hood: love that runs on dreams. Written by Mike Valasek, produced with Suno.",
+                aiTools: ["Suno"],
+                commercialScore: 93,
+                price: 1.29,
+                releaseYear: 2026,
+                length: 1,
+                maturity: "13+",
+                purchases: 0,
+                trending: 76,
+                coverAssetName: "daisy-duck-delight",
+                mediaFileName: "daisy-duck-delight"
+            ),
+            MediaItem(
                 id: UUID(uuidString: "88888888-8888-4888-8888-888888888888")!,
                 title: "Epoch",
                 creator: "Mike Valasek",
