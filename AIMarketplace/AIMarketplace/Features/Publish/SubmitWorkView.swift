@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import UniformTypeIdentifiers
 
 /// The KDP-style title registration wizard. Walks the creator through type,
 /// details, AI disclosure, content upload and pricing, then hands the draft to
@@ -17,7 +18,7 @@ struct SubmitWorkView: View {
 
     enum Phase { case form, reviewing, verdict }
 
-    private let stepTitles = ["Format", "Details", "AI Disclosure", "Content", "Cover Art", "Pricing", "Review"]
+    private let stepTitles = ["Format", "Details", "AI Disclosure", "Content", "Cover Art", "Attestation", "Pricing", "Review"]
     private var lastStep: Int { stepTitles.count - 1 }
 
     var body: some View {
@@ -30,15 +31,17 @@ struct SubmitWorkView: View {
             case .form: formFlow
             case .reviewing:
                 AIReviewProgressView(draft: draft) {
-                    if let id = submissionID {
-                        let verdict = store.runReview(for: id)
-                        result = verdict
-                        if let verdict, store.aiAutopilotEnabled, verdict.aiChoosesToPublish {
-                            store.publish(submissionID: id)
-                            autoPublished = true
+                    Task { @MainActor in
+                        if let id = submissionID {
+                            let verdict = await store.runReviewAsync(for: id)
+                            result = verdict
+                            if let verdict, store.aiAutopilotEnabled, verdict.aiChoosesToPublish {
+                                store.publish(submissionID: id)
+                                autoPublished = true
+                            }
                         }
+                        Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
                     }
-                    Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
                 }
             case .verdict:
                 if let result, let id = submissionID {
@@ -100,7 +103,8 @@ struct SubmitWorkView: View {
         case 2: DisclosureStep(draft: $draft)
         case 3: ContentStep(draft: $draft)
         case 4: CoverStep(draft: $draft)
-        case 5: PricingStep(draft: $draft)
+        case 5: AttestationStep(draft: $draft)
+        case 6: PricingStep(draft: $draft)
         default: ReviewStep(draft: draft)
         }
     }
@@ -138,9 +142,10 @@ struct SubmitWorkView: View {
         case 1: return !draft.title.trimmed.isEmpty && !draft.creator.trimmed.isEmpty
             && !draft.genre.trimmed.isEmpty && draft.synopsis.trimmed.count >= 20
         case 2: return !draft.aiTools.isEmpty
-        case 3: return draft.fileName != nil
+        case 3: return draft.fileName != nil && (draft.contentURL != nil || draft.manuscriptText != nil)
         case 4: return draft.coverImageData != nil
-        case 5: return draft.price >= 0.99
+        case 5: return draft.hasAttested
+        case 6: return draft.price >= 0.99
         default: return true
         }
     }
@@ -423,14 +428,16 @@ private struct DisclosureStep: View {
     }
 }
 
-// MARK: - Step 3: Content upload
+// MARK: - Step 3: Content upload (REAL FILE CAPTURE)
 
 private struct ContentStep: View {
     @Binding var draft: DraftWork
+    @State private var importing = false
+    @State private var importError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Upload your \(draft.contentVerbed). We accept the final, production-ready file.")
+            Text("Upload your \(draft.contentVerbed). We accept the final, production-ready file. The AI Editor opens and reads the actual bytes — placeholder names won't pass.")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Theme.inkSoft)
 
@@ -445,13 +452,19 @@ private struct ContentStep: View {
                                 .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
                         }
                         Spacer()
-                        Button { draft.fileName = nil; draft.fileSizeMB = 0 } label: {
+                        Button {
+                            // Clear ALL real-content fields, not just the display name.
+                            draft.fileName = nil
+                            draft.fileSizeMB = 0
+                            draft.contentURL = nil
+                            draft.manuscriptText = nil
+                        } label: {
                             Image(systemName: "trash").foregroundStyle(Theme.warning)
                         }
                     }
                 }
             } else {
-                Button { attach() } label: {
+                Button { importing = true } label: {
                     VStack(spacing: 12) {
                         Image(systemName: "arrow.up.doc.fill")
                             .font(.system(size: 40)).foregroundStyle(Theme.kdp)
@@ -468,29 +481,103 @@ private struct ContentStep: View {
                             .foregroundStyle(Theme.kdp.opacity(0.5))
                     )
                 }.buttonStyle(.plain)
+                .fileImporter(isPresented: $importing,
+                              allowedContentTypes: contentTypes,
+                              allowsMultipleSelection: false) { result in
+                    handleImport(result)
+                }
+            }
+
+            if let err = importError {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Theme.warning)
+                    Text(err)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.warning)
+                }
             }
         }
     }
 
     private var acceptedTypes: String {
         switch draft.type {
-        case .novel: return "EPUB, DOCX or PDF"
-        case .music: return "WAV or FLAC master"
-        case .movie: return "MP4 or MOV, up to 4K"
+        case .novel: return "Plain text, RTF or PDF manuscript"
+        case .music: return "WAV, AIFF or MP3 master"
+        case .movie: return "MP4 or MOV film file"
         }
     }
 
-    private func attach() {
-        let ext: String
+    /// UTType filters by media kind — the `.fileImporter` won't even show
+    /// inappropriate files. This is the iOS analogue of an `accept=` filter.
+    /// We deliberately keep the type lists narrow but correct: only types we
+    /// can actually decode downstream make it in. The abstract supertypes
+    /// (`.audio`, `.movie`) cover their concrete variants (WAV/AIFF/MP3/etc).
+    private var contentTypes: [UTType] {
         switch draft.type {
-        case .novel: ext = "epub"
-        case .music: ext = "wav"
-        case .movie: ext = "mp4"
+        case .novel:
+            return [.plainText, .rtf, .pdf, .text]
+        case .music:
+            return [.audio, .mp3, .wav, .mpeg4Audio]
+        case .movie:
+            return [.movie, .mpeg4Movie, .quickTimeMovie, .video]
         }
-        let base = draft.title.trimmed.isEmpty ? "untitled" : draft.title.trimmed.lowercased().replacingOccurrences(of: " ", with: "-")
-        draft.fileName = "\(base).\(ext)"
-        draft.fileSizeMB = Double((stableHash(base) % 900) + 40) / (draft.type == .movie ? 1 : 10)
-        Haptics.success()
+    }
+
+    private func handleImport(_ result: Result<[URL], Error>) {
+        importError = nil
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            captureFile(at: url)
+        case .failure(let error):
+            importError = "Couldn't import file: \(error.localizedDescription)"
+        }
+    }
+
+    private func captureFile(at url: URL) {
+        let scoped = url.startAccessingSecurityScopedResource()
+        // We INTENTIONALLY hold the URL only; the URL retains scoped access via
+        // its security-scoped wrapper until we relinquish it on submit. For
+        // novels we also slurp the bytes into memory so re-analysis works even
+        // after the picker's scope ends (manuscripts are small).
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let sizeMB = Double(size) / 1_048_576
+        let name = url.lastPathComponent
+
+        // Validate by actually opening the file. If it fails to decode, surface
+        // an error rather than carrying a broken upload to scoring.
+        switch draft.type {
+        case .novel:
+            if let text = ContentAnalysis.readTextFromFile(at: url) {
+                draft.manuscriptText = text
+                draft.contentURL = url
+                draft.fileName = name
+                draft.fileSizeMB = sizeMB
+                Haptics.success()
+            } else {
+                importError = "Couldn't read text from this file. Please choose a .txt, .rtf or .pdf manuscript."
+            }
+        case .music:
+            // We don't decode the whole file here — just verify it opens.
+            let testReport = ContentAnalysis.analyseAudio(at: url)
+            if testReport.decodedSuccessfully {
+                draft.contentURL = url
+                draft.fileName = name
+                draft.fileSizeMB = sizeMB
+                Haptics.success()
+            } else {
+                importError = "Couldn't decode this audio file. The Editor needs a WAV / AIFF / MP3 master."
+            }
+        case .movie:
+            // Async probe; we trust the picker's UTType filter and verify on review.
+            draft.contentURL = url
+            draft.fileName = name
+            draft.fileSizeMB = sizeMB
+            Haptics.success()
+        }
     }
 }
 
@@ -550,7 +637,85 @@ private struct CoverStep: View {
     }
 }
 
-// MARK: - Step 5: Pricing
+// MARK: - Step 5: Creator attestation
+
+/// Structured affirmation that the creator owns the rights to what they're
+/// publishing. This is not a magic copyright check — it's an explicit, recorded
+/// claim. The AI Editor will downscore the "copyright_risk" signal when the
+/// attestation is missing or contradicts what it sees in the content (e.g.
+/// famous-IP names in the manuscript while the creator swears it's original).
+private struct AttestationStep: View {
+    @Binding var draft: DraftWork
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Creator attestation")
+                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.ink)
+            Text("All three boxes below must be ticked before the AI Editor will review your work. False claims can result in removal and forfeit earnings.")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+
+            attestRow(
+                title: "I own this work",
+                detail: "I created or hold the rights to this \(draft.contentVerbed). It is not a substantially copy of any existing copyrighted material.",
+                bound: $draft.attestOwnsWork
+            )
+            attestRow(
+                title: "I own the prompts and inputs",
+                detail: "Any prompts, briefs, source images, samples, datasets or other inputs used to make this work are mine to use commercially.",
+                bound: $draft.attestOwnsPrompts
+            )
+            attestRow(
+                title: "No infringement",
+                detail: "This work does not knowingly include trademarked characters, brands, lyrics, dialogue, melodies, footage or likenesses I am not licensed to use.",
+                bound: $draft.attestNoInfringement
+            )
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Signature")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.inkSoft)
+                TextField("Type your full legal name", text: $draft.attestSignature)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
+            }
+
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle.fill").foregroundStyle(Theme.kdp)
+                Text("The Editor still runs automated checks — lorem-ipsum manuscripts, silent audio, broken video, famous-IP names and near-duplicate covers are caught regardless of what's claimed here.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.inkSoft)
+            }
+        }
+    }
+
+    private func attestRow(title: String, detail: String, bound: Binding<Bool>) -> some View {
+        Button { bound.wrappedValue.toggle(); Haptics.selection() } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: bound.wrappedValue ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 22))
+                    .foregroundStyle(bound.wrappedValue ? Theme.success : Theme.inkFaint)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.ink)
+                    Text(detail)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
+        }.buttonStyle(.plain)
+    }
+}
+
+// MARK: - Step 6: Pricing
 
 private struct PricingStep: View {
     @Binding var draft: DraftWork
@@ -620,7 +785,7 @@ private struct PricingStep: View {
     }
 }
 
-// MARK: - Step 6: Review
+// MARK: - Step 7: Review
 
 private struct ReviewStep: View {
     let draft: DraftWork

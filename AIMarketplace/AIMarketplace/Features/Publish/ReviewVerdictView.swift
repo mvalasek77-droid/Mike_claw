@@ -26,6 +26,7 @@ struct ReviewVerdictView: View {
                     if isLive {
                         publishedBanner
                     }
+                    contentSignals
                     breakdown
                     if !result.strengths.isEmpty { strengthsCard }
                     if !result.improvements.isEmpty { improvementsCard }
@@ -91,6 +92,53 @@ struct ReviewVerdictView: View {
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
             }
+        }
+    }
+
+    /// Three honest sub-scores the Editor publishes alongside the overall:
+    /// Content (read from real bytes), Originality (vs catalogue) and
+    /// Copyright risk (famous-IP names, lorem-ipsum, missing attestation).
+    private var contentSignals: some View {
+        GlassCard(title: "What the Editor measured", icon: "waveform.path", tint: Theme.kdp) {
+            VStack(alignment: .leading, spacing: 12) {
+                signalRow(label: "Content quality",
+                          value: "\(result.contentQuality)/100",
+                          subtitle: "From actual file bytes (text, audio or video).",
+                          score: result.contentQuality,
+                          ok: result.contentQuality >= AIReviewResult.autoPublishContentFloor)
+                signalRow(label: "Catalogue similarity",
+                          value: "\(Int((result.copycatSimilarity * 100).rounded()))%",
+                          subtitle: result.copycatNeighbour.isEmpty
+                              ? "Distinct from everything published."
+                              : "Closest: “\(result.copycatNeighbour)”.",
+                          score: 100 - Int((result.copycatSimilarity * 100).rounded()),
+                          ok: result.copycatSimilarity <= AIReviewResult.autoPublishCopycatCeiling)
+                signalRow(label: "Copyright risk",
+                          value: "\(result.copyrightRisk)/100",
+                          subtitle: result.copyrightRisk == 0
+                              ? "Clean — no flagged terms."
+                              : "Higher = more risk; combines IP names, filler text and attestation.",
+                          score: 100 - result.copyrightRisk,
+                          ok: result.copyrightRisk <= AIReviewResult.autoPublishCopyrightCeiling)
+            }
+        }
+    }
+
+    private func signalRow(label: String, value: String, subtitle: String, score: Int, ok: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                Text(value)
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundStyle(ok ? Theme.success : Theme.warning)
+            }
+            ScoreBar(score: max(0, min(100, score)))
+            Text(subtitle)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.inkFaint)
         }
     }
 

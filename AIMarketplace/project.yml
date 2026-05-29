@@ -23,6 +23,20 @@ targets:
       - path: AIMarketplace
         excludes:
           - "Resources/Samples/README.md"
+  AIMarketplaceTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: AIMarketplaceTests
+        excludes:
+          - "README.md"
+    dependencies:
+      - target: AIMarketplace
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.aimarketplace.tests
     info:
       path: AIMarketplace/Resources/Info.plist
       properties:
@@ -71,8 +85,13 @@ schemes:
     build:
       targets:
         AIMarketplace: all
+        AIMarketplaceTests: [test]
     run:
       config: Debug
       storeKitConfiguration: Products.storekit
+    test:
+      config: Debug
+      targets:
+        - AIMarketplaceTests
     archive:
       config: Release
