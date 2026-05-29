@@ -138,7 +138,7 @@ enum SampleData {
                 creator: "Mike Valasek",
                 type: .music,
                 genre: "Country Rock",
-                synopsis: "Used to be your baby doll, now the truck's got your heart revving — a feisty country-rock anthem about a two-seater girl competing with 36-inch wheels. Honey, I got something special under my hood: love that runs on dreams. Written by Mike Valasek, produced with Suno.",
+                synopsis: "Used to be your baby doll, a Daisy Duke delight / Now you've traded my kisses for a home in goodnight / Truck's got your heart revving, fenders catch your eye / Guess this little two-seater just ain't getting you high // Honey, I ain't saying that truck ain't fine / With its leather seats and 36-inch wheels / But I got something special under my hood / Love that runs on dreams. Written by Mike Valasek, produced with Suno.",
                 aiTools: ["Suno"],
                 commercialScore: 93,
                 price: 1.29,

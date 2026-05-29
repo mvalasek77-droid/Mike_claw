@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Daisy Duke Delight Cover</title>
+<script>p5.disableFriendlyErrors = true;</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+<style>html,body{margin:0;padding:0;overflow:hidden}canvas{display:block}</style>
+</head><body><script>
+function setup() {
+  createCanvas(1000, 1500);
+  pixelDensity(1);
+  randomSeed(99);
+  noiseSeed(99);
+  noLoop();
+}
+function draw() {
+  colorMode(HSB, 360, 100, 100, 100);
+  // Deep sunset gradient sky
+  for (let y = 0; y < height; y++) {
+    let t = y / height;
+    let h, s, b;
+    if (t < 0.35) { // night sky
+      h = lerp(250, 220, t/0.35);
+      s = lerp(60, 70, t/0.35);
+      b = lerp(8, 20, t/0.35);
+    } else if (t < 0.55) { // fiery sunset
+      let u = (t - 0.35) / 0.2;
+      h = lerp(30, 45, u);
+      s = lerp(85, 90, u);
+      b = lerp(50, 30, u);
+    } else { // dusty ground
+      let u = (t - 0.55) / 0.45;
+      h = lerp(25, 15, u);
+      s = lerp(60, 40, u);
+      b = lerp(15, 5, u);
+    }
+    stroke(h, s, b);
+    line(0, y, width, y);
+  }
+  // Sun glow on horizon
+  noStroke();
+  for (let r = 350; r > 0; r -= 3) {
+    let t = r / 350;
+    fill(35, lerp(50, 95, 1-t), lerp(25, 65, 1-t), lerp(3, 25, 1-t));
+    ellipse(width/2, height*0.48, r*1.5, r*0.6);
+  }
+  // Daisy petals (upper area)
+  let cx = width/2, cy = 300;
+  for (let angle = 0; angle < 360; angle += 24) {
+    let rad = radians(angle);
+    let px = cx + cos(rad) * 110;
+    let py = cy + sin(rad) * 110;
+    fill(50, 10, 95, 70);
+    noStroke();
+    ellipse(px, py, 65, 35);
+  }
+  fill(45, 90, 95, 85);
+  ellipse(cx, cy, 70, 70);
+  // Truck silhouette
+  fill(10, 70, 5);
+  noStroke();
+  // Truck bed
+  rect(80, 880, 520, 120, 5);
+  // Truck cab
+  rect(480, 770, 270, 140, 8, 15, 5, 5);
+  // Windshield reflection
+  fill(30, 80, 45, 60);
+  rect(510, 785, 210, 80, 4);
+  // Wheels
+  fill(10, 60, 3);
+  ellipse(180, 1000, 90, 90);
+  ellipse(560, 1000, 90, 90);
+  // Wheel rims
+  fill(40, 30, 40, 50);
+  ellipse(180, 1000, 45, 45);
+  ellipse(560, 1000, 45, 45);
+  // Headlights
+  for (let i = 0; i < 12; i++) {
+    fill(40, 50, 95, lerp(2, 20, 1-i/12));
+    ellipse(755 + i*8, 810 + i*3, 20 + i*5, 15 + i*4);
+  }
+  // Dust particles
+  noStroke();
+  for (let i = 0; i < 300; i++) {
+    fill(35, random(20, 60), random(50, 80), random(3, 12));
+    let sz = random(2, 8);
+    ellipse(random(width), random(height*0.6, height), sz, sz);
+  }
+  // Golden sparkles
+  for (let i = 0; i < 150; i++) {
+    fill(45, random(70, 100), random(80, 100), random(10, 45));
+    ellipse(random(width), random(height*0.3, height*0.65), random(1, 4), random(1, 4));
+  }
+  // Vignette
+  for (let r = 0; r < 80; r++) {
+    noFill();
+    stroke(20, 70, 5, map(r, 0, 80, 22, 0));
+    strokeWeight(20);
+    rect(-10+r*0.5, -10+r*0.5, width+20-r, height+20-r*1.3);
+  }
+  saveCanvas('daisy-duck-delight', 'png');
+}
+</script></body></html>

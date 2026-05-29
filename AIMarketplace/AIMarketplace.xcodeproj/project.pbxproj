@@ -58,6 +58,7 @@
 		95A29EA630B0DCE0D6ACF23E /* AISpotlightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 884E73DA24E6CAC40B86F3B2 /* AISpotlightView.swift */; };
 		9818BE598E570B0BB2CA9B52 /* eli-hayes-cover.html in Resources */ = {isa = PBXBuildFile; fileRef = 65E0CA15D5AAA9CC48D8F198 /* eli-hayes-cover.html */; };
 		9A92ED29FF19429186E82B3F /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D34BA73AB3656237536B751 /* LibraryView.swift */; };
+		9C9CD8C498A15A59067F3F6A /* daisy-duck-delight.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 81027DA2FA4E2BA8618D6B16 /* daisy-duck-delight.jpg */; };
 		9E6B958C666F827430EE1A7B /* its-a-swifty-world-after-all.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = E9058EF32B8D7936B33615B3 /* its-a-swifty-world-after-all.mp3 */; };
 		9EC9B125E26E50446A38EE17 /* AIReviewProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CCEDC2B782843226F2B1F2B /* AIReviewProgressView.swift */; };
 		A0B183D893C4F57B1DB1D96A /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E0575C41F507994E65DC997 /* ProfileView.swift */; };
@@ -73,6 +74,7 @@
 		B7BB1C43AECFE5D12672480D /* PosterArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 342E8DAC372E34207D36DF43 /* PosterArt.swift */; };
 		B8DA89BAB6EEECAEDD4ABFDA /* StoreKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 797A418249FDCF50F5750BA3 /* StoreKitService.swift */; };
 		BA1F7957EA2827F69A6FE52A /* AICoinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6972BCCF22FDF777FAB33D6 /* AICoinView.swift */; };
+		BFB660E67C31CB915A421D2C /* daisy-duck-delight.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DD478345C11FA153455CEB7E /* daisy-duck-delight.mp3 */; };
 		BFC4D1215F0A676B3D6D40BA /* RoadmapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CE0FBE5E664531B0494676E /* RoadmapView.swift */; };
 		C50232130CC448CF466D553E /* the-odyssey-protocol.jpg in Resources */ = {isa = PBXBuildFile; fileRef = D47DCB2CF07BAFCA9A11CF57 /* the-odyssey-protocol.jpg */; };
 		C5053DE17D3283026549737C /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7EFE3FE7175B37A834E6F6 /* PrimaryButton.swift */; };
@@ -88,6 +90,7 @@
 		EC092A396E6E6B89B647AF89 /* ScoutEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631D98886A2B189622F9E7E4 /* ScoutEntry.swift */; };
 		EEC36A315B0B1169C1FB84D8 /* AdminConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23251ABA154375A28A5EBC28 /* AdminConsoleView.swift */; };
 		F16769D6069B7477A6113B12 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91E48A97D2D3223E0C9073F6 /* SecureStore.swift */; };
+		F31B900D2C09AD59266C19B5 /* daisy-duck-delight-cover.html in Resources */ = {isa = PBXBuildFile; fileRef = 9BDC040397E2998EBD3FB790 /* daisy-duck-delight-cover.html */; };
 		F4255BA5AE862EE1E919FE56 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F131A8157362A8A08E048A24 /* Haptics.swift */; };
 		F48A35FED30F2B421CACC089 /* MissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6E646F3BB27F3E2B6302145 /* MissionView.swift */; };
 		F5A239F30BA396BB4B57899E /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D146E6CEB99314834A88BB6 /* SampleData.swift */; };
@@ -146,6 +149,7 @@
 		7640525382962344E25DC33A /* SubmitWorkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmitWorkView.swift; sourceTree = "<group>"; };
 		797A418249FDCF50F5750BA3 /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
 		7E45D93494A76A0E160D7582 /* push-up-bra.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "push-up-bra.mp3"; sourceTree = "<group>"; };
+		81027DA2FA4E2BA8618D6B16 /* daisy-duck-delight.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "daisy-duck-delight.jpg"; sourceTree = "<group>"; };
 		86C78A508D08CD72E2DFB916 /* ContentResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentResolver.swift; sourceTree = "<group>"; };
 		884E73DA24E6CAC40B86F3B2 /* AISpotlightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISpotlightView.swift; sourceTree = "<group>"; };
 		8A45A0B4AF78156078ACE851 /* eli-hayes.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "eli-hayes.jpg"; sourceTree = "<group>"; };
@@ -154,6 +158,7 @@
 		91E48A97D2D3223E0C9073F6 /* SecureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStore.swift; sourceTree = "<group>"; };
 		93C1E6E154D685BBC73A8726 /* curves-like-keisha.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "curves-like-keisha.jpg"; sourceTree = "<group>"; };
 		996098E06BDFE4C78164D406 /* PayoutConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayoutConfigView.swift; sourceTree = "<group>"; };
+		9BDC040397E2998EBD3FB790 /* daisy-duck-delight-cover.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "daisy-duck-delight-cover.html"; sourceTree = "<group>"; };
 		9C6D2D35C581B5DB83D7ECB4 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		9CCEDC2B782843226F2B1F2B /* AIReviewProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReviewProgressView.swift; sourceTree = "<group>"; };
 		A9D5D9784F0131AF2A52762E /* MediaCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaCards.swift; sourceTree = "<group>"; };
@@ -170,6 +175,7 @@
 		D2442DFC8E1A5F8BAA4CC9E0 /* epoch.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = epoch.jpg; sourceTree = "<group>"; };
 		D47DCB2CF07BAFCA9A11CF57 /* the-odyssey-protocol.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "the-odyssey-protocol.jpg"; sourceTree = "<group>"; };
 		D9961B33C97C379D0A2A5FCA /* epoch-cover.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "epoch-cover.html"; sourceTree = "<group>"; };
+		DD478345C11FA153455CEB7E /* daisy-duck-delight.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "daisy-duck-delight.mp3"; sourceTree = "<group>"; };
 		E1C4BD7F8CADD18776A70FBA /* epoch.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = epoch.txt; sourceTree = "<group>"; };
 		E23FC921C5612F2A39173DF0 /* PartnerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartnerDetailView.swift; sourceTree = "<group>"; };
 		E62D0F121154CA522E11BB92 /* kentucky-fire.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "kentucky-fire.jpg"; sourceTree = "<group>"; };
@@ -387,6 +393,9 @@
 			children = (
 				93C1E6E154D685BBC73A8726 /* curves-like-keisha.jpg */,
 				63CD6FE90EDD9C781A0657EC /* curves-like-keisha.mp3 */,
+				9BDC040397E2998EBD3FB790 /* daisy-duck-delight-cover.html */,
+				81027DA2FA4E2BA8618D6B16 /* daisy-duck-delight.jpg */,
+				DD478345C11FA153455CEB7E /* daisy-duck-delight.mp3 */,
 				65E0CA15D5AAA9CC48D8F198 /* eli-hayes-cover.html */,
 				8A45A0B4AF78156078ACE851 /* eli-hayes.jpg */,
 				F1E6C4EBA8D631E5C9EFBD2B /* eli-hayes.mp3 */,
@@ -559,6 +568,9 @@
 				A1BA3E98A5D52CE54173221C /* PrivacyInfo.xcprivacy in Resources */,
 				3EE924547B44540E97FCE678 /* curves-like-keisha.jpg in Resources */,
 				0BAF482BC5B3938F272C592B /* curves-like-keisha.mp3 in Resources */,
+				F31B900D2C09AD59266C19B5 /* daisy-duck-delight-cover.html in Resources */,
+				9C9CD8C498A15A59067F3F6A /* daisy-duck-delight.jpg in Resources */,
+				BFB660E67C31CB915A421D2C /* daisy-duck-delight.mp3 in Resources */,
 				9818BE598E570B0BB2CA9B52 /* eli-hayes-cover.html in Resources */,
 				7BD8F5EDE8F3D3C9C1B0689F /* eli-hayes.jpg in Resources */,
 				AD5ACDBE20092BB737D7A22C /* eli-hayes.mp3 in Resources */,
