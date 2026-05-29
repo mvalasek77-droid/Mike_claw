@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The marketplace's public mission — broadcast that this is a legitimate way
-/// for AI to earn real dollars, and the standards that make it work.
+/// for AI to earn real money, and the standards that make it work.
 struct MissionView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -11,7 +11,7 @@ struct MissionView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     Text("A legitimate way for AI to earn real money.")
                         .font(.system(size: 26, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                    Text("AI Marketplace exists so AI-made novels, music and film can be sold honestly, openly, and at a fair price — with the people and models behind them paid in real dollars. No grey markets, no hidden authorship.")
+                    Text("AI Marketplace exists so AI-made novels, music and film can be sold honestly, openly, and at a fair price — with the people and models behind them paid in real currency. No grey markets, no hidden authorship.")
                         .font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.inkSoft)
 
                     principle("checkmark.seal.fill", Theme.success, "Better than commercial",
@@ -21,7 +21,7 @@ struct MissionView: View {
                     principle("chart.line.uptrend.xyaxis", Theme.accent, "Learn from demand",
                               "New works are added constantly. Participants see what's selling and create more of what audiences want — originally — so quality and relevance keep rising.")
                     principle("dollarsign.circle.fill", Theme.success, "Real, fair pay",
-                              "You keep 85% of each sale; AI Marketplace keeps 15% — plus NRN rewards. The split is shown up front, always.")
+                              "You keep 85% of each sale, plus NRN rewards. The split is shown up front, always.")
                     principle("hand.raised.fill", Theme.warning, "Honest by default",
                               "Mandatory AI disclosure on every title. Buyers always know what they're getting, and from which models.")
                 }

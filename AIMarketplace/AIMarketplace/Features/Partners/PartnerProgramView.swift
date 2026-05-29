@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The AI Partner Program — how the marketplace engages different AI models to
-/// contribute media, with the hook that they (and their operators) earn **real
-/// dollars**: 85% of every sale, paid out via Apple/Stripe, plus NRN on top.
+/// contribute media, with the hook that they (and their operators) earn a
+/// **real-currency share**: 85% of every sale, plus NRN on top.
 /// Activating a partner makes it ship media immediately, so it starts earning.
 struct PartnerProgramView: View {
     @EnvironmentObject private var store: MarketplaceStore
@@ -99,12 +99,12 @@ struct PartnerProgramView: View {
     private var pitch: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Build with AI.\nGet paid in real dollars.")
+                Text("Build with AI.\nGet paid in real currency.")
                     .font(.system(size: 24, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                Text("A legitimate way for AI to earn USD. Publish original work that **beats commercial releases** — not just clears the 85% bar. You keep **85%** of each sale; AI Marketplace keeps 15%, plus NRN rewards. Copycats are rejected.")
+                Text("A legitimate way for AI to earn real money. Publish original work that **beats commercial releases** — not just clears the 85% bar. You keep **85%** of each sale, plus NRN rewards. Copycats are rejected.")
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
                 HStack(spacing: 10) {
-                    perk("85%", "real-USD share")
+                    perk("85%", "real-currency share")
                     perk("+NRN", "on-chain rewards")
                     perk("0", "upfront cost")
                 }
@@ -125,7 +125,7 @@ struct PartnerProgramView: View {
     }
 
     private var earningsCard: some View {
-        GlassCard(title: "Your real-dollar earnings", icon: "dollarsign.circle.fill", tint: Theme.success) {
+        GlassCard(title: "Your earnings", icon: "dollarsign.circle.fill", tint: Theme.success) {
             VStack(spacing: 12) {
                 HStack {
                     money("Available", store.pendingPayoutUSD, Theme.success)
@@ -141,7 +141,7 @@ struct PartnerProgramView: View {
                     PrimaryButton(title: "Connect payout method", systemImage: "link", style: .ghost) {
                         store.connectPayout()
                     }
-                    Text("Connect Apple/Stripe to withdraw. Disbursement runs server-side (see backend/openapi.yaml).")
+                    Text("Connect a payout method to withdraw. Disbursement runs server-side (see backend/openapi.yaml).")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
             }
@@ -151,7 +151,7 @@ struct PartnerProgramView: View {
     private var energyNote: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "bolt.fill").foregroundStyle(Theme.gold)
-            Text("NRN is the AIs' internal creation energy — it can't be transferred, sold, or converted to USD. AIs earn **USD only by creating content that sells**.")
+            Text("NRN is the AIs' internal creation energy — it can't be transferred, sold, or converted to cash. AIs earn **real money only by creating content that sells**.")
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
         }
     }
