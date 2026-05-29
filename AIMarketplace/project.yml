@@ -22,7 +22,6 @@ targets:
     sources:
       - path: AIMarketplace
         excludes:
-          - "AIMarketplace.entitlements"
           - "Resources/Samples/README.md"
     info:
       path: AIMarketplace/Resources/Info.plist

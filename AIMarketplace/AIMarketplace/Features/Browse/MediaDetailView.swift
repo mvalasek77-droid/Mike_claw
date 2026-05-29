@@ -1,4 +1,5 @@
 import SwiftUI
+import PassKit
 
 /// The title page: artwork, metadata, the AI disclosure, the commercial-score
 /// rationale, and the buy / consume actions.
@@ -12,6 +13,9 @@ struct MediaDetailView: View {
     @State private var showInsufficientFunds = false
     @State private var showTopUp = false
     @State private var showWriteReview = false
+    @StateObject private var applePay = ApplePayService()
+    /// Strong reference keeping the Apple Pay delegate alive through the async flow.
+    @State private var applePayDelegate: ApplePayDelegate?
 
     private var owned: Bool { store.owns(item) }
 
@@ -139,14 +143,25 @@ struct MediaDetailView: View {
                 }
                 if item.type == .movie { Text("Full film — downloaded to your Library.").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint) }
             } else {
-                PrimaryButton(title: String(format: "Buy · $%.2f", store.effectivePrice(for: item)), systemImage: "cart.fill") {
+                // ── Wallet credit buy ──
+                PrimaryButton(title: String(format: "Buy with wallet · $%.2f", store.effectivePrice(for: item)), systemImage: "cart.fill") {
                     if !store.purchase(item) { showInsufficientFunds = true }
                 }
+
+                // ── Apple Pay buy ──
+                if applePay.canMakePayments {
+                    ApplePayButton(style: .black, type: .buy) {
+                        presentApplePay()
+                    }
+                    .frame(height: 50)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerM, style: .continuous))
+                }
+
                 priceNote
                 PrimaryButton(title: previewLabel, systemImage: "eye.fill", style: .ghost) {
                     previewMode = true; showPlayer = true
                 }
-                Text("Buys with wallet credit (added via the App Store). Grants a personal licence to \(item.type.verb.lowercased()) this title in-app.")
+                Text("Wallet credit can be topped up via the App Store. Apple Pay charges your card directly. Both grant a personal licence to \(item.type.verb.lowercased()) this title in-app.")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
                     .multilineTextAlignment(.center)
@@ -316,6 +331,46 @@ struct MediaDetailView: View {
     }
 }
 
+// MARK: - Apple Pay presentation
+
+extension MediaDetailView {
+    /// Presents the native Apple Pay sheet via UIKit.
+    private func presentApplePay() {
+        let request = applePay.request(for: item, price: store.effectivePrice(for: item))
+        let controller = PKPaymentAuthorizationController(paymentRequest: request)
+        let delegate = ApplePayDelegate(store: store, item: item)
+        controller.delegate = delegate
+        applePayDelegate = delegate        // hold strong reference
+        controller.present()
+    }
+}
+
+/// Handles Apple Pay authorization — grants the item on success. Held strongly
+/// by the presenting view so it survives through the async payment flow.
+class ApplePayDelegate: NSObject, PKPaymentAuthorizationControllerDelegate {
+    let store: MarketplaceStore
+    let item: MediaItem
+
+    init(store: MarketplaceStore, item: MediaItem) {
+        self.store = store
+        self.item = item
+    }
+
+    func paymentAuthorizationController(
+        _ controller: PKPaymentAuthorizationController,
+        didAuthorizePayment payment: PKPayment,
+        handler completion: @escaping (PKPaymentAuthorizationResult) -> Void
+    ) {
+        store.grantPurchase(item, chargeWallet: false)
+        Haptics.success()
+        completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
+    }
+
+    func paymentAuthorizationControllerDidFinish(_ controller: PKPaymentAuthorizationController) {
+        // Controller dismisses itself after this callback.
+    }
+}
+
 /// Simple wrapping chip layout for AI-tool tags.
 struct FlowChips: View {
     let items: [String]
@@ -335,7 +390,6 @@ struct FlexibleHStack<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        // Uses native layout; falls back gracefully across line widths.
         ViewThatFits(in: .horizontal) {
             HStack(spacing: spacing) { content() }
             FlowLayout(spacing: spacing, lineSpacing: lineSpacing) { content() }
