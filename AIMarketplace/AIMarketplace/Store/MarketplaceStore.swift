@@ -1032,12 +1032,33 @@ final class MarketplaceStore: ObservableObject {
 
     // MARK: - Publishing pipeline
 
+    /// Synchronous review (metadata-only fallback) — kept for any non-pipeline
+    /// call sites. NEW call sites should use ``runReviewAsync(for:)`` so the
+    /// real-content pipeline runs.
     @discardableResult
     func runReview(for submissionID: UUID) -> AIReviewResult? {
         guard let idx = submissions.firstIndex(where: { $0.id == submissionID }) else { return nil }
         let result = AIEditor.review(submissions[idx].draft, against: catalog)
         submissions[idx].review = result
         submissions[idx].status = result.passed ? .accepted : .rejected
+        return result
+    }
+
+    /// Runs the full on-device content pipeline: opens the uploaded bytes,
+    /// analyses them (NaturalLanguage / AVFoundation / perceptual hashing),
+    /// scores them against the catalogue, and stores the verdict.
+    @discardableResult
+    func runReviewAsync(for submissionID: UUID) async -> AIReviewResult? {
+        guard let idx = submissions.firstIndex(where: { $0.id == submissionID }) else { return nil }
+        let draft = submissions[idx].draft
+        let catalogSnapshot = catalog
+        let analysis = await ReviewPipeline.buildAnalysis(for: draft)
+        let result = AIEditor.review(draft, against: catalogSnapshot, analysis: analysis)
+        // Re-find by id in case state shifted while we were awaiting.
+        if let updated = submissions.firstIndex(where: { $0.id == submissionID }) {
+            submissions[updated].review = result
+            submissions[updated].status = result.passed ? .accepted : .rejected
+        }
         return result
     }
 

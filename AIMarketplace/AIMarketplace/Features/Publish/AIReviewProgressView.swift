@@ -1,9 +1,11 @@
 import SwiftUI
 import Foundation
 
-/// Theatrical "AI Editor is reading your work" animation shown while the
-/// verdict is computed. Cycles through the evaluation passes, then signals
-/// completion to the parent.
+/// Progress UI for the AI Editor's review. The labels here describe the
+/// real on-device passes that `ReviewPipeline` runs — text via
+/// `NaturalLanguage`, audio via `AVAudioFile` PCM reads, video via `AVAsset`
+/// track loads, cover art via perceptual hashing. We do NOT claim to be doing
+/// passes the pipeline doesn't actually perform.
 struct AIReviewProgressView: View {
     let draft: DraftWork
     var onComplete: () -> Void
@@ -13,9 +15,27 @@ struct AIReviewProgressView: View {
 
     private var passes: [String] {
         switch draft.type {
-        case .novel: return ["Ingesting manuscript", "Assessing narrative craft", "Checking originality", "Scoring prose & polish", "Weighing market fit"]
-        case .music: return ["Decoding master", "Analysing production", "Assessing composition", "Checking originality", "Scoring replay value"]
-        case .movie: return ["Ingesting film", "Reviewing cinematography", "Assessing story & pacing", "Checking sound design", "Weighing market fit"]
+        case .novel: return [
+            "Reading manuscript bytes",
+            "Measuring lexical diversity & sentence variance",
+            "Detecting language and filler patterns",
+            "Embedding against the catalogue for originality",
+            "Fingerprinting cover art"
+        ]
+        case .music: return [
+            "Decoding audio file",
+            "Sampling PCM peaks / RMS / dynamic range",
+            "Checking for silence and clipping",
+            "Comparing covers against the catalogue",
+            "Scoring against the 85% commercial floor"
+        ]
+        case .movie: return [
+            "Loading video tracks",
+            "Reading resolution, frame rate and bitrate",
+            "Confirming the asset is playable",
+            "Fingerprinting poster art",
+            "Scoring against the 85% commercial floor"
+        ]
         }
     }
 
@@ -70,7 +90,7 @@ struct AIReviewProgressView: View {
             .screenPadding()
 
             Spacer()
-            Text("The trained AI Editor is scoring against the 85% commercial bar…")
+            Text("Running on device — your file never leaves your phone.")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Theme.inkFaint)
                 .padding(.bottom, 30)
