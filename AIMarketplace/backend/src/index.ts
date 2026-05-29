@@ -23,8 +23,16 @@ interface Env {
   APP_SHARED_SECRET: string;
   STRIPE_WEBHOOK_SECRET: string; // whsec_… from the Stripe webhook endpoint
   STRIPE_CONNECT_TYPE: string; // "express" from wrangler.toml [vars]
+  RESEND_API_KEY?: string;     // for the operator payout-digest email
+  OPERATOR_EMAIL?: string;     // where digests go (defaults below)
+  DIGEST_FROM_EMAIL?: string;  // verified Resend sender (defaults to onboarding)
+  TOPUP_BUFFER_USD?: string;   // keep the platform balance at/above this
   KV?: KVNamespace; // optional: for storing account IDs
 }
+
+const DEFAULT_OPERATOR_EMAIL = "mv19770601@gmail.com";
+const DEFAULT_FROM_EMAIL = "AI Marketplace <onboarding@resend.dev>";
+const DEFAULT_TOPUP_BUFFER_USD = 100;
 
 interface ConnectRequest {
   accountName: string;
@@ -360,6 +368,80 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   return json({ received: true });
 }
 
+// ── Automated funding + operator digest ─────────────────────────────────────
+
+/** Send an email via Resend. No-op (logged) if RESEND_API_KEY isn't set. */
+async function sendEmail(env: Env, subject: string, text: string): Promise<void> {
+  if (!env.RESEND_API_KEY) {
+    console.log(`[email skipped — no RESEND_API_KEY]\n${subject}\n${text}`);
+    return;
+  }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: env.DIGEST_FROM_EMAIL || DEFAULT_FROM_EMAIL,
+      to: [env.OPERATOR_EMAIL || DEFAULT_OPERATOR_EMAIL],
+      subject,
+      text,
+    }),
+  });
+  if (!res.ok) console.error(`Resend ${res.status}: ${await res.text()}`);
+}
+
+/** Keep the platform balance funded so creator transfers never fail. Pulls
+ *  from your linked top-up bank via the Stripe Top-ups API — no manual "Add to
+ *  balance" clicking. Money still moves bank→Stripe (Apple can't fund Stripe
+ *  directly), but it's automatic. */
+async function maybeTopUp(env: Env): Promise<{ toppedUp: number; availableUSD: number }> {
+  const buffer = Number(env.TOPUP_BUFFER_USD ?? DEFAULT_TOPUP_BUFFER_USD);
+  const balance = await stripeGet(`/balance`, env.STRIPE_SECRET_KEY);
+  const availableCents = balance.available?.[0]?.amount ?? 0;
+  const availableUSD = availableCents / 100;
+  if (availableUSD >= buffer) return { toppedUp: 0, availableUSD };
+
+  const amountCents = Math.round((buffer - availableUSD) * 100);
+  // Idempotent per UTC day so a re-run can't double-pull.
+  const idem = `topup_${new Date().toISOString().slice(0, 10)}`;
+  await stripe("/topups", {
+    amount: amountCents,
+    currency: "usd",
+    description: "AI Marketplace payout float",
+    statement_descriptor: "AIMKT TOPUP",
+  }, env.STRIPE_SECRET_KEY, undefined, idem);
+  return { toppedUp: amountCents / 100, availableUSD };
+}
+
+/** Email the operator a summary of which creators are owed money and what to do.
+ *  Reads balances straight from Stripe (the source of truth) — no second ledger. */
+async function sendPayoutDigest(env: Env): Promise<{ accounts: number; owedUSD: number }> {
+  const list = await stripeGet(`/accounts?limit=100`, env.STRIPE_SECRET_KEY);
+  const accounts: any[] = list.data ?? [];
+  const lines: string[] = [];
+  let owedUSD = 0;
+
+  for (const acct of accounts) {
+    const bal = await stripeGet(`/balance?stripe_account=${acct.id}`, env.STRIPE_SECRET_KEY);
+    const cents = (bal.available?.[0]?.amount ?? 0) + (bal.pending?.[0]?.amount ?? 0);
+    if (cents <= 0) continue;
+    owedUSD += cents / 100;
+    const who = acct.metadata?.app_email || acct.email || acct.id;
+    const ready = acct.payouts_enabled ? "auto-pays to their bank" : "⚠️ payouts NOT enabled — creator must finish Stripe onboarding";
+    lines.push(`• ${who} — $${(cents / 100).toFixed(2)} (${ready})  [${acct.id}]`);
+  }
+
+  const body = lines.length
+    ? `Creators with a balance owed:\n\n${lines.join("\n")}\n\n` +
+      `Total owed: $${owedUSD.toFixed(2)}\n\n` +
+      `How payout works: connected creators are paid to their own bank by Stripe automatically. ` +
+      `You only keep the platform float funded (auto-top-up handles this). ` +
+      `For anyone marked ⚠️, nudge them to finish Stripe onboarding — Stripe can't pay them until then.`
+    : `No creator balances owed right now.`;
+
+  await sendEmail(env, `AI Marketplace payouts — $${owedUSD.toFixed(2)} owed across ${lines.length} creator(s)`, body);
+  return { accounts: lines.length, owedUSD };
+}
+
 // ── Router ─────────────────────────────────────────────────────────────────
 
 export default {
@@ -415,6 +497,18 @@ export default {
         return await handleTransfer(request, env);
       }
 
+      // Digest: email the operator who's owed (also runs automatically on cron)
+      if (path === "/payouts/digest" && method === "POST") {
+        const result = await sendPayoutDigest(env);
+        return json(result);
+      }
+
+      // Top-up: ensure the platform float is funded (also runs on cron)
+      if (path === "/payouts/topup" && method === "POST") {
+        const result = await maybeTopUp(env);
+        return json(result);
+      }
+
       // Health check
       if (path === "/") {
         return json({
@@ -426,6 +520,8 @@ export default {
             "GET  /payouts/balance",
             "POST /payouts/cash-out",
             "POST /payouts/transfer",
+            "POST /payouts/digest",
+            "POST /payouts/topup",
             "POST /payouts/webhook",
           ],
         });
@@ -436,5 +532,19 @@ export default {
       console.error(`Error on ${path}:`, err);
       return error(err.message ?? "Internal server error", 500);
     }
+  },
+
+  /** Cron-triggered automation (schedules set in wrangler.toml):
+   *  keep the platform float funded, then email the operator the payout digest. */
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil((async () => {
+      try {
+        const topup = await maybeTopUp(env);
+        const digest = await sendPayoutDigest(env);
+        console.log(`cron: topped up $${topup.toppedUp}, ${digest.accounts} creators owed $${digest.owedUSD}`);
+      } catch (err: any) {
+        console.error("cron error:", err?.message ?? err);
+      }
+    })());
   },
 };

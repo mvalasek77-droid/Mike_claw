@@ -6,6 +6,15 @@ compatibility_date = "2024-12-01"
 #   STRIPE_SECRET_KEY      sk_live_… (or sk_test_… while testing)
 #   APP_SHARED_SECRET      long random string; also pasted into the app
 #   STRIPE_WEBHOOK_SECRET  whsec_… from the Stripe webhook endpoint you create
+#   RESEND_API_KEY         (optional) enables the operator payout-digest email
 
 [vars]
 STRIPE_CONNECT_TYPE = "express"
+# Where the payout digest is emailed, and the verified Resend sender:
+OPERATOR_EMAIL = "mv19770601@gmail.com"
+# DIGEST_FROM_EMAIL = "payouts@yourdomain.com"   # set once your domain is verified
+TOPUP_BUFFER_USD = "100"
+
+# Cron: every 6 hours, fund the float then email the payout digest.
+[triggers]
+crons = ["0 */6 * * *"]
