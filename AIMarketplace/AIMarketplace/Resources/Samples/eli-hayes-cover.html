@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Eli Hayes Cover</title>
+<script>p5.disableFriendlyErrors = true;</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+<style>html,body{margin:0;padding:0;overflow:hidden}canvas{display:block}</style>
+</head><body><script>
+function setup() {
+  createCanvas(1000, 1500);
+  pixelDensity(1);
+  randomSeed(55);
+  noiseSeed(55);
+  noLoop();
+}
+function draw() {
+  colorMode(HSB, 360, 100, 100, 100);
+  background(220, 25, 6);
+  // Deep midnight blue gradient
+  for (let y = 0; y < height; y++) {
+    let t = y / height;
+    stroke(lerp(230, 250, t), lerp(25, 45, t), lerp(10, 4, t));
+    line(0, y, width, y);
+  }
+  // Cobweb lace - central motif
+  strokeWeight(0.5);
+  for (let i = 0; i < 300; i++) {
+    let x1 = random(width), y1 = random(height);
+    let angle = noise(x1*0.003, y1*0.003) * TWO_PI * 2;
+    let len = random(15, 60);
+    let a = random(5, 30);
+    stroke(220 + random(-10, 20), 20, lerp(40, 80, random()), a);
+    line(x1, y1, x1 + cos(angle)*len, y1 + sin(angle)*len);
+  }
+  // Central figure - cracked glass reflections
+  push();
+  translate(width/2, height*0.4);
+  for (let i = 0; i < 60; i++) {
+    let r = random(20, 250);
+    let a1 = random(TWO_PI);
+    let a2 = a1 + random(0.3, 1.5);
+    strokeWeight(random(0.3, 1.5));
+    stroke(45, random(40, 80), random(60, 95), random(10, 35));
+    noFill();
+    arc(0, 0, r*2, r*2, a1, a2);
+  }
+  // Gold veins in the glass
+  for (let i = 0; i < 40; i++) {
+    let angle = random(TWO_PI);
+    let r1 = random(30, 200);
+    let r2 = r1 + random(20, 80);
+    strokeWeight(random(0.5, 1.5));
+    stroke(42, 70, 80, random(20, 50));
+    line(cos(angle)*r1, sin(angle)*r1, cos(angle+random(-0.3,0.3))*r2, sin(angle+random(-0.3,0.3))*r2);
+  }
+  pop();
+  // Floating ghost whispers (thin curved lines)
+  noFill();
+  for (let i = 0; i < 50; i++) {
+    let sx = random(width);
+    let sy = random(height);
+    strokeWeight(random(0.2, 0.8));
+    stroke(45, random(20, 50), random(50, 80), random(5, 20));
+    beginShape();
+    for (let j = 0; j < 6; j++) {
+      curveVertex(sx + random(-80,80), sy + random(-40,40));
+    }
+    endShape();
+  }
+  // Rain / spark dots
+  for (let i = 0; i < 150; i++) {
+    let x = random(width), y = random(height);
+    let sz = random(1, 6);
+    fill(random() > 0.6 ? color(45, 70, 90) : color(220, 30, 70), random(15, 50));
+    noStroke();
+    ellipse(x, y, sz, sz * random(0.3, 1));
+  }
+  // Vignette
+  for (let r = 0; r < 80; r++) {
+    noFill();
+    stroke(230, 30, 4, map(r, 0, 80, 30, 0));
+    strokeWeight(20);
+    rect(-10+r*0.5, -10+r*0.5, width+20-r, height+20-r*1.3);
+  }
+  saveCanvas('eli-hayes', 'png');
+}
+</script></body></html>
