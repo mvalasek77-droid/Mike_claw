@@ -14,7 +14,7 @@ enum Commerce {
     static let sharePercentLabel = "85%"
 
     /// Plain-language pricing explainer shown next to pricing.
-    static let explainer = "You set the price and keep 85% of each sale. Apple's App Store commission comes out of AI Marketplace's share — your 85% is what you actually receive."
+    static let explainer = "You set the price and keep 85% of each sale. Your 85% share is what you actually receive."
 
     // MARK: - Dynamic pricing
 

@@ -439,7 +439,7 @@ final class MarketplaceStore: ObservableObject {
     func partnerEarningsUSD(_ model: String) -> Double {
         catalog
             .filter { $0.aiTools.contains(model) }
-            .reduce(0) { $0 + Double($1.purchases) * $1.price * Commerce.creatorShareRate }
+            .reduce(0) { $0 + Double($1.purchases) * effectivePrice(for: $1) * Commerce.creatorShareRate }
     }
 
     func partnerTitleCount(_ model: String) -> Int {
@@ -892,10 +892,15 @@ final class MarketplaceStore: ObservableObject {
         if chargeWallet { walletBalance = max(0, walletBalance - price) }
         libraryIDs.insert(item.id)
         bumpPurchase(item.id)
+        let earning = Commerce.creatorEarning(on: price)
+        // Credit the user's published works
         if submissions.contains(where: { $0.publishedItemID == item.id }) {
-            let earning = Commerce.creatorEarning(on: price)
             creatorEarnings += earning
-            addPendingPayout(earning)   // withdrawable to real dollars
+        }
+        // Credit the partner models (AI tools) behind any purchased title —
+        // catalog items are Mike Valasek × Suno/Claude/GPT, so partners earn too.
+        if !item.aiTools.isEmpty {
+            addPendingPayout(earning)   // withdrawable to real currency
         }
         persist()
         Haptics.success()
