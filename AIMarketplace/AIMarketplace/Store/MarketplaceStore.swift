@@ -779,14 +779,16 @@ final class MarketplaceStore: ObservableObject {
         item.isEditorOriginal && item.commercialScore < AIReviewResult.threshold
     }
 
+    /// Scout's daily run. Scout PROPOSES candidates; the AI Editor DISPOSES.
+    /// Nothing publishes without the Editor's pass. The 3-item commercial
+    /// slate is the daily floor (always attempted, even when the creator
+    /// has posted) so the storefront keeps stocked; the experimental + niche
+    /// slots are bonus production when the creator isn't posting.
     func runScout() {
         lastScoutRun = .now
         fulfillOpenRequests()
         developScoutContent()
-        guard !userPostedRecently else {
-            logScoutOutreach()
-            return
-        }
+
         let demand = demandSignals(limit: 3)
         func fallbackGenre(for type: MediaType) -> String {
             demand.first { $0.type == type }?.genre ?? ContentFoundry.defaultGenre(for: type)
@@ -794,86 +796,143 @@ final class MarketplaceStore: ObservableObject {
         func randomType(_ salt: String) -> MediaType {
             MediaType.allCases[abs(stableHash("\(scoutDrops.count)\(salt)")) % MediaType.allCases.count]
         }
-        // Always mix the three layers: commercial daily slate + experimental + niche.
-        let plan: [(MediaType, ContentFoundry.ScoutLayer)] = [
+
+        var plan: [(MediaType, ContentFoundry.ScoutLayer)] = [
             (.movie, .commercial), (.music, .commercial), (.novel, .commercial),
-            (randomType("exp"), .experimental), (randomType("niche"), .niche)
         ]
-        var produced: [MediaItem] = []
-        for (i, (type, layer)) in plan.enumerated() {
-            // cycleIndex drives both the every-5th experimental rule (in the
-            // recipe picker) and recipe determinism per item.
-            let cycleIndex = scoutDrops.count + i
-            let recipe = scoutFeed?.pickRecipe(for: typeKey(type), cycleIndex: cycleIndex)
-            let genre = recipe?.genre ?? fallbackGenre(for: type)
-            let item = ContentFoundry.scoutPick(type: type, layer: layer, genre: genre,
-                                                developing: true, seed: scoutDrops.count + produced.count)
-            catalog.insert(item, at: 0)
-            produced.append(item)
-            if let model = item.aiTools.first {
-                let cost = AICoin.energyCost(type)
-                energyLedger?.draw(cost, by: model, memo: "Scout developing “\(item.title)”")
-            }
-            scoutLog.insert(ScoutEntry(date: .now,
-                message: scoutLogMessage(item: item, layer: layer, type: type, recipe: recipe),
-                kind: .produced, relatedItemID: item.id), at: 0)
-            // If a recipe is in play, ask OnDeviceAI to draft a synopsis
-            // shaped by the recipe's formula. Fire-and-forget; the templated
-            // synopsis stays until the rewrite lands, so nothing is blocked.
-            if let recipe {
-                let hint = recipe.formula
-                let itemID = item.id
-                let itemType = item.type
-                let itemTitle = item.title
-                let itemGenre = item.genre
-                Task { [weak self] in
-                    await self?.enrichSynopsis(itemID: itemID, type: itemType,
-                                               title: itemTitle, genre: itemGenre, hint: hint)
-                }
-            }
+        if !userPostedRecently {
+            plan.append((randomType("exp"), .experimental))
+            plan.append((randomType("niche"), .niche))
+        } else {
+            logScoutOutreach()
         }
-        scoutDrops.append(contentsOf: produced)
-        if scoutDrops.count > 80 { scoutDrops.removeFirst(scoutDrops.count - 80) }
-        trimScoutLog()
+
+        // Vetted production runs off the main path: each slot generates real
+        // prose via OnDeviceAI, hands the draft to the Editor, and publishes
+        // only on a pass. We don't block the UI on those awaits.
+        let snapshot = catalog
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            for (i, (type, layer)) in plan.enumerated() {
+                await self.produceVettedItem(type: type, layer: layer,
+                                             cycleIndex: self.scoutDrops.count + i,
+                                             fallbackGenre: fallbackGenre(for: type),
+                                             catalogSnapshot: snapshot)
+            }
+            if self.scoutDrops.count > 80 {
+                self.scoutDrops.removeFirst(self.scoutDrops.count - 80)
+            }
+            self.trimScoutLog()
+        }
     }
 
     private func typeKey(_ t: MediaType) -> String {
         switch t { case .novel: return "novel"; case .music: return "music"; case .movie: return "movie" }
     }
 
-    /// Background rewrite: drafts a recipe-shaped synopsis via OnDeviceAI and
-    /// updates the matching catalogue + scoutDrops entries. No-op if the
-    /// generator returns nil (older OS, model unavailable) or the entry has
-    /// already been removed from the catalogue (capped at 80).
-    private func enrichSynopsis(itemID: UUID, type: MediaType,
-                                title: String, genre: String, hint: String) async {
-        guard let drafted = await OnDeviceAI.draftSynopsis(type: type, title: title,
-                                                           genre: genre, existing: hint),
-              !drafted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        if let idx = catalog.firstIndex(where: { $0.id == itemID }) {
-            catalog[idx].synopsis = drafted
+    /// The Scout-with-Editor loop, per slot. Up to 3 recipe attempts; only a
+    /// draft that clears AIReviewResult.threshold (85) is published, and its
+    /// commercialScore is set to the Editor's overall — Scout never gets to
+    /// self-assert quality.
+    private func produceVettedItem(type: MediaType, layer: ContentFoundry.ScoutLayer,
+                                   cycleIndex: Int, fallbackGenre: String,
+                                   catalogSnapshot: [MediaItem]) async {
+        let maxAttempts = 3
+        for attempt in 0..<maxAttempts {
+            // Vary the recipe cycle index per attempt so re-rolls don't pick the same one.
+            let recipe = scoutFeed?.pickRecipe(for: typeKey(type),
+                                               cycleIndex: cycleIndex + attempt * 13)
+            let genre = recipe?.genre ?? fallbackGenre
+
+            // 1. Compose a skeleton (title, model, slug, length, price band).
+            var item = ContentFoundry.scoutPick(type: type, layer: layer, genre: genre,
+                                                developing: false,
+                                                seed: scoutDrops.count + attempt)
+
+            // 2. Author real prose via OnDeviceAI so the Editor has something
+            //    real to analyse — not metadata theatre.
+            let hint = recipe?.formula ?? ""
+            if let synopsis = await OnDeviceAI.draftSynopsis(type: type, title: item.title,
+                                                             genre: item.genre, existing: hint),
+               !synopsis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                item.synopsis = synopsis
+            }
+
+            // 3. Same quality bar that user submissions face. The Editor's
+            //    on-device pipeline (NaturalLanguage, AVFoundation, Vision)
+            //    actually inspects the artifact.
+            let draft = buildScoutDraft(from: item, recipe: recipe)
+            let verdict = await ReviewPipeline.review(draft, against: catalogSnapshot)
+
+            if verdict.passed {
+                item.commercialScore = verdict.overall
+                catalog.insert(item, at: 0)
+                scoutDrops.append(item)
+                if let model = item.aiTools.first {
+                    let cost = AICoin.energyCost(type)
+                    energyLedger?.draw(cost, by: model, memo: "Scout released “\(item.title)”")
+                }
+                scoutLog.insert(ScoutEntry(date: .now,
+                    message: editorPassedMessage(item: item, layer: layer, type: type,
+                                                  recipe: recipe, verdict: verdict),
+                    kind: .produced, relatedItemID: item.id), at: 0)
+                return
+            }
+
+            // Editor rejected this attempt — log and re-roll.
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "Editor rejected Scout's \(layer.rawValue) \(type.title.lowercased()) draft “\(item.title)” at \(verdict.overall)/100 (bar is \(AIReviewResult.threshold)). Trying a different recipe.",
+                kind: .brief, relatedItemID: nil), at: 0)
         }
-        if let idx = scoutDrops.firstIndex(where: { $0.id == itemID }) {
-            scoutDrops[idx].synopsis = drafted
-        }
+
+        // No attempt cleared the bar. Be honest about the empty slot.
+        scoutLog.insert(ScoutEntry(date: .now,
+            message: "Scout couldn't clear the \(AIReviewResult.threshold)/100 editor bar for a \(type.title.lowercased()) after \(maxAttempts) tries — the slot stays open until next cycle.",
+            kind: .brief, relatedItemID: nil), at: 0)
     }
 
-    /// Builds the Scout's log entry. When a feed-driven recipe is in play, the
-    /// entry surfaces the formula and the masters it's drawing on, so users
-    /// can see what Scout is actually composing against rather than the
-    /// previous templated phrase.
-    private func scoutLogMessage(item: MediaItem, layer: ContentFoundry.ScoutLayer,
-                                 type: MediaType, recipe: ScoutFeed.Recipe?) -> String {
-        let base = "The Scout started a \(layer.rawValue) \(type.title.lowercased()): “\(item.title)” by \(item.creator) — premiering soon, in final polish."
-        guard let recipe else { return base }
-        let mastersNote: String
-        if recipe.masters.isEmpty {
-            mastersNote = ""
-        } else {
-            mastersNote = " Drawing on \(recipe.masters.prefix(2).joined(separator: " and "))."
+    /// Builds a DraftWork from a Scout-composed item so the Editor can run
+    /// real analysis. House-content attestation is set automatically — Scout
+    /// produces under the marketplace's ownership, not a third creator's.
+    /// For novels, the synopsis prose is fed in as manuscriptText so the
+    /// NaturalLanguage analyser sees real bytes. Music/film would need real
+    /// audio/video the on-device generator can't produce, so they typically
+    /// score below 85 and stay open — that's the honest outcome.
+    private func buildScoutDraft(from item: MediaItem, recipe: ScoutFeed.Recipe?) -> DraftWork {
+        var d = DraftWork()
+        d.type = item.type
+        d.title = item.title
+        d.creator = item.creator
+        d.genre = item.genre
+        d.synopsis = item.synopsis
+        d.aiTools = item.aiTools
+        d.fileName = "scout-\(item.id.uuidString.prefix(8)).draft"
+        d.fileSizeMB = 0.5
+        d.length = item.length
+        d.price = item.price
+        if item.type == .novel {
+            d.manuscriptText = item.synopsis
         }
+        d.attestOwnsWork = true
+        d.attestOwnsPrompts = true
+        d.attestNoInfringement = true
+        d.attestSignature = "AI Marketplace Scout"
+        _ = recipe // reserved: future verdicts may want the recipe in metadata
+        return d
+    }
+
+    /// Pass-side scout log entry. Surfaces the Editor's score so creators
+    /// see exactly what quality threshold the storefront publishes at.
+    private func editorPassedMessage(item: MediaItem, layer: ContentFoundry.ScoutLayer,
+                                     type: MediaType, recipe: ScoutFeed.Recipe?,
+                                     verdict: AIReviewResult) -> String {
+        let base = "Editor passed Scout's \(layer.rawValue) \(type.title.lowercased()) at \(verdict.overall)/100: “\(item.title)” by \(item.creator) — live in the catalogue."
+        guard let recipe else { return base }
+        let mastersNote = recipe.masters.isEmpty ? "" :
+            " Drawing on \(recipe.masters.prefix(2).joined(separator: " and "))."
         let formulaNote = " Formula: \(recipe.formula)."
-        let experimentalNote = recipe.experimental ? " Experimental — breaking the formula on purpose." : ""
+        let experimentalNote = recipe.experimental ?
+            " Experimental — breaking the formula on purpose." : ""
         return base + mastersNote + formulaNote + experimentalNote
     }
 
