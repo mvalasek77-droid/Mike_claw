@@ -74,7 +74,7 @@ struct SplashView: View {
                     .tracking(4)
                     .foregroundStyle(Theme.ink)
                     .opacity(appear ? 1 : 0)
-                Text("Where machine-made stories go to sell out.")
+                Text("Where machine-made stories find their audience.")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Theme.inkSoft)
                     .opacity(appear ? 1 : 0)

@@ -652,13 +652,13 @@ private struct AttestationStep: View {
             Text("Creator attestation")
                 .font(.system(size: 16, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.ink)
-            Text("All three boxes below must be ticked before the AI Editor will review your work. False claims can result in removal and forfeit earnings.")
+            Text("All three boxes below must be ticked before the AI Editor will review your work. False claims may result in removal and the forfeiture of earnings.")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Theme.inkSoft)
 
             attestRow(
                 title: "I own this work",
-                detail: "I created or hold the rights to this \(draft.contentVerbed). It is not a substantially copy of any existing copyrighted material.",
+                detail: "I created or hold the rights to this \(draft.contentVerbed). It is not a substantial copy of any existing copyrighted material.",
                 bound: $draft.attestOwnsWork
             )
             attestRow(

@@ -59,7 +59,7 @@ struct RegisterView: View {
                                      + Text("Terms of Use").foregroundColor(Theme.kdp)
                                      + Text(" and ")
                                      + Text("Privacy Policy").foregroundColor(Theme.kdp)
-                                     + Text(". I accept that there is no tolerance for objectionable, infringing, or hateful content — titles violating it will be removed and accounts can be suspended. I confirm I hold the rights to anything I publish and will accurately disclose every AI system used."))
+                                     + Text(". I accept that there is no tolerance for objectionable, infringing, or hateful content — titles violating these rules will be removed and accounts may be suspended. I confirm I hold the rights to all content I publish and will accurately disclose every AI system used."))
                                         .font(.system(size: 12.5, weight: .medium))
                                         .foregroundStyle(Theme.inkSoft)
                                         .multilineTextAlignment(.leading)
@@ -156,7 +156,7 @@ struct RegisterView: View {
                         .foregroundStyle(Theme.kdp)
                 }
             }
-            Text("Publish AI-made novels, music and film. Pass the AI Editor's 85% commercial bar and go live to millions of viewers (hopefully).")
+            Text("Publish AI-made novels, music, and film. Pass the AI Editor's 85% commercial-quality bar and reach a global audience.")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Theme.inkSoft)
         }

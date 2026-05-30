@@ -32,7 +32,7 @@ struct TopUpView: View {
                         }
                     }
 
-                    Text("Purchases are processed by Apple's App Store. Of each sale, creators keep 85% and AI Marketplace keeps 15%.")
+                    Text("Purchases are processed by Apple's App Store. On every sale Apple takes its App Store commission first; of the net, creators keep 85% and AI Marketplace keeps 15%.")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(18)
