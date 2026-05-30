@@ -572,14 +572,67 @@ final class MarketplaceStore: ObservableObject {
     @Published var payoutSharedSecret: String = "" { didSet { persist() } }
     /// Transient — surfaces the last payout-API failure to the UI. Not persisted.
     @Published var lastPayoutError: String? = nil
+    /// Stripe-reported: the creator finished the onboarding form (regardless
+    /// of whether Stripe has finished verifying them). Together with
+    /// payoutConnected, lets the UI distinguish "abandoned mid-flow",
+    /// "Stripe still reviewing", and "ready to receive payouts."
+    @Published var payoutDetailsSubmitted: Bool = false { didSet { persist() } }
 
     func connectPayout() {
-        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty else {
-            // No worker configured yet — mark as connected for demo mode
-            payoutConnected = true
+        // Pre-flight: the Worker requires both name and email. If either is
+        // missing (Sign-in-with-Apple sometimes returns no name), surface a
+        // clear error instead of failing silently against the API.
+        let trimmedName = accountName.trimmingCharacters(in: .whitespaces)
+        let trimmedEmail = accountEmail.trimmingCharacters(in: .whitespaces)
+        guard !trimmedName.isEmpty, !trimmedEmail.isEmpty else {
+            lastPayoutError = "Add a publisher name and email in Profile before connecting Stripe."
             return
         }
+        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty else {
+            // Previously this silently set payoutConnected = true (a lie —
+            // no Stripe account exists). Now it tells the truth: the operator
+            // needs to configure the Worker URL + Secret in Payout Setup
+            // before any real Stripe onboarding can happen.
+            lastPayoutError = "Configure your Worker URL + Secret in Payout Setup first — without them the app can't reach Stripe."
+            return
+        }
+        lastPayoutError = nil
         Task { await connectPayoutRemote() }
+    }
+
+    /// Resume a Stripe onboarding flow the creator started but didn't finish.
+    /// Asks the Worker for a fresh account_links URL on the EXISTING
+    /// connectAccountID (account_links URLs expire in minutes), and re-opens
+    /// Safari to Stripe's hosted onboarding form. No new Stripe account.
+    func resumePayoutOnboarding() {
+        guard let accountId = connectAccountID, !accountId.isEmpty,
+              !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
+              let url = URL(string: "\(payoutBaseURL)/payouts/onboarding-link") else {
+            lastPayoutError = "Can't resume — try connecting from scratch."
+            return
+        }
+        lastPayoutError = nil
+        Task {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["account_id": accountId])
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                    self.lastPayoutError = "Couldn't reach Stripe onboarding (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0))."
+                    return
+                }
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let onboardingUrl = json["onboardingUrl"] as? String,
+                   let link = URL(string: onboardingUrl) {
+                    await UIApplication.shared.open(link)
+                }
+            } catch {
+                self.lastPayoutError = "Couldn't reach Stripe onboarding: \(error.localizedDescription)"
+            }
+        }
     }
 
     private func connectPayoutRemote() async {
@@ -593,7 +646,15 @@ final class MarketplaceStore: ObservableObject {
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+            guard let http = response as? HTTPURLResponse else {
+                lastPayoutError = "No response from the payout backend."
+                return
+            }
+            guard http.statusCode == 200 else {
+                let serverMsg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+                lastPayoutError = "Stripe onboarding failed (\(http.statusCode))\(serverMsg.map { ": \($0)" } ?? "")."
+                return
+            }
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let accountId = json["accountId"] as? String,
                let onboardingUrl = json["onboardingUrl"] as? String {
@@ -604,11 +665,14 @@ final class MarketplaceStore: ObservableObject {
                 }
             }
         } catch {
-            print("Payout connect error: \(error)")
+            lastPayoutError = "Couldn't reach the payout backend: \(error.localizedDescription)"
         }
     }
 
     /// Check Connect account status (called after onboarding returns).
+    /// Reads three Stripe-reported flags so the UI can tell the difference
+    /// between "abandoned mid-flow", "Stripe is still verifying you", and
+    /// "you're ready to receive payouts."
     func refreshPayoutStatus() async {
         guard let accountId = connectAccountID, !payoutBaseURL.isEmpty else { return }
         guard let url = URL(string: "\(payoutBaseURL)/payouts/status?account_id=\(accountId)") else { return }
@@ -621,10 +685,13 @@ final class MarketplaceStore: ObservableObject {
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 let chargesEnabled = json["chargesEnabled"] as? Bool ?? false
                 let payoutsEnabled = json["payoutsEnabled"] as? Bool ?? false
+                let detailsSubmitted = json["detailsSubmitted"] as? Bool ?? false
+                payoutDetailsSubmitted = detailsSubmitted
                 payoutConnected = chargesEnabled && payoutsEnabled
             }
         } catch {
-            print("Payout status error: \(error)")
+            // Non-fatal: leave existing state alone, surface only if user is
+            // actively viewing payout config (handled in the view).
         }
     }
 

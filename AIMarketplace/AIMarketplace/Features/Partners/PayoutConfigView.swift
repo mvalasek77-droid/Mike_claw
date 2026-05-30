@@ -15,6 +15,20 @@ struct PayoutConfigView: View {
     @State private var sharedSecret: String = ""
     @State private var saved = false
 
+    /// What stage of onboarding the creator is in — drives which CTA shows.
+    private enum Stage {
+        case notStarted        // no Stripe account yet
+        case incompleteFlow    // account exists; creator abandoned Stripe form
+        case underReview       // form submitted; Stripe still verifying
+        case ready             // payouts enabled
+    }
+    private var stage: Stage {
+        if store.payoutConnected { return .ready }
+        if store.connectAccountID != nil && store.payoutDetailsSubmitted { return .underReview }
+        if store.connectAccountID != nil { return .incompleteFlow }
+        return .notStarted
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -24,6 +38,10 @@ struct PayoutConfigView: View {
                         hero
                         configFields
                         statusCard
+                        actionCard
+                        if let err = store.lastPayoutError {
+                            errorCard(err)
+                        }
                         saveButton
                     }
                     .screenPadding()
@@ -42,6 +60,12 @@ struct PayoutConfigView: View {
         .onAppear {
             workerURL = store.payoutBaseURL
             sharedSecret = store.payoutSharedSecret
+            // Refresh live status from Stripe whenever the screen opens, so
+            // the creator sees the current state (especially after returning
+            // from Stripe in Safari).
+            if store.connectAccountID != nil && !store.payoutBaseURL.isEmpty {
+                Task { await store.refreshPayoutStatus() }
+            }
         }
     }
 
@@ -100,7 +124,9 @@ struct PayoutConfigView: View {
             VStack(alignment: .leading, spacing: 8) {
                 statusRow("Worker configured", !store.payoutBaseURL.isEmpty)
                 statusRow("Secret set", !store.payoutSharedSecret.isEmpty)
-                statusRow("Stripe connected", store.payoutConnected)
+                statusRow("Stripe account created", store.connectAccountID != nil)
+                statusRow("Onboarding form submitted", store.payoutDetailsSubmitted)
+                statusRow("Payouts enabled", store.payoutConnected)
                 if let accountId = store.connectAccountID {
                     Text("Account: \(accountId)")
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -108,6 +134,69 @@ struct PayoutConfigView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var actionCard: some View {
+        switch stage {
+        case .notStarted:
+            PrimaryButton(title: "Connect Stripe",
+                          systemImage: "link",
+                          tint: Theme.success,
+                          enabled: !store.payoutBaseURL.isEmpty
+                                && !store.payoutSharedSecret.isEmpty) {
+                store.connectPayout()
+            }
+            Text("Opens Stripe's hosted onboarding in Safari. Switch back to the app when you're done — your status will refresh automatically.")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.inkFaint)
+                .multilineTextAlignment(.center)
+        case .incompleteFlow:
+            PrimaryButton(title: "Resume Stripe onboarding",
+                          systemImage: "arrow.up.right.square.fill",
+                          tint: Theme.warning) {
+                store.resumePayoutOnboarding()
+            }
+            Text("You started Stripe onboarding but didn't finish. Tap to pick up where you left off — Stripe's link expires after a few minutes, so we'll fetch a fresh one.")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.inkFaint)
+                .multilineTextAlignment(.center)
+        case .underReview:
+            Label("Stripe is verifying your details. This usually takes minutes; can take up to 24 hours for some accounts. Payouts unlock once Stripe is satisfied.",
+                  systemImage: "clock.fill")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.warning.opacity(0.10)))
+            Button("Re-check status") {
+                Task { await store.refreshPayoutStatus() }
+            }
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(Theme.accent)
+        case .ready:
+            Label("Payouts ready. Your share of each sale will land in your bank automatically via Stripe.",
+                  systemImage: "checkmark.seal.fill")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.success)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.success.opacity(0.10)))
+        }
+    }
+
+    private func errorCard(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(Theme.warning)
+            Text(message)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.ink)
+            Spacer()
+            Button("Dismiss") { store.lastPayoutError = nil }
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.accent)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.warning.opacity(0.10)))
     }
 
     private func statusRow(_ label: String, _ on: Bool) -> some View {

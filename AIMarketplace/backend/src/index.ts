@@ -52,8 +52,17 @@ interface Env {
   // a real cost in its response, the Worker prefers that; else uses these.
   MUSIC_GEN_COST_USD?: string;
   VIDEO_GEN_COST_USD?: string;
+  // Base URL the Stripe-hosted onboarding flow bounces back to after a
+  // creator finishes or abandons. Must be a real, reachable page — point
+  // it at the public docs site (GitHub Pages /docs serves payout-complete
+  // .html + payout-refresh.html). The creator sees a friendly "Return to
+  // the app" page rather than a 404, and the app's scenePhase observer
+  // refreshes payout status when they switch back.
+  PAYOUT_RETURN_BASE?: string;
   KV?: KVNamespace; // KV namespace used for spend tracking + account map
 }
+
+const DEFAULT_PAYOUT_RETURN_BASE = "https://mvalasek77-droid.github.io/Mike_claw";
 
 const DEFAULT_OPERATOR_EMAIL = "mvalasek77@gmail.com";
 const DEFAULT_FROM_EMAIL = "AI Marketplace <onboarding@resend.dev>";
@@ -201,10 +210,11 @@ async function handleConnect(request: Request, env: Env): Promise<Response> {
 
   // Step 2: Create an account link for onboarding
   // The return_url brings the user back into the app via deep link
+  const returnBase = env.PAYOUT_RETURN_BASE || DEFAULT_PAYOUT_RETURN_BASE;
   const accountLink = await stripe("/account_links", {
     account: account.id,
-    refresh_url: `https://aimarketplace.app/payout/refresh?account=${account.id}`,
-    return_url: `https://aimarketplace.app/payout/complete?account=${account.id}`,
+    refresh_url: `${returnBase}/payout-refresh.html?account=${account.id}`,
+    return_url: `${returnBase}/payout-complete.html?account=${account.id}`,
     type: "account_onboarding",
   }, env.STRIPE_SECRET_KEY);
 
@@ -213,6 +223,23 @@ async function handleConnect(request: Request, env: Env): Promise<Response> {
     onboardingUrl: accountLink.url,
     connectType: env.STRIPE_CONNECT_TYPE || "express",
   });
+}
+
+/** POST /payouts/onboarding-link — fresh onboarding URL for an EXISTING
+ *  Connect account. Stripe's account_links URLs expire in minutes, so a
+ *  creator who returns to finish onboarding after an interruption needs a
+ *  new link — without re-creating the account. */
+async function handleOnboardingLink(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { account_id?: string };
+  if (!body.account_id) return error("account_id required");
+  const returnBase = env.PAYOUT_RETURN_BASE || DEFAULT_PAYOUT_RETURN_BASE;
+  const link = await stripe("/account_links", {
+    account: body.account_id,
+    refresh_url: `${returnBase}/payout-refresh.html?account=${body.account_id}`,
+    return_url: `${returnBase}/payout-complete.html?account=${body.account_id}`,
+    type: "account_onboarding",
+  }, env.STRIPE_SECRET_KEY);
+  return json({ accountId: body.account_id, onboardingUrl: link.url });
 }
 
 /** GET /payouts/status?account_id=acct_xxx — Check Connect account status */
@@ -681,6 +708,11 @@ export default {
       // Connect: create account + get onboarding link
       if (path === "/payouts/connect" && method === "POST") {
         return await handleConnect(request, env);
+      }
+
+      // Fresh onboarding link for an existing Connect account (resume flow).
+      if (path === "/payouts/onboarding-link" && method === "POST") {
+        return await handleOnboardingLink(request, env);
       }
 
       // Status: is the account fully onboarded?
