@@ -162,12 +162,23 @@ extension MediaItem {
 /// Curated AI-tool suggestions surfaced in the disclosure step, grouped by
 /// the kind of media they typically generate.
 enum AIToolCatalog {
-    /// Every model the marketplace knows about, across all media types.
-    static var allModels: [String] {
-        MediaType.allCases.flatMap { suggestions(for: $0) }
+    /// Operator-supplied model list from the Scout feed, when one has been
+    /// fetched. Wins over the bundled fallback below so the picker reflects
+    /// today's catalogue (GPT-5, Sora 2, etc.) rather than ship-day's list.
+    private(set) static var feedModels: [String] = []
+
+    static func applyFeedModels(_ models: [String]) {
+        feedModels = models
     }
 
-    /// The media type a given model produces (first match wins).
+    /// Every model the marketplace knows about, across all media types.
+    static var allModels: [String] {
+        if !feedModels.isEmpty { return feedModels }
+        return MediaType.allCases.flatMap { suggestions(for: $0) }
+    }
+
+    /// The media type a given model produces (first match wins). Uses the
+    /// bundled categorisation; the feed list is flat so we fall back here.
     static func type(for tool: String) -> MediaType? {
         MediaType.allCases.first { suggestions(for: $0).contains(tool) }
     }

@@ -6,6 +6,7 @@ struct AIMarketplaceApp: App {
     @StateObject private var store = MarketplaceStore()
     @StateObject private var ledger = AICoinLedger()
     @StateObject private var moderation = ModerationStore()
+    @StateObject private var scoutFeed = ScoutFeedService()
 
     var body: some Scene {
         WindowGroup {
@@ -13,6 +14,7 @@ struct AIMarketplaceApp: App {
                 .environmentObject(store)
                 .environmentObject(ledger)
                 .environmentObject(moderation)
+                .environmentObject(scoutFeed)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
         }
@@ -24,6 +26,7 @@ struct RootView: View {
     @State private var showSplash = true
 
     @EnvironmentObject private var ledger: AICoinLedger
+    @EnvironmentObject private var scoutFeed: ScoutFeedService
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -45,6 +48,12 @@ struct RootView: View {
         .motion(.easeInOut(duration: 0.4), value: store.isRegistered)
         .onAppear {
             store.attachEnergy(ledger)
+            store.attachScoutFeed(scoutFeed)
+            // Configure the Scout feed against the same Worker as payouts, and
+            // pull the latest corpus if the cached copy is older than 12h.
+            scoutFeed.configure(baseURL: store.payoutBaseURL,
+                                sharedSecret: store.payoutSharedSecret)
+            Task { await scoutFeed.refreshIfDue() }
             store.runScoutIfDue()   // the Scout is loose: sources content daily
         }
         // When the creator returns from Stripe onboarding in Safari, the app

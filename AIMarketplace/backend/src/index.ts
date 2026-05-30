@@ -18,6 +18,13 @@
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
+// ── Imports ────────────────────────────────────────────────────────────────
+
+// Operator-curated reference corpus the Scout draws from. Edit this JSON
+// (canonical bestsellers, master patterns, recipes, current charts, model
+// list) and redeploy — there's no other place data updates need to land.
+import scoutFeedData from "./scoutFeed.json";
+
 interface Env {
   STRIPE_SECRET_KEY: string;
   APP_SHARED_SECRET: string;
@@ -574,6 +581,24 @@ export default {
       // (Apple Review Guideline 1.2 — UGC apps require an in-app report flow).
       if (path === "/moderation/report" && method === "POST") {
         return await handleReport(request, env);
+      }
+
+      // Scout feed: the curated reference corpus the app's Scout draws from
+      // (100 canonical bestsellers per medium + 10 masters per role + recipes
+      // + current charts + model list). GET; auth-required to keep the corpus
+      // private to the platform. ETag enables 12h client caching.
+      if (path === "/scout/feed" && method === "GET") {
+        const etag = `"sf-${scoutFeedData.version}"`;
+        if (request.headers.get("If-None-Match") === etag) {
+          return new Response(null, { status: 304, headers: { "ETag": etag } });
+        }
+        return new Response(JSON.stringify(scoutFeedData), {
+          headers: {
+            "Content-Type": "application/json",
+            "ETag": etag,
+            "Cache-Control": "private, max-age=43200",
+          },
+        });
       }
 
       // Account deletion: close the connected Stripe account so user data

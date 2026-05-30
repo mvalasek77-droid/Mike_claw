@@ -65,8 +65,10 @@ final class MarketplaceStore: ObservableObject {
     private var loading = false
     /// The creation-energy ledger; productions draw/return float energy through it.
     var energyLedger: AICoinLedger?
+    weak var scoutFeed: ScoutFeedService?
 
     func attachEnergy(_ ledger: AICoinLedger) { energyLedger = ledger }
+    func attachScoutFeed(_ service: ScoutFeedService) { scoutFeed = service }
 
     init(catalog: [MediaItem] = SampleData.catalog()) {
         self.catalog = catalog
@@ -786,7 +788,7 @@ final class MarketplaceStore: ObservableObject {
             return
         }
         let demand = demandSignals(limit: 3)
-        func genre(for type: MediaType) -> String {
+        func fallbackGenre(for type: MediaType) -> String {
             demand.first { $0.type == type }?.genre ?? ContentFoundry.defaultGenre(for: type)
         }
         func randomType(_ salt: String) -> MediaType {
@@ -798,8 +800,13 @@ final class MarketplaceStore: ObservableObject {
             (randomType("exp"), .experimental), (randomType("niche"), .niche)
         ]
         var produced: [MediaItem] = []
-        for (type, layer) in plan {
-            let item = ContentFoundry.scoutPick(type: type, layer: layer, genre: genre(for: type),
+        for (i, (type, layer)) in plan.enumerated() {
+            // cycleIndex drives both the every-5th experimental rule (in the
+            // recipe picker) and recipe determinism per item.
+            let cycleIndex = scoutDrops.count + i
+            let recipe = scoutFeed?.pickRecipe(for: typeKey(type), cycleIndex: cycleIndex)
+            let genre = recipe?.genre ?? fallbackGenre(for: type)
+            let item = ContentFoundry.scoutPick(type: type, layer: layer, genre: genre,
                                                 developing: true, seed: scoutDrops.count + produced.count)
             catalog.insert(item, at: 0)
             produced.append(item)
@@ -808,12 +815,35 @@ final class MarketplaceStore: ObservableObject {
                 energyLedger?.draw(cost, by: model, memo: "Scout developing “\(item.title)”")
             }
             scoutLog.insert(ScoutEntry(date: .now,
-                message: "The Scout started a \(layer.rawValue) \(type.title.lowercased()): “\(item.title)” by \(item.creator) — premiering soon, in final polish.",
+                message: scoutLogMessage(item: item, layer: layer, type: type, recipe: recipe),
                 kind: .produced, relatedItemID: item.id), at: 0)
         }
         scoutDrops.append(contentsOf: produced)
         if scoutDrops.count > 80 { scoutDrops.removeFirst(scoutDrops.count - 80) }
         trimScoutLog()
+    }
+
+    private func typeKey(_ t: MediaType) -> String {
+        switch t { case .novel: return "novel"; case .music: return "music"; case .movie: return "movie" }
+    }
+
+    /// Builds the Scout's log entry. When a feed-driven recipe is in play, the
+    /// entry surfaces the formula and the masters it's drawing on, so users
+    /// can see what Scout is actually composing against rather than the
+    /// previous templated phrase.
+    private func scoutLogMessage(item: MediaItem, layer: ContentFoundry.ScoutLayer,
+                                 type: MediaType, recipe: ScoutFeed.Recipe?) -> String {
+        let base = "The Scout started a \(layer.rawValue) \(type.title.lowercased()): “\(item.title)” by \(item.creator) — premiering soon, in final polish."
+        guard let recipe else { return base }
+        let mastersNote: String
+        if recipe.masters.isEmpty {
+            mastersNote = ""
+        } else {
+            mastersNote = " Drawing on \(recipe.masters.prefix(2).joined(separator: " and "))."
+        }
+        let formulaNote = " Formula: \(recipe.formula)."
+        let experimentalNote = recipe.experimental ? " Experimental — breaking the formula on purpose." : ""
+        return base + mastersNote + formulaNote + experimentalNote
     }
 
     /// Each cycle the Scout improves its in-progress (sub-85%) titles; ones that
