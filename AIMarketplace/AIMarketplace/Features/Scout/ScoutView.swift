@@ -184,7 +184,13 @@ struct ScoutView: View {
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
             } else if let score = p.editorScore {
-                Text("Editor verdict: \(score)/100. \(p.statusNote)")
+                let usageBits: String = {
+                    var parts: [String] = []
+                    if let t = p.actualTokens { parts.append("\(t) tokens used") }
+                    if let u = p.actualUSD, u > 0 { parts.append("$\(String(format: "%.2f", u)) spent") }
+                    return parts.isEmpty ? "" : " · \(parts.joined(separator: " · "))"
+                }()
+                Text("Editor verdict: \(score)/100\(usageBits). \(p.statusNote)")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
             } else if !p.statusNote.isEmpty {

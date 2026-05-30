@@ -20,6 +20,25 @@ TOPUP_MAX_USD = "200"
 # your platform account has multiple verified Top-up sources).
 # TOPUP_SOURCE_ID = "ba_xxx"
 
+# Scout media generation (audio/video). All optional. Without API keys set,
+# /scout/generate-media returns provider:"none" and the app falls back to
+# the on-device prose-as-artifact path. With keys, the Worker forwards
+# prompts to the provider and tracks per-month spend in KV.
+# MUSIC_GEN_API_URL = "https://api.suno.example/generate"
+# MUSIC_GEN_API_KEY = "set via: wrangler secret put MUSIC_GEN_API_KEY"
+# VIDEO_GEN_API_URL = "https://api.runway.example/generate"
+# VIDEO_GEN_API_KEY = "set via: wrangler secret put VIDEO_GEN_API_KEY"
+MAX_MEDIA_GEN_USD_MONTH = "50"
+MUSIC_GEN_COST_USD = "0.15"
+VIDEO_GEN_COST_USD = "0.60"
+
+# KV namespace required for spend tracking. Create with:
+#   wrangler kv namespace create AIMKT_KV
+# then paste the returned id into the binding below and uncomment.
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
 # Cron: every 6 hours, fund the float then email the payout digest.
 [triggers]
 crons = ["0 */6 * * *"]

@@ -957,6 +957,19 @@ final class MarketplaceStore: ObservableObject {
         }
     }
 
+    /// Counts Foundation Model tokens from the actual generated text. English
+    /// approximation: 1.33 tokens per whitespace-separated word. We measure
+    /// post-hoc rather than mid-generation so we don't depend on a specific
+    /// FoundationModels SDK shape — works on every iOS that runs the model.
+    private func countTokens(_ texts: String?...) -> Int {
+        var words = 0
+        for t in texts {
+            guard let s = t else { continue }
+            words += s.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
+        }
+        return Int(Double(words) * 1.33)
+    }
+
     /// Runs the production pipeline for an authorized proposal. Updates the
     /// proposal with the verdict; publishes if the Editor passes.
     private func produceFromProposal(_ proposal: ScoutProposal,
@@ -1035,6 +1048,7 @@ final class MarketplaceStore: ObservableObject {
                     scoutProposals[pidx].status = .produced
                     scoutProposals[pidx].publishedItemID = item.id
                     scoutProposals[pidx].editorScore = verdict.overall
+                    scoutProposals[pidx].actualTokens = countTokens(longForm, item.synopsis)
                     scoutProposals[pidx].resolvedAt = .now
                 }
                 return

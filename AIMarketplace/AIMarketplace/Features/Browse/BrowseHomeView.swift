@@ -33,6 +33,7 @@ struct BrowseHomeView: View {
                                  subtitle: "Sorted by AI Editor score",
                                  items: filteredItems) { selected = $0 }
                     } else {
+                        pendingProposalsRail
                         RankedRow(title: "Top 10 Today", items: store.topTen) { selected = $0 }
                         MediaRow(title: "Trending Now", subtitle: "Climbing the charts",
                                  items: store.trending) { selected = $0 }
@@ -105,6 +106,89 @@ struct BrowseHomeView: View {
             return featured
         }
         return filteredItems.first
+    }
+
+    /// Horizontal rail of Scout's pending proposals — placeholder cards
+    /// telling everyone what's in the queue waiting on admin authorization.
+    /// Visible on the home view so the production pipeline is transparent,
+    /// not hidden inside the Scout tab.
+    @ViewBuilder
+    private var pendingProposalsRail: some View {
+        let pending = store.pendingScoutProposals.prefix(8)
+        if !pending.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "tray.full.fill")
+                        .font(.system(size: 11)).foregroundStyle(Theme.warning)
+                    Text("Awaiting authorization")
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Theme.ink)
+                    Text("· \(pending.count) in Scout's deck")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                    Spacer()
+                }
+                .padding(.horizontal, 18)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(Array(pending)) { p in
+                            pendingProposalCard(p)
+                        }
+                    }
+                    .padding(.horizontal, 18)
+                }
+            }
+        }
+    }
+
+    private func pendingProposalCard(_ p: ScoutProposal) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: p.type.icon)
+                    .font(.system(size: 11)).foregroundStyle(p.type.accent)
+                Text(p.type.title.uppercased())
+                    .font(.system(size: 9, weight: .heavy))
+                    .foregroundStyle(Theme.inkFaint)
+                Spacer()
+                Text("PENDING")
+                    .font(.system(size: 9, weight: .heavy))
+                    .foregroundStyle(Theme.warning)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(Capsule().stroke(Theme.warning, lineWidth: 1))
+            }
+            Text(p.title)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            Text(p.genre)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(p.type.accent)
+            Spacer(minLength: 0)
+            HStack(spacing: 4) {
+                Image(systemName: "scalemass")
+                    .font(.system(size: 9)).foregroundStyle(Theme.inkFaint)
+                Text(p.estimatedUSD > 0
+                     ? "$\(String(format: "%.2f", p.estimatedUSD))"
+                     : "Free")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Theme.inkSoft)
+                Text("· \(p.estimatedTokens) tk")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+        }
+        .padding(12)
+        .frame(width: 170, height: 170, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Theme.warning.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        )
     }
 
     private func matches(_ item: MediaItem) -> Bool {

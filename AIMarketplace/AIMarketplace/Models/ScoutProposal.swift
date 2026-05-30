@@ -34,6 +34,14 @@ struct ScoutProposal: Identifiable, Codable, Hashable {
     var editorScore: Int? = nil
     var statusNote: String = ""
     var resolvedAt: Date? = nil
+    /// Actual Foundation-Model tokens used (counted from the generated text
+    /// after production). Populated when the proposal reaches `.produced` or
+    /// `.editorRejected`. The pre-production `estimatedTokens` stays as a
+    /// reference so deviations are visible.
+    var actualTokens: Int? = nil
+    /// Actual USD spent at the external provider, if any. Foundation-only
+    /// proposals stay at 0. Populated by the Worker's spend tracking.
+    var actualUSD: Double? = nil
 
     enum Status: String, Codable, Hashable {
         case pending           // waiting on admin authorization

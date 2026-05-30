@@ -44,7 +44,15 @@ interface Env {
   MUSIC_GEN_API_KEY?: string;
   VIDEO_GEN_API_URL?: string;  // e.g. Runway / Veo / Sora API
   VIDEO_GEN_API_KEY?: string;
-  KV?: KVNamespace; // optional: for storing account IDs
+  // Per-month USD cap on Scout media generation. Once the running total in
+  // KV for the current month meets/exceeds this, /scout/generate-media
+  // refuses new calls until the next month. Default 50.
+  MAX_MEDIA_GEN_USD_MONTH?: string;
+  // Per-call cost overrides (optional). If the third-party provider returns
+  // a real cost in its response, the Worker prefers that; else uses these.
+  MUSIC_GEN_COST_USD?: string;
+  VIDEO_GEN_COST_USD?: string;
+  KV?: KVNamespace; // KV namespace used for spend tracking + account map
 }
 
 const DEFAULT_OPERATOR_EMAIL = "mvalasek77@gmail.com";
@@ -420,9 +428,14 @@ async function handleDeleteAccount(request: Request, env: Env): Promise<Response
 
 /** POST /scout/generate-media — forward to a third-party generation provider.
  *  Provider contract (request the operator wires up): POST { prompt, kind }
- *  → { url, duration_seconds?, content_type? }. We forward the configured
- *  Authorization header verbatim from the env. Without keys this is a no-op
- *  that returns provider:"none" so the app falls back to prose vetting. */
+ *  → { url, duration_seconds?, content_type?, cost_usd? }. We forward the
+ *  configured Authorization header verbatim from the env. Without keys this
+ *  is a no-op that returns provider:"none" so the app falls back to prose
+ *  vetting.
+ *
+ *  Spend safety: per-month USD cap (MAX_MEDIA_GEN_USD_MONTH, default $50)
+ *  tracked in KV under key `scout_spend_YYYY-MM`. Refuses new calls when
+ *  the running total meets or exceeds the cap. */
 async function handleScoutGenerateMedia(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as {
     type?: "music" | "movie";
@@ -441,11 +454,37 @@ async function handleScoutGenerateMedia(request: Request, env: Env): Promise<Res
       note: `Set ${body.type === "music" ? "MUSIC_GEN_API_URL + MUSIC_GEN_API_KEY" : "VIDEO_GEN_API_URL + VIDEO_GEN_API_KEY"} to enable real ${body.type} generation. Scout will use the on-device prose-as-artifact path until then.`,
     });
   }
+
+  // Spend cap check BEFORE the provider call.
+  const cap = Number(env.MAX_MEDIA_GEN_USD_MONTH ?? "50");
+  const monthKey = `scout_spend_${new Date().toISOString().slice(0, 7)}`;
+  const currentSpend = env.KV ? Number((await env.KV.get(monthKey)) ?? "0") : 0;
+  const estimatedCost = Number(
+    body.type === "music" ? (env.MUSIC_GEN_COST_USD ?? "0.15") : (env.VIDEO_GEN_COST_USD ?? "0.60")
+  );
+  if (currentSpend + estimatedCost > cap) {
+    return json({
+      provider: "rate_limited",
+      currentSpendUSD: currentSpend,
+      capUSD: cap,
+      note: `Per-month spend cap (\$${cap}) would be exceeded; running total this month is \$${currentSpend.toFixed(2)}. Raise MAX_MEDIA_GEN_USD_MONTH or wait until next month.`,
+    }, 402);
+  }
+  if (!env.KV) {
+    // Strict: without KV we can't track spend, so we refuse. Operator must
+    // bind a KV namespace before enabling paid generation.
+    return error(
+      "KV namespace not bound — spend tracking unavailable. Add a [[kv_namespaces]] binding named 'KV' in wrangler.toml before enabling media generation.",
+      503
+    );
+  }
+
   const prompt = [
     body.title ? `Title: ${body.title}.` : "",
     body.genre ? `Genre: ${body.genre}.` : "",
     body.prompt ?? "",
   ].filter(Boolean).join(" ").trim();
+
   try {
     const res = await fetch(providerURL, {
       method: "POST",
@@ -458,17 +497,41 @@ async function handleScoutGenerateMedia(request: Request, env: Env): Promise<Res
     if (!res.ok) {
       return error(`Provider ${res.status}: ${(await res.text()).slice(0, 200)}`, 502);
     }
-    const data = await res.json() as { url?: string; duration_seconds?: number; content_type?: string };
+    const data = await res.json() as { url?: string; duration_seconds?: number; content_type?: string; cost_usd?: number };
     if (!data.url) return error("Provider returned no url", 502);
+
+    // Record the spend. Prefer the provider's reported cost; fall back to
+    // the env estimate. Tracked per-month in KV so the cap is enforceable.
+    const realCost = typeof data.cost_usd === "number" ? data.cost_usd : estimatedCost;
+    await env.KV.put(monthKey, String(currentSpend + realCost));
+
     return json({
       provider: body.type === "music" ? "music_gen" : "video_gen",
       url: data.url,
       durationSeconds: data.duration_seconds,
       contentType: data.content_type,
+      costUSD: realCost,
+      monthSpendUSD: currentSpend + realCost,
+      monthCapUSD: cap,
     });
   } catch (err: any) {
     return error(`Generation failed: ${err?.message ?? err}`, 502);
   }
+}
+
+/** GET /scout/spend — report the current month's media-gen spend + cap.
+ *  Lets the operator surface running spend in the app's admin UI. */
+async function handleScoutSpend(env: Env): Promise<Response> {
+  const cap = Number(env.MAX_MEDIA_GEN_USD_MONTH ?? "50");
+  const monthKey = `scout_spend_${new Date().toISOString().slice(0, 7)}`;
+  const spend = env.KV ? Number((await env.KV.get(monthKey)) ?? "0") : 0;
+  return json({
+    month: monthKey.replace("scout_spend_", ""),
+    spendUSD: spend,
+    capUSD: cap,
+    remainingUSD: Math.max(0, cap - spend),
+    kvBound: !!env.KV,
+  });
 }
 
 // ── Moderation ─────────────────────────────────────────────────────────────
@@ -664,6 +727,11 @@ export default {
           musicGenConfigured: !!(env.MUSIC_GEN_API_URL && env.MUSIC_GEN_API_KEY),
           videoGenConfigured: !!(env.VIDEO_GEN_API_URL && env.VIDEO_GEN_API_KEY),
         });
+      }
+
+      // Scout spend status: current-month spend + cap. Cheap; safe to poll.
+      if (path === "/scout/spend" && method === "GET") {
+        return await handleScoutSpend(env);
       }
 
       // Scout feed: the curated reference corpus the app's Scout draws from
