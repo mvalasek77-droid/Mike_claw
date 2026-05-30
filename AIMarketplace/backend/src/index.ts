@@ -293,8 +293,11 @@ async function handleTransfer(request: Request, env: Env): Promise<Response> {
 
   // Stable key so a retried sale never pays a creator twice. Prefer the
   // per-sale key the app supplies; fall back to title+account when present.
-  const idem = idempotency_key
-    ?? (title_id ? `xfer_${account_id}_${title_id}` : crypto.randomUUID());
+  // Per-sale idempotency: the app supplies a sale-UUID-derived key. If absent
+  // we fall back to a fresh UUID so a retry on the same TCP-flight doesn't
+  // double-pay — but the prior `xfer_<account>_<title>` fallback was wrong
+  // (it dropped the second sale of the same title as a duplicate).
+  const idem = idempotency_key ?? crypto.randomUUID();
 
   const transfer = await stripe("/transfers", {
     amount: Math.round(amount_usd * 100),

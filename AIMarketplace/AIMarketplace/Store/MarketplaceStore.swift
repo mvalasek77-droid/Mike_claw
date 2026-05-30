@@ -620,6 +620,44 @@ final class MarketplaceStore: ObservableObject {
         }
     }
 
+    /// Best-effort per-sale transfer from the platform balance to the creator's
+    /// Stripe Connect account. Funded by the platform top-up float. Stripe
+    /// Express auto-pays the connected account's balance to the creator's bank.
+    ///
+    /// `saleID` is generated per call and used as the idempotency key so a
+    /// retried network request cannot double-pay the creator. If the Worker is
+    /// not configured or the creator hasn't onboarded, this is a no-op (the
+    /// local pendingPayoutUSD credit still records the obligation).
+    private func transferEarningRemote(amount: Double, saleID: UUID, titleID: UUID) {
+        guard !payoutBaseURL.isEmpty,
+              !payoutSharedSecret.isEmpty,
+              let accountId = connectAccountID, !accountId.isEmpty,
+              let url = URL(string: "\(payoutBaseURL)/payouts/transfer") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "account_id": accountId,
+            "amount_usd": amount,
+            "title_id": titleID.uuidString,
+            "idempotency_key": "sale_\(saleID.uuidString)",
+            "memo": "AI Marketplace sale",
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        Task { @MainActor in
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse else { return }
+                if !(200..<300).contains(http.statusCode) {
+                    lastPayoutError = "A creator transfer failed (HTTP \(http.statusCode)). The amount stays pending and will be retried."
+                }
+            } catch {
+                lastPayoutError = "A creator transfer failed: \(error.localizedDescription). Amount stays pending."
+            }
+        }
+    }
+
     /// Best-effort: ask the Worker to close the connected Stripe account so
     /// creator data doesn't outlive the in-app deletion (Apple 5.1.1(v)).
     /// Fire-and-forget — the local delete proceeds regardless; Apple's rule is
@@ -1051,7 +1089,12 @@ final class MarketplaceStore: ObservableObject {
         // Credit the partner models (AI tools) behind any purchased title —
         // catalog items are Mike Valasek × Suno/Claude/GPT, so partners earn too.
         if !item.aiTools.isEmpty {
-            addPendingPayout(earning)   // withdrawable to real currency
+            addPendingPayout(earning)   // local credit (always)
+            // Move the money for real: per-sale Stripe transfer to the
+            // creator's Connect account. Per-sale UUID so a retry can't
+            // double-pay; failure is surfaced via lastPayoutError but does
+            // not roll the local credit back (the obligation stays pending).
+            transferEarningRemote(amount: earning, saleID: UUID(), titleID: item.id)
         }
         persist()
         Haptics.success()

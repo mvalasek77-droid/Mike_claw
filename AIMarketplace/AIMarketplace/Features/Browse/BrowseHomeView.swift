@@ -4,6 +4,7 @@ import SwiftUI
 /// curated rows including the Top 10 and Trending feeds.
 struct BrowseHomeView: View {
     @EnvironmentObject private var store: MarketplaceStore
+    @EnvironmentObject private var moderation: ModerationStore
     @State private var selected: MediaItem?
     @State private var filter: MediaType?
     @State private var layerFilter: ContentFoundry.ScoutLayer?
@@ -100,11 +101,15 @@ struct BrowseHomeView: View {
 
     private var heroItem: MediaItem? {
         if filter != nil || layerFilter != nil { return filteredItems.first }
-        return store.featured
+        if let featured = store.featured, !moderation.isBlocked(featured.creator) {
+            return featured
+        }
+        return filteredItems.first
     }
 
     private func matches(_ item: MediaItem) -> Bool {
-        (filter == nil || item.type == filter)
+        guard !moderation.isBlocked(item.creator) else { return false }
+        return (filter == nil || item.type == filter)
             && (layerFilter == nil || ContentFoundry.layer(forGenre: item.genre) == layerFilter)
     }
 
