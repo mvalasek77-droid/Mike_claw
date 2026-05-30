@@ -296,7 +296,8 @@ struct MediaDetailView: View {
     }
 
     private var reviewsBlock: some View {
-        let reviews = store.reviewList(for: item.id)
+        // Hide reviews from creators this device has blocked.
+        let reviews = store.reviewList(for: item.id).filter { !moderation.isBlocked($0.author) }
         return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 SectionHeader(title: "Ratings & reviews",

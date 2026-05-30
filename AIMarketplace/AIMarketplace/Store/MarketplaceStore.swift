@@ -817,6 +817,20 @@ final class MarketplaceStore: ObservableObject {
             scoutLog.insert(ScoutEntry(date: .now,
                 message: scoutLogMessage(item: item, layer: layer, type: type, recipe: recipe),
                 kind: .produced, relatedItemID: item.id), at: 0)
+            // If a recipe is in play, ask OnDeviceAI to draft a synopsis
+            // shaped by the recipe's formula. Fire-and-forget; the templated
+            // synopsis stays until the rewrite lands, so nothing is blocked.
+            if let recipe {
+                let hint = recipe.formula
+                let itemID = item.id
+                let itemType = item.type
+                let itemTitle = item.title
+                let itemGenre = item.genre
+                Task { [weak self] in
+                    await self?.enrichSynopsis(itemID: itemID, type: itemType,
+                                               title: itemTitle, genre: itemGenre, hint: hint)
+                }
+            }
         }
         scoutDrops.append(contentsOf: produced)
         if scoutDrops.count > 80 { scoutDrops.removeFirst(scoutDrops.count - 80) }
@@ -825,6 +839,23 @@ final class MarketplaceStore: ObservableObject {
 
     private func typeKey(_ t: MediaType) -> String {
         switch t { case .novel: return "novel"; case .music: return "music"; case .movie: return "movie" }
+    }
+
+    /// Background rewrite: drafts a recipe-shaped synopsis via OnDeviceAI and
+    /// updates the matching catalogue + scoutDrops entries. No-op if the
+    /// generator returns nil (older OS, model unavailable) or the entry has
+    /// already been removed from the catalogue (capped at 80).
+    private func enrichSynopsis(itemID: UUID, type: MediaType,
+                                title: String, genre: String, hint: String) async {
+        guard let drafted = await OnDeviceAI.draftSynopsis(type: type, title: title,
+                                                           genre: genre, existing: hint),
+              !drafted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if let idx = catalog.firstIndex(where: { $0.id == itemID }) {
+            catalog[idx].synopsis = drafted
+        }
+        if let idx = scoutDrops.firstIndex(where: { $0.id == itemID }) {
+            scoutDrops[idx].synopsis = drafted
+        }
     }
 
     /// Builds the Scout's log entry. When a feed-driven recipe is in play, the

@@ -6,6 +6,7 @@ import SwiftUI
 /// a novel at 95–100% commercial, plus one experimental piece.
 struct ScoutView: View {
     @EnvironmentObject private var store: MarketplaceStore
+    @EnvironmentObject private var scoutFeed: ScoutFeedService
     @Environment(\.dismiss) private var dismiss
     @State private var selected: MediaItem?
 
@@ -71,6 +72,39 @@ struct ScoutView: View {
         }
     }
 
+    /// Honest tell of which reference corpus the Scout is drawing on right
+    /// now. Hidden until the feed has been fetched at least once so we don't
+    /// surface the offline-fallback marker before the user has connectivity.
+    private var corpusBadge: some View {
+        Group {
+            if scoutFeed.feed.version != "offline" {
+                let books = scoutFeed.feed.bestsellers.books.count
+                let music = scoutFeed.feed.bestsellers.music.count
+                let movies = scoutFeed.feed.bestsellers.movies.count
+                let masters = scoutFeed.feed.masters.authors.count
+                            + scoutFeed.feed.masters.producers.count
+                            + scoutFeed.feed.masters.directors.count
+                HStack(spacing: 6) {
+                    Image(systemName: "books.vertical.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                    Text("Corpus v\(scoutFeed.feed.version) · \(books)/\(music)/\(movies) bestsellers · \(masters) masters")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Theme.inkFaint)
+                    if let when = scoutFeed.lastFetched {
+                        Text("·")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Theme.inkFaint.opacity(0.5))
+                        Text(when, style: .relative)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                    Spacer()
+                }
+            }
+        }
+    }
+
     private var statusCard: some View {
         let producing = !store.userPostedRecently
         return GlassCard(tint: producing ? Theme.success : Theme.kdp) {
@@ -89,6 +123,7 @@ struct ScoutView: View {
                      ? "You're not posting, so The Scout is delivering a daily slate: a film, an album and a novel at 95–100% commercial, plus one experimental piece."
                      : "You're publishing, so The Scout is making connections — briefing AIs on demand instead of producing.")
                     .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                corpusBadge
                 countdownRow
                 PrimaryButton(title: "Run The Scout now", systemImage: "play.fill", style: .ghost, tint: Theme.accent) {
                     store.runScout()
