@@ -656,6 +656,16 @@ export default {
         return await handleScoutGenerateMedia(request, env);
       }
 
+      // Scout provider status: which generation providers are configured on
+      // this Worker. The app uses this to set proposal budgets and routing.
+      if (path === "/scout/providers" && method === "GET") {
+        return json({
+          foundation: true,
+          musicGenConfigured: !!(env.MUSIC_GEN_API_URL && env.MUSIC_GEN_API_KEY),
+          videoGenConfigured: !!(env.VIDEO_GEN_API_URL && env.VIDEO_GEN_API_KEY),
+        });
+      }
+
       // Scout feed: the curated reference corpus the app's Scout draws from
       // (100 canonical bestsellers per medium + 10 masters per role + recipes
       // + current charts + model list). GET; auth-required to keep the corpus

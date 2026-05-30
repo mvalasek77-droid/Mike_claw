@@ -77,6 +77,17 @@ final class ScoutFeedService: ObservableObject {
     @Published private(set) var feed: ScoutFeed = .empty
     @Published private(set) var lastFetched: Date?
     @Published private(set) var lastError: String?
+    /// Which generation providers are configured on the Worker. Used by the
+    /// proposal composer to set the right `providerNeeded` and budget.
+    @Published private(set) var providers: ProviderStatus = .none
+
+    struct ProviderStatus: Codable, Hashable {
+        var foundation: Bool = true   // on-device, assumed available
+        var musicGenConfigured: Bool = false
+        var videoGenConfigured: Bool = false
+
+        static let none = ProviderStatus()
+    }
 
     private var baseURL: String = ""
     private var sharedSecret: String = ""
@@ -113,6 +124,9 @@ final class ScoutFeedService: ObservableObject {
         inFlight = true
         defer { inFlight = false }
 
+        // Refresh provider status in parallel with the corpus. Both are cheap.
+        Task { await self.refreshProviders() }
+
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(sharedSecret)", forHTTPHeaderField: "Authorization")
@@ -145,9 +159,7 @@ final class ScoutFeedService: ObservableObject {
         }
     }
 
-    // MARK: - Composition helpers
-
-    /// Pick a recipe for the given medium, with the "every 5th composition is
+    // MARK: - Composition helpers    /// Pick a recipe for the given medium, with the "every 5th composition is
     /// experimental" rule applied by the caller's `cycleIndex`. Returns nil if
     /// the feed is empty.
     func pickRecipe(for type: String, cycleIndex: Int) -> ScoutFeed.Recipe? {
@@ -231,5 +243,33 @@ final class ScoutFeedService: ObservableObject {
             h = h &* 0x01000193
         }
         return h
+    }
+
+    // MARK: - Providers
+
+    /// Polls the Worker to see which generation providers are configured.
+    /// Failing silently is fine: ProviderStatus.foundation stays true and
+    /// Scout will compose Foundation-only proposals.
+    func refreshProviders() async {
+        guard !baseURL.isEmpty, !sharedSecret.isEmpty,
+              let url = URL(string: "\(baseURL)/scout/providers") else { return }
+        var req = URLRequest(url: url)
+        req.setValue("Bearer \(sharedSecret)", forHTTPHeaderField: "Authorization")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+            struct Response: Codable {
+                var foundation: Bool?
+                var musicGenConfigured: Bool?
+                var videoGenConfigured: Bool?
+            }
+            if let r = try? JSONDecoder().decode(Response.self, from: data) {
+                providers = .init(
+                    foundation: r.foundation ?? true,
+                    musicGenConfigured: r.musicGenConfigured ?? false,
+                    videoGenConfigured: r.videoGenConfigured ?? false
+                )
+            }
+        } catch { /* offline → keep defaults */ }
     }
 }

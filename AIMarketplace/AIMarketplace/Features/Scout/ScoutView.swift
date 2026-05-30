@@ -21,6 +21,7 @@ struct ScoutView: View {
                     missionCard
                     engineCard
                     statusCard
+                    proposalsCard
                     if !store.scoutPicks.isEmpty { picksRow }
                     briefsCard
                     logCard
@@ -70,6 +71,154 @@ struct ScoutView: View {
                 }
             }
         }
+    }
+
+    /// The proposal deck. Scout never produces unilaterally — it composes
+    /// candidates here with their budget (tokens + USD) + provider. Only the
+    /// admin can authorize; non-admins see the deck read-only so the
+    /// roadmap is visible. Pending items are at the top; resolved items
+    /// surface their outcome (passed/rejected by Editor, declined by admin).
+    @ViewBuilder
+    private var proposalsCard: some View {
+        let pending = store.scoutProposals.filter { $0.status == .pending }
+        let resolved = store.scoutProposals.filter { $0.status != .pending }.prefix(4)
+        if !pending.isEmpty || !resolved.isEmpty {
+            GlassCard(tint: Theme.accent) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "tray.full.fill")
+                            .foregroundStyle(Theme.accent)
+                        Text("Scout's deck")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                        Spacer()
+                        if !pending.isEmpty {
+                            Text("\(pending.count) pending · $\(String(format: "%.2f", store.pendingProposalBudgetUSD)) budget")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Theme.inkFaint)
+                        }
+                    }
+
+                    if pending.isEmpty {
+                        Text("No proposals pending — Scout will draft the next batch on the next cycle.")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Theme.inkSoft)
+                    }
+                    ForEach(pending) { p in
+                        proposalRow(p, pending: true)
+                    }
+                    if !resolved.isEmpty {
+                        Rectangle().fill(Theme.hairline).frame(height: 0.5)
+                        Text("Recent")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(Theme.inkFaint)
+                        ForEach(Array(resolved)) { p in
+                            proposalRow(p, pending: false)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func proposalRow(_ p: ScoutProposal, pending: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: p.type.icon)
+                    .font(.system(size: 11)).foregroundStyle(p.type.accent)
+                Text(p.title).font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.ink).lineLimit(1)
+                Spacer()
+                statusPill(for: p)
+            }
+            Text("\(p.layerRaw.capitalized) \(p.type.title.lowercased()) · \(p.genre) · by \(p.creator)")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+            if !p.recipeFormula.isEmpty {
+                Text("Formula: \(p.recipeFormula)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+                    .lineLimit(2)
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "scalemass")
+                    .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
+                Text("Budget: \(budgetLabel(p))")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.inkSoft)
+                Spacer()
+            }
+            if pending && store.isAdmin {
+                HStack(spacing: 8) {
+                    Button {
+                        store.authorizeScoutProposal(p)
+                        Haptics.success()
+                    } label: {
+                        Label("Authorize", systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(Capsule().fill(Theme.accent))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!p.providerAvailable)
+                    Button {
+                        store.declineScoutProposal(p)
+                        Haptics.warning()
+                    } label: {
+                        Label("Decline", systemImage: "xmark")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.inkSoft)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(Capsule().fill(Color.white.opacity(0.08)))
+                    }
+                    .buttonStyle(.plain)
+                }
+                if !p.providerAvailable {
+                    Text("⚠️ Provider not configured — set the API key in the Worker to enable.")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Theme.warning)
+                }
+            } else if pending {
+                Text("Admin authorization required.")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+            } else if let score = p.editorScore {
+                Text("Editor verdict: \(score)/100. \(p.statusNote)")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+            } else if !p.statusNote.isEmpty {
+                Text(p.statusNote)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.04)))
+    }
+
+    private func statusPill(for p: ScoutProposal) -> some View {
+        let (label, color): (String, Color) = {
+            switch p.status {
+            case .pending:        return ("PENDING", Theme.warning)
+            case .authorized:     return ("RUNNING", Theme.accent)
+            case .produced:       return ("LIVE", Theme.success)
+            case .editorRejected: return ("REJECTED", Theme.inkFaint)
+            case .declined:       return ("DECLINED", Theme.inkFaint)
+            }
+        }()
+        return Text(label)
+            .font(.system(size: 9, weight: .heavy))
+            .foregroundStyle(color)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(Capsule().stroke(color, lineWidth: 1))
+    }
+
+    private func budgetLabel(_ p: ScoutProposal) -> String {
+        if p.estimatedUSD > 0 {
+            return "$\(String(format: "%.2f", p.estimatedUSD)) (\(p.providerNeeded.displayName)) + ~\(p.estimatedTokens) tokens"
+        }
+        return "Free — ~\(p.estimatedTokens) on-device tokens"
     }
 
     /// Honest tell of which reference corpus the Scout is drawing on right

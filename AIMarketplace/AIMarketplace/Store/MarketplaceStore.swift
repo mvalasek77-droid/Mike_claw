@@ -68,7 +68,75 @@ final class MarketplaceStore: ObservableObject {
     weak var scoutFeed: ScoutFeedService?
 
     func attachEnergy(_ ledger: AICoinLedger) { energyLedger = ledger }
-    func attachScoutFeed(_ service: ScoutFeedService) { scoutFeed = service }
+    func attachScoutFeed(_ service: ScoutFeedService) {
+        scoutFeed = service
+        loadScoutProposals()
+    }
+
+    // MARK: - Scout proposals (admin-authorized production)
+
+    /// Scout's pending + recent proposals. Persisted to UserDefaults so the
+    /// queue survives launches without touching the encrypted archive.
+    /// Lifecycle: pending → (authorized → produced | editorRejected) | declined.
+    @Published private(set) var scoutProposals: [ScoutProposal] = [] {
+        didSet { persistScoutProposals() }
+    }
+
+    private static let scoutProposalsDefaultsKey = "aimkt.scoutProposals.v1"
+
+    var pendingScoutProposals: [ScoutProposal] {
+        scoutProposals.filter { $0.status == .pending }
+    }
+
+    /// Total $ committed in pending + authorized-but-not-produced proposals.
+    var pendingProposalBudgetUSD: Double {
+        scoutProposals.filter { $0.status == .pending || $0.status == .authorized }
+            .reduce(0) { $0 + $1.estimatedUSD }
+    }
+
+    private func loadScoutProposals() {
+        guard let data = UserDefaults.standard.data(forKey: Self.scoutProposalsDefaultsKey),
+              let decoded = try? JSONDecoder().decode([ScoutProposal].self, from: data) else { return }
+        scoutProposals = decoded
+    }
+
+    private func persistScoutProposals() {
+        if let data = try? JSONEncoder().encode(scoutProposals) {
+            UserDefaults.standard.set(data, forKey: Self.scoutProposalsDefaultsKey)
+        }
+    }
+
+    /// Admin authorizes a proposal — only admins can publish content. Kicks
+    /// off the Editor-gated production pipeline; verdict updates the proposal
+    /// to either .produced (with publishedItemID) or .editorRejected.
+    func authorizeScoutProposal(_ proposal: ScoutProposal) {
+        guard isAdmin else { return }
+        guard let idx = scoutProposals.firstIndex(where: { $0.id == proposal.id }) else { return }
+        guard scoutProposals[idx].status == .pending else { return }
+        scoutProposals[idx].status = .authorized
+        let authorized = scoutProposals[idx]
+        let snapshot = catalog
+        Task { @MainActor [weak self] in
+            await self?.produceFromProposal(authorized, catalogSnapshot: snapshot)
+        }
+    }
+
+    /// Admin declines a proposal. Scout will compose new ones on the next cycle.
+    func declineScoutProposal(_ proposal: ScoutProposal, note: String = "") {
+        guard isAdmin else { return }
+        guard let idx = scoutProposals.firstIndex(where: { $0.id == proposal.id }) else { return }
+        scoutProposals[idx].status = .declined
+        scoutProposals[idx].statusNote = note.isEmpty ? "Declined by admin." : note
+        scoutProposals[idx].resolvedAt = .now
+    }
+
+    /// Compact the proposal log so it doesn't grow forever.
+    func clearResolvedScoutProposals() {
+        guard isAdmin else { return }
+        scoutProposals.removeAll {
+            $0.status == .produced || $0.status == .declined || $0.status == .editorRejected
+        }
+    }
 
     init(catalog: [MediaItem] = SampleData.catalog()) {
         self.catalog = catalog
@@ -779,11 +847,10 @@ final class MarketplaceStore: ObservableObject {
         item.isEditorOriginal && item.commercialScore < AIReviewResult.threshold
     }
 
-    /// Scout's daily run. Scout PROPOSES candidates; the AI Editor DISPOSES.
-    /// Nothing publishes without the Editor's pass. The 3-item commercial
-    /// slate is the daily floor (always attempted, even when the creator
-    /// has posted) so the storefront keeps stocked; the experimental + niche
-    /// slots are bonus production when the creator isn't posting.
+    /// Scout's daily cycle. Composes PROPOSALS — never produces unilaterally.
+    /// Each proposal carries the recipe, masters, budget (tokens + USD), and
+    /// which provider it'd use; the admin reviews and authorizes in-app.
+    /// Only authorized proposals enter the Editor-gated production pipeline.
     func runScout() {
         lastScoutRun = .now
         fulfillOpenRequests()
@@ -807,23 +874,99 @@ final class MarketplaceStore: ObservableObject {
             logScoutOutreach()
         }
 
-        // Vetted production runs off the main path: each slot generates real
-        // prose via OnDeviceAI, hands the draft to the Editor, and publishes
-        // only on a pass. We don't block the UI on those awaits.
-        let snapshot = catalog
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            for (i, (type, layer)) in plan.enumerated() {
-                await self.produceVettedItem(type: type, layer: layer,
-                                             cycleIndex: self.scoutDrops.count + i,
-                                             fallbackGenre: fallbackGenre(for: type),
-                                             catalogSnapshot: snapshot)
-            }
-            if self.scoutDrops.count > 80 {
-                self.scoutDrops.removeFirst(self.scoutDrops.count - 80)
-            }
-            self.trimScoutLog()
+        // Don't pile new proposals on top of an already-large pending queue.
+        // Admin needs to clear the deck before Scout adds more.
+        let alreadyPending = pendingScoutProposals.count
+        guard alreadyPending < 8 else {
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "Scout paused: \(alreadyPending) proposals still pending your authorization. Approve or decline in the deck to unblock the next cycle.",
+                kind: .brief, relatedItemID: nil), at: 0)
+            trimScoutLog()
+            return
         }
+
+        var composed: [ScoutProposal] = []
+        for (i, (type, layer)) in plan.enumerated() {
+            let cycleIndex = scoutDrops.count + i + alreadyPending
+            let recipe = scoutFeed?.pickRecipe(for: typeKey(type), cycleIndex: cycleIndex)
+            let genre = recipe?.genre ?? fallbackGenre(for: type)
+            let item = ContentFoundry.scoutPick(type: type, layer: layer, genre: genre,
+                                                developing: false,
+                                                seed: scoutDrops.count + i)
+
+            let provider = ScoutProposal.provider(
+                for: type,
+                externalConfigured: (type == .music && scoutFeed?.providers.musicGenConfigured == true)
+                                  || (type == .movie && scoutFeed?.providers.videoGenConfigured == true)
+            )
+            let proposal = ScoutProposal(
+                id: UUID(),
+                createdAt: .now,
+                type: type,
+                layerRaw: layer.rawValue,
+                title: item.title,
+                creator: item.creator,
+                genre: item.genre,
+                recipeID: recipe?.id,
+                recipeFormula: recipe?.formula ?? "",
+                recipeMasters: recipe?.masters ?? [],
+                experimental: recipe?.experimental ?? (layer == .experimental),
+                estimatedTokens: estimateTokens(for: type, provider: provider),
+                estimatedUSD: estimatedUSD(for: type, provider: provider),
+                providerNeeded: provider,
+                providerAvailable: provider == .foundation || providerAvailable(provider),
+                status: .pending
+            )
+            composed.append(proposal)
+        }
+        scoutProposals.append(contentsOf: composed)
+        scoutLog.insert(ScoutEntry(date: .now,
+            message: "Scout drafted \(composed.count) proposals — review the deck (admin) to authorize production. Budget: $\(String(format: "%.2f", composed.reduce(0) { $0 + $1.estimatedUSD })) + ~\(composed.reduce(0) { $0 + $1.estimatedTokens }) Foundation tokens.",
+            kind: .brief, relatedItemID: nil), at: 0)
+        trimScoutLog()
+    }
+
+    private func providerAvailable(_ p: ScoutProposal.Provider) -> Bool {
+        switch p {
+        case .foundation: return true
+        case .musicGen:   return scoutFeed?.providers.musicGenConfigured ?? false
+        case .videoGen:   return scoutFeed?.providers.videoGenConfigured ?? false
+        }
+    }
+
+    /// Foundation Model token estimate: synopsis (~50 words) + long-form
+    /// (~500 words for music, ~600 for film, ~500 for novel) × 1.33 tokens/word.
+    private func estimateTokens(for type: MediaType, provider: ScoutProposal.Provider) -> Int {
+        let synopsisWords = 50
+        let longFormWords: Int = {
+            switch type {
+            case .novel: return 500
+            case .music: return 400  // lyrics + liner notes
+            case .movie: return 600  // screenplay scene
+            }
+        }()
+        return Int(Double(synopsisWords + longFormWords) * 1.33)
+    }
+
+    /// Coarse external-provider spend estimate. Foundation is $0.
+    private func estimatedUSD(for type: MediaType, provider: ScoutProposal.Provider) -> Double {
+        switch provider {
+        case .foundation: return 0.00
+        case .musicGen:   return 0.15  // typical per-generation for Suno-class APIs
+        case .videoGen:   return 0.60  // per ~5s clip, Runway/Veo ballpark
+        }
+    }
+
+    /// Runs the production pipeline for an authorized proposal. Updates the
+    /// proposal with the verdict; publishes if the Editor passes.
+    private func produceFromProposal(_ proposal: ScoutProposal,
+                                     catalogSnapshot: [MediaItem]) async {
+        await produceVettedItem(type: proposal.type,
+                                layer: ContentFoundry.ScoutLayer(rawValue: proposal.layerRaw) ?? .commercial,
+                                cycleIndex: scoutDrops.count,
+                                fallbackGenre: proposal.genre,
+                                catalogSnapshot: catalogSnapshot,
+                                fromProposal: proposal.id)
     }
 
     private func typeKey(_ t: MediaType) -> String {
@@ -843,7 +986,8 @@ final class MarketplaceStore: ObservableObject {
     /// external audio/video generator.
     private func produceVettedItem(type: MediaType, layer: ContentFoundry.ScoutLayer,
                                    cycleIndex: Int, fallbackGenre: String,
-                                   catalogSnapshot: [MediaItem]) async {
+                                   catalogSnapshot: [MediaItem],
+                                   fromProposal: UUID? = nil) async {
         let maxAttempts = 3
         for attempt in 0..<maxAttempts {
             let recipe = scoutFeed?.pickRecipe(for: typeKey(type),
@@ -886,6 +1030,13 @@ final class MarketplaceStore: ObservableObject {
                     message: editorPassedMessage(item: item, layer: layer, type: type,
                                                   recipe: recipe, verdict: verdict),
                     kind: .produced, relatedItemID: item.id), at: 0)
+                if let proposalID = fromProposal,
+                   let pidx = scoutProposals.firstIndex(where: { $0.id == proposalID }) {
+                    scoutProposals[pidx].status = .produced
+                    scoutProposals[pidx].publishedItemID = item.id
+                    scoutProposals[pidx].editorScore = verdict.overall
+                    scoutProposals[pidx].resolvedAt = .now
+                }
                 return
             }
 
@@ -897,10 +1048,16 @@ final class MarketplaceStore: ObservableObject {
                 kind: .brief, relatedItemID: nil), at: 0)
         }
 
-        // No attempt cleared the bar this run. The slot stays open honestly.
+        // No attempt cleared the bar. Mark the proposal honestly.
         scoutLog.insert(ScoutEntry(date: .now,
             message: "Scout couldn't clear the \(AIReviewResult.threshold)/100 editor bar for a \(type.title.lowercased()) after \(maxAttempts) tries — slot stays open until next cycle.",
             kind: .brief, relatedItemID: nil), at: 0)
+        if let proposalID = fromProposal,
+           let pidx = scoutProposals.firstIndex(where: { $0.id == proposalID }) {
+            scoutProposals[pidx].status = .editorRejected
+            scoutProposals[pidx].statusNote = "Editor couldn't clear the bar after \(maxAttempts) tries."
+            scoutProposals[pidx].resolvedAt = .now
+        }
     }
 
     /// Builds a DraftWork from a Scout-composed item. House-content flag is
