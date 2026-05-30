@@ -30,6 +30,12 @@ interface Env {
   APP_SHARED_SECRET: string;
   STRIPE_WEBHOOK_SECRET: string; // whsec_… from the Stripe webhook endpoint
   STRIPE_CONNECT_TYPE: string; // "express" from wrangler.toml [vars]
+  /// Stripe publishable key (pk_live_…). Not used server-side today — the
+  /// Worker only needs the secret + webhook keys — but kept in the env so
+  /// `wrangler secret put STRIPE_PUBLISHABLE_KEY` is supported and any
+  /// future client-side flow (Stripe.js / Elements / Payment Intents) can
+  /// read it via GET /stripe/publishable-key without a redeploy.
+  STRIPE_PUBLISHABLE_KEY?: string;
   RESEND_API_KEY?: string;     // for the operator payout-digest email
   OPERATOR_EMAIL?: string;     // where digests go (defaults below)
   DIGEST_FROM_EMAIL?: string;  // verified Resend sender (defaults to onboarding)
@@ -897,6 +903,7 @@ export default {
           version: "1.0.0",
           endpoints: [
             "POST /payouts/connect",
+            "POST /payouts/onboarding-link",
             "GET  /payouts/status",
             "GET  /payouts/balance",
             "POST /payouts/cash-out",
@@ -904,8 +911,29 @@ export default {
             "POST /payouts/digest",
             "POST /payouts/topup",
             "POST /payouts/webhook",
+            "POST /accounts/delete",
+            "POST /moderation/report",
+            "GET  /scout/feed",
+            "GET  /scout/providers",
+            "GET  /scout/spend",
+            "POST /scout/generate-media",
+            "GET  /stripe/publishable-key",
+            "GET  /payout-complete",
+            "GET  /payout-refresh",
           ],
         });
+      }
+
+      // Stripe publishable key — clients can fetch this if they need it for
+      // Stripe.js / Elements (none of the current app flows use it; Apple
+      // IAP collects from buyers, Stripe Connect pays creators server-side).
+      // Returns 404 when the secret isn't set so callers can distinguish
+      // "not configured" from "configured but empty".
+      if (path === "/stripe/publishable-key" && method === "GET") {
+        if (!env.STRIPE_PUBLISHABLE_KEY) {
+          return error("STRIPE_PUBLISHABLE_KEY not set", 404);
+        }
+        return json({ publishableKey: env.STRIPE_PUBLISHABLE_KEY });
       }
 
       return error("Not found", 404);
