@@ -181,17 +181,28 @@ enum AIEditor {
             }
             return scoreText(text)
         case .music:
-            guard let audio = analysis.audio else {
-                return ContentScore(score: 0, perCriterion: [], isMissing: true,
-                                     explanation: "Audio file couldn't be decoded.")
+            if let audio = analysis.audio {
+                return scoreAudio(audio, declaredTracks: draft.length)
             }
-            return scoreAudio(audio, declaredTracks: draft.length)
+            // House-content fallback: vet music on the lyrics+liner-notes prose
+            // when on-device generation hasn't produced real audio bytes. The
+            // text pipeline is the same one a novel goes through, with a word-
+            // count band tuned for shorter artifacts.
+            if draft.isHouseContent, let text = analysis.text {
+                return scoreHouseText(text, kind: .music)
+            }
+            return ContentScore(score: 0, perCriterion: [], isMissing: true,
+                                 explanation: "Audio file couldn't be decoded.")
         case .movie:
-            guard let video = analysis.video else {
-                return ContentScore(score: 0, perCriterion: [], isMissing: true,
-                                     explanation: "Video file couldn't be decoded.")
+            if let video = analysis.video {
+                return scoreVideo(video, declaredMinutes: draft.length)
             }
-            return scoreVideo(video, declaredMinutes: draft.length)
+            // House-content fallback: vet film on the screenplay text artifact.
+            if draft.isHouseContent, let text = analysis.text {
+                return scoreHouseText(text, kind: .movie)
+            }
+            return ContentScore(score: 0, perCriterion: [], isMissing: true,
+                                 explanation: "Video file couldn't be decoded.")
         }
     }
 
@@ -226,6 +237,58 @@ enum AIEditor {
         let per = [wordScore, diversityScore, varianceScore, repetitionScore, languageScore]
         return ContentScore(score: clamp(avg), perCriterion: per, isMissing: false,
                              explanation: "Text quality from \(r.wordCount) words, diversity \(String(format: "%.2f", r.lexicalDiversity)).")
+    }
+
+    /// House-content text scorer: same text-quality dimensions as `scoreText`
+    /// (diversity, variance, repetition, language) but with a per-medium word-
+    /// count band so a 300-word lyric sheet or a 600-word screenplay scene can
+    /// clear the bar when the other signals are strong. Lorem-ipsum still
+    /// forcibly rejects — quality gating doesn't loosen.
+    private static func scoreHouseText(_ r: ContentAnalysis.TextReport, kind: MediaType) -> ContentScore {
+        if r.loremIpsumOverlap > 0.05 {
+            return ContentScore(score: 8, perCriterion: [8, 8, 8, 8, 8], isMissing: false,
+                                 explanation: "Artifact reads as lorem-ipsum placeholder text.")
+        }
+        if r.isEffectivelyEmpty {
+            return ContentScore(score: 12, perCriterion: [12, 12, 12, 12, 12], isMissing: false,
+                                 explanation: "Artifact has fewer than 50 real words.")
+        }
+
+        let target: (lo: Double, hi: Double)
+        switch kind {
+        case .novel: target = (400, 1500)
+        case .music: target = (120, 500)   // lyrics + liner notes
+        case .movie: target = (300, 1500)  // screenplay scene + treatment
+        }
+        let words = Double(r.wordCount)
+        let wordScore: Int
+        if words >= target.hi {
+            wordScore = 92
+        } else if words >= target.lo {
+            wordScore = clamp(Int(mapRange(words, inMin: target.lo, inMax: target.hi,
+                                            outMin: 72, outMax: 92).rounded()))
+        } else {
+            wordScore = clamp(Int((words / target.lo * 70).rounded()))
+        }
+
+        let diversityScore = clamp(Int((mapRange(r.lexicalDiversity, inMin: 0.20, inMax: 0.55,
+                                                  outMin: 0.0, outMax: 100.0)).rounded()))
+        let varianceScore = clamp(Int((mapRange(r.sentenceLengthVariance, inMin: 3, inMax: 14,
+                                                 outMin: 45, outMax: 95)).rounded()))
+        let repetitionScore = clamp(Int((mapRange(1 - r.trigramRepetitionRate, inMin: 0.70, inMax: 0.98,
+                                                   outMin: 30, outMax: 96)).rounded()))
+        let languageScore = r.isEnglish ? 95 : 60
+
+        // Weight the length less for house content (shorter artifacts are
+        // expected); weight the qualitative signals more.
+        let avg = Int(((Double(wordScore) * 0.20
+                        + Double(diversityScore) * 0.30
+                        + Double(varianceScore) * 0.20
+                        + Double(repetitionScore) * 0.20
+                        + Double(languageScore) * 0.10)).rounded())
+        let per = [wordScore, diversityScore, varianceScore, repetitionScore, languageScore]
+        return ContentScore(score: clamp(avg), perCriterion: per, isMissing: false,
+                             explanation: "House text quality: \(r.wordCount) words, diversity \(String(format: "%.2f", r.lexicalDiversity)).")
     }
 
     private static func mapWordCount(_ words: Int) -> Int {

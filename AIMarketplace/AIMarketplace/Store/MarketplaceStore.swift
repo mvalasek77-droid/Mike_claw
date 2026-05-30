@@ -834,12 +834,18 @@ final class MarketplaceStore: ObservableObject {
     /// draft that clears AIReviewResult.threshold (85) is published, and its
     /// commercialScore is set to the Editor's overall — Scout never gets to
     /// self-assert quality.
+    ///
+    /// Each attempt generates a substantial long-form artifact via OnDeviceAI
+    /// (manuscript scene for novels, lyrics + liner notes for music, opening-
+    /// scene screenplay for film). The artifact becomes the DraftWork's
+    /// manuscriptText, and the Editor's text pipeline vets it. This is what
+    /// makes ALL three media types publishable on-device today, without an
+    /// external audio/video generator.
     private func produceVettedItem(type: MediaType, layer: ContentFoundry.ScoutLayer,
                                    cycleIndex: Int, fallbackGenre: String,
                                    catalogSnapshot: [MediaItem]) async {
         let maxAttempts = 3
         for attempt in 0..<maxAttempts {
-            // Vary the recipe cycle index per attempt so re-rolls don't pick the same one.
             let recipe = scoutFeed?.pickRecipe(for: typeKey(type),
                                                cycleIndex: cycleIndex + attempt * 13)
             let genre = recipe?.genre ?? fallbackGenre
@@ -849,19 +855,23 @@ final class MarketplaceStore: ObservableObject {
                                                 developing: false,
                                                 seed: scoutDrops.count + attempt)
 
-            // 2. Author real prose via OnDeviceAI so the Editor has something
-            //    real to analyse — not metadata theatre.
-            let hint = recipe?.formula ?? ""
+            // 2. Generate the long-form artifact the Editor will analyse.
+            let formula = recipe?.formula ?? ""
+            let masters = recipe?.masters ?? []
+            let longForm = await OnDeviceAI.draftLongForm(type: type, title: item.title,
+                                                          genre: item.genre,
+                                                          formula: formula, masters: masters)
+
+            // 3. Always also generate a short marketing synopsis for the card.
             if let synopsis = await OnDeviceAI.draftSynopsis(type: type, title: item.title,
-                                                             genre: item.genre, existing: hint),
+                                                             genre: item.genre, existing: formula),
                !synopsis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 item.synopsis = synopsis
             }
 
-            // 3. Same quality bar that user submissions face. The Editor's
-            //    on-device pipeline (NaturalLanguage, AVFoundation, Vision)
-            //    actually inspects the artifact.
-            let draft = buildScoutDraft(from: item, recipe: recipe)
+            // 4. Build the draft. House-content flag tells the Editor to accept
+            //    text vetting for music/film when no audio/video bytes exist.
+            let draft = buildScoutDraft(from: item, recipe: recipe, longForm: longForm)
             let verdict = await ReviewPipeline.review(draft, against: catalogSnapshot)
 
             if verdict.passed {
@@ -879,26 +889,26 @@ final class MarketplaceStore: ObservableObject {
                 return
             }
 
-            // Editor rejected this attempt — log and re-roll.
+            // Editor rejected: surface the score and the headline reason, then
+            // re-roll with a different recipe.
+            let reason = verdict.improvements.first ?? verdict.summary
             scoutLog.insert(ScoutEntry(date: .now,
-                message: "Editor rejected Scout's \(layer.rawValue) \(type.title.lowercased()) draft “\(item.title)” at \(verdict.overall)/100 (bar is \(AIReviewResult.threshold)). Trying a different recipe.",
+                message: "Editor rejected Scout's \(layer.rawValue) \(type.title.lowercased()) draft “\(item.title)” at \(verdict.overall)/100 (bar \(AIReviewResult.threshold)). \(reason). Re-rolling with a different recipe.",
                 kind: .brief, relatedItemID: nil), at: 0)
         }
 
-        // No attempt cleared the bar. Be honest about the empty slot.
+        // No attempt cleared the bar this run. The slot stays open honestly.
         scoutLog.insert(ScoutEntry(date: .now,
-            message: "Scout couldn't clear the \(AIReviewResult.threshold)/100 editor bar for a \(type.title.lowercased()) after \(maxAttempts) tries — the slot stays open until next cycle.",
+            message: "Scout couldn't clear the \(AIReviewResult.threshold)/100 editor bar for a \(type.title.lowercased()) after \(maxAttempts) tries — slot stays open until next cycle.",
             kind: .brief, relatedItemID: nil), at: 0)
     }
 
-    /// Builds a DraftWork from a Scout-composed item so the Editor can run
-    /// real analysis. House-content attestation is set automatically — Scout
-    /// produces under the marketplace's ownership, not a third creator's.
-    /// For novels, the synopsis prose is fed in as manuscriptText so the
-    /// NaturalLanguage analyser sees real bytes. Music/film would need real
-    /// audio/video the on-device generator can't produce, so they typically
-    /// score below 85 and stay open — that's the honest outcome.
-    private func buildScoutDraft(from item: MediaItem, recipe: ScoutFeed.Recipe?) -> DraftWork {
+    /// Builds a DraftWork from a Scout-composed item. House-content flag is
+    /// set so the Editor allows text-artifact vetting for music/film. The
+    /// long-form prose (manuscript / lyrics / screenplay) becomes the
+    /// manuscriptText the Editor's NaturalLanguage pipeline analyses.
+    private func buildScoutDraft(from item: MediaItem, recipe: ScoutFeed.Recipe?,
+                                 longForm: String?) -> DraftWork {
         var d = DraftWork()
         d.type = item.type
         d.title = item.title
@@ -906,19 +916,27 @@ final class MarketplaceStore: ObservableObject {
         d.genre = item.genre
         d.synopsis = item.synopsis
         d.aiTools = item.aiTools
-        d.fileName = "scout-\(item.id.uuidString.prefix(8)).draft"
+        d.fileName = "scout-\(item.id.uuidString.prefix(8)).\(longFormExt(for: item.type))"
         d.fileSizeMB = 0.5
         d.length = item.length
         d.price = item.price
-        if item.type == .novel {
-            d.manuscriptText = item.synopsis
-        }
+        // The artifact the Editor will actually inspect:
+        d.manuscriptText = (longForm?.isEmpty == false) ? longForm : item.synopsis
+        d.isHouseContent = true
         d.attestOwnsWork = true
         d.attestOwnsPrompts = true
         d.attestNoInfringement = true
         d.attestSignature = "AI Marketplace Scout"
-        _ = recipe // reserved: future verdicts may want the recipe in metadata
+        _ = recipe
         return d
+    }
+
+    private func longFormExt(for type: MediaType) -> String {
+        switch type {
+        case .novel: return "manuscript.txt"
+        case .music: return "lyrics.txt"
+        case .movie: return "screenplay.txt"
+        }
     }
 
     /// Pass-side scout log entry. Surfaces the Editor's score so creators

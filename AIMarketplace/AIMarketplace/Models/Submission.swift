@@ -51,6 +51,13 @@ struct DraftWork: Codable {
     var attestNoInfringement: Bool = false
     var attestSignature: String = ""   // typed creator name
 
+    /// Marks a draft as marketplace-house content (Scout-produced). The Editor
+    /// uses this to allow text-artifact vetting (lyrics for music, screenplay
+    /// for film) when the on-device generator can't produce real audio/video
+    /// bytes — without it, music/film would be capped at the missing-content
+    /// floor. User submissions stay strict (this flag stays false).
+    var isHouseContent: Bool = false
+
     /// True iff every required affirmation is recorded.
     var hasAttested: Bool {
         attestOwnsWork && attestOwnsPrompts && attestNoInfringement

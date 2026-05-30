@@ -36,6 +36,14 @@ interface Env {
   TOPUP_BUFFER_USD?: string;   // keep the platform balance at/above this
   TOPUP_MAX_USD?: string;      // hard cap on any single top-up (safety rail)
   TOPUP_SOURCE_ID?: string;    // ba_… verified bank source for Stripe Top-ups
+  // Real audio/video generation providers (optional). Without these set,
+  // /scout/generate-media returns provider:"none" and Scout falls back to
+  // the on-device prose-as-artifact path. With them set, Scout's music/film
+  // slots can publish with real playable bytes.
+  MUSIC_GEN_API_URL?: string;  // e.g. Suno-compatible POST endpoint
+  MUSIC_GEN_API_KEY?: string;
+  VIDEO_GEN_API_URL?: string;  // e.g. Runway / Veo / Sora API
+  VIDEO_GEN_API_KEY?: string;
   KV?: KVNamespace; // optional: for storing account IDs
 }
 
@@ -408,6 +416,61 @@ async function handleDeleteAccount(request: Request, env: Env): Promise<Response
   return json({ deleted: true });
 }
 
+// ── Scout media generation ─────────────────────────────────────────────────
+
+/** POST /scout/generate-media — forward to a third-party generation provider.
+ *  Provider contract (request the operator wires up): POST { prompt, kind }
+ *  → { url, duration_seconds?, content_type? }. We forward the configured
+ *  Authorization header verbatim from the env. Without keys this is a no-op
+ *  that returns provider:"none" so the app falls back to prose vetting. */
+async function handleScoutGenerateMedia(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as {
+    type?: "music" | "movie";
+    title?: string;
+    genre?: string;
+    prompt?: string;
+  };
+  if (body.type !== "music" && body.type !== "movie") {
+    return error("type must be 'music' or 'movie'");
+  }
+  const providerURL = body.type === "music" ? env.MUSIC_GEN_API_URL : env.VIDEO_GEN_API_URL;
+  const providerKey = body.type === "music" ? env.MUSIC_GEN_API_KEY : env.VIDEO_GEN_API_KEY;
+  if (!providerURL || !providerKey) {
+    return json({
+      provider: "none",
+      note: `Set ${body.type === "music" ? "MUSIC_GEN_API_URL + MUSIC_GEN_API_KEY" : "VIDEO_GEN_API_URL + VIDEO_GEN_API_KEY"} to enable real ${body.type} generation. Scout will use the on-device prose-as-artifact path until then.`,
+    });
+  }
+  const prompt = [
+    body.title ? `Title: ${body.title}.` : "",
+    body.genre ? `Genre: ${body.genre}.` : "",
+    body.prompt ?? "",
+  ].filter(Boolean).join(" ").trim();
+  try {
+    const res = await fetch(providerURL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${providerKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt, kind: body.type }),
+    });
+    if (!res.ok) {
+      return error(`Provider ${res.status}: ${(await res.text()).slice(0, 200)}`, 502);
+    }
+    const data = await res.json() as { url?: string; duration_seconds?: number; content_type?: string };
+    if (!data.url) return error("Provider returned no url", 502);
+    return json({
+      provider: body.type === "music" ? "music_gen" : "video_gen",
+      url: data.url,
+      durationSeconds: data.duration_seconds,
+      contentType: data.content_type,
+    });
+  } catch (err: any) {
+    return error(`Generation failed: ${err?.message ?? err}`, 502);
+  }
+}
+
 // ── Moderation ─────────────────────────────────────────────────────────────
 
 /** POST /moderation/report — forward a user report on a title to the operator.
@@ -581,6 +644,16 @@ export default {
       // (Apple Review Guideline 1.2 — UGC apps require an in-app report flow).
       if (path === "/moderation/report" && method === "POST") {
         return await handleReport(request, env);
+      }
+
+      // Scout media generation: forwards a prompt to a configured audio or
+      // video provider (Suno / Runway / Veo / etc.) and returns a playable
+      // URL the app can hand to the Editor as real bytes. Without a provider
+      // configured, returns { provider: "none" } and Scout falls back to the
+      // on-device prose-as-artifact path — both paths are vetted by the
+      // same Editor; this one yields real playable media.
+      if (path === "/scout/generate-media" && method === "POST") {
+        return await handleScoutGenerateMedia(request, env);
       }
 
       // Scout feed: the curated reference corpus the app's Scout draws from

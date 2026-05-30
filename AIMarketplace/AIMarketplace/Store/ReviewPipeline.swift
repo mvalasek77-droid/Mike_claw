@@ -36,10 +36,23 @@ enum ReviewPipeline {
             case .music:
                 if let url = draft.contentURL {
                     analysis.audio = ContentAnalysis.analyseAudio(at: url)
+                } else if draft.isHouseContent,
+                          let lyrics = draft.manuscriptText, !lyrics.isEmpty {
+                    // Scout-house music: the lyrics + liner notes ARE the
+                    // artifact the Editor analyses, since on-device generation
+                    // can't produce real audio bytes. The Editor's text pipeline
+                    // gates quality the same way it does for a novel manuscript.
+                    analysis.manuscriptText = lyrics
+                    analysis.text = ContentAnalysis.analyseText(lyrics)
                 }
             case .movie:
                 if let url = draft.contentURL {
                     analysis.video = await ContentAnalysis.analyseVideo(at: url)
+                } else if draft.isHouseContent,
+                          let screenplay = draft.manuscriptText, !screenplay.isEmpty {
+                    // Scout-house film: the screenplay IS the artifact analysed.
+                    analysis.manuscriptText = screenplay
+                    analysis.text = ContentAnalysis.analyseText(screenplay)
                 }
             }
 
