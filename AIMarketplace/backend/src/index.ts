@@ -64,6 +64,15 @@ interface Env {
 
 const DEFAULT_PAYOUT_RETURN_BASE = "https://mvalasek77-droid.github.io/Mike_claw";
 
+/** Resolve the URL base Stripe should bounce creators back to. Order of
+ *  preference: explicit env override → the Worker's own origin (so the
+ *  built-in /payout-complete and /payout-refresh routes serve the bounce
+ *  pages with zero extra setup) → the GitHub Pages default. */
+function resolvePayoutReturnBase(request: Request, env: Env): string {
+  if (env.PAYOUT_RETURN_BASE) return env.PAYOUT_RETURN_BASE;
+  try { return new URL(request.url).origin; } catch { return DEFAULT_PAYOUT_RETURN_BASE; }
+}
+
 const DEFAULT_OPERATOR_EMAIL = "mvalasek77@gmail.com";
 const DEFAULT_FROM_EMAIL = "AI Marketplace <onboarding@resend.dev>";
 const DEFAULT_TOPUP_BUFFER_USD = 100;
@@ -210,11 +219,11 @@ async function handleConnect(request: Request, env: Env): Promise<Response> {
 
   // Step 2: Create an account link for onboarding
   // The return_url brings the user back into the app via deep link
-  const returnBase = env.PAYOUT_RETURN_BASE || DEFAULT_PAYOUT_RETURN_BASE;
+  const returnBase = resolvePayoutReturnBase(request, env);
   const accountLink = await stripe("/account_links", {
     account: account.id,
-    refresh_url: `${returnBase}/payout-refresh.html?account=${account.id}`,
-    return_url: `${returnBase}/payout-complete.html?account=${account.id}`,
+    refresh_url: `${returnBase}/payout-refresh?account=${account.id}`,
+    return_url: `${returnBase}/payout-complete?account=${account.id}`,
     type: "account_onboarding",
   }, env.STRIPE_SECRET_KEY);
 
@@ -232,14 +241,82 @@ async function handleConnect(request: Request, env: Env): Promise<Response> {
 async function handleOnboardingLink(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as { account_id?: string };
   if (!body.account_id) return error("account_id required");
-  const returnBase = env.PAYOUT_RETURN_BASE || DEFAULT_PAYOUT_RETURN_BASE;
+  const returnBase = resolvePayoutReturnBase(request, env);
   const link = await stripe("/account_links", {
     account: body.account_id,
-    refresh_url: `${returnBase}/payout-refresh.html?account=${body.account_id}`,
-    return_url: `${returnBase}/payout-complete.html?account=${body.account_id}`,
+    refresh_url: `${returnBase}/payout-refresh?account=${body.account_id}`,
+    return_url: `${returnBase}/payout-complete?account=${body.account_id}`,
     type: "account_onboarding",
   }, env.STRIPE_SECRET_KEY);
   return json({ accountId: body.account_id, onboardingUrl: link.url });
+}
+
+/** Public bounce pages Stripe redirects creators to after they finish or
+ *  abandon onboarding. Served by the Worker itself so no GitHub Pages, no
+ *  custom domain, no extra hosting is required. */
+function payoutCompleteHTML(accountId: string): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stripe onboarding complete — AI Marketplace</title>
+<style>
+:root{--bg:#0a0a0c;--ink:#f5f5f7;--ink-soft:#c7c7d1;--ink-faint:#8a8a96;--accent:#ff7a45;--line:#25252e;}
+*{box-sizing:border-box;}html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:560px;margin:0 auto;padding:48px 20px;text-align:center;}
+h1{font-size:32px;line-height:1.15;letter-spacing:-0.02em;margin:0 0 12px;}
+.lede{font-size:18px;color:var(--ink-soft);margin:0 auto 28px;}
+.glyph{font-size:64px;line-height:1;margin-bottom:18px;color:#3fd76f;}
+.card{background:#14141a;border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:28px;text-align:left;color:var(--ink-soft);}
+.card h3{margin:0 0 8px;color:var(--ink);font-size:17px;}
+.card ul{margin:0;padding-left:22px;}
+.card li{margin:4px 0;}
+.foot{color:var(--ink-faint);font-size:13px;margin-top:32px;}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--ink-faint);}
+</style></head><body><div class="wrap">
+<div class="glyph">&#x2713;</div>
+<h1>You're done with Stripe.</h1>
+<p class="lede">Return to AI Marketplace. Your payout status refreshes automatically the moment the app comes back to the foreground.</p>
+<div class="card"><h3>What happens next</h3><ul>
+<li>Stripe verifies the details you submitted (usually minutes; sometimes up to 24 hours).</li>
+<li>Once verified, your share of every sale lands in your bank automatically.</li>
+<li>You can monitor sales and payouts from the app any time.</li>
+</ul></div>
+<p class="foot">Account: <code>${escapeHTML(accountId)}</code></p>
+</div></body></html>`;
+}
+
+function payoutRefreshHTML(accountId: string): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stripe onboarding link expired — AI Marketplace</title>
+<style>
+:root{--bg:#0a0a0c;--ink:#f5f5f7;--ink-soft:#c7c7d1;--ink-faint:#8a8a96;--accent:#ff7a45;--line:#25252e;}
+*{box-sizing:border-box;}html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:560px;margin:0 auto;padding:48px 20px;text-align:center;}
+h1{font-size:32px;line-height:1.15;letter-spacing:-0.02em;margin:0 0 12px;}
+.lede{font-size:18px;color:var(--ink-soft);margin:0 auto 24px;}
+.glyph{font-size:64px;line-height:1;margin-bottom:18px;color:#ffa820;}
+.foot{color:var(--ink-faint);font-size:13px;margin-top:24px;}
+strong{color:var(--ink);}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--ink-faint);}
+</style></head><body><div class="wrap">
+<div class="glyph">&#x21BB;</div>
+<h1>Your Stripe link expired.</h1>
+<p class="lede">Stripe's onboarding links time out after a few minutes for security. Return to AI Marketplace and tap <strong>Resume Stripe onboarding</strong> on the Payout Setup screen to get a fresh link.</p>
+<p class="foot">Your Stripe account hasn't been duplicated. The next link picks up where you left off.</p>
+<p class="foot">Account: <code>${escapeHTML(accountId)}</code></p>
+</div></body></html>`;
+}
+
+function escapeHTML(s: string): string {
+  return s.replace(/[&<>"']/g, c =>
+    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "\"" ? "&quot;" : "&#39;");
+}
+
+function htmlResponse(body: string, status = 200): Response {
+  return new Response(body, {
+    status,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+  });
 }
 
 /** GET /payouts/status?account_id=acct_xxx — Check Connect account status */
@@ -697,6 +774,17 @@ export default {
     // Webhook endpoint — no auth (Stripe signs it)
     if (path === "/payouts/webhook" && method === "POST") {
       return handleWebhook(request, env);
+    }
+
+    // Public bounce pages from Stripe-hosted onboarding — no auth (Stripe
+    // redirects creators here in Safari; they have no Authorization header).
+    if (path === "/payout-complete" && method === "GET") {
+      const account = url.searchParams.get("account") ?? "";
+      return htmlResponse(payoutCompleteHTML(account));
+    }
+    if (path === "/payout-refresh" && method === "GET") {
+      const account = url.searchParams.get("account") ?? "";
+      return htmlResponse(payoutRefreshHTML(account));
     }
 
     // All other endpoints require the shared secret
