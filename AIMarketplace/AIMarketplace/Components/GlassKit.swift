@@ -7,6 +7,29 @@ struct GlassSurface<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
+        Group {
+            #if compiler(>=6.2)
+            if #available(iOS 26.0, *) {
+                GlassEffectContainer {
+                    content()
+                        .background(
+                            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                                .fill(tint.opacity(0.05))
+                        )
+                        .glassEffect(.regular, in: .rect(cornerRadius: corner))
+                }
+            } else {
+                materialBody
+            }
+            #else
+            materialBody
+            #endif
+        }
+        .depth(corner)
+    }
+
+    /// Frosted-material surface used below iOS 26.
+    private var materialBody: some View {
         content()
             .background {
                 ZStack {
@@ -21,7 +44,6 @@ struct GlassSurface<Content: View>: View {
                                          startPoint: .top, endPoint: .center))
                     .allowsHitTesting(false)
             }
-            .depth(corner)
     }
 }
 
