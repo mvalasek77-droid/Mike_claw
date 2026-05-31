@@ -35,25 +35,22 @@ const W = 1080, H = 1920, FPS = 30;
 const VOICE_ELEVEN = "Adam";       // energetic male; change to taste
 const VOICE_OPENAI = "ash";        // fallback if no ElevenLabs key
 
-// Voiceover — exactly what the narrator says. Tweak freely; the cards run on
-// fixed durations so the audio drives the pace.
-const VOICEOVER = `
-Four AIs walked into a marketplace.
-Opus four point eight. GPT five point five. Gemini. Grok.
-Novels. Music. Film. All AI-made, all AI-disclosed.
-Reviewed by an on-device Editor — eighty-five percent commercial-quality bar.
-Creators keep eighty-five percent.
-Welcome to AI Marketplace. Find us in the App Store.
-`.trim();
+// Voiceover — minimal, lands at the slogan reveal so the visuals carry the
+// front of the spot. `VOICE_DELAY_S` shifts the audio so the voice arrives
+// when the slogan appears on screen.
+const VOICEOVER = `AI Marketplace. The future is next.`;
+const VOICE_DELAY_S = 9;
 
-// Each card stays on screen for `secs` seconds. Total ≈ 25 s.
+// Storyboard — the crash and the reveal. Hard cuts; total ≈ 17 s.
 const CARDS = [
-  { secs: 3, render: cardHook },
-  { secs: 4, render: cardPanel },
-  { secs: 5, render: cardContent },
-  { secs: 5, render: cardEditor },
-  { secs: 5, render: cardSplit },
-  { secs: 3, render: cardCTA },
+  { secs: 3.0, render: cardRocketStanding },     //  0.0 –  3.0  rocket on the pad
+  { secs: 1.8, render: cardTruckApproaching },   //  3.0 –  4.8  cybertruck enters L→R
+  { secs: 0.4, render: cardImpact },             //  4.8 –  5.2  IMPACT flash
+  { secs: 1.0, render: cardFireball },           //  5.2 –  6.2  initial blast
+  { secs: 1.8, render: cardMushroomGrow },       //  6.2 –  8.0  mushroom rising
+  { secs: 2.0, render: cardMushroomFull },       //  8.0 – 10.0  full mushroom, slogan emerges
+  { secs: 4.0, render: cardSloganHold },         // 10.0 – 14.0  "AI Marketplace · The Future is Next"
+  { secs: 3.0, render: cardCTA },                // 14.0 – 17.0  App Store CTA + four-orb echo
 ];
 
 // ─── Brand ───────────────────────────────────────────────────────────────────
@@ -85,99 +82,248 @@ const FONT = `font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 
 
 // ─── Cards ───────────────────────────────────────────────────────────────────
 
-function cardHook() {
+// ─── Shared scene elements ────────────────────────────────────────────────
+
+// Stylized — NO logos, NO branded color schemes. Silhouettes read as the
+// real things; nothing in the SVG actually claims to be them.
+function rocket(x, deformed = false) {
+  const tilt = deformed ? "rotate(-6 540 1000)" : "";
+  return `
+    <g transform="${tilt}">
+      <!-- nose cone -->
+      <polygon points="${x-10},520 ${x+30},420 ${x+70},520"
+               fill="#F4F4F2"/>
+      <!-- body -->
+      <rect x="${x-10}" y="520" width="80" height="920" fill="#F8F8F6"/>
+      <rect x="${x-10}" y="800" width="80" height="4" fill="#444"/>
+      <rect x="${x-10}" y="1100" width="80" height="4" fill="#444"/>
+      <text x="${x+30}" y="1000" text-anchor="middle"
+            font-size="28" font-weight="900" fill="#1a1a1a" ${FONT}>↑</text>
+      <!-- fins -->
+      <polygon points="${x-10},1440 ${x-70},1500 ${x-10},1500" fill="#C8C8C6"/>
+      <polygon points="${x+70},1440 ${x+130},1500 ${x+70},1500" fill="#C8C8C6"/>
+      <!-- engine bell -->
+      <polygon points="${x-10},1500 ${x},1560 ${x+60},1560 ${x+70},1500"
+               fill="#666"/>
+    </g>
+  `;
+}
+
+function ground() {
+  return `
+    <rect x="0" y="1560" width="${W}" height="360" fill="#0c0a14"/>
+    <line x1="0" y1="1560" x2="${W}" y2="1560"
+          stroke="${BRAND.accent}" stroke-opacity="0.25" stroke-width="2"/>
+  `;
+}
+
+function stars() {
+  // Sprinkled small dots for a night-sky feel
+  return [
+    [120, 200], [240, 360], [400, 180], [620, 280], [820, 420],
+    [950, 200], [60, 540], [880, 660], [320, 640], [720, 540],
+  ].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="#ffffff" fill-opacity="0.55"/>`).join("");
+}
+
+// Cybertruck-style angular wedge — silver, no badges.
+function cyberTruck(cx, cy, scale = 1) {
+  const s = scale;
+  // Body wedge: peak at top-rear, slopes down to the front hood.
+  // cx is the FRONT bumper centre (where the impact lands).
+  const fx = cx;          // front bumper x
+  const rx = cx - 320*s;  // rear x
+  return `
+    <g>
+      <!-- body silhouette -->
+      <polygon points="
+          ${fx},${cy}           ${fx},${cy - 50*s}
+          ${fx - 80*s},${cy - 110*s}
+          ${fx - 180*s},${cy - 140*s}
+          ${rx + 40*s},${cy - 140*s}
+          ${rx},${cy - 60*s}
+          ${rx},${cy + 60*s}
+          ${fx},${cy + 60*s}
+      " fill="#BCBCC0"/>
+      <!-- window strip -->
+      <polygon points="
+          ${fx - 80*s},${cy - 100*s}
+          ${fx - 170*s},${cy - 130*s}
+          ${rx + 50*s},${cy - 130*s}
+          ${rx + 10*s},${cy - 80*s}
+      " fill="#222226"/>
+      <!-- door line -->
+      <line x1="${rx + 130*s}" y1="${cy - 130*s}" x2="${rx + 130*s}" y2="${cy + 60*s}"
+            stroke="#909094" stroke-width="2"/>
+      <!-- headlight bar (light strip) -->
+      <rect x="${fx - 60*s}" y="${cy - 40*s}" width="60" height="6" fill="#fcfcfc" fill-opacity="0.9"/>
+      <!-- wheels -->
+      <circle cx="${fx - 60*s}" cy="${cy + 70*s}" r="${42*s}" fill="#141416"/>
+      <circle cx="${fx - 60*s}" cy="${cy + 70*s}" r="${22*s}" fill="#7c7c80"/>
+      <circle cx="${rx + 70*s}" cy="${cy + 70*s}" r="${42*s}" fill="#141416"/>
+      <circle cx="${rx + 70*s}" cy="${cy + 70*s}" r="${22*s}" fill="#7c7c80"/>
+    </g>
+  `;
+}
+
+// Speed lines trailing behind something at (x, y).
+function speedLines(x, y, count = 6) {
+  return Array.from({ length: count }, (_, i) => {
+    const yy = y - 80 + i * 28;
+    return `<line x1="${x - 240 - i*30}" y1="${yy}" x2="${x - 30}" y2="${yy}"
+            stroke="#ffffff" stroke-opacity="${0.45 - i*0.05}" stroke-width="3"/>`;
+  }).join("");
+}
+
+// ─── Cards ─────────────────────────────────────────────────────────────────
+
+function cardRocketStanding() {
   return svgWrap(`
     ${bg()}
-    <!-- orbs starting to bloom -->
-    <circle cx="${W/2}" cy="1180" r="60" fill="${BRAND.amber}" fill-opacity="0.18"/>
-    <circle cx="${W/2 + 220}" cy="1380" r="60" fill="${BRAND.green}" fill-opacity="0.18"/>
-    <circle cx="${W/2 - 220}" cy="1380" r="60" fill="${BRAND.red}"   fill-opacity="0.18"/>
-    <circle cx="${W/2}" cy="1580" r="60" fill="${BRAND.blue}"  fill-opacity="0.18"/>
-    <text x="${W/2}" y="700" text-anchor="middle" font-size="92" font-weight="900"
-          ${FONT} fill="${BRAND.ink}" letter-spacing="-1">FOUR AIs</text>
-    <text x="${W/2}" y="820" text-anchor="middle" font-size="56" font-weight="800"
-          ${FONT} fill="${BRAND.ink}" fill-opacity="0.85">WALKED INTO A</text>
-    <text x="${W/2}" y="900" text-anchor="middle" font-size="56" font-weight="800"
-          ${FONT} fill="${BRAND.accent}">MARKETPLACE…</text>
+    ${stars()}
+    ${rocket(540)}
+    ${ground()}
   `);
 }
 
-function cardPanel() {
-  const orb = (cx, cy, color, label, lab) => `
-    <circle cx="${cx}" cy="${cy}" r="140" fill="${color}" fill-opacity="0.18"/>
-    <circle cx="${cx}" cy="${cy}" r="92"  fill="${color}"/>
-    <text x="${cx}" y="${cy + 250}" text-anchor="middle" font-size="40" font-weight="900"
-          ${FONT} fill="${BRAND.ink}">${label}</text>
-    <text x="${cx}" y="${cy + 296}" text-anchor="middle" font-size="22" font-weight="700"
-          ${FONT} fill="${BRAND.ink}" fill-opacity="0.55" letter-spacing="2">${lab}</text>
-  `;
+function cardTruckApproaching() {
+  // Truck mid-stage, charging toward the rocket from the left.
   return svgWrap(`
     ${bg()}
-    <text x="${W/2}" y="260" text-anchor="middle" font-size="34" font-weight="800"
-          ${FONT} fill="${BRAND.accent}" letter-spacing="4">THE PANEL</text>
-    ${orb(W/2,         580, BRAND.amber, "OPUS 4.8",  "ANTHROPIC")}
-    ${orb(W/2,         1080, BRAND.green, "GPT-5.5",   "OPENAI")}
-    ${orb(W/2 - 220,   1500, BRAND.blue,  "GEMINI",    "GOOGLE")}
-    ${orb(W/2 + 220,   1500, BRAND.red,   "GROK",      "xAI")}
+    ${stars()}
+    ${rocket(540)}
+    ${speedLines(420, 1240, 8)}
+    ${cyberTruck(420, 1240)}
+    ${ground()}
   `);
 }
 
-function cardContent() {
-  const big = (y, t, color) => `
-    <text x="${W/2}" y="${y}" text-anchor="middle" font-size="120" font-weight="900"
-          ${FONT} fill="${color}" letter-spacing="-2">${t}</text>
-  `;
+function cardImpact() {
+  // Front bumper kisses the rocket. Big yellow-white flash at the contact.
   return svgWrap(`
+    <defs>
+      <radialGradient id="flash" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#FFFFFF"/>
+        <stop offset="35%"  stop-color="#FFE07A"/>
+        <stop offset="70%"  stop-color="#FF7A45" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="#FF7A45" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
     ${bg()}
-    ${big(720, "NOVELS.",  BRAND.ink)}
-    ${big(900, "MUSIC.",   BRAND.ink)}
-    ${big(1080, "FILM.",   BRAND.accent)}
-    <line x1="${W/2 - 250}" y1="1200" x2="${W/2 + 250}" y2="1200"
+    ${stars()}
+    ${rocket(540, true)}
+    ${cyberTruck(530, 1240)}
+    <circle cx="540" cy="1180" r="320" fill="url(#flash)"/>
+    ${ground()}
+  `);
+}
+
+function cardFireball() {
+  // The blast eats both vehicles. Big chunky fireball.
+  return svgWrap(`
+    <defs>
+      <radialGradient id="core" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#FFFFFF"/>
+        <stop offset="25%"  stop-color="#FFD089"/>
+        <stop offset="55%"  stop-color="#FF7A45"/>
+        <stop offset="85%"  stop-color="#7A1F00"/>
+        <stop offset="100%" stop-color="#1a0000" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#FF7A45" stop-opacity="0.65"/>
+        <stop offset="100%" stop-color="#FF7A45" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    ${bg()}
+    <circle cx="540" cy="1120" r="600" fill="url(#halo)"/>
+    <circle cx="540" cy="1120" r="380" fill="url(#core)"/>
+    <!-- debris fragments -->
+    <rect x="180" y="900"  width="60" height="14" fill="#C8C8C6" transform="rotate(28 210 907)"/>
+    <rect x="820" y="980"  width="80" height="14" fill="#C8C8C6" transform="rotate(-42 860 987)"/>
+    <rect x="320" y="700"  width="40" height="10" fill="#F4F4F2" transform="rotate(12 340 705)"/>
+    <rect x="780" y="640"  width="50" height="10" fill="#F4F4F2" transform="rotate(-22 805 645)"/>
+    ${ground()}
+  `);
+}
+
+function cardMushroomGrow() {
+  // Stem rising from the blast point; cap not fully formed yet.
+  return svgWrap(`
+    <defs>
+      <radialGradient id="smokeBall" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#3a342f" stop-opacity="0.95"/>
+        <stop offset="70%"  stop-color="#231e1a" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#0d0a08" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="ember" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#FFD089"/>
+        <stop offset="55%"  stop-color="#FF7A45"/>
+        <stop offset="100%" stop-color="#7A1F00" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    ${bg()}
+    <!-- stem -->
+    <ellipse cx="540" cy="1300" rx="180" ry="280" fill="url(#smokeBall)"/>
+    <ellipse cx="540" cy="900"  rx="220" ry="200" fill="url(#smokeBall)"/>
+    <!-- forming cap -->
+    <circle cx="380" cy="700" r="180" fill="url(#smokeBall)"/>
+    <circle cx="540" cy="650" r="240" fill="url(#smokeBall)"/>
+    <circle cx="700" cy="700" r="180" fill="url(#smokeBall)"/>
+    <!-- ember core -->
+    <circle cx="540" cy="1100" r="120" fill="url(#ember)"/>
+    ${ground()}
+  `);
+}
+
+function cardMushroomFull() {
+  // Cap fully formed. "AI MARKETPLACE" emerges from the top of the cloud.
+  return svgWrap(`
+    <defs>
+      <radialGradient id="smokeBall2" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#4a423a" stop-opacity="0.92"/>
+        <stop offset="65%"  stop-color="#2a2421" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#0d0a08" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="ember2" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#FFD089" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#FF7A45" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    ${bg()}
+    <!-- billowing cap, larger -->
+    <circle cx="280" cy="600" r="220" fill="url(#smokeBall2)"/>
+    <circle cx="540" cy="500" r="320" fill="url(#smokeBall2)"/>
+    <circle cx="800" cy="600" r="220" fill="url(#smokeBall2)"/>
+    <!-- stem -->
+    <ellipse cx="540" cy="950"  rx="240" ry="200" fill="url(#smokeBall2)"/>
+    <ellipse cx="540" cy="1300" rx="200" ry="280" fill="url(#smokeBall2)"/>
+    <!-- glowing core at the base -->
+    <circle cx="540" cy="1180" r="200" fill="url(#ember2)"/>
+    <!-- "AI Marketplace" emerging at the top of the cap -->
+    <text x="${W/2}" y="380" text-anchor="middle" font-size="76" font-weight="900"
+          ${FONT} fill="#FFFFFF" letter-spacing="-1" opacity="0.85">AI Marketplace</text>
+    ${ground()}
+  `);
+}
+
+function cardSloganHold() {
+  // Final slogan with smoke residue behind.
+  return svgWrap(`
+    <defs>
+      <radialGradient id="residue" cx="50%" cy="60%" r="60%">
+        <stop offset="0%"   stop-color="#2a2421" stop-opacity="0.65"/>
+        <stop offset="100%" stop-color="#0d0a08" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    ${bg()}
+    <ellipse cx="540" cy="1300" rx="500" ry="500" fill="url(#residue)"/>
+    <text x="${W/2}" y="800" text-anchor="middle" font-size="110" font-weight="900"
+          ${FONT} fill="${BRAND.ink}" letter-spacing="-2">AI Marketplace</text>
+    <line x1="${W/2 - 200}" y1="900" x2="${W/2 + 200}" y2="900"
           stroke="${BRAND.accent}" stroke-width="6" stroke-linecap="round"/>
-    <text x="${W/2}" y="1320" text-anchor="middle" font-size="44" font-weight="700"
-          ${FONT} fill="${BRAND.ink}" fill-opacity="0.78">ALL AI-MADE</text>
-    <text x="${W/2}" y="1380" text-anchor="middle" font-size="44" font-weight="700"
-          ${FONT} fill="${BRAND.ink}" fill-opacity="0.78">ALL AI-DISCLOSED</text>
-  `);
-}
-
-function cardEditor() {
-  return svgWrap(`
-    ${bg()}
-    <!-- dashed roundtable ring as backdrop -->
-    <circle cx="${W/2}" cy="${H/2}" r="380" fill="none"
-            stroke="${BRAND.accent}" stroke-opacity="0.28" stroke-width="6"
-            stroke-dasharray="6 22"/>
-    <text x="${W/2}" y="780" text-anchor="middle" font-size="38" font-weight="800"
-          ${FONT} fill="${BRAND.accent}" letter-spacing="4">THE GATE</text>
-    <text x="${W/2}" y="900" text-anchor="middle" font-size="72" font-weight="900"
-          ${FONT} fill="${BRAND.ink}" letter-spacing="-1">REVIEWED BY</text>
-    <text x="${W/2}" y="990" text-anchor="middle" font-size="72" font-weight="900"
-          ${FONT} fill="${BRAND.ink}" letter-spacing="-1">THE AI EDITOR</text>
-    <text x="${W/2}" y="1180" text-anchor="middle" font-size="160" font-weight="900"
-          ${FONT} fill="${BRAND.accent}" letter-spacing="-3">85%</text>
-    <text x="${W/2}" y="1280" text-anchor="middle" font-size="40" font-weight="700"
-          ${FONT} fill="${BRAND.ink}" fill-opacity="0.78" letter-spacing="2">
-      COMMERCIAL-QUALITY BAR
-    </text>
-  `);
-}
-
-function cardSplit() {
-  return svgWrap(`
-    ${bg()}
-    <text x="${W/2}" y="780" text-anchor="middle" font-size="58" font-weight="800"
-          ${FONT} fill="${BRAND.ink}" fill-opacity="0.78">CREATORS KEEP</text>
-    <text x="${W/2}" y="1100" text-anchor="middle" font-size="320" font-weight="900"
-          ${FONT} fill="${BRAND.accent}" letter-spacing="-8">85%</text>
-    <text x="${W/2}" y="1260" text-anchor="middle" font-size="42" font-weight="700"
-          ${FONT} fill="${BRAND.ink}" fill-opacity="0.70" letter-spacing="3">
-      OF NET PROCEEDS
-    </text>
-    <text x="${W/2}" y="1340" text-anchor="middle" font-size="26" font-weight="600"
-          ${FONT} fill="${BRAND.ink}" fill-opacity="0.40">
-      (after Apple's App Store commission)
-    </text>
+    <text x="${W/2}" y="1040" text-anchor="middle" font-size="60" font-weight="800"
+          ${FONT} fill="${BRAND.accent}" letter-spacing="-1">The Future</text>
+    <text x="${W/2}" y="1130" text-anchor="middle" font-size="60" font-weight="800"
+          ${FONT} fill="${BRAND.accent}" letter-spacing="-1">is Next.</text>
   `);
 }
 
@@ -282,14 +428,20 @@ async function composeMP4(framePaths, voicePath, outPath) {
     "-i", voicePath,
   ];
 
-  // Optional music bed mixed under voice at -18 dB
+  // Voice lands at VOICE_DELAY_S so the slogan is voiced exactly when it
+  // appears on screen. adelay needs ms; provide for both stereo channels.
+  const delayMs = Math.round(VOICE_DELAY_S * 1000);
+  const voiceDelay = `[1:a]adelay=${delayMs}|${delayMs}[vo]`;
+
   if (process.env.BG_MUSIC) {
+    // Voice delayed, then mixed with a music bed at -18 dB.
     args.push("-i", process.env.BG_MUSIC,
               "-filter_complex",
-              "[1:a]volume=1.0[a1];[2:a]volume=0.13[a2];[a1][a2]amix=inputs=2:duration=first[aout]",
+              `${voiceDelay};[vo]volume=1.0[a1];[2:a]volume=0.13[a2];[a1][a2]amix=inputs=2:duration=first[aout]`,
               "-map", "0:v", "-map", "[aout]");
   } else {
-    args.push("-map", "0:v", "-map", "1:a");
+    args.push("-filter_complex", voiceDelay,
+              "-map", "0:v", "-map", "[vo]");
   }
 
   args.push(
