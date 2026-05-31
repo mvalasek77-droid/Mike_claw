@@ -267,6 +267,16 @@ final class MarketplaceStore: ObservableObject {
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
+        // Payout config (previously never restored — would vanish on relaunch).
+        connectAccountID = state.connectAccountID
+        payoutBaseURL = state.payoutBaseURL
+        // The shared secret lives in the Keychain, not the on-disk blob. Prefer the
+        // Keychain; migrate an older blob-stored value into it on first launch.
+        if let kc = KeychainStore.get("payoutSharedSecret"), !kc.isEmpty {
+            payoutSharedSecret = kc
+        } else if !state.payoutSharedSecret.isEmpty {
+            payoutSharedSecret = state.payoutSharedSecret
+        }
         loading = false
     }
 
@@ -289,7 +299,8 @@ final class MarketplaceStore: ObservableObject {
             paidOutUSD: paidOutUSD,
             connectAccountID: connectAccountID,
             payoutBaseURL: payoutBaseURL,
-            payoutSharedSecret: payoutSharedSecret,
+            payoutSharedSecret: "", // secret is stored in the Keychain, never the on-disk blob
+
             reviews: reviews,
             editorDrops: editorDrops,
             requests: requests,
@@ -491,14 +502,25 @@ final class MarketplaceStore: ObservableObject {
     @Published var payoutBaseURL: String = "" { didSet { persist() } }
 
     /// Shared secret for authenticating with the payout worker.
-    @Published var payoutSharedSecret: String = "" { didSet { persist() } }
+    /// Stored in the Keychain (not the on-disk state blob) — see KeychainStore.
+    @Published var payoutSharedSecret: String = "" {
+        didSet { KeychainStore.set(payoutSharedSecret, for: "payoutSharedSecret") }
+    }
+
+    /// True while a cash-out request is in flight (prevents double-fire / double-pay).
+    @Published var cashingOut: Bool = false
+
+    /// Last payout/cash-out error surfaced to the UI (nil when healthy). Not persisted.
+    @Published var lastPayoutError: String?
 
     func connectPayout() {
         guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty else {
-            // No worker configured yet — mark as connected for demo mode
-            payoutConnected = true
+            // A real Stripe Connect account requires the worker. Don't fake a
+            // "connected" state — that previously let cash-out run against nothing.
+            lastPayoutError = "Add your payout Worker URL and secret in Payout Setup first."
             return
         }
+        lastPayoutError = nil
         Task { await connectPayoutRemote() }
     }
 
@@ -508,7 +530,10 @@ final class MarketplaceStore: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body = ["accountName": accountName, "accountEmail": accountEmail]
+        // Send the creator's country so the Worker creates the account in the
+        // right region (the platform is Canadian; creators may be elsewhere).
+        let country = Locale.current.region?.identifier ?? "CA"
+        let body = ["accountName": accountName, "accountEmail": accountEmail, "country": country]
         request.httpBody = try? JSONEncoder().encode(body)
 
         do {
@@ -528,23 +553,43 @@ final class MarketplaceStore: ObservableObject {
         }
     }
 
-    /// Check Connect account status (called after onboarding returns).
+    /// Check Connect account status (called after onboarding returns, and on
+    /// foreground). Also pulls the worker's webhook-recorded state so the app
+    /// learns about payout failures it would otherwise never see.
+    @MainActor
     func refreshPayoutStatus() async {
         guard let accountId = connectAccountID, !payoutBaseURL.isEmpty else { return }
-        guard let url = URL(string: "\(payoutBaseURL)/payouts/status?account_id=\(accountId)") else { return }
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
 
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                let chargesEnabled = json["chargesEnabled"] as? Bool ?? false
-                let payoutsEnabled = json["payoutsEnabled"] as? Bool ?? false
-                payoutConnected = chargesEnabled && payoutsEnabled
+        if let url = URL(string: "\(payoutBaseURL)/payouts/status?account_id=\(accountId)") {
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, http.statusCode == 200,
+                   let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                    let chargesEnabled = json["chargesEnabled"] as? Bool ?? false
+                    let payoutsEnabled = json["payoutsEnabled"] as? Bool ?? false
+                    payoutConnected = chargesEnabled && payoutsEnabled
+                }
+            } catch {
+                print("Payout status error: \(error)")
             }
-        } catch {
-            print("Payout status error: \(error)")
+        }
+
+        // Webhook-recorded payout state (e.g. a payout that later failed at the bank).
+        if let url = URL(string: "\(payoutBaseURL)/payouts/events?account_id=\(accountId)") {
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+            if let (data, response) = try? await URLSession.shared.data(for: request),
+               let http = response as? HTTPURLResponse, http.statusCode == 200,
+               let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+               let state = json["state"] as? [String: Any] {
+                if let err = state["lastPayoutError"] as? String {
+                    lastPayoutError = "Last payout failed: \(err)"
+                } else if (state["lastPayoutStatus"] as? String) == "paid" {
+                    lastPayoutError = nil
+                }
+            }
         }
     }
 
@@ -555,37 +600,60 @@ final class MarketplaceStore: ObservableObject {
         pendingPayoutUSD = ((pendingPayoutUSD + usd) * 100).rounded() / 100
     }
 
-    /// Cashes out the pending balance to the connected payout method. The actual
-    /// disbursement happens server-side (Stripe/Apple); see backend/openapi.yaml.
-    @discardableResult
-    func cashOut() -> Double {
-        guard payoutConnected, pendingPayoutUSD > 0 else { return 0 }
-        let amount = pendingPayoutUSD
-        // If worker is configured, cash out server-side
-        if !payoutBaseURL.isEmpty, let accountId = connectAccountID {
-            Task { await cashOutRemote(accountId: accountId, amount: amount) }
+    /// Cashes out the creator's withdrawable balance. The worker transfers the
+    /// amount to the creator's connected Stripe account, which (Express, automatic
+    /// payouts) pays out to their bank. Local balances change ONLY after the server
+    /// confirms success — never optimistically.
+    func cashOut() {
+        guard payoutConnected, pendingPayoutUSD > 0, !cashingOut else { return }
+        guard !payoutBaseURL.isEmpty, let accountId = connectAccountID else {
+            lastPayoutError = "Payout method isn't fully set up yet."
+            return
         }
-        paidOutUSD += amount
-        pendingPayoutUSD = 0
-        Haptics.success()
-        return amount
+        let amount = (pendingPayoutUSD * 100).rounded() / 100
+        cashingOut = true
+        lastPayoutError = nil
+        Task { await cashOutRemote(accountId: accountId, amount: amount) }
     }
 
+    @MainActor
     private func cashOutRemote(accountId: String, amount: Double) async {
-        guard let url = URL(string: "\(payoutBaseURL)/payouts/cash-out") else { return }
+        defer { cashingOut = false }
+        guard let url = URL(string: "\(payoutBaseURL)/payouts/transfer") else {
+            lastPayoutError = "Invalid payout URL."
+            return
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = ["account_id": accountId, "amount": amount]
+        // Stable key per logical cash-out: a network retry replays the SAME key, so
+        // Stripe returns the original transfer instead of paying the creator twice.
+        let idem = "cashout-\(accountId)-\(Int(amount * 100))-\(Int(paidOutUSD * 100))"
+        let body: [String: Any] = [
+            "account_id": accountId,
+            "amount_usd": amount,
+            "memo": "AI Marketplace creator cash-out",
+            "idempotency_key": idem,
+        ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
-            if let http = response as? HTTPURLResponse {
-                print("Cash-out response: \(http.statusCode)")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                lastPayoutError = "No response from payout service."
+                return
+            }
+            let payload = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            if http.statusCode == 200, payload?["transferId"] != nil {
+                // Confirmed: the money is in motion. Now (and only now) update the books.
+                paidOutUSD = ((paidOutUSD + amount) * 100).rounded() / 100
+                pendingPayoutUSD = max(0, ((pendingPayoutUSD - amount) * 100).rounded() / 100)
+                Haptics.success()
+            } else {
+                lastPayoutError = (payload?["error"] as? String) ?? "Cash-out failed (HTTP \(http.statusCode))."
             }
         } catch {
-            print("Cash-out error: \(error)")
+            lastPayoutError = "Cash-out error: \(error.localizedDescription)"
         }
     }
 
@@ -991,19 +1059,14 @@ final class MarketplaceStore: ObservableObject {
         libraryIDs.insert(item.id)
         bumpPurchase(item.id)
         let earning = Commerce.creatorEarning(on: price)
-        // Credit the creator whenever they buy their own work — catalog titles
-        // are authored by the demo user (Mike Valasek), so the registered creator
-        // earns their 85% share on every sale of their content.
-        if item.creator.lowercased() == accountName.lowercased() && !accountName.isEmpty {
-            creatorEarnings += earning
-        }
-        // Credit the user's published works (titles they submitted through Publish flow)
-        if submissions.contains(where: { $0.publishedItemID == item.id }) {
-            creatorEarnings += earning
-        }
-        // Credit the partner models (AI tools) behind any purchased title —
-        // catalog items are Mike Valasek × Suno/Claude/GPT, so partners earn too.
-        if !item.aiTools.isEmpty {
+        // The creator earns their 85% share once per sale of content they own —
+        // either authored (catalog) or published through the Publish flow. Credit
+        // the lifetime tally and the withdrawable balance exactly once each; never
+        // stack 2–3 credits for a single sale, and never credit on someone else's item.
+        let isAuthor = !accountName.isEmpty && item.creator.lowercased() == accountName.lowercased()
+        let isPublisher = submissions.contains { $0.publishedItemID == item.id }
+        if isAuthor || isPublisher {
+            creatorEarnings = ((creatorEarnings + earning) * 100).rounded() / 100
             addPendingPayout(earning)   // withdrawable to real currency
         }
         persist()

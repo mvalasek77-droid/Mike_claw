@@ -10,12 +10,16 @@ struct GlassSurface<Content: View>: View {
         content()
             .background {
                 ZStack {
-                    RoundedRectangle(cornerRadius: corner, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                    RoundedRectangle(cornerRadius: corner, style: .continuous)
-                        .fill(tint.opacity(0.06))
+                    RoundedRectangle(cornerRadius: corner, style: .continuous).fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: corner, style: .continuous).fill(tint.opacity(0.06))
                 }
-                .liquidGlass(cornerRadius: corner)
+            }
+            .overlay {
+                // Top-edge sheen — gives the surface a lit, fluid-glass feel.
+                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .fill(LinearGradient(colors: [.white.opacity(0.08), .clear],
+                                         startPoint: .top, endPoint: .center))
+                    .allowsHitTesting(false)
             }
             .depth(corner)
     }

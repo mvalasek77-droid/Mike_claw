@@ -135,16 +135,23 @@ struct PartnerProgramView: View {
                     money("Paid out", store.paidOutUSD, Theme.inkSoft)
                 }
                 if store.payoutConnected {
-                    PrimaryButton(title: store.pendingPayoutUSD > 0
-                                  ? "Cash out \(usd(store.pendingPayoutUSD))" : "Nothing to cash out",
+                    PrimaryButton(title: store.cashingOut ? "Cashing out…"
+                                  : (store.pendingPayoutUSD > 0
+                                     ? "Cash out \(usd(store.pendingPayoutUSD))" : "Nothing to cash out"),
                                   systemImage: "banknote.fill", tint: Theme.success,
-                                  enabled: store.pendingPayoutUSD > 0) { store.cashOut() }
+                                  enabled: store.pendingPayoutUSD > 0 && !store.cashingOut) { store.cashOut() }
                 } else {
                     PrimaryButton(title: "Connect payout method", systemImage: "link", style: .ghost) {
                         store.connectPayout()
                     }
                     Text("Connect a payout method to withdraw. Disbursement runs server-side (see backend/openapi.yaml).")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                }
+                if let err = store.lastPayoutError {
+                    Text(err)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.danger)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 // Always show payout config link
                 Button {

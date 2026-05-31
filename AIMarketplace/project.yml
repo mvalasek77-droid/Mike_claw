@@ -31,6 +31,10 @@ targets:
         CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false
+        CFBundleURLTypes:
+          - CFBundleURLName: com.valasek.aimarketplace.payout
+            CFBundleURLSchemes:
+              - aimarketplace
         LSApplicationCategoryType: public.app-category.entertainment
         LSRequiresIPhoneOS: true
         NSPhotoLibraryUsageDescription: Choose cover art for the books, music and films you publish.

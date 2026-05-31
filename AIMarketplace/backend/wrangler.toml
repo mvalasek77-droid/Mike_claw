@@ -2,5 +2,44 @@ name = "aimarketplace-payout"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
+# ── Environments ─────────────────────────────────────────────────────────────
+# PRODUCTION (real money) = the default/top-level config.
+#   Deploy:      npx wrangler deploy
+#   Set secret:  npx wrangler secret put STRIPE_SECRET_KEY            # paste sk_live_…
+#   Worker:      aimarketplace-payout
+#                https://aimarketplace-payout.mvalasek77.workers.dev
+#
+# STAGING (fake money — Stripe test mode) = [env.staging] below.
+#   Deploy:      npx wrangler deploy --env staging
+#   Set secret:  npx wrangler secret put STRIPE_SECRET_KEY --env staging   # paste sk_test_…
+#   Worker:      aimarketplace-payout-staging
+#                https://aimarketplace-payout-staging.mvalasek77.workers.dev
+#
+# Each environment keeps its OWN secrets (STRIPE_SECRET_KEY, APP_SHARED_SECRET,
+# STRIPE_WEBHOOK_SECRET) and they never see each other. Set every secret twice —
+# once per environment — with the matching test vs live values. Staging gets the
+# sk_test_/whsec_(test) values; production gets the sk_live_/whsec_(live) values.
+
 [vars]
 STRIPE_CONNECT_TYPE = "express"
+# Platform Stripe account is Canadian — settle transfers/payouts in CAD and
+# default new creator accounts to CA (the app can override country per creator).
+PLATFORM_CURRENCY = "cad"
+PLATFORM_COUNTRY = "CA"
+
+# Canonical creator email→accountId map + last webhook-observed payout state.
+[[kv_namespaces]]
+binding = "KV"
+id = "1cacf9975f7a44a5b8f2f3da607e5c3f"
+
+[env.staging]
+name = "aimarketplace-payout-staging"
+
+[env.staging.vars]
+STRIPE_CONNECT_TYPE = "express"
+PLATFORM_CURRENCY = "cad"
+PLATFORM_COUNTRY = "CA"
+
+[[env.staging.kv_namespaces]]
+binding = "KV"
+id = "adc2726df6874d31955c91a704214fb8"

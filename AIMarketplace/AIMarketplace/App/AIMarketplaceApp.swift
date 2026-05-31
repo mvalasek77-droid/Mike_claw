@@ -5,6 +5,7 @@ import Foundation
 struct AIMarketplaceApp: App {
     @StateObject private var store = MarketplaceStore()
     @StateObject private var ledger = AICoinLedger()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -13,6 +14,22 @@ struct AIMarketplaceApp: App {
                 .environmentObject(ledger)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
+                .onOpenURL { url in
+                    // Stripe Connect onboarding returns here via
+                    // aimarketplace://payout/complete?account=acct_xxx
+                    guard url.scheme == "aimarketplace" else { return }
+                    if let account = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                        .queryItems?.first(where: { $0.name == "account" })?.value,
+                       store.connectAccountID == nil {
+                        store.connectAccountID = account
+                    }
+                    Task { await store.refreshPayoutStatus() }
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    // Reconcile payout status whenever the app returns to the
+                    // foreground, in case the deep-link return was missed.
+                    if phase == .active { Task { await store.refreshPayoutStatus() } }
+                }
         }
     }
 }
@@ -43,6 +60,15 @@ struct RootView: View {
         .onAppear {
             store.attachEnergy(ledger)
             store.runScoutIfDue()   // the Scout is loose: sources content daily
+            #if DEBUG
+            // Screenshot/QA bypass: launch with `-uitesting` to skip splash + auth.
+            if ProcessInfo.processInfo.arguments.contains("-uitesting") {
+                if !store.isRegistered {
+                    store.register(name: "Mike Valasek", email: "mike@aimarketplace.app")
+                }
+                showSplash = false
+            }
+            #endif
         }
     }
 }
