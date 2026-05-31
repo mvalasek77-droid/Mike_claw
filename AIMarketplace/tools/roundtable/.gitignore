@@ -1,0 +1,6 @@
+# Never commit secrets or generated artifacts.
+.env
+.env.local
+.roundtable-work/
+inaugural-roundtable.mp3
+inaugural-roundtable.txt
