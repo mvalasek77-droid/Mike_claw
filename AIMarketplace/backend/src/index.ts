@@ -44,7 +44,11 @@ interface Env {
   /// read it via GET /stripe/publishable-key without a redeploy.
   STRIPE_PUBLISHABLE_KEY?: string;
   RESEND_API_KEY?: string;     // for the operator payout-digest email
-  OPERATOR_EMAIL?: string;     // where digests go (defaults below)
+  OPERATOR_EMAIL?: string;     // where ALL operator mail goes (defaults below)
+  // Critical financial alerts (NSF / insufficient funds / payout failures).
+  // Defaults to OPERATOR_EMAIL so everything lands in one inbox; set this
+  // separately only if you later want alerts split from the routine digest.
+  ALERT_EMAIL?: string;
   DIGEST_FROM_EMAIL?: string;  // verified Resend sender (defaults to onboarding)
   TOPUP_BUFFER_USD?: string;   // keep the platform balance at/above this
   TOPUP_MAX_USD?: string;      // hard cap on any single top-up (safety rail)
@@ -400,13 +404,32 @@ async function handleCashOut(request: Request, env: Env): Promise<Response> {
   // draws from that account's balance and lands in the creator's own bank.
   // (For Express accounts Stripe also auto-pays on a schedule; this is an
   // explicit "pay me now".)
-  const payout = await stripe("/payouts", {
-    amount: payoutAmount,
-    currency: (env.PLATFORM_CURRENCY || "usd").toLowerCase(),
-    metadata: {
-      platform: "ai-marketplace",
-    },
-  }, env.STRIPE_SECRET_KEY, account_id);
+  const currency = (env.PLATFORM_CURRENCY || "usd").toLowerCase();
+  let payout: any;
+  try {
+    payout = await stripe("/payouts", {
+      amount: payoutAmount,
+      currency,
+      metadata: {
+        platform: "ai-marketplace",
+      },
+    }, env.STRIPE_SECRET_KEY, account_id);
+  } catch (e: any) {
+    await recordLedger(env, {
+      type: "payout", status: "failed", amountCents: payoutAmount, currency,
+      scope: account_id, note: e?.message ?? "payout failed",
+    });
+    if (isInsufficientFunds(e)) {
+      await alertNSF(env, { kind: "creator cash-out", scope: account_id, amountCents: payoutAmount, currency, detail: e?.message ?? "" });
+    }
+    return error(e?.message ?? "Payout failed", 502);
+  }
+
+  await recordLedger(env, {
+    type: "payout", status: payout.status === "failed" ? "failed" : "pending",
+    amountCents: payoutAmount, currency, scope: account_id, stripeId: payout.id,
+    note: `arrival ${payout.arrival_date ?? "?"}`,
+  });
 
   return json({
     payoutId: payout.id,
@@ -444,18 +467,38 @@ async function handleTransfer(request: Request, env: Env): Promise<Response> {
   // double-pay — but the prior `xfer_<account>_<title>` fallback was wrong
   // (it dropped the second sale of the same title as a duplicate).
   const idem = idempotency_key ?? crypto.randomUUID();
+  const amountCents = Math.round(amount_usd * 100);
+  const currency = (env.PLATFORM_CURRENCY || "usd").toLowerCase();
 
-  const transfer = await stripe("/transfers", {
-    amount: Math.round(amount_usd * 100),
-    currency: (env.PLATFORM_CURRENCY || "usd").toLowerCase(),
-    destination: account_id,
-    metadata: {
-      platform: "ai-marketplace",
-      title_id: title_id ?? "",
-      creator_share: String(CREATOR_SHARE),
-    },
-    description: memo ?? "AI Marketplace creator earnings",
-  }, env.STRIPE_SECRET_KEY, undefined, idem);
+  let transfer: any;
+  try {
+    transfer = await stripe("/transfers", {
+      amount: amountCents,
+      currency,
+      destination: account_id,
+      metadata: {
+        platform: "ai-marketplace",
+        title_id: title_id ?? "",
+        creator_share: String(CREATOR_SHARE),
+      },
+      description: memo ?? "AI Marketplace creator earnings",
+    }, env.STRIPE_SECRET_KEY, undefined, idem);
+  } catch (e: any) {
+    await recordLedger(env, {
+      type: "transfer", status: "failed", amountCents, currency,
+      scope: account_id, refId: title_id, note: e?.message ?? "transfer failed",
+    });
+    if (isInsufficientFunds(e)) {
+      await alertNSF(env, { kind: "creator transfer", scope: account_id, amountCents, currency, detail: e?.message ?? "" });
+    }
+    return error(e?.message ?? "Transfer failed", 502);
+  }
+
+  await recordLedger(env, {
+    type: "transfer", status: "succeeded", amountCents, currency,
+    scope: account_id, refId: title_id, stripeId: transfer.id,
+    note: memo ?? "creator earnings",
+  });
 
   return json({
     transferId: transfer.id,
@@ -513,12 +556,31 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
     }
     case "payout.paid": {
       const payout = event.data.object;
-      console.log(`Payout ${payout.id} paid: $${payout.amount / 100}`);
+      console.log(`Payout ${payout.id} paid: ${payout.amount / 100}`);
+      await recordLedger(env, {
+        type: "payout", status: "succeeded", amountCents: payout.amount,
+        currency: payout.currency ?? "usd",
+        scope: event.account ?? "platform", stripeId: payout.id, note: "payout.paid",
+      });
       break;
     }
     case "payout.failed": {
       const payout = event.data.object;
-      console.error(`Payout ${payout.id} FAILED: $${payout.amount / 100}`);
+      console.error(`Payout ${payout.id} FAILED: ${payout.amount / 100}`);
+      await recordLedger(env, {
+        type: "payout", status: "failed", amountCents: payout.amount,
+        currency: payout.currency ?? "usd",
+        scope: event.account ?? "platform", stripeId: payout.id,
+        note: `payout.failed: ${payout.failure_message ?? payout.failure_code ?? ""}`,
+      });
+      // Stripe surfaces NSF on payouts via failure_code; alert so it's fixed.
+      const code = `${payout.failure_code ?? ""} ${payout.failure_message ?? ""}`;
+      if (isInsufficientFunds(code)) {
+        await alertNSF(env, {
+          kind: "creator payout (webhook)", scope: event.account ?? "platform",
+          amountCents: payout.amount, currency: payout.currency ?? "usd", detail: code.trim(),
+        });
+      }
       break;
     }
     default:
@@ -685,9 +747,10 @@ async function handleReport(request: Request, env: Env): Promise<Response> {
 // ── Automated funding + operator digest ─────────────────────────────────────
 
 /** Send an email via Resend. No-op (logged) if RESEND_API_KEY isn't set. */
-async function sendEmail(env: Env, subject: string, text: string): Promise<void> {
+async function sendEmail(env: Env, subject: string, text: string, to?: string): Promise<void> {
+  const recipient = to || env.OPERATOR_EMAIL || DEFAULT_OPERATOR_EMAIL;
   if (!env.RESEND_API_KEY) {
-    console.log(`[email skipped — no RESEND_API_KEY]\n${subject}\n${text}`);
+    console.log(`[email skipped — no RESEND_API_KEY] → ${recipient}\n${subject}\n${text}`);
     return;
   }
   const res = await fetch("https://api.resend.com/emails", {
@@ -695,12 +758,116 @@ async function sendEmail(env: Env, subject: string, text: string): Promise<void>
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: env.DIGEST_FROM_EMAIL || DEFAULT_FROM_EMAIL,
-      to: [env.OPERATOR_EMAIL || DEFAULT_OPERATOR_EMAIL],
+      to: [recipient],
       subject,
       text,
     }),
   });
   if (!res.ok) console.error(`Resend ${res.status}: ${await res.text()}`);
+}
+
+// ── Money-flow ledger ────────────────────────────────────────────────────────
+//
+// An append-only record of every money event, INDEPENDENT of Stripe, kept in
+// KV so that if Stripe ever disagrees with us (or "goes off the rails") there's
+// a second source of truth to reconcile against. Each entry is immutable;
+// corrections are new entries, never edits. Keyed `ledger:<scope>:<ts>:<rand>`
+// where scope is the connected account id (or "platform") so a creator's
+// activity can be listed by prefix.
+
+interface LedgerEntry {
+  ts: string;            // ISO timestamp
+  type: string;          // sale | transfer | payout | topup | nsf | refund
+  status: string;        // succeeded | failed | pending
+  amountCents: number;   // always positive; sign implied by type
+  currency: string;
+  scope: string;         // accountId or "platform"
+  refId?: string;        // sale/title/order id the entry traces to
+  stripeId?: string;     // Stripe object id (tr_…, po_…, tu_…) when known
+  note?: string;
+}
+
+/** Append an immutable entry. Best-effort: a ledger write must never block a
+ *  money movement, so failures are logged, not thrown. Also bumps a coarse
+ *  per-type running total in `ledger:totals` for the summary endpoint. */
+async function recordLedger(env: Env, e: Omit<LedgerEntry, "ts">): Promise<void> {
+  if (!env.KV) { console.log(`[ledger skipped — no KV] ${JSON.stringify(e)}`); return; }
+  const entry: LedgerEntry = { ts: new Date().toISOString(), ...e };
+  const rand = crypto.randomUUID().slice(0, 8);
+  const key = `ledger:${entry.scope}:${entry.ts}:${rand}`;
+  try {
+    await env.KV.put(key, JSON.stringify(entry));
+    // Coarse running totals (best-effort; the entries are authoritative).
+    const totalsRaw = await env.KV.get("ledger:totals");
+    const totals = totalsRaw ? JSON.parse(totalsRaw) : {};
+    const bucket = `${entry.type}_${entry.status}`;
+    totals[bucket] = (totals[bucket] ?? 0) + entry.amountCents;
+    await env.KV.put("ledger:totals", JSON.stringify(totals));
+  } catch (err: any) {
+    console.error("ledger write failed:", err?.message ?? err);
+  }
+}
+
+/** Detect a Stripe insufficient-funds (NSF) condition from a thrown error. */
+function isInsufficientFunds(err: unknown): boolean {
+  const m = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return m.includes("insufficient")          // "balance_insufficient", "insufficient funds"
+      || m.includes("balance_insufficient")
+      || m.includes("nsf");
+}
+
+/** Record an NSF event to the ledger AND email the operator so it can be fixed. */
+async function alertNSF(
+  env: Env,
+  ctx: { kind: string; scope: string; amountCents: number; currency: string; detail: string },
+): Promise<void> {
+  await recordLedger(env, {
+    type: "nsf", status: "failed", amountCents: ctx.amountCents,
+    currency: ctx.currency, scope: ctx.scope, note: `${ctx.kind}: ${ctx.detail}`,
+  });
+  const cur = ctx.currency.toUpperCase();
+  const amt = (ctx.amountCents / 100).toFixed(2);
+  const subject = `🚨 AI Marketplace NSF — ${ctx.kind} of ${cur} ${amt} failed`;
+  const body = [
+    `A ${ctx.kind} could not complete because of insufficient funds.`,
+    ``,
+    `Amount:   ${cur} ${amt}`,
+    `Account:  ${ctx.scope}`,
+    `Stripe:   ${ctx.detail}`,
+    ``,
+    `What to do: top up the platform Stripe balance (Stripe Dashboard →`,
+    `Balance → Add to balance, or wait for the auto-top-up cron), then the`,
+    `affected ${ctx.kind} will succeed on the next attempt. The amount has`,
+    `NOT been paid out and is still owed — nothing was lost.`,
+  ].join("\n");
+  // Alerts default to the single operator inbox (ALERT_EMAIL falls back to
+  // OPERATOR_EMAIL), so everything lands in one place.
+  await sendEmail(env, subject, body, env.ALERT_EMAIL || env.OPERATOR_EMAIL || DEFAULT_OPERATOR_EMAIL);
+}
+
+/** GET /ledger?account_id=…&limit=… — the money record for one account (or the
+ *  platform). Auth-required. Newest first. */
+async function handleLedger(request: Request, env: Env): Promise<Response> {
+  if (!env.KV) return json({ entries: [], note: "No KV bound — ledger unavailable." });
+  const url = new URL(request.url);
+  const scope = url.searchParams.get("account_id") || "platform";
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? "50"), 200);
+  const list = await env.KV.list({ prefix: `ledger:${scope}:`, limit: 1000 });
+  // Keys embed the ISO ts, so reverse-lexicographic = newest first.
+  const keys = list.keys.map(k => k.name).sort().reverse().slice(0, limit);
+  const entries: LedgerEntry[] = [];
+  for (const k of keys) {
+    const raw = await env.KV.get(k);
+    if (raw) entries.push(JSON.parse(raw) as LedgerEntry);
+  }
+  return json({ scope, count: entries.length, entries });
+}
+
+/** GET /ledger/summary — coarse running totals across all activity. */
+async function handleLedgerSummary(env: Env): Promise<Response> {
+  if (!env.KV) return json({ totals: {}, note: "No KV bound — ledger unavailable." });
+  const raw = await env.KV.get("ledger:totals");
+  return json({ totals: raw ? JSON.parse(raw) : {} });
 }
 
 /** Keep the platform balance funded so creator transfers never fail. Pulls
@@ -738,7 +905,24 @@ async function maybeTopUp(env: Env): Promise<{ toppedUp: number; availableUSD: n
   if (env.TOPUP_SOURCE_ID) body.source = env.TOPUP_SOURCE_ID;
 
   const idem = `topup_${new Date().toISOString().slice(0, 10)}`;
-  await stripe("/topups", body, env.STRIPE_SECRET_KEY, undefined, idem);
+  try {
+    const topup = await stripe("/topups", body, env.STRIPE_SECRET_KEY, undefined, idem);
+    await recordLedger(env, {
+      type: "topup", status: "pending", amountCents, currency: cur,
+      scope: "platform", stripeId: topup.id, note: "float funding",
+    });
+  } catch (e: any) {
+    await recordLedger(env, {
+      type: "topup", status: "failed", amountCents, currency: cur,
+      scope: "platform", note: e?.message ?? "topup failed",
+    });
+    if (isInsufficientFunds(e)) {
+      // The top-up bank itself bounced — the float can't be funded, which
+      // means creator transfers will start failing. Highest-priority alert.
+      await alertNSF(env, { kind: "platform float top-up (bank NSF)", scope: "platform", amountCents, currency: cur, detail: e?.message ?? "" });
+    }
+    throw e; // let the cron's isolated catch log it
+  }
   return { toppedUp: amountCents / 100, availableUSD };
 }
 
@@ -874,6 +1058,15 @@ export default {
         return await handleScoutSpend(env);
       }
 
+      // Money-flow ledger: the independent record of every transfer/payout/
+      // top-up/NSF. ?account_id= scopes it to one creator; default = platform.
+      if (path === "/ledger" && method === "GET") {
+        return await handleLedger(request, env);
+      }
+      if (path === "/ledger/summary" && method === "GET") {
+        return await handleLedgerSummary(env);
+      }
+
       // Scout feed: the curated reference corpus the app's Scout draws from
       // (100 canonical bestsellers per medium + 10 masters per role + recipes
       // + current charts + model list). GET; auth-required to keep the corpus
@@ -931,6 +1124,8 @@ export default {
             "GET  /scout/providers",
             "GET  /scout/spend",
             "POST /scout/generate-media",
+            "GET  /ledger",
+            "GET  /ledger/summary",
             "GET  /stripe/publishable-key",
             "GET  /payout-complete",
             "GET  /payout-refresh",

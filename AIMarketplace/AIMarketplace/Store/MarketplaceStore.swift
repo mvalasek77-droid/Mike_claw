@@ -701,6 +701,32 @@ final class MarketplaceStore: ObservableObject {
         }
     }
 
+    /// Pull this creator's money-flow ledger from the Worker (the independent
+    /// record of every transfer/payout/NSF). Returns entries newest-first or a
+    /// human-readable error. Scoped to the connected account when present.
+    func fetchLedger() async -> Result<[LedgerEntry], String> {
+        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty else {
+            return .failure("Connect your payout backend in Payout Setup to see live sales.")
+        }
+        let scope = connectAccountID ?? "platform"
+        guard let url = URL(string: "\(payoutBaseURL)/ledger?account_id=\(scope)&limit=100") else {
+            return .failure("Invalid payout backend URL.")
+        }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                return .failure("Couldn't load sales (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)).")
+            }
+            struct LedgerResponse: Codable { var entries: [LedgerEntry] }
+            let decoded = try JSONDecoder().decode(LedgerResponse.self, from: data)
+            return .success(decoded.entries)
+        } catch {
+            return .failure("Couldn't load sales: \(error.localizedDescription)")
+        }
+    }
+
     /// Credits the creator's withdrawable balance (called on each of their sales
     /// and by NRN → USD conversion).
     func addPendingPayout(_ usd: Double) {

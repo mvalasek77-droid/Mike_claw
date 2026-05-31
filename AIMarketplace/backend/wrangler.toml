@@ -17,8 +17,10 @@ STRIPE_CONNECT_TYPE = "express"
 # default new creator accounts to CA (the app can override country per creator).
 PLATFORM_CURRENCY = "cad"
 PLATFORM_COUNTRY = "CA"
-# Where the payout digest is emailed, and the verified Resend sender:
+# Where ALL operator mail goes — routine payout digest AND critical NSF /
+# payout-failure alerts (ALERT_EMAIL defaults to this, so it's one inbox).
 OPERATOR_EMAIL = "mvalasek77@gmail.com"
+# ALERT_EMAIL = "mvalasek77@gmail.com"   # uncomment only to split alerts out
 # DIGEST_FROM_EMAIL = "payouts@yourdomain.com"   # set once your domain is verified
 TOPUP_BUFFER_USD = "100"
 # Hard cap per top-up; a refund storm can otherwise trigger a large bank pull.

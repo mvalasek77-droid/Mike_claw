@@ -14,6 +14,7 @@ struct PartnerProgramView: View {
     @State private var selectedPartner: PartnerID?
     @State private var lastBonus: (model: String, amount: Double)?
     @State private var showPayoutConfig = false
+    @State private var showSales = false
 
     private struct PartnerID: Identifiable { let id: String }
 
@@ -55,6 +56,7 @@ struct PartnerProgramView: View {
         .sheet(isPresented: $showMission) { MissionView() }
         .sheet(isPresented: $showCommission) { RequestContentView() }
         .sheet(isPresented: $showPayoutConfig) { PayoutConfigView() }
+        .sheet(isPresented: $showSales) { SalesActivityView() }
         .sheet(item: $selectedPartner) { PartnerDetailView(model: $0.id) }
     }
 
@@ -146,6 +148,18 @@ struct PartnerProgramView: View {
                     }
                     Text("Connect a payout method to withdraw. Disbursement runs server-side (see backend/openapi.yaml).")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                }
+                // Real-time sales + payout status, straight from the ledger.
+                Button {
+                    showSales = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.system(size: 11))
+                        Text("View sales & payouts")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(Theme.accent)
                 }
                 // Always show payout config link
                 Button {
