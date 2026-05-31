@@ -9,17 +9,22 @@ import UIKit
 /// experience is complete even before assets are added.
 struct PlayerView: View {
     let item: MediaItem
-    /// When true, plays a limited sample (capped clip / first pages).
+    /// Caller's intent to play a limited sample. Ownership ALWAYS wins — a
+    /// buyer never sees a preview, even if the player was opened from a stale
+    /// "Read a sample" tap and previewMode never got reset. See effectivePreview.
     var preview: Bool = false
+    @EnvironmentObject private var store: MarketplaceStore
     @Environment(\.dismiss) private var dismiss
+
+    private var effectivePreview: Bool { preview && !store.owns(item) }
 
     var body: some View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
             switch item.type {
-            case .movie: VideoSurface(item: item, preview: preview)
-            case .music: AudioSurface(item: item, preview: preview)
-            case .novel: ReaderSurface(item: item, preview: preview)
+            case .movie: VideoSurface(item: item, preview: effectivePreview)
+            case .music: AudioSurface(item: item, preview: effectivePreview)
+            case .novel: ReaderSurface(item: item, preview: effectivePreview)
             }
 
             HStack(spacing: 8) {
@@ -30,7 +35,7 @@ struct PlayerView: View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.9))
                         .lineLimit(1)
-                    if preview {
+                    if effectivePreview {
                         Text("PREVIEW")
                             .font(.system(size: 9, weight: .heavy, design: .rounded))
                             .tracking(1.5)
