@@ -240,6 +240,65 @@ async function ffmpegConcat(segments, outPath) {
   });
 }
 
+// ─── Cover art ───────────────────────────────────────────────────────────────
+// cover.svg ships in this directory (editable in any vector tool). We render
+// it to a 1024×1024 JPG using macOS built-ins: qlmanage (Quick Look) for the
+// SVG → PNG step, then sips for PNG → JPG with high quality. No installs.
+
+function runCmd(cmd, args, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"], ...opts });
+    let err = "";
+    p.stderr.on("data", d => { err += d; });
+    p.on("error", reject);
+    p.on("close", code => code === 0 ? resolve() : reject(new Error(`${cmd} exit ${code}: ${err.trim()}`)));
+  });
+}
+
+async function renderCover() {
+  const svgPath = path.resolve("cover.svg");
+  try { await fs.access(svgPath); }
+  catch { throw new Error(`cover.svg not found in ${path.dirname(svgPath)} — restore from git`); }
+
+  const qlOut = path.join(".roundtable-work", "ql");
+  await fs.mkdir(qlOut, { recursive: true });
+
+  // 1) Quick Look: SVG → PNG (built-in on every macOS since 10.5)
+  await runCmd("qlmanage", ["-t", "-s", "1024", "-f", "1.0", svgPath, "-o", qlOut]);
+  const pngPath = path.join(qlOut, "cover.svg.png");
+
+  // 2) sips: PNG → JPG with quality squeeze (also built-in)
+  const jpgPath = path.resolve("inaugural-roundtable.jpg");
+  await runCmd("sips", [
+    "-s", "format", "jpeg",
+    "-s", "formatOptions", "92",
+    pngPath, "--out", jpgPath,
+  ]);
+  return jpgPath;
+}
+
+// ─── Drop-in: copy artefacts into the bundle + regen the Xcode project ──────
+async function installIntoApp(mp3Path, jpgPath) {
+  // tools/roundtable/  →  ../../AIMarketplace/Resources/Samples/
+  const samples = path.resolve("..", "..", "AIMarketplace", "Resources", "Samples");
+  await fs.mkdir(samples, { recursive: true });
+  await fs.copyFile(mp3Path, path.join(samples, "inaugural-roundtable.mp3"));
+  await fs.copyFile(jpgPath, path.join(samples, "inaugural-roundtable.jpg"));
+  console.log(`✓ Installed audio + cover into ${samples}`);
+
+  // Try to regenerate the Xcode project so the new files are picked up
+  // automatically. If xcodegen isn't installed we tell the user how.
+  const projectRoot = path.resolve("..", "..");
+  try {
+    console.log(`Running xcodegen in ${projectRoot}…`);
+    await runCmd("xcodegen", ["generate"], { cwd: projectRoot });
+    console.log("✓ Xcode project regenerated. Open AIMarketplace.xcodeproj and build.");
+  } catch (e) {
+    console.log("(xcodegen not on PATH — install with: brew install xcodegen");
+    console.log(" then run: cd AIMarketplace && xcodegen generate)");
+  }
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 async function main() {
   const workDir = ".roundtable-work";
@@ -284,14 +343,37 @@ async function main() {
   }
 
   console.log(`\nStitching ${segments.length} segments…`);
-  await ffmpegConcat(segments, "inaugural-roundtable.mp3");
+  const mp3Path = path.resolve("inaugural-roundtable.mp3");
+  await ffmpegConcat(segments, mp3Path);
   await fs.writeFile("inaugural-roundtable.txt", transcript.join(""));
 
-  const stat = await fs.stat("inaugural-roundtable.mp3");
-  console.log(`\n✓ inaugural-roundtable.mp3  (${(stat.size / 1024 / 1024).toFixed(1)} MB)`);
+  const stat = await fs.stat(mp3Path);
+  console.log(`✓ inaugural-roundtable.mp3  (${(stat.size / 1024 / 1024).toFixed(1)} MB)`);
   console.log(`✓ inaugural-roundtable.txt  (transcript)`);
-  console.log(`\nNext: drop the .mp3 into AIMarketplace/AIMarketplace/Resources/Samples/`);
-  console.log(`and add a MediaItem entry (see README) to bundle it as an Editor Original.`);
+
+  // ─── Render the cover art ──────────────────────────────────────────────────
+  console.log(`\nRendering cover.svg → inaugural-roundtable.jpg…`);
+  let jpgPath;
+  try {
+    jpgPath = await renderCover();
+    console.log(`✓ inaugural-roundtable.jpg`);
+  } catch (e) {
+    console.log(`(cover render failed: ${e.message})`);
+    console.log(`The catalog entry will fall back to procedurally generated art.`);
+  }
+
+  // ─── Drop into the app bundle + regen Xcode ────────────────────────────────
+  if (jpgPath) {
+    console.log(`\nInstalling into the app bundle…`);
+    try {
+      await installIntoApp(mp3Path, jpgPath);
+    } catch (e) {
+      console.log(`(install step failed: ${e.message})`);
+      console.log(`Copy the .mp3 and .jpg into AIMarketplace/AIMarketplace/Resources/Samples/ manually.`);
+    }
+  }
+
+  console.log(`\n🎙  Inaugural Roundtable ready.`);
 }
 
 main().catch(e => { console.error("\n✗", e.message); process.exit(1); });

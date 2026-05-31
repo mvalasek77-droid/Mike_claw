@@ -1,8 +1,9 @@
 # AI Marketplace — Inaugural Roundtable generator
 
-One-shot script that records a ~25–30 minute panel episode where the four
-frontier models on the marketplace introduce themselves and discuss the
-future of AI media.
+One command, plug and play. Produces a ~25–30 minute panel episode where the
+four frontier models on the marketplace introduce themselves and discuss the
+future of AI media, **with the cover art rendered and dropped into the app
+bundle automatically**.
 
 ## What it does
 
@@ -16,15 +17,19 @@ For each segment, it calls the panelist's **actual model API** for the text:
 | Grok | xAI | `grok-4` | `fable` | `Josh` |
 | Host | — | (scripted) | `nova` | `Rachel` |
 
-Each panelist's text is then rendered through TTS with a distinct voice so the
+Each panelist's text is then rendered via TTS with a distinct voice so the
 panel sounds like four different speakers. Honest framing: the *words* are
 each model's own; the *voices* are studio narrators (none of these labs ship
-native audio output that you can route through an external pipeline today).
+native audio output that can be routed through an external pipeline today).
 
 ## What you need
 
 - **Node 22+** (for native `fetch`)
-- **ffmpeg** (`brew install ffmpeg`)
+- **ffmpeg** — `brew install ffmpeg`
+- **xcodegen** — `brew install xcodegen` (so the script can re-wire the new
+  files into the Xcode project automatically; if missing, the script tells you
+  what to run by hand)
+- **macOS** for cover rendering — uses built-in `qlmanage` + `sips`, no extras
 - **At least one panelist API key** + a TTS key. If a panelist's key is missing
   the script honestly skips that segment rather than fake it.
 
@@ -51,49 +56,41 @@ ELEVENLABS_API_KEY=…   # optional; preferred over OpenAI TTS if set
 node generate.mjs
 ```
 
-You'll see progress per segment. ~3 minutes wall-clock typically. Output:
+That's it. The script:
 
-- `inaugural-roundtable.mp3` — the episode (~25–30 MB)
-- `inaugural-roundtable.txt` — full transcript with speaker labels
+1. Generates each panelist's text via their own API.
+2. Renders each segment to audio (ElevenLabs preferred; OpenAI TTS fallback).
+3. Stitches the segments into `inaugural-roundtable.mp3` with ffmpeg.
+4. Writes a transcript to `inaugural-roundtable.txt`.
+5. Renders `cover.svg` → `inaugural-roundtable.jpg` (1024×1024) via Quick Look + sips.
+6. Copies the `.mp3` + `.jpg` into `AIMarketplace/Resources/Samples/`.
+7. Runs `xcodegen generate` so the new files land in the build phase automatically.
 
-Cost ballpark for one full run: about **$1–3** in API spend (LLM calls + TTS).
+Then:
 
-## Ship it in the marketplace
+```bash
+cd ../..
+open AIMarketplace.xcodeproj
+# Cmd+R to build & run
+```
 
-1. Move the MP3 + a cover image into the app bundle:
-   ```bash
-   cp inaugural-roundtable.mp3 ../../AIMarketplace/Resources/Samples/
-   cp <your-cover>.jpg ../../AIMarketplace/Resources/Samples/inaugural-roundtable.jpg
-   ```
-2. Add a `MediaItem` to `Store/SampleData.swift` so it shows up in the catalog
-   as an Editor Original. Suggested entry:
-   ```swift
-   MediaItem(
-       id: UUID(uuidString: "99999999-9999-4999-8999-999999999999")!,
-       title: "AI Marketplace — Inaugural Roundtable",
-       creator: "AI Marketplace",
-       type: .music, // closest fit — spoken-word episode
-       genre: "Roundtable",
-       synopsis: "The four frontier language models — Claude Opus 4.8, GPT-5.5, Gemini, and Grok — introduce themselves and discuss what AI media means right now and where the market is heading. Words from each model's own API; voices via studio TTS.",
-       aiTools: ["Claude Opus 4.8", "GPT-5.5", "Gemini", "Grok", "ElevenLabs"],
-       commercialScore: 92,
-       price: 0.00,                       // free inaugural drop
-       releaseYear: 2026,
-       length: 1,                         // one episode
-       maturity: "Everyone",
-       purchases: 0,
-       trending: 95,
-       coverAssetName: "inaugural-roundtable",
-       mediaFileName: "inaugural-roundtable",
-       isEditorOriginal: true,
-   ),
-   ```
-3. Regenerate the Xcode project (`xcodegen generate` in `AIMarketplace/`) so the
-   new files land in `PBXResourcesBuildPhase`, then rebuild.
+First launch shows the **Inaugural Launch Sheet** with the four panelist chips
+and a big "Listen now" button. The hero banner on Home also features the
+episode (because `trending: 99` makes it the `featured` item).
+
+## Cost ballpark
+
+About **$1–3** per run (LLM calls + TTS). Re-runs are cheap.
+
+## Editing the cover
+
+`cover.svg` is plain SVG — edit colours, layout, or labels in any vector
+editor or text editor, then re-run `node generate.mjs` and it re-renders the
+JPG and drops it back in.
 
 ## Security
 
-`.env`, `.roundtable-work/`, and the output files are gitignored. **Never
-paste API keys into a chat, PR description, or commit message.** If a key
-ever leaks, rotate it at the provider's dashboard immediately — keys are
-the only thing standing between you and someone else's bill.
+`.env`, `.roundtable-work/`, and the output `.mp3`/`.jpg` are gitignored.
+**Never paste API keys into a chat, PR, or commit message.** If a key ever
+leaks, rotate it at the provider's dashboard immediately — keys are the only
+thing standing between you and someone else's bill.

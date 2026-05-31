@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"
+     font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif">
+
+  <!-- ─── Cover for AI Marketplace · Inaugural Roundtable ─────────────────────
+       1024×1024. Four glowing orbs at compass points represent the four
+       panelist labs (Anthropic / OpenAI / Google / xAI). The dashed ring is
+       the "roundtable" — the lab initial sits inside each orb. Bottom-centre
+       waveform hints at audio. Editable: change colours, sizes, or labels
+       directly in this file then re-run generate.mjs to re-render JPG.
+       ─────────────────────────────────────────────────────────────────── -->
+
+  <defs>
+    <!-- Backdrop: dusk purple → near-black, with a faint top-centre bloom -->
+    <radialGradient id="bg" cx="50%" cy="32%" r="80%">
+      <stop offset="0%"  stop-color="#1d1129"/>
+      <stop offset="55%" stop-color="#0d0a14"/>
+      <stop offset="100%" stop-color="#050507"/>
+    </radialGradient>
+
+    <!-- Anthropic — warm amber -->
+    <radialGradient id="orb-A" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FFE0B0"/>
+      <stop offset="55%"  stop-color="#E8A34A"/>
+      <stop offset="100%" stop-color="#7E4F1B"/>
+    </radialGradient>
+    <radialGradient id="glow-A" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#E8A34A" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#E8A34A" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- OpenAI — emerald -->
+    <radialGradient id="orb-O" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#B6F1D5"/>
+      <stop offset="55%"  stop-color="#10A37F"/>
+      <stop offset="100%" stop-color="#08503F"/>
+    </radialGradient>
+    <radialGradient id="glow-O" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#10A37F" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#10A37F" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Google — cool blue -->
+    <radialGradient id="orb-G" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#C8E0FF"/>
+      <stop offset="55%"  stop-color="#4F8FF7"/>
+      <stop offset="100%" stop-color="#22497E"/>
+    </radialGradient>
+    <radialGradient id="glow-G" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#4F8FF7" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#4F8FF7" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- xAI — crimson -->
+    <radialGradient id="orb-X" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FFCFCA"/>
+      <stop offset="55%"  stop-color="#E8453C"/>
+      <stop offset="100%" stop-color="#7A1F1A"/>
+    </radialGradient>
+    <radialGradient id="glow-X" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#E8453C" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#E8453C" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Backdrop -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- The roundtable: dashed amber-accent ring connecting the four orbs -->
+  <circle cx="512" cy="512" r="280" fill="none"
+          stroke="#ffffff" stroke-opacity="0.06" stroke-width="1.5"/>
+  <circle cx="512" cy="512" r="280" fill="none"
+          stroke="#FF7A45" stroke-opacity="0.22" stroke-width="3"
+          stroke-dasharray="3 14"/>
+
+  <!-- Glow halos -->
+  <circle cx="512" cy="232" r="200" fill="url(#glow-A)"/>
+  <circle cx="792" cy="512" r="200" fill="url(#glow-O)"/>
+  <circle cx="512" cy="792" r="200" fill="url(#glow-G)"/>
+  <circle cx="232" cy="512" r="200" fill="url(#glow-X)"/>
+
+  <!-- Orbs (the panelists) -->
+  <circle cx="512" cy="232" r="92" fill="url(#orb-A)"/>
+  <circle cx="792" cy="512" r="92" fill="url(#orb-O)"/>
+  <circle cx="512" cy="792" r="92" fill="url(#orb-G)"/>
+  <circle cx="232" cy="512" r="92" fill="url(#orb-X)"/>
+
+  <!-- Lab initials inside each orb (Anthropic, OpenAI, Google, xAI) -->
+  <text x="512" y="248" text-anchor="middle" font-size="56" font-weight="900"
+        fill="#2e1605" fill-opacity="0.85">A</text>
+  <text x="792" y="528" text-anchor="middle" font-size="56" font-weight="900"
+        fill="#062618" fill-opacity="0.85">O</text>
+  <text x="512" y="808" text-anchor="middle" font-size="56" font-weight="900"
+        fill="#0e2042" fill-opacity="0.85">G</text>
+  <text x="232" y="528" text-anchor="middle" font-size="56" font-weight="900"
+        fill="#3a0c08" fill-opacity="0.85">X</text>
+
+  <!-- Central wordmark stack -->
+  <text x="512" y="478" text-anchor="middle"
+        font-size="15" font-weight="800" letter-spacing="5"
+        fill="#FF7A45">PREMIERE EPISODE</text>
+
+  <text x="512" y="540" text-anchor="middle"
+        font-size="56" font-weight="900" letter-spacing="-1"
+        fill="#FFFFFF">AI Marketplace</text>
+
+  <text x="512" y="582" text-anchor="middle"
+        font-size="20" font-weight="700" letter-spacing="3"
+        fill="#ffffff" fill-opacity="0.62">INAUGURAL ROUNDTABLE</text>
+
+  <!-- Bottom waveform suggestion -->
+  <g transform="translate(0, 920)" stroke="#FF7A45" stroke-opacity="0.55"
+     stroke-linecap="round" stroke-width="3" fill="none">
+    <line x1="380" y1="0"   x2="380" y2="0"/>
+    <line x1="404" y1="-8"  x2="404" y2="8"/>
+    <line x1="428" y1="-16" x2="428" y2="16"/>
+    <line x1="452" y1="-26" x2="452" y2="26"/>
+    <line x1="476" y1="-14" x2="476" y2="14"/>
+    <line x1="500" y1="-30" x2="500" y2="30"/>
+    <line x1="524" y1="-22" x2="524" y2="22"/>
+    <line x1="548" y1="-34" x2="548" y2="34"/>
+    <line x1="572" y1="-16" x2="572" y2="16"/>
+    <line x1="596" y1="-24" x2="596" y2="24"/>
+    <line x1="620" y1="-10" x2="620" y2="10"/>
+    <line x1="644" y1="-18" x2="644" y2="18"/>
+  </g>
+</svg>
