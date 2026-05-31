@@ -30,6 +30,7 @@ struct SalesActivityView: View {
     @EnvironmentObject private var store: MarketplaceStore
 
     @State private var entries: [LedgerEntry] = []
+    @State private var funding: MarketplaceStore.FundingStatus?
     @State private var loading = false
     @State private var loadError: String?
 
@@ -40,6 +41,7 @@ struct SalesActivityView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         summaryRow
+                        if let f = funding { fundingBanner(f) }
                         if let err = loadError { errorCard(err) }
                         if entries.isEmpty && !loading {
                             emptyState
@@ -174,6 +176,40 @@ struct SalesActivityView: View {
         .padding(.top, 50)
     }
 
+    /// Operator-facing float awareness: balance vs target buffer + the exact
+    /// top-up number, plus today's sales. Only meaningful for the operator,
+    /// but harmless to creators (it's the platform's own funding, no PII).
+    private func fundingBanner(_ f: MarketplaceStore.FundingStatus) -> some View {
+        let needsTopUp = f.topUpNeededUSD > 0
+        let cur = f.currency.uppercased()
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: needsTopUp ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(needsTopUp ? Theme.warning : Theme.success)
+                Text(needsTopUp ? "Top up needed" : "Float healthy")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                Text("\(f.salesTodayCount) sales today")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+            if needsTopUp {
+                Text("Add \(cur) \(String(format: "%.2f", f.topUpNeededUSD)) to your linked bank so the auto-top-up can restore the float.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.warning)
+            }
+            Text("Platform balance \(cur) \(String(format: "%.2f", f.availableUSD)) · target \(cur) \(String(format: "%.2f", f.bufferUSD))")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12)
+            .fill((needsTopUp ? Theme.warning : Theme.success).opacity(0.10)))
+    }
+
     private func errorCard(_ message: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.warning)
@@ -188,10 +224,12 @@ struct SalesActivityView: View {
     private func load() async {
         loading = true; loadError = nil
         defer { loading = false }
+        async let fundingTask = store.fetchFunding()
         let fetched = await store.fetchLedger()
         switch fetched {
         case .success(let list): entries = list
         case .failure(let msg):  loadError = msg
         }
+        funding = await fundingTask
     }
 }

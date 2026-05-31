@@ -44,6 +44,11 @@ interface Env {
   /// read it via GET /stripe/publishable-key without a redeploy.
   STRIPE_PUBLISHABLE_KEY?: string;
   RESEND_API_KEY?: string;     // for the operator payout-digest email
+  // Email the operator on every sale (default on). Each sale email also
+  // reports the platform float + how much to top up, so one message answers
+  // "did I sell?" and "how much do I owe the float?". Set "false" to mute
+  // per-sale mail and rely on the periodic digest only.
+  NOTIFY_EACH_SALE?: string;
   OPERATOR_EMAIL?: string;     // where ALL operator mail goes (defaults below)
   // Critical financial alerts (NSF / insufficient funds / payout failures).
   // Defaults to OPERATOR_EMAIL so everything lands in one inbox; set this
@@ -499,6 +504,8 @@ async function handleTransfer(request: Request, env: Env): Promise<Response> {
     scope: account_id, refId: title_id, stripeId: transfer.id,
     note: memo ?? "creator earnings",
   });
+  // Notify the operator of the sale + current float / top-up needed.
+  await notifySale(env, { amountUSD: amount_usd, title_id, account_id });
 
   return json({
     transferId: transfer.id,
@@ -870,6 +877,90 @@ async function handleLedgerSummary(env: Env): Promise<Response> {
   return json({ totals: raw ? JSON.parse(raw) : {} });
 }
 
+// ── Float funding awareness ──────────────────────────────────────────────────
+
+interface Funding {
+  currency: string;
+  availableUSD: number;   // platform balance available right now
+  bufferUSD: number;      // target float
+  topUpNeededUSD: number; // how much to add to restore the buffer (what the
+                          // auto-top-up cron will pull from your bank)
+  salesTodayCount: number;
+  salesTodayUSD: number;  // creator earnings transferred out today (burn)
+}
+
+/** Cheap funding snapshot: one balance call + today's sales counter from KV.
+ *  Used by the per-sale email, the digest, and GET /payouts/funding. */
+async function platformFunding(env: Env): Promise<Funding> {
+  const cur = (env.PLATFORM_CURRENCY || "usd").toLowerCase();
+  const buffer = Number(env.TOPUP_BUFFER_USD ?? DEFAULT_TOPUP_BUFFER_USD);
+  let availableUSD = 0;
+  try {
+    const bal = await stripeGet(`/balance`, env.STRIPE_SECRET_KEY);
+    availableUSD = ((bal.available?.find((b: any) => b.currency === cur)?.amount) ?? 0) / 100;
+  } catch { /* leave 0 — caller still gets buffer/topUp guidance */ }
+  const todayKey = `sales:${new Date().toISOString().slice(0, 10)}`;
+  let salesTodayCount = 0, salesTodayUSD = 0;
+  if (env.KV) {
+    const raw = await env.KV.get(todayKey);
+    if (raw) { const s = JSON.parse(raw); salesTodayCount = s.count ?? 0; salesTodayUSD = (s.grossCents ?? 0) / 100; }
+  }
+  return {
+    currency: cur,
+    availableUSD,
+    bufferUSD: buffer,
+    topUpNeededUSD: Math.max(0, buffer - availableUSD),
+    salesTodayCount,
+    salesTodayUSD,
+  };
+}
+
+/** Bump today's sales counter (count + gross cents). Best-effort. */
+async function bumpSalesCounter(env: Env, grossCents: number): Promise<void> {
+  if (!env.KV) return;
+  const todayKey = `sales:${new Date().toISOString().slice(0, 10)}`;
+  try {
+    const raw = await env.KV.get(todayKey);
+    const s = raw ? JSON.parse(raw) : { count: 0, grossCents: 0 };
+    s.count += 1; s.grossCents += grossCents;
+    await env.KV.put(todayKey, JSON.stringify(s), { expirationTtl: 60 * 60 * 24 * 40 });
+  } catch (err: any) { console.error("sales counter failed:", err?.message ?? err); }
+}
+
+/** A one-line funding footer used in every operator email. */
+function fundingFooter(f: Funding): string {
+  const C = f.currency.toUpperCase();
+  const topUp = f.topUpNeededUSD > 0
+    ? `TOP UP NEEDED: ${C} ${f.topUpNeededUSD.toFixed(2)} — make sure your linked bank has it; the auto-top-up cron will pull it to restore the float.`
+    : `Float is healthy — no top-up needed right now.`;
+  return [
+    ``,
+    `— Float status —`,
+    `Platform balance: ${C} ${f.availableUSD.toFixed(2)}   (target buffer ${C} ${f.bufferUSD.toFixed(2)})`,
+    topUp,
+    `Sales today: ${f.salesTodayCount} (${C} ${f.salesTodayUSD.toFixed(2)} paid to creators)`,
+  ].join("\n");
+}
+
+/** Email the operator about a single sale, with the float/top-up footer so one
+ *  message answers "did I sell?" and "how much do I need to top up?". */
+async function notifySale(env: Env, sale: { amountUSD: number; title_id?: string; account_id: string }): Promise<void> {
+  if ((env.NOTIFY_EACH_SALE ?? "true") === "false") return;
+  await bumpSalesCounter(env, Math.round(sale.amountUSD * 100));
+  const f = await platformFunding(env);
+  const C = f.currency.toUpperCase();
+  const subject = `💰 AI Marketplace sale — ${C} ${sale.amountUSD.toFixed(2)} to a creator`;
+  const body = [
+    `A title just sold. The creator's ${(CREATOR_SHARE * 100).toFixed(0)}% share was transferred to their Stripe balance.`,
+    ``,
+    `Creator share: ${C} ${sale.amountUSD.toFixed(2)}`,
+    `Title:         ${sale.title_id ?? "(unknown)"}`,
+    `Account:       ${sale.account_id}`,
+    fundingFooter(f),
+  ].join("\n");
+  await sendEmail(env, subject, body);
+}
+
 /** Keep the platform balance funded so creator transfers never fail. Pulls
  *  from your linked top-up bank via the Stripe Top-ups API — no manual "Add to
  *  balance" clicking. Money still moves bank→Stripe (Apple can't fund Stripe
@@ -944,15 +1035,22 @@ async function sendPayoutDigest(env: Env): Promise<{ accounts: number; owedUSD: 
     lines.push(`• ${who} — $${(cents / 100).toFixed(2)} (${ready})  [${acct.id}]`);
   }
 
-  const body = lines.length
-    ? `Creators with a balance owed:\n\n${lines.join("\n")}\n\n` +
-      `Total owed: $${owedUSD.toFixed(2)}\n\n` +
-      `How payout works: connected creators are paid to their own bank by Stripe automatically. ` +
-      `You only keep the platform float funded (auto-top-up handles this). ` +
-      `For anyone marked ⚠️, nudge them to finish Stripe onboarding — Stripe can't pay them until then.`
+  const f = await platformFunding(env);
+  const owedBlock = lines.length
+    ? `Creators with a balance owed:\n\n${lines.join("\n")}\n\nTotal owed: $${owedUSD.toFixed(2)}`
     : `No creator balances owed right now.`;
+  const body = [
+    owedBlock,
+    fundingFooter(f),
+    ``,
+    `How payout works: connected creators are paid to their own bank by Stripe`,
+    `automatically. You only keep the platform float funded (auto-top-up handles`,
+    `this — just keep your linked bank funded). For anyone marked ⚠️, nudge them`,
+    `to finish Stripe onboarding — Stripe can't pay them until then.`,
+  ].join("\n");
 
-  await sendEmail(env, `AI Marketplace payouts — $${owedUSD.toFixed(2)} owed across ${lines.length} creator(s)`, body);
+  const topUpTag = f.topUpNeededUSD > 0 ? ` · top up ${f.currency.toUpperCase()} ${f.topUpNeededUSD.toFixed(2)}` : "";
+  await sendEmail(env, `AI Marketplace — ${f.salesTodayCount} sales today, $${owedUSD.toFixed(2)} owed${topUpTag}`, body);
   return { accounts: lines.length, owedUSD };
 }
 
@@ -1067,6 +1165,12 @@ export default {
         return await handleLedgerSummary(env);
       }
 
+      // Float funding: platform balance, target buffer, how much to top up,
+      // and today's sales. The operator/admin can poll this for awareness.
+      if (path === "/payouts/funding" && method === "GET") {
+        return json(await platformFunding(env));
+      }
+
       // Scout feed: the curated reference corpus the app's Scout draws from
       // (100 canonical bestsellers per medium + 10 masters per role + recipes
       // + current charts + model list). GET; auth-required to keep the corpus
@@ -1126,6 +1230,7 @@ export default {
             "POST /scout/generate-media",
             "GET  /ledger",
             "GET  /ledger/summary",
+            "GET  /payouts/funding",
             "GET  /stripe/publishable-key",
             "GET  /payout-complete",
             "GET  /payout-refresh",
