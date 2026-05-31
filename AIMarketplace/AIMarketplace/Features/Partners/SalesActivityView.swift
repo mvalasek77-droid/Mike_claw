@@ -170,6 +170,11 @@ struct SalesActivityView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
+            Text("Heads-up: payouts can take up to a month to fund. Apple settles in-app purchases on a monthly cycle, so a sale today may not reach your bank until the next Apple settlement.")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.inkFaint)
+                .multilineTextAlignment(.center)
+                .padding(.top, 8)
         }
         .padding(.top, 50)
     }

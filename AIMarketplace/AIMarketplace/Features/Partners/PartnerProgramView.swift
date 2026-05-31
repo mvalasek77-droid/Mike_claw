@@ -146,7 +146,7 @@ struct PartnerProgramView: View {
                     PrimaryButton(title: "Connect payout method", systemImage: "link", style: .ghost) {
                         store.connectPayout()
                     }
-                    Text("Connect a payout method to withdraw. Disbursement runs server-side (see backend/openapi.yaml).")
+                    Text("Connect a payout method to withdraw. Payouts can take up to a month to fund — Apple settles in-app purchases monthly, so a sale today may not reach your bank until the next Apple settlement.")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
                 // Real-time sales + payout status, straight from the ledger.

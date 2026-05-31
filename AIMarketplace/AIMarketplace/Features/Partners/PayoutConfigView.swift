@@ -180,6 +180,10 @@ struct PayoutConfigView: View {
                 .foregroundStyle(Theme.success)
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: 10).fill(Theme.success.opacity(0.10)))
+            Text("Payout timing: up to a month. Apple settles in-app purchases monthly, so a sale you made today may not reach your bank until the next Apple settlement plus Stripe's standard processing time (typically a few business days after that).")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.inkFaint)
+                .multilineTextAlignment(.center)
         }
     }
 
