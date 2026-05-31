@@ -10,6 +10,9 @@ struct BrowseHomeView: View {
     @State private var layerFilter: ContentFoundry.ScoutLayer?
     @State private var showSearch = false
     @State private var showNotifications = false
+    /// The inaugural-roundtable launch sheet — shown once per device on the
+    /// first launch where the audio file is actually bundled.
+    @State private var launchItem: MediaItem?
 
     private var rows: [MediaType] { MediaType.allCases }
 
@@ -62,6 +65,17 @@ struct BrowseHomeView: View {
         }
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showNotifications) { NotificationsView() }
+        .sheet(item: $launchItem) { item in
+            InauguralLaunchSheet(item: item, onPlay: { selected = item })
+        }
+        .task {
+            // Show the inaugural launch sheet once on first start after the
+            // MP3 has actually been bundled. Triggers off the catalog the
+            // first time this view appears in a session.
+            if launchItem == nil {
+                launchItem = InauguralLaunchSheet.itemIfReady(in: store.catalog)
+            }
+        }
     }
 
     private var searchButton: some View {
