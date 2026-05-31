@@ -572,6 +572,9 @@ final class MarketplaceStore: ObservableObject {
     @Published var payoutSharedSecret: String = "" { didSet { persist() } }
     /// Transient — surfaces the last payout-API failure to the UI. Not persisted.
     @Published var lastPayoutError: String? = nil
+    /// True while a cash-out request is in flight. Blocks a second tap from
+    /// firing a duplicate cash-out before the first one returns. Not persisted.
+    @Published var cashingOut: Bool = false
     /// Stripe-reported: the creator finished the onboarding form (regardless
     /// of whether Stripe has finished verifying them). Together with
     /// payoutConnected, lets the UI distinguish "abandoned mid-flow",
@@ -641,7 +644,10 @@ final class MarketplaceStore: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body = ["accountName": accountName, "accountEmail": accountEmail]
+        // Send the creator's region so the Worker creates the Connect account in
+        // the right country (the platform is Canadian; creators may be elsewhere).
+        let country = Locale.current.region?.identifier ?? "CA"
+        let body = ["accountName": accountName, "accountEmail": accountEmail, "country": country]
         request.httpBody = try? JSONEncoder().encode(body)
 
         do {
@@ -712,7 +718,9 @@ final class MarketplaceStore: ObservableObject {
     /// failure → balance stays pending and `lastPayoutError` surfaces it.
     @discardableResult
     func cashOut() -> Double {
-        guard payoutConnected, pendingPayoutUSD > 0 else { return 0 }
+        // `!cashingOut` blocks a double-tap from firing two cash-outs before the
+        // first returns (the cash-out endpoint isn't idempotent like transfers).
+        guard payoutConnected, pendingPayoutUSD > 0, !cashingOut else { return 0 }
         let amount = pendingPayoutUSD
         lastPayoutError = nil
 
@@ -725,8 +733,10 @@ final class MarketplaceStore: ObservableObject {
         }
 
         // Remote path — only mutate state on confirmed success.
+        cashingOut = true
         Task { @MainActor in
             let succeeded = await cashOutRemote(accountId: accountId, amount: amount)
+            cashingOut = false
             if succeeded {
                 paidOutUSD = ((paidOutUSD + amount) * 100).rounded() / 100
                 pendingPayoutUSD = 0

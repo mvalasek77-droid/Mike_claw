@@ -30,6 +30,13 @@ interface Env {
   APP_SHARED_SECRET: string;
   STRIPE_WEBHOOK_SECRET: string; // whsec_… from the Stripe webhook endpoint
   STRIPE_CONNECT_TYPE: string; // "express" from wrangler.toml [vars]
+  // Platform Stripe account settlement currency + default country for new
+  // connected accounts. The platform account is CANADIAN, so these are "cad"
+  // and "CA" — transfers/payouts MUST settle in the platform's own currency or
+  // Stripe rejects them ("insufficient funds" against a CAD balance). Defaults
+  // fall back to usd/US if unset.
+  PLATFORM_CURRENCY?: string;
+  PLATFORM_COUNTRY?: string;
   /// Stripe publishable key (pk_live_…). Not used server-side today — the
   /// Worker only needs the secret + webhook keys — but kept in the env so
   /// `wrangler secret put STRIPE_PUBLISHABLE_KEY` is supported and any
@@ -87,6 +94,7 @@ const DEFAULT_TOPUP_MAX_USD = 200;
 interface ConnectRequest {
   accountName: string;
   accountEmail: string;
+  country?: string; // ISO 3166-1 alpha-2 (e.g. "CA", "US"); the app sends the creator's region
 }
 
 interface CashOutRequest {
@@ -120,7 +128,7 @@ async function stripe(
       flatten(body) as Record<string, string>
     ).toString(),
   });
-  const json = await res.json();
+  const json = await res.json() as any;
   if (!res.ok) throw new Error(`Stripe ${res.status}: ${json.error?.message ?? JSON.stringify(json)}`);
   return json;
 }
@@ -130,7 +138,7 @@ async function stripeGet(path: string, secret: string): Promise<any> {
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
     headers: { Authorization: `Bearer ${secret}` },
   });
-  const json = await res.json();
+  const json = await res.json() as any;
   if (!res.ok) throw new Error(`Stripe ${res.status}: ${json.error?.message ?? JSON.stringify(json)}`);
   return json;
 }
@@ -192,16 +200,21 @@ function error(message: string, status = 400): Response {
 /** POST /payouts/connect — Create or retrieve a Connect Express account */
 async function handleConnect(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as ConnectRequest;
-  const { accountName, accountEmail } = body;
+  const { accountName, accountEmail, country } = body;
 
   if (!accountName || !accountEmail) {
     return error("accountName and accountEmail are required");
   }
 
+  // Create the account in the creator's own country when the app supplies one,
+  // else the platform's country (CA). Hardcoding "US" created US accounts for a
+  // Canadian platform, which broke onboarding/verification.
+  const acctCountry = (country || env.PLATFORM_COUNTRY || "US").toUpperCase();
+
   // Step 1: Create the Connect Express account
   const account = await stripe("/accounts", {
     type: env.STRIPE_CONNECT_TYPE || "express",
-    country: "US",
+    country: acctCountry,
     email: accountEmail,
     business_type: "individual",
     individual: {
@@ -389,7 +402,7 @@ async function handleCashOut(request: Request, env: Env): Promise<Response> {
   // explicit "pay me now".)
   const payout = await stripe("/payouts", {
     amount: payoutAmount,
-    currency: "usd",
+    currency: (env.PLATFORM_CURRENCY || "usd").toLowerCase(),
     metadata: {
       platform: "ai-marketplace",
     },
@@ -434,7 +447,7 @@ async function handleTransfer(request: Request, env: Env): Promise<Response> {
 
   const transfer = await stripe("/transfers", {
     amount: Math.round(amount_usd * 100),
-    currency: "usd",
+    currency: (env.PLATFORM_CURRENCY || "usd").toLowerCase(),
     destination: account_id,
     metadata: {
       platform: "ai-marketplace",
@@ -698,8 +711,9 @@ async function maybeTopUp(env: Env): Promise<{ toppedUp: number; availableUSD: n
   const buffer = Number(env.TOPUP_BUFFER_USD ?? DEFAULT_TOPUP_BUFFER_USD);
   const maxTopUp = Number(env.TOPUP_MAX_USD ?? DEFAULT_TOPUP_MAX_USD);
   const balance = await stripeGet(`/balance`, env.STRIPE_SECRET_KEY);
-  const usd = balance.available?.find((b: any) => b.currency === "usd");
-  const availableUSD = (usd?.amount ?? 0) / 100;
+  const cur = (env.PLATFORM_CURRENCY || "usd").toLowerCase();
+  const platBal = balance.available?.find((b: any) => b.currency === cur);
+  const availableUSD = (platBal?.amount ?? 0) / 100;
   if (availableUSD >= buffer) return { toppedUp: 0, availableUSD };
 
   // Skip if a top-up is already in flight — they take days to clear and stacking
@@ -715,7 +729,7 @@ async function maybeTopUp(env: Env): Promise<{ toppedUp: number; availableUSD: n
 
   const body: Record<string, unknown> = {
     amount: amountCents,
-    currency: "usd",
+    currency: cur,
     description: "AI Marketplace payout float",
     statement_descriptor: "AIMKT TOPUP",
   };

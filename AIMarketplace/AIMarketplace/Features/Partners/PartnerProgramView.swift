@@ -135,10 +135,11 @@ struct PartnerProgramView: View {
                     money("Paid out", store.paidOutUSD, Theme.inkSoft)
                 }
                 if store.payoutConnected {
-                    PrimaryButton(title: store.pendingPayoutUSD > 0
-                                  ? "Cash out \(usd(store.pendingPayoutUSD))" : "Nothing to cash out",
+                    PrimaryButton(title: store.cashingOut ? "Cashing out…"
+                                  : (store.pendingPayoutUSD > 0
+                                     ? "Cash out \(usd(store.pendingPayoutUSD))" : "Nothing to cash out"),
                                   systemImage: "banknote.fill", tint: Theme.success,
-                                  enabled: store.pendingPayoutUSD > 0) { store.cashOut() }
+                                  enabled: store.pendingPayoutUSD > 0 && !store.cashingOut) { store.cashOut() }
                 } else {
                     PrimaryButton(title: "Connect payout method", systemImage: "link", style: .ghost) {
                         store.connectPayout()

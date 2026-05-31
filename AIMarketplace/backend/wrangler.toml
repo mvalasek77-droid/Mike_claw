@@ -13,6 +13,10 @@ compatibility_date = "2024-12-01"
 
 [vars]
 STRIPE_CONNECT_TYPE = "express"
+# Platform Stripe account is Canadian — settle transfers/payouts in CAD and
+# default new creator accounts to CA (the app can override country per creator).
+PLATFORM_CURRENCY = "cad"
+PLATFORM_COUNTRY = "CA"
 # Where the payout digest is emailed, and the verified Resend sender:
 OPERATOR_EMAIL = "mvalasek77@gmail.com"
 # DIGEST_FROM_EMAIL = "payouts@yourdomain.com"   # set once your domain is verified
@@ -35,13 +39,33 @@ MAX_MEDIA_GEN_USD_MONTH = "50"
 MUSIC_GEN_COST_USD = "0.15"
 VIDEO_GEN_COST_USD = "0.60"
 
-# KV namespace required for spend tracking. Create with:
-#   wrangler kv namespace create AIMKT_KV
-# then paste the returned id into the binding below and uncomment.
-# [[kv_namespaces]]
-# binding = "KV"
-# id = "REPLACE_WITH_KV_NAMESPACE_ID"
+# KV: canonical creator email→accountId map + last webhook-observed payout
+# state + Scout media-gen monthly spend tracking.
+[[kv_namespaces]]
+binding = "KV"
+id = "1cacf9975f7a44a5b8f2f3da607e5c3f"
 
 # Cron: every 6 hours, fund the float then email the payout digest.
 [triggers]
 crons = ["0 */6 * * *"]
+
+# ── STAGING (Stripe test mode / fake money) ──────────────────────────────────
+# Deploy: npx wrangler deploy --env staging   •   Worker: aimarketplace-payout-staging
+# Set test secrets with `--env staging`. Independent KV + secrets from prod.
+[env.staging]
+name = "aimarketplace-payout-staging"
+
+[env.staging.vars]
+STRIPE_CONNECT_TYPE = "express"
+PLATFORM_CURRENCY = "cad"
+PLATFORM_COUNTRY = "CA"
+OPERATOR_EMAIL = "mvalasek77@gmail.com"
+TOPUP_BUFFER_USD = "100"
+TOPUP_MAX_USD = "200"
+MAX_MEDIA_GEN_USD_MONTH = "50"
+MUSIC_GEN_COST_USD = "0.15"
+VIDEO_GEN_COST_USD = "0.60"
+
+[[env.staging.kv_namespaces]]
+binding = "KV"
+id = "adc2726df6874d31955c91a704214fb8"

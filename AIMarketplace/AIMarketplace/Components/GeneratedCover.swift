@@ -1,125 +1,120 @@
 import SwiftUI
 
-/// Procedurally generates a distinct, type-appropriate cover (album cover, book
-/// cover, film poster) for any title that has no supplied artwork. Everything is
-/// seeded from the item, so a title always renders the same cover. One of
-/// several background templates is chosen per title for variety.
-///
-/// This is the on-device fallback; a real image-generation provider can replace
-/// it later by supplying `coverImageData` on the item (PosterArt prefers that).
+/// Procedurally generates a premium, abstract cover (Apple-Music-/Spotify-Canvas
+/// style) for any title with no supplied artwork: a luminous mesh gradient seeded
+/// from the item, soft light blooms, and fine grain. Type drives the colour
+/// family (music = violet, novel = warm amber, film = teal/indigo) so books,
+/// albums and films read distinctly. Deterministic — a title always renders the
+/// same cover. This is the on-device fallback; a real image-gen provider can
+/// replace it via `coverImageData` (PosterArt prefers that).
 struct GeneratedCover: View {
     let item: MediaItem
 
     private var seed: Int { abs(item.seed) }
-    private var template: Int { seed % 5 }
-
-    private var palette: (base: Color, mid: Color, accent: Color) {
-        let hue = Double(seed % 360) / 360.0
-        let base = Color(hue: hue, saturation: 0.55, brightness: 0.30)
-        let mid = Color(hue: (hue + 0.07).truncatingRemainder(dividingBy: 1), saturation: 0.78, brightness: 0.12)
-        // Lean on the media-type accent so books/albums/films read differently.
-        let accent = (seed / 7) % 2 == 0 ? item.type.accent
-            : Color(hue: (hue + 0.5).truncatingRemainder(dividingBy: 1), saturation: 0.85, brightness: 0.95)
-        return (base, mid, accent)
-    }
 
     var body: some View {
         GeometryReader { geo in
-            let w = geo.size.width, h = geo.size.height
-            let s = min(w, h)
+            let s = min(geo.size.width, geo.size.height)
             ZStack {
-                LinearGradient(colors: [palette.base, palette.mid],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-                motif(w: w, h: h, s: s)
-                emblem(s: s, w: w, h: h)
-                // Subtle vignette + film grain-ish top light for depth.
-                RadialGradient(colors: [.white.opacity(0.10), .clear],
-                               center: .topLeading, startRadius: 0, endRadius: s * 1.2)
+                base
+                // Soft luminous blooms add depth and a fluid, lit feel.
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .fill(colors[(i * 3 + 2) % colors.count])
+                        .frame(width: s * (0.7 + frac(40 + i) * 0.5))
+                        .blur(radius: s * 0.26)
+                        .offset(x: (frac(50 + i) - 0.5) * geo.size.width,
+                                y: (frac(60 + i) - 0.5) * geo.size.height)
+                        .blendMode(.screen)
+                        .opacity(0.55)
+                }
+                // Top-left key light + bottom vignette for cinematic depth.
+                RadialGradient(colors: [.white.opacity(0.20), .clear],
+                               center: .topLeading, startRadius: 0, endRadius: s * 1.15)
+                    .blendMode(.softLight)
+                RadialGradient(colors: [.clear, .black.opacity(0.40)],
+                               center: .center, startRadius: s * 0.35, endRadius: s * 1.1)
+                grain(s: s)
             }
+            .drawingGroup() // flatten the blends/blurs into one layer (perf + correctness)
         }
     }
 
-    // MARK: Background templates
+    // MARK: Mesh base
 
-    @ViewBuilder
-    private func motif(w: CGFloat, h: CGFloat, s: CGFloat) -> some View {
-        switch template {
-        case 0:
-            // Soft orbs (atmospheric).
-            ZStack {
-                Circle().fill(palette.accent.opacity(0.55)).frame(width: w * 0.95).blur(radius: 46)
-                    .offset(x: CGFloat(seed % 60) - 30, y: -h * 0.30)
-                Circle().fill(.white.opacity(0.08)).frame(width: w * 0.6).blur(radius: 34)
-                    .offset(x: w * 0.30, y: h * 0.32)
-            }
-        case 1:
-            // Concentric rings (vinyl / target).
-            ZStack {
-                ForEach(0..<6, id: \.self) { i in
-                    Circle().strokeBorder(palette.accent.opacity(0.5 - Double(i) * 0.06),
-                                          lineWidth: s * 0.02)
-                        .frame(width: s * (0.35 + CGFloat(i) * 0.22))
-                }
-            }
-            .offset(y: -h * 0.05)
-        case 2:
-            // Vertical bars (modernist).
-            HStack(spacing: w * 0.03) {
-                ForEach(0..<5, id: \.self) { i in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(i % 2 == 0 ? palette.accent.opacity(0.65) : .white.opacity(0.06))
-                        .frame(width: w * (0.06 + CGFloat((seed >> (i + 1)) % 5) * 0.02))
-                }
-            }
-            .rotationEffect(.degrees(8))
-            .frame(maxWidth: .infinity, alignment: .leading)
-        case 3:
-            // Big rotated shapes (poster-graphic).
-            ZStack {
-                RoundedRectangle(cornerRadius: s * 0.1).fill(palette.accent.opacity(0.6))
-                    .frame(width: s * 0.7, height: s * 0.7).rotationEffect(.degrees(Double(seed % 40) - 20))
-                    .offset(x: -w * 0.15, y: -h * 0.1).blur(radius: 2)
-                Circle().fill(.white.opacity(0.07)).frame(width: s * 0.5).offset(x: w * 0.25, y: h * 0.2)
-            }
-        default:
-            // Halftone dot grid.
-            Canvas { ctx, size in
-                let step = size.width / 9
-                for x in stride(from: step / 2, to: size.width, by: step) {
-                    for y in stride(from: step / 2, to: size.height, by: step) {
-                        let r = (step / 2) * (0.2 + 0.8 * (1 - y / size.height))
-                        ctx.fill(Path(ellipseIn: CGRect(x: x - r/2, y: y - r/2, width: r, height: r)),
-                                 with: .color(palette.accent.opacity(0.35)))
-                    }
-                }
-            }
+    @ViewBuilder private var base: some View {
+        if #available(iOS 18.0, *) {
+            MeshGradient(width: 3, height: 3, points: meshPoints, colors: colors)
+        } else {
+            LinearGradient(colors: [colors[0], colors[4], colors[8]],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
 
-    // MARK: Type emblem
+    // MARK: Seeded colour family
 
-    @ViewBuilder
-    private func emblem(s: CGFloat, w: CGFloat, h: CGFloat) -> some View {
+    /// (base hue, hue spread) per media type.
+    private var family: (base: Double, spread: Double) {
         switch item.type {
-        case .music:
-            // Vinyl record disc.
-            ZStack {
-                Circle().fill(.black.opacity(0.35)).frame(width: s * 0.42)
-                Circle().strokeBorder(.white.opacity(0.12), lineWidth: 1).frame(width: s * 0.30)
-                Circle().fill(palette.accent.opacity(0.9)).frame(width: s * 0.10)
-            }
-            .offset(y: -h * 0.06)
-        case .novel:
-            // Faint serif initial — book-cover feel.
-            Text(String(item.title.first ?? "A"))
-                .font(.system(size: s * 0.6, weight: .black, design: .serif))
-                .foregroundStyle(.white.opacity(0.12))
-        case .movie:
-            // Cinematic glyph.
-            Image(systemName: "film.fill")
-                .font(.system(size: s * 0.42, weight: .black))
-                .foregroundStyle(.white.opacity(0.13))
-                .rotationEffect(.degrees(-6))
+        case .music: return (0.74, 0.20)   // violet → magenta → blue
+        case .novel: return (0.07, 0.12)   // amber → gold → rust
+        case .movie: return (0.55, 0.18)   // teal → cyan → indigo
         }
+    }
+
+    /// Nine luminous colours for the 3×3 mesh, seeded so each title differs
+    /// within its family. The centre cell is brightened into a focal glow.
+    private var colors: [Color] {
+        let h0 = family.base + (frac(99) - 0.5) * 0.12
+        return (0..<9).map { i in
+            let r1 = frac(i * 3 + 1), r2 = frac(i * 3 + 2), r3 = frac(i * 3 + 3)
+            let hue = wrap(h0 + (r1 - 0.5) * family.spread)
+            let sat = 0.58 + r2 * 0.38
+            let focal = (i == 4) ? 0.22 : 0.0
+            let bri = min(0.92, 0.26 + r3 * 0.50 + focal)
+            return Color(hue: hue, saturation: sat, brightness: bri)
+        }
+    }
+
+    /// Corners pinned for full coverage; inner points jittered for organic flow.
+    private var meshPoints: [SIMD2<Float>] {
+        func j(_ n: Int, _ c: Float) -> Float { c + Float(frac(n) - 0.5) * 0.22 }
+        return [
+            SIMD2(0, 0),            SIMD2(0.5, 0),          SIMD2(1, 0),
+            SIMD2(0, 0.5),          SIMD2(j(11, 0.5), j(12, 0.5)), SIMD2(1, 0.5),
+            SIMD2(0, 1),            SIMD2(0.5, 1),          SIMD2(1, 1)
+        ]
+    }
+
+    // MARK: Grain
+
+    private func grain(s: CGFloat) -> some View {
+        Canvas { ctx, size in
+            var v = UInt64(truncatingIfNeeded: seed) | 1
+            let count = 360
+            for _ in 0..<count {
+                v ^= v << 13; v ^= v >> 7; v ^= v << 17 // xorshift
+                let x = Double(v % 1000) / 1000 * size.width
+                let y = Double((v >> 10) % 1000) / 1000 * size.height
+                let a = 0.04 + Double((v >> 20) % 100) / 100 * 0.06
+                ctx.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 1.1, height: 1.1)),
+                         with: .color(.white.opacity(a)))
+            }
+        }
+        .blendMode(.overlay)
+        .opacity(0.5)
+    }
+
+    // MARK: Seeded helpers
+
+    /// Deterministic fractional pseudo-random in 0..<1 from the seed and an index.
+    private func frac(_ n: Int) -> Double {
+        let x = sin(Double(seed &* 127 &+ n &* 311) * 0.013) * 43758.5453
+        return x - x.rounded(.down)
+    }
+
+    private func wrap(_ h: Double) -> Double {
+        let r = h.truncatingRemainder(dividingBy: 1)
+        return r < 0 ? r + 1 : r
     }
 }
