@@ -727,29 +727,6 @@ final class MarketplaceStore: ObservableObject {
         }
     }
 
-    /// Platform float status from the Worker: balance, target buffer, and how
-    /// much to top up. Operator-facing awareness so the float never runs dry.
-    struct FundingStatus: Codable {
-        var currency: String
-        var availableUSD: Double
-        var bufferUSD: Double
-        var topUpNeededUSD: Double
-        var salesTodayCount: Int
-        var salesTodayUSD: Double
-    }
-
-    func fetchFunding() async -> FundingStatus? {
-        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
-              let url = URL(string: "\(payoutBaseURL)/payouts/funding") else { return nil }
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
-            return try JSONDecoder().decode(FundingStatus.self, from: data)
-        } catch { return nil }
-    }
-
     /// Credits the creator's withdrawable balance (called on each of their sales
     /// and by NRN → USD conversion).
     func addPendingPayout(_ usd: Double) {
