@@ -727,6 +727,68 @@ final class MarketplaceStore: ObservableObject {
         }
     }
 
+    /// A creator currently owed an unpaid (failed/NSF) transfer. Mirrors the
+    /// Worker's UnfundedEntry. Operator pays these manually once the float is up.
+    struct UnfundedEntry: Identifiable, Codable, Hashable {
+        var id: String
+        var accountId: String
+        var amountCents: Int
+        var currency: String
+        var title: String?
+        var reason: String
+        var ts: String
+        var amountUSD: Double { Double(amountCents) / 100 }
+    }
+
+    /// Operator-only: fetch the queue of creators owed an unpaid transfer.
+    func fetchUnfunded() async -> Result<[UnfundedEntry], String> {
+        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
+              let url = URL(string: "\(payoutBaseURL)/payouts/unfunded") else {
+            return .failure("Connect the payout backend in Payout Setup first.")
+        }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                return .failure("Couldn't load owed creators (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)).")
+            }
+            struct Resp: Codable { var entries: [UnfundedEntry] }
+            return .success(try JSONDecoder().decode(Resp.self, from: data).entries)
+        } catch {
+            return .failure("Couldn't load owed creators: \(error.localizedDescription)")
+        }
+    }
+
+    /// Operator-only: manually re-pay an owed creator. On success the Worker
+    /// clears the queue entry. Returns nil on success, or an error message.
+    func manualFund(_ entry: UnfundedEntry) async -> String? {
+        guard isAdmin else { return "Admin only." }
+        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
+              let url = URL(string: "\(payoutBaseURL)/payouts/manual-fund") else {
+            return "Connect the payout backend in Payout Setup first."
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "account_id": entry.accountId,
+            "amount_usd": entry.amountUSD,
+            "unfunded_id": entry.id,
+            "reason": "manual re-pay after NSF",
+        ])
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { return "No response." }
+            if (200..<300).contains(http.statusCode) { return nil }
+            let msg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+            return "Payment failed (\(http.statusCode))\(msg.map { ": \($0)" } ?? "). The float may still be short — top up and retry."
+        } catch {
+            return "Payment failed: \(error.localizedDescription)"
+        }
+    }
+
     /// Credits the creator's withdrawable balance (called on each of their sales
     /// and by NRN → USD conversion).
     func addPendingPayout(_ usd: Double) {

@@ -493,6 +493,9 @@ async function handleTransfer(request: Request, env: Env): Promise<Response> {
       type: "transfer", status: "failed", amountCents, currency,
       scope: account_id, refId: title_id, note: e?.message ?? "transfer failed",
     });
+    // The creator is owed but unpaid — queue it so the operator can pay it
+    // manually once the float is funded (GET /payouts/unfunded + manual-fund).
+    await enqueueUnfunded(env, { accountId: account_id, amountCents, currency, title: title_id, reason: e?.message ?? "transfer failed" });
     if (isInsufficientFunds(e)) {
       await alertNSF(env, { kind: "creator transfer", scope: account_id, amountCents, currency, detail: e?.message ?? "" });
     }
@@ -877,6 +880,95 @@ async function handleLedgerSummary(env: Env): Promise<Response> {
   return json({ totals: raw ? JSON.parse(raw) : {} });
 }
 
+// ── Owed-creator queue + manual funding ──────────────────────────────────────
+//
+// When a transfer fails (NSF or otherwise) the creator is owed but unpaid. We
+// queue an `unfunded:<account>:<id>` record so the operator can pay it by hand
+// once the platform float is funded. POST /payouts/manual-fund re-attempts the
+// transfer and clears the queue entry on success.
+
+interface UnfundedEntry {
+  id: string;            // the KV key suffix, so the app can clear a specific one
+  accountId: string;
+  amountCents: number;
+  currency: string;
+  title?: string;
+  reason: string;
+  ts: string;
+}
+
+async function enqueueUnfunded(
+  env: Env,
+  e: { accountId: string; amountCents: number; currency: string; title?: string; reason: string },
+): Promise<void> {
+  if (!env.KV) { console.log(`[unfunded skipped — no KV] ${JSON.stringify(e)}`); return; }
+  const id = crypto.randomUUID().slice(0, 12);
+  const entry: UnfundedEntry = { id, ts: new Date().toISOString(), ...e };
+  try {
+    await env.KV.put(`unfunded:${e.accountId}:${id}`, JSON.stringify(entry));
+  } catch (err: any) { console.error("unfunded enqueue failed:", err?.message ?? err); }
+}
+
+/** GET /payouts/unfunded — every creator currently owed an unpaid transfer. */
+async function handleUnfunded(env: Env): Promise<Response> {
+  if (!env.KV) return json({ entries: [], note: "No KV bound." });
+  const list = await env.KV.list({ prefix: "unfunded:", limit: 1000 });
+  const entries: UnfundedEntry[] = [];
+  for (const k of list.keys) {
+    const raw = await env.KV.get(k.name);
+    if (raw) entries.push(JSON.parse(raw) as UnfundedEntry);
+  }
+  entries.sort((a, b) => b.ts.localeCompare(a.ts));
+  const totalUSD = entries.reduce((s, e) => s + e.amountCents, 0) / 100;
+  return json({ count: entries.length, totalUSD, entries });
+}
+
+/** POST /payouts/manual-fund — operator re-pays an owed creator by hand.
+ *  Body: { account_id, amount_usd, unfunded_id?, reason? }. On success the
+ *  matching unfunded entry is cleared; on insufficient funds it re-alerts. */
+async function handleManualFund(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as {
+    account_id?: string; amount_usd?: number; unfunded_id?: string; reason?: string;
+  };
+  if (!body.account_id || !body.amount_usd || body.amount_usd < 0.5) {
+    return error("account_id and amount_usd (≥ 0.50) are required");
+  }
+  const amountCents = Math.round(body.amount_usd * 100);
+  const currency = (env.PLATFORM_CURRENCY || "usd").toLowerCase();
+  // Unique key so a manual re-pay is never deduped against the original sale.
+  const idem = `manual_${body.unfunded_id ?? crypto.randomUUID()}_${Date.now()}`;
+
+  let transfer: any;
+  try {
+    transfer = await stripe("/transfers", {
+      amount: amountCents,
+      currency,
+      destination: body.account_id,
+      metadata: { platform: "ai-marketplace", manual: "true", reason: body.reason ?? "manual fund" },
+      description: body.reason ?? "AI Marketplace manual creator funding",
+    }, env.STRIPE_SECRET_KEY, undefined, idem);
+  } catch (e: any) {
+    await recordLedger(env, {
+      type: "transfer", status: "failed", amountCents, currency,
+      scope: body.account_id, note: `MANUAL fund failed: ${e?.message ?? ""}`,
+    });
+    if (isInsufficientFunds(e)) {
+      await alertNSF(env, { kind: "manual creator funding", scope: body.account_id, amountCents, currency, detail: e?.message ?? "" });
+    }
+    return error(e?.message ?? "Manual fund failed", 502);
+  }
+
+  await recordLedger(env, {
+    type: "transfer", status: "succeeded", amountCents, currency,
+    scope: body.account_id, stripeId: transfer.id, note: `MANUAL fund: ${body.reason ?? ""}`,
+  });
+  // Clear the specific owed entry the operator just paid.
+  if (env.KV && body.unfunded_id) {
+    await env.KV.delete(`unfunded:${body.account_id}:${body.unfunded_id}`);
+  }
+  return json({ transferId: transfer.id, amountUSD: body.amount_usd, cleared: body.unfunded_id ?? null });
+}
+
 // ── Float funding awareness ──────────────────────────────────────────────────
 
 interface Funding {
@@ -1171,6 +1263,14 @@ export default {
         return json(await platformFunding(env));
       }
 
+      // Owed creators (failed/NSF transfers) + manual re-pay.
+      if (path === "/payouts/unfunded" && method === "GET") {
+        return await handleUnfunded(env);
+      }
+      if (path === "/payouts/manual-fund" && method === "POST") {
+        return await handleManualFund(request, env);
+      }
+
       // Scout feed: the curated reference corpus the app's Scout draws from
       // (100 canonical bestsellers per medium + 10 masters per role + recipes
       // + current charts + model list). GET; auth-required to keep the corpus
@@ -1231,6 +1331,8 @@ export default {
             "GET  /ledger",
             "GET  /ledger/summary",
             "GET  /payouts/funding",
+            "GET  /payouts/unfunded",
+            "POST /payouts/manual-fund",
             "GET  /stripe/publishable-key",
             "GET  /payout-complete",
             "GET  /payout-refresh",

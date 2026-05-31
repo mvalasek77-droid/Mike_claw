@@ -9,6 +9,7 @@ struct AdminConsoleView: View {
     @State private var creatingNew = false
     @State private var query = ""
     @State private var confirmReset = false
+    @State private var showPayouts = false
 
     private var items: [MediaItem] {
         let base = store.catalog.sorted { $0.addedAt > $1.addedAt }
@@ -22,6 +23,7 @@ struct AdminConsoleView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     automationCard
+                    payoutsCard
                     addBar
                     searchField
                     Text("\(items.count) titles")
@@ -43,6 +45,7 @@ struct AdminConsoleView: View {
         }
         .sheet(item: $editing) { AdminEditView(original: $0) }
         .sheet(isPresented: $creatingNew) { AdminEditView(original: nil) }
+        .sheet(isPresented: $showPayouts) { AdminPayoutsView() }
         .alert("Reset catalogue?", isPresented: $confirmReset) {
             Button("Reset", role: .destructive) { store.adminResetCatalog() }
             Button("Cancel", role: .cancel) { }
@@ -64,6 +67,22 @@ struct AdminConsoleView: View {
                 }
                 PrimaryButton(title: "Reset catalogue to defaults", systemImage: "arrow.counterclockwise",
                               style: .ghost, tint: Theme.warning) { confirmReset = true }
+            }
+        }
+    }
+
+    /// Quick access to the owed-creators queue. After an NSF or any other
+    /// failed transfer the creator is owed but unpaid — this is where you
+    /// fund them manually once the platform float is restored.
+    private var payoutsCard: some View {
+        GlassCard(title: "Creator payouts", icon: "banknote.fill", tint: Theme.warning) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Pay any creator whose transfer failed (e.g. NSF when the float was short). Open this after you top up Stripe.")
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                PrimaryButton(title: "Owed creators · pay manually", systemImage: "banknote.fill",
+                              style: .ghost, tint: Theme.warning) {
+                    showPayouts = true
+                }
             }
         }
     }
