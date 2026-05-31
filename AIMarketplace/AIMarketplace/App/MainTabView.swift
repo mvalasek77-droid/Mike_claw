@@ -50,6 +50,12 @@ private struct TabBar: View {
     @Namespace private var pill
 
     var body: some View {
+        bar
+            .shadow(color: .black.opacity(0.38), radius: 22, x: 0, y: 12)
+            .frame(maxWidth: 480)
+    }
+
+    private var tabRow: some View {
         HStack(spacing: 2) {
             tab(.home,    icon: "house.fill",            label: "Home")
             tab(.charts,  icon: "chart.bar.fill",        label: "Top 10")
@@ -58,16 +64,27 @@ private struct TabBar: View {
             tab(.profile, icon: "person.fill",           label: "You")
         }
         .padding(6)
-        .background {
-            Capsule(style: .continuous).fill(.ultraThinMaterial)
-        }
-        .overlay(
-            Capsule(style: .continuous)
-                .strokeBorder(.white.opacity(0.14), lineWidth: 0.6)
-        )
-        .clipShape(Capsule(style: .continuous))
-        .shadow(color: .black.opacity(0.38), radius: 22, x: 0, y: 12)
-        .frame(maxWidth: 480)
+    }
+
+    /// Native iOS 26 Liquid Glass via GlassEffectContainer (composites correctly
+    /// over scrolling/tinted content); frosted-material fallback below iOS 26.
+    @ViewBuilder private var bar: some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer {
+                tabRow.glassEffect(.regular, in: .capsule)
+            }
+        } else { materialBar }
+        #else
+        materialBar
+        #endif
+    }
+
+    private var materialBar: some View {
+        tabRow
+            .background { Capsule(style: .continuous).fill(.ultraThinMaterial) }
+            .overlay(Capsule(style: .continuous).strokeBorder(.white.opacity(0.14), lineWidth: 0.6))
+            .clipShape(Capsule(style: .continuous))
     }
 
     private func tab(_ t: MainTabView.Tab, icon: String, label: String) -> some View {
