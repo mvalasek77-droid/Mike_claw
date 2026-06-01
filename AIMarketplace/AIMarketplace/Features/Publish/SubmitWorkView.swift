@@ -15,6 +15,11 @@ struct SubmitWorkView: View {
     @State private var submissionID: UUID?
     @State private var result: AIReviewResult?
     @State private var autoPublished = false
+    /// Non-nil when the editor couldn't produce a verdict (network race,
+    /// submission lookup miss, etc). Drives the .verdict error-card path so
+    /// the screen is never blank — that blank state was the "loops back to
+    /// the beginning" bug.
+    @State private var reviewError: String?
 
     enum Phase { case form, reviewing, verdict }
 
@@ -32,13 +37,24 @@ struct SubmitWorkView: View {
             case .reviewing:
                 AIReviewProgressView(draft: draft) {
                     Task { @MainActor in
-                        if let id = submissionID {
-                            let verdict = await store.runReviewAsync(for: id)
+                        guard let id = submissionID else {
+                            reviewError = "We lost the submission while preparing the review. Tap Try again."
+                            Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
+                            return
+                        }
+                        let verdict = await store.runReviewAsync(for: id)
+                        if let verdict {
                             result = verdict
-                            if let verdict, store.aiAutopilotEnabled, verdict.aiChoosesToPublish {
+                            reviewError = nil
+                            if store.aiAutopilotEnabled, verdict.aiChoosesToPublish {
                                 store.publish(submissionID: id)
                                 autoPublished = true
                             }
+                        } else {
+                            // The Editor couldn't produce a verdict — usually
+                            // an unreadable file or a state race. Never leave
+                            // the screen blank; show a recoverable error.
+                            reviewError = "The Editor couldn't read your submission. Check the file and Try again."
                         }
                         Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
                     }
@@ -49,6 +65,11 @@ struct SubmitWorkView: View {
                                       autoPublished: autoPublished,
                                       onReviseAgain: { phase = .form; step = 1 },
                                       onClose: { dismiss() })
+                } else {
+                    // ALWAYS render something for .verdict — the empty-view
+                    // case was the bug. Recoverable error card with a single
+                    // "Try again" button that re-runs the review.
+                    reviewErrorCard
                 }
             }
         }
@@ -135,6 +156,36 @@ struct SubmitWorkView: View {
         .background(.ultraThinMaterial)
     }
 
+    /// Shown when phase == .verdict but no review result is available. This
+    /// is the safety net for the "won't go to the editor" bug — the screen
+    /// is never blank, and the user can always retry without restarting.
+    private var reviewErrorCard: some View {
+        VStack(spacing: 18) {
+            Spacer()
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 56)).foregroundStyle(Theme.warning)
+            Text("Review didn't complete")
+                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.ink)
+            Text(reviewError ?? "The AI Editor didn't return a verdict. Try again — your draft is still here.")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
+            PrimaryButton(title: "Try again", systemImage: "arrow.clockwise",
+                          tint: Theme.kdp) {
+                reviewError = nil
+                if submissionID == nil { submissionID = store.createSubmission(draft) }
+                Motion.run(.easeInOut(duration: 0.4)) { phase = .reviewing }
+            }
+            PrimaryButton(title: "Back to draft", style: .ghost) {
+                phase = .form
+            }
+            Spacer()
+        }
+        .screenPadding()
+    }
+
     /// Per-step validation gating the Continue button.
     private var canAdvance: Bool {
         switch step {
@@ -143,7 +194,7 @@ struct SubmitWorkView: View {
             && !draft.genre.trimmed.isEmpty && draft.synopsis.trimmed.count >= 20
         case 2: return !draft.aiTools.isEmpty
         case 3: return draft.fileName != nil && (draft.contentURL != nil || draft.manuscriptText != nil)
-        case 4: return draft.coverImageData != nil
+        case 4: return CoverStep.isHighQuality(draft.coverImageData)
         case 5: return draft.hasAttested
         case 6: return draft.price >= 0.99
         default: return true
@@ -586,6 +637,21 @@ private struct ContentStep: View {
 private struct CoverStep: View {
     @Binding var draft: DraftWork
     @State private var selection: PhotosPickerItem?
+    @State private var lastRejectReason: String?
+
+    /// A cover passes if it has real dimensions AND a real file size. A
+    /// 1×1 JPEG or a 4-byte sentinel both fail; a creator can either pick a
+    /// higher-quality image or tap "Let the app create one for me" — that
+    /// last path renders a procedural cover so the slot is never blocked
+    /// behind missing artwork.
+    static let minSidePx: CGFloat = 600
+    static let minBytes = 30 * 1024
+
+    static func isHighQuality(_ data: Data?) -> Bool {
+        guard let data, data.count >= minBytes,
+              let image = UIImage(data: data) else { return false }
+        return image.size.width >= minSidePx && image.size.height >= minSidePx
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -628,11 +694,80 @@ private struct CoverStep: View {
             Task {
                 if let data = try? await newValue.loadTransferable(type: Data.self) {
                     await MainActor.run {
-                        draft.coverImageData = data
-                        Haptics.success()
+                        if Self.isHighQuality(data) {
+                            draft.coverImageData = data
+                            lastRejectReason = nil
+                            Haptics.success()
+                        } else {
+                            // High-quality OR denied — Apple-friendly minimum is
+                            // ≥600px per side and a real-file-size JPEG/PNG.
+                            let img = UIImage(data: data)
+                            let w = Int(img?.size.width ?? 0)
+                            let h = Int(img?.size.height ?? 0)
+                            lastRejectReason = "That image is too small for the storefront. We need at least 600×600 — you picked \(w)×\(h). Choose a higher-resolution image, or let the app generate one for you."
+                            draft.coverImageData = nil
+                            Haptics.warning()
+                        }
                     }
                 }
             }
+        }
+        if let lastRejectReason {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.warning)
+                Text(lastRejectReason)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.warning.opacity(0.10)))
+        }
+        Button {
+            generateProceduralCover()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "wand.and.stars")
+                Text("Let the app generate one for me")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+            }
+            .foregroundStyle(Theme.accent)
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(Capsule().stroke(Theme.accent, lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
+        Text("Procedurally generated covers are always full resolution and pass the cover-quality check.")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(Theme.inkFaint)
+    }
+
+    @MainActor
+    private func generateProceduralCover() {
+        // Render the same GeneratedCover the app uses elsewhere into a
+        // 1024×1024 JPEG, so the resulting cover passes isHighQuality.
+        let stub = MediaItem(
+            title: draft.title.trimmed.isEmpty ? "Untitled" : draft.title.trimmed,
+            creator: draft.creator.trimmed.isEmpty ? "Creator" : draft.creator.trimmed,
+            type: draft.type,
+            genre: draft.genre.trimmed.isEmpty ? draft.type.title : draft.genre.trimmed,
+            synopsis: draft.synopsis.trimmed,
+            aiTools: draft.aiTools,
+            commercialScore: 90,
+            price: draft.price,
+            length: max(draft.length, 1),
+            maturity: draft.maturity,
+            purchases: 0,
+            trending: 70
+        )
+        let renderer = ImageRenderer(content:
+            GeneratedCover(item: stub)
+                .frame(width: 1024, height: 1024)
+        )
+        renderer.scale = 2
+        if let image = renderer.uiImage,
+           let data = image.jpegData(compressionQuality: 0.92) {
+            draft.coverImageData = data
+            lastRejectReason = nil
+            Haptics.success()
         }
     }
 }

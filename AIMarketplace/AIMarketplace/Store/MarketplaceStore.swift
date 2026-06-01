@@ -1613,11 +1613,16 @@ final class MarketplaceStore: ObservableObject {
     /// scores them against the catalogue, and stores the verdict.
     @discardableResult
     func runReviewAsync(for submissionID: UUID) async -> AIReviewResult? {
-        guard let idx = submissions.firstIndex(where: { $0.id == submissionID }) else { return nil }
+        guard let idx = submissions.firstIndex(where: { $0.id == submissionID }) else {
+            print("[AIEditor] submission \(submissionID) not found — review skipped")
+            return nil
+        }
         let draft = submissions[idx].draft
         let catalogSnapshot = catalog
+        print("[AIEditor] reviewing \(draft.title) (\(draft.type.rawValue))…")
         let analysis = await ReviewPipeline.buildAnalysis(for: draft)
         let result = AIEditor.review(draft, against: catalogSnapshot, analysis: analysis)
+        print("[AIEditor] verdict for \(draft.title): \(result.overall)/100, passed=\(result.passed)")
         // Re-find by id in case state shifted while we were awaiting.
         if let updated = submissions.firstIndex(where: { $0.id == submissionID }) {
             submissions[updated].review = result

@@ -95,6 +95,10 @@ enum AIEditor {
         if isCopycat { overall = min(overall, 60) }
         // Lorem ipsum content forcibly rejects.
         if let text = analysis?.text, text.loremIpsumOverlap > 0.05 { overall = min(overall, 45) }
+        // Keyboard-mash gibberish (no vowels, consonant runs, impossible bigrams)
+        // also forcibly rejects, even when NLLanguageRecognizer happens to call
+        // the noise "English."
+        if let text = analysis?.text, text.gibberishRatio > 0.30 { overall = min(overall, 30) }
         // Silent "music" or broken video forcibly rejects.
         if let audio = analysis?.audio, audio.isSilent && draft.type == .music { overall = min(overall, 35) }
         if let video = analysis?.video, video.isBroken && draft.type == .movie { overall = min(overall, 35) }

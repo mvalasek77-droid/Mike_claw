@@ -51,6 +51,11 @@ enum ContentAnalysis {
         var loremIpsumOverlap: Double
         /// Famous IP terms detected in the body (case-insensitive, word-boundary).
         var famousIPMatches: [String]
+        /// Fraction (0…1) of meaningful-length words that look like keyboard
+        /// mash: no vowels, 4+ consonants in a row, or impossible bigrams. A
+        /// real signal beyond "is English" — catches gibberish that
+        /// NLLanguageRecognizer happens to misclassify as English.
+        var gibberishRatio: Double = 0
 
         /// `true` when the report is essentially empty — used by the Editor to
         /// keep the score from spuriously rewarding a missing/unreadable file.
@@ -154,6 +159,12 @@ enum ContentAnalysis {
         let lowerBlob = trimmed.lowercased()
         let famous = famousIPVocabulary.filter { lowerBlob.contains($0.lowercased()) }
 
+        // Gibberish heuristic: a word ≥3 chars is "gibberish-looking" if it has
+        // no vowel, 4+ consonants in a row, or one of a small set of impossible
+        // English bigrams. NLLanguageRecognizer happily classifies vowel-rich
+        // mash as English (e.g. "aaaa bbbb cccc"), so this is the extra guard.
+        let gib = computeGibberishRatio(allWords)
+
         return TextReport(
             wordCount: wordCount,
             sentenceCount: sentenceCount,
@@ -163,8 +174,47 @@ enum ContentAnalysis {
             dominantLanguage: lang,
             isEnglish: isEnglish,
             loremIpsumOverlap: lorem,
-            famousIPMatches: famous
+            famousIPMatches: famous,
+            gibberishRatio: gib
         )
+    }
+
+    private static let vowels: Set<Character> = ["a","e","i","o","u","y"]
+    private static let impossibleBigrams: Set<String> = [
+        "qx","qz","qj","qg","qp","qf","qv","qb","qk","qc","qr","qd","qh","qm","qn","qs","qw","qy",
+        "xj","xz","xq","xv","xk","jq","jx","jz","vq","vx","wx","wz","kx","kq","zx","zq"
+    ]
+
+    static func computeGibberishRatio(_ words: [String]) -> Double {
+        var checked = 0
+        var flagged = 0
+        for w in words {
+            guard w.count >= 3 else { continue }
+            checked += 1
+            let lower = w.lowercased()
+            // No vowels at all (and length ≥ 3) → almost certainly mash
+            if lower.allSatisfy({ !vowels.contains($0) }) { flagged += 1; continue }
+            // 4+ consonants in a row
+            var run = 0
+            var consonantStreak = false
+            for ch in lower {
+                if ch.isLetter && !vowels.contains(ch) {
+                    run += 1
+                    if run >= 4 { consonantStreak = true; break }
+                } else {
+                    run = 0
+                }
+            }
+            if consonantStreak { flagged += 1; continue }
+            // Impossible bigram
+            let chars = Array(lower)
+            var found = false
+            for i in 0..<(chars.count - 1) where chars[i].isLetter && chars[i+1].isLetter {
+                if impossibleBigrams.contains(String(chars[i...i+1])) { found = true; break }
+            }
+            if found { flagged += 1 }
+        }
+        return checked == 0 ? 0 : Double(flagged) / Double(checked)
     }
 
     /// Reads a text file from disk (supports .txt, .rtf, .pdf where possible)
