@@ -143,10 +143,11 @@ struct PartnerProgramView: View {
                                   systemImage: "banknote.fill", tint: Theme.success,
                                   enabled: store.pendingPayoutUSD > 0 && !store.cashingOut) { store.cashOut() }
                 } else {
-                    PrimaryButton(title: "Connect payout method", systemImage: "link", style: .ghost) {
-                        store.connectPayout()
+                    PrimaryButton(title: "Connect my bank to get paid",
+                                  systemImage: "building.columns.fill") {
+                        showPayoutConfig = true
                     }
-                    Text("Connect a payout method to withdraw. Payouts can take up to a month to fund — Apple settles in-app purchases monthly, so a sale today may not reach your bank until the next Apple settlement.")
+                    Text("Takes about 5 minutes. We use Stripe — your bank details go straight to them; we never see them. Payouts can take up to a month to fund.")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
                 // Real-time sales + payout status, straight from the ledger.
