@@ -36,13 +36,21 @@ struct PayoutConfigView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         hero
-                        configFields
+                        // The Worker URL + shared-secret entry is admin-only.
+                        // Regular creators see only Status + Action, so the
+                        // flow is Connect Stripe → Safari → done. The
+                        // production Worker is baked in via BackendConfig.
+                        if store.isAdmin {
+                            configFields
+                        }
                         statusCard
                         actionCard
                         if let err = store.lastPayoutError {
                             errorCard(err)
                         }
-                        saveButton
+                        if store.isAdmin {
+                            saveButton
+                        }
                     }
                     .screenPadding()
                 }
@@ -74,10 +82,12 @@ struct PayoutConfigView: View {
             Image(systemName: "creditcard.and.bolt.horizontal.fill")
                 .font(.system(size: 44))
                 .foregroundStyle(Theme.success)
-            Text("Connect Stripe")
+            Text("Get paid for your titles")
                 .font(.system(size: 24, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.ink)
-            Text("Paste your Cloudflare Worker URL and shared secret to enable real Stripe Connect payouts.")
+            Text(store.isAdmin
+                 ? "Wire the Cloudflare Worker the app talks to. Regular creators won't see this card."
+                 : "Connect your bank through Stripe. You'll be sent to Stripe to enter your details safely; we never see them. Your 85% share of every sale lands automatically.")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)

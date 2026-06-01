@@ -141,6 +141,15 @@ final class MarketplaceStore: ObservableObject {
     init(catalog: [MediaItem] = SampleData.catalog()) {
         self.catalog = catalog
         restore()
+        // Bundled Worker config — so creators never need to enter a URL
+        // or a shared secret. If Info.plist has values and nothing was
+        // already restored from the archive, adopt the bundled defaults.
+        if payoutBaseURL.isEmpty, !BackendConfig.workerURL.isEmpty {
+            payoutBaseURL = BackendConfig.workerURL
+        }
+        if payoutSharedSecret.isEmpty, !BackendConfig.sharedSecret.isEmpty {
+            payoutSharedSecret = BackendConfig.sharedSecret
+        }
         // Real creator catalogue only — no demo/auto-generated content at launch.
         // The user's published titles, invited-partner media and commissioned
         // works are merged back in below.
