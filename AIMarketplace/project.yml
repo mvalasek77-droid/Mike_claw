@@ -19,6 +19,15 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
+    # Build config: pulls AIMKT_WORKER_URL + AIMKT_SHARED_SECRET from
+    # Config/Build.xcconfig, which optionally loads Config/Secrets.xcconfig
+    # (gitignored). Info.plist substitutes those into bundle keys at build
+    # time; BackendConfig reads them at runtime. Missing Secrets.xcconfig
+    # is fine — empty values mean "no Worker baked in; admin configures
+    # at runtime."
+    configFiles:
+      Debug: Config/Build.xcconfig
+      Release: Config/Build.xcconfig
     sources:
       - path: AIMarketplace
         excludes:

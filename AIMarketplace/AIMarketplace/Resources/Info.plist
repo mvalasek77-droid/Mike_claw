@@ -61,8 +61,8 @@
 	     APP_SHARED_SECRET secret set on the Worker via wrangler.
 	-->
 	<key>AIMKT_WORKER_URL</key>
-	<string></string>
+	<string>$(AIMKT_WORKER_URL)</string>
 	<key>AIMKT_SHARED_SECRET</key>
-	<string></string>
+	<string>$(AIMKT_SHARED_SECRET)</string>
 </dict>
 </plist>

@@ -15,3 +15,7 @@ venv/
 
 # Claude Code agent worktrees (isolated, never commit)
 .claude/worktrees/
+
+# App-side secrets (production Worker URL + shared secret).
+# Bake in via Secrets.xcconfig (see AIMarketplace/Config/README.md).
+AIMarketplace/Config/Secrets.xcconfig

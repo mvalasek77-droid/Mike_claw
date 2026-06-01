@@ -1,0 +1,16 @@
+// AI Marketplace — base build configuration.
+//
+// Defines safe defaults for the build-substituted Info.plist values, then
+// optionally loads Secrets.xcconfig (gitignored) so production keys never
+// sit in source control. If Secrets.xcconfig isn't present the build still
+// succeeds — Info.plist substitutes empty strings, BackendConfig.isBundled
+// reports false, and the admin Payout-Setup screen can still override at
+// runtime.
+
+// Defaults (empty). Secrets.xcconfig — if present — overrides these.
+AIMKT_WORKER_URL =
+AIMKT_SHARED_SECRET =
+
+// Pull in the gitignored secrets file when it exists. `#include?` is the
+// OPTIONAL include directive (Xcode 11+) — no error if the file is missing.
+#include? "Secrets.xcconfig"
