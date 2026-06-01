@@ -51,10 +51,11 @@ struct SubmitWorkView: View {
                                 autoPublished = true
                             }
                         } else {
-                            // The Editor couldn't produce a verdict — usually
-                            // an unreadable file or a state race. Never leave
-                            // the screen blank; show a recoverable error.
-                            reviewError = "The Editor couldn't read your submission. Check the file and Try again."
+                            // The Editor couldn't produce a verdict in time —
+                            // file unreadable, security-scoped URL lapsed, or
+                            // the analysis hit the 60 s timeout. Never blank
+                            // the screen; show a recoverable error.
+                            reviewError = "The review timed out reading your file. Re-pick it (the iOS access permission may have expired), then Try again."
                         }
                         Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
                     }

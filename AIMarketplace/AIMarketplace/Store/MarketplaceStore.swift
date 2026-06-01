@@ -1611,6 +1611,12 @@ final class MarketplaceStore: ObservableObject {
     /// Runs the full on-device content pipeline: opens the uploaded bytes,
     /// analyses them (NaturalLanguage / AVFoundation / perceptual hashing),
     /// scores them against the catalogue, and stores the verdict.
+    /// 60-second cap on the analysis phase. AVAsset.load on a security-scoped
+    /// URL can hang indefinitely if the access has lapsed; without this guard
+    /// submissions sit at "In Review" forever. Generous enough to decode a
+    /// short film and fingerprint a cover.
+    private static let analysisTimeoutNS: UInt64 = 60_000_000_000
+
     @discardableResult
     func runReviewAsync(for submissionID: UUID) async -> AIReviewResult? {
         guard let idx = submissions.firstIndex(where: { $0.id == submissionID }) else {
@@ -1620,15 +1626,43 @@ final class MarketplaceStore: ObservableObject {
         let draft = submissions[idx].draft
         let catalogSnapshot = catalog
         print("[AIEditor] reviewing \(draft.title) (\(draft.type.rawValue))…")
-        let analysis = await ReviewPipeline.buildAnalysis(for: draft)
-        let result = AIEditor.review(draft, against: catalogSnapshot, analysis: analysis)
-        print("[AIEditor] verdict for \(draft.title): \(result.overall)/100, passed=\(result.passed)")
-        // Re-find by id in case state shifted while we were awaiting.
-        if let updated = submissions.firstIndex(where: { $0.id == submissionID }) {
-            submissions[updated].review = result
-            submissions[updated].status = result.passed ? .accepted : .rejected
+
+        // Race the analysis against a timeout. Either we get the analysis
+        // (possibly nil if there were no readable bytes — still fine, the
+        // Editor handles that), or we time out and synthesise a "couldn't
+        // read it in time" verdict so the UI is never stuck.
+        enum Outcome { case ok(ReviewAnalysis?), timedOut }
+        let outcome: Outcome = await withTaskGroup(of: Outcome.self) { group in
+            group.addTask { .ok(await ReviewPipeline.buildAnalysis(for: draft)) }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: Self.analysisTimeoutNS)
+                return .timedOut
+            }
+            let first = await group.next() ?? .timedOut
+            group.cancelAll()
+            return first
         }
-        return result
+
+        switch outcome {
+        case .ok(let analysis):
+            let result = AIEditor.review(draft, against: catalogSnapshot, analysis: analysis)
+            print("[AIEditor] verdict for \(draft.title): \(result.overall)/100, passed=\(result.passed)")
+            if let updated = submissions.firstIndex(where: { $0.id == submissionID }) {
+                submissions[updated].review = result
+                submissions[updated].status = result.passed ? .accepted : .rejected
+            }
+            return result
+
+        case .timedOut:
+            print("[AIEditor] verdict for \(draft.title): TIMED OUT after 60s")
+            if let updated = submissions.firstIndex(where: { $0.id == submissionID }) {
+                // Don't leave it stuck at "In Review" — mark rejected so the
+                // creator can revise. The .verdict screen also gets a nil
+                // result and renders the recoverable error card.
+                submissions[updated].status = .rejected
+            }
+            return nil
+        }
     }
 
     func createSubmission(_ draft: DraftWork) -> UUID {
