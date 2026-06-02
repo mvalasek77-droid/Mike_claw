@@ -17,6 +17,8 @@ struct ProfileView: View {
     @State private var adminUser = ""
     @State private var adminPass = ""
     @State private var showDeleteConfirm = false
+    @State private var deleteBlockedMessage: String?
+    @State private var deleting = false
     @State private var showPayoutConfig = false
     @State private var legalDoc: LegalDoc?
 
@@ -64,10 +66,27 @@ struct ProfileView: View {
         }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
         .alert("Delete account?", isPresented: $showDeleteConfirm) {
-            Button("Delete", role: .destructive) { withAnimation { store.deleteAccount() } }
+            Button("Delete", role: .destructive) {
+                deleting = true
+                Task { @MainActor in
+                    let outcome = await store.deleteAccount()
+                    deleting = false
+                    if case .blockedByOutstandingBalance = outcome {
+                        deleteBlockedMessage = "Your Stripe payout account still holds a balance. Cash it out from Partner Program → Get Paid, then try again."
+                    }
+                }
+            }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This permanently removes your account, library, drafts and wallet from this device. This can't be undone.")
+            Text("This wipes everything from this device: account, library, drafts, wallet, watchlist, Scout proposals. We'll also close your Stripe payout account if you've connected one. Buyers keep titles they already own. This can't be undone.")
+        }
+        .alert("Can't delete yet", isPresented: Binding(
+            get: { deleteBlockedMessage != nil },
+            set: { if !$0 { deleteBlockedMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { deleteBlockedMessage = nil }
+        } message: {
+            Text(deleteBlockedMessage ?? "")
         }
     }
 

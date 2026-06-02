@@ -586,16 +586,35 @@ final class MarketplaceStore: ObservableObject {
         isRegistered = false
     }
 
+    enum DeleteAccountOutcome {
+        case deleted
+        case blockedByOutstandingBalance
+        case failed(String)
+    }
+
     /// Permanently deletes the account and all on-device data (App Store
-    /// Guideline 5.1.1(v)). Removes the encrypted archive and resets state.
-    func deleteAccount() {
-        loading = true
-        // Best-effort: close the connected Stripe account server-side BEFORE we
-        // wipe the local connectAccountID — otherwise we lose the handle and
-        // the account lingers in Stripe forever.
+    /// Guideline 5.1.1(v)). Awaits the Stripe Connect closure first — if
+    /// Stripe refuses (outstanding balance), the LOCAL wipe is aborted so the
+    /// user keeps access to settle up. Transient network failures still
+    /// proceed with the local wipe (5.1.1(v) requires on-device deletion to
+    /// be reliable even when offline), but `lastPayoutError` flags the
+    /// orphaned Stripe account for the operator.
+    @discardableResult
+    func deleteAccount() async -> DeleteAccountOutcome {
         if let accountId = connectAccountID, !accountId.isEmpty {
-            requestRemoteAccountClosure(accountId: accountId)
+            let result = await requestRemoteAccountClosure(accountId: accountId)
+            switch result {
+            case .outstandingBalance:
+                lastPayoutError = "Your Stripe account still holds a balance. Cash it out first, then come back to delete your account."
+                return .blockedByOutstandingBalance
+            case .transientFailure(let why):
+                lastPayoutError = "Stripe couldn't confirm the close (\(why)). We've deleted everything locally; contact support to make sure the Stripe side is closed too."
+            case .success, .notConfigured:
+                break
+            }
         }
+
+        loading = true
         accountName = ""
         accountEmail = ""
         walletBalance = 0
@@ -607,7 +626,6 @@ final class MarketplaceStore: ObservableObject {
         payoutConnected = false
         paidOutUSD = 0
         connectAccountID = nil
-        lastPayoutError = nil
         reviews = []
         editorDrops = []
         requests = []
@@ -615,6 +633,8 @@ final class MarketplaceStore: ObservableObject {
         scoutDrops = []
         scoutLog = []
         lastScoutRun = nil
+        scoutFilmCreationEnabled = true
+        scoutFilmBudgetUSD = 0
         isAdmin = false
         adminAdded = []
         adminEdits = [:]
@@ -622,12 +642,18 @@ final class MarketplaceStore: ObservableObject {
         libraryIDs = []
         watchlistIDs = []
         submissions = []
+        // 5.1.1(v): every on-device store the app writes must be wiped.
+        // scoutProposals lives in a separate UserDefaults key, so the
+        // encrypted-archive delete below misses it — clear it explicitly.
+        scoutProposals = []
+        UserDefaults.standard.removeObject(forKey: Self.scoutProposalsDefaultsKey)
         // Drop the user's published titles, keeping seed + Editor Originals.
         let seedIDs = Set(SampleData.catalog().map(\.id))
         catalog.removeAll { !$0.isEditorOriginal && !seedIDs.contains($0.id) }
         loading = false
         archive.delete()
         isRegistered = false
+        return .deleted
     }
 
     // MARK: - Partner Program (engaging AIs to add media)
@@ -1017,15 +1043,46 @@ final class MarketplaceStore: ObservableObject {
     /// Fire-and-forget — the local delete proceeds regardless; Apple's rule is
     /// that the user can initiate deletion in-app, not that propagation is
     /// instant or transactional.
-    private func requestRemoteAccountClosure(accountId: String) {
+    /// Result of asking the Worker to close a Stripe Connect account.
+    enum StripeClosureResult {
+        case notConfigured            // no Worker bundled — nothing to call
+        case success                  // 200 from Stripe (via Worker)
+        case outstandingBalance       // Stripe refused — money is owed
+        case transientFailure(String) // network / 5xx / parse — safe to retry
+    }
+
+    /// Closes the Stripe Connect account *server-side* before we wipe the
+    /// local handle. Now async + result-bearing: callers (specifically
+    /// `deleteAccount`) can abort the local wipe if Stripe refuses (e.g.
+    /// outstanding balance). The previous fire-and-forget version was an
+    /// App Review 5.1.1(v) gap — deletion is supposed to be complete.
+    private func requestRemoteAccountClosure(accountId: String) async -> StripeClosureResult {
         guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
-              let url = URL(string: "\(payoutBaseURL)/accounts/delete") else { return }
+              let url = URL(string: "\(payoutBaseURL)/accounts/delete") else { return .notConfigured }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: ["account_id": accountId])
-        Task.detached { _ = try? await URLSession.shared.data(for: request) }
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                return .transientFailure("No response from server.")
+            }
+            if http.statusCode == 200 { return .success }
+            // 400 with a "balance" / "outstanding" hint → block local wipe.
+            let body = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+            let err = (body["error"] as? String) ?? ""
+            if http.statusCode == 400 &&
+                (err.localizedCaseInsensitiveContains("balance") ||
+                 err.localizedCaseInsensitiveContains("outstanding") ||
+                 err.localizedCaseInsensitiveContains("pending")) {
+                return .outstandingBalance
+            }
+            return .transientFailure("Server returned \(http.statusCode).")
+        } catch {
+            return .transientFailure(error.localizedDescription)
+        }
     }
 
     // MARK: - Ratings & reviews
@@ -1151,6 +1208,13 @@ final class MarketplaceStore: ObservableObject {
         lastScoutRun = .now
         fulfillOpenRequests()
         developScoutContent()
+        // Grow any in-progress Scout films by one scene per cycle, in the
+        // background. Decoupled from the proposal-authorization path so a
+        // single proposal can't accidentally append to a film it didn't
+        // start.
+        if scoutFilmCreationEnabled {
+            Task { [weak self] in await self?.extendInProgressFilms() }
+        }
 
         let demand = demandSignals(limit: 3)
         func fallbackGenre(for type: MediaType) -> String {
@@ -1305,20 +1369,12 @@ final class MarketplaceStore: ObservableObject {
                                    cycleIndex: Int, fallbackGenre: String,
                                    catalogSnapshot: [MediaItem],
                                    fromProposal: UUID? = nil) async {
-        // Film-as-segments: if there's an in-progress Scout film matching the
-        // requested layer/genre, this cycle appends the NEXT scene to it
-        // instead of starting a brand-new title. Scenes are 2–5 min each and
-        // accumulate until the film hits its 30+ min target.
-        if type == .movie,
-           let inProgressIdx = scoutDrops.firstIndex(where: {
-               $0.isFilmInProgress && ($0.genre == fallbackGenre || layer == .commercial)
-           }) {
-            await appendSceneToInProgressFilm(at: inProgressIdx,
-                                              catalogSnapshot: catalogSnapshot,
-                                              fromProposal: fromProposal)
-            return
-        }
-
+        // A proposal authorization always creates a NEW film. Extending
+        // existing in-progress films happens separately in
+        // `extendInProgressFilms()`, called once per Scout cycle. Mixing the
+        // two paths here used to mark an authorized proposal as "produced"
+        // against a *different* in-progress film — a real proposal-tracking
+        // bug surfaced by the audit.
         let maxAttempts = 3
         for attempt in 0..<maxAttempts {
             let recipe = scoutFeed?.pickRecipe(for: typeKey(type),
@@ -1422,6 +1478,25 @@ final class MarketplaceStore: ObservableObject {
     /// Extends an in-progress Scout film by drafting and appending one more
     /// 2–5 min scene. The Editor still vets the new scene; only passing scenes
     /// get added. When `length >= targetMinutes`, the film is "complete."
+    /// Once per Scout cycle, walk every in-progress film and append one more
+    /// scene. Stops growing a film when it hits its `targetMinutes`. Runs in
+    /// the background; the proposal-driven new-film path is independent.
+    private func extendInProgressFilms() async {
+        let snapshot = catalog
+        let inProgress = scoutDrops.enumerated().filter { $0.element.isFilmInProgress }
+        for (i, _) in inProgress {
+            // Re-resolve the index by id each iteration — earlier appends may
+            // have shifted positions in scoutDrops.
+            let id = inProgress.first(where: { $0.offset == i })?.element.id
+            guard let target = id,
+                  let liveIdx = scoutDrops.firstIndex(where: { $0.id == target }) else { continue }
+            if !scoutDrops[liveIdx].isFilmInProgress { continue }
+            await appendSceneToInProgressFilm(at: liveIdx,
+                                              catalogSnapshot: snapshot,
+                                              fromProposal: nil)
+        }
+    }
+
     private func appendSceneToInProgressFilm(at index: Int,
                                              catalogSnapshot: [MediaItem],
                                              fromProposal: UUID?) async {
