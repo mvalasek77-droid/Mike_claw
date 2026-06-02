@@ -1,17 +1,31 @@
 import SwiftUI
 import Foundation
 
-/// Progress UI for the AI Editor's review. The labels here describe the
-/// real on-device passes that `ReviewPipeline` runs — text via
-/// `NaturalLanguage`, audio via `AVAudioFile` PCM reads, video via `AVAsset`
-/// track loads, cover art via perceptual hashing. We do NOT claim to be doing
-/// passes the pipeline doesn't actually perform.
+/// Real-time progress UI for the AI Editor's review. The previous version
+/// animated 5 cosmetic "passes" for ~3 seconds and ONLY THEN started the
+/// actual analysis — meaning a real review of a 50k-word manuscript or a
+/// movie would stall on the last animation step for up to 60 seconds with
+/// no UI feedback. This version runs the analysis in parallel with the
+/// animation: the passes tick at a natural pace, the elapsed-time counter
+/// is always visible, and the view stays on a "Finalising the review"
+/// state with a live spinner if the analysis takes longer than the
+/// animation. When the analysis returns, `onComplete(verdict)` fires.
 struct AIReviewProgressView: View {
     let draft: DraftWork
-    var onComplete: () -> Void
+    /// The actual review work — captured by the view, started on appear,
+    /// awaited in parallel with the animation. Returning nil signals a
+    /// timeout / failure and the caller renders an error card.
+    var perform: () async -> AIReviewResult?
+    var onComplete: (AIReviewResult?) -> Void
 
     @State private var passIndex = 0
     @State private var pulse = false
+    @State private var elapsedSeconds = 0
+    @State private var analysisFinished = false
+    @State private var verdict: AIReviewResult?
+    @State private var animateTask: Task<Void, Never>?
+    @State private var analyseTask: Task<Void, Never>?
+    @State private var tickerTask: Task<Void, Never>?
 
     private var passes: [String] {
         switch draft.type {
@@ -39,7 +53,7 @@ struct AIReviewProgressView: View {
         }
     }
 
-    private let tickInterval: Double = 0.62
+    private let tickInterval: Double = 2.0   // ~10s animation for 5 passes
 
     var body: some View {
         VStack(spacing: 26) {
@@ -63,25 +77,35 @@ struct AIReviewProgressView: View {
             }
 
             VStack(spacing: 6) {
-                Text("AI Editor is reviewing")
+                Text(analysisFinished ? "Wrapping up" : "AI Editor is reviewing")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
                     .foregroundStyle(Theme.ink)
-                Text(passes[min(passIndex, passes.count - 1)])
+                Text(currentLabel)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Theme.inkSoft)
                     .contentTransition(.opacity)
-                    .id(passIndex)
+                    .id(currentLabel)
+                Text("\(elapsedSeconds)s")
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Theme.inkFaint)
             }
 
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(passes.enumerated()), id: \.offset) { i, pass in
                     HStack(spacing: 10) {
-                        Image(systemName: i < passIndex ? "checkmark.circle.fill" : (i == passIndex ? "circle.dotted" : "circle"))
-                            .foregroundStyle(i < passIndex ? Theme.success : (i == passIndex ? Theme.kdp : Theme.inkFaint))
+                        Image(systemName: i < passIndex
+                              ? "checkmark.circle.fill"
+                              : (i == passIndex ? "circle.dotted" : "circle"))
+                            .foregroundStyle(i < passIndex
+                                             ? Theme.success
+                                             : (i == passIndex ? Theme.kdp : Theme.inkFaint))
                         Text(pass)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(i <= passIndex ? Theme.ink : Theme.inkFaint)
                         Spacer()
+                        if i == passIndex && !analysisFinished {
+                            ProgressView().scaleEffect(0.7).tint(Theme.kdp)
+                        }
                     }
                 }
             }
@@ -95,33 +119,84 @@ struct AIReviewProgressView: View {
                 .foregroundStyle(Theme.inkFaint)
                 .padding(.bottom, 30)
         }
-        .onAppear {
-            pulse = true
-            advanceAsync()
-        }
-        .onDisappear {
-            reviewTask?.cancel()
-        }
+        .onAppear { start() }
+        .onDisappear { teardown() }
     }
 
     private var progress: CGFloat {
-        CGFloat(min(passIndex, passes.count)) / CGFloat(passes.count)
+        // While the analysis runs we cap the bar at "almost done"; when it
+        // finishes we let it round out the rest of the way.
+        let target = analysisFinished
+            ? CGFloat(passes.count)
+            : CGFloat(min(passIndex, passes.count - 1))
+        return target / CGFloat(passes.count)
     }
 
-    /// Cancels automatically when the view disappears;
-    /// no risk of firing after dismissal.
-    @State private var reviewTask: Task<Void, Never>?
+    private var currentLabel: String {
+        if analysisFinished { return "Finalising your verdict…" }
+        return passes[min(passIndex, passes.count - 1)]
+    }
 
-    private func advanceAsync() {
-        reviewTask = Task { @MainActor in
-            for i in 0..<passes.count {
+    private func start() {
+        pulse = true
+
+        // 1. Kick off the real analysis IMMEDIATELY. This is what was broken
+        //    before — the analysis used to start only after the animation
+        //    finished, so the user stared at a frozen screen for up to 60 s.
+        analyseTask = Task { @MainActor in
+            let result = await perform()
+            if Task.isCancelled { return }
+            verdict = result
+            analysisFinished = true
+            // If the animation hasn't finished yet, let it run on its own
+            // ticker and `complete()` is fired by the animation. Otherwise
+            // we finish now.
+            if passIndex >= passes.count - 1 { complete() }
+        }
+
+        // 2. Tick through the named passes at a leisurely pace so the user
+        //    can read each one. Capped at "one before last" until the
+        //    analysis completes, then advanced to the end.
+        animateTask = Task { @MainActor in
+            for i in 0..<passes.count - 1 {
                 try? await Task.sleep(nanoseconds: UInt64(tickInterval * 1_000_000_000))
-                guard !Task.isCancelled else { return }
+                if Task.isCancelled { return }
                 passIndex = i + 1
                 Haptics.tap()
             }
+            // Wait here for the analysis to finish. Poll the flag at a
+            // light cadence so the elapsed-time counter still updates.
+            while !analysisFinished {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                if Task.isCancelled { return }
+            }
+            passIndex = passes.count
             Haptics.success()
-            onComplete()
+            complete()
         }
+
+        // 3. Elapsed-time ticker so the user can see something is happening
+        //    even when the analysis is the long pole. Provides the kind of
+        //    transparency the user asked for: "the process need to happen
+        //    in front of the user."
+        tickerTask = Task { @MainActor in
+            while !analysisFinished || passIndex < passes.count {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if Task.isCancelled { return }
+                elapsedSeconds += 1
+            }
+        }
+    }
+
+    private func complete() {
+        let v = verdict
+        teardown()
+        onComplete(v)
+    }
+
+    private func teardown() {
+        animateTask?.cancel(); animateTask = nil
+        analyseTask?.cancel(); analyseTask = nil
+        tickerTask?.cancel(); tickerTask = nil
     }
 }

@@ -39,17 +39,24 @@ struct SubmitWorkView: View {
             switch phase {
             case .form: formFlow
             case .reviewing:
-                AIReviewProgressView(draft: draft) {
-                    reviewTask?.cancel()
-                    reviewTask = Task { @MainActor in
+                // The progress view now starts the analysis on appear and
+                // animates the on-device passes in parallel — when the
+                // analysis returns it calls back with the verdict (or nil
+                // for timeout). The screen reflects what's actually
+                // happening instead of running a 3-second canned animation
+                // and then freezing for 60 s while the real work happens.
+                AIReviewProgressView(
+                    draft: draft,
+                    perform: {
+                        guard let id = submissionID else { return nil }
+                        return await store.runReviewAsync(for: id)
+                    },
+                    onComplete: { verdict in
                         guard let id = submissionID else {
                             reviewError = "We lost the submission while preparing the review. Tap Try again."
                             Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
-                            reviewTask = nil
                             return
                         }
-                        let verdict = await store.runReviewAsync(for: id)
-                        if Task.isCancelled { return }   // sheet was dismissed mid-review
                         if let verdict {
                             result = verdict
                             reviewError = nil
@@ -58,12 +65,11 @@ struct SubmitWorkView: View {
                                 autoPublished = true
                             }
                         } else {
-                            reviewError = "The review timed out reading your file. Re-pick it (the iOS access permission may have expired), then Try again."
+                            reviewError = "The review couldn't finish reading your file. The iOS access permission may have expired, or the file is unusually large. Re-pick it and try again."
                         }
                         Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
-                        reviewTask = nil
                     }
-                }
+                )
             case .verdict:
                 if let result, let id = submissionID {
                     ReviewVerdictView(draft: draft, result: result, submissionID: id,

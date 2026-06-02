@@ -69,6 +69,10 @@ struct RootView: View {
         // foregrounds — pull fresh payout status so the UI reflects completion.
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active && store.isRegistered {
+                // Sweep any submissions stuck "In Review" from a previous
+                // session — the analysis Task can't survive a process kill,
+                // so anything older than the cutoff is genuinely orphaned.
+                store.sweepInterruptedReviews(forcePersist: true)
                 Task { await store.refreshPayoutStatus() }
             }
         }

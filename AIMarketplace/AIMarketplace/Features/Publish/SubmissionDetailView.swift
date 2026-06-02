@@ -92,11 +92,26 @@ struct SubmissionDetailView: View {
                     actionArea(sub, review: review)
                 }
             } else {
-                Text("This title is still being reviewed.")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Theme.inkSoft)
-                    .padding(40)
-            }
+                // No verdict yet — either still in flight or interrupted.
+                // The "still being reviewed" copy without any action used
+                // to be a dead-end. Now: explicit "Re-run review" button
+                // that re-fires the analysis against the same submission.
+                VStack(spacing: 12) {
+                    HStack(spacing: 10) {
+                        ProgressView().tint(Theme.accent)
+                        Text("Review not finished yet.")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                    }
+                    Text("If you closed the app while the editor was working, the review didn't complete. Tap below to re-run it.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.inkSoft)
+                        .multilineTextAlignment(.center)
+                    PrimaryButton(title: "Re-run the review", systemImage: "arrow.clockwise") {
+                        Task { _ = await store.runReviewAsync(for: sub.id) }
+                    }
+                }
+                .padding(24)
         }
         .padding(.bottom, 40)
     }

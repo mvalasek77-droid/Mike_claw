@@ -443,17 +443,28 @@ final class MarketplaceStore: ObservableObject {
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
-        sweepInterruptedReviews()
+        // Sweep + force a persist so a "stuck in review" row from a previous
+        // session is actually written to disk as rejected. Without
+        // forcePersist the rejection lives in memory only and the next
+        // launch re-loads the original .reviewing status.
+        sweepInterruptedReviews(forcePersist: true)
         loading = false
     }
 
     /// Any submission still flagged `.reviewing` after a process restart is a
-    /// review that never finished — the analysis Task is gone with the process.
-    /// Mark them rejected with a synthetic, user-friendly note so the
-    /// dashboard / detail view render coherently and the user gets a Try-again
-    /// affordance instead of a permanent zombie row.
-    private func sweepInterruptedReviews() {
+    /// review that never finished — the analysis Task is gone with the
+    /// process. Mark them rejected with a synthetic, user-friendly note so
+    /// the dashboard / detail view render coherently and the user gets a
+    /// Try-again affordance instead of a permanent zombie row.
+    ///
+    /// Internal flag controls whether we force-write to disk after the sweep
+    /// (when called from restore the persist is gated by `loading == true`
+    /// and the rejection is in-memory only — that was the "still in review
+    /// every time I open the app" bug). When called outside restore, the
+    /// regular @Published didSet on `submissions` will trigger persist.
+    func sweepInterruptedReviews(forcePersist: Bool = false) {
         let cutoff = Date.now.addingTimeInterval(-60)
+        var swept = 0
         for i in submissions.indices
         where submissions[i].status == .reviewing && submissions[i].submittedAt < cutoff {
             submissions[i].status = .rejected
@@ -463,11 +474,21 @@ final class MarketplaceStore: ObservableObject {
                     criteria: [],
                     strengths: [],
                     improvements: ["Re-upload your file and submit again — the review didn't complete."],
-                    summary: "Review was interrupted before it finished. This usually happens if the app was closed mid-review. Try submitting again.",
+                    summary: "Review was interrupted before it finished. This usually happens if the app was closed mid-review. Tap Revise & resubmit to try again.",
                     confidence: 0,
                     autonomousRationale: ""
                 )
             }
+            swept += 1
+        }
+        if forcePersist && swept > 0 {
+            // restore() gates persist() behind loading=true so an in-memory
+            // sweep wouldn't survive the next launch. This branch writes
+            // through anyway so the rejection sticks.
+            let wasLoading = loading
+            loading = false
+            persist()
+            loading = wasLoading
         }
     }
 

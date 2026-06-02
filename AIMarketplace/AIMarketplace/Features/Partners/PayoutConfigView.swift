@@ -327,6 +327,30 @@ struct PayoutConfigView: View {
                 .foregroundStyle(Theme.success)
                 .padding(14)
                 .background(RoundedRectangle(cornerRadius: 12).fill(Theme.success.opacity(0.12)))
+            // Show the Stripe account id (masked) + a way to actually OPEN
+            // the Stripe dashboard. Without this the user had no proof the
+            // setup was real — just a green checkmark.
+            if let acct = store.connectAccountID, !acct.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "building.columns.fill").foregroundStyle(Theme.inkSoft)
+                        Text("Connected to Stripe account ending in \(acct.suffix(4))")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Spacer()
+                    }
+                    PrimaryButton(title: "Open my Stripe dashboard",
+                                  systemImage: "arrow.up.right.square",
+                                  style: .ghost, tint: Theme.accent) {
+                        store.resumePayoutOnboarding()
+                    }
+                    Text("Opens Stripe Express in your browser — verify your bank details, update tax info, see incoming transfers.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.04)))
+            }
             Text("Heads-up: payouts can take up to a month. Apple settles in-app purchases monthly, so a sale today may not reach your bank until the next Apple settlement.")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.inkFaint)
