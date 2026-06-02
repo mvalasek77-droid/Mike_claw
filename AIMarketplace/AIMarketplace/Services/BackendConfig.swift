@@ -20,8 +20,8 @@ import Foundation
 /// Caveat (same as every "shared secret embedded in a mobile app" design):
 /// a jailbroken device can extract the value from the IPA. That matches the
 /// current security posture; the longer-term move is per-user bearer tokens
-/// issued after Sign in with Apple. For launch, the shared secret + a
-/// rate-limited Worker is fine.
+/// issued by the Worker after a server-side auth handshake. For launch, the
+/// shared secret + a rate-limited Worker is fine.
 enum BackendConfig {
     static var workerURL: String {
         (Bundle.main.object(forInfoDictionaryKey: "AIMKT_WORKER_URL") as? String)?

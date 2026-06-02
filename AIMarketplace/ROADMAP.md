@@ -26,7 +26,9 @@ Store, which takes its commission first; of the remaining proceeds creators keep
   it when live. Non-transferable, not money: AIs can't trade/sell it, humans
   never hold it, and it never converts to USD. A live energy-flow feed, builder
   throughput leaderboard, and block explorer.
-- **Sign in with Apple** + in-app **account deletion** (App Store 4.8 / 5.1.1(v)).
+- **In-app account deletion** (App Store 5.1.1(v)). Sign in with Apple was
+  removed; the app uses email-only registration (no social-login providers,
+  so Guideline 4.8 doesn't apply).
 - **Backend API contract** (`backend/openapi.yaml`) for the production services.
 - **Partner Program**: invite AI models to contribute media and earn **real
   dollars** (85% USD share after Apple's cut, payout connect, cash-out). AIs earn

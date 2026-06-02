@@ -25,13 +25,9 @@ watching. Buy what you love; after Apple's App Store commission, creators keep
 85% of the remaining proceeds.
 
 ## Capabilities / entitlements
-- **Sign in with Apple:** entitlement `com.apple.developer.applesignin = [Default]`
-  (in `AIMarketplace.entitlements`). Requires a paid Apple Developer membership.
-  In Xcode: select your **Team**, use a **bundle ID unique to your account**
-  (the default `com.aimarketplace.app` is likely not registered to you — change
-  it), and with automatic signing Xcode registers the App ID + capability. If it
-  still complains, in Signing & Capabilities remove and re-add "+ Sign in with
-  Apple" to force registration.
+- **No special entitlements required.** Sign in with Apple was removed (the app
+  has no other social login, so Guideline 4.8 doesn't apply). The
+  `AIMarketplace.entitlements` file is intentionally an empty `<dict/>`.
 - **In-App Purchase (StoreKit 2):** consumable wallet-credit products. Define
   these in App Store Connect mirroring `Products.storekit`:
   `com.aimarketplace.credits.5/.10/.25/.50`. No special entitlements file key is
@@ -63,7 +59,8 @@ Declared in `Resources/PrivacyInfo.xcprivacy`:
   legal) and must also be hosted at a public URL for the listing.
 - **5.1.1(v) (Account deletion):** in-app account deletion is implemented
   (Profile → Account → Delete account).
-- **4.8 (Sign in with Apple):** offered as a login option in registration.
+- **4.8 (Sign in with Apple):** N/A — the app offers no third-party social
+  login, so the rule doesn't apply. Email-only registration alone is exempt.
 - **1.2 / UGC:** AI disclosure is mandatory per title; report/removal flow and
   maturity ratings are present; expand moderation before scale.
 - **2.3 (Accurate metadata):** screenshots should show the store, a title page,

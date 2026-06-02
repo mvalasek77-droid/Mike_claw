@@ -29,6 +29,11 @@ paths:
     post:
       tags: [Auth]
       summary: Exchange a Sign in with Apple identity token for a session
+      description: |
+        NOT IMPLEMENTED in the current Worker. Kept here as a forward-looking
+        spec in case SIWA is ever re-added (it was removed because the app has
+        no other social login, so App Review Guideline 4.8 doesn't apply).
+      deprecated: true
       security: []
       requestBody:
         required: true

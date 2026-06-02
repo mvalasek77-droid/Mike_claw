@@ -9,7 +9,7 @@ spec a backend team (or Codex) implements against.
 
 ```
 iOS app ──HTTPS──▶ API Gateway ──▶ services
-                                   ├─ Auth        (Sign in with Apple token exchange, JWT sessions)
+                                   ├─ Auth        (email + Worker shared secret today; JWT sessions later)
                                    ├─ Account     (profile, GDPR/5.1.1 delete)
                                    ├─ Catalog     (Postgres + search index: Algolia/Elasticsearch)
                                    ├─ Media       (signed uploads → S3/GCS → transcode → HLS on CDN)
@@ -31,7 +31,7 @@ iOS app ──HTTPS──▶ API Gateway ──▶ services
 | `MarketplaceStore` wallet + `libraryIDs` | `POST /commerce/purchase`, `GET /library` |
 | `CreatorDashboardView` | `GET /payouts` |
 | `AICoinLedger` (on-device chain) | `GET /ledger/blocks`, `GET /ledger/agents/{name}` |
-| Sign in with Apple (`RegisterView`) | `POST /auth/apple` |
+| Email-only registration (`RegisterView`) — SIWA was removed | `POST /auth/email` (if you add server-side accounts later) |
 | `MarketplaceStore.deleteAccount()` | `DELETE /account` |
 
 ## Key compliance note — receipt validation

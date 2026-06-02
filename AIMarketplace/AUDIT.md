@@ -86,7 +86,7 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 
 | System | Reference | AI Marketplace | Notes |
 |---|---|:--:|---|
-| Real authentication (Sign in with Apple/OAuth) | all | 🟡 | **Sign in with Apple added** (client); server token exchange specced in `backend/openapi.yaml` |
+| Real authentication | all | 🟡 | Email-only registration (SIWA removed — no social-login providers, so 4.8 doesn't apply). Worker shared-secret auth. |
 | Account management (change/delete) | all | 🟡 | **Account deletion + sign out added**; profile editing still TODO |
 | Multi-device sync | all | ❌ | No iCloud/account sync |
 | Encryption at rest | all | ✅ | AES-GCM (CryptoKit) + Keychain |
@@ -122,7 +122,8 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
    small-business cut against the 85% creator share in App Store Connect.
 2. ✅ **RESOLVED — Account deletion** added (`MarketplaceStore.deleteAccount()`,
    Profile → Account → Delete account), required once accounts exist
-   (Guideline 5.1.1(v)). Sign in with Apple is also wired (Guideline 4.8).
+   (Guideline 5.1.1(v)). Sign in with Apple was removed — the app has no
+   third-party social login, so Guideline 4.8 doesn't apply.
 3. **UGC controls** (Guideline 1.2): need report/block/abuse flow + human
    moderation, not just the AI Editor.
 4. Hosted **privacy policy + terms URLs** for the listing (in-app text exists).
@@ -134,8 +135,9 @@ Legend: ✅ present · 🟡 partial / simulated · ❌ missing
 **P0 — make it a real product (backend foundation)** — contract in `backend/openapi.yaml`
 - Implement the API + Postgres against the OpenAPI spec; move catalog, accounts,
   entitlements, drafts server-side.
-- Auth: Sign in with Apple is wired client-side ✅; add the server token
-  exchange (`POST /auth/apple`) + sessions. Account deletion done ✅.
+- Auth: email-only registration today. If you ever add SIWA (only required
+  by 4.8 if you add Google/Facebook/etc. first), wire `POST /auth/apple` for
+  server-side token exchange. Account deletion done ✅.
 - Media pipeline: signed uploads → object storage (S3/GCS) → CDN; transcode to HLS.
 - **StoreKit 2 IAP** done ✅; add **server receipt validation**
   (`POST /commerce/validate-receipt`).
