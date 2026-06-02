@@ -66,6 +66,15 @@ interface Env {
   MUSIC_GEN_API_KEY?: string;
   VIDEO_GEN_API_URL?: string;  // e.g. Runway / Veo / Sora API
   VIDEO_GEN_API_KEY?: string;
+  // Per-provider video-gen keys. When set, /scout/providers reports them
+  // as available so the app can pick one for a specific scene. Names match
+  // the Swift `VideoProvider.catalog` ids.
+  RUNWAY_API_KEY?: string;
+  LUMA_API_KEY?: string;
+  PIKA_API_KEY?: string;
+  KLING_API_KEY?: string;
+  VEO_API_KEY?: string;
+  SORA_API_KEY?: string;
   // Per-month USD cap on Scout media generation. Once the running total in
   // KV for the current month meets/exceeds this, /scout/generate-media
   // refuses new calls until the next month. Default 50.
@@ -1236,10 +1245,22 @@ export default {
       // Scout provider status: which generation providers are configured on
       // this Worker. The app uses this to set proposal budgets and routing.
       if (path === "/scout/providers" && method === "GET") {
+        // Per-provider key presence — the app uses this to gray out providers
+        // whose API keys aren't wired yet. We never expose the keys themselves.
+        const videoProviders = {
+          "runway-gen4":         !!env.RUNWAY_API_KEY,
+          "luma-dream-machine":  !!env.LUMA_API_KEY,
+          "pika-2":              !!env.PIKA_API_KEY,
+          "kling-2":             !!env.KLING_API_KEY,
+          "veo-3":               !!env.VEO_API_KEY,
+          "sora-turbo":          !!env.SORA_API_KEY,
+        };
         return json({
           foundation: true,
           musicGenConfigured: !!(env.MUSIC_GEN_API_URL && env.MUSIC_GEN_API_KEY),
-          videoGenConfigured: !!(env.VIDEO_GEN_API_URL && env.VIDEO_GEN_API_KEY),
+          videoGenConfigured: !!(env.VIDEO_GEN_API_URL && env.VIDEO_GEN_API_KEY)
+                              || Object.values(videoProviders).some(Boolean),
+          videoProviders,
         });
       }
 

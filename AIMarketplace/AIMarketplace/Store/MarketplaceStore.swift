@@ -59,6 +59,80 @@ final class MarketplaceStore: ObservableObject {
     @Published private(set) var adminAdded: [MediaItem] = []
     @Published private(set) var adminEdits: [UUID: MediaItem] = [:]
     @Published private(set) var adminDeleted: Set<UUID> = []
+    /// Admin master switch for Scout film production. Off → Scout still
+    /// drafts novels and music but skips movies entirely (no proposals, no
+    /// scene appends). On by default; admins can pause if budget runs low or
+    /// they want the catalog to lean elsewhere.
+    @Published var scoutFilmCreationEnabled: Bool = true { didSet { persist() } }
+    /// Monthly USD ceiling Scout may spend on external video-gen providers
+    /// (Runway / Luma / Pika / Veo / Sora etc.). $0 means "on-device only —
+    /// films remain screenplay-only until you raise the budget."
+    @Published var scoutFilmBudgetUSD: Double = 0 { didSet { persist() } }
+
+    /// Targets used by the feasibility check. ~10 scenes at 3 min/scene = 30 min.
+    static let scoutFilmTargetScenes = 10
+    static let scoutFilmTargetMinutes = 30
+
+    /// Plain-English answer to "can $X actually buy me a 30+ min film?"
+    /// Walks every available provider, picks the cheapest one that fits, and
+    /// reports a verdict the admin can act on.
+    func filmFeasibility(budget: Double) -> FilmFeasibility {
+        let target = Self.scoutFilmTargetScenes
+        let runtime = Self.scoutFilmTargetMinutes
+        guard budget > 0 else {
+            return FilmFeasibility(
+                budgetUSD: 0,
+                verdict: .onDeviceOnly,
+                summary: "On-device only — Scout will ship screenplay editions, not real video.",
+                detail: "Raise the budget to wire in external providers like Runway, Luma or Sora. Until then, films grow as screenplays that buyers read scene-by-scene."
+            )
+        }
+        let providers = VideoProvider.catalog
+        guard let cheapest = providers.min(by: { $0.costPerSceneUSD < $1.costPerSceneUSD }) else {
+            return FilmFeasibility(budgetUSD: budget, verdict: .onDeviceOnly,
+                                    summary: "No providers configured.",
+                                    detail: "Add at least one provider to enable real-video film production.")
+        }
+        // Pick the cheapest provider that can deliver the full target. If
+        // none can, fall back to the cheapest for a partial / insufficient
+        // verdict.
+        let fullFitsAt = providers
+            .filter { $0.scenesAffordable(budget: budget) >= target }
+            .min(by: { $0.costPerSceneUSD < $1.costPerSceneUSD })
+        if let p = fullFitsAt {
+            let cost = Double(target) * p.costPerSceneUSD
+            return FilmFeasibility(
+                budgetUSD: budget,
+                verdict: .feasible(provider: p, scenes: target, runtimeMinutes: runtime, totalCostUSD: cost),
+                summary: String(format: "Yes — $%.2f gets a full %d-min film via %@.", cost, runtime, p.displayName),
+                detail: String(format: "%d scenes × $%.2f per scene = $%.2f total. %@ is the cheapest provider that fits the full %d-min target. (%@.)",
+                               target, p.costPerSceneUSD, cost, p.displayName, runtime, p.strengths.joined(separator: ", "))
+            )
+        }
+        // Partial path: the cheapest provider produces *some* scenes.
+        let scenesCheap = cheapest.scenesAffordable(budget: budget)
+        if scenesCheap >= 1 {
+            let runtimeAchievable = scenesCheap * 3 // 3 min/scene avg
+            let spent = Double(scenesCheap) * cheapest.costPerSceneUSD
+            let shortfall = (Double(target) * cheapest.costPerSceneUSD) - budget
+            return FilmFeasibility(
+                budgetUSD: budget,
+                verdict: .partial(provider: cheapest, scenes: scenesCheap, runtimeMinutes: runtimeAchievable, totalCostUSD: spent, shortfallUSD: max(0, shortfall)),
+                summary: String(format: "Partial — only %d of %d scenes fit (~%d min). Add $%.2f for the full %d min via %@.",
+                                scenesCheap, target, runtimeAchievable, shortfall, runtime, cheapest.displayName),
+                detail: String(format: "With $%.2f at %@'s $%.2f per scene, Scout can ship %d scenes ≈ %d min. Add $%.2f to reach the full %d-min target.",
+                               budget, cheapest.displayName, cheapest.costPerSceneUSD, scenesCheap, runtimeAchievable, shortfall, runtime)
+            )
+        }
+        // Below even one scene.
+        return FilmFeasibility(
+            budgetUSD: budget,
+            verdict: .insufficient(needAtLeastUSD: cheapest.costPerSceneUSD, cheapestProvider: cheapest),
+            summary: String(format: "Too low — cheapest scene costs $%.2f via %@.", cheapest.costPerSceneUSD, cheapest.displayName),
+            detail: String(format: "Even one scene at %@'s $%.2f doesn't fit a $%.2f budget. Either raise the budget or leave it at $0 to ship screenplay editions only.",
+                           cheapest.displayName, cheapest.costPerSceneUSD, budget)
+        )
+    }
 
     private var loading = false
     /// The creation-energy ledger; productions draw/return float energy through it.
@@ -223,6 +297,8 @@ final class MarketplaceStore: ObservableObject {
         var scoutDrops: [MediaItem]
         var scoutLog: [ScoutEntry]
         var lastScoutRun: Date?
+        var scoutFilmCreationEnabled: Bool
+        var scoutFilmBudgetUSD: Double
         var isAdmin: Bool
         var adminAdded: [MediaItem]
         var adminEdits: [UUID: MediaItem]
@@ -240,6 +316,7 @@ final class MarketplaceStore: ObservableObject {
              reviews: [Review], editorDrops: [MediaItem],
              requests: [ContentRequest], notifications: [AppNotification],
              scoutDrops: [MediaItem], scoutLog: [ScoutEntry], lastScoutRun: Date?,
+             scoutFilmCreationEnabled: Bool, scoutFilmBudgetUSD: Double,
              isAdmin: Bool, adminAdded: [MediaItem], adminEdits: [UUID: MediaItem], adminDeleted: [UUID],
              libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem]) {
             self.accountName = accountName
@@ -263,6 +340,8 @@ final class MarketplaceStore: ObservableObject {
             self.scoutDrops = scoutDrops
             self.scoutLog = scoutLog
             self.lastScoutRun = lastScoutRun
+            self.scoutFilmCreationEnabled = scoutFilmCreationEnabled
+            self.scoutFilmBudgetUSD = scoutFilmBudgetUSD
             self.isAdmin = isAdmin
             self.adminAdded = adminAdded
             self.adminEdits = adminEdits
@@ -298,6 +377,8 @@ final class MarketplaceStore: ObservableObject {
             scoutDrops = try c.decodeIfPresent([MediaItem].self, forKey: .scoutDrops) ?? []
             scoutLog = try c.decodeIfPresent([ScoutEntry].self, forKey: .scoutLog) ?? []
             lastScoutRun = try c.decodeIfPresent(Date.self, forKey: .lastScoutRun)
+            scoutFilmCreationEnabled = try c.decodeIfPresent(Bool.self, forKey: .scoutFilmCreationEnabled) ?? true
+            scoutFilmBudgetUSD = try c.decodeIfPresent(Double.self, forKey: .scoutFilmBudgetUSD) ?? 0
             isAdmin = try c.decodeIfPresent(Bool.self, forKey: .isAdmin) ?? false
             adminAdded = try c.decodeIfPresent([MediaItem].self, forKey: .adminAdded) ?? []
             adminEdits = try c.decodeIfPresent([UUID: MediaItem].self, forKey: .adminEdits) ?? [:]
@@ -333,6 +414,8 @@ final class MarketplaceStore: ObservableObject {
         scoutDrops = state.scoutDrops
         scoutLog = state.scoutLog
         lastScoutRun = state.lastScoutRun
+        scoutFilmCreationEnabled = state.scoutFilmCreationEnabled
+        scoutFilmBudgetUSD = state.scoutFilmBudgetUSD
         isAdmin = state.isAdmin
         adminAdded = state.adminAdded
         adminEdits = state.adminEdits
@@ -394,6 +477,8 @@ final class MarketplaceStore: ObservableObject {
             scoutDrops: scoutDrops,
             scoutLog: scoutLog,
             lastScoutRun: lastScoutRun,
+            scoutFilmCreationEnabled: scoutFilmCreationEnabled,
+            scoutFilmBudgetUSD: scoutFilmBudgetUSD,
             isAdmin: isAdmin,
             adminAdded: adminAdded,
             adminEdits: adminEdits,
@@ -962,11 +1047,23 @@ final class MarketplaceStore: ObservableObject {
         return reviews.contains { $0.itemID == itemID && $0.author == me }
     }
 
-    func addReview(itemID: UUID, rating: Int, text: String) {
+    /// Apple 1.2 / UGC: reviews must be authored by buyers of the title, and
+    /// the text must be non-empty and within a sane length. Profanity / spam
+    /// is handled by ModerationStore's report path; we only enforce structural
+    /// validity here.
+    static let maxReviewLength = 600
+
+    @discardableResult
+    func addReview(itemID: UUID, rating: Int, text: String) -> Bool {
+        guard libraryIDs.contains(itemID) else { return false }
+        let clean = text.trimmed
+        guard !clean.isEmpty else { return false }
+        let bounded = String(clean.prefix(Self.maxReviewLength))
         let me = accountName.trimmed.isEmpty ? "You" : accountName.trimmed
         reviews.removeAll { $0.itemID == itemID && $0.author == me }
         reviews.insert(Review(itemID: itemID, author: me,
-                              rating: max(1, min(5, rating)), text: text.trimmed, date: .now), at: 0)
+                              rating: max(1, min(5, rating)), text: bounded, date: .now), at: 0)
+        return true
     }
 
     // MARK: - Demand signals & fresh drops
@@ -1066,6 +1163,14 @@ final class MarketplaceStore: ObservableObject {
         var plan: [(MediaType, ContentFoundry.ScoutLayer)] = [
             (.movie, .commercial), (.music, .commercial), (.novel, .commercial),
         ]
+        // Admin may have paused film creation (e.g. budget tight, leaning into
+        // other formats). Skip the movie slot in that case.
+        if !scoutFilmCreationEnabled {
+            plan.removeAll { $0.0 == .movie }
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "Film creation paused in Admin — Scout drafted novels and music only this cycle.",
+                kind: .brief, relatedItemID: nil), at: 0)
+        }
         if !userPostedRecently {
             plan.append((randomType("exp"), .experimental))
             plan.append((randomType("niche"), .niche))
@@ -1566,6 +1671,13 @@ final class MarketplaceStore: ObservableObject {
         let tierMult = Incentives.tier(forTitles: partnerTitleCount(model)).multiplier
         let score = min(99, 88 + Int(((tierMult - 1.0) * 10).rounded()))
 
+        // Debit the wallet FIRST so a crash mid-deliver can't hand the buyer a
+        // catalog entry they never paid for. The persist() that follows each
+        // @Published mutation is synchronous; if the process dies after the
+        // debit but before the insert, the user paid and we owe them the item,
+        // not the other way around.
+        walletBalance = max(0, walletBalance - request.budgetUSD)
+
         var item = ContentFoundry.commission(model: model, type: request.type,
                                               genre: request.genre.isEmpty ? "Original" : request.genre,
                                               seed: requests.count, score: score)
@@ -1573,7 +1685,7 @@ final class MarketplaceStore: ObservableObject {
         item.purchases = 1                       // the requester's purchase
         catalog.insert(item, at: 0)
         libraryIDs.insert(item.id)               // they commissioned it → they own it
-        walletBalance = max(0, walletBalance - request.budgetUSD)
+        watchlistIDs.remove(item.id)             // they own it now — clear watchlist
 
         // Energy returns to the float now the work is live.
         energyLedger?.returnEnergy(AICoin.energyCost(request.type), from: model, memo: "“\(item.title)” delivered")
@@ -1687,6 +1799,7 @@ final class MarketplaceStore: ObservableObject {
         let price = effectivePrice(for: item)
         if chargeWallet { walletBalance = max(0, walletBalance - price) }
         libraryIDs.insert(item.id)
+        watchlistIDs.remove(item.id)   // owning supersedes watching
         bumpPurchase(item.id)
         let earning = Commerce.creatorEarning(on: price)
         // Credit the creator whenever they buy their own work — catalog titles

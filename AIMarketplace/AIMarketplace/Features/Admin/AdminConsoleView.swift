@@ -10,6 +10,7 @@ struct AdminConsoleView: View {
     @State private var query = ""
     @State private var confirmReset = false
     @State private var showPayouts = false
+    @State private var filmBudgetText = ""
 
     private var items: [MediaItem] {
         let base = store.catalog.sorted { $0.addedAt > $1.addedAt }
@@ -23,6 +24,7 @@ struct AdminConsoleView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     automationCard
+                    filmProductionCard
                     payoutsCard
                     addBar
                     searchField
@@ -68,6 +70,111 @@ struct AdminConsoleView: View {
                 PrimaryButton(title: "Reset catalogue to defaults", systemImage: "arrow.counterclockwise",
                               style: .ghost, tint: Theme.warning) { confirmReset = true }
             }
+        }
+    }
+
+    /// Scout film production controls. Toggles the movie pipeline on/off,
+    /// holds the monthly external-provider budget, and runs the feasibility
+    /// check so the admin sees *before* spending whether the budget can buy
+    /// a full 30-min film today.
+    private var filmProductionCard: some View {
+        let feasibility = store.filmFeasibility(budget: parsedBudget)
+        return GlassCard(title: "Scout film production", icon: "film.stack", tint: Theme.kdp) {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: $store.scoutFilmCreationEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Enable film creation").font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        Text("When on, Scout proposes a film each cycle and grows it scene-by-scene. Off → novels and music only.")
+                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    }
+                }
+                .tint(Theme.accent)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Monthly video-gen budget (USD)")
+                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                    HStack(spacing: 8) {
+                        Image(systemName: "dollarsign.circle.fill").foregroundStyle(Theme.success)
+                        TextField("0", text: $filmBudgetText)
+                            .keyboardType(.decimalPad)
+                            .foregroundStyle(Theme.ink)
+                            .onChange(of: filmBudgetText) { _, _ in
+                                store.scoutFilmBudgetUSD = parsedBudget
+                            }
+                        Button("Apply") { store.scoutFilmBudgetUSD = parsedBudget; Haptics.success() }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(.black)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(Capsule().fill(Theme.accent))
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
+                    Text("Set $0 to keep Scout on-device — films ship as screenplay editions. Raise this to wire in Runway / Luma / Pika / Sora / Veo etc.")
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                }
+
+                feasibilityBlock(feasibility)
+                providerList
+            }
+        }
+        .onAppear {
+            if filmBudgetText.isEmpty {
+                filmBudgetText = store.scoutFilmBudgetUSD > 0
+                    ? String(format: "%.2f", store.scoutFilmBudgetUSD)
+                    : ""
+            }
+        }
+    }
+
+    private var parsedBudget: Double {
+        Double(filmBudgetText.replacingOccurrences(of: ",", with: ".")) ?? 0
+    }
+
+    private func feasibilityBlock(_ f: FilmFeasibility) -> some View {
+        let (icon, color): (String, Color) = {
+            switch f.verdict {
+            case .feasible: return ("checkmark.seal.fill", Theme.success)
+            case .partial: return ("exclamationmark.triangle.fill", Theme.warning)
+            case .insufficient: return ("xmark.octagon.fill", Theme.warning)
+            case .onDeviceOnly: return ("doc.text.fill", Theme.inkSoft)
+            }
+        }()
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: icon).font(.system(size: 14)).foregroundStyle(color)
+                Text("Scout says").font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                Spacer()
+            }
+            Text(f.summary)
+                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text(f.detail)
+                .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(color.opacity(0.12)))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cornerS).strokeBorder(color.opacity(0.35), lineWidth: 0.6))
+    }
+
+    private var providerList: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Video providers Scout can route to")
+                .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+            ForEach(VideoProvider.catalog) { p in
+                HStack(spacing: 8) {
+                    Image(systemName: "play.rectangle.fill").font(.system(size: 11)).foregroundStyle(Theme.kdp)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(p.displayName).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
+                        Text(p.strengths.joined(separator: " · "))
+                            .font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                    }
+                    Spacer()
+                    Text(String(format: "$%.2f/scene", p.costPerSceneUSD))
+                        .font(.system(size: 11, weight: .heavy, design: .rounded)).foregroundStyle(Theme.inkSoft)
+                }
+                .padding(.vertical, 4)
+            }
+            Text("Per-scene = full 2–5 min Scout scene, stitched from clips at provider's standard quality. Real prices drift; revisit before raising the budget.")
+                .font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkFaint)
         }
     }
 

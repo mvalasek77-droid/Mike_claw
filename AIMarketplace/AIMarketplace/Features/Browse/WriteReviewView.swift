@@ -29,7 +29,13 @@ struct WriteReviewView: View {
                     .frame(maxWidth: .infinity)
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Review").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                        HStack {
+                            Text("Review").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                            Spacer()
+                            Text("\(text.count)/\(MarketplaceStore.maxReviewLength)")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundStyle(text.count > MarketplaceStore.maxReviewLength ? Theme.warning : Theme.inkFaint)
+                        }
                         TextEditor(text: $text)
                             .frame(minHeight: 120)
                             .padding(8)
@@ -37,13 +43,21 @@ struct WriteReviewView: View {
                             .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                             .foregroundStyle(Theme.ink)
                             .font(.system(size: 14))
+                            .onChange(of: text) { _, new in
+                                if new.count > MarketplaceStore.maxReviewLength {
+                                    text = String(new.prefix(MarketplaceStore.maxReviewLength))
+                                }
+                            }
                     }
 
                     PrimaryButton(title: "Post review", systemImage: "paperplane.fill",
-                                  enabled: rating > 0) {
-                        store.addReview(itemID: item.id, rating: rating, text: text)
-                        Haptics.success()
-                        dismiss()
+                                  enabled: rating > 0 && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                        if store.addReview(itemID: item.id, rating: rating, text: text) {
+                            Haptics.success()
+                            dismiss()
+                        } else {
+                            Haptics.warning()
+                        }
                     }
                 }
                 .padding(18)
