@@ -54,6 +54,17 @@ final class MarketplaceStore: ObservableObject {
     @Published var lastScoutRun: Date? { didSet { persist() } }
 
     private let archive = EncryptedArchive()
+    /// In-flight video-render Tasks keyed by film id + scene index, so we can
+    /// cancel them en-masse when admin disables Scout film creation. Each
+    /// Task self-removes from this dict when it returns.
+    private var sceneRenderTasks: [String: Task<Void, Never>] = [:]
+    private func sceneRenderKey(_ itemID: UUID, _ sceneIndex: Int) -> String {
+        "\(itemID.uuidString)#\(sceneIndex)"
+    }
+    private func cancelAllSceneRenderTasks() {
+        for (_, task) in sceneRenderTasks { task.cancel() }
+        sceneRenderTasks.removeAll()
+    }
     /// When the next daily slate is due... (admin/god-mode state)
     @Published var isAdmin: Bool = false { didSet { persist() } }
     @Published private(set) var adminAdded: [MediaItem] = []
@@ -63,7 +74,16 @@ final class MarketplaceStore: ObservableObject {
     /// drafts novels and music but skips movies entirely (no proposals, no
     /// scene appends). On by default; admins can pause if budget runs low or
     /// they want the catalog to lean elsewhere.
-    @Published var scoutFilmCreationEnabled: Bool = true { didSet { persist() } }
+    ///
+    /// Flipping this OFF also cancels any in-flight video-gen Tasks so the
+    /// admin's pause is honored immediately, not after the next render
+    /// finishes (which could otherwise take 3+ minutes).
+    @Published var scoutFilmCreationEnabled: Bool = true {
+        didSet {
+            persist()
+            if !scoutFilmCreationEnabled { cancelAllSceneRenderTasks() }
+        }
+    }
     /// Monthly USD ceiling Scout may spend on external video-gen providers
     /// (Runway / Luma / Pika / Veo / Sora etc.). $0 means "on-device only —
     /// films remain screenplay-only until you raise the budget."
@@ -525,12 +545,20 @@ final class MarketplaceStore: ObservableObject {
         scoutDrops = []
         scoutLog = []
         lastScoutRun = nil
+        // Cancel everything in flight — scoutDrops are wiped, so any pending
+        // scene-render Tasks would land URLs against ids that no longer exist.
+        cancelAllSceneRenderTasks()
         let publishedIDs = Set(submissions.compactMap(\.publishedItemID))
         let published = catalog.filter { publishedIDs.contains($0.id) }
         var rebuilt = SampleData.catalog()
         let baseIDs = Set(rebuilt.map(\.id))
         rebuilt.append(contentsOf: published.filter { !baseIDs.contains($0.id) })
         catalog = rebuilt
+        // First entry in the freshly-emptied log: an audit breadcrumb so the
+        // operator can confirm the reset actually ran (and when).
+        scoutLog = [ScoutEntry(date: .now,
+            message: "Admin reset the catalogue. Generated content cleared; base + your published titles preserved.",
+            kind: .brief, relatedItemID: nil)]
         loading = false
         persist()
         Haptics.warning()
@@ -558,6 +586,7 @@ final class MarketplaceStore: ObservableObject {
 
     /// Permanently removes a title from the marketplace.
     func adminDelete(_ id: UUID) {
+        let removedTitle = catalog.first(where: { $0.id == id })?.title ?? "Untitled"
         adminDeleted.insert(id)
         adminAdded.removeAll { $0.id == id }
         adminEdits[id] = nil
@@ -566,6 +595,16 @@ final class MarketplaceStore: ObservableObject {
         editorDrops.removeAll { $0.id == id }
         libraryIDs.remove(id)
         watchlistIDs.remove(id)
+        // Also cancel any in-flight scene-render Tasks targeting the deleted
+        // film, so URLs don't land against a phantom id.
+        for (key, task) in sceneRenderTasks where key.hasPrefix(id.uuidString) {
+            task.cancel()
+            sceneRenderTasks.removeValue(forKey: key)
+        }
+        scoutLog.insert(ScoutEntry(date: .now,
+            message: "Admin removed “\(removedTitle)” from the catalogue.",
+            kind: .brief, relatedItemID: nil), at: 0)
+        trimScoutLog()
         persist()
         Haptics.warning()
     }
@@ -1420,12 +1459,9 @@ final class MarketplaceStore: ObservableObject {
                     item.sceneDurations = [mins]
                     item.sceneVideoURLs = [""]
                     item.length = mins
-                    if scoutFilmBudgetUSD > 0 {
-                        let pendingID = item.id
-                        Task { [weak self] in
-                            await self?.renderSceneVideo(itemID: pendingID, sceneIndex: 0,
-                                                         prompt: text, durationSeconds: mins * 60)
-                        }
+                    if scoutFilmBudgetUSD > 0 && scoutFilmCreationEnabled {
+                        scheduleSceneRender(itemID: item.id, sceneIndex: 0,
+                                            prompt: text, durationSeconds: mins * 60)
                     }
                 }
                 catalog.insert(item, at: 0)
@@ -1542,12 +1578,10 @@ final class MarketplaceStore: ObservableObject {
         // the scene to real video bytes. Fire-and-forget: the screenplay scene
         // is already published; the video URL lands later once the provider
         // returns. Player falls back to screenplay text until the URL arrives.
-        if scoutFilmBudgetUSD > 0 {
+        if scoutFilmBudgetUSD > 0 && scoutFilmCreationEnabled {
             let sceneIdx = item.screenplayScenes.count - 1
-            Task { [weak self] in
-                await self?.renderSceneVideo(itemID: item.id, sceneIndex: sceneIdx,
-                                             prompt: sceneText, durationSeconds: minutes * 60)
-            }
+            scheduleSceneRender(itemID: item.id, sceneIndex: sceneIdx,
+                                prompt: sceneText, durationSeconds: minutes * 60)
         }
 
         let remaining = max(0, item.targetMinutes - item.length)
@@ -1583,8 +1617,25 @@ final class MarketplaceStore: ObservableObject {
     /// into a real video clip via the configured provider. Stores the
     /// returned URL on the item's `sceneVideoURLs[sceneIndex]`. Best-effort:
     /// on failure the screenplay scene remains the deliverable.
+    /// Spawns a background Task that calls the Worker to render a scene video,
+    /// registering it in `sceneRenderTasks` so it can be cancelled when admin
+    /// disables Scout film creation. Task auto-deregisters on completion.
+    private func scheduleSceneRender(itemID: UUID, sceneIndex: Int,
+                                     prompt: String, durationSeconds: Int) {
+        let key = sceneRenderKey(itemID, sceneIndex)
+        // If we somehow scheduled twice for the same scene, cancel the old.
+        sceneRenderTasks[key]?.cancel()
+        let task = Task { [weak self] in
+            await self?.renderSceneVideo(itemID: itemID, sceneIndex: sceneIndex,
+                                         prompt: prompt, durationSeconds: durationSeconds)
+            await MainActor.run { self?.sceneRenderTasks.removeValue(forKey: key) }
+        }
+        sceneRenderTasks[key] = task
+    }
+
     private func renderSceneVideo(itemID: UUID, sceneIndex: Int,
                                   prompt: String, durationSeconds: Int) async {
+        guard !Task.isCancelled else { return }
         guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
               let url = URL(string: "\(payoutBaseURL)/scout/generate-media") else {
             return
@@ -1610,6 +1661,9 @@ final class MarketplaceStore: ObservableObject {
 
         do {
             let (data, response) = try await URLSession.shared.data(for: req)
+            // If admin disabled film creation while we were waiting, drop the
+            // result on the floor — don't mutate the item.
+            guard !Task.isCancelled else { return }
             guard let http = response as? HTTPURLResponse, http.statusCode == 200,
                   let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 scoutLog.insert(ScoutEntry(date: .now,

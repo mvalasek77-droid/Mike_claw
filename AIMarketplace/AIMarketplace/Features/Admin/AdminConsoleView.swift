@@ -11,6 +11,7 @@ struct AdminConsoleView: View {
     @State private var confirmReset = false
     @State private var showPayouts = false
     @State private var filmBudgetText = ""
+    @State private var deletingTitle: MediaItem?
 
     private var items: [MediaItem] {
         let base = store.catalog.sorted { $0.addedAt > $1.addedAt }
@@ -53,6 +54,22 @@ struct AdminConsoleView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Removes all admin edits, Editor Originals and Scout picks, and rebuilds from the base catalogue plus your published titles. Your account, wallet and library are untouched.")
+        }
+        .confirmationDialog(
+            "Delete this title?",
+            isPresented: Binding(
+                get: { deletingTitle != nil },
+                set: { if !$0 { deletingTitle = nil } }
+            ),
+            presenting: deletingTitle
+        ) { item in
+            Button("Delete \"\(item.title)\"", role: .destructive) {
+                store.adminDelete(item.id)
+                deletingTitle = nil
+            }
+            Button("Cancel", role: .cancel) { deletingTitle = nil }
+        } message: { item in
+            Text("Removes \"\(item.title)\" from the catalogue, every buyer's library, and every watchlist. This can't be undone from the app — the title is gone.")
         }
     }
 
@@ -220,7 +237,7 @@ struct AdminConsoleView: View {
                 Image(systemName: "pencil").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.accent)
                     .frame(width: 34, height: 34).background(Circle().fill(Theme.accent.opacity(0.15)))
             }.buttonStyle(.plain)
-            Button { store.adminDelete(item.id) } label: {
+            Button { deletingTitle = item } label: {
                 Image(systemName: "trash").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.warning)
                     .frame(width: 34, height: 34).background(Circle().fill(Theme.warning.opacity(0.15)))
             }.buttonStyle(.plain)

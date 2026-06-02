@@ -770,8 +770,9 @@ async function runLuma(prompt: string, durationSeconds: number, env: Env): Promi
   if (!submit.ok) return { kind: "error", note: `Luma submit ${submit.status}: ${(await submit.text()).slice(0, 200)}`, status: 502 };
   const submitted = await submit.json() as { id?: string };
   if (!submitted.id) return { kind: "error", note: "Luma returned no generation id" };
-  // Poll up to ~90s.
-  for (let i = 0; i < 30; i++) {
+  // Poll up to ~3 min — long enough for slower providers (Veo, Sora) when
+  // the operator routes here as a fallback.
+  for (let i = 0; i < 60; i++) {
     await sleep(3000);
     const status = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${submitted.id}`, {
       headers: { Authorization: `Bearer ${env.LUMA_API_KEY}` },
@@ -784,7 +785,7 @@ async function runLuma(prompt: string, durationSeconds: number, env: Env): Promi
     }
     if (s.state === "failed") return { kind: "error", note: `Luma failed: ${s.failure_reason ?? "unknown"}` };
   }
-  return { kind: "error", note: "Luma generation timed out after 90s." };
+  return { kind: "error", note: "Luma generation timed out after 3 min." };
 }
 
 /** Runway Gen-4 — POST /v1/image_to_video (or text_to_video on newer SKUs).
@@ -808,7 +809,7 @@ async function runRunway(prompt: string, durationSeconds: number, env: Env): Pro
   if (!submit.ok) return { kind: "error", note: `Runway submit ${submit.status}: ${(await submit.text()).slice(0, 200)}`, status: 502 };
   const submitted = await submit.json() as { id?: string };
   if (!submitted.id) return { kind: "error", note: "Runway returned no task id" };
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     await sleep(3000);
     const status = await fetch(`https://api.dev.runwayml.com/v1/tasks/${submitted.id}`, {
       headers: { Authorization: `Bearer ${env.RUNWAY_API_KEY}`, "X-Runway-Version": "2024-11-06" },
@@ -821,7 +822,7 @@ async function runRunway(prompt: string, durationSeconds: number, env: Env): Pro
     }
     if (s.status === "FAILED") return { kind: "error", note: `Runway failed: ${s.failure ?? "unknown"}` };
   }
-  return { kind: "error", note: "Runway generation timed out after 90s." };
+  return { kind: "error", note: "Runway generation timed out after 3 min." };
 }
 
 // Pika / Kling / Veo / Sora stubs — concrete API shapes vary; wire each up
