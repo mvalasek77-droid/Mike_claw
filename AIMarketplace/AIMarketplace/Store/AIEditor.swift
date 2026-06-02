@@ -107,6 +107,11 @@ enum AIEditor {
         if let video = analysis?.video, video.isBroken && draft.type == .movie { overall = min(overall, 35) }
         // Famous IP names in title/synopsis can't pass without human review.
         if !copyright_isClean(analysis: analysis, draft: draft) { overall = min(overall, 78) }
+        // Pricing sanity — catches the abuse pattern "list a 500-word
+        // 'novel' at $19.99 to game the 85% share." If the price is at the
+        // top of the band but the score isn't, cap so it lands in the
+        // operator's review queue.
+        if priceLooksImplausible(draft: draft, score: overall) { overall = min(overall, 78) }
 
         let overallInt = clamp(Int(overall.rounded()))
 
@@ -476,6 +481,38 @@ enum AIEditor {
     }
 
     /// True when no famous-IP terms appear anywhere we can see.
+    /// Flags submissions priced implausibly high relative to their measured
+    /// quality + length. The 85% commercial bar already gates real shipping,
+    /// so this is the second-line check for an attacker who scrapes past 85
+    /// with metadata polish then lists at the top of the band to game the
+    /// 85% creator share. Returns true if the listing should be capped at 78
+    /// (lands in the operator's review queue).
+    private static func priceLooksImplausible(draft: DraftWork, score: Double) -> Bool {
+        let price = draft.price
+        guard price > 0 else { return false }   // free titles are fine
+        // Score-based ceiling: roughly price ≤ $5 below 85, ≤ $10 at 85–94,
+        // unlimited at 95+.
+        let scoreCeiling: Double
+        switch Int(score.rounded()) {
+        case ..<85:  scoreCeiling = 5.00
+        case 85..<95: scoreCeiling = 10.00
+        default:      scoreCeiling = 19.99
+        }
+        if price > scoreCeiling { return true }
+        // Length-based ceiling: very short content at premium price.
+        switch draft.type {
+        case .novel:
+            // Use measured word count if available, else declared length.
+            let wc = draft.manuscriptText.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
+            if wc > 0, wc < 5_000, price > 4.99 { return true }
+        case .music:
+            if draft.length > 0, draft.length < 3, price > 4.99 { return true }   // <3 tracks
+        case .movie:
+            if draft.length > 0, draft.length < 10, price > 6.99 { return true }   // <10 min
+        }
+        return false
+    }
+
     private static func copyright_isClean(analysis: ReviewAnalysis?, draft: DraftWork) -> Bool {
         let blob = (draft.title + " " + draft.synopsis).lowercased()
         let metaHit = ContentAnalysis.famousIPVocabulary.contains { blob.contains($0.lowercased()) }

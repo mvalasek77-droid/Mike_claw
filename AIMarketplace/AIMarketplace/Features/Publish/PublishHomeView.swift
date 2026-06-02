@@ -213,5 +213,9 @@ private struct ShelfRow: View {
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
+        // Single VoiceOver element per row: title + type + status.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("\(submission.title), \(submission.draft.type.title), \(submission.status.rawValue)"))
+        .accessibilityHint(Text("Open submission details"))
     }
 }

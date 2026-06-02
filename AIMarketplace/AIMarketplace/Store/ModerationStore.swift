@@ -21,19 +21,29 @@ final class ModerationStore: ObservableObject {
 
     // MARK: - Blocks
 
+    /// Normalised match key so "Mike Valasek" and "mike valasek" + leading
+    /// whitespace all collapse to the same block entry. Real rename
+    /// resilience (creator changes display name → block keeps working)
+    /// needs a stable creator id, which the current data model doesn't
+    /// surface (users register once and don't edit their name; AI creators
+    /// are model strings that don't change).
+    private func key(_ creator: String) -> String {
+        creator.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
     func block(_ creator: String) {
-        let name = creator.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-        blockedCreators.insert(name)
+        let k = key(creator)
+        guard !k.isEmpty else { return }
+        blockedCreators.insert(k)
         persist()
     }
 
     func unblock(_ creator: String) {
-        blockedCreators.remove(creator)
+        blockedCreators.remove(key(creator))
         persist()
     }
 
-    func isBlocked(_ creator: String) -> Bool { blockedCreators.contains(creator) }
+    func isBlocked(_ creator: String) -> Bool { blockedCreators.contains(key(creator)) }
 
     // MARK: - Reports
 
@@ -47,6 +57,7 @@ final class ModerationStore: ObservableObject {
         reason: String,
         details: String,
         reporterEmail: String?,
+        notifyOnResolve: Bool = false,
         baseURL: String?,
         sharedSecret: String?
     ) async -> Bool {
@@ -68,6 +79,7 @@ final class ModerationStore: ObservableObject {
             "reason": reason,
             "details": details,
             "reporter_email": reporterEmail ?? "",
+            "notify_on_resolve": notifyOnResolve,
         ]
         req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
 

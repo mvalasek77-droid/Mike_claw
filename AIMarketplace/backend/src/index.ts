@@ -992,6 +992,7 @@ async function handleReport(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as {
     item_id?: string; item_title?: string; creator_name?: string;
     reason?: string; details?: string; reporter_email?: string;
+    notify_on_resolve?: boolean;
   };
   const id = crypto.randomUUID();
   const ts = new Date().toISOString();
@@ -1017,6 +1018,7 @@ async function handleReport(request: Request, env: Env): Promise<Response> {
       item_id: itemId, item_title: itemTitle,
       creator_name: creatorName, reason,
       details, reporter_email: reporterEmail,
+      notify_on_resolve: body.notify_on_resolve === true && !!reporterEmail,
       disposition: "" as "" | "removed" | "warned" | "dismissed",
       resolved_at: "" as string,
       resolution_note: "" as string,
@@ -1087,6 +1089,32 @@ async function handleResolveReport(request: Request, env: Env, id: string): Prom
   const reverse = hit.name.split(":")[2]; // preserve original sort
   await env.KV.put(`report:resolved:${reverse}:${id}`, JSON.stringify(record));
   await env.KV.delete(hit.name);
+
+  // Notify the reporter (opt-in at submission time). Keeps trust in the
+  // moderation loop — the previous flow let reports vanish into the
+  // operator's inbox with no acknowledgement that anything happened.
+  if (record.notify_on_resolve === true &&
+      typeof record.reporter_email === "string" &&
+      record.reporter_email.includes("@")) {
+    const dispCopy: Record<string, string> = {
+      removed: "The title has been removed from the marketplace.",
+      warned: "We've reviewed your report and contacted the creator.",
+      dismissed: "We reviewed your report and didn't find a policy violation, but thank you for flagging — we keep records of every report and re-review patterns over time.",
+    };
+    const subject = `[AI Marketplace] Your report has been resolved`;
+    const note = (typeof record.resolution_note === "string" && record.resolution_note.trim())
+      ? `\n\nModerator note: ${record.resolution_note}`
+      : "";
+    const text = [
+      `Hi,`,
+      ``,
+      `Thanks for reporting "${record.item_title}". ${dispCopy[disp] ?? ""}${note}`,
+      ``,
+      `— The AI Marketplace moderation team`,
+    ].join("\n");
+    await sendEmail(env, subject, text, record.reporter_email);
+  }
+
   return json({ resolved: true, id, disposition: disp });
 }
 

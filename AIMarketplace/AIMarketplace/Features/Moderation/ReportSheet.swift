@@ -15,6 +15,7 @@ struct ReportSheet: View {
     @State private var submitting = false
     @State private var sent = false
     @State private var blocked = false
+    @State private var notifyOnResolve = true
 
     enum Reason: String, CaseIterable, Identifiable {
         case infringement = "Copyright / IP infringement"
@@ -41,6 +42,13 @@ struct ReportSheet: View {
                     TextEditor(text: $details)
                         .frame(minHeight: 100)
                         .accessibilityLabel("Report details")
+                }
+
+                if !store.accountEmail.isEmpty {
+                    Section {
+                        Toggle("Email me when this is resolved", isOn: $notifyOnResolve)
+                            .accessibilityHint("If on, we'll send a short note to \(store.accountEmail) once moderation has taken action.")
+                    }
                 }
 
                 Section {
@@ -91,6 +99,7 @@ struct ReportSheet: View {
             reason: reason.rawValue,
             details: details,
             reporterEmail: store.accountEmail.isEmpty ? nil : store.accountEmail,
+            notifyOnResolve: notifyOnResolve && !store.accountEmail.isEmpty,
             baseURL: store.payoutBaseURL,
             sharedSecret: store.payoutSharedSecret
         )

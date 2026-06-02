@@ -39,6 +39,12 @@ struct PrimaryButton: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        // Title is the accessibility label by default. The icon name +
+        // styling are decorative; VoiceOver should announce the action,
+        // not the chevron. Disabled state surfaces as an a11y trait.
+        .accessibilityLabel(Text(title))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(enabled ? "" : "Currently unavailable")
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in

@@ -47,5 +47,10 @@ struct ScoreRing: View {
         .onAppear {
             Motion.run(.easeOut(duration: 1.0)) { animated = CGFloat(score) / 100 }
         }
+        // VoiceOver should announce the verdict, not "circle. text 85. text /
+        // 100." Treat the ring as one element with a meaningful label.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("AI Editor score \(score) out of 100, bar is \(threshold)"))
+        .accessibilityValue(Text(score >= threshold ? "Approved" : "Rejected"))
     }
 }

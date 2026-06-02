@@ -916,8 +916,23 @@ private struct PricingStep: View {
 
     private var split: Commerce.Breakdown { Commerce.breakdown(for: draft.price) }
 
+    /// Apple 1.3 content rating per-title. The catalogue's existing `maturity`
+    /// string is the underlying field. These are the five Apple Store age
+    /// brackets so the marketplace listing matches what App Review expects.
+    private let ratings = ["Everyone", "9+", "12+", "17+", "Adults only"]
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Audience age rating").font(.system(size: 12, weight: .semibold, design: .rounded)).foregroundStyle(Theme.inkSoft)
+                Picker("Audience", selection: $draft.maturity) {
+                    ForEach(ratings, id: \.self) { Text($0).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Text("Pick the youngest audience this title is appropriate for. Reviewers verify your choice; setting Everyone on adult content is grounds for removal.")
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+            }
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("List price").font(.system(size: 12, weight: .semibold, design: .rounded)).foregroundStyle(Theme.inkSoft)
                 HStack {
