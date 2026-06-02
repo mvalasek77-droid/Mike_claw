@@ -96,6 +96,10 @@ struct MediaItem: Identifiable, Hashable, Codable {
     var sceneDurations: [Int] = []
     /// Minimum runtime a Scout film grows to. 30 means "30+ min when complete."
     var targetMinutes: Int = 0
+    /// Optional remote video URL per scene, parallel to `screenplayScenes`.
+    /// Empty string means "screenplay only" (no real video bytes yet). Once a
+    /// provider call lands an mp4 for scene N, the URL goes here.
+    var sceneVideoURLs: [String] = []
 
     init(
         id: UUID = UUID(),
@@ -119,7 +123,8 @@ struct MediaItem: Identifiable, Hashable, Codable {
         isEditorOriginal: Bool = false,
         screenplayScenes: [String] = [],
         sceneDurations: [Int] = [],
-        targetMinutes: Int = 0
+        targetMinutes: Int = 0,
+        sceneVideoURLs: [String] = []
     ) {
         self.id = id
         self.title = title
@@ -143,6 +148,7 @@ struct MediaItem: Identifiable, Hashable, Codable {
         self.screenplayScenes = screenplayScenes
         self.sceneDurations = sceneDurations
         self.targetMinutes = targetMinutes
+        self.sceneVideoURLs = sceneVideoURLs
     }
 
     static func == (lhs: MediaItem, rhs: MediaItem) -> Bool { lhs.id == rhs.id }
@@ -185,6 +191,7 @@ struct MediaItem: Identifiable, Hashable, Codable {
         self.screenplayScenes = try c.decodeIfPresent([String].self, forKey: .screenplayScenes) ?? []
         self.sceneDurations = try c.decodeIfPresent([Int].self, forKey: .sceneDurations) ?? []
         self.targetMinutes = try c.decodeIfPresent(Int.self, forKey: .targetMinutes) ?? 0
+        self.sceneVideoURLs = try c.decodeIfPresent([String].self, forKey: .sceneVideoURLs) ?? []
     }
 
     var priceLabel: String { String(format: "$%.2f", price) }

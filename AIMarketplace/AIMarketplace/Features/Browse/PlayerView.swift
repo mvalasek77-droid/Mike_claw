@@ -501,18 +501,37 @@ private struct ScreenplayReelSurface: View {
     }
 
     private func sceneBlock(number: Int, text: String, minutes: Int) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let videoURLString = item.sceneVideoURLs[safe: number - 1] ?? ""
+        let videoURL = URL(string: videoURLString)
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
+                Image(systemName: videoURL != nil ? "play.rectangle.fill" : "doc.text.fill")
+                    .font(.system(size: 12)).foregroundStyle(videoURL != nil ? Theme.success : Theme.kdp)
                 Text("Scene \(number)")
                     .font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(.white)
                 Text("· \(minutes) min")
                     .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.55))
                 Spacer()
+                if videoURL != nil {
+                    Text("VIDEO").font(.system(size: 9, weight: .heavy)).foregroundStyle(Theme.success)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Capsule().stroke(Theme.success, lineWidth: 1))
+                } else {
+                    Text("SCREENPLAY").font(.system(size: 9, weight: .heavy)).foregroundStyle(Theme.kdp)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Capsule().stroke(Theme.kdp, lineWidth: 1))
+                }
             }
-            Text(text)
-                .font(.system(size: 14, weight: .medium, design: .serif)).foregroundStyle(.white.opacity(0.92))
-                .lineSpacing(4)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let url = videoURL {
+                VideoPlayer(player: AVPlayer(url: url))
+                    .aspectRatio(16/9, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                Text(text)
+                    .font(.system(size: 14, weight: .medium, design: .serif)).foregroundStyle(.white.opacity(0.92))
+                    .lineSpacing(4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 14).fill(.white.opacity(0.05)))

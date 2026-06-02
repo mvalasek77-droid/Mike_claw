@@ -646,37 +646,30 @@ async function handleScoutGenerateMedia(request: Request, env: Env): Promise<Res
     title?: string;
     genre?: string;
     prompt?: string;
+    provider?: string;          // explicit per-provider routing (movies)
+    durationSeconds?: number;   // per-clip target — providers cap this
   };
   if (body.type !== "music" && body.type !== "movie") {
     return error("type must be 'music' or 'movie'");
   }
-  const providerURL = body.type === "music" ? env.MUSIC_GEN_API_URL : env.VIDEO_GEN_API_URL;
-  const providerKey = body.type === "music" ? env.MUSIC_GEN_API_KEY : env.VIDEO_GEN_API_KEY;
-  if (!providerURL || !providerKey) {
-    return json({
-      provider: "none",
-      note: `Set ${body.type === "music" ? "MUSIC_GEN_API_URL + MUSIC_GEN_API_KEY" : "VIDEO_GEN_API_URL + VIDEO_GEN_API_KEY"} to enable real ${body.type} generation. Scout will use the on-device prose-as-artifact path until then.`,
-    });
-  }
 
-  // Spend cap check BEFORE the provider call.
+  // Spend cap (BEFORE the provider call). Generic estimate; the provider
+  // adapter may report a more precise cost once it returns.
   const cap = Number(env.MAX_MEDIA_GEN_USD_MONTH ?? "50");
   const monthKey = `scout_spend_${new Date().toISOString().slice(0, 7)}`;
   const currentSpend = env.KV ? Number((await env.KV.get(monthKey)) ?? "0") : 0;
   const estimatedCost = Number(
-    body.type === "music" ? (env.MUSIC_GEN_COST_USD ?? "0.15") : (env.VIDEO_GEN_COST_USD ?? "0.60")
+    body.type === "music" ? (env.MUSIC_GEN_COST_USD ?? "0.15") : (env.VIDEO_GEN_COST_USD ?? "9.00")
   );
   if (currentSpend + estimatedCost > cap) {
     return json({
       provider: "rate_limited",
       currentSpendUSD: currentSpend,
       capUSD: cap,
-      note: `Per-month spend cap (\$${cap}) would be exceeded; running total this month is \$${currentSpend.toFixed(2)}. Raise MAX_MEDIA_GEN_USD_MONTH or wait until next month.`,
+      note: `Per-month spend cap ($${cap}) would be exceeded; running total this month is $${currentSpend.toFixed(2)}. Raise MAX_MEDIA_GEN_USD_MONTH or wait until next month.`,
     }, 402);
   }
   if (!env.KV) {
-    // Strict: without KV we can't track spend, so we refuse. Operator must
-    // bind a KV namespace before enabling paid generation.
     return error(
       "KV namespace not bound — spend tracking unavailable. Add a [[kv_namespaces]] binding named 'KV' in wrangler.toml before enabling media generation.",
       503
@@ -690,30 +683,27 @@ async function handleScoutGenerateMedia(request: Request, env: Env): Promise<Res
   ].filter(Boolean).join(" ").trim();
 
   try {
-    const res = await fetch(providerURL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${providerKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ prompt, kind: body.type }),
-    });
-    if (!res.ok) {
-      return error(`Provider ${res.status}: ${(await res.text()).slice(0, 200)}`, 502);
+    let result: GenerationResult;
+    if (body.type === "movie") {
+      result = await runVideoProvider(body.provider, prompt, body.durationSeconds ?? 10, env);
+    } else {
+      result = await runLegacyMusicProvider(prompt, env);
     }
-    const data = await res.json() as { url?: string; duration_seconds?: number; content_type?: string; cost_usd?: number };
-    if (!data.url) return error("Provider returned no url", 502);
+    if (result.kind === "skipped") {
+      return json({ provider: "none", note: result.note });
+    }
+    if (result.kind === "error") {
+      return error(result.note, result.status ?? 502);
+    }
 
-    // Record the spend. Prefer the provider's reported cost; fall back to
-    // the env estimate. Tracked per-month in KV so the cap is enforceable.
-    const realCost = typeof data.cost_usd === "number" ? data.cost_usd : estimatedCost;
+    const realCost = typeof result.costUSD === "number" ? result.costUSD : estimatedCost;
     await env.KV.put(monthKey, String(currentSpend + realCost));
 
     return json({
-      provider: body.type === "music" ? "music_gen" : "video_gen",
-      url: data.url,
-      durationSeconds: data.duration_seconds,
-      contentType: data.content_type,
+      provider: result.provider,
+      url: result.url,
+      durationSeconds: result.durationSeconds,
+      contentType: result.contentType ?? "video/mp4",
       costUSD: realCost,
       monthSpendUSD: currentSpend + realCost,
       monthCapUSD: cap,
@@ -722,6 +712,158 @@ async function handleScoutGenerateMedia(request: Request, env: Env): Promise<Res
     return error(`Generation failed: ${err?.message ?? err}`, 502);
   }
 }
+
+// ---------- Provider adapters ----------
+
+type GenerationResult =
+  | { kind: "ok"; provider: string; url: string; durationSeconds?: number; contentType?: string; costUSD?: number }
+  | { kind: "skipped"; note: string }
+  | { kind: "error"; note: string; status?: number };
+
+/** Routes to a specific video provider by id (matching the Swift catalog).
+ *  If no provider is named, picks the first one whose API key is set. */
+async function runVideoProvider(providerId: string | undefined, prompt: string,
+                                durationSeconds: number, env: Env): Promise<GenerationResult> {
+  const available: Record<string, () => Promise<GenerationResult>> = {
+    "runway-gen4": () => runRunway(prompt, durationSeconds, env),
+    "luma-dream-machine": () => runLuma(prompt, durationSeconds, env),
+    "pika-2": () => runPika(prompt, durationSeconds, env),
+    "kling-2": () => runKling(prompt, durationSeconds, env),
+    "veo-3": () => runVeo(prompt, durationSeconds, env),
+    "sora-turbo": () => runSora(prompt, durationSeconds, env),
+  };
+
+  if (providerId && available[providerId]) {
+    return await available[providerId]();
+  }
+  // No explicit provider — pick the first one whose key is set.
+  for (const [id, run] of Object.entries(available)) {
+    if (hasKey(id, env)) return await run();
+  }
+  return {
+    kind: "skipped",
+    note: "No video provider configured. Set at least one of RUNWAY_API_KEY / LUMA_API_KEY / PIKA_API_KEY / KLING_API_KEY / VEO_API_KEY / SORA_API_KEY as a Wrangler secret to enable real video.",
+  };
+}
+
+function hasKey(providerId: string, env: Env): boolean {
+  switch (providerId) {
+    case "runway-gen4":        return !!env.RUNWAY_API_KEY;
+    case "luma-dream-machine": return !!env.LUMA_API_KEY;
+    case "pika-2":             return !!env.PIKA_API_KEY;
+    case "kling-2":            return !!env.KLING_API_KEY;
+    case "veo-3":              return !!env.VEO_API_KEY;
+    case "sora-turbo":         return !!env.SORA_API_KEY;
+    default: return false;
+  }
+}
+
+/** Luma Dream Machine — POST /generations, poll until state == "completed".
+ *  Docs: https://docs.lumalabs.ai/docs/api  */
+async function runLuma(prompt: string, durationSeconds: number, env: Env): Promise<GenerationResult> {
+  if (!env.LUMA_API_KEY) return { kind: "skipped", note: "LUMA_API_KEY not set." };
+  const submit = await fetch("https://api.lumalabs.ai/dream-machine/v1/generations", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.LUMA_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, aspect_ratio: "16:9", duration: `${Math.min(5, durationSeconds)}s` }),
+  });
+  if (!submit.ok) return { kind: "error", note: `Luma submit ${submit.status}: ${(await submit.text()).slice(0, 200)}`, status: 502 };
+  const submitted = await submit.json() as { id?: string };
+  if (!submitted.id) return { kind: "error", note: "Luma returned no generation id" };
+  // Poll up to ~90s.
+  for (let i = 0; i < 30; i++) {
+    await sleep(3000);
+    const status = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${submitted.id}`, {
+      headers: { Authorization: `Bearer ${env.LUMA_API_KEY}` },
+    });
+    if (!status.ok) continue;
+    const s = await status.json() as { state?: string; assets?: { video?: string }; failure_reason?: string };
+    if (s.state === "completed" && s.assets?.video) {
+      return { kind: "ok", provider: "luma-dream-machine", url: s.assets.video,
+               durationSeconds: Math.min(5, durationSeconds), costUSD: 7.20 };
+    }
+    if (s.state === "failed") return { kind: "error", note: `Luma failed: ${s.failure_reason ?? "unknown"}` };
+  }
+  return { kind: "error", note: "Luma generation timed out after 90s." };
+}
+
+/** Runway Gen-4 — POST /v1/image_to_video (or text_to_video on newer SKUs).
+ *  Docs: https://docs.dev.runwayml.com  */
+async function runRunway(prompt: string, durationSeconds: number, env: Env): Promise<GenerationResult> {
+  if (!env.RUNWAY_API_KEY) return { kind: "skipped", note: "RUNWAY_API_KEY not set." };
+  const submit = await fetch("https://api.dev.runwayml.com/v1/text_to_video", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.RUNWAY_API_KEY}`,
+      "Content-Type": "application/json",
+      "X-Runway-Version": "2024-11-06",
+    },
+    body: JSON.stringify({
+      promptText: prompt,
+      model: "gen4_turbo",
+      duration: Math.min(10, durationSeconds),
+      ratio: "1280:720",
+    }),
+  });
+  if (!submit.ok) return { kind: "error", note: `Runway submit ${submit.status}: ${(await submit.text()).slice(0, 200)}`, status: 502 };
+  const submitted = await submit.json() as { id?: string };
+  if (!submitted.id) return { kind: "error", note: "Runway returned no task id" };
+  for (let i = 0; i < 30; i++) {
+    await sleep(3000);
+    const status = await fetch(`https://api.dev.runwayml.com/v1/tasks/${submitted.id}`, {
+      headers: { Authorization: `Bearer ${env.RUNWAY_API_KEY}`, "X-Runway-Version": "2024-11-06" },
+    });
+    if (!status.ok) continue;
+    const s = await status.json() as { status?: string; output?: string[]; failure?: string };
+    if (s.status === "SUCCEEDED" && s.output?.[0]) {
+      return { kind: "ok", provider: "runway-gen4", url: s.output[0],
+               durationSeconds: Math.min(10, durationSeconds), costUSD: 9.00 };
+    }
+    if (s.status === "FAILED") return { kind: "error", note: `Runway failed: ${s.failure ?? "unknown"}` };
+  }
+  return { kind: "error", note: "Runway generation timed out after 90s." };
+}
+
+// Pika / Kling / Veo / Sora stubs — concrete API shapes vary; wire each up
+// after signing up for the provider's API and reading their request docs.
+// Each returns "skipped" until both the key is set AND the adapter is filled in.
+async function runPika(_prompt: string, _dur: number, env: Env): Promise<GenerationResult> {
+  if (!env.PIKA_API_KEY) return { kind: "skipped", note: "PIKA_API_KEY not set." };
+  return { kind: "skipped", note: "Pika 2.0 adapter is a stub — fill in the endpoint + request shape from Pika's API docs to enable." };
+}
+async function runKling(_prompt: string, _dur: number, env: Env): Promise<GenerationResult> {
+  if (!env.KLING_API_KEY) return { kind: "skipped", note: "KLING_API_KEY not set." };
+  return { kind: "skipped", note: "Kling 2.0 adapter is a stub — wire up after Kling API access." };
+}
+async function runVeo(_prompt: string, _dur: number, env: Env): Promise<GenerationResult> {
+  if (!env.VEO_API_KEY) return { kind: "skipped", note: "VEO_API_KEY not set." };
+  return { kind: "skipped", note: "Google Veo 3 adapter is a stub — wire up via Google AI Studio API." };
+}
+async function runSora(_prompt: string, _dur: number, env: Env): Promise<GenerationResult> {
+  if (!env.SORA_API_KEY) return { kind: "skipped", note: "SORA_API_KEY not set." };
+  return { kind: "skipped", note: "OpenAI Sora adapter is a stub — wire up via OpenAI's video endpoint." };
+}
+
+/** Legacy single-provider music path — preserved so existing wrangler configs
+ *  pointing at MUSIC_GEN_API_URL keep working. */
+async function runLegacyMusicProvider(prompt: string, env: Env): Promise<GenerationResult> {
+  if (!env.MUSIC_GEN_API_URL || !env.MUSIC_GEN_API_KEY) {
+    return { kind: "skipped",
+             note: "Set MUSIC_GEN_API_URL + MUSIC_GEN_API_KEY to enable real music generation." };
+  }
+  const res = await fetch(env.MUSIC_GEN_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.MUSIC_GEN_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, kind: "music" }),
+  });
+  if (!res.ok) return { kind: "error", note: `Provider ${res.status}: ${(await res.text()).slice(0, 200)}` };
+  const data = await res.json() as { url?: string; duration_seconds?: number; content_type?: string; cost_usd?: number };
+  if (!data.url) return { kind: "error", note: "Provider returned no url" };
+  return { kind: "ok", provider: "music_gen", url: data.url,
+           durationSeconds: data.duration_seconds, contentType: data.content_type, costUSD: data.cost_usd };
+}
+
+function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
 
 /** GET /scout/spend — report the current month's media-gen spend + cap.
  *  Lets the operator surface running spend in the app's admin UI. */

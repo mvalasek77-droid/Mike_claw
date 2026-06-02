@@ -1362,7 +1362,15 @@ final class MarketplaceStore: ObservableObject {
                     let mins = sceneDurationMinutes(for: text, seed: scoutDrops.count)
                     item.screenplayScenes = [text]
                     item.sceneDurations = [mins]
+                    item.sceneVideoURLs = [""]
                     item.length = mins
+                    if scoutFilmBudgetUSD > 0 {
+                        let pendingID = item.id
+                        Task { [weak self] in
+                            await self?.renderSceneVideo(itemID: pendingID, sceneIndex: 0,
+                                                         prompt: text, durationSeconds: mins * 60)
+                        }
+                    }
                 }
                 catalog.insert(item, at: 0)
                 scoutDrops.append(item)
@@ -1448,10 +1456,23 @@ final class MarketplaceStore: ObservableObject {
         let minutes = sceneDurationMinutes(for: sceneText, seed: scoutDrops.count + sceneNumber)
         item.screenplayScenes.append(sceneText)
         item.sceneDurations.append(minutes)
+        item.sceneVideoURLs.append("")   // placeholder — filled if video-gen lands
         item.length = item.totalSceneMinutes
         scoutDrops[index] = item
         if let catIdx = catalog.firstIndex(where: { $0.id == item.id }) {
             catalog[catIdx] = item
+        }
+
+        // If the admin has wired a budget AND a provider is available, render
+        // the scene to real video bytes. Fire-and-forget: the screenplay scene
+        // is already published; the video URL lands later once the provider
+        // returns. Player falls back to screenplay text until the URL arrives.
+        if scoutFilmBudgetUSD > 0 {
+            let sceneIdx = item.screenplayScenes.count - 1
+            Task { [weak self] in
+                await self?.renderSceneVideo(itemID: item.id, sceneIndex: sceneIdx,
+                                             prompt: sceneText, durationSeconds: minutes * 60)
+            }
         }
 
         let remaining = max(0, item.targetMinutes - item.length)
@@ -1481,6 +1502,65 @@ final class MarketplaceStore: ObservableObject {
         let approx = max(2, min(5, Int((Double(words) / 150.0).rounded())))
         // Add a small jitter so identical-length scenes don't all clock the same.
         return max(2, min(5, approx + (abs(stableHash("\(seed)")) % 2)))
+    }
+
+    /// Calls the Worker's /scout/generate-media to turn a screenplay scene
+    /// into a real video clip via the configured provider. Stores the
+    /// returned URL on the item's `sceneVideoURLs[sceneIndex]`. Best-effort:
+    /// on failure the screenplay scene remains the deliverable.
+    private func renderSceneVideo(itemID: UUID, sceneIndex: Int,
+                                  prompt: String, durationSeconds: Int) async {
+        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
+              let url = URL(string: "\(payoutBaseURL)/scout/generate-media") else {
+            return
+        }
+        // Pick the cheapest provider that fits per-scene cost in the remaining
+        // budget. Nil → Worker auto-picks the first available provider.
+        let preferred = VideoProvider.catalog
+            .filter { $0.costPerSceneUSD <= max(scoutFilmBudgetUSD, 0) }
+            .min(by: { $0.costPerSceneUSD < $1.costPerSceneUSD })
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var payload: [String: Any] = [
+            "type": "movie",
+            "prompt": prompt,
+            "durationSeconds": min(60, max(2, durationSeconds)),
+        ]
+        if let p = preferred?.id { payload["provider"] = p }
+        req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+        req.timeoutInterval = 180   // providers can take ~90s
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                scoutLog.insert(ScoutEntry(date: .now,
+                    message: "Scene video skipped — provider call failed. Screenplay version is still live.",
+                    kind: .brief, relatedItemID: itemID), at: 0)
+                return
+            }
+            if let videoURL = body["url"] as? String, !videoURL.isEmpty {
+                guard let catIdx = catalog.firstIndex(where: { $0.id == itemID }),
+                      let dropIdx = scoutDrops.firstIndex(where: { $0.id == itemID }),
+                      sceneIndex < scoutDrops[dropIdx].sceneVideoURLs.count else { return }
+                scoutDrops[dropIdx].sceneVideoURLs[sceneIndex] = videoURL
+                catalog[catIdx] = scoutDrops[dropIdx]
+                let provider = (body["provider"] as? String) ?? "video provider"
+                let cost = (body["costUSD"] as? Double) ?? 0
+                scoutLog.insert(ScoutEntry(date: .now,
+                    message: String(format: "Scene %d video rendered via %@ ($%.2f). Buyers now see real footage.", sceneIndex + 1, provider, cost),
+                    kind: .produced, relatedItemID: itemID), at: 0)
+            } else if let note = body["note"] as? String {
+                scoutLog.insert(ScoutEntry(date: .now,
+                    message: "Scene video skipped — \(note)",
+                    kind: .brief, relatedItemID: itemID), at: 0)
+            }
+        } catch {
+            // Best-effort. Screenplay version still live; quiet failure.
+        }
     }
 
     /// Builds a DraftWork from a Scout-composed item. House-content flag is
