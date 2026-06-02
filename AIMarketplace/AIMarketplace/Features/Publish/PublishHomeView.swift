@@ -113,15 +113,34 @@ struct PublishHomeView: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Your bookshelf", subtitle: "\(store.submissions.count) title\(store.submissions.count == 1 ? "" : "s")")
                 .screenPadding()
-            LazyVStack(spacing: 12) {
+            // SwiftUI's swipe actions need List — wrap the rows.
+            // We keep the look close to LazyVStack by using .plain list style
+            // and removing row insets / dividers.
+            List {
                 ForEach(store.submissions) { sub in
                     Button { openSubmission = sub } label: {
                         ShelfRow(submission: sub)
                     }
                     .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 18, bottom: 6, trailing: 18))
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        // Only allow deletion of non-live entries — a live
+                        // (.accepted with publishedItemID) submission has to
+                        // go through admin so buyers' libraries stay clean.
+                        if sub.publishedItemID == nil {
+                            Button(role: .destructive) {
+                                store.removeSubmission(sub.id)
+                                Haptics.warning()
+                            } label: { Label("Delete", systemImage: "trash") }
+                        }
+                    }
                 }
             }
-            .screenPadding()
+            .listStyle(.plain)
+            .scrollDisabled(true)
+            .frame(minHeight: CGFloat(max(1, store.submissions.count)) * 96)
         }
     }
 

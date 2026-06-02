@@ -64,6 +64,11 @@ struct RootView: View {
                                 sharedSecret: store.payoutSharedSecret)
             Task { await scoutFeed.refreshIfDue() }
             store.runScoutIfDue()   // the Scout is loose: sources content daily
+            // Ask for local-notification permission once. iOS shows the
+            // prompt on first call and remembers the answer; subsequent
+            // calls are no-ops. Notifications fire from MarketplaceStore on
+            // sale / payout / review-done / Scout-published / report-resolved.
+            Task { await LocalNotificationService.shared.requestAuthorizationIfNeeded() }
         }
         // When the creator returns from Stripe onboarding in Safari, the app
         // foregrounds — pull fresh payout status so the UI reflects completion.

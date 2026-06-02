@@ -999,6 +999,12 @@ final class MarketplaceStore: ObservableObject {
     func addPendingPayout(_ usd: Double) {
         guard usd > 0 else { return }
         pendingPayoutUSD = ((pendingPayoutUSD + usd) * 100).rounded() / 100
+        // System-level alert so creators aren't blind to sales when the
+        // app is backgrounded — the single biggest reason they weren't
+        // coming back was that money arrived silently.
+        LocalNotificationService.shared.fire(.sale,
+            title: "You made a sale",
+            body: String(format: "+$%.2f added to your pending payout balance.", usd))
     }
 
     /// Cashes out the pending balance to the connected payout method. The actual
@@ -1936,6 +1942,17 @@ final class MarketplaceStore: ObservableObject {
         notifications.insert(AppNotification(title: title, body: body, date: .now, read: false,
                                             kind: kind, relatedItemID: relatedItemID), at: 0)
         if notifications.count > 80 { notifications.removeLast(notifications.count - 80) }
+        // Mirror to iOS local notifications so a backgrounded user sees the
+        // alert at the system level. Permission is requested at app launch;
+        // if denied this becomes a no-op.
+        let category: LocalNotificationService.Category = {
+            switch kind {
+            case .delivery: return .scoutLanded
+            case .request:  return .reviewDone
+            case .system:   return .payout
+            }
+        }()
+        LocalNotificationService.shared.fire(category, title: title, body: body)
     }
 
     func markAllNotificationsRead() {
@@ -2145,6 +2162,17 @@ final class MarketplaceStore: ObservableObject {
             }
             return nil
         }
+    }
+
+    /// Permanently removes a submission from the bookshelf. Allowed only for
+    /// drafts and rejected/needs-work entries — a live (.accepted with
+    /// publishedItemID) submission has to go through adminDelete, which also
+    /// pulls the title from the catalogue + every buyer's library.
+    func removeSubmission(_ id: UUID) {
+        guard let idx = submissions.firstIndex(where: { $0.id == id }) else { return }
+        let s = submissions[idx]
+        guard s.publishedItemID == nil else { return }   // protect live titles
+        submissions.remove(at: idx)
     }
 
     func createSubmission(_ draft: DraftWork) -> UUID {
