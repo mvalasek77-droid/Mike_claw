@@ -44,6 +44,7 @@ struct ScoutView: View {
                 engineRow("brain.head.profile", "Learns the marketplace", "It studies what sells and what's requested, doubling down on what works and dropping what doesn't.")
                 engineRow("function", "Proven formulas", "Targets the patterns behind hits — story beats, a strong hook, plot-driven momentum, comic timing, and earned payoffs.")
                 engineRow("bolt.fill", "Top-notch, for free", "Uses the newest on-device AI and tools, figuring out how to make great work at zero cost.")
+                engineRow("film.stack", "Films grow scene by scene", "The Scout drafts each film as 2–5 minute scenes, one per cycle, until the full cut tops 30 minutes. Buyers get the first 30 min free; the rest unlocks with purchase, and any new scenes the Scout adds afterwards are automatically yours.")
                 engineRow("hourglass", "Premiering soon → live", "New work ships as “Premiering soon” and is refined each cycle until it's ready to premiere, then unlocks automatically.")
             }
         }

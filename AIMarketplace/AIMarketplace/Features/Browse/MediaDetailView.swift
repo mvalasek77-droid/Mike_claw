@@ -221,9 +221,10 @@ struct MediaDetailView: View {
     private var filmPolicyCard: some View {
         GlassCard(title: "How this film works", icon: "film.stack", tint: item.type.accent) {
             VStack(alignment: .leading, spacing: 6) {
-                policyRow("play.circle", "Watch the first 30 minutes free, in 2–5 minute scenes.")
-                policyRow("cart", "Buy to unlock the rest of the film.")
-                policyRow("arrow.down.circle", "Once the full film is assembled, it downloads to your Library to keep.")
+                policyRow("play.circle", "Watch the first 30 minutes free. Films play in 2–5 minute scenes — start any time, pause any time.")
+                policyRow("cart", "Buy once to unlock every remaining scene. No per-scene fees.")
+                policyRow("plus.circle", "Films grow over time. The Scout adds new scenes as the film develops — buying now means every future scene is yours too, no extra charge.")
+                policyRow("arrow.down.circle", "When the film is complete, the full cut downloads to your Library to keep.")
             }
         }
     }
