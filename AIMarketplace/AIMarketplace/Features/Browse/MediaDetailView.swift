@@ -41,13 +41,19 @@ struct MediaDetailView: View {
                         } label: {
                             Label("Report this title", systemImage: "flag")
                         }
-                        Button(role: .destructive) {
-                            moderation.block(item.creator)
-                        } label: {
-                            Label(moderation.isBlocked(item.creator) ? "Creator blocked" : "Block creator",
-                                  systemImage: "hand.raised")
+                        if moderation.isBlocked(item.creator) {
+                            Button {
+                                moderation.unblock(item.creator)
+                            } label: {
+                                Label("Unblock \(item.creator)", systemImage: "hand.raised.slash")
+                            }
+                        } else {
+                            Button(role: .destructive) {
+                                moderation.block(item.creator)
+                            } label: {
+                                Label("Block creator", systemImage: "hand.raised")
+                            }
                         }
-                        .disabled(moderation.isBlocked(item.creator))
                     } label: {
                         Image(systemName: "ellipsis.circle.fill")
                             .font(.system(size: 22))

@@ -4,6 +4,8 @@ import SwiftUI
 /// adjust, or delete any title, force The Scout, and review automation status.
 struct AdminConsoleView: View {
     @EnvironmentObject private var store: MarketplaceStore
+    @EnvironmentObject private var moderation: ModerationStore
+    @State private var confirmUnblockAll = false
     @Environment(\.dismiss) private var dismiss
     @State private var editing: MediaItem?
     @State private var creatingNew = false
@@ -26,6 +28,7 @@ struct AdminConsoleView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     automationCard
                     filmProductionCard
+                    moderationCard
                     payoutsCard
                     addBar
                     searchField
@@ -70,6 +73,14 @@ struct AdminConsoleView: View {
             Button("Cancel", role: .cancel) { deletingTitle = nil }
         } message: { item in
             Text("Removes \"\(item.title)\" from the catalogue, every buyer's library, and every watchlist. This can't be undone from the app — the title is gone.")
+        }
+        .alert("Unblock everyone?", isPresented: $confirmUnblockAll) {
+            Button("Unblock all", role: .destructive) {
+                for creator in moderation.blockedCreators { moderation.unblock(creator) }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Clears every creator block on this device. Reports already sent to the operator are unaffected.")
         }
     }
 
@@ -193,6 +204,64 @@ struct AdminConsoleView: View {
             Text("Per-scene = full 2–5 min Scout scene, stitched from clips at provider's standard quality. Real prices drift; revisit before raising the budget.")
                 .font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkFaint)
         }
+    }
+
+    /// Moderation panel. Reports the user submits go out as email to the
+    /// operator inbox (handled by the Worker's /moderation/report → Resend
+    /// path); blocks are per-device only. This card exposes:
+    /// — the count of in-app reports sent from THIS device,
+    /// — the live blocked-creators list with per-row unblock,
+    /// — a one-tap "unblock everyone" reset (confirmation required).
+    /// Pulling a creator's content marketplace-wide is a separate action —
+    /// use Delete on each of their titles from the list below.
+    private var moderationCard: some View {
+        GlassCard(title: "Reports & blocks", icon: "shield.lefthalf.filled", tint: Theme.warning) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    moderationStat("\(moderation.reportedItemIDs.count)", "Reports sent")
+                    moderationStat("\(moderation.blockedCreators.count)", "Creators blocked")
+                }
+                Text("Reports email the operator (mvalasek77@gmail.com) via the Worker. Blocks hide a creator's content for this device only — buyers on other devices still see them. To pull a title marketplace-wide, use Delete from the catalog list below.")
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                if moderation.blockedCreators.isEmpty {
+                    Text("No creators blocked on this device.")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                } else {
+                    VStack(spacing: 6) {
+                        ForEach(Array(moderation.blockedCreators.sorted()), id: \.self) { creator in
+                            HStack(spacing: 8) {
+                                Image(systemName: "hand.raised.fill").font(.system(size: 12)).foregroundStyle(Theme.warning)
+                                Text(creator)
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(Theme.ink)
+                                    .lineLimit(1)
+                                Spacer()
+                                Button("Unblock") { moderation.unblock(creator) }
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(.black)
+                                    .padding(.horizontal, 10).padding(.vertical, 5)
+                                    .background(Capsule().fill(Theme.accent))
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.04)))
+                        }
+                    }
+                    PrimaryButton(title: "Unblock all", systemImage: "hand.raised.slash.fill",
+                                  style: .ghost, tint: Theme.warning) {
+                        confirmUnblockAll = true
+                    }
+                }
+            }
+        }
+    }
+
+    private func moderationStat(_ value: String, _ label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+            Text(label).font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkSoft)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.04)))
     }
 
     /// Quick access to the owed-creators queue. After an NSF or any other
