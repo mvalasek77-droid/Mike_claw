@@ -6,6 +6,7 @@ struct AdminConsoleView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var moderation: ModerationStore
     @State private var confirmUnblockAll = false
+    @State private var showModerationQueue = false
     @Environment(\.dismiss) private var dismiss
     @State private var editing: MediaItem?
     @State private var creatingNew = false
@@ -52,6 +53,7 @@ struct AdminConsoleView: View {
         .sheet(item: $editing) { AdminEditView(original: $0) }
         .sheet(isPresented: $creatingNew) { AdminEditView(original: nil) }
         .sheet(isPresented: $showPayouts) { AdminPayoutsView() }
+        .sheet(isPresented: $showModerationQueue) { AdminModerationQueueView() }
         .alert("Reset catalogue?", isPresented: $confirmReset) {
             Button("Reset", role: .destructive) { store.adminResetCatalog() }
             Button("Cancel", role: .cancel) { }
@@ -221,7 +223,11 @@ struct AdminConsoleView: View {
                     moderationStat("\(moderation.reportedItemIDs.count)", "Reports sent")
                     moderationStat("\(moderation.blockedCreators.count)", "Creators blocked")
                 }
-                Text("Reports email the operator (mvalasek77@gmail.com) via the Worker. Blocks hide a creator's content for this device only — buyers on other devices still see them. To pull a title marketplace-wide, use Delete from the catalog list below.")
+                PrimaryButton(title: "Open report queue", systemImage: "tray.full.fill",
+                              style: .ghost, tint: Theme.warning) {
+                    showModerationQueue = true
+                }
+                Text("Reports email the operator (mvalasek77@gmail.com) and persist in the Worker's queue for resolution. Blocks hide a creator's content for this device only — buyers on other devices still see them. To pull a title marketplace-wide, resolve its report as “Remove title” (or use Delete from the catalog list below).")
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
                 if moderation.blockedCreators.isEmpty {
                     Text("No creators blocked on this device.")

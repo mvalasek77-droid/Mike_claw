@@ -81,6 +81,62 @@ final class ModerationStore: ObservableObject {
 
     func hasReported(_ itemID: UUID) -> Bool { reportedItemIDs.contains(itemID) }
 
+    // MARK: - Admin queue (Worker-backed)
+
+    /// One row in the admin moderation queue. Mirrors the Worker's KV record.
+    struct QueueEntry: Identifiable, Hashable, Codable {
+        var id: String
+        var ts: String
+        var status: String        // "pending" | "resolved"
+        var item_id: String
+        var item_title: String
+        var creator_name: String
+        var reason: String
+        var details: String
+        var reporter_email: String
+        var disposition: String   // "" | "removed" | "warned" | "dismissed"
+        var resolved_at: String
+        var resolution_note: String
+    }
+
+    enum QueueStatus: String { case pending, resolved }
+    enum Disposition: String { case removed, warned, dismissed }
+
+    func fetchQueue(status: QueueStatus, baseURL: String, sharedSecret: String) async -> [QueueEntry] {
+        guard let base = URL(string: baseURL.trimmingCharacters(in: .whitespaces)),
+              !sharedSecret.isEmpty else { return [] }
+        var url = base.appendingPathComponent("moderation/reports")
+        var comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        comps?.queryItems = [URLQueryItem(name: "status", value: status.rawValue)]
+        url = comps?.url ?? url
+        var req = URLRequest(url: url)
+        req.setValue("Bearer \(sharedSecret)", forHTTPHeaderField: "Authorization")
+        struct Payload: Decodable { let reports: [QueueEntry] }
+        do {
+            let (data, _) = try await URLSession.shared.data(for: req)
+            return (try? JSONDecoder().decode(Payload.self, from: data))?.reports ?? []
+        } catch { return [] }
+    }
+
+    @discardableResult
+    func resolve(reportID: String, disposition: Disposition, note: String,
+                 baseURL: String, sharedSecret: String) async -> Bool {
+        guard let base = URL(string: baseURL.trimmingCharacters(in: .whitespaces)),
+              !sharedSecret.isEmpty else { return false }
+        var req = URLRequest(url: base.appendingPathComponent("moderation/reports/\(reportID)/resolve"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Bearer \(sharedSecret)", forHTTPHeaderField: "Authorization")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "disposition": disposition.rawValue,
+            "note": note,
+        ])
+        do {
+            let (_, resp) = try await URLSession.shared.data(for: req)
+            return (resp as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch { return false }
+    }
+
     // MARK: - Persistence
 
     private struct Snapshot: Codable {

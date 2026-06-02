@@ -883,13 +883,37 @@ async function handleScoutSpend(env: Env): Promise<Response> {
 
 // ── Moderation ─────────────────────────────────────────────────────────────
 
-/** POST /moderation/report — forward a user report on a title to the operator.
- *  No PII beyond what the reporter typed; the body is plain text. */
+/** POST /moderation/report — forward a user report on a title to the operator
+ *  AND persist it in KV so the admin can work a queue. Email goes out as
+ *  before so the operator gets a real-time ping; KV gives them a UI to
+ *  resolve from. Key shape: `report:<status>:<reverse-ts>:<id>` so a
+ *  prefix-scan returns newest-pending first.
+ *
+ *  Without a KV binding the persistence is a no-op (email still goes out),
+ *  so operators running an older config keep the previous behavior. */
 async function handleReport(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as {
     item_id?: string; item_title?: string; creator_name?: string;
     reason?: string; details?: string; reporter_email?: string;
   };
+  const id = crypto.randomUUID();
+  const ts = new Date().toISOString();
+
+  if (env.KV) {
+    // Reverse timestamp so newest sorts first under a prefix scan.
+    const reverse = (9999999999999 - Date.now()).toString().padStart(13, "0");
+    const record = {
+      id, ts, status: "pending" as const,
+      item_id: body.item_id ?? "", item_title: body.item_title ?? "",
+      creator_name: body.creator_name ?? "", reason: body.reason ?? "",
+      details: body.details ?? "", reporter_email: body.reporter_email ?? "",
+      disposition: "" as "" | "removed" | "warned" | "dismissed",
+      resolved_at: "" as string,
+      resolution_note: "" as string,
+    };
+    await env.KV.put(`report:pending:${reverse}:${id}`, JSON.stringify(record));
+  }
+
   const subject = `[AI Marketplace] Report — ${body.reason ?? "Unspecified"}`;
   const lines = [
     `Item: ${body.item_title ?? "(unknown)"}  [${body.item_id ?? "?"}]`,
@@ -900,10 +924,58 @@ async function handleReport(request: Request, env: Env): Promise<Response> {
     "Details:",
     (body.details && body.details.trim().length) ? body.details : "(none provided)",
     "",
+    `Report id: ${id}`,
+    "Open the queue in Admin → Reports & blocks to resolve.",
     "App Review Guideline 1.2 requires action within 24 hours on serious reports.",
   ].filter(Boolean).join("\n");
   await sendEmail(env, subject, lines);
-  return json({ received: true });
+  return json({ received: true, id });
+}
+
+/** GET /moderation/reports?status=pending|resolved — admin queue listing.
+ *  Returns up to 100 reports, newest-first. */
+async function handleListReports(request: Request, env: Env): Promise<Response> {
+  if (!env.KV) return json({ reports: [], note: "KV not bound — no queue persisted." });
+  const url = new URL(request.url);
+  const status = (url.searchParams.get("status") === "resolved") ? "resolved" : "pending";
+  const list = await env.KV.list({ prefix: `report:${status}:`, limit: 100 });
+  const reports: any[] = [];
+  for (const key of list.keys) {
+    const raw = await env.KV.get(key.name);
+    if (raw) {
+      try { reports.push(JSON.parse(raw)); } catch { /* skip malformed */ }
+    }
+  }
+  return json({ reports });
+}
+
+/** POST /moderation/reports/{id}/resolve — mark a report resolved with one
+ *  of three dispositions (removed | warned | dismissed). The KV key changes
+ *  prefix from `report:pending:` to `report:resolved:` so subsequent list
+ *  calls return it under the correct status. */
+async function handleResolveReport(request: Request, env: Env, id: string): Promise<Response> {
+  if (!env.KV) return error("KV not bound — moderation queue unavailable", 503);
+  const body = await request.json() as { disposition?: string; note?: string };
+  const disp = body.disposition ?? "";
+  if (!["removed", "warned", "dismissed"].includes(disp)) {
+    return error("disposition must be one of: removed, warned, dismissed");
+  }
+  // Find the pending entry by id (suffix match) — scan up to 1000 to be safe.
+  const list = await env.KV.list({ prefix: "report:pending:", limit: 1000 });
+  const hit = list.keys.find(k => k.name.endsWith(`:${id}`));
+  if (!hit) return error("report not found or already resolved", 404);
+  const raw = await env.KV.get(hit.name);
+  if (!raw) return error("report not found", 404);
+  let record: any;
+  try { record = JSON.parse(raw); } catch { return error("corrupted record", 500); }
+  record.status = "resolved";
+  record.disposition = disp;
+  record.resolved_at = new Date().toISOString();
+  record.resolution_note = (body.note ?? "").slice(0, 500);
+  const reverse = hit.name.split(":")[2]; // preserve original sort
+  await env.KV.put(`report:resolved:${reverse}:${id}`, JSON.stringify(record));
+  await env.KV.delete(hit.name);
+  return json({ resolved: true, id, disposition: disp });
 }
 
 // ── Automated funding + operator digest ─────────────────────────────────────
@@ -1374,6 +1446,15 @@ export default {
       if (path === "/moderation/report" && method === "POST") {
         return await handleReport(request, env);
       }
+      // Admin queue listing — newest pending or resolved first, up to 100.
+      if (path === "/moderation/reports" && method === "GET") {
+        return await handleListReports(request, env);
+      }
+      // Admin resolution — disposition: "removed" | "warned" | "dismissed".
+      const resolveMatch = path.match(/^\/moderation\/reports\/([0-9a-fA-F-]{36})\/resolve$/);
+      if (resolveMatch && method === "POST") {
+        return await handleResolveReport(request, env, resolveMatch[1]);
+      }
 
       // Scout media generation: forwards a prompt to a configured audio or
       // video provider (Suno / Runway / Veo / etc.) and returns a playable
@@ -1488,6 +1569,8 @@ export default {
             "POST /payouts/webhook",
             "POST /accounts/delete",
             "POST /moderation/report",
+            "GET  /moderation/reports",
+            "POST /moderation/reports/{id}/resolve",
             "GET  /scout/feed",
             "GET  /scout/providers",
             "GET  /scout/spend",
