@@ -936,6 +936,32 @@ async function handleScoutSpend(env: Env): Promise<Response> {
  *  moves server-side. The current app validates on-device via
  *  `StoreKitService.checkVerified`; calling this endpoint as well is the
  *  belt-and-braces step. */
+/** GET /admin/kv-export?prefix=report:&cursor=... — dump every KV value under
+ *  a prefix as JSON, in pages of 1000. Lets the operator back up reports,
+ *  spend ledger, idempotency keys before a namespace migration / wipe. */
+async function handleKVExport(request: Request, env: Env): Promise<Response> {
+  if (!env.KV) return error("KV not bound", 503);
+  const url = new URL(request.url);
+  const prefix = url.searchParams.get("prefix") ?? "";
+  const cursor = url.searchParams.get("cursor") ?? undefined;
+  const list = await env.KV.list({ prefix, cursor, limit: 1000 });
+  const records: Array<{ key: string; value: any }> = [];
+  for (const key of list.keys) {
+    const raw = await env.KV.get(key.name);
+    if (raw == null) continue;
+    let value: any;
+    try { value = JSON.parse(raw); } catch { value = raw; }
+    records.push({ key: key.name, value });
+  }
+  return json({
+    prefix,
+    count: records.length,
+    list_complete: list.list_complete,
+    cursor: list.list_complete ? null : list.cursor,
+    records,
+  });
+}
+
 async function handleValidateReceipt(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as {
     signed_jws?: string;
@@ -1599,6 +1625,13 @@ export default {
       }
       if (path === "/commerce/validate-receipt" && method === "POST") {
         return await handleValidateReceipt(request, env);
+      }
+      // KV export — dumps every key+value (under a prefix) as JSON so the
+      // operator can back up reports / spend / ledger before a KV namespace
+      // wipe or migration. Capped at 1000 keys per call; pass ?cursor=... to
+      // continue. Subject to the shared-secret auth like everything else.
+      if (path === "/admin/kv-export" && method === "GET") {
+        return await handleKVExport(request, env);
       }
       // Admin queue listing — newest pending or resolved first, up to 100.
       if (path === "/moderation/reports" && method === "GET") {
