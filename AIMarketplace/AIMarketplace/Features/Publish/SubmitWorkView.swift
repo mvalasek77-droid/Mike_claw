@@ -20,6 +20,10 @@ struct SubmitWorkView: View {
     /// the screen is never blank — that blank state was the "loops back to
     /// the beginning" bug.
     @State private var reviewError: String?
+    /// Held so a mid-review sheet dismissal can cancel the analysis instead of
+    /// letting it run on and auto-publish a draft the creator already
+    /// abandoned. Cleared when the review completes normally.
+    @State private var reviewTask: Task<Void, Never>?
 
     enum Phase { case form, reviewing, verdict }
 
@@ -36,13 +40,16 @@ struct SubmitWorkView: View {
             case .form: formFlow
             case .reviewing:
                 AIReviewProgressView(draft: draft) {
-                    Task { @MainActor in
+                    reviewTask?.cancel()
+                    reviewTask = Task { @MainActor in
                         guard let id = submissionID else {
                             reviewError = "We lost the submission while preparing the review. Tap Try again."
                             Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
+                            reviewTask = nil
                             return
                         }
                         let verdict = await store.runReviewAsync(for: id)
+                        if Task.isCancelled { return }   // sheet was dismissed mid-review
                         if let verdict {
                             result = verdict
                             reviewError = nil
@@ -51,20 +58,27 @@ struct SubmitWorkView: View {
                                 autoPublished = true
                             }
                         } else {
-                            // The Editor couldn't produce a verdict in time —
-                            // file unreadable, security-scoped URL lapsed, or
-                            // the analysis hit the 60 s timeout. Never blank
-                            // the screen; show a recoverable error.
                             reviewError = "The review timed out reading your file. Re-pick it (the iOS access permission may have expired), then Try again."
                         }
                         Motion.run(.easeInOut(duration: 0.4)) { phase = .verdict }
+                        reviewTask = nil
                     }
                 }
             case .verdict:
                 if let result, let id = submissionID {
                     ReviewVerdictView(draft: draft, result: result, submissionID: id,
                                       autoPublished: autoPublished,
-                                      onReviseAgain: { phase = .form; step = 1 },
+                                      onReviseAgain: {
+                                          // Drop stale verdict state so the next submit
+                                          // creates a fresh submission instead of reusing
+                                          // the now-rejected one.
+                                          submissionID = nil
+                                          result = nil
+                                          reviewError = nil
+                                          autoPublished = false
+                                          phase = .form
+                                          step = 1
+                                      },
                                       onClose: { dismiss() })
                 } else {
                     // ALWAYS render something for .verdict — the empty-view
@@ -73,6 +87,12 @@ struct SubmitWorkView: View {
                     reviewErrorCard
                 }
             }
+        }
+        .onDisappear {
+            // Sheet swiped down mid-review: cancel the in-flight Task so it
+            // can't auto-publish a draft the creator already walked away from.
+            reviewTask?.cancel()
+            reviewTask = nil
         }
     }
 

@@ -1,9 +1,8 @@
 import SwiftUI
-import AuthenticationServices
 
 /// First-run account registration, styled after Amazon KDP's warm "ink + amber"
-/// sign-up. Offers Sign in with Apple or a manual publisher form. This is the
-/// publisher account; per-title registration happens later in the Publish flow.
+/// sign-up. Manual publisher form — this is the publisher account; per-title
+/// registration happens later in the Publish flow.
 struct RegisterView: View {
     @EnvironmentObject private var store: MarketplaceStore
 
@@ -11,7 +10,6 @@ struct RegisterView: View {
     @State private var email = ""
     @State private var agreed = false
     @State private var legalDoc: LegalDoc?
-    @State private var authError: String?
 
     private var isDemo: Bool { name.trimmed.lowercased() == "demo" }
 
@@ -87,8 +85,6 @@ struct RegisterView: View {
                         withAnimation { store.register(name: name, email: email) }
                     }
 
-                    appleSignIn
-
                     benefitRow
                 }
                 .screenPadding()
@@ -97,49 +93,6 @@ struct RegisterView: View {
             }
         }
         .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
-        .alert("Sign in failed", isPresented: .constant(authError != nil)) {
-            Button("OK") { authError = nil }
-        } message: { Text(authError ?? "") }
-    }
-
-    private var appleSignIn: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 10) {
-                Rectangle().fill(Theme.hairline).frame(height: 0.5)
-                Text("or").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
-                Rectangle().fill(Theme.hairline).frame(height: 0.5)
-            }
-            SignInWithAppleButton(.continue) { request in
-                request.requestedScopes = [.fullName, .email]
-            } onCompletion: { result in
-                handleApple(result)
-            }
-            .signInWithAppleButtonStyle(.white)
-            .frame(height: 50)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .disabled(!agreed)
-            .opacity(agreed ? 1 : 0.5)
-            if !agreed {
-                Text("Agree to the terms above to continue.")
-                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
-            }
-        }
-    }
-
-    private func handleApple(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let auth):
-            guard let cred = auth.credential as? ASAuthorizationAppleIDCredential else { return }
-            let fullName = [cred.fullName?.givenName, cred.fullName?.familyName]
-                .compactMap { $0 }.joined(separator: " ")
-            withAnimation {
-                store.register(name: fullName, email: cred.email ?? "", appleUserID: cred.user)
-            }
-        case .failure(let error):
-            let code = (error as? ASAuthorizationError)?.code
-            if code == .canceled { return }
-            authError = error.localizedDescription
-        }
     }
 
     private var header: some View {

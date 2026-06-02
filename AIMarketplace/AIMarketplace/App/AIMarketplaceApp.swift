@@ -7,6 +7,9 @@ struct AIMarketplaceApp: App {
     @StateObject private var ledger = AICoinLedger()
     @StateObject private var moderation = ModerationStore()
     @StateObject private var scoutFeed = ScoutFeedService()
+    // Owned at app root so transactions delivered while no sheet is open
+    // still credit the wallet — never re-create per-screen.
+    @StateObject private var storeKit = StoreKitService()
 
     var body: some Scene {
         WindowGroup {
@@ -15,8 +18,14 @@ struct AIMarketplaceApp: App {
                 .environmentObject(ledger)
                 .environmentObject(moderation)
                 .environmentObject(scoutFeed)
+                .environmentObject(storeKit)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
+                .onAppear {
+                    storeKit.onCredit = { [weak store] credit in
+                        store?.walletBalance += credit
+                    }
+                }
         }
     }
 }

@@ -11,8 +11,6 @@ final class MarketplaceStore: ObservableObject {
     @Published var accountName: String = "" { didSet { persist() } }
     @Published var accountEmail: String = "" { didSet { persist() } }
     @Published var isRegistered: Bool = false { didSet { persist() } }
-    /// Stable Sign in with Apple user identifier, when used.
-    @Published var appleUserID: String = "" { didSet { persist() } }
 
     // Marketplace
     @Published private(set) var catalog: [MediaItem]
@@ -20,8 +18,8 @@ final class MarketplaceStore: ObservableObject {
     @Published private(set) var libraryIDs: Set<UUID> = []
     @Published var watchlistIDs: Set<UUID> = [] { didSet { persist() } }
 
-    /// Simulated wallet so purchases feel real in the demo.
-    @Published var walletBalance: Double = 50.00 { didSet { persist() } }
+    /// In-app wallet credit (USD). Funded only by Apple-IAP top-ups.
+    @Published var walletBalance: Double = 0 { didSet { persist() } }
     /// Lifetime royalties paid out to the creator for their live titles.
     @Published var creatorEarnings: Double = 0 { didSet { persist() } }
     /// When on, the AI Editor may publish a passing title on its own, without
@@ -207,7 +205,6 @@ final class MarketplaceStore: ObservableObject {
         var accountName: String
         var accountEmail: String
         var isRegistered: Bool
-        var appleUserID: String
         var walletBalance: Double
         var creatorEarnings: Double
         var aiAutopilotEnabled: Bool
@@ -235,7 +232,7 @@ final class MarketplaceStore: ObservableObject {
         var submissions: [Submission]
         var publishedItems: [MediaItem]
 
-        init(accountName: String, accountEmail: String, isRegistered: Bool, appleUserID: String,
+        init(accountName: String, accountEmail: String, isRegistered: Bool,
              walletBalance: Double, creatorEarnings: Double, aiAutopilotEnabled: Bool,
              invitedPartners: [String], referrals: [String: String], pendingPayoutUSD: Double,
              payoutConnected: Bool, paidOutUSD: Double, connectAccountID: String?,
@@ -248,7 +245,6 @@ final class MarketplaceStore: ObservableObject {
             self.accountName = accountName
             self.accountEmail = accountEmail
             self.isRegistered = isRegistered
-            self.appleUserID = appleUserID
             self.walletBalance = walletBalance
             self.creatorEarnings = creatorEarnings
             self.aiAutopilotEnabled = aiAutopilotEnabled
@@ -284,8 +280,7 @@ final class MarketplaceStore: ObservableObject {
             accountName = try c.decodeIfPresent(String.self, forKey: .accountName) ?? ""
             accountEmail = try c.decodeIfPresent(String.self, forKey: .accountEmail) ?? ""
             isRegistered = try c.decodeIfPresent(Bool.self, forKey: .isRegistered) ?? false
-            appleUserID = try c.decodeIfPresent(String.self, forKey: .appleUserID) ?? ""
-            walletBalance = try c.decodeIfPresent(Double.self, forKey: .walletBalance) ?? 50
+            walletBalance = try c.decodeIfPresent(Double.self, forKey: .walletBalance) ?? 0
             creatorEarnings = try c.decodeIfPresent(Double.self, forKey: .creatorEarnings) ?? 0
             aiAutopilotEnabled = try c.decodeIfPresent(Bool.self, forKey: .aiAutopilotEnabled) ?? false
             invitedPartners = try c.decodeIfPresent([String].self, forKey: .invitedPartners) ?? []
@@ -323,7 +318,6 @@ final class MarketplaceStore: ObservableObject {
         accountName = state.accountName
         accountEmail = state.accountEmail
         isRegistered = state.isRegistered
-        appleUserID = state.appleUserID
         walletBalance = state.walletBalance
         creatorEarnings = state.creatorEarnings
         aiAutopilotEnabled = state.aiAutopilotEnabled
@@ -346,7 +340,32 @@ final class MarketplaceStore: ObservableObject {
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
+        sweepInterruptedReviews()
         loading = false
+    }
+
+    /// Any submission still flagged `.reviewing` after a process restart is a
+    /// review that never finished — the analysis Task is gone with the process.
+    /// Mark them rejected with a synthetic, user-friendly note so the
+    /// dashboard / detail view render coherently and the user gets a Try-again
+    /// affordance instead of a permanent zombie row.
+    private func sweepInterruptedReviews() {
+        let cutoff = Date.now.addingTimeInterval(-60)
+        for i in submissions.indices
+        where submissions[i].status == .reviewing && submissions[i].submittedAt < cutoff {
+            submissions[i].status = .rejected
+            if submissions[i].review == nil {
+                submissions[i].review = AIReviewResult(
+                    overall: 0,
+                    criteria: [],
+                    strengths: [],
+                    improvements: ["Re-upload your file and submit again — the review didn't complete."],
+                    summary: "Review was interrupted before it finished. This usually happens if the app was closed mid-review. Try submitting again.",
+                    confidence: 0,
+                    autonomousRationale: ""
+                )
+            }
+        }
     }
 
     private func persist() {
@@ -357,7 +376,6 @@ final class MarketplaceStore: ObservableObject {
             accountName: accountName,
             accountEmail: accountEmail,
             isRegistered: isRegistered,
-            appleUserID: appleUserID,
             walletBalance: walletBalance,
             creatorEarnings: creatorEarnings,
             aiAutopilotEnabled: aiAutopilotEnabled,
@@ -469,12 +487,11 @@ final class MarketplaceStore: ObservableObject {
 
     // MARK: - Account lifecycle
 
-    /// Completes registration from either the manual form or Sign in with Apple.
-    func register(name: String, email: String, appleUserID: String = "") {
+    /// Completes registration from the manual publisher form.
+    func register(name: String, email: String) {
         loading = true
         accountName = name.trimmed.isEmpty ? "Creator" : name.trimmed
         accountEmail = email.trimmed
-        self.appleUserID = appleUserID
         loading = false
         isRegistered = true   // triggers persist
     }
@@ -496,8 +513,7 @@ final class MarketplaceStore: ObservableObject {
         }
         accountName = ""
         accountEmail = ""
-        appleUserID = ""
-        walletBalance = 50
+        walletBalance = 0
         creatorEarnings = 0
         aiAutopilotEnabled = false
         invitedPartners = []
@@ -601,11 +617,9 @@ final class MarketplaceStore: ObservableObject {
             return
         }
         guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty else {
-            // Previously this silently set payoutConnected = true (a lie —
-            // no Stripe account exists). Now it tells the truth: the operator
-            // needs to configure the Worker URL + Secret in Payout Setup
-            // before any real Stripe onboarding can happen.
-            lastPayoutError = "Configure your Worker URL + Secret in Payout Setup first — without them the app can't reach Stripe."
+            lastPayoutError = isAdmin
+                ? "Configure your Worker URL + Secret in Payout Setup first — without them the app can't reach Stripe."
+                : "Payouts aren't available in this build yet. Please update the app, or contact support."
             return
         }
         lastPayoutError = nil
@@ -633,7 +647,10 @@ final class MarketplaceStore: ObservableObject {
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                    self.lastPayoutError = "Couldn't reach Stripe onboarding (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0))."
+                    let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+                    self.lastPayoutError = self.isAdmin
+                        ? "Couldn't reach Stripe onboarding (HTTP \(code))."
+                        : "Stripe is temporarily unreachable. Try again in a minute."
                     return
                 }
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -642,7 +659,9 @@ final class MarketplaceStore: ObservableObject {
                     await UIApplication.shared.open(link)
                 }
             } catch {
-                self.lastPayoutError = "Couldn't reach Stripe onboarding: \(error.localizedDescription)"
+                self.lastPayoutError = self.isAdmin
+                    ? "Couldn't reach Stripe onboarding: \(error.localizedDescription)"
+                    : "Stripe is temporarily unreachable. Check your connection and try again."
             }
         }
     }
@@ -662,12 +681,16 @@ final class MarketplaceStore: ObservableObject {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {
-                lastPayoutError = "No response from the payout backend."
+                lastPayoutError = isAdmin
+                    ? "No response from the payout backend."
+                    : "We couldn't reach Stripe right now. Check your connection and try again — your spot is saved."
                 return
             }
             guard http.statusCode == 200 else {
                 let serverMsg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-                lastPayoutError = "Stripe onboarding failed (\(http.statusCode))\(serverMsg.map { ": \($0)" } ?? "")."
+                lastPayoutError = isAdmin
+                    ? "Stripe onboarding failed (\(http.statusCode))\(serverMsg.map { ": \($0)" } ?? "")."
+                    : "Stripe couldn't start onboarding right now. Try again in a minute."
                 return
             }
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -680,7 +703,9 @@ final class MarketplaceStore: ObservableObject {
                 }
             }
         } catch {
-            lastPayoutError = "Couldn't reach the payout backend: \(error.localizedDescription)"
+            lastPayoutError = isAdmin
+                ? "Couldn't reach the payout backend: \(error.localizedDescription)"
+                : "We couldn't reach Stripe right now. Check your connection and try again."
         }
     }
 

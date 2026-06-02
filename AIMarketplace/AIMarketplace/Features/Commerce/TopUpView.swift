@@ -6,9 +6,10 @@ import StoreKit
 /// charge; the credit then lands in the in-app wallet to spend on titles.
 struct TopUpView: View {
     @EnvironmentObject private var store: MarketplaceStore
+    @EnvironmentObject private var storeKit: StoreKitService
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var storeKit = StoreKitService()
     @State private var purchasing: String?
+    @State private var statusMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -19,7 +20,6 @@ struct TopUpView: View {
                             .font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
                     }
 
-                    // ── StoreKit credit packs ──
                     SectionHeader(title: "Add credit")
 
                     if storeKit.isLoading && storeKit.products.isEmpty {
@@ -32,6 +32,20 @@ struct TopUpView: View {
                         }
                     }
 
+                    if let msg = statusMessage {
+                        Text(msg)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else if let err = storeKit.errorMessage {
+                        Text(err)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Theme.warning)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    restoreButton
+
                     Text("Purchases are processed by Apple's App Store. On every sale Apple takes its App Store commission first; of the net, creators keep 85% and AI Marketplace keeps 15%.")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
@@ -43,17 +57,25 @@ struct TopUpView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .task {
-            storeKit.onCredit = { credit in store.walletBalance += credit }
-            await storeKit.loadProducts()
-        }
+        .task { await storeKit.loadProducts() }
     }
 
     private func packRow(_ product: Product) -> some View {
         Button {
             purchasing = product.id
+            statusMessage = nil
             Task {
-                if await storeKit.purchase(product) != nil { Haptics.success() }
+                let outcome = await storeKit.purchase(product)
+                switch outcome {
+                case .success:
+                    Haptics.success()
+                case .pending:
+                    statusMessage = "Awaiting approval. The credit will appear once approved — you can close this screen."
+                case .cancelled:
+                    break
+                case .failed:
+                    Haptics.warning()
+                }
                 purchasing = nil
             }
         } label: {
@@ -78,16 +100,55 @@ struct TopUpView: View {
             .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
         }
         .buttonStyle(.plain)
-        .disabled(purchasing != nil)
+        .disabled(purchasing != nil || storeKit.isRestoring)
+    }
+
+    /// App Review 3.1.1 requires every IAP-selling app to expose a Restore
+    /// affordance. Consumable credit can't be "re-granted" once spent, but
+    /// pending or unfinished transactions can — and Apple wants this button
+    /// visible regardless.
+    private var restoreButton: some View {
+        Button {
+            Task {
+                statusMessage = nil
+                let before = store.walletBalance
+                await storeKit.restorePurchases()
+                let added = store.walletBalance - before
+                statusMessage = added > 0
+                    ? String(format: "Restored $%.2f in credit.", added)
+                    : "No pending purchases to restore."
+            }
+        } label: {
+            HStack(spacing: 8) {
+                if storeKit.isRestoring {
+                    ProgressView().tint(Theme.inkSoft)
+                } else {
+                    Image(systemName: "arrow.clockwise").font(.system(size: 12, weight: .semibold))
+                }
+                Text(storeKit.isRestoring ? "Restoring…" : "Restore previous purchases")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundStyle(Theme.inkSoft)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.04)))
+        }
+        .buttonStyle(.plain)
+        .disabled(storeKit.isRestoring)
     }
 
     private var unavailable: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 28)).foregroundStyle(Theme.warning)
-            Text("Credit packs unavailable")
+            Text("Credit packs unavailable right now")
                 .font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
-            Text("Run with the Products.storekit configuration enabled in your scheme, or check App Store Connect setup.")
+            Text("Please check your connection and try again. If the issue persists, contact support.")
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
+            Button("Try again") {
+                Task { await storeKit.loadProducts() }
+            }
+            .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.accent)
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 24)
     }

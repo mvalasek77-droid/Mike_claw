@@ -74,15 +74,6 @@ struct ProfileView: View {
     private var accountCard: some View {
         GlassCard(title: "Account", icon: "person.crop.circle.fill", tint: Theme.inkSoft) {
             VStack(spacing: 0) {
-                if !store.appleUserID.isEmpty {
-                    HStack(spacing: 8) {
-                        Image(systemName: "applelogo").font(.system(size: 13)).foregroundStyle(Theme.ink)
-                        Text("Signed in with Apple").font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(Theme.inkSoft)
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    divider
-                }
                 Button { withAnimation { store.signOut() } } label: {
                     rowLabel("Sign out", "rectangle.portrait.and.arrow.right", tint: Theme.ink)
                 }
