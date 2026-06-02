@@ -633,22 +633,37 @@ private struct ContentStep: View {
                 importError = "Couldn't read text from this file. Please choose a .txt, .rtf or .pdf manuscript."
             }
         case .music:
-            // We don't decode the whole file here — just verify it opens.
+            // Decode at import so silent / broken masters are flagged before
+            // the creator burns 5 minutes filling out metadata.
             let testReport = ContentAnalysis.analyseAudio(at: url)
-            if testReport.decodedSuccessfully {
+            if !testReport.decodedSuccessfully {
+                importError = "Couldn't decode this audio file. The Editor needs a WAV / AIFF / MP3 master."
+            } else if testReport.isSilent {
+                importError = "This audio file is silent or extremely quiet. Check your master's levels and try again."
+            } else {
                 draft.contentURL = url
                 draft.fileName = name
                 draft.fileSizeMB = sizeMB
                 Haptics.success()
-            } else {
-                importError = "Couldn't decode this audio file. The Editor needs a WAV / AIFF / MP3 master."
             }
         case .movie:
-            // Async probe; we trust the picker's UTType filter and verify on review.
+            // Optimistically accept, then verify asynchronously. If the file is
+            // actually a renamed-mp3 or a broken container, surface the error
+            // and clear the import — avoids a hang in the review pipeline later.
             draft.contentURL = url
             draft.fileName = name
             draft.fileSizeMB = sizeMB
             Haptics.success()
+            Task { @MainActor in
+                let testReport = await ContentAnalysis.analyseVideo(at: url)
+                guard draft.contentURL == url else { return } // user changed selection
+                if testReport.isBroken {
+                    draft.contentURL = nil
+                    draft.fileName = ""
+                    draft.fileSizeMB = 0
+                    importError = "Couldn't decode this video. Please choose a valid .mp4 or .mov film file."
+                }
+            }
         }
     }
 }

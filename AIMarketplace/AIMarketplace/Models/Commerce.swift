@@ -50,6 +50,9 @@ enum Commerce {
     /// commands a premium) and recent demand (`0` cold … `0.5` neutral … `1`
     /// hottest seller). Always clamped to the allowed range.
     static func dynamicPrice(list: Double, score: Int, demand: Double) -> Double {
+        // Free titles stay free — the $0.99 floor below was a leftover from the
+        // pre-IAP demo. Today, listing at $0 means "give it away."
+        guard list > 0 else { return 0 }
         let scoreAdj = Double(score - 90) / 100.0 * 1.2          // 90→0, 100→+0.12, 80→−0.12
         let demandAdj = (max(0, min(1, demand)) - 0.5) * 0.30    // 0.5→0, 1→+0.15, 0→−0.15
         let factor = max(0.75, min(1.25, 1 + scoreAdj + demandAdj))

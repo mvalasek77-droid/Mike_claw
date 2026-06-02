@@ -99,6 +99,9 @@ enum AIEditor {
         // also forcibly rejects, even when NLLanguageRecognizer happens to call
         // the noise "English."
         if let text = analysis?.text, text.gibberishRatio > 0.30 { overall = min(overall, 30) }
+        // Extreme trigram repetition (e.g. "apple banana cherry" × 1000) clears
+        // the gibberish gate because each word is real English — catch it here.
+        if let text = analysis?.text, text.trigramRepetitionRate > 0.80 { overall = min(overall, 30) }
         // Silent "music" or broken video forcibly rejects.
         if let audio = analysis?.audio, audio.isSilent && draft.type == .music { overall = min(overall, 35) }
         if let video = analysis?.video, video.isBroken && draft.type == .movie { overall = min(overall, 35) }
@@ -347,6 +350,13 @@ enum AIEditor {
         if r.isBroken {
             return ContentScore(score: 10, perCriterion: [10, 10, 10, 10, 10], isMissing: true,
                                  explanation: "Video is broken (no track / zero duration).")
+        }
+        // Portrait / vertical footage is unwatchable on the marketplace's
+        // landscape player. Reject upfront — pixel count alone passes a 9:16
+        // 1080×1920 clip as "1080p" otherwise.
+        if r.width > 0, r.height > 0, Double(r.width) / Double(r.height) < 1.0 {
+            return ContentScore(score: 25, perCriterion: [25, 25, 25, 25, 25], isMissing: false,
+                                 explanation: "Video is portrait/vertical (\(r.width)x\(r.height)). Film must be landscape — try 16:9.")
         }
         // Duration: 5 min minimum for "film", up to feature length.
         let durationScore = clamp(Int((mapRange(r.durationSeconds, inMin: 60, inMax: 5400, outMin: 35, outMax: 95)).rounded()))

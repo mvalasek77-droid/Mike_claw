@@ -59,11 +59,13 @@ struct ReviewVerdictView: View {
         GlassCard {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill").font(.system(size: 28)).foregroundStyle(Theme.success)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(autoPublished ? "Published by AI Autopilot" : "Live on the marketplace")
                         .font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
                     Text("\(draft.title) is now available to buy and \(draft.type.verb.lowercased()).")
                         .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    Text("Your 85% share starts accruing with the first sale. Payouts can take up to a month to fund.")
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
                 Spacer()
             }
