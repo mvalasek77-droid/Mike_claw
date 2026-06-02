@@ -1200,6 +1200,20 @@ final class MarketplaceStore: ObservableObject {
                                    cycleIndex: Int, fallbackGenre: String,
                                    catalogSnapshot: [MediaItem],
                                    fromProposal: UUID? = nil) async {
+        // Film-as-segments: if there's an in-progress Scout film matching the
+        // requested layer/genre, this cycle appends the NEXT scene to it
+        // instead of starting a brand-new title. Scenes are 2–5 min each and
+        // accumulate until the film hits its 30+ min target.
+        if type == .movie,
+           let inProgressIdx = scoutDrops.firstIndex(where: {
+               $0.isFilmInProgress && ($0.genre == fallbackGenre || layer == .commercial)
+           }) {
+            await appendSceneToInProgressFilm(at: inProgressIdx,
+                                              catalogSnapshot: catalogSnapshot,
+                                              fromProposal: fromProposal)
+            return
+        }
+
         let maxAttempts = 3
         for attempt in 0..<maxAttempts {
             let recipe = scoutFeed?.pickRecipe(for: typeKey(type),
@@ -1210,6 +1224,11 @@ final class MarketplaceStore: ObservableObject {
             var item = ContentFoundry.scoutPick(type: type, layer: layer, genre: genre,
                                                 developing: false,
                                                 seed: scoutDrops.count + attempt)
+            // Films start as Scene 1 of a multi-segment work targeting 30+ min.
+            if type == .movie {
+                item.targetMinutes = 30
+                item.length = 0     // will accrue as scenes are added
+            }
 
             // 2. Generate the long-form artifact the Editor will analyse.
             let formula = recipe?.formula ?? ""
@@ -1232,15 +1251,29 @@ final class MarketplaceStore: ObservableObject {
 
             if verdict.passed {
                 item.commercialScore = verdict.overall
+                // For films, register Scene 1 (a 2–5 min opening). Subsequent
+                // cycles will append more scenes via appendSceneToInProgressFilm.
+                if type == .movie, let text = longForm, !text.isEmpty {
+                    let mins = sceneDurationMinutes(for: text, seed: scoutDrops.count)
+                    item.screenplayScenes = [text]
+                    item.sceneDurations = [mins]
+                    item.length = mins
+                }
                 catalog.insert(item, at: 0)
                 scoutDrops.append(item)
                 if let model = item.aiTools.first {
                     let cost = AICoin.energyCost(type)
                     energyLedger?.draw(cost, by: model, memo: "Scout released “\(item.title)”")
                 }
+                let logMessage: String = {
+                    if type == .movie {
+                        return "Scout started “\(item.title)” — Scene 1 published (\(item.length) min). \(item.targetMinutes - item.length) min still to come."
+                    }
+                    return editorPassedMessage(item: item, layer: layer, type: type,
+                                                recipe: recipe, verdict: verdict)
+                }()
                 scoutLog.insert(ScoutEntry(date: .now,
-                    message: editorPassedMessage(item: item, layer: layer, type: type,
-                                                  recipe: recipe, verdict: verdict),
+                    message: logMessage,
                     kind: .produced, relatedItemID: item.id), at: 0)
                 if let proposalID = fromProposal,
                    let pidx = scoutProposals.firstIndex(where: { $0.id == proposalID }) {
@@ -1271,6 +1304,78 @@ final class MarketplaceStore: ObservableObject {
             scoutProposals[pidx].statusNote = "Editor couldn't clear the bar after \(maxAttempts) tries."
             scoutProposals[pidx].resolvedAt = .now
         }
+    }
+
+    /// Extends an in-progress Scout film by drafting and appending one more
+    /// 2–5 min scene. The Editor still vets the new scene; only passing scenes
+    /// get added. When `length >= targetMinutes`, the film is "complete."
+    private func appendSceneToInProgressFilm(at index: Int,
+                                             catalogSnapshot: [MediaItem],
+                                             fromProposal: UUID?) async {
+        var item = scoutDrops[index]
+        let sceneNumber = item.screenplayScenes.count + 1
+        let recipe = scoutFeed?.pickRecipe(for: typeKey(.movie),
+                                           cycleIndex: scoutDrops.count + sceneNumber)
+        let formula = recipe?.formula ?? ""
+        let masters = recipe?.masters ?? []
+        let longForm = await OnDeviceAI.draftLongForm(type: .movie,
+                                                      title: "\(item.title) — Scene \(sceneNumber)",
+                                                      genre: item.genre,
+                                                      formula: formula, masters: masters)
+        guard let sceneText = longForm,
+              !sceneText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "Scout couldn't draft Scene \(sceneNumber) of “\(item.title)” — Foundation Models returned nothing. Retry next cycle.",
+                kind: .brief, relatedItemID: item.id), at: 0)
+            return
+        }
+
+        // Vet the new scene by itself. Build a one-shot DraftWork around it.
+        let draft = buildScoutDraft(from: item, recipe: recipe, longForm: sceneText)
+        let verdict = await ReviewPipeline.review(draft, against: catalogSnapshot)
+        guard verdict.passed else {
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "Editor rejected Scene \(sceneNumber) of “\(item.title)” at \(verdict.overall)/100. Scene dropped; will re-attempt next cycle.",
+                kind: .brief, relatedItemID: item.id), at: 0)
+            return
+        }
+
+        let minutes = sceneDurationMinutes(for: sceneText, seed: scoutDrops.count + sceneNumber)
+        item.screenplayScenes.append(sceneText)
+        item.sceneDurations.append(minutes)
+        item.length = item.totalSceneMinutes
+        scoutDrops[index] = item
+        if let catIdx = catalog.firstIndex(where: { $0.id == item.id }) {
+            catalog[catIdx] = item
+        }
+
+        let remaining = max(0, item.targetMinutes - item.length)
+        let msg: String
+        if item.isFilmComplete {
+            msg = "Scout completed “\(item.title)” — Scene \(sceneNumber) added. Full film now \(item.length) min across \(item.screenplayScenes.count) scenes."
+        } else {
+            msg = "Scout added Scene \(sceneNumber) (+\(minutes) min) to “\(item.title)”. Runtime now \(item.length) of \(item.targetMinutes) min target — \(remaining) min still to come."
+        }
+        scoutLog.insert(ScoutEntry(date: .now, message: msg, kind: .produced, relatedItemID: item.id), at: 0)
+
+        if let proposalID = fromProposal,
+           let pidx = scoutProposals.firstIndex(where: { $0.id == proposalID }) {
+            scoutProposals[pidx].status = .produced
+            scoutProposals[pidx].publishedItemID = item.id
+            scoutProposals[pidx].editorScore = verdict.overall
+            scoutProposals[pidx].actualTokens = countTokens(sceneText, item.synopsis)
+            scoutProposals[pidx].resolvedAt = .now
+        }
+    }
+
+    /// 2–5 minute deterministic duration per scene. Longer scenes for denser
+    /// prose so the runtime feels honest about what was actually drafted.
+    private func sceneDurationMinutes(for text: String, seed: Int) -> Int {
+        let words = text.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
+        // Heuristic: ~150 spoken words per minute of screen time.
+        let approx = max(2, min(5, Int((Double(words) / 150.0).rounded())))
+        // Add a small jitter so identical-length scenes don't all clock the same.
+        return max(2, min(5, approx + (abs(stableHash("\(seed)")) % 2)))
     }
 
     /// Builds a DraftWork from a Scout-composed item. House-content flag is

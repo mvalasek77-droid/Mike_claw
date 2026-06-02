@@ -181,6 +181,7 @@ struct MediaDetailView: View {
                     .multilineTextAlignment(.center)
             }
             if item.type == .movie && !store.isComingSoon(item) { filmPolicyCard }
+            if item.type == .movie && !item.screenplayScenes.isEmpty { scoutFilmProgressCard }
             HStack(spacing: 10) {
                 PrimaryButton(
                     title: store.watchlistIDs.contains(item.id) ? "In My List" : "My List",
@@ -220,9 +221,32 @@ struct MediaDetailView: View {
     private var filmPolicyCard: some View {
         GlassCard(title: "How this film works", icon: "film.stack", tint: item.type.accent) {
             VStack(alignment: .leading, spacing: 6) {
-                policyRow("play.circle", "Watch the first 30 minutes free, in 10-minute segments.")
+                policyRow("play.circle", "Watch the first 30 minutes free, in 2–5 minute scenes.")
                 policyRow("cart", "Buy to unlock the rest of the film.")
                 policyRow("arrow.down.circle", "Once the full film is assembled, it downloads to your Library to keep.")
+            }
+        }
+    }
+
+    /// Visible only for Scout-built films that are growing scene-by-scene.
+    /// Tells the buyer exactly what they get today and what's still queued.
+    private var scoutFilmProgressCard: some View {
+        let scenes = item.screenplayScenes.count
+        let target = item.targetMinutes
+        let runtime = item.totalSceneMinutes
+        let progress = target > 0 ? min(1.0, Double(runtime) / Double(target)) : 1.0
+        return GlassCard(title: item.isFilmComplete ? "Full film available" : "Film in progress",
+                          icon: "hourglass", tint: Theme.accent) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(item.isFilmComplete
+                     ? "\(scenes) scenes · \(runtime) min total."
+                     : "\(scenes) of an estimated \(max(scenes + 1, target / 3)) scenes published · \(runtime) of \(target) min so far.")
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink)
+                if !item.isFilmComplete {
+                    ProgressView(value: progress).tint(Theme.accent)
+                    Text("The Scout adds a new 2–5 min scene each cycle. Buying now locks in your access to every scene as it ships.")
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                }
             }
         }
     }

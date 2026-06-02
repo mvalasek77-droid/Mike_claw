@@ -87,6 +87,15 @@ struct MediaItem: Identifiable, Hashable, Codable {
     /// True when the AI Editor produced this title itself to fill open space in
     /// the catalogue (no creator upload). Surfaced transparently in the UI.
     var isEditorOriginal: Bool
+    /// Scout-drafted screenplay scenes, in order. Each scene is 2–5 minutes
+    /// of runtime; the film accumulates scenes over Scout cycles until the
+    /// total runtime reaches `targetMinutes`. Empty for user-uploaded films
+    /// (those carry video bytes via `mediaFileName`).
+    var screenplayScenes: [String] = []
+    /// Minutes-per-scene, parallel to `screenplayScenes`. Each entry is 2–5.
+    var sceneDurations: [Int] = []
+    /// Minimum runtime a Scout film grows to. 30 means "30+ min when complete."
+    var targetMinutes: Int = 0
 
     init(
         id: UUID = UUID(),
@@ -107,7 +116,10 @@ struct MediaItem: Identifiable, Hashable, Codable {
         coverImageData: Data? = nil,
         coverAssetName: String? = nil,
         mediaFileName: String? = nil,
-        isEditorOriginal: Bool = false
+        isEditorOriginal: Bool = false,
+        screenplayScenes: [String] = [],
+        sceneDurations: [Int] = [],
+        targetMinutes: Int = 0
     ) {
         self.id = id
         self.title = title
@@ -128,10 +140,52 @@ struct MediaItem: Identifiable, Hashable, Codable {
         self.coverAssetName = coverAssetName
         self.mediaFileName = mediaFileName
         self.isEditorOriginal = isEditorOriginal
+        self.screenplayScenes = screenplayScenes
+        self.sceneDurations = sceneDurations
+        self.targetMinutes = targetMinutes
     }
 
     static func == (lhs: MediaItem, rhs: MediaItem) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
+
+    /// Total runtime across accumulated scenes, in minutes.
+    var totalSceneMinutes: Int { sceneDurations.reduce(0, +) }
+    /// True when this is a Scout-built film still accumulating scenes toward target.
+    var isFilmInProgress: Bool {
+        type == .movie && totalSceneMinutes < targetMinutes && !screenplayScenes.isEmpty
+    }
+    /// True when a Scout film has reached its target runtime.
+    var isFilmComplete: Bool {
+        type == .movie && targetMinutes > 0 && totalSceneMinutes >= targetMinutes
+    }
+
+    /// Tolerant decode so titles saved before the segmented-film model still
+    /// load — new fields default to empty / 1.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.title = try c.decode(String.self, forKey: .title)
+        self.creator = try c.decode(String.self, forKey: .creator)
+        self.type = try c.decode(MediaType.self, forKey: .type)
+        self.genre = try c.decode(String.self, forKey: .genre)
+        self.synopsis = try c.decode(String.self, forKey: .synopsis)
+        self.aiTools = try c.decode([String].self, forKey: .aiTools)
+        self.commercialScore = try c.decode(Int.self, forKey: .commercialScore)
+        self.price = try c.decode(Double.self, forKey: .price)
+        self.releaseYear = try c.decodeIfPresent(Int.self, forKey: .releaseYear) ?? 2026
+        self.length = try c.decode(Int.self, forKey: .length)
+        self.maturity = try c.decodeIfPresent(String.self, forKey: .maturity) ?? "13+"
+        self.purchases = try c.decodeIfPresent(Int.self, forKey: .purchases) ?? 0
+        self.trending = try c.decodeIfPresent(Int.self, forKey: .trending) ?? 0
+        self.addedAt = try c.decodeIfPresent(Date.self, forKey: .addedAt) ?? .now
+        self.coverImageData = try c.decodeIfPresent(Data.self, forKey: .coverImageData)
+        self.coverAssetName = try c.decodeIfPresent(String.self, forKey: .coverAssetName)
+        self.mediaFileName = try c.decodeIfPresent(String.self, forKey: .mediaFileName)
+        self.isEditorOriginal = try c.decodeIfPresent(Bool.self, forKey: .isEditorOriginal) ?? false
+        self.screenplayScenes = try c.decodeIfPresent([String].self, forKey: .screenplayScenes) ?? []
+        self.sceneDurations = try c.decodeIfPresent([Int].self, forKey: .sceneDurations) ?? []
+        self.targetMinutes = try c.decodeIfPresent(Int.self, forKey: .targetMinutes) ?? 0
+    }
 
     var priceLabel: String { String(format: "$%.2f", price) }
     var lengthLabel: String { type.lengthNoun(length) }

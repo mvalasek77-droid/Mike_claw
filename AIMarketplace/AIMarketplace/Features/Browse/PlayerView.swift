@@ -90,6 +90,11 @@ private struct VideoSurface: View {
                         .padding(20)
                 }
                 if model.previewEnded { PreviewEndedBanner(type: item.type) }
+            } else if !item.screenplayScenes.isEmpty {
+                // Scout-built film: no video bytes yet, but the screenplay
+                // scenes are real. Render them as a readable reel with the
+                // 30-min free preview enforced as a scene-count gate.
+                ScreenplayReelSurface(item: item, preview: preview)
             } else {
                 SimulatedTransport(item: item, icon: "film.fill",
                                    caption: preview ? "Free preview · first 30 min" : "Now playing · \(item.genre)",
@@ -434,5 +439,115 @@ struct AICreditView: View {
             }
             .sheet(item: $studio) { AIStudioDetailView(studio: $0) }
         }
+    }
+}
+
+/// Readable surface for Scout films that haven't been rendered to video yet.
+/// Each scene is presented as a chapter. Free preview unlocks the first scenes
+/// up to 30 min of accumulated runtime; the rest is gated behind purchase.
+private struct ScreenplayReelSurface: View {
+    let item: MediaItem
+    var preview: Bool = false
+
+    /// Scenes the buyer can read right now. In preview mode, accumulate scenes
+    /// until total runtime crosses 30 min, then stop — the next scene is paywalled.
+    private var unlockedScenes: [(idx: Int, text: String, minutes: Int)] {
+        guard preview else {
+            return zip(item.screenplayScenes.indices, item.screenplayScenes).map {
+                (idx: $0.0, text: $0.1, minutes: item.sceneDurations[safe: $0.0] ?? 3)
+            }
+        }
+        var out: [(idx: Int, text: String, minutes: Int)] = []
+        var total = 0
+        let freeMins = Int(PlayerPreview.movieFreeSeconds / 60)
+        for (i, text) in item.screenplayScenes.enumerated() {
+            let m = item.sceneDurations[safe: i] ?? 3
+            if total + m > freeMins, !out.isEmpty { break }
+            out.append((idx: i, text: text, minutes: m))
+            total += m
+        }
+        return out
+    }
+
+    private var lockedCount: Int { max(0, item.screenplayScenes.count - unlockedScenes.count) }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                header
+                ForEach(unlockedScenes, id: \.idx) { scene in
+                    sceneBlock(number: scene.idx + 1, text: scene.text, minutes: scene.minutes)
+                }
+                if preview && lockedCount > 0 {
+                    paywall
+                } else if item.isFilmInProgress {
+                    inProgressFooter
+                }
+            }
+            .padding(20)
+        }
+        .background(LinearGradient(colors: [Color(red: 0.06, green: 0.05, blue: 0.08), .black],
+                                   startPoint: .top, endPoint: .bottom).ignoresSafeArea())
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(item.title)
+                .font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+            Text("\(item.genre) · Screenplay edition · \(item.totalSceneMinutes) min across \(item.screenplayScenes.count) scenes\(item.isFilmInProgress ? " (in progress)" : "")")
+                .font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sceneBlock(number: Int, text: String, minutes: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text("Scene \(number)")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                Text("· \(minutes) min")
+                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.55))
+                Spacer()
+            }
+            Text(text)
+                .font(.system(size: 14, weight: .medium, design: .serif)).foregroundStyle(.white.opacity(0.92))
+                .lineSpacing(4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 14).fill(.white.opacity(0.05)))
+    }
+
+    private var paywall: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.fill").font(.system(size: 14)).foregroundStyle(Theme.warning)
+                Text("\(lockedCount) more scene\(lockedCount == 1 ? "" : "s") · \(item.totalSceneMinutes - unlockedScenes.reduce(0) { $0 + $1.minutes }) min remaining")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                Spacer()
+            }
+            Text("You've watched the free 30 min. Buy the film to unlock the remaining scenes — and any new scenes the Scout adds as the film grows.")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.7))
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.warning.opacity(0.15)))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.warning.opacity(0.4), lineWidth: 0.6))
+    }
+
+    private var inProgressFooter: some View {
+        let remaining = max(0, item.targetMinutes - item.totalSceneMinutes)
+        return HStack(spacing: 8) {
+            Image(systemName: "hourglass").font(.system(size: 13)).foregroundStyle(Theme.accent)
+            Text("Film still growing — \(remaining) min more queued. The Scout adds a new scene each cycle until the full \(item.targetMinutes)-minute cut lands. Buying now unlocks every scene as it ships.")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.75))
+            Spacer()
+        }
+        .padding(12)
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
