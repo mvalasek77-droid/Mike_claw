@@ -899,14 +899,27 @@ async function handleReport(request: Request, env: Env): Promise<Response> {
   const id = crypto.randomUUID();
   const ts = new Date().toISOString();
 
+  // Length-cap every operator-visible string so a malicious client can't
+  // write 24 MB of garbage into KV (each KV value is 25 MB max). Caps match
+  // the UI: report bodies are ~paragraph-length, the details field is the
+  // only place a user types prose.
+  const safe = (v: unknown, max: number) =>
+    typeof v === "string" ? v.slice(0, max) : "";
+  const itemId = safe(body.item_id, 64);
+  const itemTitle = safe(body.item_title, 200);
+  const creatorName = safe(body.creator_name, 100);
+  const reason = safe(body.reason, 100);
+  const details = safe(body.details, 2000);
+  const reporterEmail = safe(body.reporter_email, 200);
+
   if (env.KV) {
     // Reverse timestamp so newest sorts first under a prefix scan.
     const reverse = (9999999999999 - Date.now()).toString().padStart(13, "0");
     const record = {
       id, ts, status: "pending" as const,
-      item_id: body.item_id ?? "", item_title: body.item_title ?? "",
-      creator_name: body.creator_name ?? "", reason: body.reason ?? "",
-      details: body.details ?? "", reporter_email: body.reporter_email ?? "",
+      item_id: itemId, item_title: itemTitle,
+      creator_name: creatorName, reason,
+      details, reporter_email: reporterEmail,
       disposition: "" as "" | "removed" | "warned" | "dismissed",
       resolved_at: "" as string,
       resolution_note: "" as string,
@@ -914,15 +927,15 @@ async function handleReport(request: Request, env: Env): Promise<Response> {
     await env.KV.put(`report:pending:${reverse}:${id}`, JSON.stringify(record));
   }
 
-  const subject = `[AI Marketplace] Report — ${body.reason ?? "Unspecified"}`;
+  const subject = `[AI Marketplace] Report — ${reason || "Unspecified"}`;
   const lines = [
-    `Item: ${body.item_title ?? "(unknown)"}  [${body.item_id ?? "?"}]`,
-    `Creator: ${body.creator_name ?? "(unknown)"}`,
-    `Reason: ${body.reason ?? "(none)"}`,
-    body.reporter_email ? `Reporter: ${body.reporter_email}` : null,
+    `Item: ${itemTitle || "(unknown)"}  [${itemId || "?"}]`,
+    `Creator: ${creatorName || "(unknown)"}`,
+    `Reason: ${reason || "(none)"}`,
+    reporterEmail ? `Reporter: ${reporterEmail}` : null,
     "",
     "Details:",
-    (body.details && body.details.trim().length) ? body.details : "(none provided)",
+    details.trim() ? details : "(none provided)",
     "",
     `Report id: ${id}`,
     "Open the queue in Admin → Reports & blocks to resolve.",
@@ -971,7 +984,9 @@ async function handleResolveReport(request: Request, env: Env, id: string): Prom
   record.status = "resolved";
   record.disposition = disp;
   record.resolved_at = new Date().toISOString();
-  record.resolution_note = (body.note ?? "").slice(0, 500);
+  // Defensive: body.note could be a non-string (?? "" doesn't catch non-string
+  // truthy values like {evil: "obj"}, which would throw on .slice).
+  record.resolution_note = typeof body.note === "string" ? body.note.slice(0, 500) : "";
   const reverse = hit.name.split(":")[2]; // preserve original sort
   await env.KV.put(`report:resolved:${reverse}:${id}`, JSON.stringify(record));
   await env.KV.delete(hit.name);

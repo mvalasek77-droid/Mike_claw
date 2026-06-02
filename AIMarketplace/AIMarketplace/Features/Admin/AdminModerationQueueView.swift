@@ -17,6 +17,10 @@ struct AdminModerationQueueView: View {
     @State private var resolving: ModerationStore.QueueEntry?
     @State private var resolveNote = ""
     @State private var lastError: String?
+    /// True while a resolve POST is in flight — disables all three disposition
+    /// buttons so a double-tap can't fire concurrent resolves (the second
+    /// would 404 with "already resolved" and surface as a misleading error).
+    @State private var resolveInFlight = false
 
     private var workerReady: Bool {
         !store.payoutBaseURL.trimmed.isEmpty && !store.payoutSharedSecret.trimmed.isEmpty
@@ -70,14 +74,24 @@ struct AdminModerationQueueView: View {
     private func refresh() async {
         loading = true
         lastError = nil
-        async let p = moderation.fetchQueue(status: .pending,
+        let p = await moderation.fetchQueue(status: .pending,
                                             baseURL: store.payoutBaseURL,
                                             sharedSecret: store.payoutSharedSecret)
-        async let r = moderation.fetchQueue(status: .resolved,
+        let r = await moderation.fetchQueue(status: .resolved,
                                             baseURL: store.payoutBaseURL,
                                             sharedSecret: store.payoutSharedSecret)
-        pending = await p
-        resolved = await r
+        switch p {
+        case .ok(let items): pending = items
+        case .notConfigured(let note): pending = []; lastError = note
+        case .failed(let why): pending = []; lastError = "Couldn't load pending: \(why)"
+        }
+        switch r {
+        case .ok(let items): resolved = items
+        case .notConfigured: resolved = []
+        case .failed(let why):
+            resolved = []
+            if lastError == nil { lastError = "Couldn't load resolved: \(why)" }
+        }
         loading = false
     }
 
@@ -144,8 +158,14 @@ struct AdminModerationQueueView: View {
                         .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
                     Text(entry.details.isEmpty ? "(no details provided)" : entry.details)
                         .font(.system(size: 12, weight: .regular)).foregroundStyle(Theme.inkSoft)
-                    Text("Optional note (visible in audit log)")
-                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                    HStack {
+                        Text("Optional note (visible in audit log)")
+                            .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                        Spacer()
+                        Text("\(resolveNote.count)/500")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(resolveNote.count > 500 ? Theme.warning : Theme.inkFaint)
+                    }
                     TextEditor(text: $resolveNote)
                         .frame(minHeight: 80)
                         .padding(8)
@@ -153,6 +173,9 @@ struct AdminModerationQueueView: View {
                         .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
                         .foregroundStyle(Theme.ink)
                         .font(.system(size: 13))
+                        .onChange(of: resolveNote) { _, new in
+                            if new.count > 500 { resolveNote = String(new.prefix(500)) }
+                        }
                     dispositionButton(.removed, label: "Remove title",
                                        icon: "trash.fill", tint: Theme.warning, entry: entry)
                     dispositionButton(.warned, label: "Warn creator (logged only)",
@@ -174,21 +197,22 @@ struct AdminModerationQueueView: View {
     private func dispositionButton(_ disp: ModerationStore.Disposition, label: String,
                                     icon: String, tint: Color,
                                     entry: ModerationStore.QueueEntry) -> some View {
-        PrimaryButton(title: label, systemImage: icon, tint: tint) {
+        PrimaryButton(title: label, systemImage: icon, tint: tint, enabled: !resolveInFlight) {
+            resolveInFlight = true
             Task {
                 let ok = await moderation.resolve(reportID: entry.id, disposition: disp,
                                                   note: resolveNote,
                                                   baseURL: store.payoutBaseURL,
                                                   sharedSecret: store.payoutSharedSecret)
                 if ok {
-                    // Local-side action for "removed" — pull the title from the catalog
-                    // so the operator doesn't have to do it twice.
                     if disp == .removed, let uuid = UUID(uuidString: entry.item_id) {
                         store.adminDelete(uuid)
                     }
+                    resolveInFlight = false
                     resolving = nil
                     await refresh()
                 } else {
+                    resolveInFlight = false
                     lastError = "Couldn't reach the moderation queue. Check Worker config."
                 }
             }

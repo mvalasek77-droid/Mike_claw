@@ -81,6 +81,16 @@ final class ModerationStore: ObservableObject {
 
     func hasReported(_ itemID: UUID) -> Bool { reportedItemIDs.contains(itemID) }
 
+    /// App Review 5.1.1(v): on account deletion every on-device store must be
+    /// wiped. ModerationStore's state lives in its own UserDefaults key — the
+    /// encrypted-archive delete in MarketplaceStore misses it — so this is the
+    /// hook MarketplaceStore.deleteAccount() calls.
+    func wipe() {
+        reportedItemIDs.removeAll()
+        blockedCreators.removeAll()
+        UserDefaults.standard.removeObject(forKey: defaultsKey)
+    }
+
     // MARK: - Admin queue (Worker-backed)
 
     /// One row in the admin moderation queue. Mirrors the Worker's KV record.
@@ -102,20 +112,47 @@ final class ModerationStore: ObservableObject {
     enum QueueStatus: String { case pending, resolved }
     enum Disposition: String { case removed, warned, dismissed }
 
-    func fetchQueue(status: QueueStatus, baseURL: String, sharedSecret: String) async -> [QueueEntry] {
+    /// Result type so the caller can distinguish "queue is empty" from "we
+    /// couldn't reach it" or "the Worker has no KV bound." The previous
+    /// `-> [QueueEntry]` ate every failure mode and silently showed "Nothing
+    /// pending" — a real false-reassurance footgun for the operator.
+    enum QueueFetch {
+        case ok([QueueEntry])
+        case notConfigured(String)   // Worker reachable but reports unsupported
+        case failed(String)          // Network / auth / decode error
+    }
+
+    func fetchQueue(status: QueueStatus, baseURL: String, sharedSecret: String) async -> QueueFetch {
         guard let base = URL(string: baseURL.trimmingCharacters(in: .whitespaces)),
-              !sharedSecret.isEmpty else { return [] }
+              !sharedSecret.isEmpty else {
+            return .failed("Worker URL or shared secret missing.")
+        }
         var url = base.appendingPathComponent("moderation/reports")
         var comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
         comps?.queryItems = [URLQueryItem(name: "status", value: status.rawValue)]
         url = comps?.url ?? url
         var req = URLRequest(url: url)
         req.setValue("Bearer \(sharedSecret)", forHTTPHeaderField: "Authorization")
-        struct Payload: Decodable { let reports: [QueueEntry] }
+        struct Payload: Decodable { let reports: [QueueEntry]; let note: String? }
         do {
-            let (data, _) = try await URLSession.shared.data(for: req)
-            return (try? JSONDecoder().decode(Payload.self, from: data))?.reports ?? []
-        } catch { return [] }
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse else {
+                return .failed("No response from the server.")
+            }
+            if http.statusCode == 401 { return .failed("Unauthorized — Worker secret rejected.") }
+            if !(200..<300).contains(http.statusCode) {
+                return .failed("Server returned \(http.statusCode).")
+            }
+            guard let payload = try? JSONDecoder().decode(Payload.self, from: data) else {
+                return .failed("Couldn't parse the queue response.")
+            }
+            if let note = payload.note, !note.isEmpty, payload.reports.isEmpty {
+                return .notConfigured(note)
+            }
+            return .ok(payload.reports)
+        } catch {
+            return .failed(error.localizedDescription)
+        }
     }
 
     @discardableResult

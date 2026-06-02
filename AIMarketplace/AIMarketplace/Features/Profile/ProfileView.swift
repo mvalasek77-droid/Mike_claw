@@ -5,6 +5,7 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var ledger: AICoinLedger
+    @EnvironmentObject private var moderation: ModerationStore
     @State private var showTopUp = false
     @State private var showDashboard = false
     @State private var showRoadmap = false
@@ -73,6 +74,11 @@ struct ProfileView: View {
                     deleting = false
                     if case .blockedByOutstandingBalance = outcome {
                         deleteBlockedMessage = "Your Stripe payout account still holds a balance. Cash it out from Partner Program → Get Paid, then try again."
+                    } else {
+                        // ModerationStore persists to its own UserDefaults key,
+                        // independent of the encrypted archive — wipe it here
+                        // so 5.1.1(v) is genuinely satisfied.
+                        moderation.wipe()
                     }
                 }
             }
