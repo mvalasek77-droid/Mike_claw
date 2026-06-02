@@ -29,7 +29,12 @@ struct ReviewVerdictView: View {
                     contentSignals
                     breakdown
                     if !result.strengths.isEmpty { strengthsCard }
-                    if !result.improvements.isEmpty { improvementsCard }
+                    // Rejected verdicts ALWAYS show a suggestions card,
+                    // even if the Editor returned no improvements list —
+                    // a rejection without "what to fix" is a dead-end.
+                    if !result.passed || !result.improvements.isEmpty {
+                        improvementsCard
+                    }
                     actions
                 }
                 .padding(.top, 30)
@@ -42,9 +47,17 @@ struct ReviewVerdictView: View {
     private var verdictHeader: some View {
         VStack(spacing: 14) {
             ScoreRing(score: result.overall, size: 158)
-            Text(result.passed ? "Accepted" : "Below the bar")
-                .font(.system(size: 26, weight: .heavy, design: .rounded))
+            // Big, unambiguous verdict word — "Accepted" / "Below the bar"
+            // was too soft. Users want APPROVED / REJECTED on first read.
+            Text(result.passed ? "APPROVED" : "REJECTED")
+                .font(.system(size: 32, weight: .black, design: .rounded))
+                .tracking(2)
                 .foregroundStyle(result.passed ? Theme.success : Theme.warning)
+            // Explicit numeric score next to the ring so the verdict is
+            // never ambiguous: "73/100 — below the 85% bar."
+            Text("\(result.overall)/100 · bar is \(AIReviewResult.threshold)")
+                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.ink)
             Chip(text: result.passed ? "Clears 85% commercial bar" : "85% commercial bar not met",
                  systemImage: result.passed ? "checkmark.seal.fill" : "exclamationmark.triangle.fill",
                  color: result.passed ? Theme.success : Theme.warning)
@@ -172,11 +185,38 @@ struct ReviewVerdictView: View {
     }
 
     private var improvementsCard: some View {
-        GlassCard(title: "To reach the bar", icon: "wrench.and.screwdriver.fill", tint: Theme.warning) {
+        GlassCard(title: result.passed ? "To improve further" : "How to fix this and resubmit",
+                  icon: "wrench.and.screwdriver.fill", tint: Theme.warning) {
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(result.improvements, id: \.self) { bulletRow($0, color: Theme.warning, icon: "arrow.up.right") }
+                ForEach(suggestionsForDisplay, id: \.self) {
+                    bulletRow($0, color: Theme.warning, icon: "arrow.up.right")
+                }
             }
         }
+    }
+
+    /// Never let a rejection ship with an empty suggestions list. If the
+    /// Editor had nothing specific to say, derive generic-but-actionable
+    /// guidance from the score gap so the creator always knows what to do.
+    private var suggestionsForDisplay: [String] {
+        if !result.improvements.isEmpty { return result.improvements }
+        guard !result.passed else { return [] }
+        let gap = max(0, AIReviewResult.threshold - result.overall)
+        var out: [String] = []
+        out.append("Your score is \(gap) points below the \(AIReviewResult.threshold) bar — meaningful changes are needed, not a polish pass.")
+        switch draft.type {
+        case .novel:
+            out.append("Expand the manuscript: aim for at least 8 000 words of original prose. Vary sentence length; cut any placeholder or filler passages.")
+            out.append("Tighten the synopsis and pick a stronger title — these are weighted at 20 % of the verdict.")
+        case .music:
+            out.append("Re-master the audio: target clean peaks below −1 dBFS, sustained dynamic range, no clipping.")
+            out.append("Make sure the track is at least 45 seconds and runs at 44.1 kHz / stereo.")
+        case .movie:
+            out.append("Re-upload at 1080p or higher, 24 fps or above, landscape (16:9). Portrait footage is rejected automatically.")
+            out.append("Confirm the file plays end-to-end and has an audio track.")
+        }
+        out.append("Then tap “Revise & resubmit” below to run the review again.")
+        return out
     }
 
     private func bulletRow(_ text: String, color: Color, icon: String) -> some View {

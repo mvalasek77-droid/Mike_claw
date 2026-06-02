@@ -13,6 +13,8 @@ struct SubmitWorkView: View {
     @State private var step = 0
     @State private var phase: Phase = .form
     @State private var submissionID: UUID?
+    @State private var showStripeGate = false
+    @State private var showPayoutSetup = false
     @State private var result: AIReviewResult?
     @State private var autoPublished = false
     /// Non-nil when the editor couldn't produce a verdict (network race,
@@ -100,6 +102,13 @@ struct SubmitWorkView: View {
             reviewTask?.cancel()
             reviewTask = nil
         }
+        .sheet(isPresented: $showPayoutSetup) { PayoutConfigView() }
+        .alert("Set up payouts first", isPresented: $showStripeGate) {
+            Button("Set up payouts") { showPayoutSetup = true }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Before the AI Editor reviews your work, connect a Stripe account so we have a way to send you your 85% share of every sale. Takes about 5 minutes. You only do this once.")
+        }
     }
 
     // MARK: - Form flow
@@ -173,6 +182,14 @@ struct SubmitWorkView: View {
             } else {
                 PrimaryButton(title: "Submit to AI Editor", systemImage: "sparkles",
                               tint: Theme.kdp, enabled: draft.canSubmit) {
+                    // Belt-and-braces Stripe gate — PublishHomeView is the
+                    // primary chokepoint, but this catches any future entry
+                    // path (deep link, autopilot, sample wizard) so we never
+                    // submit work we can't pay out on.
+                    if !store.payoutConnected {
+                        showStripeGate = true
+                        return
+                    }
                     submissionID = store.createSubmission(draft)
                     Motion.run(.easeInOut(duration: 0.4)) { phase = .reviewing }
                 }

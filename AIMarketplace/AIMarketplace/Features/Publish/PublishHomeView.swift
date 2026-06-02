@@ -8,6 +8,8 @@ struct PublishHomeView: View {
     @State private var createID = UUID()   // forces SubmitWorkView to reset each time
     @State private var showPartners = false
     @State private var openSubmission: Submission?
+    @State private var showStripeGate = false
+    @State private var showPayoutSetup = false
 
     var body: some View {
         ZStack {
@@ -24,8 +26,19 @@ struct PublishHomeView: View {
                     header
 
                     PrimaryButton(title: "Register a new title", systemImage: "plus",
-                                  tint: Theme.kdp) { createID = UUID(); showCreate = true }
-                        .screenPadding()
+                                  tint: Theme.kdp) {
+                        // Stripe gate: a first-time publisher has to set up
+                        // payouts BEFORE they can submit anything. Without
+                        // this we'd accept work we have no way to pay them
+                        // for, which is the worst kind of unfinished UX.
+                        if store.payoutConnected {
+                            createID = UUID()
+                            showCreate = true
+                        } else {
+                            showStripeGate = true
+                        }
+                    }
+                    .screenPadding()
 
                     earnBanner
 
@@ -45,6 +58,15 @@ struct PublishHomeView: View {
         .sheet(isPresented: $showPartners) { PartnerProgramView() }
         .sheet(item: $openSubmission) { sub in
             SubmissionDetailView(submissionID: sub.id)
+        }
+        .sheet(isPresented: $showPayoutSetup) {
+            PayoutConfigView()
+        }
+        .alert("Set up payouts first", isPresented: $showStripeGate) {
+            Button("Set up payouts") { showPayoutSetup = true }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Before you publish anything, connect a Stripe account so we have a way to send you your 85% share of every sale. Takes about 5 minutes. You only do this once.")
         }
     }
 
