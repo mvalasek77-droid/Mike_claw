@@ -39,8 +39,17 @@ struct AISpotlightView: View {
 /// presentation so the browse home isn't burdened with extra sheets.
 struct AISpotlightRow: View {
     @EnvironmentObject private var store: MarketplaceStore
-    @State private var selectedStudio: AIStudio?
-    @State private var showAll = false
+    @State private var activeSheet: SpotlightSheet?
+
+    enum SpotlightSheet: Identifiable {
+        case studio(AIStudio), all
+        var id: String {
+            switch self {
+            case .studio(let s): return "studio-\(s.id)"
+            case .all: return "all"
+            }
+        }
+    }
 
     var body: some View {
         if !store.aiStudios.isEmpty {
@@ -48,7 +57,7 @@ struct AISpotlightRow: View {
                 HStack(alignment: .firstTextBaseline) {
                     SectionHeader(title: "AI Spotlight", subtitle: "See what each model can do")
                     Spacer()
-                    Button("See all") { showAll = true }
+                    Button("See all") { activeSheet = .all }
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.accent)
                 }
@@ -57,15 +66,19 @@ struct AISpotlightRow: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(store.aiStudios.prefix(8)) { studio in
-                            StudioCard(studio: studio) { selectedStudio = studio }
+                            StudioCard(studio: studio) { activeSheet = .studio(studio) }
                                 .frame(width: 220)
                         }
                     }
                     .screenPadding()
                 }
             }
-            .sheet(item: $selectedStudio) { AIStudioDetailView(studio: $0) }
-            .sheet(isPresented: $showAll) { AISpotlightView() }
+            .sheet(item: $activeSheet) { which in
+                switch which {
+                case .studio(let s): AIStudioDetailView(studio: s)
+                case .all: AISpotlightView()
+                }
+            }
         }
     }
 }

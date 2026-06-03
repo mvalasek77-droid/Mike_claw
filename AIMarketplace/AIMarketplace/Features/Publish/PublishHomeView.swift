@@ -6,10 +6,23 @@ struct PublishHomeView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @State private var showCreate = false
     @State private var createID = UUID()   // forces SubmitWorkView to reset each time
-    @State private var showPartners = false
-    @State private var openSubmission: Submission?
     @State private var showStripeGate = false
-    @State private var showPayoutSetup = false
+    /// One sheet binding — three stacked `.sheet` modifiers meant only the
+    /// last (payout setup) presented, so tapping a bookshelf row and the
+    /// Partner Program banner silently did nothing.
+    @State private var activeSheet: PublishSheet?
+
+    enum PublishSheet: Identifiable {
+        case partners, payoutSetup
+        case submission(Submission)
+        var id: String {
+            switch self {
+            case .partners: return "partners"
+            case .payoutSetup: return "payoutSetup"
+            case .submission(let s): return "submission-\(s.id)"
+            }
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -55,15 +68,15 @@ struct PublishHomeView: View {
         .fullScreenCover(isPresented: $showCreate) {
             SubmitWorkView().id(createID)
         }
-        .sheet(isPresented: $showPartners) { PartnerProgramView() }
-        .sheet(item: $openSubmission) { sub in
-            SubmissionDetailView(submissionID: sub.id)
-        }
-        .sheet(isPresented: $showPayoutSetup) {
-            PayoutConfigView()
+        .sheet(item: $activeSheet) { which in
+            switch which {
+            case .partners:    PartnerProgramView()
+            case .payoutSetup: PayoutConfigView()
+            case .submission(let sub): SubmissionDetailView(submissionID: sub.id)
+            }
         }
         .alert("Set up payouts first", isPresented: $showStripeGate) {
-            Button("Set up payouts") { showPayoutSetup = true }
+            Button("Set up payouts") { activeSheet = .payoutSetup }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Before you publish anything, connect a Stripe account so we have a way to send you your 85% share of every sale. Takes about 5 minutes. You only do this once.")
@@ -71,7 +84,7 @@ struct PublishHomeView: View {
     }
 
     private var earnBanner: some View {
-        Button { showPartners = true } label: {
+        Button { activeSheet = .partners } label: {
             HStack(spacing: 12) {
                 Image(systemName: "dollarsign.circle.fill").font(.system(size: 22)).foregroundStyle(Theme.success)
                 VStack(alignment: .leading, spacing: 2) {
@@ -118,7 +131,7 @@ struct PublishHomeView: View {
             // and removing row insets / dividers.
             List {
                 ForEach(store.submissions) { sub in
-                    Button { openSubmission = sub } label: {
+                    Button { activeSheet = .submission(sub) } label: {
                         ShelfRow(submission: sub)
                     }
                     .buttonStyle(.plain)

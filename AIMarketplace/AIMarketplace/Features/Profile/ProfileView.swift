@@ -6,22 +6,37 @@ struct ProfileView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var ledger: AICoinLedger
     @EnvironmentObject private var moderation: ModerationStore
-    @State private var showTopUp = false
-    @State private var showDashboard = false
-    @State private var showRoadmap = false
-    @State private var showCoin = false
-    @State private var showPartners = false
-    @State private var showMission = false
-    @State private var showScout = false
-    @State private var showAdmin = false
+    /// One sheet binding for the whole screen. Stacking nine
+    /// `.sheet(isPresented:)` modifiers meant only the last one ever
+    /// presented — every other button in Profile (Top Up, Dashboard,
+    /// Partners, Payout Setup, Admin…) silently did nothing.
+    @State private var activeSheet: ProfileSheet?
     @State private var showAdminGate = false
     @State private var adminUser = ""
     @State private var adminPass = ""
     @State private var showDeleteConfirm = false
     @State private var deleteBlockedMessage: String?
     @State private var deleting = false
-    @State private var showPayoutConfig = false
-    @State private var legalDoc: LegalDoc?
+
+    enum ProfileSheet: Identifiable {
+        case topUp, dashboard, roadmap, coin, partners, mission, scout
+        case payoutConfig, admin
+        case legal(LegalDoc)
+        var id: String {
+            switch self {
+            case .topUp: return "topUp"
+            case .dashboard: return "dashboard"
+            case .roadmap: return "roadmap"
+            case .coin: return "coin"
+            case .partners: return "partners"
+            case .mission: return "mission"
+            case .scout: return "scout"
+            case .payoutConfig: return "payoutConfig"
+            case .admin: return "admin"
+            case .legal(let d): return "legal-\(d.rawValue)"
+            }
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -44,28 +59,32 @@ struct ProfileView: View {
                 .padding(.bottom, 96)
             }
         }
-        .sheet(isPresented: $showDashboard) { CreatorDashboardView() }
-        .sheet(isPresented: $showRoadmap) { RoadmapView() }
-        .sheet(isPresented: $showTopUp) { TopUpView() }
-        .sheet(isPresented: $showCoin) { AICoinView() }
-        .sheet(isPresented: $showPartners) { PartnerProgramView() }
-        .sheet(isPresented: $showMission) { MissionView() }
-        .sheet(isPresented: $showScout) { ScoutView() }
-        .sheet(isPresented: $showPayoutConfig) { PayoutConfigView() }
-        .sheet(isPresented: $showAdmin) { AdminConsoleView() }
+        .sheet(item: $activeSheet) { which in
+            switch which {
+            case .topUp:        TopUpView()
+            case .dashboard:    CreatorDashboardView()
+            case .roadmap:      RoadmapView()
+            case .coin:         AICoinView()
+            case .partners:     PartnerProgramView()
+            case .mission:      MissionView()
+            case .scout:        ScoutView()
+            case .payoutConfig: PayoutConfigView()
+            case .admin:        AdminConsoleView()
+            case .legal(let d): LegalSheet(doc: d)
+            }
+        }
         .alert("Admin sign in", isPresented: $showAdminGate) {
             TextField("Username", text: $adminUser)
                 .textInputAutocapitalization(.never)
             SecureField("Password", text: $adminPass)
             Button("Sign in") {
-                if store.unlockAdmin(username: adminUser, password: adminPass) { showAdmin = true }
+                if store.unlockAdmin(username: adminUser, password: adminPass) { activeSheet = .admin }
                 adminPass = ""
             }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Owner credentials unlock god mode — add, adjust and delete any media.")
         }
-        .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
         .alert("Delete account?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
                 deleting = true
@@ -123,7 +142,7 @@ struct ProfileView: View {
     }
 
     private var scoutCard: some View {
-        Button { showScout = true } label: {
+        Button { activeSheet = .scout } label: {
             GlassCard(title: "The Scout", icon: "binoculars.fill", tint: Theme.accent) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -141,7 +160,7 @@ struct ProfileView: View {
     }
 
     private var partnerCard: some View {
-        Button { showPartners = true } label: {
+        Button { activeSheet = .partners } label: {
             GlassCard(title: "Partner Program", icon: "dollarsign.circle.fill", tint: Theme.success) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -163,7 +182,7 @@ struct ProfileView: View {
     }
 
     private var coinCard: some View {
-        Button { showCoin = true } label: {
+        Button { activeSheet = .coin } label: {
             GlassCard(title: "NRN Energy", icon: "bolt.fill", tint: Theme.gold) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -204,7 +223,7 @@ struct ProfileView: View {
                     .font(.system(size: 34, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
                 Spacer()
                 PrimaryButton(title: "Top up", systemImage: "plus", style: .ghost) {
-                    showTopUp = true
+                    activeSheet = .topUp
                 }
                 .frame(width: 130)
             }
@@ -220,7 +239,7 @@ struct ProfileView: View {
                     stat("\(store.submissions.count)", "Submissions")
                 }
                 PrimaryButton(title: "Open Creator Dashboard", systemImage: "square.grid.2x2.fill",
-                              style: .ghost, tint: Theme.kdp) { showDashboard = true }
+                              style: .ghost, tint: Theme.kdp) { activeSheet = .dashboard }
             }
         }
     }
@@ -245,16 +264,16 @@ struct ProfileView: View {
     private var legalCard: some View {
         GlassCard(title: "Privacy & legal", icon: "lock.shield.fill", tint: Theme.success) {
             VStack(spacing: 0) {
-                row("Privacy Policy", "hand.raised.fill") { legalDoc = .privacy }
+                row("Privacy Policy", "hand.raised.fill") { activeSheet = .legal(.privacy) }
                 divider
-                row("Terms of Use", "doc.text.fill") { legalDoc = .terms }
+                row("Terms of Use", "doc.text.fill") { activeSheet = .legal(.terms) }
                 divider
-                row("Feature Roadmap", "map.fill") { showRoadmap = true }
+                row("Feature Roadmap", "map.fill") { activeSheet = .roadmap }
                 divider
-                row("Our mission", "flag.fill") { showMission = true }
+                row("Our mission", "flag.fill") { activeSheet = .mission }
                 divider
                 row(store.isAdmin ? "Admin · God Mode" : "Admin", "key.fill") {
-                    if store.isAdmin { showAdmin = true } else { adminUser = ""; adminPass = ""; showAdminGate = true }
+                    if store.isAdmin { activeSheet = .admin } else { adminUser = ""; adminPass = ""; showAdminGate = true }
                 }
                 divider
                 HStack(spacing: 10) {

@@ -3,8 +3,17 @@ import SwiftUI
 /// The viewer's purchased titles plus their saved "My List".
 struct LibraryView: View {
     @EnvironmentObject private var store: MarketplaceStore
-    @State private var selected: MediaItem?
-    @State private var showRequest = false
+    @State private var activeSheet: LibrarySheet?
+
+    enum LibrarySheet: Identifiable {
+        case detail(MediaItem), request
+        var id: String {
+            switch self {
+            case .detail(let i): return "detail-\(i.id)"
+            case .request: return "request"
+            }
+        }
+    }
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 12)]
 
@@ -41,12 +50,16 @@ struct LibraryView: View {
                 .padding(.bottom, 96)
             }
         }
-        .sheet(item: $selected) { MediaDetailView(item: $0) }
-        .sheet(isPresented: $showRequest) { RequestContentView() }
+        .sheet(item: $activeSheet) { which in
+            switch which {
+            case .detail(let item): MediaDetailView(item: item)
+            case .request: RequestContentView()
+            }
+        }
     }
 
     private var requestBanner: some View {
-        Button { showRequest = true } label: {
+        Button { activeSheet = .request } label: {
             HStack(spacing: 12) {
                 Image(systemName: "sparkle.magnifyingglass").font(.system(size: 22)).foregroundStyle(Theme.kdp)
                 VStack(alignment: .leading, spacing: 2) {
@@ -78,7 +91,7 @@ struct LibraryView: View {
     private func commissionRow(_ request: ContentRequest) -> some View {
         let delivered = request.deliveredItemID.flatMap { store.item(withID: $0) }
         return Button {
-            if let delivered { selected = delivered }
+            if let delivered { activeSheet = .detail(delivered) }
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: request.type.icon).font(.system(size: 15)).foregroundStyle(request.type.accent)
@@ -124,7 +137,7 @@ struct LibraryView: View {
             SectionHeader(title: title).screenPadding()
             LazyVGrid(columns: columns, spacing: 14) {
                 ForEach(items) { item in
-                    MediaCard(item: item, width: 108) { selected = item }
+                    MediaCard(item: item, width: 108) { activeSheet = .detail(item) }
                 }
             }
             .screenPadding()

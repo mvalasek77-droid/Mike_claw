@@ -8,15 +8,26 @@ struct PartnerProgramView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var ledger: AICoinLedger
     @Environment(\.dismiss) private var dismiss
-    @State private var showIncentives = false
-    @State private var showMission = false
-    @State private var showCommission = false
-    @State private var selectedPartner: PartnerID?
     @State private var lastBonus: (model: String, amount: Double)?
-    @State private var showPayoutConfig = false
-    @State private var showSales = false
+    /// One sheet binding — five stacked `.sheet(isPresented:)` modifiers meant
+    /// only the last presented, so "Connect my bank", Incentives, Mission,
+    /// Commission and Sales all silently did nothing.
+    @State private var activeSheet: PartnerSheet?
 
-    private struct PartnerID: Identifiable { let id: String }
+    enum PartnerSheet: Identifiable {
+        case incentives, mission, commission, payoutConfig, sales
+        case partner(String)
+        var id: String {
+            switch self {
+            case .incentives: return "incentives"
+            case .mission: return "mission"
+            case .commission: return "commission"
+            case .payoutConfig: return "payoutConfig"
+            case .sales: return "sales"
+            case .partner(let m): return "partner-\(m)"
+            }
+        }
+    }
 
     /// Cached and sorted once per body evaluation, not recomputed on every
     /// subview access.
@@ -52,12 +63,16 @@ struct PartnerProgramView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .sheet(isPresented: $showIncentives) { IncentivesView() }
-        .sheet(isPresented: $showMission) { MissionView() }
-        .sheet(isPresented: $showCommission) { RequestContentView() }
-        .sheet(isPresented: $showPayoutConfig) { PayoutConfigView() }
-        .sheet(isPresented: $showSales) { SalesActivityView() }
-        .sheet(item: $selectedPartner) { PartnerDetailView(model: $0.id) }
+        .sheet(item: $activeSheet) { which in
+            switch which {
+            case .incentives:   IncentivesView()
+            case .mission:      MissionView()
+            case .commission:   RequestContentView()
+            case .payoutConfig: PayoutConfigView()
+            case .sales:        SalesActivityView()
+            case .partner(let m): PartnerDetailView(model: m)
+            }
+        }
     }
 
     private var demandCard: some View {
@@ -75,14 +90,14 @@ struct PartnerProgramView: View {
                     }
                 }
                 PrimaryButton(title: "Commission a fresh drop", systemImage: "wand.and.stars", style: .ghost) {
-                    showCommission = true
+                    activeSheet = .commission
                 }
             }
         }
     }
 
     private var rewardsButton: some View {
-        Button { showIncentives = true } label: {
+        Button { activeSheet = .incentives } label: {
             HStack(spacing: 12) {
                 Image(systemName: "gift.fill").font(.system(size: 18)).foregroundStyle(Theme.kdp)
                 VStack(alignment: .leading, spacing: 2) {
@@ -112,7 +127,7 @@ struct PartnerProgramView: View {
                     perk("+NRN", "on-chain rewards")
                     perk("0", "upfront cost")
                 }
-                Button { showMission = true } label: {
+                Button { activeSheet = .mission } label: {
                     HStack(spacing: 4) { Text("Read our mission"); Image(systemName: "arrow.right") }
                         .font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.success)
                 }
@@ -145,14 +160,14 @@ struct PartnerProgramView: View {
                 } else {
                     PrimaryButton(title: "Connect my bank to get paid",
                                   systemImage: "building.columns.fill") {
-                        showPayoutConfig = true
+                        activeSheet = .payoutConfig
                     }
                     Text("Takes about 5 minutes. We use Stripe — your bank details go straight to them; we never see them. Payouts can take up to a month to fund.")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
                 // Real-time sales + payout status, straight from the ledger.
                 Button {
-                    showSales = true
+                    activeSheet = .sales
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "chart.line.uptrend.xyaxis")
@@ -164,7 +179,7 @@ struct PartnerProgramView: View {
                 }
                 // Always show payout config link
                 Button {
-                    showPayoutConfig = true
+                    activeSheet = .payoutConfig
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "gearshape.fill")
@@ -189,7 +204,7 @@ struct PartnerProgramView: View {
     @ViewBuilder
     private func partnerRow(_ model: String) -> some View {
         if store.isActivePartner(model) {
-            Button { selectedPartner = PartnerID(id: model) } label: { partnerCardBody(model) }
+            Button { activeSheet = .partner(model) } label: { partnerCardBody(model) }
                 .buttonStyle(.plain)
         } else {
             partnerCardBody(model)

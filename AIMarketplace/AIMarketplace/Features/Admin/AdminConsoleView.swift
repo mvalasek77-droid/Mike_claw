@@ -6,14 +6,26 @@ struct AdminConsoleView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var moderation: ModerationStore
     @State private var confirmUnblockAll = false
-    @State private var showModerationQueue = false
     @Environment(\.dismiss) private var dismiss
-    @State private var editing: MediaItem?
-    @State private var creatingNew = false
     @State private var query = ""
     @State private var confirmReset = false
-    @State private var showPayouts = false
     @State private var filmBudgetText = ""
+    /// Single sheet binding — four stacked sheet modifiers meant only the
+    /// last (moderation queue) presented; Add-a-title, Edit, and Payouts
+    /// silently did nothing.
+    @State private var activeSheet: AdminSheet?
+
+    enum AdminSheet: Identifiable {
+        case edit(MediaItem), createNew, payouts, moderation
+        var id: String {
+            switch self {
+            case .edit(let i): return "edit-\(i.id)"
+            case .createNew: return "createNew"
+            case .payouts: return "payouts"
+            case .moderation: return "moderation"
+            }
+        }
+    }
     @State private var deletingTitle: MediaItem?
 
     private var items: [MediaItem] {
@@ -50,10 +62,14 @@ struct AdminConsoleView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Lock") { store.lockAdmin(); dismiss() } }
             }
         }
-        .sheet(item: $editing) { AdminEditView(original: $0) }
-        .sheet(isPresented: $creatingNew) { AdminEditView(original: nil) }
-        .sheet(isPresented: $showPayouts) { AdminPayoutsView() }
-        .sheet(isPresented: $showModerationQueue) { AdminModerationQueueView() }
+        .sheet(item: $activeSheet) { which in
+            switch which {
+            case .edit(let item): AdminEditView(original: item)
+            case .createNew:      AdminEditView(original: nil)
+            case .payouts:        AdminPayoutsView()
+            case .moderation:     AdminModerationQueueView()
+            }
+        }
         .alert("Reset catalogue?", isPresented: $confirmReset) {
             Button("Reset", role: .destructive) { store.adminResetCatalog() }
             Button("Cancel", role: .cancel) { }
@@ -225,7 +241,7 @@ struct AdminConsoleView: View {
                 }
                 PrimaryButton(title: "Open report queue", systemImage: "tray.full.fill",
                               style: .ghost, tint: Theme.warning) {
-                    showModerationQueue = true
+                    activeSheet = .moderation
                 }
                 Text("Reports email the operator (mvalasek77@gmail.com) and persist in the Worker's queue for resolution. Blocks hide a creator's content for this device only — buyers on other devices still see them. To pull a title marketplace-wide, resolve its report as “Remove title” (or use Delete from the catalog list below).")
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
@@ -280,14 +296,14 @@ struct AdminConsoleView: View {
                     .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
                 PrimaryButton(title: "Owed creators · pay manually", systemImage: "banknote.fill",
                               style: .ghost, tint: Theme.warning) {
-                    showPayouts = true
+                    activeSheet = .payouts
                 }
             }
         }
     }
 
     private var addBar: some View {
-        PrimaryButton(title: "Add a title", systemImage: "plus", tint: Theme.success) { creatingNew = true }
+        PrimaryButton(title: "Add a title", systemImage: "plus", tint: Theme.success) { activeSheet = .createNew }
     }
 
     private var searchField: some View {
@@ -308,7 +324,7 @@ struct AdminConsoleView: View {
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft).lineLimit(1)
             }
             Spacer()
-            Button { editing = item } label: {
+            Button { activeSheet = .edit(item) } label: {
                 Image(systemName: "pencil").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.accent)
                     .frame(width: 34, height: 34).background(Circle().fill(Theme.accent.opacity(0.15)))
             }.buttonStyle(.plain)

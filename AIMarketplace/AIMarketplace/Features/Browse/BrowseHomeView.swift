@@ -5,14 +5,27 @@ import SwiftUI
 struct BrowseHomeView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var moderation: ModerationStore
-    @State private var selected: MediaItem?
     @State private var filter: MediaType?
     @State private var layerFilter: ContentFoundry.ScoutLayer?
-    @State private var showSearch = false
-    @State private var showNotifications = false
+    /// One sheet binding — `selected`, search, notifications and the launch
+    /// sheet were four separate sheet modifiers; only the last reliably
+    /// presented, so tapping a title / Search / the bell were unreliable.
+    @State private var activeSheet: BrowseSheet?
+
+    enum BrowseSheet: Identifiable {
+        case detail(MediaItem), search, notifications, launch(MediaItem)
+        var id: String {
+            switch self {
+            case .detail(let i): return "detail-\(i.id)"
+            case .search: return "search"
+            case .notifications: return "notifications"
+            case .launch(let i): return "launch-\(i.id)"
+            }
+        }
+    }
     /// The inaugural-roundtable launch sheet — shown once per device on the
     /// first launch where the audio file is actually bundled.
-    @State private var launchItem: MediaItem?
+    @State private var launchShown = false
 
     private var rows: [MediaType] { MediaType.allCases }
 
@@ -24,8 +37,8 @@ struct BrowseHomeView: View {
                 VStack(spacing: 26) {
                     if let hero = heroItem {
                         HeroBanner(item: hero,
-                                   onPlay: { selected = hero },
-                                   onInfo: { selected = hero })
+                                   onPlay: { activeSheet = .detail(hero) },
+                                   onInfo: { activeSheet = .detail(hero) })
                     }
 
                     filterBar
@@ -34,24 +47,24 @@ struct BrowseHomeView: View {
                     if filter != nil || layerFilter != nil {
                         MediaRow(title: filterTitle,
                                  subtitle: "Sorted by AI Editor score",
-                                 items: filteredItems) { selected = $0 }
+                                 items: filteredItems) { activeSheet = .detail($0) }
                     } else {
                         pendingProposalsRail
-                        RankedRow(title: "Top 10 Today", items: store.topTen) { selected = $0 }
+                        RankedRow(title: "Top 10 Today", items: store.topTen) { activeSheet = .detail($0) }
                         MediaRow(title: "Trending Now", subtitle: "Climbing the charts",
-                                 items: store.trending) { selected = $0 }
+                                 items: store.trending) { activeSheet = .detail($0) }
                         MediaRow(title: "Scout Picks",
                                  subtitle: "Sourced by The Scout at the top of the range",
-                                 items: store.scoutPicks) { selected = $0 }
+                                 items: store.scoutPicks) { activeSheet = .detail($0) }
                         AISpotlightRow()
                         MediaRow(title: "AI Editor Originals",
                                  subtitle: "Produced by the Editor to fill the catalogue",
-                                 items: store.editorOriginals) { selected = $0 }
+                                 items: store.editorOriginals) { activeSheet = .detail($0) }
                         MediaRow(title: "Just Published", subtitle: "Fresh off the AI Editor",
-                                 items: store.newReleases) { selected = $0 }
+                                 items: store.newReleases) { activeSheet = .detail($0) }
                         ForEach(rows) { type in
                             MediaRow(title: "AI \(type.plural)",
-                                     items: store.items(of: type)) { selected = $0 }
+                                     items: store.items(of: type)) { activeSheet = .detail($0) }
                         }
                     }
                 }
@@ -60,20 +73,23 @@ struct BrowseHomeView: View {
 
             searchButton
         }
-        .sheet(item: $selected) { item in
-            MediaDetailView(item: item)
-        }
-        .sheet(isPresented: $showSearch) { SearchView() }
-        .sheet(isPresented: $showNotifications) { NotificationsView() }
-        .sheet(item: $launchItem) { item in
-            InauguralLaunchSheet(item: item, onPlay: { selected = item })
+        .sheet(item: $activeSheet) { which in
+            switch which {
+            case .detail(let item):  MediaDetailView(item: item)
+            case .search:            SearchView()
+            case .notifications:     NotificationsView()
+            case .launch(let item):
+                InauguralLaunchSheet(item: item, onPlay: { activeSheet = .detail(item) })
+            }
         }
         .task {
             // Show the inaugural launch sheet once on first start after the
             // MP3 has actually been bundled. Triggers off the catalog the
             // first time this view appears in a session.
-            if launchItem == nil {
-                launchItem = InauguralLaunchSheet.itemIfReady(in: store.catalog)
+            if !launchShown, activeSheet == nil,
+               let item = InauguralLaunchSheet.itemIfReady(in: store.catalog) {
+                launchShown = true
+                activeSheet = .launch(item)
             }
         }
     }
@@ -82,10 +98,10 @@ struct BrowseHomeView: View {
         HStack(spacing: 10) {
             Spacer()
             circleButton("bell.fill", badge: store.unreadNotificationCount) {
-                showNotifications = true
+                activeSheet = .notifications
             }
             .accessibilityLabel("Notifications")
-            circleButton("magnifyingglass", badge: 0) { showSearch = true }
+            circleButton("magnifyingglass", badge: 0) { activeSheet = .search }
                 .accessibilityLabel("Search")
         }
         .padding(.horizontal, 16)

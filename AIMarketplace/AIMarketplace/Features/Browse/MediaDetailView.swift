@@ -11,9 +11,16 @@ struct MediaDetailView: View {
     @State private var showPlayer = false
     @State private var previewMode = false
     @State private var showInsufficientFunds = false
-    @State private var showTopUp = false
-    @State private var showWriteReview = false
-    @State private var showReportSheet = false
+    /// Single source of truth for which sheet is up. Multiple
+    /// `.sheet(isPresented:)` modifiers on one view is a SwiftUI defect —
+    /// only the last one presents reliably, which is why "Top Up" appeared
+    /// to do nothing. One `.sheet(item:)` driven by this enum fixes it.
+    @State private var activeSheet: ActiveSheet?
+
+    private enum ActiveSheet: Identifiable {
+        case topUp, writeReview, report
+        var id: Int { hashValue }
+    }
 
     private var owned: Bool { store.owns(item) }
 
@@ -37,7 +44,7 @@ struct MediaDetailView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
-                            showReportSheet = true
+                            activeSheet = .report
                         } label: {
                             Label("Report this title", systemImage: "flag")
                         }
@@ -74,15 +81,20 @@ struct MediaDetailView: View {
         .fullScreenCover(isPresented: $showPlayer) {
             PlayerView(item: item, preview: previewMode)
         }
-        .sheet(isPresented: $showTopUp) { TopUpView() }
-        .sheet(isPresented: $showWriteReview) { WriteReviewView(item: item) }
-        .sheet(isPresented: $showReportSheet) {
-            ReportSheet(item: item)
-                .environmentObject(store)
-                .environmentObject(moderation)
+        .sheet(item: $activeSheet) { which in
+            switch which {
+            case .topUp:
+                TopUpView()
+            case .writeReview:
+                WriteReviewView(item: item)
+            case .report:
+                ReportSheet(item: item)
+                    .environmentObject(store)
+                    .environmentObject(moderation)
+            }
         }
         .alert("Not enough balance", isPresented: $showInsufficientFunds) {
-            Button("Top Up") { showTopUp = true }
+            Button("Top Up") { activeSheet = .topUp }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Add wallet credit to buy this title.")
@@ -335,7 +347,7 @@ struct MediaDetailView: View {
                               subtitle: reviews.isEmpty ? "Be the first to review" : nil)
                 Spacer()
                 if owned {
-                    Button(store.hasReviewed(item.id) ? "Edit" : "Write") { showWriteReview = true }
+                    Button(store.hasReviewed(item.id) ? "Edit" : "Write") { activeSheet = .writeReview }
                         .font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.accent)
                 }
             }

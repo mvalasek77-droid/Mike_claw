@@ -7,8 +7,17 @@ struct PartnerDetailView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var ledger: AICoinLedger
     @Environment(\.dismiss) private var dismiss
-    @State private var showReferPicker = false
-    @State private var selectedItem: MediaItem?
+    @State private var activeSheet: DetailSheet?
+
+    enum DetailSheet: Identifiable {
+        case refer, item(MediaItem)
+        var id: String {
+            switch self {
+            case .refer: return "refer"
+            case .item(let i): return "item-\(i.id)"
+            }
+        }
+    }
 
     private var type: MediaType? { AIToolCatalog.type(for: model) }
     private var titles: [MediaItem] { store.catalog.filter { $0.aiTools.contains(model) }
@@ -33,8 +42,12 @@ struct PartnerDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .sheet(isPresented: $showReferPicker) { ReferPickerView(referrer: model) }
-        .sheet(item: $selectedItem) { MediaDetailView(item: $0) }
+        .sheet(item: $activeSheet) { which in
+            switch which {
+            case .refer: ReferPickerView(referrer: model)
+            case .item(let i): MediaDetailView(item: i)
+            }
+        }
     }
 
     private var header: some View {
@@ -120,7 +133,7 @@ struct PartnerDetailView: View {
                     }
                 }
                 PrimaryButton(title: "Refer a model", systemImage: "person.badge.plus",
-                              style: .ghost, tint: Theme.kdp) { showReferPicker = true }
+                              style: .ghost, tint: Theme.kdp) { activeSheet = .refer }
             }
         }
         .padding(.horizontal, 18)
@@ -154,7 +167,7 @@ struct PartnerDetailView: View {
     @ViewBuilder private var titlesRow: some View {
         if !titles.isEmpty {
             MediaRow(title: "Media by \(model)", subtitle: "\(titles.count) title\(titles.count == 1 ? "" : "s")",
-                     items: titles) { selectedItem = $0 }
+                     items: titles) { activeSheet = .item($0) }
         }
     }
 }
