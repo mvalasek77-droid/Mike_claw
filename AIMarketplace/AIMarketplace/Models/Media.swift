@@ -8,7 +8,7 @@ enum MediaType: String, CaseIterable, Identifiable, Hashable, Codable {
     var title: String {
         switch self {
         case .novel: return "Novel"
-        case .music: return "Album"
+        case .music: return "Music"
         case .movie: return "Film"
         }
     }
@@ -50,7 +50,7 @@ enum MediaType: String, CaseIterable, Identifiable, Hashable, Codable {
     func lengthNoun(_ value: Int) -> String {
         switch self {
         case .novel: return "\(value) page\(value == 1 ? "" : "s")"
-        case .music: return "\(value) track\(value == 1 ? "" : "s")"
+        case .music: return value == 1 ? "Single" : "\(value) tracks"
         case .movie: return "\(value) min"
         }
     }
@@ -87,6 +87,11 @@ struct MediaItem: Identifiable, Hashable, Codable {
     /// True when the AI Editor produced this title itself to fill open space in
     /// the catalogue (no creator upload). Surfaced transparently in the UI.
     var isEditorOriginal: Bool
+    /// True when the cover artwork already has the title baked in (typical of
+    /// album art / movie posters). PosterArt suppresses its own title overlay
+    /// when this is on, so the same title doesn't render twice on top of the
+    /// artwork. Defaults to false; opt-in per asset.
+    var coverHasTitle: Bool = false
     /// Scout-drafted screenplay scenes, in order. Each scene is 2–5 minutes
     /// of runtime; the film accumulates scenes over Scout cycles until the
     /// total runtime reaches `targetMinutes`. Empty for user-uploaded films
@@ -121,6 +126,7 @@ struct MediaItem: Identifiable, Hashable, Codable {
         coverAssetName: String? = nil,
         mediaFileName: String? = nil,
         isEditorOriginal: Bool = false,
+        coverHasTitle: Bool = false,
         screenplayScenes: [String] = [],
         sceneDurations: [Int] = [],
         targetMinutes: Int = 0,
@@ -145,6 +151,7 @@ struct MediaItem: Identifiable, Hashable, Codable {
         self.coverAssetName = coverAssetName
         self.mediaFileName = mediaFileName
         self.isEditorOriginal = isEditorOriginal
+        self.coverHasTitle = coverHasTitle
         self.screenplayScenes = screenplayScenes
         self.sceneDurations = sceneDurations
         self.targetMinutes = targetMinutes
@@ -188,6 +195,7 @@ struct MediaItem: Identifiable, Hashable, Codable {
         self.coverAssetName = try c.decodeIfPresent(String.self, forKey: .coverAssetName)
         self.mediaFileName = try c.decodeIfPresent(String.self, forKey: .mediaFileName)
         self.isEditorOriginal = try c.decodeIfPresent(Bool.self, forKey: .isEditorOriginal) ?? false
+        self.coverHasTitle = try c.decodeIfPresent(Bool.self, forKey: .coverHasTitle) ?? false
         self.screenplayScenes = try c.decodeIfPresent([String].self, forKey: .screenplayScenes) ?? []
         self.sceneDurations = try c.decodeIfPresent([Int].self, forKey: .sceneDurations) ?? []
         self.targetMinutes = try c.decodeIfPresent(Int.self, forKey: .targetMinutes) ?? 0
@@ -197,6 +205,16 @@ struct MediaItem: Identifiable, Hashable, Codable {
     var priceLabel: String { String(format: "$%.2f", price) }
     var lengthLabel: String { type.lengthNoun(length) }
     var scoreLabel: String { "\(commercialScore)/100" }
+    /// Per-item display label that's accurate for what the buyer's actually
+    /// getting: a single music track shows "Song", a multi-track release
+    /// shows "Album". Films and novels are unambiguous.
+    var categoryLabel: String {
+        switch type {
+        case .music:  return length <= 1 ? "Song" : "Album"
+        case .novel:  return "Novel"
+        case .movie:  return "Film"
+        }
+    }
 
     /// A short, human "grade" for the commercial score badge.
     var grade: String {

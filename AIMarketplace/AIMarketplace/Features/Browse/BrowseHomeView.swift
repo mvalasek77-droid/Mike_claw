@@ -298,7 +298,7 @@ struct HeroBanner: View {
                     .shadow(radius: 8)
 
                 HStack(spacing: 8) {
-                    Chip(text: item.type.title, systemImage: item.type.icon, color: item.type.accent)
+                    Chip(text: item.categoryLabel, systemImage: item.type.icon, color: item.type.accent)
                     Chip(text: item.genre, color: .white)
                     ScoreBadge(score: item.commercialScore)
                 }

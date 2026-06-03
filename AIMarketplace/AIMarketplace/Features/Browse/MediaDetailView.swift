@@ -310,7 +310,7 @@ struct MediaDetailView: View {
         HStack(spacing: 10) {
             metaCell("Purchases", "\(item.purchases.formatted())", "cart")
             metaCell("Momentum", "\(item.trending)/100", "flame.fill")
-            metaCell("Type", item.type.title, item.type.icon)
+            metaCell("Type", item.categoryLabel, item.type.icon)
         }
         .screenPadding()
     }

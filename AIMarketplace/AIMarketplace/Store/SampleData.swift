@@ -40,7 +40,8 @@ enum SampleData {
                 purchases: 0,
                 trending: 66,
                 coverAssetName: "its-a-swifty-world-after-all",
-                mediaFileName: "its-a-swifty-world-after-all"
+                mediaFileName: "its-a-swifty-world-after-all",
+                coverHasTitle: true
             ),
             MediaItem(
                 id: UUID(uuidString: "33333333-3333-4333-8333-333333333333")!,
@@ -58,7 +59,8 @@ enum SampleData {
                 purchases: 0,
                 trending: 61,
                 coverAssetName: "curves-like-keisha",
-                mediaFileName: "curves-like-keisha"
+                mediaFileName: "curves-like-keisha",
+                coverHasTitle: true
             ),
             MediaItem(
                 id: UUID(uuidString: "44444444-4444-4444-8444-444444444444")!,
@@ -76,7 +78,8 @@ enum SampleData {
                 purchases: 0,
                 trending: 58,
                 coverAssetName: "push-up-bra",
-                mediaFileName: "push-up-bra"
+                mediaFileName: "push-up-bra",
+                coverHasTitle: true
             ),
             MediaItem(
                 id: UUID(uuidString: "55555555-5555-4555-8555-555555555555")!,

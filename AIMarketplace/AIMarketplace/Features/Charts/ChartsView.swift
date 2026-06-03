@@ -110,7 +110,7 @@ private struct ChartRow: View {
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.ink)
                         .lineLimit(1)
-                    Text("\(item.type.title) · \(item.genre)")
+                    Text("\(item.categoryLabel) · \(item.genre)")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Theme.inkSoft)
                     HStack(spacing: 6) {

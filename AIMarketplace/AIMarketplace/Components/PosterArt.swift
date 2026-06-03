@@ -24,12 +24,16 @@ struct PosterArt: View {
                     GeneratedCover(item: item)
                 }
 
-                if showsTitle {
+                // Suppress the gradient + title overlay when the artwork
+                // already has the title baked in (album covers, movie
+                // posters), otherwise the title renders twice on top of
+                // itself — the "bleeding / overlapping" the user flagged.
+                if showsTitle && !item.coverHasTitle {
                     LinearGradient(colors: [.clear, .black.opacity(0.72)],
                                    startPoint: .center, endPoint: .bottom)
                     VStack(alignment: .leading, spacing: 3) {
                         Spacer()
-                        Text(item.type.title.uppercased())
+                        Text(item.categoryLabel.uppercased())
                             .font(.system(size: 9, weight: .heavy, design: .rounded))
                             .tracking(1.4)
                             .foregroundStyle(item.type.accent)
