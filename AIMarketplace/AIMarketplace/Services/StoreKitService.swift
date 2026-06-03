@@ -149,11 +149,29 @@ final class StoreKitService: ObservableObject {
 
     private func grant(for transaction: Transaction) async {
         guard !processed.contains(transaction.id) else { return }
-        processed.insert(transaction.id)
-        UserDefaults.standard.set(processed.map { NSNumber(value: $0) }, forKey: processedKey)
         let credit = Self.credit(for: transaction.productID)
-        guard credit > 0 else { return }
+        // For unrecognised product ids, still mark processed so we don't
+        // keep re-walking the same dead transaction on every launch.
+        guard credit > 0 else {
+            markProcessed(transaction.id)
+            return
+        }
+        // Apply credit FIRST, then mark processed. Both writes are
+        // synchronous-to-disk (wallet via SecureStore atomic write, processed
+        // via UserDefaults). A crash between them is a microsecond window,
+        // but on a re-launch the unfinished transaction would be replayed:
+        //   - credit-first ordering → buyer might get a duplicate credit
+        //     (we eat ~$5; user happy)
+        //   - mark-first ordering  → buyer gets nothing for their money
+        //     (we keep the cash; user angry, App Store 1-star, refund)
+        // Cheap overpay beats silent under-credit, so credit-first wins.
         onCredit?(credit)
+        markProcessed(transaction.id)
+    }
+
+    private func markProcessed(_ id: UInt64) {
+        processed.insert(id)
+        UserDefaults.standard.set(processed.map { NSNumber(value: $0) }, forKey: processedKey)
     }
 
     private func listenForTransactions() -> Task<Void, Never> {
@@ -161,7 +179,12 @@ final class StoreKitService: ObservableObject {
             for await update in Transaction.updates {
                 guard let self else { continue }
                 guard let transaction = try? Self.checkVerified(update) else { continue }
-                await MainActor.run { Task { await self.grant(for: transaction) } }
+                // Await the grant directly so finish() can't run before the
+                // credit is applied. The previous `MainActor.run { Task { … } }`
+                // wrap was fire-and-forget — finish() raced ahead and the
+                // transaction could disappear from `Transaction.unfinished`
+                // before the wallet had been credited.
+                await self.grant(for: transaction)
                 await transaction.finish()
             }
         }
