@@ -250,7 +250,13 @@ struct AIReviewResult: Identifiable, Hashable, Codable {
 
     static let threshold = 85
     /// Minimum self-confidence before the AI Editor will publish on its own.
-    static let autoPublishConfidence = 80
+    /// Previously 80 — but with the selfConfidence formula maxing around
+    /// 88 for unanimous-consistency-with-large-margin cases, 80 created a
+    /// sharp cliff where excellent literary work scoring 91 with 74%
+    /// confidence still needed manual publish. 70 keeps a real "I'd want
+    /// human eyes here" zone for borderline 85-89 scores while allowing
+    /// genuinely strong work to ship hands-off.
+    static let autoPublishConfidence = 70
 
     // MARK: - Autopilot guards
 

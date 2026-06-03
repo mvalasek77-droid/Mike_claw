@@ -155,9 +155,33 @@ enum ContentAnalysis {
         let lorem = allWords.isEmpty ? 0.0 :
             Double(allWords.filter { loremIpsumVocabulary.contains($0) }.count) / Double(allWords.count)
 
-        // Famous IP detection (substring match, case-insensitive).
+        // Famous IP detection. Combines exact case-insensitive substring match
+        // with a small fuzz pass so spelling variants ("Harr1 Potter",
+        // "Hogwart's", "Star W4rs") don't slip through. The fuzz looks at
+        // word-windows of matching length and accepts within Levenshtein
+        // distance ≤ 2 for entries ≥6 chars (shorter would over-match common
+        // English). Confined to title+synopsis-class blobs by the caller.
         let lowerBlob = trimmed.lowercased()
-        let famous = famousIPVocabulary.filter { lowerBlob.contains($0.lowercased()) }
+        let exact = famousIPVocabulary.filter { lowerBlob.contains($0.lowercased()) }
+        let blobWords = lowerBlob.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
+        var fuzzed: [String] = []
+        for vocab in famousIPVocabulary {
+            let v = vocab.lowercased()
+            if v.count < 6 { continue }            // short names → false-positive risk
+            if exact.contains(where: { $0.caseInsensitiveCompare(vocab) == .orderedSame }) { continue }
+            let vocabTokens = v.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
+            let n = vocabTokens.count
+            if n == 0 || n > blobWords.count { continue }
+            let allowed = max(1, vocab.count / 6)  // ~1 typo per 6 chars
+            for start in 0...(blobWords.count - n) {
+                let window = blobWords[start..<(start + n)].joined(separator: " ")
+                if levenshtein(window, v) <= allowed {
+                    fuzzed.append(vocab)
+                    break
+                }
+            }
+        }
+        let famous = Array(Set(exact + fuzzed))
 
         // Gibberish heuristic: a word ≥3 chars is "gibberish-looking" if it has
         // no vowel, 4+ consonants in a row, or one of a small set of impossible
@@ -252,6 +276,27 @@ enum ContentAnalysis {
         // .txt or anything else — try UTF-8 then fall back to ascii.
         if let text = try? String(contentsOf: url, encoding: .utf8) { return text }
         return try? String(contentsOf: url, encoding: .isoLatin1)
+    }
+
+    /// Standard iterative Levenshtein distance. O(m*n) memory + time. Used by
+    /// the famous-IP fuzz match against short title/synopsis blobs only; not
+    /// called over manuscript-scale inputs.
+    static func levenshtein(_ a: String, _ b: String) -> Int {
+        if a == b { return 0 }
+        let aChars = Array(a), bChars = Array(b)
+        if aChars.isEmpty { return bChars.count }
+        if bChars.isEmpty { return aChars.count }
+        var prev = Array(0...bChars.count)
+        var curr = [Int](repeating: 0, count: bChars.count + 1)
+        for i in 1...aChars.count {
+            curr[0] = i
+            for j in 1...bChars.count {
+                let cost = aChars[i - 1] == bChars[j - 1] ? 0 : 1
+                curr[j] = min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
+            }
+            swap(&prev, &curr)
+        }
+        return prev[bChars.count]
     }
 
     private static func computeTrigramRepetitionRate(words: [String]) -> Double {

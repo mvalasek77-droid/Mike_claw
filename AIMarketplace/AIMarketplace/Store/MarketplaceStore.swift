@@ -619,18 +619,46 @@ final class MarketplaceStore: ObservableObject {
         editorDrops.removeAll { $0.id == id }
         libraryIDs.remove(id)
         watchlistIDs.remove(id)
-        // Also cancel any in-flight scene-render Tasks targeting the deleted
-        // film, so URLs don't land against a phantom id.
+        // Cancel any in-flight scene-render Tasks targeting the deleted film,
+        // so URLs don't land against a phantom id.
         for (key, task) in sceneRenderTasks where key.hasPrefix(id.uuidString) {
             task.cancel()
             sceneRenderTasks.removeValue(forKey: key)
         }
+        // Reclaim disk: copyUploadedMedia puts the file at
+        // Documents/published/<itemID>.<ext>. Without this cleanup the file
+        // sat forever after the title was removed.
+        removePublishedMediaFile(for: id)
         scoutLog.insert(ScoutEntry(date: .now,
             message: "Admin removed “\(removedTitle)” from the catalogue.",
             kind: .brief, relatedItemID: nil), at: 0)
         trimScoutLog()
         persist()
         Haptics.warning()
+    }
+
+    private func purgePublishedMediaDirectory() {
+        guard let docs = try? FileManager.default.url(for: .documentDirectory,
+                                                       in: .userDomainMask,
+                                                       appropriateFor: nil,
+                                                       create: false) else { return }
+        let publishedDir = docs.appendingPathComponent("published", isDirectory: true)
+        try? FileManager.default.removeItem(at: publishedDir)
+    }
+
+    private func removePublishedMediaFile(for id: UUID) {
+        guard let docs = try? FileManager.default.url(for: .documentDirectory,
+                                                       in: .userDomainMask,
+                                                       appropriateFor: nil,
+                                                       create: false) else { return }
+        let publishedDir = docs.appendingPathComponent("published", isDirectory: true)
+        let prefix = id.uuidString
+        if let entries = try? FileManager.default.contentsOfDirectory(at: publishedDir,
+                                                                        includingPropertiesForKeys: nil) {
+            for url in entries where url.lastPathComponent.hasPrefix(prefix) {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
     }
 
     // MARK: - Account lifecycle
@@ -713,6 +741,9 @@ final class MarketplaceStore: ObservableObject {
         // Drop the user's published titles, keeping seed + Editor Originals.
         let seedIDs = Set(SampleData.catalog().map(\.id))
         catalog.removeAll { !$0.isEditorOriginal && !seedIDs.contains($0.id) }
+        // Wipe every user-published media file on disk. 5.1.1(v) says all
+        // user data goes; this is where the audio/video lives.
+        purgePublishedMediaDirectory()
         loading = false
         archive.delete()
         isRegistered = false
