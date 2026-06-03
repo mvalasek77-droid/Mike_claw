@@ -113,7 +113,9 @@ final class StoreKitService: ObservableObject {
     /// Walks both `Transaction.unfinished` (anything Apple still wants us to
     /// finish) and `Transaction.currentEntitlements` (verified history). New
     /// transactions are credited and finished; already-processed ones are
-    /// skipped via the persisted ID set.
+    /// skipped via the persisted ID set. Refunds (Apple set
+    /// `revocationDate`) trigger a clawback so the buyer's wallet doesn't
+    /// keep credit they no longer paid for.
     private func drainPending() async {
         for await update in Transaction.unfinished {
             guard let transaction = try? Self.checkVerified(update) else { continue }
@@ -123,7 +125,26 @@ final class StoreKitService: ObservableObject {
         for await update in Transaction.currentEntitlements {
             guard let transaction = try? Self.checkVerified(update) else { continue }
             await grant(for: transaction)
+            await checkRevocation(for: transaction)
         }
+    }
+
+    /// Apple-refunded transaction → claw the credit back from the wallet.
+    /// Permission-style hook so we only revoke once per transaction id.
+    var onRevoke: ((Double) -> Void)?
+
+    private func checkRevocation(for transaction: Transaction) async {
+        guard transaction.revocationDate != nil else { return }
+        let revKey = "rev-\(transaction.id)"
+        let revokedKey = "storekit.revokedTransactionIDs.v1"
+        let raw = UserDefaults.standard.array(forKey: revokedKey) as? [String] ?? []
+        var revoked = Set(raw)
+        guard !revoked.contains(revKey) else { return }
+        revoked.insert(revKey)
+        UserDefaults.standard.set(Array(revoked), forKey: revokedKey)
+        let credit = Self.credit(for: transaction.productID)
+        guard credit > 0 else { return }
+        onRevoke?(credit)
     }
 
     private func grant(for transaction: Transaction) async {

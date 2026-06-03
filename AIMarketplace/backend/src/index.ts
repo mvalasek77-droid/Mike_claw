@@ -397,12 +397,20 @@ async function handleStatus(request: Request, env: Env): Promise<Response> {
 
   const account = await stripeGet(`/accounts/${accountId}`, env.STRIPE_SECRET_KEY);
 
+  // Surface `disabled_reason` so the app can show "your application
+  // was declined — contact support" instead of silently bouncing the
+  // creator back to "Connect my bank." Stripe sets this when an
+  // account is rejected for fraud/listed/under_review/etc.
+  const requirements = account.requirements ?? {};
   return json({
     accountId: account.id,
     chargesEnabled: account.charges_enabled,
     payoutsEnabled: account.payouts_enabled,
     detailsSubmitted: account.details_submitted,
     capabilities: account.capabilities,
+    disabledReason: requirements.disabled_reason ?? null,
+    currentlyDue: requirements.currently_due ?? [],
+    pastDue: requirements.past_due ?? [],
   });
 }
 
@@ -461,7 +469,12 @@ async function handleCashOut(request: Request, env: Env): Promise<Response> {
       metadata: {
         platform: "ai-marketplace",
       },
-    }, env.STRIPE_SECRET_KEY, account_id);
+    }, env.STRIPE_SECRET_KEY, account_id,
+       // Idempotency key — without it, a future concurrency footgun could
+       // create duplicate Stripe payouts. Use minute-precision so a genuine
+       // intentional second cash-out within the same minute still
+       // de-duplicates, but a re-tap an hour later succeeds.
+       `cashout_${account_id}_${Math.floor(Date.now() / 60_000)}`);
   } catch (e: any) {
     await recordLedger(env, {
       type: "payout", status: "failed", amountCents: payoutAmount, currency,
@@ -670,6 +683,83 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
         kind: "platform topup (webhook)", scope: "platform",
         amountCents: tu.amount, currency: tu.currency ?? "usd",
         detail: tu.failure_message ?? tu.failure_code ?? "",
+      });
+      break;
+    }
+    case "charge.refunded": {
+      // Buyer received a Stripe-side refund (rare for us — we use Apple IAP,
+      // but Stripe top-ups can be refunded). Record so the operator can
+      // reconcile platform float drain.
+      const charge = event.data.object;
+      await recordLedger(env, {
+        type: "refund", status: "succeeded", amountCents: charge.amount_refunded ?? charge.amount,
+        currency: charge.currency ?? "usd",
+        scope: "platform", stripeId: charge.id,
+        note: `charge.refunded`,
+      });
+      break;
+    }
+    case "charge.dispute.created": {
+      const dispute = event.data.object;
+      await recordLedger(env, {
+        type: "dispute", status: "pending", amountCents: dispute.amount,
+        currency: dispute.currency ?? "usd",
+        scope: "platform", stripeId: dispute.id,
+        note: `dispute opened on ${dispute.charge}; reason: ${dispute.reason ?? "?"}`,
+      });
+      break;
+    }
+    case "charge.dispute.funds_withdrawn": {
+      // CRITICAL — Stripe has already pulled the disputed amount from the
+      // platform float. The creator's pendingPayoutUSD reflects an earning
+      // that the platform no longer holds; reconciliation breaks unless we
+      // record this and alert the operator to claw back.
+      const dispute = event.data.object;
+      await recordLedger(env, {
+        type: "dispute", status: "funds_withdrawn", amountCents: dispute.amount,
+        currency: dispute.currency ?? "usd",
+        scope: "platform", stripeId: dispute.id,
+        note: `chargeback on ${dispute.charge}; platform debited`,
+      });
+      await alertNSF(env, {
+        kind: "chargeback debit",
+        scope: "platform",
+        amountCents: dispute.amount,
+        currency: dispute.currency ?? "usd",
+        detail: `Charge ${dispute.charge} disputed (${dispute.reason ?? "?"}). Float reduced; consider deducting creator pending.`,
+      });
+      break;
+    }
+    case "charge.dispute.closed": {
+      const dispute = event.data.object;
+      await recordLedger(env, {
+        type: "dispute",
+        status: dispute.status === "won" ? "won" : "lost",
+        amountCents: dispute.amount,
+        currency: dispute.currency ?? "usd",
+        scope: "platform", stripeId: dispute.id,
+        note: `dispute closed: ${dispute.status}`,
+      });
+      break;
+    }
+    case "transfer.reversed": {
+      // Manual reversal by operator (or Stripe-side). The creator's local
+      // pendingPayoutUSD is stale until the operator notifies them; the
+      // ledger captures the truth.
+      const transfer = event.data.object;
+      await recordLedger(env, {
+        type: "transfer", status: "reversed",
+        amountCents: transfer.amount_reversed ?? transfer.amount,
+        currency: transfer.currency ?? "usd",
+        scope: transfer.destination ?? "platform", stripeId: transfer.id,
+        note: `transfer reversed`,
+      });
+      await alertNSF(env, {
+        kind: "transfer reversal",
+        scope: transfer.destination ?? "platform",
+        amountCents: transfer.amount_reversed ?? transfer.amount,
+        currency: transfer.currency ?? "usd",
+        detail: `Transfer ${transfer.id} reversed; creator pending balance is now stale.`,
       });
       break;
     }
@@ -1223,7 +1313,7 @@ async function sendEmail(env: Env, subject: string, text: string, to?: string): 
 
 interface LedgerEntry {
   ts: string;            // ISO timestamp
-  type: string;          // sale | transfer | payout | topup | nsf | refund | account_closed
+  type: string;          // sale | transfer | payout | topup | nsf | refund | dispute | account_closed
   status: string;        // succeeded | failed | pending
   amountCents: number;   // always positive; sign implied by type
   currency: string;

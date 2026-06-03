@@ -24,8 +24,16 @@ struct PayoutConfigView: View {
         case incompleteFlow    // account exists; creator abandoned Stripe form
         case underReview       // form submitted; Stripe still verifying
         case ready             // payouts enabled
+        case rejected          // Stripe declined the account
+    }
+    /// True when Stripe has set a real rejection reason (not a "needs more
+    /// info" requirements list — those are recoverable via resume).
+    private var isRejected: Bool {
+        guard let r = store.payoutDisabledReason?.lowercased(), !r.isEmpty else { return false }
+        return r.contains("rejected") || r.contains("listed") || r.contains("terms_of_service")
     }
     private var stage: Stage {
+        if isRejected { return .rejected }
         if store.payoutConnected { return .ready }
         if store.connectAccountID != nil && store.payoutDetailsSubmitted { return .underReview }
         if store.connectAccountID != nil { return .incompleteFlow }
@@ -106,6 +114,7 @@ struct PayoutConfigView: View {
         case .incompleteFlow: return "Pick up where you left off"
         case .underReview:    return "Almost there"
         case .ready:          return "You're all set"
+        case .rejected:       return "Application declined"
         }
     }
 
@@ -122,6 +131,9 @@ struct PayoutConfigView: View {
             return "Stripe is checking the info you sent. This usually takes a few minutes — sometimes up to 24 hours. You'll be ready to receive payouts as soon as they're done."
         case .ready:
             return "Your bank is connected. Your 85% share of every sale lands in your account automatically."
+        case .rejected:
+            let reason = store.payoutDisabledReason ?? ""
+            return "Stripe declined your account application\(reason.isEmpty ? "" : " (\(reason))"). This usually means the identity or business info couldn't be verified. Contact support and we'll help you set up a fresh account."
         }
     }
 
@@ -217,6 +229,7 @@ struct PayoutConfigView: View {
             case .incompleteFlow: return 1
             case .underReview:    return 2
             case .ready:          return 3
+            case .rejected:       return 0
             }
         }()
         return VStack(spacing: 14) {
@@ -242,6 +255,7 @@ struct PayoutConfigView: View {
         case .incompleteFlow: return "You started but didn't finish."
         case .underReview:    return "Stripe is checking your info."
         case .ready:          return "All set — your bank is connected."
+        case .rejected:       return "Stripe declined your account."
         }
     }
 
@@ -368,6 +382,27 @@ struct PayoutConfigView: View {
             Text("Heads-up: payouts can take up to a month. Apple settles in-app purchases monthly, so a sale today may not reach your bank until the next Apple settlement.")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.inkFaint)
+                .multilineTextAlignment(.center)
+        case .rejected:
+            // Stripe declined the account — no retry path inside the app
+            // because re-running onboarding hits Stripe's idempotency cache
+            // and lands on the same rejected account. The creator needs
+            // operator help to free their email for a fresh account.
+            Label("Stripe declined this account. Contact support to set up a fresh one.",
+                  systemImage: "xmark.octagon.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.warning)
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 12).fill(Theme.warning.opacity(0.15)))
+            if let reason = store.payoutDisabledReason {
+                Text("Reason returned by Stripe: \(reason)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+                    .multilineTextAlignment(.center)
+            }
+            Text("Email mvalasek77@gmail.com with your account email and we'll reset it on our side. You'll be able to re-onboard with a fresh Stripe account afterward.")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
         }
     }

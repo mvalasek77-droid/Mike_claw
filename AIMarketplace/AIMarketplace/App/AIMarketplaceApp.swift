@@ -25,6 +25,17 @@ struct AIMarketplaceApp: App {
                     storeKit.onCredit = { [weak store] credit in
                         store?.walletBalance += credit
                     }
+                    // Apple-refunded IAP → claw the credit back from the
+                    // wallet so the buyer can't keep credit they no longer
+                    // paid for. Goes negative if they already spent it;
+                    // floors at 0 below.
+                    storeKit.onRevoke = { [weak store] credit in
+                        guard let store else { return }
+                        store.walletBalance = max(0, store.walletBalance - credit)
+                        store.notify(title: "Refund processed",
+                                     body: String(format: "Apple refunded $%.2f of wallet credit.", credit),
+                                     kind: .system)
+                    }
                 }
         }
     }

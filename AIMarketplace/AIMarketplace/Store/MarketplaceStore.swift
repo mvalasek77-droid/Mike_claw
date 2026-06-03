@@ -857,6 +857,12 @@ final class MarketplaceStore: ObservableObject {
     /// payoutConnected, lets the UI distinguish "abandoned mid-flow",
     /// "Stripe still reviewing", and "ready to receive payouts."
     @Published var payoutDetailsSubmitted: Bool = false { didSet { persist() } }
+    /// Stripe's reason for disabling the account, when applicable (e.g.
+    /// "rejected.fraud", "rejected.listed", "requirements.past_due"). Set
+    /// by `refreshPayoutStatus`. Drives the new `.rejected` UI stage so a
+    /// creator whose account Stripe declined sees a clear message instead
+    /// of silently being bounced back to "Connect my bank."
+    @Published var payoutDisabledReason: String? { didSet { persist() } }
 
     func connectPayout() {
         // Pre-flight: the Worker requires both name and email. If either is
@@ -980,6 +986,7 @@ final class MarketplaceStore: ObservableObject {
                 let detailsSubmitted = json["detailsSubmitted"] as? Bool ?? false
                 payoutDetailsSubmitted = detailsSubmitted
                 payoutConnected = chargesEnabled && payoutsEnabled
+                payoutDisabledReason = json["disabledReason"] as? String
             }
         } catch {
             // Non-fatal: leave existing state alone, surface only if user is
