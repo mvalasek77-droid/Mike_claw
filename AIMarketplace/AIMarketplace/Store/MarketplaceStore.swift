@@ -2192,7 +2192,18 @@ final class MarketplaceStore: ObservableObject {
         else { return }
 
         let d = submissions[idx].draft
+        let newID = UUID()
+        // Persist the buyer-deliverable. Without this the security-scoped URL
+        // dies with the picker and `ContentResolver` returns nil at play time —
+        // buyers would purchase the title and see SimulatedTransport / a blank
+        // reader. We carry the manuscript text directly on the MediaItem for
+        // novels, and copy audio/video bytes into Documents/published/ keyed by
+        // the new item id so playback resolves to a real local URL.
+        let localMediaFileName: String? = (d.type == .novel) ? nil : copyUploadedMedia(from: d.contentURL, itemID: newID)
+        let manuscript: String? = (d.type == .novel) ? d.manuscriptText : nil
+
         let item = MediaItem(
+            id: newID,
             title: d.title.trimmed,
             creator: d.creator.trimmed,
             type: d.type,
@@ -2206,12 +2217,45 @@ final class MarketplaceStore: ObservableObject {
             purchases: 0,
             trending: 60,
             addedAt: .now,
-            coverImageData: d.coverImageData
+            coverImageData: d.coverImageData,
+            isEditorOriginal: false,
+            localMediaFileName: localMediaFileName,
+            manuscriptText: manuscript
         )
         catalog.insert(item, at: 0)
         submissions[idx].publishedItemID = item.id
         persist()
         Haptics.success()
+    }
+
+    /// Copies the user's uploaded media file from its security-scoped URL into
+    /// `Documents/published/<itemID>.<ext>` so it survives the picker's scope
+    /// and is playable for buyers later. Returns the basename (e.g.
+    /// `ABC123.mp3`) for storage on `MediaItem.localMediaFileName`, or nil if
+    /// the source URL was missing or the copy failed.
+    private func copyUploadedMedia(from source: URL?, itemID: UUID) -> String? {
+        guard let source = source else { return nil }
+        let scoped = source.startAccessingSecurityScopedResource()
+        defer { if scoped { source.stopAccessingSecurityScopedResource() } }
+        guard let docs = try? FileManager.default.url(for: .documentDirectory,
+                                                       in: .userDomainMask,
+                                                       appropriateFor: nil,
+                                                       create: true) else { return nil }
+        let publishedDir = docs.appendingPathComponent("published", isDirectory: true)
+        try? FileManager.default.createDirectory(at: publishedDir,
+                                                  withIntermediateDirectories: true)
+        let ext = source.pathExtension.isEmpty ? "bin" : source.pathExtension.lowercased()
+        let basename = "\(itemID.uuidString).\(ext)"
+        let dest = publishedDir.appendingPathComponent(basename)
+        do {
+            if FileManager.default.fileExists(atPath: dest.path) {
+                try FileManager.default.removeItem(at: dest)
+            }
+            try FileManager.default.copyItem(at: source, to: dest)
+            return basename
+        } catch {
+            return nil
+        }
     }
 
     func submission(withPublishedID id: UUID) -> Submission? {

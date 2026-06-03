@@ -45,15 +45,37 @@ enum ContentResolver {
 
     // MARK: Playable media
 
-    /// Full manuscript text for a novel, from a bundled `<slug>.txt`.
+    /// Full manuscript text for a novel. Resolution order:
+    /// 1. The user's uploaded manuscript carried directly on the MediaItem
+    ///    (set by MarketplaceStore.publish for user-published titles).
+    /// 2. A bundled `<slug>.txt` keyed by mediaFileName or coverAssetName
+    ///    (seed catalogue + operator-supplied samples).
     static func bookText(for item: MediaItem) -> String? {
-        guard item.type == .novel, let name = item.mediaFileName ?? item.coverAssetName else { return nil }
+        guard item.type == .novel else { return nil }
+        if let text = item.manuscriptText, !text.isEmpty { return text }
+        guard let name = item.mediaFileName ?? item.coverAssetName else { return nil }
         guard let url = Bundle.main.url(forResource: name, withExtension: "txt", subdirectory: "Samples")
                 ?? Bundle.main.url(forResource: name, withExtension: "txt") else { return nil }
         return try? String(contentsOf: url, encoding: .utf8)
     }
 
+    /// Playable URL for music/movie. Resolution order:
+    /// 1. User-published file at `Documents/published/<localMediaFileName>`
+    ///    (MarketplaceStore.publish copies the upload here so it survives the
+    ///    picker's security-scoped lifetime).
+    /// 2. A bundled asset named by `mediaFileName` (seed catalogue).
     static func mediaURL(for item: MediaItem) -> URL? {
+        if let basename = item.localMediaFileName,
+           let docs = try? FileManager.default.url(for: .documentDirectory,
+                                                    in: .userDomainMask,
+                                                    appropriateFor: nil,
+                                                    create: false) {
+            let candidate = docs.appendingPathComponent("published", isDirectory: true)
+                                .appendingPathComponent(basename)
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+        }
         guard let name = item.mediaFileName else { return nil }
         let extensions: [String]
         switch item.type {

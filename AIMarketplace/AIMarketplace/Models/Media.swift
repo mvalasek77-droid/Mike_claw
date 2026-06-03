@@ -84,6 +84,16 @@ struct MediaItem: Identifiable, Hashable, Codable {
     var coverAssetName: String?
     /// Bundled playable media file (audio/video) for seed catalogue titles.
     var mediaFileName: String?
+    /// User-uploaded media file copied into the app's Documents directory at
+    /// publish time. `mediaFileName` is for bundled sample assets; this is
+    /// for content the buyer paid for so playback resolves to a real file
+    /// instead of falling through to SimulatedTransport. Just the basename
+    /// (e.g. "ABC123.mp3") — the directory is `Documents/published/`.
+    var localMediaFileName: String? = nil
+    /// Full manuscript text for a user-published novel. Carried directly on
+    /// the MediaItem so the reader doesn't have to look it up via the
+    /// security-scoped URL after publish (that URL dies with the picker).
+    var manuscriptText: String? = nil
     /// True when the AI Editor produced this title itself to fill open space in
     /// the catalogue (no creator upload). Surfaced transparently in the UI.
     var isEditorOriginal: Bool
@@ -126,6 +136,8 @@ struct MediaItem: Identifiable, Hashable, Codable {
         coverAssetName: String? = nil,
         mediaFileName: String? = nil,
         isEditorOriginal: Bool = false,
+        localMediaFileName: String? = nil,
+        manuscriptText: String? = nil,
         coverHasTitle: Bool = false,
         screenplayScenes: [String] = [],
         sceneDurations: [Int] = [],
@@ -151,6 +163,8 @@ struct MediaItem: Identifiable, Hashable, Codable {
         self.coverAssetName = coverAssetName
         self.mediaFileName = mediaFileName
         self.isEditorOriginal = isEditorOriginal
+        self.localMediaFileName = localMediaFileName
+        self.manuscriptText = manuscriptText
         self.coverHasTitle = coverHasTitle
         self.screenplayScenes = screenplayScenes
         self.sceneDurations = sceneDurations
@@ -195,6 +209,8 @@ struct MediaItem: Identifiable, Hashable, Codable {
         self.coverAssetName = try c.decodeIfPresent(String.self, forKey: .coverAssetName)
         self.mediaFileName = try c.decodeIfPresent(String.self, forKey: .mediaFileName)
         self.isEditorOriginal = try c.decodeIfPresent(Bool.self, forKey: .isEditorOriginal) ?? false
+        self.localMediaFileName = try c.decodeIfPresent(String.self, forKey: .localMediaFileName)
+        self.manuscriptText = try c.decodeIfPresent(String.self, forKey: .manuscriptText)
         self.coverHasTitle = try c.decodeIfPresent(Bool.self, forKey: .coverHasTitle) ?? false
         self.screenplayScenes = try c.decodeIfPresent([String].self, forKey: .screenplayScenes) ?? []
         self.sceneDurations = try c.decodeIfPresent([Int].self, forKey: .sceneDurations) ?? []
