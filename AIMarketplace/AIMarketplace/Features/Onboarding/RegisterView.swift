@@ -78,30 +78,15 @@ struct RegisterView: View {
                     PrimaryButton(title: "Create account", systemImage: "arrow.right",
                                   tint: Theme.kdp, enabled: canContinue) {
                         if isDemo {
-                            agreed = true
-                            email = "demo@aimarketplace.app"
-                            name = "Demo User"
+                            // App Review credential path. Typing "demo" as
+                            // the publisher / pen name accepts the terms
+                            // implicitly, fills demo email + name, and
+                            // signs in via the demoMode-aware register.
+                            // See DEMO_MODE.md for the exact credentials.
+                            withAnimation { store.registerAsDemoUser() }
+                        } else {
+                            withAnimation { store.register(name: name, email: email) }
                         }
-                        withAnimation { store.register(name: name, email: email) }
-                    }
-
-                    // App Review demo entry — one-tap path that skips form
-                    // entry, accepts the terms implicitly, sets the demoMode
-                    // flag, and signs in. The flag is what makes Stripe +
-                    // top-up + Profile UI show their App-Review-safe
-                    // simulated paths. See DEMO_MODE.md for credentials.
-                    Button {
-                        withAnimation { store.registerAsDemoUser() }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "person.badge.shield.checkmark.fill")
-                            Text("Continue as Demo User · for App Review")
-                        }
-                        .font(.system(size: 13, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Theme.accent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: Theme.cornerS).strokeBorder(Theme.accent, lineWidth: 1.2))
                     }
 
                     benefitRow

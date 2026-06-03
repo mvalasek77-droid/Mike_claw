@@ -8,15 +8,17 @@ entering real bank details, or relying on a live backend.
 ## Credentials (paste into App Review Notes)
 
 ```
-Demo username: Demo Reviewer
-Demo email:    review@aimarketplace.demo
-Password:      n/a — no password required
+Publisher / pen name:  demo
+Email:                 any@you.want
+Password:              n/a — no password required
+Terms checkbox:        any state (tap regardless)
 ```
 
-There is no real authentication step. The first screen is the
-registration form. To activate Demo Mode, tap **"Continue as Demo
-User · for App Review"** — the button is right below the standard
-"Create account" button on the registration screen.
+On the first screen the reviewer enters **`demo`** (case-insensitive)
+as the Publisher / pen name and taps **Create account**. The app
+recognises that exact name as the demo credential, replaces the email
++ name with the demo defaults internally, enables Demo Mode for the
+session, and signs in. No password, no real email, no Stripe info.
 
 The app remembers the demo-mode flag across launches; reviewers don't
 need to re-enable it each session.
@@ -34,7 +36,7 @@ need to re-enable it each session.
 
 ## Recommended review path (≈10 minutes)
 
-1. Launch app → tap **Continue as Demo User**.
+1. Launch app → enter `demo` as the publisher name → tap **Create account**.
 2. Browse tab → tap any title → tap **Buy** → top-up alert → **Top Up**.
 3. TopUpView → tap **Demo · $25 credit** → balance jumps to $25.
 4. Return to title → tap **Buy** → ownership granted → tap the play/read
@@ -70,14 +72,16 @@ production:
 
 ## App Review Notes — suggested text
 
-> This app supports a demo-mode path designed for App Review. From the
-> first screen tap "Continue as Demo User · for App Review." That flag
-> simulates Stripe Connect onboarding locally and exposes demo top-up
-> packs that bypass IAP (the real IAP packs are still visible so the
-> sandbox tester can verify the production path). Everything else —
-> editor scoring, content analysis, catalog, library, playback — is
-> identical to production. See DEMO_MODE.md in the repo for the
-> recommended review path.
+> This app supports a credential-driven demo mode for App Review.
+> On the first screen, enter the publisher name "demo" (any value for
+> the email field, terms checkbox can be in any state) and tap
+> Create account. That activates Demo Mode for the session: Stripe
+> Connect onboarding is simulated locally (any numbers go through), and
+> demo top-up packs bypass IAP. The real IAP packs remain visible so
+> the sandbox tester can verify the production purchase path in the
+> same session. Everything else — editor scoring, content analysis,
+> catalog, library, playback — is identical to production. See
+> DEMO_MODE.md in the repository for the full walkthrough.
 
 ## Disabling Demo Mode after review
 

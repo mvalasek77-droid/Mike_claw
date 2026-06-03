@@ -428,6 +428,7 @@ async function handleBalance(request: Request, env: Env): Promise<Response> {
 
 /** POST /payouts/cash-out — Trigger payout to the connected bank */
 async function handleCashOut(request: Request, env: Env): Promise<Response> {
+  const kvGuard = requireKV(env); if (kvGuard) return kvGuard;
   const { amount, account_id } = await request.json() as { amount?: number; account_id: string };
   if (!account_id) return error("account_id is required");
 
@@ -466,9 +467,15 @@ async function handleCashOut(request: Request, env: Env): Promise<Response> {
       type: "payout", status: "failed", amountCents: payoutAmount, currency,
       scope: account_id, note: e?.message ?? "payout failed",
     });
-    if (isInsufficientFunds(e)) {
-      await alertNSF(env, { kind: "creator cash-out", scope: account_id, amountCents: payoutAmount, currency, detail: e?.message ?? "" });
-    }
+    // Alert on EVERY cash-out failure, not just NSF. A creator's bank
+    // failing verification produces a 4xx that operators need to chase —
+    // the previous code only alerted on NSF, so bank issues sat silent
+    // until the periodic digest fired.
+    await alertNSF(env, {
+      kind: isInsufficientFunds(e) ? "creator cash-out (NSF)" : "creator cash-out (failed)",
+      scope: account_id, amountCents: payoutAmount, currency,
+      detail: e?.message ?? "",
+    });
     return error(e?.message ?? "Payout failed", 502);
   }
 
@@ -491,6 +498,7 @@ async function handleCashOut(request: Request, env: Env): Promise<Response> {
  * Called by the platform after each sale.
  */
 async function handleTransfer(request: Request, env: Env): Promise<Response> {
+  const kvGuard = requireKV(env); if (kvGuard) return kvGuard;
   const { account_id, amount_usd, title_id, memo, idempotency_key } = await request.json() as {
     account_id: string;
     amount_usd: number;
@@ -635,6 +643,36 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
       }
       break;
     }
+    case "topup.succeeded": {
+      // Closes the loop on the auto-topup ledger entry recorded by
+      // maybeTopUp() — without this case the entry stays "pending" forever
+      // and operator reconciliation breaks.
+      const tu = event.data.object;
+      await recordLedger(env, {
+        type: "topup", status: "succeeded", amountCents: tu.amount,
+        currency: tu.currency ?? "usd",
+        scope: "platform", stripeId: tu.id,
+        note: "topup.succeeded",
+      });
+      break;
+    }
+    case "topup.failed": {
+      const tu = event.data.object;
+      await recordLedger(env, {
+        type: "topup", status: "failed", amountCents: tu.amount,
+        currency: tu.currency ?? "usd",
+        scope: "platform", stripeId: tu.id,
+        note: `topup.failed: ${tu.failure_message ?? tu.failure_code ?? ""}`,
+      });
+      // Operator must know the float didn't replenish — every transfer
+      // until they intervene will NSF.
+      await alertNSF(env, {
+        kind: "platform topup (webhook)", scope: "platform",
+        amountCents: tu.amount, currency: tu.currency ?? "usd",
+        detail: tu.failure_message ?? tu.failure_code ?? "",
+      });
+      break;
+    }
     default:
       console.log(`Webhook event: ${event.type}`);
   }
@@ -658,6 +696,14 @@ async function handleDeleteAccount(request: Request, env: Env): Promise<Response
     const t = await res.text();
     return error(`Stripe ${res.status}: ${t.slice(0, 200)}`, res.status);
   }
+  // Record the account closure so the ledger has the complete lifecycle
+  // for this creator. Previously deletions were silent — auditing where a
+  // creator went required curling Stripe directly.
+  await recordLedger(env, {
+    type: "account_closed", status: "succeeded", amountCents: 0, currency: "n/a",
+    scope: body.account_id, stripeId: body.account_id,
+    note: "Stripe Connect account closed via /accounts/delete",
+  });
   return json({ deleted: true });
 }
 
@@ -1177,7 +1223,7 @@ async function sendEmail(env: Env, subject: string, text: string, to?: string): 
 
 interface LedgerEntry {
   ts: string;            // ISO timestamp
-  type: string;          // sale | transfer | payout | topup | nsf | refund
+  type: string;          // sale | transfer | payout | topup | nsf | refund | account_closed
   status: string;        // succeeded | failed | pending
   amountCents: number;   // always positive; sign implied by type
   currency: string;
@@ -1192,6 +1238,21 @@ interface LedgerEntry {
  *  per-type running total in `ledger:totals` for the summary endpoint. */
 async function recordLedger(env: Env, e: Omit<LedgerEntry, "ts">): Promise<void> {
   if (!env.KV) { console.log(`[ledger skipped — no KV] ${JSON.stringify(e)}`); return; }
+  // Dedup on (scope, type, status, stripeId). Stripe replays webhooks and
+  // the app retries failed transfers — both produce duplicate ledger calls
+  // for one underlying Stripe object. Without this check, a single $50
+  // transfer can land in the ledger twice and break reconciliation.
+  if (e.stripeId) {
+    const dedupKey = `ledger-idem:${e.scope}:${e.type}:${e.status}:${e.stripeId}`;
+    const seen = await env.KV.get(dedupKey);
+    if (seen) {
+      console.log(`[ledger dedup] skipping duplicate ${e.type}/${e.status} for ${e.stripeId}`);
+      return;
+    }
+    // Mark seen first so a concurrent duplicate is excluded by either write
+    // winning the race (KV is eventually consistent — best effort).
+    await env.KV.put(dedupKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
+  }
   const entry: LedgerEntry = { ts: new Date().toISOString(), ...e };
   const rand = crypto.randomUUID().slice(0, 8);
   const key = `ledger:${entry.scope}:${entry.ts}:${rand}`;
@@ -1206,6 +1267,15 @@ async function recordLedger(env: Env, e: Omit<LedgerEntry, "ts">): Promise<void>
   } catch (err: any) {
     console.error("ledger write failed:", err?.message ?? err);
   }
+}
+
+/// Gate for money-moving routes. Without KV bound, recordLedger is a no-op
+/// — meaning Stripe transfers/payouts would succeed silently with no audit
+/// trail. Refusing the request preserves the operator's ability to detect a
+/// misconfigured deployment.
+function requireKV(env: Env): Response | null {
+  if (env.KV) return null;
+  return error("Money-moving routes refused: KV binding missing. Add [[kv_namespaces]] in wrangler.toml so the ledger can record every event.", 503);
 }
 
 /** Detect a Stripe insufficient-funds (NSF) condition from a thrown error. */
@@ -1317,6 +1387,7 @@ async function handleUnfunded(env: Env): Promise<Response> {
  *  Body: { account_id, amount_usd, unfunded_id?, reason? }. On success the
  *  matching unfunded entry is cleared; on insufficient funds it re-alerts. */
 async function handleManualFund(request: Request, env: Env): Promise<Response> {
+  const kvGuard = requireKV(env); if (kvGuard) return kvGuard;
   const body = await request.json() as {
     account_id?: string; amount_usd?: number; unfunded_id?: string; reason?: string;
   };

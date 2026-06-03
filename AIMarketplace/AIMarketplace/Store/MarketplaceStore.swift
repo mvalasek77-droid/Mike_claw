@@ -1102,6 +1102,13 @@ final class MarketplaceStore: ObservableObject {
         // `!cashingOut` blocks a double-tap from firing two cash-outs before the
         // first returns (the cash-out endpoint isn't idempotent like transfers).
         guard payoutConnected, pendingPayoutUSD > 0, !cashingOut else { return 0 }
+        // Pre-flight the $1 Stripe payout minimum here so the user sees a
+        // clear message instead of a generic 5xx from the Worker. Stripe
+        // rejects sub-$1 USD payouts; CAD platform has the same floor.
+        guard pendingPayoutUSD >= 1.00 else {
+            lastPayoutError = "Cash-out minimum is $1.00. Keep earning and try again once your balance crosses that bar."
+            return 0
+        }
         let amount = pendingPayoutUSD
         lastPayoutError = nil
 
