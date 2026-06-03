@@ -364,7 +364,19 @@ enum AIEditor {
                                  explanation: "Video is portrait/vertical (\(r.width)x\(r.height)). Film must be landscape — try 16:9.")
         }
         // Duration: 5 min minimum for "film", up to feature length.
-        let durationScore = clamp(Int((mapRange(r.durationSeconds, inMin: 60, inMax: 5400, outMin: 35, outMax: 95)).rounded()))
+        // Duration: previous band [60s..5400s] → [35..95] punished shorts
+        // brutally — a 7-min landscape 1080p film scored 39/100 on duration
+        // alone and tanked the overall to 84. New band rewards anything
+        // 3+ min and tops out by 30 min so legitimate shorts and features
+        // alike clear. Anything sub-60s still floors at 35.
+        let durationScore: Int
+        if r.durationSeconds < 60 {
+            durationScore = 35
+        } else {
+            durationScore = clamp(Int((mapRange(r.durationSeconds,
+                                                 inMin: 60, inMax: 1800,
+                                                 outMin: 60, outMax: 92)).rounded()))
+        }
         // Resolution: 720p commercial floor, 1080p ideal, 4K+.
         let pixels = r.width * r.height
         let resScore: Int
@@ -490,19 +502,24 @@ enum AIEditor {
     private static func priceLooksImplausible(draft: DraftWork, score: Double) -> Bool {
         let price = draft.price
         guard price > 0 else { return false }   // free titles are fine
-        // Score-based ceiling: roughly price ≤ $5 below 85, ≤ $10 at 85–94,
-        // unlimited at 95+.
+        // Score-based ceiling — only the genuinely low-quality bucket gets a
+        // tight cap. The previous $5 ceiling at <85 was punishing legitimate
+        // boundary cases (a solid 84-score novel priced $5.99 got dropped to
+        // 78, which turned "1 point under the bar" into "7 points under" in
+        // the verdict copy). Real abuse — "$19.99 hollow content" — is
+        // caught by the length-based check below.
         let scoreCeiling: Double
         switch Int(score.rounded()) {
-        case ..<85:  scoreCeiling = 5.00
-        case 85..<95: scoreCeiling = 10.00
+        case ..<70:   scoreCeiling = 4.99    // genuinely weak — keep tight
+        case 70..<85: scoreCeiling = 9.99    // boundary — let creators price reasonably
+        case 85..<95: scoreCeiling = 14.99
         default:      scoreCeiling = 19.99
         }
         if price > scoreCeiling { return true }
-        // Length-based ceiling: very short content at premium price.
+        // Length-based ceiling — short content at premium price is the real
+        // abuse pattern. These are the floors the audit identified.
         switch draft.type {
         case .novel:
-            // Use measured word count if available, else declared length.
             let wc = (draft.manuscriptText ?? "").split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
             if wc > 0, wc < 5_000, price > 4.99 { return true }
         case .music:
