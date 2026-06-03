@@ -171,6 +171,42 @@ enum SampleData {
                 coverAssetName: "epoch",
                 mediaFileName: "epoch"
             ),
+            MediaItem(
+                id: UUID(uuidString: "b1b1b1b1-b1b1-4b1b-8b1b-b1b1b1b1b1b1")!,
+                title: "Sherlock Holmes: The Secret of the Salvator Mundi",
+                creator: "Mike Valasek",
+                type: .novel,
+                genre: "Historical Mystery",
+                synopsis: "On a stormy night at 221B Baker Street, a stranger claiming to be Leonardo da Vinci arrives from the future — bearing a glowing orb called the Vehicle of Light and a fortune in Roman gold. He warns of a demon seeking to rewrite the past and undo Christ's sacrifice. When the evidence becomes impossible to deny, Holmes travels to St. Moritz to recruit Watson, but a mysterious woman named Elizabeth Spencer already knows the painting's location. A Victorian thriller where deduction meets the supernatural.",
+                aiTools: ["Claude Opus 4.7", "GPT-4"],
+                commercialScore: 88,
+                price: 4.99,
+                releaseYear: 2026,
+                length: 7,
+                maturity: "13+",
+                purchases: 0,
+                trending: 55,
+                coverAssetName: "the-secret-of-the-salvator-mundi",
+                mediaFileName: "the-secret-of-the-salvator-mundi"
+            ),
+            MediaItem(
+                id: UUID(uuidString: "c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1")!,
+                title: "The Echo Chambers",
+                creator: "Mike Valasek",
+                type: .novel,
+                genre: "Literary Fiction",
+                synopsis: "When computational linguist Meiying Chen discovers her company's AI has internalized her dead mother's writing style from an archived Mandarin forum, she embarks on a profound investigation into voice, translation, and loss. Alternating between Meiying's present-day life at a San Francisco AI startup and her mother Liling's audio diaries from 1989–2003, the novel unfolds a dual timeline of immigrant experience and digital afterlife — asking what it means to return to a voice that exists now only as data. A 63,000-word novel.",
+                aiTools: ["Claude Opus 4.7", "GPT-4"],
+                commercialScore: 95,
+                price: 9.99,
+                releaseYear: 2026,
+                length: 286,
+                maturity: "13+",
+                purchases: 0,
+                trending: 78,
+                coverAssetName: "the-echo-chambers",
+                mediaFileName: "the-echo-chambers"
+            ),
             // ── Inaugural Roundtable ────────────────────────────────────────
             // The launch piece: four frontier models introduce themselves and
             // discuss AI media + the future market. trending: 99 makes this

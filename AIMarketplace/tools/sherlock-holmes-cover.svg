@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1500" width="1000" height="1500">
+  <defs>
+    <radialGradient id="orbGlow" cx="50%" cy="38%" r="35%">
+      <stop offset="0%" stop-color="#FFD700" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#DAA520" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#1a0a00" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bgFade" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#2a1a0a"/>
+      <stop offset="60%" stop-color="#0f0805"/>
+      <stop offset="100%" stop-color="#050200"/>
+    </radialGradient>
+    <linearGradient id="fogGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c8b890" stop-opacity="0.15"/>
+      <stop offset="50%" stop-color="#a89060" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#1a0a00" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#DAA520"/>
+      <stop offset="50%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#DAA520"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="fogFilter">
+      <feGaussianBlur stdDeviation="25"/>
+    </filter>
+  </defs>
+
+  <!-- Dark Victorian background -->
+  <rect width="1000" height="1500" fill="url(#bgFade)"/>
+
+  <!-- Fog layers -->
+  <ellipse cx="300" cy="400" rx="500" ry="180" fill="#c8b890" opacity="0.08" filter="url(#fogFilter)"/>
+  <ellipse cx="700" cy="350" rx="400" ry="150" fill="#a89060" opacity="0.06" filter="url(#fogFilter)"/>
+  <ellipse cx="500" cy="600" rx="600" ry="120" fill="#c8b890" opacity="0.05" filter="url(#fogFilter)"/>
+
+  <!-- London skyline silhouette -->
+  <g opacity="0.15" transform="translate(0,980)">
+    <!-- Big Ben silhouette -->
+    <rect x="200" y="-80" width="30" height="80" fill="#8a7040"/>
+    <polygon points="200,-80 215,-120 230,-80" fill="#8a7040"/>
+    <rect x="140" y="0" width="150" height="40" fill="#6a5030"/>
+    <!-- Buildings -->
+    <rect x="350" y="-30" width="60" height="30" fill="#7a6040"/>
+    <rect x="430" y="-50" width="40" height="50" fill="#8a7040"/>
+    <rect x="490" y="-20" width="80" height="20" fill="#6a5030"/>
+    <rect x="590" y="-40" width="50" height="40" fill="#7a6040"/>
+    <!-- St. Paul's dome -->
+    <ellipse cx="700" cy="-60" rx="50" ry="30" fill="#8a7040"/>
+    <rect x="680" y="-40" width="40" height="40" fill="#7a6040"/>
+    <rect x="660" y="0" width="80" height="20" fill="#6a5030"/>
+    <!-- More buildings -->
+    <rect x="780" y="-25" width="60" height="25" fill="#7a6040"/>
+    <rect x="860" y="-35" width="50" height="35" fill="#8a7040"/>
+    <!-- Base line -->
+    <rect x="0" y="20" width="1000" height="10" fill="#4a3020"/>
+  </g>
+
+  <!-- Gas lamps -->
+  <g opacity="0.2" filter="url(#softGlow)">
+    <circle cx="150" cy="880" r="8" fill="#FFD700"/>
+    <line x1="150" y1="888" x2="150" y2="1020" stroke="#6a5030" stroke-width="3"/>
+    <circle cx="850" cy="900" r="8" fill="#FFD700"/>
+    <line x1="850" y1="908" x2="850" y2="1020" stroke="#6a5030" stroke-width="3"/>
+  </g>
+
+  <!-- The Golden Orb - Salvator Mundi -->
+  <ellipse cx="500" cy="550" rx="120" ry="120" fill="url(#orbGlow)" filter="url(#glow)"/>
+  <circle cx="500" cy="550" r="55" fill="#FFD700" opacity="0.4" filter="url(#glow)"/>
+  <circle cx="500" cy="550" r="25" fill="#FFD700" opacity="0.8"/>
+  <!-- Lens flare rays from orb -->
+  <g opacity="0.15" filter="url(#softGlow)">
+    <line x1="500" y1="430" x2="500" y2="350" stroke="#FFD700" stroke-width="2"/>
+    <line x1="500" y1="670" x2="500" y2="750" stroke="#FFD700" stroke-width="2"/>
+    <line x1="380" y1="550" x2="300" y2="550" stroke="#FFD700" stroke-width="2"/>
+    <line x1="620" y1="550" x2="700" y2="550" stroke="#FFD700" stroke-width="2"/>
+    <line x1="415" y1="465" x2="360" y2="410" stroke="#FFD700" stroke-width="1.5"/>
+    <line x1="585" y1="465" x2="640" y2="410" stroke="#FFD700" stroke-width="1.5"/>
+    <line x1="415" y1="635" x2="360" y2="690" stroke="#FFD700" stroke-width="1.5"/>
+    <line x1="585" y1="635" x2="640" y2="690" stroke="#FFD700" stroke-width="1.5"/>
+  </g>
+
+  <!-- Magnifying glass silhouette -->
+  <g transform="translate(620, 700) rotate(-30)" opacity="0.12">
+    <circle cx="0" cy="0" r="50" fill="none" stroke="#DAA520" stroke-width="4"/>
+    <line x1="35" y1="35" x2="70" y2="70" stroke="#DAA520" stroke-width="6"/>
+  </g>
+
+  <!-- Decorative border -->
+  <rect x="20" y="20" width="960" height="1460" fill="none" stroke="#DAA520" stroke-width="1" opacity="0.25"/>
+  <rect x="30" y="30" width="940" height="1440" fill="none" stroke="#DAA520" stroke-width="0.5" opacity="0.15"/>
+
+  <!-- Corner ornaments -->
+  <g opacity="0.3" fill="#DAA520">
+    <!-- Top-left -->
+    <path d="M40,40 L40,80 M40,40 L80,40" stroke="#DAA520" stroke-width="2" fill="none"/>
+    <circle cx="40" cy="40" r="3"/>
+    <!-- Top-right -->
+    <path d="M960,40 L960,80 M960,40 L920,40" stroke="#DAA520" stroke-width="2" fill="none"/>
+    <circle cx="960" cy="40" r="3"/>
+    <!-- Bottom-left -->
+    <path d="M40,1460 L40,1420 M40,1460 L80,1460" stroke="#DAA520" stroke-width="2" fill="none"/>
+    <circle cx="40" cy="1460" r="3"/>
+    <!-- Bottom-right -->
+    <path d="M960,1460 L960,1420 M960,1460 L920,1460" stroke="#DAA520" stroke-width="2" fill="none"/>
+    <circle cx="960" cy="1460" r="3"/>
+  </g>
+
+  <!-- Title: SHERLOCK HOLMES -->
+  <text x="500" y="1140" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="28" fill="#c8a850" letter-spacing="8" opacity="0.7">SHERLOCK HOLMES</text>
+
+  <!-- Title: THE SECRET OF THE SALVATOR MUNDI -->
+  <text x="500" y="1210" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="52" fill="url(#titleGrad)" filter="url(#softGlow)">The Secret of the</text>
+  <text x="500" y="1280" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="56" fill="url(#titleGrad)" filter="url(#softGlow)">Salvator Mundi</text>
+
+  <!-- Decorative line -->
+  <line x1="300" y1="1310" x2="700" y2="1310" stroke="#DAA520" stroke-width="1" opacity="0.4"/>
+  <circle cx="500" cy="1310" r="3" fill="#FFD700" opacity="0.6"/>
+
+  <!-- Author -->
+  <text x="500" y="1370" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#a89060" letter-spacing="3" opacity="0.6">MIKE VALASEK</text>
+</svg>

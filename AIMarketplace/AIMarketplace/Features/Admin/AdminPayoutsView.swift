@@ -152,7 +152,7 @@ struct AdminPayoutsView: View {
         defer { loading = false }
         switch await store.fetchUnfunded() {
         case .success(let list): entries = list
-        case .failure(let msg):  loadError = msg
+        case .failure(let err):  loadError = err.message
         }
     }
 

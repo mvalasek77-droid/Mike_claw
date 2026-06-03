@@ -15,7 +15,7 @@
 	<key>CFBundleName</key>
 	<string>AIMarketplace</string>
 	<key>CFBundlePackageType</key>
-	<string>APPL</string>
+	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
@@ -52,17 +52,5 @@
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>
-	<!-- ── Backend (Cloudflare Worker) ─────────────────────────────────────
-	     Filled in before archiving for the App Store, so creators don't see
-	     a Worker-URL / secret config screen — they just tap Connect Stripe
-	     and Safari opens. Both strings are empty in the repo on purpose;
-	     replace at build time (or via xcconfig user-defined settings) with
-	     your production values. AIMKT_SHARED_SECRET must match the
-	     APP_SHARED_SECRET secret set on the Worker via wrangler.
-	-->
-	<key>AIMKT_WORKER_URL</key>
-	<string>$(AIMKT_WORKER_URL)</string>
-	<key>AIMKT_SHARED_SECRET</key>
-	<string>$(AIMKT_SHARED_SECRET)</string>
 </dict>
 </plist>

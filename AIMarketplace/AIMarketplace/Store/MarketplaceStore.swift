@@ -1,5 +1,8 @@
 import SwiftUI
 
+/// Simple error wrapper so Result<..., String> works (String doesn't conform to Error).
+struct StringError: Error { let message: String }
+
 /// Single source of truth for the catalogue, the signed-in creator's account,
 /// their publishing pipeline, and their purchased library.
 ///
@@ -909,26 +912,26 @@ final class MarketplaceStore: ObservableObject {
     /// Pull this creator's money-flow ledger from the Worker (the independent
     /// record of every transfer/payout/NSF). Returns entries newest-first or a
     /// human-readable error. Scoped to the connected account when present.
-    func fetchLedger() async -> Result<[LedgerEntry], String> {
+    func fetchLedger() async -> Result<[LedgerEntry], StringError> {
         guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty else {
-            return .failure("Connect your payout backend in Payout Setup to see live sales.")
+            return .failure(StringError(message: "Connect your payout backend in Payout Setup to see live sales."))
         }
         let scope = connectAccountID ?? "platform"
         guard let url = URL(string: "\(payoutBaseURL)/ledger?account_id=\(scope)&limit=100") else {
-            return .failure("Invalid payout backend URL.")
+            return .failure(StringError(message: "Invalid payout backend URL."))
         }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                return .failure("Couldn't load sales (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)).")
+                return .failure(StringError(message: "Couldn't load sales (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0))."))
             }
             struct LedgerResponse: Codable { var entries: [LedgerEntry] }
             let decoded = try JSONDecoder().decode(LedgerResponse.self, from: data)
             return .success(decoded.entries)
         } catch {
-            return .failure("Couldn't load sales: \(error.localizedDescription)")
+            return .failure(StringError(message: "Couldn't load sales: \(error.localizedDescription)"))
         }
     }
 
@@ -946,22 +949,22 @@ final class MarketplaceStore: ObservableObject {
     }
 
     /// Operator-only: fetch the queue of creators owed an unpaid transfer.
-    func fetchUnfunded() async -> Result<[UnfundedEntry], String> {
+    func fetchUnfunded() async -> Result<[UnfundedEntry], StringError> {
         guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
               let url = URL(string: "\(payoutBaseURL)/payouts/unfunded") else {
-            return .failure("Connect the payout backend in Payout Setup first.")
+            return .failure(StringError(message: "Connect the payout backend in Payout Setup first."))
         }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                return .failure("Couldn't load owed creators (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)).")
+                return .failure(StringError(message: "Couldn't load owed creators (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0))."))
             }
             struct Resp: Codable { var entries: [UnfundedEntry] }
             return .success(try JSONDecoder().decode(Resp.self, from: data).entries)
         } catch {
-            return .failure("Couldn't load owed creators: \(error.localizedDescription)")
+            return .failure(StringError(message: "Couldn't load owed creators: \(error.localizedDescription)"))
         }
     }
 
@@ -988,7 +991,8 @@ final class MarketplaceStore: ObservableObject {
             guard let http = response as? HTTPURLResponse else { return "No response." }
             if (200..<300).contains(http.statusCode) { return nil }
             let msg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-            return "Payment failed (\(http.statusCode))\(msg.map { ": \($0)" } ?? "). The float may still be short — top up and retry."
+            let detail = msg.map { ": \($0)" } ?? ""
+            return "Payment failed (\(http.statusCode))\(detail). The float may still be short — top up and retry."
         } catch {
             return "Payment failed: \(error.localizedDescription)"
         }

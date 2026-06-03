@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1500" width="1000" height="1500">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a0a1a"/>
+      <stop offset="40%" stop-color="#0d1025"/>
+      <stop offset="100%" stop-color="#050510"/>
+    </linearGradient>
+    <radialGradient id="echo1" cx="30%" cy="35%" r="25%">
+      <stop offset="0%" stop-color="#7B68EE" stop-opacity="0.8"/>
+      <stop offset="60%" stop-color="#483D8B" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0a0a1a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="echo2" cx="70%" cy="30%" r="22%">
+      <stop offset="0%" stop-color="#FF6B9D" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#C71585" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#0a0a1a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="echo3" cx="50%" cy="55%" r="30%">
+      <stop offset="0%" stop-color="#00CED1" stop-opacity="0.4"/>
+      <stop offset="70%" stop-color="#008B8B" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#0a0a1a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00CED1"/>
+      <stop offset="50%" stop-color="#7B68EE"/>
+      <stop offset="100%" stop-color="#FF6B9D"/>
+    </linearGradient>
+    <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00CED1" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#00CED1" stop-opacity="0.5"/>
+      <stop offset="50%" stop-color="#7B68EE" stop-opacity="0.6"/>
+      <stop offset="70%" stop-color="#FF6B9D" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#FF6B9D" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="bigBlur">
+      <feGaussianBlur stdDeviation="40"/>
+    </filter>
+  </defs>
+
+  <!-- Deep dark background -->
+  <rect width="1000" height="1500" fill="url(#bgGrad)"/>
+
+  <!-- Ambient glow orbs -->
+  <ellipse cx="300" cy="500" rx="250" ry="250" fill="url(#echo1)" filter="url(#bigBlur)"/>
+  <ellipse cx="700" cy="450" rx="220" ry="220" fill="url(#echo2)" filter="url(#bigBlur)"/>
+  <ellipse cx="500" cy="650" rx="300" ry="300" fill="url(#echo3)" filter="url(#bigBlur)"/>
+
+  <!-- Concentric echo rings - representing the echo chambers -->
+  <g opacity="0.15">
+    <circle cx="350" cy="520" r="80" fill="none" stroke="#7B68EE" stroke-width="1"/>
+    <circle cx="350" cy="520" r="110" fill="none" stroke="#7B68EE" stroke-width="0.8"/>
+    <circle cx="350" cy="520" r="140" fill="none" stroke="#7B68EE" stroke-width="0.6"/>
+    <circle cx="350" cy="520" r="170" fill="none" stroke="#7B68EE" stroke-width="0.4"/>
+  </g>
+  <g opacity="0.12">
+    <circle cx="650" cy="480" r="70" fill="none" stroke="#FF6B9D" stroke-width="1"/>
+    <circle cx="650" cy="480" r="100" fill="none" stroke="#FF6B9D" stroke-width="0.8"/>
+    <circle cx="650" cy="480" r="130" fill="none" stroke="#FF6B9D" stroke-width="0.6"/>
+    <circle cx="650" cy="480" r="160" fill="none" stroke="#FF6B9D" stroke-width="0.4"/>
+  </g>
+
+  <!-- Mandarin character 回 (return/echo) - stylized and ghostly -->
+  <g transform="translate(500, 600)" opacity="0.08">
+    <rect x="-100" y="-100" width="200" height="200" fill="none" stroke="#00CED1" stroke-width="4"/>
+    <rect x="-65" y="-65" width="130" height="130" fill="none" stroke="#00CED1" stroke-width="3"/>
+  </g>
+
+  <!-- Floating text fragments - representing AI data fragments -->
+  <g opacity="0.08" font-family="'Courier New', monospace" font-size="10" fill="#7B68EE">
+    <text x="80" y="300" transform="rotate(-15, 80, 300)">01101001</text>
+    <text x="750" y="350" transform="rotate(10, 750, 350)">echo return</text>
+    <text x="120" y="700" transform="rotate(5, 120, 700)">回声</text>
+    <text x="800" y="680" transform="rotate(-8, 800, 680)">11010011</text>
+    <text x="200" y="450" transform="rotate(12, 200, 450)">huíshēng</text>
+    <text x="680" y="550" transform="rotate(-5, 680, 550)">frequency</text>
+  </g>
+
+  <!-- Waveform / sound wave visualization -->
+  <g transform="translate(0, 780)" opacity="0.2">
+    <path d="M0,50 Q50,20 100,50 Q150,80 200,50 Q250,15 300,50 Q350,75 400,50 Q450,10 500,50 Q550,90 600,50 Q650,5 700,50 Q750,85 800,50 Q850,20 900,50 Q950,70 1000,50"
+          fill="none" stroke="#00CED1" stroke-width="1.5" filter="url(#softGlow)"/>
+    <path d="M0,55 Q60,30 120,55 Q180,75 240,55 Q300,25 360,55 Q420,80 480,55 Q540,15 600,55 Q660,85 720,55 Q780,20 840,55 Q900,75 960,55 L1000,55"
+          fill="none" stroke="#7B68EE" stroke-width="1" opacity="0.6"/>
+  </g>
+
+  <!-- Tape reel motif (Liling's recordings) -->
+  <g transform="translate(200, 580)" opacity="0.12">
+    <circle cx="0" cy="0" r="30" fill="none" stroke="#FF6B9D" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="20" fill="none" stroke="#FF6B9D" stroke-width="0.8"/>
+    <circle cx="0" cy="0" r="5" fill="#FF6B9D"/>
+    <circle cx="100" cy="0" r="30" fill="none" stroke="#FF6B9D" stroke-width="1.5"/>
+    <circle cx="100" cy="0" r="20" fill="none" stroke="#FF6B9D" stroke-width="0.8"/>
+    <circle cx="100" cy="0" r="5" fill="#FF6B9D"/>
+    <line x1="25" y1="0" x2="75" y2="0" stroke="#FF6B9D" stroke-width="1"/>
+  </g>
+
+  <!-- Decorative border -->
+  <rect x="25" y="25" width="950" height="1450" fill="none" stroke="#7B68EE" stroke-width="0.5" opacity="0.2"/>
+  <rect x="35" y="35" width="930" height="1430" fill="none" stroke="#7B68EE" stroke-width="0.3" opacity="0.1"/>
+
+  <!-- Corner dots -->
+  <circle cx="35" cy="35" r="3" fill="#00CED1" opacity="0.3"/>
+  <circle cx="965" cy="35" r="3" fill="#7B68EE" opacity="0.3"/>
+  <circle cx="35" cy="1465" r="3" fill="#FF6B9D" opacity="0.3"/>
+  <circle cx="965" cy="1465" r="3" fill="#00CED1" opacity="0.3"/>
+
+  <!-- Title -->
+  <text x="500" y="1050" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="24" fill="#00CED1" letter-spacing="12" opacity="0.5">— A NOVEL —</text>
+
+  <text x="500" y="1140" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="72" fill="url(#titleGrad)" filter="url(#glow)">The Echo</text>
+  <text x="500" y="1220" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="72" fill="url(#titleGrad)" filter="url(#glow)">Chambers</text>
+
+  <!-- Chinese subtitle: 回声 (Echo) -->
+  <text x="500" y="1280" text-anchor="middle" font-family="Georgia, serif" font-size="28" fill="#7B68EE" opacity="0.35">回 声</text>
+
+  <!-- Decorative gradient line -->
+  <line x1="200" y1="1330" x2="800" y2="1330" stroke="url(#lineGrad)" stroke-width="1.5"/>
+
+  <!-- Author -->
+  <text x="500" y="1390" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#808090" letter-spacing="4" opacity="0.6">MIKE VALASEK</text>
+
+  <!-- Bottom epigraph -->
+  <text x="500" y="1450" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="13" fill="#607080" font-style="italic" opacity="0.35">"An echo is a returning sound."</text>
+</svg>

@@ -196,7 +196,7 @@ struct SalesActivityView: View {
         let fetched = await store.fetchLedger()
         switch fetched {
         case .success(let list): entries = list
-        case .failure(let msg):  loadError = msg
+        case .failure(let err):  loadError = err.message
         }
     }
 }

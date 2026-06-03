@@ -73,15 +73,15 @@ struct SubmitWorkView: View {
                     }
                 )
             case .verdict:
-                if let result, let id = submissionID {
-                    ReviewVerdictView(draft: draft, result: result, submissionID: id,
+                if let theResult = result, let id = submissionID {
+                    ReviewVerdictView(draft: draft, result: theResult, submissionID: id,
                                       autoPublished: autoPublished,
                                       onReviseAgain: {
                                           // Drop stale verdict state so the next submit
                                           // creates a fresh submission instead of reusing
                                           // the now-rejected one.
                                           submissionID = nil
-                                          result = nil
+                                          self.result = nil
                                           reviewError = nil
                                           autoPublished = false
                                           phase = .form

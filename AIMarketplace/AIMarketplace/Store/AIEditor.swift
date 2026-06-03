@@ -503,7 +503,7 @@ enum AIEditor {
         switch draft.type {
         case .novel:
             // Use measured word count if available, else declared length.
-            let wc = draft.manuscriptText.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
+            let wc = (draft.manuscriptText ?? "").split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
             if wc > 0, wc < 5_000, price > 4.99 { return true }
         case .music:
             if draft.length > 0, draft.length < 3, price > 4.99 { return true }   // <3 tracks
