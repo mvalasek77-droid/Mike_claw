@@ -107,6 +107,8 @@
 		EB6ED7F38D4248C96F8D2522 /* sicking-that-thing.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3E96AB878B07A59830449A13 /* sicking-that-thing.mp3 */; };
 		EC092A396E6E6B89B647AF89 /* ScoutEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631D98886A2B189622F9E7E4 /* ScoutEntry.swift */; };
 		EEC36A315B0B1169C1FB84D8 /* AdminConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23251ABA154375A28A5EBC28 /* AdminConsoleView.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* AdminLedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E2F3A4B5C6D7E8F9012345 /* AdminLedgerView.swift */; };
+		B2C3D4E5F60718293A4B5C6D /* DemoStripeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F3A4B5C6D7E8F901234567 /* DemoStripeView.swift */; };
 		F16769D6069B7477A6113B12 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91E48A97D2D3223E0C9073F6 /* SecureStore.swift */; };
 		F31B900D2C09AD59266C19B5 /* daisy-duck-delight-cover.html in Resources */ = {isa = PBXBuildFile; fileRef = 9BDC040397E2998EBD3FB790 /* daisy-duck-delight-cover.html */; };
 		F4255BA5AE862EE1E919FE56 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F131A8157362A8A08E048A24 /* Haptics.swift */; };
@@ -147,6 +149,8 @@
 		1E2DEE4CB02EB57739618D37 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		219CA9BDBAA479753D8CE053 /* AIStudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStudio.swift; sourceTree = "<group>"; };
 		23251ABA154375A28A5EBC28 /* AdminConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminConsoleView.swift; sourceTree = "<group>"; };
+		D1E2F3A4B5C6D7E8F9012345 /* AdminLedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminLedgerView.swift; sourceTree = "<group>"; };
+		E2F3A4B5C6D7E8F901234567 /* DemoStripeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoStripeView.swift; sourceTree = "<group>"; };
 		25935DBAD611CC418570B702 /* ScoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoutView.swift; sourceTree = "<group>"; };
 		2B7CE4AD22CD94508BC2D84D /* PublishHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublishHomeView.swift; sourceTree = "<group>"; };
 		2F33EDEC9097CEE09B8B5A6F /* ContentFoundry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentFoundry.swift; sourceTree = "<group>"; };
@@ -307,6 +311,7 @@
 		37994B2B073860CDFA912E8F /* Partners */ = {
 			isa = PBXGroup;
 			children = (
+				E2F3A4B5C6D7E8F901234567 /* DemoStripeView.swift */,
 				52C06745E5B3EA4DDD77E9BD /* IncentivesView.swift */,
 				C6E646F3BB27F3E2B6302145 /* MissionView.swift */,
 				E23FC921C5612F2A39173DF0 /* PartnerDetailView.swift */,
@@ -546,6 +551,7 @@
 			children = (
 				23251ABA154375A28A5EBC28 /* AdminConsoleView.swift */,
 				66ADD952E329CCC58DF425AB /* AdminEditView.swift */,
+				D1E2F3A4B5C6D7E8F9012345 /* AdminLedgerView.swift */,
 				1CEA020A7E262765D26C0999 /* AdminModerationQueueView.swift */,
 				1463D337F5DE7810C8079E03 /* AdminPayoutsView.swift */,
 			);
@@ -743,6 +749,7 @@
 				3FCCD372AC91373863779BCA /* Admin.swift in Sources */,
 				EEC36A315B0B1169C1FB84D8 /* AdminConsoleView.swift in Sources */,
 				C812E96A74744ADCC15DBB8F /* AdminEditView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* AdminLedgerView.swift in Sources */,
 				EA802F5A4726FFEB82C1B930 /* AdminModerationQueueView.swift in Sources */,
 				CA411CD87F98BC36ABFD576F /* AdminPayoutsView.swift in Sources */,
 				422ECC04DD79D159C41585A4 /* AppNotification.swift in Sources */,
@@ -755,6 +762,7 @@
 				58F7E4998D8E4A6FCB11B2C4 /* ContentRequest.swift in Sources */,
 				3DC9B98DD8AAE620AAC4A7E2 /* ContentResolver.swift in Sources */,
 				2896C76F8E5CEFB226CD28EB /* CreatorDashboardView.swift in Sources */,
+				B2C3D4E5F60718293A4B5C6D /* DemoStripeView.swift in Sources */,
 				15080C8BBF7959C16CBFDD01 /* GeneratedCover.swift in Sources */,
 				7715001CE31C9D6D39F90C5C /* GlassKit.swift in Sources */,
 				F4255BA5AE862EE1E919FE56 /* Haptics.swift in Sources */,
