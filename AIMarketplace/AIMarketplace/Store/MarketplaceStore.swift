@@ -1083,6 +1083,57 @@ final class MarketplaceStore: ObservableObject {
         }
     }
 
+    /// Admin tool: ask the Worker to release a Stripe-rejected creator's
+    /// email so the next /payouts/connect creates a fresh account. The
+    /// creator's existing (rejected) Stripe account should already be
+    /// closed via deleteAccount before calling this — otherwise they end
+    /// up with two Stripe accounts on the same email.
+    func releaseStripeEmail(_ email: String) async -> String? {
+        guard isAdmin else { return "Admin only." }
+        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
+              let url = URL(string: "\(payoutBaseURL)/accounts/release-email") else {
+            return "Connect the payout backend in Payout Setup first."
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["email": email])
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { return "No response." }
+            if (200..<300).contains(http.statusCode) { return nil }
+            let msg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+            return "Release failed (\(http.statusCode))\(msg.map { ": \($0)" } ?? "")."
+        } catch {
+            return "Release failed: \(error.localizedDescription)"
+        }
+    }
+
+    /// One-shot fetch of the most recent ledger entries scoped to an
+    /// account (or "platform"). Returns parsed JSON entries as `[String: Any]`
+    /// for simple operator inspection — the admin ledger view renders them.
+    func fetchLedgerEntries(scope: String, limit: Int = 100) async -> [[String: Any]] {
+        guard !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
+              var components = URLComponents(string: "\(payoutBaseURL)/ledger") else { return [] }
+        components.queryItems = [
+            URLQueryItem(name: "scope", value: scope),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ]
+        guard let url = components.url else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let entries = json["entries"] as? [[String: Any]] else { return [] }
+            return entries
+        } catch {
+            return []
+        }
+    }
+
     /// Credits the creator's withdrawable balance (called on each of their sales
     /// and by NRN → USD conversion).
     func addPendingPayout(_ usd: Double) {

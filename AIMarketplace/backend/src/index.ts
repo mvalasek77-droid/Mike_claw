@@ -262,6 +262,22 @@ async function handleConnect(request: Request, env: Env): Promise<Response> {
   // Canadian platform, which broke onboarding/verification.
   const acctCountry = (country || env.PLATFORM_COUNTRY || "US").toUpperCase();
 
+  // Idempotency key. Default per-email, which gives us safe retry on
+  // network blips. But when an operator has explicitly released a creator's
+  // email via /accounts/release-email (because Stripe rejected the prior
+  // account and the creator needs a fresh start), the KV flag adds a salt
+  // so Stripe creates a NEW account instead of returning the rejected
+  // cached one. Flag is cleared the moment we use it.
+  let idemKey = `connect_${accountEmail}`;
+  if (env.KV) {
+    const releaseKey = `connect-release:${accountEmail.toLowerCase()}`;
+    const salt = await env.KV.get(releaseKey);
+    if (salt) {
+      idemKey = `connect_${accountEmail}_${salt}`;
+      await env.KV.delete(releaseKey);
+    }
+  }
+
   // Step 1: Create the Connect Express account
   const account = await stripe("/accounts", {
     type: env.STRIPE_CONNECT_TYPE || "express",
@@ -285,7 +301,7 @@ async function handleConnect(request: Request, env: Env): Promise<Response> {
       platform: "ai-marketplace",
       app_email: accountEmail,
     },
-  }, env.STRIPE_SECRET_KEY, undefined, `connect_${accountEmail}`);
+  }, env.STRIPE_SECRET_KEY, undefined, idemKey);
 
   // Step 2: Create an account link for onboarding
   // The return_url brings the user back into the app via deep link
@@ -1332,22 +1348,30 @@ async function recordLedger(env: Env, e: Omit<LedgerEntry, "ts">): Promise<void>
   // the app retries failed transfers — both produce duplicate ledger calls
   // for one underlying Stripe object. Without this check, a single $50
   // transfer can land in the ledger twice and break reconciliation.
-  if (e.stripeId) {
-    const dedupKey = `ledger-idem:${e.scope}:${e.type}:${e.status}:${e.stripeId}`;
+  const dedupKey = e.stripeId
+    ? `ledger-idem:${e.scope}:${e.type}:${e.status}:${e.stripeId}`
+    : null;
+  if (dedupKey) {
     const seen = await env.KV.get(dedupKey);
     if (seen) {
       console.log(`[ledger dedup] skipping duplicate ${e.type}/${e.status} for ${e.stripeId}`);
       return;
     }
-    // Mark seen first so a concurrent duplicate is excluded by either write
-    // winning the race (KV is eventually consistent — best effort).
-    await env.KV.put(dedupKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
   }
   const entry: LedgerEntry = { ts: new Date().toISOString(), ...e };
   const rand = crypto.randomUUID().slice(0, 8);
   const key = `ledger:${entry.scope}:${entry.ts}:${rand}`;
   try {
+    // Write the entry FIRST. If we wrote the dedup key first and the entry
+    // write transiently failed, the retry would see the dedup key and skip
+    // — losing the entry forever. By writing the entry first, a failure
+    // here leaves no dedup, so the next attempt records cleanly. Worst
+    // case under concurrency is a duplicate (caught downstream by stripeId
+    // reconciliation), which is strictly better than a missing entry.
     await env.KV.put(key, JSON.stringify(entry));
+    if (dedupKey) {
+      await env.KV.put(dedupKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
+    }
     // Coarse running totals (best-effort; the entries are authoritative).
     const totalsRaw = await env.KV.get("ledger:totals");
     const totals = totalsRaw ? JSON.parse(totalsRaw) : {};
@@ -1410,7 +1434,12 @@ async function alertNSF(
 async function handleLedger(request: Request, env: Env): Promise<Response> {
   if (!env.KV) return json({ entries: [], note: "No KV bound — ledger unavailable." });
   const url = new URL(request.url);
-  const scope = url.searchParams.get("account_id") || "platform";
+  // Accept both `scope` (new) and `account_id` (legacy). The app-side
+  // AdminLedgerView passes `scope` because operators inspect both the
+  // platform bucket and acct_… buckets through the same field.
+  const scope = url.searchParams.get("scope")
+             || url.searchParams.get("account_id")
+             || "platform";
   const limit = Math.min(Number(url.searchParams.get("limit") ?? "50"), 200);
   const list = await env.KV.list({ prefix: `ledger:${scope}:`, limit: 1000 });
   // Keys embed the ISO ts, so reverse-lexicographic = newest first.
@@ -1428,6 +1457,67 @@ async function handleLedgerSummary(env: Env): Promise<Response> {
   if (!env.KV) return json({ totals: {}, note: "No KV bound — ledger unavailable." });
   const raw = await env.KV.get("ledger:totals");
   return json({ totals: raw ? JSON.parse(raw) : {} });
+}
+
+/** GET /ledger/calculate-balance?account_id=acct_xxx — sum the ledger to
+ *  compute a creator's true pending balance. Formula:
+ *      sum(transfer succeeded) - sum(transfer reversed)
+ *    - sum(payout succeeded)   - sum(payout pending)
+ *  The app uses this to verify its local `pendingPayoutUSD` matches reality
+ *  (the local value is computed at sale time and could drift if a Stripe
+ *  reversal lands without the app noticing). */
+async function handleLedgerCalculateBalance(request: Request, env: Env): Promise<Response> {
+  if (!env.KV) return error("KV not bound — ledger unavailable", 503);
+  const url = new URL(request.url);
+  const accountId = url.searchParams.get("account_id");
+  if (!accountId) return error("account_id query param required");
+  const list = await env.KV.list({ prefix: `ledger:${accountId}:`, limit: 1000 });
+  let credits = 0;
+  let debits = 0;
+  let reversed = 0;
+  for (const key of list.keys) {
+    const raw = await env.KV.get(key.name);
+    if (!raw) continue;
+    let entry: LedgerEntry;
+    try { entry = JSON.parse(raw) as LedgerEntry; } catch { continue; }
+    if (entry.type === "transfer" && entry.status === "succeeded") credits += entry.amountCents;
+    if (entry.type === "transfer" && entry.status === "reversed")  reversed += entry.amountCents;
+    if (entry.type === "payout"   && entry.status === "succeeded") debits  += entry.amountCents;
+    if (entry.type === "payout"   && entry.status === "pending")   debits  += entry.amountCents;
+  }
+  const pendingCents = Math.max(0, credits - debits - reversed);
+  return json({
+    accountId,
+    pendingCents,
+    pendingUSD: pendingCents / 100,
+    credits: { transferSucceededCents: credits, transferReversedCents: reversed },
+    debits:  { payoutSucceededAndPendingCents: debits },
+    listComplete: list.list_complete,
+  });
+}
+
+/** POST /accounts/release-email — admin tool. Marks an email as "released"
+ *  so the next /payouts/connect for that email uses a salted idempotency
+ *  key, forcing Stripe to create a FRESH account instead of returning the
+ *  cached one. Used when Stripe rejected a creator's account and the
+ *  creator needs to try again with a clean slate.
+ *
+ *  Requires the rejected Stripe account to be closed FIRST via
+ *  /accounts/delete — otherwise the creator ends up with two Stripe
+ *  accounts on the same email (Stripe allows it). */
+async function handleReleaseEmail(request: Request, env: Env): Promise<Response> {
+  if (!env.KV) return error("KV not bound — cannot persist release flag", 503);
+  const body = await request.json() as { email?: string };
+  const email = (body.email ?? "").trim().toLowerCase();
+  if (!email || !email.includes("@")) return error("email required");
+  const salt = crypto.randomUUID().slice(0, 8);
+  await env.KV.put(`connect-release:${email}`, salt, { expirationTtl: 60 * 60 * 24 * 7 });
+  await recordLedger(env, {
+    type: "account_released", status: "succeeded", amountCents: 0, currency: "n/a",
+    scope: "platform", stripeId: "",
+    note: `Admin released email ${email} for fresh Stripe onboarding (salt: ${salt}). 7-day TTL.`,
+  });
+  return json({ released: true, email, expiresInDays: 7 });
 }
 
 // ── Owed-creator queue + manual funding ──────────────────────────────────────
@@ -1848,6 +1938,19 @@ export default {
       }
       if (path === "/ledger/summary" && method === "GET") {
         return await handleLedgerSummary(env);
+      }
+      // Sum the ledger to compute a creator's true pending balance.
+      // App calls this to verify its local `pendingPayoutUSD` against the
+      // truth; operator calls it during reconciliation.
+      if (path === "/ledger/calculate-balance" && method === "GET") {
+        return await handleLedgerCalculateBalance(request, env);
+      }
+      // Admin: release a creator's email so the next /payouts/connect call
+      // creates a NEW Stripe account instead of returning the rejected one
+      // from Stripe's idempotency cache. Used when an applicant was
+      // declined and needs to try again with a clean slate.
+      if (path === "/accounts/release-email" && method === "POST") {
+        return await handleReleaseEmail(request, env);
       }
 
       // Float funding: platform balance, target buffer, how much to top up,

@@ -16,17 +16,21 @@ struct AdminConsoleView: View {
     @State private var activeSheet: AdminSheet?
 
     enum AdminSheet: Identifiable {
-        case edit(MediaItem), createNew, payouts, moderation
+        case edit(MediaItem), createNew, payouts, moderation, ledger
         var id: String {
             switch self {
             case .edit(let i): return "edit-\(i.id)"
             case .createNew: return "createNew"
             case .payouts: return "payouts"
             case .moderation: return "moderation"
+            case .ledger: return "ledger"
             }
         }
     }
     @State private var deletingTitle: MediaItem?
+    @State private var showReleaseEmail = false
+    @State private var releaseEmail: String = ""
+    @State private var releaseMessage: String?
 
     private var items: [MediaItem] {
         let base = store.catalog.sorted { $0.addedAt > $1.addedAt }
@@ -68,7 +72,29 @@ struct AdminConsoleView: View {
             case .createNew:      AdminEditView(original: nil)
             case .payouts:        AdminPayoutsView()
             case .moderation:     AdminModerationQueueView()
+            case .ledger:         AdminLedgerView()
             }
+        }
+        .alert("Release Stripe email", isPresented: $showReleaseEmail) {
+            TextField("creator@example.com", text: $releaseEmail)
+                .textInputAutocapitalization(.never)
+            Button("Release", role: .destructive) {
+                Task {
+                    let err = await store.releaseStripeEmail(releaseEmail)
+                    releaseMessage = err ?? "Released. The creator's next Connect attempt will create a fresh account."
+                }
+            }
+            Button("Cancel", role: .cancel) { releaseEmail = "" }
+        } message: {
+            Text("Frees up the email so the next /payouts/connect creates a NEW Stripe account instead of returning the rejected one. Close the existing Stripe account FIRST via the buyer-side Delete account flow, or the creator ends up with two Stripe accounts on the same email.")
+        }
+        .alert("Release result", isPresented: Binding(
+            get: { releaseMessage != nil },
+            set: { if !$0 { releaseMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { releaseMessage = nil; releaseEmail = "" }
+        } message: {
+            Text(releaseMessage ?? "")
         }
         .alert("Reset catalogue?", isPresented: $confirmReset) {
             Button("Reset", role: .destructive) { store.adminResetCatalog() }
@@ -298,6 +324,18 @@ struct AdminConsoleView: View {
                               style: .ghost, tint: Theme.warning) {
                     activeSheet = .payouts
                 }
+                PrimaryButton(title: "Money-flow ledger", systemImage: "list.bullet.rectangle.portrait.fill",
+                              style: .ghost, tint: Theme.accent) {
+                    activeSheet = .ledger
+                }
+                PrimaryButton(title: "Release Stripe email (rejected accounts)",
+                              systemImage: "person.badge.minus",
+                              style: .ghost, tint: Theme.kdp) {
+                    releaseEmail = ""
+                    showReleaseEmail = true
+                }
+                Text("Use Release after a creator's Stripe application was declined — frees their email for a fresh onboarding attempt.")
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
             }
         }
     }
