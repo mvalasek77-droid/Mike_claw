@@ -20,6 +20,10 @@ struct TopUpView: View {
                             .font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
                     }
 
+                    if store.demoMode {
+                        demoPacks
+                    }
+
                     SectionHeader(title: "Add credit")
 
                     if storeKit.isLoading && storeKit.products.isEmpty {
@@ -101,6 +105,49 @@ struct TopUpView: View {
         }
         .buttonStyle(.plain)
         .disabled(purchasing != nil || storeKit.isRestoring)
+    }
+
+    /// Demo-mode credit packs. Visible only when `store.demoMode` is on
+    /// (App Review path) — bypasses StoreKit entirely so reviewers can
+    /// exercise the buy flow without spending real money or relying on
+    /// the StoreKit sandbox. Real IAP packs still appear below for the
+    /// reviewer to verify the production path too.
+    @ViewBuilder
+    private var demoPacks: some View {
+        SectionHeader(title: "Demo top-ups (no charge)")
+        VStack(spacing: 8) {
+            ForEach([5.00, 10.00, 25.00, 50.00], id: \.self) { amount in
+                Button {
+                    store.addDemoCredit(amount: amount)
+                    statusMessage = String(format: "Demo credit added: $%.2f", amount)
+                    Haptics.success()
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "wand.and.stars").font(.system(size: 18)).foregroundStyle(Theme.kdp)
+                            .frame(width: 40, height: 40)
+                            .background(Circle().fill(Theme.kdp.opacity(0.16)))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(String(format: "Demo · $%.0f credit", amount))
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(Theme.ink)
+                            Text("Bypasses Apple IAP — App Review use only.")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Theme.inkSoft)
+                        }
+                        Spacer()
+                        Text("FREE")
+                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(Capsule().fill(Theme.kdp))
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.kdp.opacity(0.08)))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.kdp.opacity(0.4), lineWidth: 0.8))
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     /// App Review 3.1.1 requires every IAP-selling app to expose a Restore

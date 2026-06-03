@@ -13,6 +13,13 @@ final class MarketplaceStore: ObservableObject {
     // Account (KDP-style registration)
     @Published var accountName: String = "" { didSet { persist() } }
     @Published var accountEmail: String = "" { didSet { persist() } }
+    /// Apple App Review demo mode. When on, Stripe Connect is simulated
+    /// locally (no Worker / no real bank info), credit purchases can be
+    /// fulfilled without StoreKit, and the UI marks the session as DEMO
+    /// MODE so reviewers can verify functionality without spending real
+    /// money. Persists across launches so reviewers don't re-enable each
+    /// session. See DEMO_MODE.md for the credentials.
+    @Published var demoMode: Bool = false { didSet { persist() } }
     @Published var isRegistered: Bool = false { didSet { persist() } }
 
     // Marketplace
@@ -302,6 +309,7 @@ final class MarketplaceStore: ObservableObject {
         var accountName: String
         var accountEmail: String
         var isRegistered: Bool
+        var demoMode: Bool
         var walletBalance: Double
         var creatorEarnings: Double
         var aiAutopilotEnabled: Bool
@@ -331,7 +339,7 @@ final class MarketplaceStore: ObservableObject {
         var submissions: [Submission]
         var publishedItems: [MediaItem]
 
-        init(accountName: String, accountEmail: String, isRegistered: Bool,
+        init(accountName: String, accountEmail: String, isRegistered: Bool, demoMode: Bool,
              walletBalance: Double, creatorEarnings: Double, aiAutopilotEnabled: Bool,
              invitedPartners: [String], referrals: [String: String], pendingPayoutUSD: Double,
              payoutConnected: Bool, paidOutUSD: Double, connectAccountID: String?,
@@ -345,6 +353,7 @@ final class MarketplaceStore: ObservableObject {
             self.accountName = accountName
             self.accountEmail = accountEmail
             self.isRegistered = isRegistered
+            self.demoMode = demoMode
             self.walletBalance = walletBalance
             self.creatorEarnings = creatorEarnings
             self.aiAutopilotEnabled = aiAutopilotEnabled
@@ -382,6 +391,7 @@ final class MarketplaceStore: ObservableObject {
             accountName = try c.decodeIfPresent(String.self, forKey: .accountName) ?? ""
             accountEmail = try c.decodeIfPresent(String.self, forKey: .accountEmail) ?? ""
             isRegistered = try c.decodeIfPresent(Bool.self, forKey: .isRegistered) ?? false
+            demoMode = try c.decodeIfPresent(Bool.self, forKey: .demoMode) ?? false
             walletBalance = try c.decodeIfPresent(Double.self, forKey: .walletBalance) ?? 0
             creatorEarnings = try c.decodeIfPresent(Double.self, forKey: .creatorEarnings) ?? 0
             aiAutopilotEnabled = try c.decodeIfPresent(Bool.self, forKey: .aiAutopilotEnabled) ?? false
@@ -422,6 +432,7 @@ final class MarketplaceStore: ObservableObject {
         accountName = state.accountName
         accountEmail = state.accountEmail
         isRegistered = state.isRegistered
+        demoMode = state.demoMode
         walletBalance = state.walletBalance
         creatorEarnings = state.creatorEarnings
         aiAutopilotEnabled = state.aiAutopilotEnabled
@@ -503,6 +514,7 @@ final class MarketplaceStore: ObservableObject {
             accountName: accountName,
             accountEmail: accountEmail,
             isRegistered: isRegistered,
+            demoMode: demoMode,
             walletBalance: walletBalance,
             creatorEarnings: creatorEarnings,
             aiAutopilotEnabled: aiAutopilotEnabled,
@@ -672,6 +684,40 @@ final class MarketplaceStore: ObservableObject {
         isRegistered = true   // triggers persist
     }
 
+    /// One-tap entry for Apple App Review. Sets the demo flag, fills a
+    /// believable name + email, and lands the reviewer signed-in. See
+    /// `DEMO_MODE.md` for what behavior the flag changes.
+    func registerAsDemoUser() {
+        loading = true
+        accountName = "Demo Reviewer"
+        accountEmail = "review@aimarketplace.demo"
+        demoMode = true
+        loading = false
+        isRegistered = true
+    }
+
+    /// Demo-mode Stripe completion. Marks payouts connected with a
+    /// believable-shaped account id and skips every Worker call so the
+    /// reviewer can verify the post-Stripe state without entering real
+    /// bank info or talking to a real Stripe endpoint.
+    func completeDemoStripeSetup() {
+        guard demoMode else { return }
+        connectAccountID = "acct_demo_\(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(16))"
+        payoutConnected = true
+        lastPayoutError = nil
+        notify(title: "Demo Stripe setup complete",
+               body: "Payouts marked connected — this is a simulated state for App Review only.",
+               kind: .system)
+    }
+
+    /// Demo-mode wallet top-up. Skips StoreKit entirely so reviewers can
+    /// exercise the buy flow without spending real money. Mirrors the
+    /// onCredit path so notifications + persistence stay consistent.
+    func addDemoCredit(amount: Double) {
+        guard demoMode else { return }
+        walletBalance += amount
+    }
+
     /// Signs out but keeps the encrypted account on device for re-entry.
     func signOut() {
         isRegistered = false
@@ -708,6 +754,7 @@ final class MarketplaceStore: ObservableObject {
         loading = true
         accountName = ""
         accountEmail = ""
+        demoMode = false
         walletBalance = 0
         creatorEarnings = 0
         aiAutopilotEnabled = false

@@ -210,6 +210,16 @@ struct ProfileView: View {
                     .font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
                 Text(store.accountEmail.isEmpty ? "Publisher account" : store.accountEmail)
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                if store.demoMode {
+                    HStack(spacing: 4) {
+                        Image(systemName: "shield.lefthalf.filled").font(.system(size: 9, weight: .heavy))
+                        Text("DEMO MODE · App Review")
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    }
+                    .foregroundStyle(Theme.accent)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(Capsule().stroke(Theme.accent, lineWidth: 1))
+                }
             }
             Spacer()
         }

@@ -16,6 +16,7 @@ struct PayoutConfigView: View {
     @State private var sharedSecret: String = ""
     @State private var saved = false
     @State private var showWhatYouNeed = false
+    @State private var showDemoStripe = false
 
     /// What stage of onboarding the creator is in — drives which CTA shows.
     private enum Stage {
@@ -65,6 +66,7 @@ struct PayoutConfigView: View {
                         .foregroundStyle(Theme.accent)
                 }
             }
+            .sheet(isPresented: $showDemoStripe) { DemoStripeView() }
         }
         .onAppear {
             workerURL = store.payoutBaseURL
@@ -284,17 +286,29 @@ struct PayoutConfigView: View {
     private var actionCard: some View {
         switch stage {
         case .notStarted:
-            PrimaryButton(title: "Connect my bank",
-                          systemImage: "building.columns.fill",
-                          tint: Theme.success,
-                          enabled: !store.payoutBaseURL.isEmpty
-                                && !store.payoutSharedSecret.isEmpty) {
-                store.connectPayout()
+            if store.demoMode {
+                PrimaryButton(title: "Demo: connect a fake bank",
+                              systemImage: "building.columns.fill",
+                              tint: Theme.success) {
+                    showDemoStripe = true
+                }
+                Text("Demo mode: opens a local screen where you can type any numbers. No real Stripe call. No data is saved.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+                    .multilineTextAlignment(.center)
+            } else {
+                PrimaryButton(title: "Connect my bank",
+                              systemImage: "building.columns.fill",
+                              tint: Theme.success,
+                              enabled: !store.payoutBaseURL.isEmpty
+                                    && !store.payoutSharedSecret.isEmpty) {
+                    store.connectPayout()
+                }
+                Text("Opens Stripe in your browser. Come back to the app when Stripe says you're done.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.inkFaint)
+                    .multilineTextAlignment(.center)
             }
-            Text("Opens Stripe in your browser. Come back to the app when Stripe says you're done.")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Theme.inkFaint)
-                .multilineTextAlignment(.center)
         case .incompleteFlow:
             PrimaryButton(title: "Finish signing up",
                           systemImage: "arrow.up.right.square.fill",
