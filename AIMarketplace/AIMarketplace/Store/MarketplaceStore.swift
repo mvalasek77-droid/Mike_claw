@@ -2196,24 +2196,31 @@ final class MarketplaceStore: ObservableObject {
         watchlistIDs.remove(item.id)   // owning supersedes watching
         bumpPurchase(item.id)
         let earning = Commerce.creatorEarning(on: price)
-        // Credit the creator whenever they buy their own work — catalog titles
-        // are authored by the demo user (Mike Valasek), so the registered creator
-        // earns their 85% share on every sale of their content.
-        if item.creator.lowercased() == accountName.lowercased() && !accountName.isEmpty {
+        // Did the logged-in user CREATE this title? Either via the Publish
+        // flow (their submission was published as this item) or — for the
+        // platform owner running their own catalogue — because the catalog
+        // credit matches their account name. Only when this is true should
+        // the 85% creator share leave the platform's main Stripe account.
+        //
+        // The previous code fired the transfer on `!item.aiTools.isEmpty`,
+        // which is TRUE for every catalog title (they all credit Suno /
+        // Claude / etc). The result: any buyer who set up Stripe Connect
+        // received 85% of every catalog purchase back into their own
+        // account — a silent kickback that left the platform with 15%.
+        // For catalog/demo titles the buyer did not author, the net stays
+        // in the platform's main Stripe (where Apple settled it); the
+        // operator collects 100%. True third-party sales of another user's
+        // published work need server-side routing via the Worker (which
+        // knows the creator's Connect id) — out of scope for the buyer's
+        // device.
+        let buyerIsCreator = submissions.contains(where: { $0.publishedItemID == item.id })
+            || (!accountName.isEmpty && item.creator.lowercased() == accountName.lowercased())
+        if buyerIsCreator {
             creatorEarnings += earning
-        }
-        // Credit the user's published works (titles they submitted through Publish flow)
-        if submissions.contains(where: { $0.publishedItemID == item.id }) {
-            creatorEarnings += earning
-        }
-        // Credit the partner models (AI tools) behind any purchased title —
-        // catalog items are Mike Valasek × Suno/Claude/GPT, so partners earn too.
-        if !item.aiTools.isEmpty {
-            addPendingPayout(earning)   // local credit (always)
-            // Move the money for real: per-sale Stripe transfer to the
-            // creator's Connect account. Per-sale UUID so a retry can't
-            // double-pay; failure is surfaced via lastPayoutError but does
-            // not roll the local credit back (the obligation stays pending).
+            addPendingPayout(earning)
+            // Per-sale UUID so a retry can't double-pay; failure is surfaced
+            // via lastPayoutError but doesn't roll the local credit back
+            // (the obligation stays pending).
             transferEarningRemote(amount: earning, saleID: UUID(), titleID: item.id)
         }
         persist()
