@@ -110,12 +110,27 @@ final class StoreKitService: ObservableObject {
         await drainPending()
     }
 
-    /// Walks both `Transaction.unfinished` (anything Apple still wants us to
-    /// finish) and `Transaction.currentEntitlements` (verified history). New
-    /// transactions are credited and finished; already-processed ones are
-    /// skipped via the persisted ID set. Refunds (Apple set
-    /// `revocationDate`) trigger a clawback so the buyer's wallet doesn't
-    /// keep credit they no longer paid for.
+    /// Walks `Transaction.unfinished` (anything Apple still wants us to
+    /// finish), `Transaction.currentEntitlements` (verified active history),
+    /// AND `Transaction.all` (every historical transaction, INCLUDING
+    /// revoked ones). New transactions are credited and finished;
+    /// already-processed ones are skipped via the persisted ID set.
+    /// Revocations claw the credit back so the wallet doesn't keep money
+    /// the buyer no longer paid for.
+    ///
+    /// The Transaction.all sweep matters because:
+    ///   - `currentEntitlements` EXCLUDES revoked transactions (Apple's
+    ///     design — they're no longer "current"), so a refund that
+    ///     happened while the app was killed is invisible there.
+    ///   - `Transaction.updates` only delivers in-session events; a
+    ///     fresh launch never sees refunds processed during the gap.
+    ///   - `Transaction.all` includes every transaction with its
+    ///     final state — refunds carry revocationDate / revocationReason.
+    ///
+    /// In SKTest, refundTransaction() also doesn't reliably emit via
+    /// Transaction.updates, but the refunded transaction DOES show up
+    /// in Transaction.all with the revocation signals set — so this
+    /// scan is the deterministic detection path for tests too.
     private func drainPending() async {
         for await update in Transaction.unfinished {
             guard let transaction = try? Self.checkVerified(update) else { continue }
@@ -129,6 +144,17 @@ final class StoreKitService: ObservableObject {
         for await update in Transaction.currentEntitlements {
             guard let transaction = try? Self.checkVerified(update) else { continue }
             await grant(for: transaction)
+            await checkRevocation(for: transaction)
+        }
+        // Sweep historical transactions for refunds of anything we already
+        // credited. This is the channel that catches refunds invisible to
+        // the other two streams (gap-of-time refunds, and SKTest events).
+        for await update in Transaction.all {
+            guard let transaction = try? Self.checkVerified(update) else { continue }
+            // Only revisit transactions we've already credited — otherwise
+            // we'd re-grant the same one twice (the grant path lives in
+            // the two streams above).
+            guard processed.contains(transaction.id) else { continue }
             await checkRevocation(for: transaction)
         }
     }
@@ -198,6 +224,9 @@ final class StoreKitService: ObservableObject {
                 // call, the wallet keeps credit the buyer no longer paid for.
                 await self.checkRevocation(for: transaction)
                 await transaction.finish()
+                #if DEBUG
+                self.didProcessUpdateForTesting?(transaction)
+                #endif
             }
         }
     }
@@ -208,4 +237,54 @@ final class StoreKitService: ObservableObject {
         case .unverified(_, let error): throw error
         }
     }
+
+    #if DEBUG
+    // MARK: - Test affordances
+    //
+    // Tests can't deterministically wait for the background
+    // `listenForTransactions` task: Transaction.updates is a broadcast
+    // stream that hands an event to whichever iterator is awaiting at
+    // emission time. If the test triggers SKTestSession.refundTransaction()
+    // while the production listener is mid-await, the listener consumes
+    // the event and the test's later iterator never sees it. The hooks
+    // below let a test take ownership of the iterator.
+
+    /// Cancels the production listener so the test drainer below can
+    /// own the single iterator on `Transaction.updates`. Call BEFORE
+    /// triggering SKTestSession events. No-op if already suspended.
+    func suspendListenerForTesting() {
+        updates?.cancel()
+        updates = nil
+    }
+
+    /// Fires after the production listener or the test drainer
+    /// processes one transaction. Lets a test await deterministic
+    /// completion instead of polling.
+    var didProcessUpdateForTesting: ((Transaction) -> Void)?
+
+    /// Deterministic drainer for tests. Cancels the listener (if still
+    /// running), then iterates `Transaction.updates` from this call
+    /// site with an inactivity timeout, then walks the full
+    /// `drainPending` (unfinished + currentEntitlements + Transaction.all).
+    /// Restarts the listener before returning.
+    func drainPendingForTesting(timeout: TimeInterval = 2.0) async {
+        updates?.cancel()
+        updates = nil
+        let drain = Task<Void, Never> {
+            for await update in Transaction.updates {
+                guard let transaction = try? Self.checkVerified(update) else { continue }
+                await self.grant(for: transaction)
+                await self.checkRevocation(for: transaction)
+                await transaction.finish()
+                self.didProcessUpdateForTesting?(transaction)
+            }
+        }
+        try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+        drain.cancel()
+        // Full drain — covers anything the updates iterator missed
+        // (refunds arriving via Transaction.all, gap-of-time events).
+        await drainPending()
+        updates = listenForTransactions()
+    }
+    #endif
 }
