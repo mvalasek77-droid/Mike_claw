@@ -157,6 +157,17 @@ struct PartnerProgramView: View {
                                      ? "Cash out \(usd(store.pendingPayoutUSD))" : "Nothing to cash out"),
                                   systemImage: "banknote.fill", tint: Theme.success,
                                   enabled: store.pendingPayoutUSD > 0 && !store.cashingOut) { store.cashOut() }
+                    // Once connected, the creator still needs a way back into
+                    // PayoutConfigView — to open their Stripe dashboard, see
+                    // the masked account id, or resume onboarding if Stripe
+                    // later flags new requirements (past_due, KYC). Without
+                    // this entry point the connected user is locked out of
+                    // their own payout settings.
+                    PrimaryButton(title: "Manage payouts",
+                                  systemImage: "gearshape.fill",
+                                  style: .ghost, tint: Theme.accent) {
+                        activeSheet = .payoutConfig
+                    }
                 } else {
                     PrimaryButton(title: "Connect my bank to get paid",
                                   systemImage: "building.columns.fill") {
