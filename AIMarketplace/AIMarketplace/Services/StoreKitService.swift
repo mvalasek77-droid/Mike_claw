@@ -132,7 +132,13 @@ final class StoreKitService: ObservableObject {
     /// in Transaction.all with the revocation signals set — so this
     /// scan is the deterministic detection path for tests too.
     private func drainPending() async {
+        #if DEBUG
+        var unfinishedCount = 0, currentCount = 0, allCount = 0, allCheckedCount = 0
+        #endif
         for await update in Transaction.unfinished {
+            #if DEBUG
+            unfinishedCount += 1
+            #endif
             guard let transaction = try? Self.checkVerified(update) else { continue }
             await grant(for: transaction)
             // A refunded transaction CAN show up as "unfinished" if the
@@ -142,6 +148,9 @@ final class StoreKitService: ObservableObject {
             await transaction.finish()
         }
         for await update in Transaction.currentEntitlements {
+            #if DEBUG
+            currentCount += 1
+            #endif
             guard let transaction = try? Self.checkVerified(update) else { continue }
             await grant(for: transaction)
             await checkRevocation(for: transaction)
@@ -150,13 +159,24 @@ final class StoreKitService: ObservableObject {
         // credited. This is the channel that catches refunds invisible to
         // the other two streams (gap-of-time refunds, and SKTest events).
         for await update in Transaction.all {
+            #if DEBUG
+            allCount += 1
+            #endif
             guard let transaction = try? Self.checkVerified(update) else { continue }
             // Only revisit transactions we've already credited — otherwise
             // we'd re-grant the same one twice (the grant path lives in
             // the two streams above).
             guard processed.contains(transaction.id) else { continue }
+            #if DEBUG
+            allCheckedCount += 1
+            #endif
             await checkRevocation(for: transaction)
         }
+        #if DEBUG
+        print("[StoreKit] drainPending: unfinished=\(unfinishedCount) " +
+              "currentEntitlements=\(currentCount) " +
+              "all=\(allCount) (of which \(allCheckedCount) matched processed-set)")
+        #endif
     }
 
     /// Apple-refunded transaction → claw the credit back from the wallet.
@@ -164,20 +184,45 @@ final class StoreKitService: ObservableObject {
     var onRevoke: ((Double) -> Void)?
 
     private func checkRevocation(for transaction: Transaction) async {
+        #if DEBUG
+        print("[StoreKit] checkRevocation tx=\(transaction.id) product=\(transaction.productID) " +
+              "revDate=\(transaction.revocationDate.map(String.init(describing:)) ?? "nil") " +
+              "revReason=\(transaction.revocationReason.map(String.init(describing:)) ?? "nil")")
+        #endif
         // `revocationDate` is the canonical refund signal in production. In
         // SKTest, refundTransaction() sets `revocationReason` but leaves
         // `revocationDate` nil, so we accept either signal — the result is
         // identical (we clawback once per transaction id, idempotently).
-        guard transaction.revocationDate != nil || transaction.revocationReason != nil else { return }
+        guard transaction.revocationDate != nil || transaction.revocationReason != nil else {
+            #if DEBUG
+            print("[StoreKit]   → skip: no revocation signal on tx=\(transaction.id)")
+            #endif
+            return
+        }
         let revKey = "rev-\(transaction.id)"
         let revokedKey = "storekit.revokedTransactionIDs.v1"
         let raw = UserDefaults.standard.array(forKey: revokedKey) as? [String] ?? []
         var revoked = Set(raw)
-        guard !revoked.contains(revKey) else { return }
+        guard !revoked.contains(revKey) else {
+            #if DEBUG
+            print("[StoreKit]   → skip: tx=\(transaction.id) already in revoked-set " +
+                  "(UserDefaults persists between test runs — clear in setUp if needed)")
+            #endif
+            return
+        }
         revoked.insert(revKey)
         UserDefaults.standard.set(Array(revoked), forKey: revokedKey)
         let credit = Self.credit(for: transaction.productID)
-        guard credit > 0 else { return }
+        guard credit > 0 else {
+            #if DEBUG
+            print("[StoreKit]   → skip: credit=\(credit) for product=\(transaction.productID)")
+            #endif
+            return
+        }
+        #if DEBUG
+        print("[StoreKit]   → revoking $\(credit) for tx=\(transaction.id); " +
+              "onRevoke is \(onRevoke == nil ? "nil — wallet WILL NOT decrement" : "set")")
+        #endif
         onRevoke?(credit)
     }
 
@@ -218,6 +263,9 @@ final class StoreKitService: ObservableObject {
                 // wrap was fire-and-forget — finish() raced ahead and the
                 // transaction could disappear from `Transaction.unfinished`
                 // before the wallet had been credited.
+                #if DEBUG
+                print("[StoreKit] listener received update tx=\(transaction.id) product=\(transaction.productID)")
+                #endif
                 await self.grant(for: transaction)
                 // Refunds arrive HERE — Apple emits a Transaction.updates
                 // event when a refund is processed. Without this clawback
@@ -268,11 +316,15 @@ final class StoreKitService: ObservableObject {
     /// `drainPending` (unfinished + currentEntitlements + Transaction.all).
     /// Restarts the listener before returning.
     func drainPendingForTesting(timeout: TimeInterval = 2.0) async {
+        print("[StoreKit] drainPendingForTesting begin — listener cancelled, draining updates for \(timeout)s")
         updates?.cancel()
         updates = nil
+        var updateCount = 0
         let drain = Task<Void, Never> {
             for await update in Transaction.updates {
                 guard let transaction = try? Self.checkVerified(update) else { continue }
+                updateCount += 1
+                print("[StoreKit] test-drainer received update #\(updateCount) tx=\(transaction.id)")
                 await self.grant(for: transaction)
                 await self.checkRevocation(for: transaction)
                 await transaction.finish()
@@ -281,10 +333,12 @@ final class StoreKitService: ObservableObject {
         }
         try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
         drain.cancel()
+        print("[StoreKit] test-drainer timed out after \(updateCount) update(s); running full drainPending")
         // Full drain — covers anything the updates iterator missed
         // (refunds arriving via Transaction.all, gap-of-time events).
         await drainPending()
         updates = listenForTransactions()
+        print("[StoreKit] drainPendingForTesting end — listener restarted")
     }
     #endif
 }
