@@ -315,6 +315,48 @@ final class StoreKitService: ObservableObject {
     /// site with an inactivity timeout, then walks the full
     /// `drainPending` (unfinished + currentEntitlements + Transaction.all).
     /// Restarts the listener before returning.
+    /// Test-only bridge for refund clawback. SKTestSession's
+    /// refundTransaction() removes the consumable transaction from
+    /// every StoreKit async sequence — it vanishes from Transaction.all,
+    /// .currentEntitlements, .unfinished, AND no .updates event fires.
+    /// There is no on-device way to detect the refund.
+    ///
+    /// In PRODUCTION, refund detection for consumables is server-side:
+    /// Apple emits an App Store Server Notification V2 to the operator's
+    /// webhook endpoint (REFUND notificationType). The server then tells
+    /// the client to claw the credit back (via push, or on next request).
+    /// The Transaction.updates path the listener watches handles
+    /// non-consumable refunds and subscription state changes — but for
+    /// consumables, server notifications are the canonical channel.
+    ///
+    /// This method simulates what the server-notification handler would
+    /// trigger client-side. Tests call it AFTER SKTestSession.
+    /// refundTransaction() with the refunded transaction's id +
+    /// product id (readable from SKTestSession.allTransactions()) and
+    /// verify the wallet decrements. Same dedup + onRevoke path as the
+    /// production listener — the only thing simulated is the discovery
+    /// of the refund.
+    func simulateRefundForTesting(transactionID: UInt64, productID: String) {
+        print("[StoreKit] simulateRefundForTesting tx=\(transactionID) product=\(productID)")
+        let revKey = "rev-\(transactionID)"
+        let revokedKey = "storekit.revokedTransactionIDs.v1"
+        let raw = UserDefaults.standard.array(forKey: revokedKey) as? [String] ?? []
+        var revoked = Set(raw)
+        guard !revoked.contains(revKey) else {
+            print("[StoreKit]   → skip: already revoked (clear UserDefaults in setUp)")
+            return
+        }
+        revoked.insert(revKey)
+        UserDefaults.standard.set(Array(revoked), forKey: revokedKey)
+        let credit = Self.credit(for: productID)
+        guard credit > 0 else {
+            print("[StoreKit]   → skip: unknown product \(productID)")
+            return
+        }
+        print("[StoreKit]   → revoking $\(credit); onRevoke is \(onRevoke == nil ? "nil" : "set")")
+        onRevoke?(credit)
+    }
+
     func drainPendingForTesting(timeout: TimeInterval = 2.0) async {
         print("[StoreKit] drainPendingForTesting begin — listener cancelled, draining updates for \(timeout)s")
         updates?.cancel()
