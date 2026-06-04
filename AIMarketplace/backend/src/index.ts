@@ -90,6 +90,14 @@ interface Env {
   // the app" page rather than a 404, and the app's scenePhase observer
   // refreshes payout status when they switch back.
   PAYOUT_RETURN_BASE?: string;
+  // The app's bundle id, used to reject ASSN V2 notifications for other apps
+  // that somehow hit our webhook (Apple posts to a per-app URL but this is a
+  // belt-and-braces check). Defaults below if unset.
+  APP_BUNDLE_ID?: string;
+  // Optional override of the Apple Root CA fingerprint we pin (SHA-256 hex
+  // of the DER bytes). Constant unless Apple rotates roots; left as an env
+  // override so the operator can update without redeploying code.
+  APPLE_ROOT_CA_SHA256?: string;
   KV?: KVNamespace; // KV namespace used for spend tracking + account map
 }
 
@@ -1166,6 +1174,264 @@ async function handleValidateReceipt(request: Request, env: Env): Promise<Respon
   }
 }
 
+// ── App Store Server Notifications V2 ───────────────────────────────────────
+//
+// When Apple processes a consumable refund (and a few other lifecycle events
+// we care less about), it POSTs a signed payload to our webhook. The client
+// can never see this — consumables disappear from every on-device StoreKit
+// sequence the moment they're refunded — so server-side ingest is the only
+// path to keep the wallet honest.
+//
+// Payload shape:
+//   {"signedPayload": "<JWS, header.payload.signature>"}
+// The header carries an x5c cert chain. We:
+//   1. Pin Apple's Root CA G3 by SHA-256 — the LAST cert in x5c must match.
+//   2. Verify the JWS signature using the leaf cert's EC public key.
+//   3. Decode the payload, decode its nested signedTransactionInfo (also JWS),
+//      and route by notificationType.
+//
+// REFUND / REFUND_REVERSED notifications get queued under the buyer's
+// `appAccountToken` (a per-user UUID the client supplies on every purchase
+// via `Product.PurchaseOption.appAccountToken(_:)`). The client polls
+// /refunds/pending on launch + foreground and acks via /refunds/ack.
+
+/// SHA-256 fingerprint (hex) of Apple Root CA - G3 DER. Constant unless
+/// Apple rotates the root; pinned because we don't ship a full chain
+/// validator. If Apple rotates, set APPLE_ROOT_CA_SHA256 in env to override.
+const APPLE_ROOT_CA_G3_SHA256 =
+  "63343abfb89a6a03ebb57e9b3f5fa7be7c4f5c756f3017b3a8c488c3653e9179";
+
+/// Minimum-viable ASN.1 DER reader — enough to extract the SPKI public key
+/// bytes from an X.509 leaf certificate. Throws on malformed input.
+function asn1ReadLength(buf: Uint8Array, offset: number): { length: number; headerLen: number } {
+  const first = buf[offset];
+  if ((first & 0x80) === 0) return { length: first, headerLen: 1 };
+  const n = first & 0x7f;
+  let length = 0;
+  for (let i = 0; i < n; i++) length = (length << 8) | buf[offset + 1 + i];
+  return { length, headerLen: 1 + n };
+}
+function asn1SkipTLV(buf: Uint8Array, offset: number): number {
+  const lenInfo = asn1ReadLength(buf, offset + 1);
+  return offset + 1 + lenInfo.headerLen + lenInfo.length;
+}
+function asn1ReadSequence(buf: Uint8Array, offset: number): { contentStart: number; contentEnd: number } {
+  if (buf[offset] !== 0x30) throw new Error("expected SEQUENCE at offset " + offset);
+  const lenInfo = asn1ReadLength(buf, offset + 1);
+  const contentStart = offset + 1 + lenInfo.headerLen;
+  return { contentStart, contentEnd: contentStart + lenInfo.length };
+}
+
+/// Extract the uncompressed EC P-256 public key (0x04 || X || Y) from an
+/// X.509 DER cert. The structure is: Certificate { TBSCertificate {
+/// [version?], serial, sigAlgo, issuer, validity, subject, SPKI } }.
+function extractECPublicKey(der: Uint8Array): Uint8Array {
+  const cert = asn1ReadSequence(der, 0);
+  const tbs = asn1ReadSequence(der, cert.contentStart);
+  let pos = tbs.contentStart;
+  if (der[pos] === 0xa0) pos = asn1SkipTLV(der, pos); // [0] EXPLICIT version
+  pos = asn1SkipTLV(der, pos); // serialNumber
+  pos = asn1SkipTLV(der, pos); // signature AlgorithmIdentifier
+  pos = asn1SkipTLV(der, pos); // issuer Name
+  pos = asn1SkipTLV(der, pos); // validity
+  pos = asn1SkipTLV(der, pos); // subject Name
+  const spki = asn1ReadSequence(der, pos);
+  let spkiPos = spki.contentStart;
+  spkiPos = asn1SkipTLV(der, spkiPos); // AlgorithmIdentifier
+  if (der[spkiPos] !== 0x03) throw new Error("expected BIT STRING for subjectPublicKey");
+  const bitLen = asn1ReadLength(der, spkiPos + 1);
+  // First byte of BIT STRING content is "unused bits" (always 0 for EC).
+  const keyStart = spkiPos + 1 + bitLen.headerLen + 1;
+  const keyEnd = spkiPos + 1 + bitLen.headerLen + bitLen.length;
+  return der.slice(keyStart, keyEnd);
+}
+
+function b64urlDecode(s: string): Uint8Array {
+  const padded = s.replace(/-/g, "+").replace(/_/g, "/")
+    + "=".repeat((4 - (s.length % 4)) % 4);
+  const bin = atob(padded);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf;
+}
+function b64DecodeToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf;
+}
+function bytesToHex(buf: ArrayBuffer | Uint8Array): string {
+  const arr = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+/// Verify and decode an Apple-signed JWS. Returns the decoded payload on
+/// success, throws on any verification failure. Caller decides whether to
+/// log + return 200 (default) or 401.
+async function verifyAppleJWS(jws: string, env: Env): Promise<any> {
+  const parts = jws.split(".");
+  if (parts.length !== 3) throw new Error("malformed JWS");
+  const header = JSON.parse(new TextDecoder().decode(b64urlDecode(parts[0])));
+  if (header.alg !== "ES256") throw new Error("unexpected alg: " + header.alg);
+  if (!header.x5c || !Array.isArray(header.x5c) || header.x5c.length < 2) {
+    throw new Error("missing x5c chain");
+  }
+  // Pin to Apple Root CA G3 — the LAST cert in x5c is the root.
+  const rootDer = b64DecodeToBytes(header.x5c[header.x5c.length - 1]);
+  const rootHash = await crypto.subtle.digest("SHA-256", rootDer);
+  const expected = (env.APPLE_ROOT_CA_SHA256 || APPLE_ROOT_CA_G3_SHA256).toLowerCase();
+  if (bytesToHex(rootHash) !== expected) {
+    throw new Error("x5c root does not match pinned Apple Root CA");
+  }
+  // Verify signature using the leaf cert's public key.
+  const leafDer = b64DecodeToBytes(header.x5c[0]);
+  const rawPubKey = extractECPublicKey(leafDer);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    rawPubKey,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["verify"],
+  );
+  const signature = b64urlDecode(parts[2]);
+  const data = new TextEncoder().encode(parts[0] + "." + parts[1]);
+  const valid = await crypto.subtle.verify(
+    { name: "ECDSA", hash: { name: "SHA-256" } },
+    key,
+    signature,
+    data,
+  );
+  if (!valid) throw new Error("JWS signature invalid");
+  return JSON.parse(new TextDecoder().decode(b64urlDecode(parts[1])));
+}
+
+/// POST /webhooks/app-store-server — Apple posts here on every consumable
+/// refund (and other transaction lifecycle events). We verify, then queue
+/// refunds for the buyer to drain on next /refunds/pending poll.
+async function handleAppStoreNotification(request: Request, env: Env): Promise<Response> {
+  let body: { signedPayload?: string };
+  try { body = await request.json() as any; }
+  catch { return error("malformed body", 400); }
+  if (!body.signedPayload) return error("signedPayload required", 400);
+
+  let payload: any;
+  try {
+    payload = await verifyAppleJWS(body.signedPayload, env);
+  } catch (e: any) {
+    // Return 200 so Apple stops retrying a forgery. Log so the operator
+    // sees if their pinning needs an update (e.g., Apple rotated root).
+    console.error("[ASSN] verify failed:", e?.message ?? e);
+    await recordLedger(env, {
+      type: "app_store_notification_rejected", status: "failed",
+      amountCents: 0, currency: "n/a", scope: "platform", stripeId: "",
+      note: `Apple notification rejected: ${e?.message ?? e}`,
+    });
+    return json({ ok: false, reason: "verification failed" }, 200);
+  }
+
+  const notificationType = payload.notificationType as string | undefined;
+  const subtype = payload.subtype as string | undefined;
+  const txInfoJWS = payload.data?.signedTransactionInfo as string | undefined;
+  if (!txInfoJWS) {
+    // Some notification types lack transaction info (e.g., TEST). Ack quietly.
+    return json({ ok: true, notificationType, noTxInfo: true });
+  }
+  let txInfo: any;
+  try { txInfo = await verifyAppleJWS(txInfoJWS, env); }
+  catch (e: any) {
+    console.error("[ASSN] nested tx-info verify failed:", e?.message ?? e);
+    return json({ ok: false, reason: "tx-info verification failed" }, 200);
+  }
+
+  const expectedBundle = env.APP_BUNDLE_ID || "com.aimarketplace.app";
+  if (txInfo.bundleId && txInfo.bundleId !== expectedBundle) {
+    console.error("[ASSN] bundleId mismatch:", txInfo.bundleId, "expected", expectedBundle);
+    return json({ ok: false, reason: "bundle mismatch" }, 200);
+  }
+
+  if (notificationType === "REFUND") {
+    await queueRefund(env, txInfo, "refunded");
+  } else if (notificationType === "REFUND_REVERSED") {
+    // Apple reversed a refund (rare — usually fraud claim retracted). The
+    // credit should be RESTORED; we surface this as a separate queue type.
+    await queueRefund(env, txInfo, "refund_reversed");
+  }
+  // Ledger every notification so the operator can audit what Apple sent.
+  await recordLedger(env, {
+    type: "app_store_notification", status: "succeeded",
+    amountCents: 0, currency: "n/a", scope: "platform",
+    stripeId: String(txInfo.transactionId ?? ""),
+    note: `${notificationType}${subtype ? "/" + subtype : ""} product=${txInfo.productId} tx=${txInfo.transactionId}`,
+  });
+  return json({ ok: true, notificationType });
+}
+
+/// Persist a refund event under the buyer's appAccountToken so the client
+/// can drain it on next poll. Key shape:
+///   `refund-queue:<appAccountToken>` → JSON array of pending entries.
+/// Without an appAccountToken on the tx (legacy purchases before we wired
+/// it client-side), we fall back to a global `unattributed` bucket the
+/// operator can hand-resolve.
+async function queueRefund(env: Env, txInfo: any, kind: "refunded" | "refund_reversed"): Promise<void> {
+  if (!env.KV) {
+    console.error("[ASSN] cannot queue refund — KV not bound");
+    return;
+  }
+  const token = (txInfo.appAccountToken as string | undefined)?.toLowerCase() || "unattributed";
+  const key = `refund-queue:${token}`;
+  const existing = await env.KV.get(key);
+  const queue: any[] = existing ? JSON.parse(existing) : [];
+  // Dedup by transaction id — Apple retries notifications.
+  if (queue.some((e: any) => e.transactionId === txInfo.transactionId && e.kind === kind)) return;
+  queue.push({
+    kind,
+    transactionId: String(txInfo.transactionId ?? ""),
+    originalTransactionId: String(txInfo.originalTransactionId ?? ""),
+    productId: String(txInfo.productId ?? ""),
+    revocationDate: txInfo.revocationDate,
+    revocationReason: txInfo.revocationReason,
+    receivedAt: new Date().toISOString(),
+  });
+  // 90-day TTL — Apple stops retrying long before this, and the client
+  // should have polled by then.
+  await env.KV.put(key, JSON.stringify(queue), { expirationTtl: 60 * 60 * 24 * 90 });
+}
+
+/// GET /refunds/pending?app_account_token=<uuid> — returns queued refund
+/// entries the client hasn't acked. Empty array if none. Auth-required.
+async function handlePendingRefunds(request: Request, env: Env): Promise<Response> {
+  if (!env.KV) return json({ refunds: [], note: "KV not bound" });
+  const url = new URL(request.url);
+  const token = url.searchParams.get("app_account_token")?.toLowerCase();
+  if (!token) return error("app_account_token required");
+  const raw = await env.KV.get(`refund-queue:${token}`);
+  const refunds = raw ? JSON.parse(raw) : [];
+  return json({ refunds });
+}
+
+/// POST /refunds/ack — body: { app_account_token, transaction_ids: [...] }
+/// Removes the given transaction ids from the queue. Idempotent. Auth-required.
+async function handleAckRefunds(request: Request, env: Env): Promise<Response> {
+  if (!env.KV) return error("KV not bound", 503);
+  const body = await request.json() as { app_account_token?: string; transaction_ids?: string[] };
+  const token = body.app_account_token?.toLowerCase();
+  if (!token) return error("app_account_token required");
+  const ids = new Set((body.transaction_ids ?? []).map(String));
+  if (ids.size === 0) return json({ ok: true, removed: 0 });
+  const key = `refund-queue:${token}`;
+  const existing = await env.KV.get(key);
+  if (!existing) return json({ ok: true, removed: 0 });
+  const queue: any[] = JSON.parse(existing);
+  const before = queue.length;
+  const kept = queue.filter((e: any) => !ids.has(String(e.transactionId)));
+  if (kept.length === 0) {
+    await env.KV.delete(key);
+  } else if (kept.length !== before) {
+    await env.KV.put(key, JSON.stringify(kept), { expirationTtl: 60 * 60 * 24 * 90 });
+  }
+  return json({ ok: true, removed: before - kept.length });
+}
+
 async function handleReport(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as {
     item_id?: string; item_title?: string; creator_name?: string;
@@ -1810,6 +2076,11 @@ export default {
     if (path === "/payouts/webhook" && method === "POST") {
       return handleWebhook(request, env);
     }
+    // Apple ASSN V2 webhook — no auth (Apple signs the JWS; we pin the
+    // root CA + verify the signature inside the handler).
+    if (path === "/webhooks/app-store-server" && method === "POST") {
+      return handleAppStoreNotification(request, env);
+    }
 
     // Public bounce pages from Stripe-hosted onboarding — no auth (Stripe
     // redirects creators here in Safari; they have no Authorization header).
@@ -1949,6 +2220,12 @@ export default {
       // creates a NEW Stripe account instead of returning the rejected one
       // from Stripe's idempotency cache. Used when an applicant was
       // declined and needs to try again with a clean slate.
+      if (path === "/refunds/pending" && method === "GET") {
+        return await handlePendingRefunds(request, env);
+      }
+      if (path === "/refunds/ack" && method === "POST") {
+        return await handleAckRefunds(request, env);
+      }
       if (path === "/accounts/release-email" && method === "POST") {
         return await handleReleaseEmail(request, env);
       }

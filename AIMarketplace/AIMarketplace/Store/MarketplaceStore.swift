@@ -21,6 +21,13 @@ final class MarketplaceStore: ObservableObject {
     /// session. See DEMO_MODE.md for the credentials.
     @Published var demoMode: Bool = false { didSet { persist() } }
     @Published var isRegistered: Bool = false { didSet { persist() } }
+    /// Stable per-user UUID attached to every IAP via
+    /// Product.PurchaseOption.appAccountToken. Apple echoes it back in App
+    /// Store Server Notifications, which lets the Worker's refund webhook
+    /// route REFUND events to this specific buyer without keeping a
+    /// server-side map of every transaction id. Generated lazily — once
+    /// per device-account — and persisted so it survives launches.
+    @Published var appAccountToken: UUID? = nil { didSet { persist() } }
 
     // Marketplace
     @Published private(set) var catalog: [MediaItem]
@@ -338,6 +345,7 @@ final class MarketplaceStore: ObservableObject {
         var watchlistIDs: [UUID]
         var submissions: [Submission]
         var publishedItems: [MediaItem]
+        var appAccountToken: UUID?
 
         init(accountName: String, accountEmail: String, isRegistered: Bool, demoMode: Bool,
              walletBalance: Double, creatorEarnings: Double, aiAutopilotEnabled: Bool,
@@ -349,7 +357,8 @@ final class MarketplaceStore: ObservableObject {
              scoutDrops: [MediaItem], scoutLog: [ScoutEntry], lastScoutRun: Date?,
              scoutFilmCreationEnabled: Bool, scoutFilmBudgetUSD: Double,
              isAdmin: Bool, adminAdded: [MediaItem], adminEdits: [UUID: MediaItem], adminDeleted: [UUID],
-             libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem]) {
+             libraryIDs: [UUID], watchlistIDs: [UUID], submissions: [Submission], publishedItems: [MediaItem],
+             appAccountToken: UUID?) {
             self.accountName = accountName
             self.accountEmail = accountEmail
             self.isRegistered = isRegistered
@@ -382,6 +391,7 @@ final class MarketplaceStore: ObservableObject {
             self.watchlistIDs = watchlistIDs
             self.submissions = submissions
             self.publishedItems = publishedItems
+            self.appAccountToken = appAccountToken
         }
 
         /// Tolerant decoding: new fields default instead of failing the whole
@@ -420,6 +430,7 @@ final class MarketplaceStore: ObservableObject {
             watchlistIDs = try c.decodeIfPresent([UUID].self, forKey: .watchlistIDs) ?? []
             submissions = try c.decodeIfPresent([Submission].self, forKey: .submissions) ?? []
             publishedItems = try c.decodeIfPresent([MediaItem].self, forKey: .publishedItems) ?? []
+            appAccountToken = try c.decodeIfPresent(UUID.self, forKey: .appAccountToken)
         }
     }
 
@@ -457,6 +468,7 @@ final class MarketplaceStore: ObservableObject {
         libraryIDs = Set(state.libraryIDs)
         watchlistIDs = Set(state.watchlistIDs)
         submissions = state.submissions
+        appAccountToken = state.appAccountToken
         // Sweep + force a persist so a "stuck in review" row from a previous
         // session is actually written to disk as rejected. Without
         // forcePersist the rejection lives in memory only and the next
@@ -542,7 +554,8 @@ final class MarketplaceStore: ObservableObject {
             libraryIDs: Array(libraryIDs),
             watchlistIDs: Array(watchlistIDs),
             submissions: submissions,
-            publishedItems: publishedItems
+            publishedItems: publishedItems,
+            appAccountToken: appAccountToken
         )
         archive.save(state)
     }
@@ -1132,6 +1145,86 @@ final class MarketplaceStore: ObservableObject {
         } catch {
             return []
         }
+    }
+
+    /// Ensures we have an `appAccountToken` ready to attach to the next IAP.
+    /// One-time generation per device-account, persisted via didSet.
+    func ensureAppAccountToken() -> UUID {
+        if let existing = appAccountToken { return existing }
+        let token = UUID()
+        appAccountToken = token
+        return token
+    }
+
+    /// Pulls any pending refund events the Worker has queued for this buyer
+    /// (Apple → App Store Server Notification V2 → Worker → here) and applies
+    /// each one as a wallet clawback. Calls /refunds/ack so each refund is
+    /// processed exactly once. Safe to call repeatedly — no token, no
+    /// network, or empty queue = no-op.
+    ///
+    /// Wallet effect mirrors the StoreKit-revocation path: floored at 0,
+    /// plus a "Refund processed" notification so the user knows why their
+    /// balance moved. REFUND_REVERSED restores the credit (Apple rare-cased
+    /// when a fraud claim is retracted).
+    func refreshPendingRefunds() async {
+        guard let token = appAccountToken,
+              !payoutBaseURL.isEmpty,
+              !payoutSharedSecret.isEmpty,
+              var components = URLComponents(string: "\(payoutBaseURL)/refunds/pending") else {
+            return
+        }
+        components.queryItems = [URLQueryItem(name: "app_account_token", value: token.uuidString.lowercased())]
+        guard let url = components.url else { return }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let refunds = json["refunds"] as? [[String: Any]],
+              !refunds.isEmpty else { return }
+        var ackedIDs: [String] = []
+        for entry in refunds {
+            let kind = (entry["kind"] as? String) ?? "refunded"
+            let productID = (entry["productId"] as? String) ?? ""
+            let txID = (entry["transactionId"] as? String) ?? ""
+            let credit = StoreKitService.credit(for: productID)
+            guard credit > 0, !txID.isEmpty else { continue }
+            switch kind {
+            case "refunded":
+                let before = walletBalance
+                walletBalance = max(0, walletBalance - credit)
+                let actuallyClawed = before - walletBalance
+                if actuallyClawed > 0 {
+                    notify(title: "Refund processed",
+                           body: String(format: "Apple refunded $%.2f of wallet credit.", actuallyClawed),
+                           kind: .system)
+                }
+            case "refund_reversed":
+                // Apple retracted the refund — restore the credit.
+                walletBalance += credit
+                notify(title: "Refund reversed",
+                       body: String(format: "Apple restored $%.2f of wallet credit.", credit),
+                       kind: .system)
+            default:
+                break
+            }
+            ackedIDs.append(txID)
+        }
+        await ackRefunds(transactionIDs: ackedIDs, token: token)
+    }
+
+    private func ackRefunds(transactionIDs: [String], token: UUID) async {
+        guard !transactionIDs.isEmpty,
+              let url = URL(string: "\(payoutBaseURL)/refunds/ack") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "app_account_token": token.uuidString.lowercased(),
+            "transaction_ids": transactionIDs,
+        ])
+        _ = try? await URLSession.shared.data(for: request)
     }
 
     /// Credits the creator's withdrawable balance (called on each of their sales

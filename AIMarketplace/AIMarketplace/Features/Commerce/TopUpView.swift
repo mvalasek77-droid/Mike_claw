@@ -69,7 +69,11 @@ struct TopUpView: View {
             purchasing = product.id
             statusMessage = nil
             Task {
-                let outcome = await storeKit.purchase(product)
+                // Attach the buyer's stable UUID so Apple includes it in the
+                // App Store Server Notification — the Worker uses it to
+                // route REFUND events back to this user's wallet.
+                let token = store.ensureAppAccountToken()
+                let outcome = await storeKit.purchase(product, appAccountToken: token)
                 switch outcome {
                 case .success:
                     Haptics.success()

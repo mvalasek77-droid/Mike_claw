@@ -72,10 +72,19 @@ final class StoreKitService: ObservableObject {
     /// Purchases a credit pack. The credit is granted via the transaction
     /// listener (single path) so we can't double-credit. Returns true on a
     /// successful, verified purchase; false on user-cancel; nil on pending.
+    ///
+    /// `appAccountToken` attaches a per-user UUID to the transaction. Apple
+    /// includes it in App Store Server Notifications, which lets the
+    /// operator's webhook route refund events back to the correct buyer
+    /// without storing a server-side map of every transaction id.
     @discardableResult
-    func purchase(_ product: Product) async -> PurchaseOutcome {
+    func purchase(_ product: Product, appAccountToken: UUID? = nil) async -> PurchaseOutcome {
         do {
-            let result = try await product.purchase()
+            var options: Set<Product.PurchaseOption> = []
+            if let token = appAccountToken {
+                options.insert(.appAccountToken(token))
+            }
+            let result = try await product.purchase(options: options)
             switch result {
             case .success(let verification):
                 let transaction = try Self.checkVerified(verification)

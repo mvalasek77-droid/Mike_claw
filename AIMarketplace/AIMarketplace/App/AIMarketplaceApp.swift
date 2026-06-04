@@ -80,6 +80,9 @@ struct RootView: View {
             // calls are no-ops. Notifications fire from MarketplaceStore on
             // sale / payout / review-done / Scout-published / report-resolved.
             Task { await LocalNotificationService.shared.requestAuthorizationIfNeeded() }
+            // Drain any refund events queued by Apple while the app was
+            // closed — consumable refunds only surface server-side.
+            if store.isRegistered { Task { await store.refreshPendingRefunds() } }
         }
         // When the creator returns from Stripe onboarding in Safari, the app
         // foregrounds — pull fresh payout status so the UI reflects completion.
@@ -90,6 +93,10 @@ struct RootView: View {
                 // so anything older than the cutoff is genuinely orphaned.
                 store.sweepInterruptedReviews(forcePersist: true)
                 Task { await store.refreshPayoutStatus() }
+                // Apple delivers consumable refunds via ASSN V2 (server →
+                // Worker → here). Drain any queued events on every
+                // foreground so the wallet stays honest.
+                Task { await store.refreshPendingRefunds() }
             }
         }
     }
