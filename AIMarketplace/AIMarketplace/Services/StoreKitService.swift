@@ -282,7 +282,7 @@ final class StoreKitService: ObservableObject {
                 await self.checkRevocation(for: transaction)
                 await transaction.finish()
                 #if DEBUG
-                self.didProcessUpdateForTesting?(transaction)
+                await MainActor.run { self.didProcessUpdateForTesting?(transaction) }
                 #endif
             }
         }
@@ -401,7 +401,7 @@ final class StoreKitService: ObservableObject {
                 await self.grant(for: transaction)
                 await self.checkRevocation(for: transaction)
                 await transaction.finish()
-                self.didProcessUpdateForTesting?(transaction)
+                await MainActor.run { self.didProcessUpdateForTesting?(transaction) }
             }
         }
         try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
