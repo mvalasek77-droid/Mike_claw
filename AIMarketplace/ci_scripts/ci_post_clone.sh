@@ -23,7 +23,7 @@ echo "Working dir: $(pwd)"
 # Sanity: confirm the optional secrets file is absent. If a future
 # operator wires it up via Xcode Cloud env vars they can add a step
 # here to materialize Secrets.xcconfig from secrets before the build.
-if [ -f "../AIMarketplace/Config/Secrets.xcconfig" ]; then
+if [ -f "AIMarketplace/Config/Secrets.xcconfig" ]; then
   echo "Secrets.xcconfig: present"
 else
   echo "Secrets.xcconfig: absent (defaults to empty; admin configures at runtime)"
