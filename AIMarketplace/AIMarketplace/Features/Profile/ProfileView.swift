@@ -52,6 +52,7 @@ struct ProfileView: View {
                     if !store.liveTitles.isEmpty { liveTitlesCard }
                     legalCard
                     aboutCard
+                    helpCard
                     accountCard
                 }
                 .screenPadding()
@@ -305,6 +306,59 @@ struct ProfileView: View {
                 aboutRow("Apple takes its App Store commission; of the net you keep 85% and AI Marketplace keeps 15%.")
             }
         }
+    }
+
+    /// Bug-report entry. Opens the user's Mail app with a mailto: pre-filled
+    /// to the operator with device + app context already in the body — so the
+    /// reporter only has to write the "what happened" line. Uses URLComponents
+    /// to encode the body safely (newlines, ampersands, etc).
+    private var helpCard: some View {
+        GlassCard(title: "Help & feedback", icon: "exclamationmark.bubble.fill", tint: Theme.warning) {
+            VStack(spacing: 0) {
+                row("Report a bug", "ladybug.fill") { reportBug() }
+                divider
+                HStack(spacing: 10) {
+                    Image(systemName: "envelope.fill").font(.system(size: 14)).foregroundStyle(Theme.inkSoft)
+                    Text("Opens Mail with device & app context already filled in — just add what happened.")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 10)
+            }
+        }
+    }
+
+    private func reportBug() {
+        let appVersion = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "?"
+        let buildNumber = (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? "?"
+        let iosVersion = UIDevice.current.systemVersion
+        let device = UIDevice.current.model
+        let body = """
+
+
+        ——— diagnostics ———
+        App: \(appVersion) (\(buildNumber))
+        iOS: \(iosVersion) on \(device)
+        Account: \(store.accountName.isEmpty ? "(unregistered)" : store.accountName)
+        Email: \(store.accountEmail.isEmpty ? "(none)" : store.accountEmail)
+        Demo mode: \(store.demoMode ? "on" : "off")
+        Payouts connected: \(store.payoutConnected ? "yes" : "no")
+        Wallet: $\(String(format: "%.2f", store.walletBalance))
+        Pending payout: $\(String(format: "%.2f", store.pendingPayoutUSD))
+        """
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = "mvalasek77@gmail.com"
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: "AI Marketplace bug report"),
+            URLQueryItem(name: "body", value: body),
+        ]
+        // mailto: requires `+` to be percent-encoded; URLComponents emits `+`
+        // for spaces by default, which Mail.app misreads. Force-encode it.
+        components.percentEncodedQuery = components.percentEncodedQuery?
+            .replacingOccurrences(of: "+", with: "%2B")
+        guard let url = components.url else { return }
+        UIApplication.shared.open(url)
     }
 
     private func row(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
