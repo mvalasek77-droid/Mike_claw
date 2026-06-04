@@ -40,54 +40,13 @@ targets:
       - path: AIMarketplaceTests
         excludes:
           - "README.md"
+      - path: Products.storekit
     dependencies:
       - target: AIMarketplace
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.valasek.aimarketplace.tests
-    info:
-      path: AIMarketplace/Resources/Info.plist
-      properties:
-        CFBundleDisplayName: AI Marketplace
-        CFBundleName: AIMarketplace
-        CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "1"
-        ITSAppUsesNonExemptEncryption: false
-        LSApplicationCategoryType: public.app-category.entertainment
-        LSRequiresIPhoneOS: true
-        NSPhotoLibraryUsageDescription: Choose cover art for the books, music and films you publish.
-        UIBackgroundModes:
-          - audio
-        UILaunchScreen:
-          UIColorName: AccentColor
-        UIStatusBarStyle: UIStatusBarStyleLightContent
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-        UISupportedInterfaceOrientations~ipad:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationPortraitUpsideDown
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
-        UIUserInterfaceStyle: Dark
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.aimarketplace
-        PRODUCT_NAME: AIMarketplace
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        CODE_SIGN_ENTITLEMENTS: AIMarketplace/AIMarketplace.entitlements
-        CODE_SIGN_STYLE: Automatic
-        CURRENT_PROJECT_VERSION: "1"
-        MARKETING_VERSION: "1.0.0"
-        TARGETED_DEVICE_FAMILY: "1,2"
-      configs:
-        Debug:
-          DEBUG_INFORMATION_FORMAT: dwarf
-          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
-        Release:
-          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
-          SWIFT_COMPILATION_MODE: wholemodule
 
 schemes:
   AIMarketplace:
@@ -100,6 +59,7 @@ schemes:
       storeKitConfiguration: Products.storekit
     test:
       config: Debug
+      storeKitConfiguration: Products.storekit
       targets:
         - AIMarketplaceTests
     archive:

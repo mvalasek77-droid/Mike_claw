@@ -15,6 +15,7 @@
 		098F9FF4AF91EE45E038C6C6 /* PublishHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B7CE4AD22CD94508BC2D84D /* PublishHomeView.swift */; };
 		0ABC13FF4E0A69622A7CEEE8 /* ModerationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 098FE7715F5CE7432D82BB48 /* ModerationStore.swift */; };
 		0BAF482BC5B3938F272C592B /* curves-like-keisha.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 63CD6FE90EDD9C781A0657EC /* curves-like-keisha.mp3 */; };
+		1008E5ACE404D7685345497F /* Products.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A61B86A39AF6F8D377BE0EF2 /* Products.storekit */; };
 		11CE199D7A65F976D9CFA840 /* Commerce.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B553380A22F675D5DF13C3D /* Commerce.swift */; };
 		15080C8BBF7959C16CBFDD01 /* GeneratedCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8542EFB7AE1F41CF4210381 /* GeneratedCover.swift */; };
 		15CFB839E872570BEFB59213 /* RequestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F635111DE39A6C9F26809D52 /* RequestContentView.swift */; };
@@ -49,6 +50,7 @@
 		537E3D44D903C75CD2E59D96 /* ReviewPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5028C32CE971523EB524BD81 /* ReviewPipeline.swift */; };
 		57751C536CB17F1C224F02F9 /* Review.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08AD111F89DF6C341EBD25E /* Review.swift */; };
 		5813E726CF3259458DF161A9 /* AICoin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30FC2BA3161CF06260D7D983 /* AICoin.swift */; };
+		58B0B1C4EFA69DEED8773AE0 /* DemoStripeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8D191DA99F80EBFCA0C904 /* DemoStripeView.swift */; };
 		58F7E4998D8E4A6FCB11B2C4 /* ContentRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD36D1EAF916870BA955A8DE /* ContentRequest.swift */; };
 		5A2515EE5565944CD815A6F5 /* SubmissionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74EE8369D1227F08AC20A6DB /* SubmissionDetailView.swift */; };
 		5E0D8F80D1F1AA17F3F5A536 /* MediaDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E23E556B70E8FA8060A599 /* MediaDetailView.swift */; };
@@ -100,6 +102,7 @@
 		CEA21E39E7331CB6DE98F9D1 /* AIEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F83932BB37295EF16DEEB7AD /* AIEditor.swift */; };
 		D44424170F390E1B5EFA2B54 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA39F9D576CE07F705C8A606 /* PlayerView.swift */; };
 		D5B7C59DE248A66B8D15F6EF /* ScoreRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5FB11A2C87E588E80D1496 /* ScoreRing.swift */; };
+		D7A2CF30995DB7EBE67ABF62 /* StoreKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3172EB8E1ABFEE0BD592BF50 /* StoreKitTests.swift */; };
 		D9605FBABE6ECC0B10B8EAE2 /* AIStudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219CA9BDBAA479753D8CE053 /* AIStudio.swift */; };
 		E23E7DFA0EB10E5E41CCC771 /* epoch.jpg in Resources */ = {isa = PBXBuildFile; fileRef = D2442DFC8E1A5F8BAA4CC9E0 /* epoch.jpg */; };
 		E4503C8EC86F92CEDB49444F /* push-up-bra.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 623152A221F3EC034130BAA2 /* push-up-bra.jpg */; };
@@ -107,8 +110,6 @@
 		EB6ED7F38D4248C96F8D2522 /* sicking-that-thing.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3E96AB878B07A59830449A13 /* sicking-that-thing.mp3 */; };
 		EC092A396E6E6B89B647AF89 /* ScoutEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631D98886A2B189622F9E7E4 /* ScoutEntry.swift */; };
 		EEC36A315B0B1169C1FB84D8 /* AdminConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23251ABA154375A28A5EBC28 /* AdminConsoleView.swift */; };
-		A1B2C3D4E5F60718293A4B5C /* AdminLedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E2F3A4B5C6D7E8F9012345 /* AdminLedgerView.swift */; };
-		B2C3D4E5F60718293A4B5C6D /* DemoStripeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F3A4B5C6D7E8F901234567 /* DemoStripeView.swift */; };
 		F16769D6069B7477A6113B12 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91E48A97D2D3223E0C9073F6 /* SecureStore.swift */; };
 		F31B900D2C09AD59266C19B5 /* daisy-duck-delight-cover.html in Resources */ = {isa = PBXBuildFile; fileRef = 9BDC040397E2998EBD3FB790 /* daisy-duck-delight-cover.html */; };
 		F4255BA5AE862EE1E919FE56 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F131A8157362A8A08E048A24 /* Haptics.swift */; };
@@ -117,6 +118,7 @@
 		F69E6B3612A4F81473FD6E60 /* ContentFoundry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F33EDEC9097CEE09B8B5A6F /* ContentFoundry.swift */; };
 		F99C41B0C1239FDC4F51624C /* epoch-cover.html in Resources */ = {isa = PBXBuildFile; fileRef = D9961B33C97C379D0A2A5FCA /* epoch-cover.html */; };
 		FBD61A6202A76C2E9A8BC4F9 /* LocalNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B4CC68F33D6B3B1562A029 /* LocalNotificationService.swift */; };
+		FCF09EA6B5BC1E6A2480A61E /* AdminLedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98629F479EF243D3864F91CA /* AdminLedgerView.swift */; };
 		FE04E90A973B387BAB25A422 /* Media.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109E593A168D23A7F39F585E /* Media.swift */; };
 /* End PBXBuildFile section */
 
@@ -149,12 +151,11 @@
 		1E2DEE4CB02EB57739618D37 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		219CA9BDBAA479753D8CE053 /* AIStudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStudio.swift; sourceTree = "<group>"; };
 		23251ABA154375A28A5EBC28 /* AdminConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminConsoleView.swift; sourceTree = "<group>"; };
-		D1E2F3A4B5C6D7E8F9012345 /* AdminLedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminLedgerView.swift; sourceTree = "<group>"; };
-		E2F3A4B5C6D7E8F901234567 /* DemoStripeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoStripeView.swift; sourceTree = "<group>"; };
 		25935DBAD611CC418570B702 /* ScoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoutView.swift; sourceTree = "<group>"; };
 		2B7CE4AD22CD94508BC2D84D /* PublishHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublishHomeView.swift; sourceTree = "<group>"; };
 		2F33EDEC9097CEE09B8B5A6F /* ContentFoundry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentFoundry.swift; sourceTree = "<group>"; };
 		30FC2BA3161CF06260D7D983 /* AICoin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AICoin.swift; sourceTree = "<group>"; };
+		3172EB8E1ABFEE0BD592BF50 /* StoreKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitTests.swift; sourceTree = "<group>"; };
 		3183B7393C1BA778230A235E /* AVPlaybackModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVPlaybackModel.swift; sourceTree = "<group>"; };
 		342E8DAC372E34207D36DF43 /* PosterArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterArt.swift; sourceTree = "<group>"; };
 		358756C8BE6D023AC51630BF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -183,6 +184,7 @@
 		6584267254FAECA2AD95D815 /* AIMarketplaceTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AIMarketplaceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		65E0CA15D5AAA9CC48D8F198 /* eli-hayes-cover.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "eli-hayes-cover.html"; sourceTree = "<group>"; };
 		66ADD952E329CCC58DF425AB /* AdminEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminEditView.swift; sourceTree = "<group>"; };
+		6D8D191DA99F80EBFCA0C904 /* DemoStripeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoStripeView.swift; sourceTree = "<group>"; };
 		745CA8FC6CE48EABCC1F0E1B /* ContentAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentAnalysis.swift; sourceTree = "<group>"; };
 		74EE8369D1227F08AC20A6DB /* SubmissionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionDetailView.swift; sourceTree = "<group>"; };
 		7640525382962344E25DC33A /* SubmitWorkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmitWorkView.swift; sourceTree = "<group>"; };
@@ -200,12 +202,14 @@
 		91E48A97D2D3223E0C9073F6 /* SecureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStore.swift; sourceTree = "<group>"; };
 		932C8AB38C69EEFC80A39855 /* ScoutFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoutFeed.swift; sourceTree = "<group>"; };
 		93C1E6E154D685BBC73A8726 /* curves-like-keisha.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "curves-like-keisha.jpg"; sourceTree = "<group>"; };
+		98629F479EF243D3864F91CA /* AdminLedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminLedgerView.swift; sourceTree = "<group>"; };
 		98640894E586A01661A4DA13 /* the-echo-chambers.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "the-echo-chambers.jpg"; sourceTree = "<group>"; };
 		996098E06BDFE4C78164D406 /* PayoutConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayoutConfigView.swift; sourceTree = "<group>"; };
 		9BDC040397E2998EBD3FB790 /* daisy-duck-delight-cover.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "daisy-duck-delight-cover.html"; sourceTree = "<group>"; };
 		9C6D2D35C581B5DB83D7ECB4 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		9CCEDC2B782843226F2B1F2B /* AIReviewProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReviewProgressView.swift; sourceTree = "<group>"; };
 		A19012B1AB4D5207A577C68F /* BackendConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendConfig.swift; sourceTree = "<group>"; };
+		A61B86A39AF6F8D377BE0EF2 /* Products.storekit */ = {isa = PBXFileReference; path = Products.storekit; sourceTree = "<group>"; };
 		A9D5D9784F0131AF2A52762E /* MediaCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaCards.swift; sourceTree = "<group>"; };
 		AA39F9D576CE07F705C8A606 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		B08AD111F89DF6C341EBD25E /* Review.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Review.swift; sourceTree = "<group>"; };
@@ -304,6 +308,7 @@
 			children = (
 				7972372373A6CCE2494F1189 /* AIEditorTests.swift */,
 				EB2982A299BC8FAFF500A076 /* ContentAnalysisTests.swift */,
+				3172EB8E1ABFEE0BD592BF50 /* StoreKitTests.swift */,
 			);
 			path = AIMarketplaceTests;
 			sourceTree = "<group>";
@@ -311,7 +316,7 @@
 		37994B2B073860CDFA912E8F /* Partners */ = {
 			isa = PBXGroup;
 			children = (
-				E2F3A4B5C6D7E8F901234567 /* DemoStripeView.swift */,
+				6D8D191DA99F80EBFCA0C904 /* DemoStripeView.swift */,
 				52C06745E5B3EA4DDD77E9BD /* IncentivesView.swift */,
 				C6E646F3BB27F3E2B6302145 /* MissionView.swift */,
 				E23FC921C5612F2A39173DF0 /* PartnerDetailView.swift */,
@@ -528,6 +533,7 @@
 				38A3C08DD0CC1F4CB0BD72BE /* AIMarketplace */,
 				31F54F3CC2FD2E4E06A334F9 /* AIMarketplaceTests */,
 				3107984F6AEAF64EAEB61E42 /* Config */,
+				A61B86A39AF6F8D377BE0EF2 /* Products.storekit */,
 				0DCC5BB342B6CA120A1E706E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -551,7 +557,7 @@
 			children = (
 				23251ABA154375A28A5EBC28 /* AdminConsoleView.swift */,
 				66ADD952E329CCC58DF425AB /* AdminEditView.swift */,
-				D1E2F3A4B5C6D7E8F9012345 /* AdminLedgerView.swift */,
+				98629F479EF243D3864F91CA /* AdminLedgerView.swift */,
 				1CEA020A7E262765D26C0999 /* AdminModerationQueueView.swift */,
 				1463D337F5DE7810C8079E03 /* AdminPayoutsView.swift */,
 			);
@@ -622,6 +628,7 @@
 			buildConfigurationList = 74E6E14BBB428D0586683A89 /* Build configuration list for PBXNativeTarget "AIMarketplaceTests" */;
 			buildPhases = (
 				90CB3F37F0C911EDD1C73ADA /* Sources */,
+				1F24612C980BF56504396F0A /* Resources */,
 			);
 			buildRules = (
 			);
@@ -664,7 +671,6 @@
 				TargetAttributes = {
 					42537836C02DD02FDE58ED76 = {
 						DevelopmentTeam = UDM4W27W9V;
-						ProvisioningStyle = Automatic;
 					};
 					5B0E5162580E826FC77CF0E8 = {
 						DevelopmentTeam = UDM4W27W9V;
@@ -692,6 +698,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		1F24612C980BF56504396F0A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1008E5ACE404D7685345497F /* Products.storekit in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7B65F8538FBB096F13371B5F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -749,7 +763,7 @@
 				3FCCD372AC91373863779BCA /* Admin.swift in Sources */,
 				EEC36A315B0B1169C1FB84D8 /* AdminConsoleView.swift in Sources */,
 				C812E96A74744ADCC15DBB8F /* AdminEditView.swift in Sources */,
-				A1B2C3D4E5F60718293A4B5C /* AdminLedgerView.swift in Sources */,
+				FCF09EA6B5BC1E6A2480A61E /* AdminLedgerView.swift in Sources */,
 				EA802F5A4726FFEB82C1B930 /* AdminModerationQueueView.swift in Sources */,
 				CA411CD87F98BC36ABFD576F /* AdminPayoutsView.swift in Sources */,
 				422ECC04DD79D159C41585A4 /* AppNotification.swift in Sources */,
@@ -762,7 +776,7 @@
 				58F7E4998D8E4A6FCB11B2C4 /* ContentRequest.swift in Sources */,
 				3DC9B98DD8AAE620AAC4A7E2 /* ContentResolver.swift in Sources */,
 				2896C76F8E5CEFB226CD28EB /* CreatorDashboardView.swift in Sources */,
-				B2C3D4E5F60718293A4B5C6D /* DemoStripeView.swift in Sources */,
+				58B0B1C4EFA69DEED8773AE0 /* DemoStripeView.swift in Sources */,
 				15080C8BBF7959C16CBFDD01 /* GeneratedCover.swift in Sources */,
 				7715001CE31C9D6D39F90C5C /* GlassKit.swift in Sources */,
 				F4255BA5AE862EE1E919FE56 /* Haptics.swift in Sources */,
@@ -824,6 +838,7 @@
 			files = (
 				615AC4BAB2682A3337A184FA /* AIEditorTests.swift in Sources */,
 				88BAA7B5C1BBB2D2EDAF73E8 /* ContentAnalysisTests.swift in Sources */,
+				D7A2CF30995DB7EBE67ABF62 /* StoreKitTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -877,25 +892,16 @@
 		5C2B079B3842F6E2F11465B1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_ENTITLEMENTS = AIMarketplace/AIMarketplace.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				INFOPLIST_FILE = AIMarketplace/Resources/Info.plist;
+				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.aimarketplace;
-				PRODUCT_NAME = AIMarketplace;
+				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.aimarketplace.tests;
 				SDKROOT = iphoneos;
-				SWIFT_COMPILATION_MODE = wholemodule;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AIMarketplace.app/AIMarketplace";
 			};
@@ -904,25 +910,16 @@
 		7DC31D82DB00AE35D62038F1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_ENTITLEMENTS = AIMarketplace/AIMarketplace.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				INFOPLIST_FILE = AIMarketplace/Resources/Info.plist;
+				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.aimarketplace;
-				PRODUCT_NAME = AIMarketplace;
+				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.aimarketplace.tests;
 				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AIMarketplace.app/AIMarketplace";
 			};
