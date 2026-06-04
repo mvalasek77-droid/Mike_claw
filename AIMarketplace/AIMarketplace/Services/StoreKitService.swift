@@ -120,6 +120,10 @@ final class StoreKitService: ObservableObject {
         for await update in Transaction.unfinished {
             guard let transaction = try? Self.checkVerified(update) else { continue }
             await grant(for: transaction)
+            // A refunded transaction CAN show up as "unfinished" if the
+            // refund landed while the app was killed — claw the credit
+            // back here too, not just from currentEntitlements.
+            await checkRevocation(for: transaction)
             await transaction.finish()
         }
         for await update in Transaction.currentEntitlements {
@@ -134,7 +138,11 @@ final class StoreKitService: ObservableObject {
     var onRevoke: ((Double) -> Void)?
 
     private func checkRevocation(for transaction: Transaction) async {
-        guard transaction.revocationDate != nil else { return }
+        // `revocationDate` is the canonical refund signal in production. In
+        // SKTest, refundTransaction() sets `revocationReason` but leaves
+        // `revocationDate` nil, so we accept either signal — the result is
+        // identical (we clawback once per transaction id, idempotently).
+        guard transaction.revocationDate != nil || transaction.revocationReason != nil else { return }
         let revKey = "rev-\(transaction.id)"
         let revokedKey = "storekit.revokedTransactionIDs.v1"
         let raw = UserDefaults.standard.array(forKey: revokedKey) as? [String] ?? []
@@ -185,6 +193,10 @@ final class StoreKitService: ObservableObject {
                 // transaction could disappear from `Transaction.unfinished`
                 // before the wallet had been credited.
                 await self.grant(for: transaction)
+                // Refunds arrive HERE — Apple emits a Transaction.updates
+                // event when a refund is processed. Without this clawback
+                // call, the wallet keeps credit the buyer no longer paid for.
+                await self.checkRevocation(for: transaction)
                 await transaction.finish()
             }
         }
