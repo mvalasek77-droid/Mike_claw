@@ -19,6 +19,12 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
+    # Bundle ID must match Apple Developer Portal registration (lowercase).
+    # XcodeGen would generate com.valasek.AIMarketplace from target name,
+    # but the registered ID is com.valasek.aimarketplace.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.aimarketplace
     # Build config: pulls AIMKT_WORKER_URL + AIMKT_SHARED_SECRET from
     # Config/Build.xcconfig, which optionally loads Config/Secrets.xcconfig
     # (gitignored). Info.plist substitutes those into bundle keys at build
