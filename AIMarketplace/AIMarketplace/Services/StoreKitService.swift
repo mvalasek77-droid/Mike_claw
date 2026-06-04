@@ -371,8 +371,16 @@ final class StoreKitService: ObservableObject {
         onRevoke?(credit)
     }
 
-    func drainPendingForTesting(timeout: TimeInterval = 2.0) async {
-        print("[StoreKit] drainPendingForTesting begin — listener cancelled, draining updates for \(timeout)s")
+    func drainPendingForTesting(timeout: TimeInterval = 2.0, settleDelay: TimeInterval = 0.5) async {
+        print("[StoreKit] drainPendingForTesting begin — settleDelay=\(settleDelay)s timeout=\(timeout)s")
+        // Give StoreKit time to propagate just-approved transactions into
+        // Transaction.unfinished. SKTestSession's approveAskToBuyTransaction()
+        // and friends return before the production async sequences observe
+        // the new state — without this sleep, drainPending() walks an
+        // empty Transaction.unfinished and the Ask-to-Buy test reads $0.
+        if settleDelay > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(settleDelay * 1_000_000_000))
+        }
         updates?.cancel()
         updates = nil
         var updateCount = 0
