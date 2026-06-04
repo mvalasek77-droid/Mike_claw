@@ -1,0 +1,77 @@
+{
+  "ticker": "RGTI",
+  "price": 24.15999984741211,
+  "regime": "UP",
+  "signals": {
+    "30m": {
+      "type": "M",
+      "pct": "74.45888303748805",
+      "action": "WAIT",
+      "target": "23.86",
+      "stop": "25.02",
+      "confidence": "0.643",
+      "rsi": "50.5",
+      "amplitude": "4.62"
+    },
+    "1h": {
+      "type": "W",
+      "pct": "23.679048759084637",
+      "action": "BUY",
+      "target": "28.06",
+      "stop": "22.95",
+      "confidence": "0.714",
+      "rsi": "26.5",
+      "amplitude": "22.27",
+      "trend": "\u2193"
+    },
+    "1h_double": {
+      "type": "DOUBLE_TOP",
+      "action": "SELL",
+      "level": "24.72",
+      "amplitude": "5.3"
+    },
+    "2h": {
+      "type": "M",
+      "pct": "57.16613318886357",
+      "action": "WAIT",
+      "target": "21.53",
+      "stop": "27.67",
+      "confidence": "0.936",
+      "rsi": "60.3",
+      "amplitude": "37.39",
+      "trend": "\u2191",
+      "comp_prob": "0.69",
+      "floor": "21.53",
+      "ceil": "27.67",
+      "_macro_override": "True",
+      "_macro_note": "\ud83d\udfe2 Macro W $21.53\u2192$27.67 overrides M"
+    },
+    "momentum": {
+      "type": "MOMENTUM_SELL",
+      "consecutive_red": "2",
+      "total_drop_pct": "2.68",
+      "accelerating": "False",
+      "action": "SELL",
+      "strength": "0.4"
+    },
+    "macro": {
+      "type": "MACRO_W_OVERRIDE",
+      "floor": "21.53",
+      "ceiling": "27.67",
+      "pct": "42.8",
+      "amplitude": "28.5",
+      "action": "BUY",
+      "strength": "1.0"
+    }
+  },
+  "after_hours": {
+    "expected_up": 25.13,
+    "expected_down": 22.15,
+    "atr": 2.78,
+    "avg_daily_range": 2.54,
+    "avg_gap_pct": 0.0,
+    "momentum_4h": -0.82,
+    "direction": "BEAR"
+  },
+  "time": "2026-06-04T16:11:43.682664-04:00"
+}

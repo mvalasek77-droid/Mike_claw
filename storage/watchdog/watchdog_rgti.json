@@ -1,0 +1,10 @@
+{
+  "momentum_SELL_3": {
+    "type": "MOMENTUM_SELL",
+    "consecutive_red": 2,
+    "total_drop_pct": 2.68,
+    "accelerating": false,
+    "action": "SELL",
+    "strength": 0.4
+  }
+}

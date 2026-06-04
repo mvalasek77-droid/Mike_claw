@@ -1,0 +1,24 @@
+{
+  "ticker": "RGTI",
+  "price": 24.15999984741211,
+  "direction": "LONG",
+  "entry": 24.15999984741211,
+  "target": 24.6,
+  "stop": 21.53,
+  "grade": "D",
+  "win_rate": 0.25,
+  "pattern": "W",
+  "pattern_pct": 42.8,
+  "regime": "SIDEWAYS",
+  "source": "macro_W",
+  "rsi": 60.3,
+  "rr": 0.17,
+  "notes": [
+    "W+SIDEWAYS",
+    "mom-vs-position!",
+    "RSI60+",
+    "ret50%$25",
+    "R:R0.2!"
+  ],
+  "time": "2026-06-04T16:10:08.587706-04:00"
+}

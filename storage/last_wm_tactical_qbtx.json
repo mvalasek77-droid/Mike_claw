@@ -1,0 +1,52 @@
+{
+  "ticker": "QBTX",
+  "price": 21.540000915527344,
+  "regime": "SIDEWAYS",
+  "signals": {
+    "30m": {
+      "type": "W",
+      "pct": "48.161793580091775",
+      "action": "WAIT",
+      "target": "20.23",
+      "stop": "22.95",
+      "confidence": "0.702",
+      "rsi": "46.7",
+      "amplitude": "13.45"
+    },
+    "1h": {
+      "type": "M",
+      "pct": "75.59958169597698",
+      "action": "SELL",
+      "target": "19.2",
+      "stop": "28.79",
+      "confidence": "0.584",
+      "rsi": "26.5",
+      "amplitude": "13.56",
+      "trend": "\u2193"
+    },
+    "1h_double": {
+      "type": "DOUBLE_TOP",
+      "action": "SELL",
+      "level": "22.7",
+      "amplitude": "13.4"
+    },
+    "momentum": {
+      "type": "MOMENTUM_SELL",
+      "consecutive_red": "2",
+      "total_drop_pct": "4.2",
+      "accelerating": "False",
+      "action": "SELL",
+      "strength": "0.4"
+    }
+  },
+  "after_hours": {
+    "expected_up": 24.48,
+    "expected_down": 19.37,
+    "atr": 4.35,
+    "avg_daily_range": 4.26,
+    "avg_gap_pct": 0.0,
+    "momentum_4h": 0.7,
+    "direction": "BULL"
+  },
+  "time": "2026-06-04T12:55:28.660730-04:00"
+}

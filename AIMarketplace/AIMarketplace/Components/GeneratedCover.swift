@@ -19,14 +19,7 @@ struct GeneratedCover: View {
                 base
                 // Soft luminous blooms add depth and a fluid, lit feel.
                 ForEach(0..<3, id: \.self) { i in
-                    Circle()
-                        .fill(colors[(i * 3 + 2) % colors.count])
-                        .frame(width: s * (0.7 + frac(40 + i) * 0.5))
-                        .blur(radius: s * 0.26)
-                        .offset(x: (frac(50 + i) - 0.5) * geo.size.width,
-                                y: (frac(60 + i) - 0.5) * geo.size.height)
-                        .blendMode(.screen)
-                        .opacity(0.55)
+                    bloom(i: i, s: s, size: geo.size)
                 }
                 // Top-left key light + bottom vignette for cinematic depth.
                 RadialGradient(colors: [.white.opacity(0.20), .clear],
@@ -38,6 +31,22 @@ struct GeneratedCover: View {
             }
             .drawingGroup() // flatten the blends/blurs into one layer (perf + correctness)
         }
+    }
+
+    // MARK: Bloom helpers
+
+    private func bloom(i: Int, s: CGFloat, size: CGSize) -> some View {
+        let fillColor: Color = colors[(i * 3 + 2) % colors.count]
+        let bloomSize = s * (0.7 + frac(40 + i) * 0.5)
+        let offsetX = (frac(50 + i) - 0.5) * size.width
+        let offsetY = (frac(60 + i) - 0.5) * size.height
+        return Circle()
+            .fill(fillColor)
+            .frame(width: bloomSize)
+            .blur(radius: s * 0.26)
+            .offset(x: offsetX, y: offsetY)
+            .blendMode(.screen)
+            .opacity(0.55)
     }
 
     // MARK: Mesh base

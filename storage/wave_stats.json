@@ -1,0 +1,29 @@
+{
+  "symbol": "WTI",
+  "trend": "DOWN",
+  "sample_cycles": 31,
+  "updated": "2026-05-29T20:51:40.230517",
+  "pb_mean": 6.74,
+  "pb_median": 3.74,
+  "pb_std": 8.49,
+  "pb_p10": 0.36,
+  "pb_p90": 13.91,
+  "ext_mean": 4.73,
+  "ext_median": 2.84,
+  "ext_std": 4.16,
+  "ext_p10": 0.89,
+  "ext_p90": 11.33,
+  "ratio_mean": 2.68,
+  "ratio_median": 0.57,
+  "pb_failure_rate": 41.9,
+  "target_3_hit_rate": 48.4,
+  "target_6_hit_rate": 25.8,
+  "pb_bars_mean": 3.3,
+  "ext_bars_mean": 2.6,
+  "amplitude_trend_slope": 0.151,
+  "last_3_ratios": [
+    1.5,
+    31.54,
+    4.76
+  ]
+}

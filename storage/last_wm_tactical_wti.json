@@ -1,0 +1,59 @@
+{
+  "ticker": "WTI",
+  "price": 93.0999984741211,
+  "regime": "DOWN",
+  "signals": {
+    "1h": {
+      "type": "M",
+      "pct": "68.51864560038106",
+      "action": "WAIT",
+      "target": "91.91",
+      "stop": "95.69",
+      "confidence": "0.552",
+      "rsi": "35.2",
+      "amplitude": "3.95",
+      "trend": "\u2193"
+    },
+    "1h_double": {
+      "type": "DOUBLE_TOP",
+      "action": "SELL",
+      "level": "93.26",
+      "amplitude": "1.7"
+    },
+    "2h": {
+      "type": "W",
+      "pct": "29.19549826177202",
+      "action": "WAIT",
+      "target": "86.35",
+      "stop": "109.47",
+      "confidence": "0.837",
+      "rsi": "40.2",
+      "amplitude": "26.77",
+      "trend": "\u2193",
+      "comp_prob": "0.64",
+      "floor": "86.35",
+      "ceil": "109.47",
+      "_macro_override": "True",
+      "_macro_note": "\u26a0\ufe0f Macro M $119.48\u2192$84.37 overrides W"
+    },
+    "macro": {
+      "type": "MACRO_M_OVERRIDE",
+      "ceiling": "119.48",
+      "floor": "84.37",
+      "pct": "75.1",
+      "amplitude": "29.4",
+      "action": "SELL",
+      "strength": "1.0"
+    }
+  },
+  "after_hours": {
+    "expected_up": 96.17,
+    "expected_down": 90.35,
+    "atr": 5.49,
+    "avg_daily_range": 4.09,
+    "avg_gap_pct": 0.0,
+    "momentum_4h": 0.83,
+    "direction": "BULL"
+  },
+  "time": "2026-06-04T16:11:43.232793-04:00"
+}

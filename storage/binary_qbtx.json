@@ -1,0 +1,23 @@
+{
+  "ticker": "QBTX",
+  "price": 22.009899139404297,
+  "direction": "SHORT",
+  "entry": 22.009899139404297,
+  "target": 20.91,
+  "stop": 23.11,
+  "grade": "A",
+  "win_rate": 0.87,
+  "pattern": "M",
+  "pattern_pct": 70.7,
+  "regime": "SIDEWAYS",
+  "source": "1h",
+  "rsi": 31.4,
+  "rr": 1.0,
+  "notes": [
+    "M 71% confirm",
+    "spike-confirms",
+    "mom-confirms",
+    "RSI31!"
+  ],
+  "time": "2026-06-04T16:10:09.022251-04:00"
+}

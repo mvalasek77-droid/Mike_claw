@@ -1,0 +1,23 @@
+{
+  "ticker": "WTI",
+  "price": 93.16999816894531,
+  "direction": "SHORT",
+  "entry": 93.16999816894531,
+  "target": 84.37,
+  "stop": 119.48,
+  "grade": "D",
+  "win_rate": 0.95,
+  "pattern": "M",
+  "pattern_pct": 74.9,
+  "regime": "DOWN",
+  "source": "macro_M",
+  "rsi": 40.3,
+  "rr": 0.33,
+  "notes": [
+    "M 75% confirm",
+    "conf+",
+    "floor$84",
+    "R:R0.3!"
+  ],
+  "time": "2026-06-04T16:10:08.132936-04:00"
+}

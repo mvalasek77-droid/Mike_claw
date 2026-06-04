@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChadDrop Release Gateway</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111219;
+      --panel: #1b1d27;
+      --panel-2: #242631;
+      --text: #f7f7fb;
+      --muted: #c3c5d1;
+      --line: #3a3d4a;
+      --accent: #77d7ff;
+      --good: #9ee46d;
+      --warn: #ffd36a;
+      --bad: #ff8b8b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 20% 0%, #30192c 0, transparent 28%),
+        radial-gradient(circle at 90% 0%, #143447 0, transparent 30%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header, main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header { padding: 44px 0 18px; }
+    h1 { margin: 0; font-size: clamp(2rem, 4vw, 3.6rem); line-height: 1.05; letter-spacing: 0; }
+    h2 { margin: 0 0 12px; font-size: 1.45rem; letter-spacing: 0; }
+    h3 { margin: 20px 0 8px; font-size: 1.05rem; letter-spacing: 0; }
+    p { margin: 0 0 12px; }
+
+    code {
+      color: #fce6a8;
+      background: #101118;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+
+    pre {
+      overflow: auto;
+      background: #101118;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      color: #fce6a8;
+    }
+
+    .lead {
+      color: var(--muted);
+      max-width: 780px;
+      font-size: 1.05rem;
+      margin-top: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .card {
+      background: rgba(27, 29, 39, 0.88);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      min-height: 100%;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 1.02rem;
+    }
+
+    .pill {
+      display: inline-block;
+      margin: 0 6px 8px 0;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #2f3340;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 9px 13px;
+      border-radius: 8px;
+      border: 1px solid #59606e;
+      background: #262936;
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    .button.primary { background: #2a5a72; border-color: #4aa6d4; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+      margin: 16px 0 4px;
+    }
+
+    .step {
+      position: relative;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      min-height: 96px;
+    }
+
+    .step:not(:last-child)::after {
+      content: "->";
+      position: absolute;
+      right: -20px;
+      top: 42%;
+      color: var(--accent);
+      font-weight: 800;
+      z-index: 2;
+    }
+
+    .step b { display: block; margin-bottom: 4px; }
+    .step span { color: var(--muted); font-size: 0.92rem; }
+
+    .decision {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.8fr) 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .decision .choice {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .ok { color: var(--good); }
+    .warn { color: var(--warn); }
+    .stop { color: var(--bad); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      border: 1px solid var(--line);
+      padding: 10px;
+    }
+
+    th { background: #2c303d; }
+    td { background: rgba(27, 29, 39, 0.78); }
+
+    details {
+      background: rgba(27, 29, 39, 0.78);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 10px 0;
+    }
+
+    summary { cursor: pointer; font-weight: 750; }
+    .small { color: var(--muted); font-size: 0.92rem; }
+
+    @media (max-width: 820px) {
+      .flow, .decision { grid-template-columns: 1fr; }
+      .step:not(:last-child)::after {
+        content: "next";
+        right: 12px;
+        top: auto;
+        bottom: -20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="pill">ChadDrop</span>
+    <span class="pill">App Store release guide</span>
+    <span class="pill">For non-coders</span>
+    <h1>Release Gateway</h1>
+    <p class="lead">
+      This page shows what CodeGenie can automate, what Apple or account security requires you to approve,
+      and the exact screens to open. You do not need to understand coding to follow it.
+    </p>
+    <div class="button-row">
+      <a class="button primary" href="https://appstoreconnect.apple.com/apps" target="_blank">Open App Store Connect</a>
+      <a class="button" href="https://developer.apple.com/documentation/xcode/configuring-your-first-xcode-cloud-workflow/" target="_blank">Open Xcode Cloud Guide</a>
+      <a class="button" href="https://developer.apple.com/account/" target="_blank">Open Apple Developer</a>
+      <a class="button" href="https://github.com/new" target="_blank">Open GitHub New Repo</a>
+      <a class="button" href="https://dash.cloudflare.com/?to=/:account/workers-and-pages" target="_blank">Open Cloudflare Workers</a>
+      <a class="button" href="https://platform.openai.com/api-keys" target="_blank">Open OpenAI API Keys</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>The Whole Release Path</h2>
+      <div class="flow" aria-label="Release path diagram">
+        <div class="step"><b>1. ChadDrop app</b><span>Already generated, built, and simulator tested.</span></div>
+        <div class="step"><b>2. Icon and cloud signing</b><span>CodeGenie creates the icon. Xcode Cloud can sign after approval.</span></div>
+        <div class="step"><b>3. App placeholder</b><span>Create ChadDrop in App Store Connect.</span></div>
+        <div class="step"><b>4. Screenshots and privacy</b><span>CodeGenie can capture screenshots and prepare answers.</span></div>
+        <div class="step"><b>5. Submit</b><span>You confirm the final review submission.</span></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <strong class="ok">Already automated</strong>
+        <p>CodeGenie generated ChadDrop, built it, installed it in the simulator, launched it, made a screenshot, compiled the test bundles, and made an unsigned archive.</p>
+      </div>
+      <div class="card">
+        <strong class="warn">Can be automated after you sign in</strong>
+        <p>CodeGenie can prepare Xcode Cloud scripts, capture more screenshots, create a GitHub Pages support site, and deploy the AI proxy after you approve account prompts. Apple can build and sign in Xcode Cloud.</p>
+      </div>
+      <div class="card">
+        <strong class="stop">Must be approved by you</strong>
+        <p>Apple Developer enrollment, payments, two-factor codes, legal agreements, private API keys, final App Review submission, and any browser account security prompts.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>App Icon Creator</h2>
+      <p>
+        CodeGenie can create a fresh 1024 x 1024 ChadDrop icon, put it in Xcode, and check that it has no alpha channel.
+        Apple gets the icon from the uploaded build.
+      </p>
+      <pre><code>cd TruthTranslator
+Scripts/create_app_icon.sh</code></pre>
+      <p class="small">
+        The script writes <code>TruthTranslator/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png</code>.
+        After changing the icon, rebuild/archive the app.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Signing, In Plain English</h2>
+      <p>
+        Signing is Apple proving that the app came from your Apple Developer account. The app cannot go to the App Store
+        until Apple knows which developer team owns <code>com.chaddrop.app</code>.
+      </p>
+      <div class="flow" aria-label="Signing diagram">
+        <div class="step"><b>You</b><span>Join Apple Developer Program and sign in.</span></div>
+        <div class="step"><b>Xcode</b><span>Uses your team to create certificates and profiles.</span></div>
+        <div class="step"><b>ChadDrop</b><span>Bundle ID is <code>com.chaddrop.app</code>.</span></div>
+        <div class="step"><b>Archive</b><span>A signed release build is created.</span></div>
+        <div class="step"><b>Apple</b><span>Accepts the build for TestFlight/App Review.</span></div>
+      </div>
+      <details open>
+        <summary>What you do in Xcode</summary>
+        <ol>
+          <li>Open <code>TruthTranslator/TruthTranslator.xcodeproj</code>.</li>
+          <li>In the Mac menu bar, choose <b>Xcode -> Settings -> Accounts</b>.</li>
+          <li>Press the plus button, sign in with your Apple ID, and finish two-factor authentication.</li>
+          <li>Click the ChadDrop project, select the <b>TruthTranslator</b> target, then open <b>Signing & Capabilities</b>.</li>
+          <li>Turn on <b>Automatically manage signing</b>.</li>
+          <li>Choose your Apple Developer Team.</li>
+          <li>If Xcode shows a red error, read the exact message. Most errors mean the Apple account is not enrolled, the agreement is not accepted, or the bundle ID is already taken.</li>
+        </ol>
+      </details>
+      <p class="small">
+        CodeGenie can run the build after this, but it cannot safely type your Apple password, pay for the developer account, or approve two-factor codes.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Avoid Local Signing With Xcode Cloud</h2>
+      <p>
+        This is the cleaner path when you do not want to fix signing on this Mac. CodeGenie prepares the repo;
+        Apple builds, signs, and sends the app to TestFlight after you approve App Store Connect and GitHub access.
+      </p>
+      <div class="flow" aria-label="Xcode Cloud diagram">
+        <div class="step"><b>App record</b><span>Create ChadDrop in App Store Connect.</span></div>
+        <div class="step"><b>Repo access</b><span>Grant Apple access to the GitHub repo.</span></div>
+        <div class="step"><b>Workflow</b><span>Use scheme <code>TruthTranslator</code>.</span></div>
+        <div class="step"><b>Cloud build</b><span>Apple runs tests and archive.</span></div>
+        <div class="step"><b>TestFlight</b><span>Install internally before App Review.</span></div>
+      </div>
+      <details open>
+        <summary>Exact setup for non-coders</summary>
+        <ol>
+          <li>Open <a href="https://appstoreconnect.apple.com/apps" target="_blank">App Store Connect</a>, go to <b>My Apps</b>, press <b>+</b>, then choose <b>New App</b>.</li>
+          <li>Use <b>iOS</b>, name <b>ChadDrop</b>, bundle ID <code>com.chaddrop.app</code>, and SKU <code>CHADDROP-IOS-1</code>.</li>
+          <li>Open <code>TruthTranslator/TruthTranslator.xcodeproj</code> in Xcode.</li>
+          <li>Open the <b>Report Navigator</b>, choose the <b>Cloud</b> tab, then press <b>Get Started</b>.</li>
+          <li>Grant App Store Connect access to the GitHub repo when Apple asks.</li>
+          <li>Create a workflow named <b>Build & Test</b>.</li>
+          <li>Choose the branch you want to ship from.</li>
+          <li>Add a <b>Test</b> action for scheme <code>TruthTranslator</code> on recommended iPhone simulators.</li>
+          <li>Add an <b>Archive</b> action for scheme <code>TruthTranslator</code> and send the result to <b>TestFlight Internal Testing</b>.</li>
+          <li>Save the workflow. Apple starts the first build automatically.</li>
+        </ol>
+      </details>
+      <p class="small">
+        CodeGenie added <code>TruthTranslator/ci_scripts</code>. Apple uses those scripts during Xcode Cloud builds.
+        You still approve Apple ID login, GitHub access, paid account steps, and final App Review submission.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>App Placeholder Creation</h2>
+      <p>
+        The App Store placeholder is the ChadDrop record in App Store Connect. It gives Apple a place to receive builds,
+        screenshots, descriptions, privacy answers, and review notes.
+      </p>
+      <div class="flow" aria-label="App placeholder diagram">
+        <div class="step"><b>Open Apps</b><span>Go to App Store Connect -> Apps.</span></div>
+        <div class="step"><b>New App</b><span>Press plus, choose New App.</span></div>
+        <div class="step"><b>Use values</b><span>iOS, ChadDrop, English, com.chaddrop.app.</span></div>
+        <div class="step"><b>Create</b><span>Status should become Prepare for Submission.</span></div>
+        <div class="step"><b>Return</b><span>CodeGenie can continue once signing exists.</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>App Store Connect Values To Copy</h2>
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Use this</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Platform</td><td>iOS</td><td>ChadDrop is an iPhone/iPad app.</td></tr>
+          <tr><td>Name</td><td>ChadDrop</td><td>If Apple says unavailable, choose a close public name and keep the app display name ChadDrop.</td></tr>
+          <tr><td>Primary language</td><td>English (U.S.)</td><td>Use your main store language.</td></tr>
+          <tr><td>Bundle ID</td><td><code>com.chaddrop.app</code></td><td>This must match the Xcode app.</td></tr>
+          <tr><td>SKU</td><td><code>CHADDROP-IOS-1</code></td><td>This is your private inventory code. Users do not see it.</td></tr>
+          <tr><td>Category</td><td>Lifestyle</td><td>Best match for the app.</td></tr>
+          <tr><td>Subtitle</td><td>Decode confusing texts with humor.</td><td>Copy from <code>AppStore/metadata.md</code>.</td></tr>
+          <tr><td>Keywords</td><td>text,dating,relationships,advice,humor,ai,replies,messages</td><td>No spaces after commas.</td></tr>
+          <tr><td>Support URL</td><td>Your GitHub Pages support page</td><td>The gateway includes a script to create this site.</td></tr>
+          <tr><td>Privacy Policy URL</td><td>Your GitHub Pages privacy page</td><td>Use this if AI proxy is enabled, and it is still useful for the offline app.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Screenshots</h2>
+      <p>
+        CodeGenie can capture simulator screenshots and save them into public and internal folders. Use only the public
+        ChadDrop feature screens for App Store Connect. The internal release-gateway screenshot is just for walking the user through the process.
+      </p>
+      <pre><code>cd TruthTranslator
+Scripts/capture_appstore_screenshots.sh</code></pre>
+      <table>
+        <thead>
+          <tr><th>Folder</th><th>Use</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>AppStore/Screenshots/Public</code></td><td>Upload these to App Store Connect.</td></tr>
+          <tr><td><code>AppStore/Screenshots/InternalWalkthrough</code></td><td>Do not upload publicly. Use for guiding the release process.</td></tr>
+        </tbody>
+      </table>
+      <details>
+        <summary>Real iPhone screenshot walkthrough</summary>
+        <ol>
+          <li>Connect the iPhone to the Mac and tap Trust if asked.</li>
+          <li>Open ChadDrop on the iPhone after signing/running from Xcode.</li>
+          <li>Press Side Button + Volume Up to capture each screen.</li>
+          <li>Move screenshots to the Mac with AirDrop, Photos import, or Image Capture.</li>
+          <li>Put the chosen images in <code>AppStore/Screenshots/Public</code>.</li>
+        </ol>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>AI Choice</h2>
+      <p>
+        ChadDrop works offline right now. If you want real AI-generated answers, use a server proxy. Never put an OpenAI key inside the iPhone app.
+      </p>
+      <div class="decision">
+        <div class="choice"><b>Decision</b><p>Pick one before submitting.</p></div>
+        <div class="choice"><b class="ok">Ship offline first</b><p>Fastest path. Privacy answers are simpler. The app uses the built-in rule engine.</p></div>
+        <div class="choice"><b class="warn">Ship with AI proxy</b><p>Deploy the included Cloudflare Worker, store the OpenAI key as a server secret, then set <code>AI_PROXY_URL</code>.</p></div>
+      </div>
+      <details>
+        <summary>If using AI, what CodeGenie can do</summary>
+        <ol>
+          <li>Create or update the proxy code in <code>Proxy/openai-worker.js</code>.</li>
+          <li>Open Cloudflare Workers for your login.</li>
+          <li>Run Wrangler deploy after you approve Cloudflare login prompts.</li>
+          <li>Set the app's <code>AI_PROXY_URL</code> after you provide the public Worker URL.</li>
+          <li>Update App Store privacy answers to say User Content is processed to provide app functionality.</li>
+        </ol>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>GitHub Website For Support And Privacy</h2>
+      <p>
+        App Store Connect needs public links for support and privacy. I created simple website files in <code>Web/</code>.
+        CodeGenie can create a GitHub Pages repo after you sign in to GitHub and confirm the repo name.
+      </p>
+      <pre><code>cd TruthTranslator
+Scripts/publish_github_pages_site.sh chaddrop-support public</code></pre>
+      <p class="small">
+        The script creates only the public website from <code>Web/</code>. It does not publish the app source code.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Automation Commands</h2>
+      <table>
+        <thead>
+          <tr><th>Goal</th><th>Command</th><th>What happens</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Open this gateway</td>
+            <td><code>TruthTranslator/Scripts/open_release_gateway.sh</code></td>
+            <td>Opens this page in your browser.</td>
+          </tr>
+          <tr>
+            <td>Open all key websites</td>
+            <td><code>TruthTranslator/Scripts/open_release_gateway.sh --links</code></td>
+            <td>Opens Apple, GitHub, Cloudflare, and OpenAI links.</td>
+          </tr>
+          <tr>
+            <td>Create app icon</td>
+            <td><code>TruthTranslator/Scripts/create_app_icon.sh</code></td>
+            <td>Creates and validates the 1024 x 1024 ChadDrop app icon.</td>
+          </tr>
+          <tr>
+            <td>Check readiness</td>
+            <td><code>TruthTranslator/Scripts/release_preflight.sh</code></td>
+            <td>Checks plist files, icon, signing config, and needed tools.</td>
+          </tr>
+          <tr>
+            <td>Build check</td>
+            <td><code>TruthTranslator/Scripts/release_preflight.sh --build</code></td>
+            <td>Also runs a Release build without code signing.</td>
+          </tr>
+          <tr>
+            <td>Simulator screenshots</td>
+            <td><code>TruthTranslator/Scripts/capture_appstore_screenshots.sh</code></td>
+            <td>Builds, installs, launches, and screenshots ChadDrop on a booted simulator.</td>
+          </tr>
+          <tr>
+            <td>Xcode Cloud scripts</td>
+            <td><code>TruthTranslator/ci_scripts</code></td>
+            <td>Apple runs these during cloud builds to validate plists and the app icon before xcodebuild.</td>
+          </tr>
+          <tr>
+            <td>Create support site</td>
+            <td><code>TruthTranslator/Scripts/publish_github_pages_site.sh chaddrop-support public</code></td>
+            <td>Creates a GitHub repo after you type confirmation.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Final Human Confirmation</h2>
+      <p>
+        The final App Store review button should stay human-controlled. CodeGenie can prepare the build, metadata,
+        screenshots, privacy text, and links, but you should confirm the final submit because Apple treats it as a legal/account action.
+      </p>
+      <div class="button-row">
+        <a class="button primary" href="https://appstoreconnect.apple.com/apps" target="_blank">Go to Apps</a>
+        <a class="button" href="https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-app" target="_blank">Apple: Submit an app</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Official References</h2>
+      <p class="small">
+        Apple:
+        <a href="https://developer.apple.com/help/app-store-connect/manage-app-information/add-an-app-icon/" target="_blank">add an app icon</a>,
+        <a href="https://developer.apple.com/help/app-store-connect/create-an-app-record/add-a-new-app/" target="_blank">create an app record</a>,
+        <a href="https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/" target="_blank">upload builds</a>,
+        <a href="https://developer.apple.com/documentation/xcode/configuring-your-first-xcode-cloud-workflow/" target="_blank">configure Xcode Cloud</a>,
+        <a href="https://developer.apple.com/documentation/Xcode/Writing-Custom-Build-Scripts" target="_blank">Xcode Cloud custom scripts</a>,
+        <a href="https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications" target="_blank">screenshot specifications</a>,
+        <a href="https://developer.apple.com/help/app-store-connect/manage-app-information/upload-app-previews-and-screenshots" target="_blank">screenshots</a>,
+        <a href="https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-app" target="_blank">submit an app</a>.
+        GitHub:
+        <a href="https://cli.github.com/manual/gh_repo_create" target="_blank">gh repo create</a>,
+        <a href="https://docs.github.com/en/pages/quickstart" target="_blank">GitHub Pages quickstart</a>.
+        Cloudflare:
+        <a href="https://developers.cloudflare.com/workers/configuration/secrets/" target="_blank">Worker secrets</a>.
+        OpenAI:
+        <a href="https://platform.openai.com/docs/api-reference/backward-compatibility" target="_blank">keep API keys off client apps</a>.
+      </p>
+    </section>
+  </main>
+</body>
+</html>

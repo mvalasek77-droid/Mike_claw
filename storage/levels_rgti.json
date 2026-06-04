@@ -1,0 +1,475 @@
+{
+  "ticker": "RGTI",
+  "symbol": "RGTI",
+  "price": 24.45,
+  "timestamp": "2026-06-04T12:32:06.495391",
+  "total_levels": 100,
+  "total_zones": 22,
+  "zones": [
+    {
+      "price": 27.37,
+      "type": "resistance",
+      "hits": 8,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 27.22,
+      "max": 27.67,
+      "strength": 10.27,
+      "amplitude": 12.84,
+      "tf": [
+        "1h",
+        "2h",
+        "30m"
+      ]
+    },
+    {
+      "price": 21.02,
+      "type": "resistance",
+      "hits": 4,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 21.02,
+      "max": 21.02,
+      "strength": 9.62,
+      "amplitude": 24.04,
+      "tf": [
+        "1h",
+        "2h"
+      ]
+    },
+    {
+      "price": 23.93,
+      "type": "support",
+      "hits": 11,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 23.62,
+      "max": 24.17,
+      "strength": 9.18,
+      "amplitude": 8.35,
+      "tf": [
+        "1h",
+        "30m"
+      ]
+    },
+    {
+      "price": 15.34,
+      "type": "support",
+      "hits": 4,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 15.3,
+      "max": 15.46,
+      "strength": 8.17,
+      "amplitude": 20.42,
+      "tf": [
+        "1h",
+        "2h"
+      ]
+    },
+    {
+      "price": 19.95,
+      "type": "resistance",
+      "hits": 5,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 19.83,
+      "max": 20.12,
+      "strength": 6.76,
+      "amplitude": 13.52,
+      "tf": [
+        "1h"
+      ]
+    },
+    {
+      "price": 28.06,
+      "type": "resistance",
+      "hits": 4,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 28.06,
+      "max": 28.06,
+      "strength": 6.5,
+      "amplitude": 16.24,
+      "tf": [
+        "1h",
+        "2h",
+        "30m"
+      ]
+    },
+    {
+      "price": 21.53,
+      "type": "support",
+      "hits": 2,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 21.53,
+      "max": 21.53,
+      "strength": 5.07,
+      "amplitude": 25.36,
+      "tf": [
+        "2h"
+      ]
+    },
+    {
+      "price": 24.77,
+      "type": "support",
+      "hits": 8,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 24.43,
+      "max": 25.04,
+      "strength": 4.84,
+      "amplitude": 6.05,
+      "tf": [
+        "30m"
+      ]
+    },
+    {
+      "price": 26.43,
+      "type": "resistance",
+      "hits": 9,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 26.1,
+      "max": 26.6,
+      "strength": 4.83,
+      "amplitude": 5.37,
+      "tf": [
+        "30m"
+      ]
+    },
+    {
+      "price": 25.5,
+      "type": "support",
+      "hits": 9,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 25.42,
+      "max": 25.75,
+      "strength": 4.45,
+      "amplitude": 4.94,
+      "tf": [
+        "30m"
+      ]
+    },
+    {
+      "price": 22.95,
+      "type": "support",
+      "hits": 4,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 22.95,
+      "max": 22.95,
+      "strength": 4.38,
+      "amplitude": 10.94,
+      "tf": [
+        "1h",
+        "30m"
+      ]
+    },
+    {
+      "price": 17.93,
+      "type": "support",
+      "hits": 3,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 17.83,
+      "max": 18.07,
+      "strength": 4.17,
+      "amplitude": 13.9,
+      "tf": [
+        "1h"
+      ]
+    },
+    {
+      "price": 17.08,
+      "type": "support",
+      "hits": 2,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 17.08,
+      "max": 17.08,
+      "strength": 3.29,
+      "amplitude": 16.45,
+      "tf": [
+        "1h"
+      ]
+    },
+    {
+      "price": 24.64,
+      "type": "resistance",
+      "hits": 6,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 24.47,
+      "max": 24.78,
+      "strength": 3.05,
+      "amplitude": 5.09,
+      "tf": [
+        "30m"
+      ]
+    },
+    {
+      "price": 19.21,
+      "type": "resistance",
+      "hits": 1,
+      "patterns": [
+        "W"
+      ],
+      "min": 19.21,
+      "max": 19.21,
+      "strength": 2.99,
+      "amplitude": 29.93,
+      "tf": [
+        "2h"
+      ]
+    },
+    {
+      "price": 14.78,
+      "type": "support",
+      "hits": 1,
+      "patterns": [
+        "W"
+      ],
+      "min": 14.78,
+      "max": 14.78,
+      "strength": 2.99,
+      "amplitude": 29.93,
+      "tf": [
+        "2h"
+      ]
+    },
+    {
+      "price": 17.55,
+      "type": "support",
+      "hits": 2,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 17.55,
+      "max": 17.55,
+      "strength": 2.45,
+      "amplitude": 12.27,
+      "tf": [
+        "1h"
+      ]
+    },
+    {
+      "price": 17.03,
+      "type": "resistance",
+      "hits": 4,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 16.95,
+      "max": 17.15,
+      "strength": 2.42,
+      "amplitude": 6.06,
+      "tf": [
+        "1h"
+      ]
+    },
+    {
+      "price": 16.01,
+      "type": "support",
+      "hits": 4,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 15.85,
+      "max": 16.1,
+      "strength": 2.42,
+      "amplitude": 6.06,
+      "tf": [
+        "1h"
+      ]
+    },
+    {
+      "price": 25.7,
+      "type": "resistance",
+      "hits": 5,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 25.62,
+      "max": 25.77,
+      "strength": 2.23,
+      "amplitude": 4.47,
+      "tf": [
+        "30m"
+      ]
+    },
+    {
+      "price": 16.7,
+      "type": "resistance",
+      "hits": 2,
+      "patterns": [
+        "W"
+      ],
+      "min": 16.63,
+      "max": 16.76,
+      "strength": 1.71,
+      "amplitude": 8.55,
+      "tf": [
+        "1h"
+      ]
+    },
+    {
+      "price": 25.02,
+      "type": "resistance",
+      "hits": 2,
+      "patterns": [
+        "W",
+        "M"
+      ],
+      "min": 25.02,
+      "max": 25.02,
+      "strength": 1.03,
+      "amplitude": 5.13,
+      "tf": [
+        "30m"
+      ]
+    }
+  ],
+  "nearest_resistance": {
+    "price": 24.64,
+    "type": "resistance",
+    "hits": 6,
+    "patterns": [
+      "W",
+      "M"
+    ],
+    "min": 24.47,
+    "max": 24.78,
+    "strength": 3.05,
+    "amplitude": 5.09
+  },
+  "nearest_support": {
+    "price": 23.93,
+    "type": "support",
+    "hits": 11,
+    "patterns": [
+      "W",
+      "M"
+    ],
+    "min": 23.62,
+    "max": 24.17,
+    "strength": 9.18,
+    "amplitude": 8.35
+  },
+  "projections": [
+    {
+      "type": "M_ceil",
+      "tf": "2h",
+      "projected": 21.87,
+      "original": 21.02,
+      "direction": "rising",
+      "slope": 0.05,
+      "floor": 15.3,
+      "ceiling": 21.02
+    },
+    {
+      "type": "W_floor",
+      "tf": "2h",
+      "projected": 15.6,
+      "original": 15.3,
+      "direction": "rising",
+      "slope": 0.0114,
+      "floor": 15.3,
+      "ceiling": 21.02
+    },
+    {
+      "type": "W_floor",
+      "tf": "1h",
+      "projected": 24.62,
+      "original": 23.62,
+      "direction": "rising",
+      "slope": 0.0205,
+      "floor": 23.62,
+      "ceiling": 27.48
+    },
+    {
+      "type": "M_ceil",
+      "tf": "1h",
+      "projected": 28.43,
+      "original": 28.06,
+      "direction": "rising",
+      "slope": 0.0264,
+      "floor": 24.05,
+      "ceiling": 28.06
+    },
+    {
+      "type": "W_floor",
+      "tf": "1h",
+      "projected": 22.58,
+      "original": 22.95,
+      "direction": "falling",
+      "slope": -0.0524,
+      "floor": 22.95,
+      "ceiling": 28.06
+    },
+    {
+      "type": "W_floor",
+      "tf": "30m",
+      "projected": 24.26,
+      "original": 22.95,
+      "direction": "rising",
+      "slope": 0.0547,
+      "floor": 22.95,
+      "ceiling": 24.72
+    },
+    {
+      "type": "M_ceil",
+      "tf": "30m",
+      "projected": 25.14,
+      "original": 25.02,
+      "direction": "rising",
+      "slope": 0.0231,
+      "floor": 23.77,
+      "ceiling": 25.02
+    },
+    {
+      "type": "W_floor",
+      "tf": "30m",
+      "projected": 23.89,
+      "original": 23.77,
+      "direction": "rising",
+      "slope": 0.0136,
+      "floor": 23.77,
+      "ceiling": 25.02
+    }
+  ]
+}
