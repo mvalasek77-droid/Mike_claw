@@ -305,6 +305,20 @@ final class StoreKitService: ObservableObject {
         updates = nil
     }
 
+    /// Test-only reset. Clears the persisted processed-tx + revoked-tx
+    /// UserDefaults keys AND the in-memory processed set, so the NEXT
+    /// test case starts with a virgin StoreKit state. Without this:
+    ///   - grant() sees a previously-processed tx.id and skips the
+    ///     credit (test asserts $5 but gets $0).
+    ///   - checkRevocation sees a previously-revoked tx.id and skips
+    ///     the clawback (test asserts $0 after refund but gets $5).
+    /// Call in XCTestCase.setUp() AFTER instantiating StoreKitService.
+    func resetForTesting() {
+        UserDefaults.standard.removeObject(forKey: processedKey)
+        UserDefaults.standard.removeObject(forKey: "storekit.revokedTransactionIDs.v1")
+        processed.removeAll()
+    }
+
     /// Fires after the production listener or the test drainer
     /// processes one transaction. Lets a test await deterministic
     /// completion instead of polling.

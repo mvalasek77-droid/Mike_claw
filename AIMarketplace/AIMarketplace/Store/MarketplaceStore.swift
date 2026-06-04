@@ -2417,4 +2417,26 @@ final class MarketplaceStore: ObservableObject {
         let ids = Set(submissions.compactMap(\.publishedItemID))
         return catalog.filter { ids.contains($0.id) }
     }
+
+    #if DEBUG
+    /// Test-only reset. Zeros wallet + payout state and erases the
+    /// encrypted state archive on disk so the NEXT MarketplaceStore.init
+    /// boots from a clean slate. Without this, the on-disk wallet balance
+    /// accumulated by prior test cases leaks into subsequent ones (init
+    /// reloads from SecureStore). Call in XCTestCase.setUp().
+    func resetForTesting() {
+        loading = true
+        walletBalance = 0
+        creatorEarnings = 0
+        pendingPayoutUSD = 0
+        paidOutUSD = 0
+        libraryIDs = []
+        watchlistIDs = []
+        submissions = []
+        connectAccountID = nil
+        payoutConnected = false
+        loading = false
+        archive.delete()
+    }
+    #endif
 }
