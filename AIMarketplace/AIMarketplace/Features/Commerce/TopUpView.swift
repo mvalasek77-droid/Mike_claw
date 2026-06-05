@@ -50,7 +50,7 @@ struct TopUpView: View {
 
                     restoreButton
 
-                    Text("Purchases are processed by Apple's App Store. On every sale Apple takes its App Store commission first; of the net, creators keep 85% and AI Marketplace keeps 15%.")
+                    Text("Purchases are processed by Apple's App Store. On every sale Apple takes its App Store commission first; of the net, creators keep 85% and AI Marketplace keeps 15%. Prices outside the US are set by Apple's regional pricing — local price may differ from the USD equivalent shown.")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(18)
@@ -93,6 +93,16 @@ struct TopUpView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(product.displayName).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
                     Text(product.description).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    // Always show the USD-equivalent wallet credit so non-USD
+                    // buyers see exactly what they get. Apple's price tiers
+                    // are set per-region (Tier 5 is €5.99 in eurozone, £4.99
+                    // in UK, etc.) and are NOT direct FX conversions, so
+                    // what the buyer pays locally is not the same as what
+                    // the wallet credits. This line closes that gap.
+                    Text(String(format: "= $%.2f USD wallet credit",
+                                StoreKitService.credit(for: product.id)))
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Theme.inkFaint)
                 }
                 Spacer()
                 if purchasing == product.id {
