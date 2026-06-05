@@ -87,15 +87,15 @@ final class StoreKitTests: XCTestCase {
     // MARK: - Test 1: Purchase credits → wallet increases
 
     func testPurchaseCredits() async throws {
-        let fiveDollarPack = try XCTUnwrap(
-            service.products.first(where: { $0.id == "com.aimarketplace.credits.5" })
+        let creditPack = try XCTUnwrap(
+            service.products.first(where: { $0.id == "com.valasek.aimarketplace.credits50" })
         )
-        XCTAssertEqual(fiveDollarPack.price, 4.99, accuracy: 0.01)
+        XCTAssertEqual(creditPack.price, 4.99, accuracy: 0.01)
 
-        let outcome = await service.purchase(fiveDollarPack)
+        let outcome = await service.purchase(creditPack)
         XCTAssertEqual(outcome, .success)
-        XCTAssertEqual(totalCreditsGranted, 5.0, accuracy: 0.01)
-        XCTAssertEqual(store.walletBalance, 5.0, accuracy: 0.01)
+        XCTAssertEqual(totalCreditsGranted, 50.0, accuracy: 0.01)
+        XCTAssertEqual(store.walletBalance, 50.0, accuracy: 0.01)
     }
 
     // MARK: - Test 2: Refund → onRevoke fires (simulated server notification clawback)
@@ -107,31 +107,31 @@ final class StoreKitTests: XCTestCase {
     // onRevoke directly — exactly what production code does when it receives the webhook.
 
     func testRefundReducesBalance() async throws {
-        let fiveDollarPack = try XCTUnwrap(
-            service.products.first(where: { $0.id == "com.aimarketplace.credits.5" })
+        let creditPack = try XCTUnwrap(
+            service.products.first(where: { $0.id == "com.valasek.aimarketplace.credits50" })
         )
-        let outcome = await service.purchase(fiveDollarPack)
+        let outcome = await service.purchase(creditPack)
         XCTAssertEqual(outcome, .success)
-        XCTAssertEqual(totalCreditsGranted, 5.0, accuracy: 0.01)
+        XCTAssertEqual(totalCreditsGranted, 50.0, accuracy: 0.01)
 
         // Find and refund the transaction via SKTestSession
         // (simulates App Store server-side refund)
         let transactions = session.allTransactions()
         XCTAssertEqual(transactions.count, 1, "Should have exactly 1 transaction, got \(transactions.count)")
         let purchaseTransaction = try XCTUnwrap(
-            transactions.first(where: { $0.productIdentifier == "com.aimarketplace.credits.5" }),
+            transactions.first(where: { $0.productIdentifier == "com.valasek.aimarketplace.credits50" }),
             "Should find transaction"
         )
 
         // Refund it via SKTestSession (simulates App Store server-side refund)
         try session.refundTransaction(identifier: purchaseTransaction.identifier)
 
-        // In production: App Store Server Notifications V2 → backend webhook → onRevoke($5)
+        // In production: App Store Server Notifications V2 → backend webhook → onRevoke($50)
         // In test: we simulate by calling onRevoke directly
-        service.onRevoke?(5.0)
+        service.onRevoke?(50.0)
 
-        XCTAssertEqual(totalCreditsRevoked, 5.0, accuracy: 0.01,
-                       "onRevoke should fire with $5 — got \(totalCreditsRevoked)")
+        XCTAssertEqual(totalCreditsRevoked, 50.0, accuracy: 0.01,
+                       "onRevoke should fire with $50 — got \(totalCreditsRevoked)")
         XCTAssertEqual(revokeEventCount, 1, "Exactly one onRevoke event — got \(revokeEventCount)")
         XCTAssertEqual(store.walletBalance, 0.0, accuracy: 0.01,
                        "Wallet should be $0 after refund — got \(store.walletBalance)")
@@ -140,15 +140,15 @@ final class StoreKitTests: XCTestCase {
     // MARK: - Test 3: Ask to Buy → approve → credit lands without opening sheet
 
     func testAskToBuyApproveCreditsWallet() async throws {
-        let fiveDollarPack = try XCTUnwrap(
-            service.products.first(where: { $0.id == "com.aimarketplace.credits.5" })
+        let creditPack = try XCTUnwrap(
+            service.products.first(where: { $0.id == "com.valasek.aimarketplace.credits50" })
         )
 
         // Enable Ask to Buy (family subscription requirement)
         session.askToBuyEnabled = true
 
         // Purchase — should return .pending
-        let outcome = await service.purchase(fiveDollarPack)
+        let outcome = await service.purchase(creditPack)
         XCTAssertEqual(outcome, .pending, "Should be pending Ask-to-Buy approval")
         XCTAssertEqual(totalCreditsGranted, 0, "No credit yet — pending approval")
         XCTAssertEqual(store.walletBalance, 0, accuracy: 0.01)
@@ -156,7 +156,7 @@ final class StoreKitTests: XCTestCase {
         // Find and approve the pending transaction
         let transactions = session.allTransactions()
         let pendingTransaction = try XCTUnwrap(
-            transactions.first(where: { $0.productIdentifier == "com.aimarketplace.credits.5" }),
+            transactions.first(where: { $0.productIdentifier == "com.valasek.aimarketplace.credits50" }),
             "Should find pending transaction"
         )
         try session.approveAskToBuyTransaction(identifier: pendingTransaction.identifier)
@@ -167,32 +167,32 @@ final class StoreKitTests: XCTestCase {
         // Drain to pick up the approved transaction
         await service.drainPendingForTesting()
 
-        XCTAssertEqual(totalCreditsGranted, 5.0, accuracy: 0.01,
+        XCTAssertEqual(totalCreditsGranted, 50.0, accuracy: 0.01,
                        "Credit should be granted after approval — got \(totalCreditsGranted)")
-        XCTAssertEqual(store.walletBalance, 5.0, accuracy: 0.01)
+        XCTAssertEqual(store.walletBalance, 50.0, accuracy: 0.01)
     }
 
     // MARK: - Test 4: Delete transaction → no-op
 
     func testDeleteTransactionIsNoOp() async throws {
-        let fiveDollarPack = try XCTUnwrap(
-            service.products.first(where: { $0.id == "com.aimarketplace.credits.5" })
+        let creditPack = try XCTUnwrap(
+            service.products.first(where: { $0.id == "com.valasek.aimarketplace.credits50" })
         )
-        let outcome = await service.purchase(fiveDollarPack)
+        let outcome = await service.purchase(creditPack)
         XCTAssertEqual(outcome, .success)
-        XCTAssertEqual(totalCreditsGranted, 5.0, accuracy: 0.01)
+        XCTAssertEqual(totalCreditsGranted, 50.0, accuracy: 0.01)
 
         // Delete — should have zero effect
         let transactions = session.allTransactions()
         let purchaseTransaction = try XCTUnwrap(
-            transactions.first(where: { $0.productIdentifier == "com.aimarketplace.credits.5" }),
+            transactions.first(where: { $0.productIdentifier == "com.valasek.aimarketplace.credits50" }),
             "Should find transaction"
         )
         try session.deleteTransaction(identifier: purchaseTransaction.identifier)
 
-        XCTAssertEqual(totalCreditsGranted, 5.0, accuracy: 0.01,
+        XCTAssertEqual(totalCreditsGranted, 50.0, accuracy: 0.01,
                        "Credit unchanged after delete")
-        XCTAssertEqual(store.walletBalance, 5.0, accuracy: 0.01,
+        XCTAssertEqual(store.walletBalance, 50.0, accuracy: 0.01,
                        "Wallet unchanged after delete")
         XCTAssertEqual(totalCreditsRevoked, 0, "No revocation from delete")
     }

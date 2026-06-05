@@ -193,21 +193,39 @@ struct TopUpView: View {
             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 28)).foregroundStyle(Theme.warning)
             Text("Credit packs unavailable right now")
                 .font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
-            // Surface the actual reason — usually an App Store Connect
-            // setup gap (IAPs not Ready-to-Submit, Paid Apps Agreement
-            // unsigned, bundle-id mismatch). Without this, "unavailable"
-            // is a dead end. On TestFlight/prod the error comes from
-            // StoreKitService.loadProducts when Apple returns 0 products.
+
+            // Show diagnostic detail so TestFlight testers can report WHY
+            // products failed to load instead of just seeing "unavailable".
             if let err = storeKit.errorMessage {
                 Text(err)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Theme.warning)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
-            } else {
-                Text("Please check your connection and try again. If the issue persists, contact support.")
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
             }
+            if let last = ErrorMonitor.shared.entries.filter({ $0.category == "StoreKit" }).last {
+                VStack(spacing: 4) {
+                    Text("Last StoreKit diagnostic:")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                    Text(last.message)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced)).foregroundStyle(Theme.inkSoft)
+                    if let detail = last.detail {
+                        Text(detail)
+                            .font(.system(size: 10, weight: .regular, design: .monospaced))
+                            .foregroundStyle(Theme.inkFaint)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
+            // Show which product IDs were requested (mismatch is a common cause)
+            Text("Requested product IDs:\n\(StoreKitService.creditProductIDs.joined(separator: "\n"))")
+                .font(.system(size: 10, weight: .regular, design: .monospaced))
+                .foregroundStyle(Theme.inkFaint)
+                .multilineTextAlignment(.center)
+
+            Text("Please check your connection and try again. If the issue persists, contact support.")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
             Button("Try again") {
                 Task { await storeKit.loadProducts() }
             }

@@ -27,10 +27,10 @@ final class StoreKitService: ObservableObject {
     @Published var errorMessage: String?
 
     nonisolated static let products: [(id: String, credit: Double)] = [
-        ("com.aimarketplace.credits.5",  5),
-        ("com.aimarketplace.credits.10", 10),
-        ("com.aimarketplace.credits.25", 25),
-        ("com.aimarketplace.credits.50", 50),
+        ("com.valasek.aimarketplace.credits50",  50),
+        ("com.valasek.aimarketplace.credits100", 100),
+        ("com.valasek.aimarketplace.credits200", 200),
+        ("com.valasek.aimarketplace.credits400", 400),
     ]
 
     nonisolated static var creditProductIDs: [String] { products.map(\.id) }
@@ -64,24 +64,26 @@ final class StoreKitService: ObservableObject {
         do {
             let loaded = try await Product.products(for: Self.creditProductIDs)
             products = loaded.sorted { $0.price < $1.price }
-            // Product.products(for:) doesn't throw when the App Store
-            // returns 0 — it just returns []. Without a hint, the UI
-            // says "Credit packs unavailable" with no clue why. The
-            // four usual causes are: (1) IAPs not yet created or not
-            // "Ready to Submit" in App Store Connect; (2) Paid Apps
-            // Agreement unsigned in App Store Connect → Business;
-            // (3) bundle id mismatch between the build and the app
-            // record; (4) StoreKit catalog hasn't propagated yet
-            // (give it 15–30 min after creating IAPs).
             if loaded.isEmpty {
-                errorMessage = "App Store returned 0 products for \(Self.creditProductIDs.joined(separator: ", ")). "
-                    + "Usually one of: IAPs not created / not Ready-to-Submit in App Store Connect, "
-                    + "Paid Apps Agreement not signed, bundle id mismatch, or catalog still propagating."
+                ErrorMonitor.shared.record(
+                    category: "StoreKit",
+                    message: "Product request returned 0 products",
+                    detail: "Requested IDs: \(Self.creditProductIDs.joined(separator: ", "))"
+                )
             } else {
-                errorMessage = nil
+                ErrorMonitor.shared.record(
+                    category: "StoreKit",
+                    message: "Loaded \(loaded.count) product(s)",
+                    detail: loaded.map { "\($0.id) @ \($0.displayPrice)" }.joined(separator: "; ")
+                )
             }
         } catch {
             errorMessage = error.localizedDescription
+            ErrorMonitor.shared.record(
+                category: "StoreKit",
+                message: "Product request failed",
+                error: error
+            )
         }
     }
 
@@ -116,6 +118,11 @@ final class StoreKitService: ObservableObject {
             }
         } catch {
             errorMessage = error.localizedDescription
+            ErrorMonitor.shared.record(
+                category: "StoreKit",
+                message: "Purchase failed for \(product.id)",
+                error: error
+            )
             return .failed
         }
     }
@@ -131,6 +138,11 @@ final class StoreKitService: ObservableObject {
             try await AppStore.sync()
         } catch {
             errorMessage = error.localizedDescription
+            ErrorMonitor.shared.record(
+                category: "StoreKit",
+                message: "Restore failed (AppStore.sync)",
+                error: error
+            )
         }
         await drainPending()
     }

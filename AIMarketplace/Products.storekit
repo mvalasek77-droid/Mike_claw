@@ -5,61 +5,61 @@
     {
       "displayPrice" : "4.99",
       "familyShareable" : false,
-      "internalID" : "credits-5",
+      "internalID" : "credits-50",
       "localizations" : [
         {
-          "description" : "$5 of wallet credit to buy titles.",
-          "displayName" : "$5 Credit",
+          "description" : "50 AI Marketplace credits.",
+          "displayName" : "50 Credits",
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.aimarketplace.credits.5",
-      "referenceName" : "Credit 5",
+      "productID" : "com.valasek.aimarketplace.credits50",
+      "referenceName" : "Credits 50",
       "type" : "Consumable"
     },
     {
       "displayPrice" : "9.99",
       "familyShareable" : false,
-      "internalID" : "credits-10",
+      "internalID" : "credits-100",
       "localizations" : [
         {
-          "description" : "$10 of wallet credit to buy titles.",
-          "displayName" : "$10 Credit",
+          "description" : "100 AI Marketplace credits.",
+          "displayName" : "100 Credits",
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.aimarketplace.credits.10",
-      "referenceName" : "Credit 10",
+      "productID" : "com.valasek.aimarketplace.credits100",
+      "referenceName" : "Credits 100",
       "type" : "Consumable"
     },
     {
-      "displayPrice" : "24.99",
+      "displayPrice" : "19.99",
       "familyShareable" : false,
-      "internalID" : "credits-25",
+      "internalID" : "credits-200",
       "localizations" : [
         {
-          "description" : "$25 of wallet credit to buy titles.",
-          "displayName" : "$25 Credit",
+          "description" : "200 AI Marketplace credits.",
+          "displayName" : "200 Credits",
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.aimarketplace.credits.25",
-      "referenceName" : "Credit 25",
+      "productID" : "com.valasek.aimarketplace.credits200",
+      "referenceName" : "Credits 200",
       "type" : "Consumable"
     },
     {
-      "displayPrice" : "49.99",
+      "displayPrice" : "39.99",
       "familyShareable" : false,
-      "internalID" : "credits-50",
+      "internalID" : "credits-400",
       "localizations" : [
         {
-          "description" : "$50 of wallet credit to buy titles.",
-          "displayName" : "$50 Credit",
+          "description" : "400 AI Marketplace credits.",
+          "displayName" : "400 Credits",
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.aimarketplace.credits.50",
-      "referenceName" : "Credit 50",
+      "productID" : "com.valasek.aimarketplace.credits400",
+      "referenceName" : "Credits 400",
       "type" : "Consumable"
     }
   ],

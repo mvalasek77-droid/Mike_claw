@@ -5,6 +5,8 @@ import SwiftUI
 struct AdminConsoleView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var moderation: ModerationStore
+    @EnvironmentObject private var storeKit: StoreKitService
+    @ObservedObject private var errorMonitor = ErrorMonitor.shared
     @State private var confirmUnblockAll = false
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
@@ -43,6 +45,7 @@ struct AdminConsoleView: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
+                    errorMonitorCard
                     automationCard
                     filmProductionCard
                     moderationCard
@@ -125,6 +128,63 @@ struct AdminConsoleView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Clears every creator block on this device. Reports already sent to the operator are unaffected.")
+        }
+    }
+
+    // MARK: - Error Monitor
+
+    /// Diagnostic card showing recent StoreKit and app errors. Essential for
+    /// TestFlight debugging — without this the "Credit packs unavailable"
+    /// screen shows no hint of *why* products failed to load.
+    private var errorMonitorCard: some View {
+        GlassCard(title: "Error monitor", icon: "ant.fill", tint: errorMonitor.entries.isEmpty ? Theme.success : Theme.warning) {
+            VStack(alignment: .leading, spacing: 8) {
+                if errorMonitor.entries.isEmpty {
+                    Text("No errors recorded.")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                } else {
+                    Text("\(errorMonitor.entries.count) logged — most recent below")
+                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+
+                    let recent = Array(errorMonitor.entries.suffix(5)).reversed()
+                    ForEach(recent) { entry in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(entry.timestamp, style: .time)
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Theme.inkFaint)
+                                Text(entry.category)
+                                    .font(.system(size: 10, weight: .heavy))
+                                    .foregroundStyle(entry.category == "StoreKit" ? Theme.warning : Theme.inkSoft)
+                                    .padding(.horizontal, 4).padding(.vertical, 1)
+                                    .background(Capsule().fill(Theme.warning.opacity(0.15)))
+                            }
+                            Text(entry.message)
+                                .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink)
+                            if let detail = entry.detail {
+                                Text(detail)
+                                    .font(.system(size: 10, weight: .regular, design: .monospaced))
+                                    .foregroundStyle(Theme.inkFaint)
+                                    .lineLimit(3)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.04)))
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    PrimaryButton(title: "Clear log", systemImage: "trash",
+                                  style: .ghost, tint: Theme.warning) {
+                        errorMonitor.clear()
+                    }
+                    PrimaryButton(title: "Reload StoreKit", systemImage: "arrow.clockwise",
+                                  style: .ghost, tint: Theme.accent) {
+                        Task { await storeKit.loadProducts() }
+                    }
+                }
+            }
         }
     }
 
