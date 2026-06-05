@@ -18,6 +18,17 @@ echo "Xcode: $(xcodebuild -version | head -1)"
 echo "Swift: $(swift --version | head -1)"
 echo "Working dir: $(pwd)"
 
+# Xcode Cloud runs this script with CWD = ci_scripts/. Hop to the repo
+# root so all paths below are stable regardless of where it ran from.
+# CI_WORKSPACE is set by Xcode Cloud to the cloned repo root; falling
+# back to ".." covers local execution from ci_scripts/.
+if [ -n "${CI_WORKSPACE:-}" ]; then
+  cd "$CI_WORKSPACE"
+elif [ -d "../AIMarketplace" ]; then
+  cd ".."
+fi
+echo "Working dir after cd: $(pwd)"
+
 # ── Write Secrets.xcconfig from Xcode Cloud env vars ──
 # Set AIMKT_WORKER_URL and AIMKT_SHARED_SECRET in
 # Xcode Cloud → Workflow → Environment Variables.
@@ -44,6 +55,9 @@ write_secrets() {
 if [ -n "${AIMKT_WORKER_URL:-}" ] && [ -n "${AIMKT_SHARED_SECRET:-}" ]; then
   write_secrets "$SECRETS_DIR_1"
   write_secrets "$SECRETS_DIR_2"
+  # Redacted preview so the next build's log proves what landed.
+  echo "  → AIMKT_WORKER_URL = $(echo ${AIMKT_WORKER_URL} | head -c 30)..."
+  echo "  → AIMKT_SHARED_SECRET = ***"
 else
   # Fallback: check if file already exists in repo (e.g. dev builds)
   if [ -f "${SECRETS_DIR_1}/Secrets.xcconfig" ]; then
