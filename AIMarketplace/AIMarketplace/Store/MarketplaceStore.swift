@@ -938,7 +938,15 @@ final class MarketplaceStore: ObservableObject {
     }
 
     private func connectPayoutRemote() async {
-        guard let url = URL(string: "\(payoutBaseURL)/payouts/connect") else { return }
+        guard let url = URL(string: "\(payoutBaseURL)/payouts/connect") else {
+            ErrorMonitor.shared.record(
+                category: "Stripe",
+                message: "Connect failed: invalid URL",
+                detail: "payoutBaseURL = '\(payoutBaseURL)'"
+            )
+            lastPayoutError = "Worker URL looks malformed: '\(payoutBaseURL)'."
+            return
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
@@ -952,16 +960,24 @@ final class MarketplaceStore: ObservableObject {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {
+                ErrorMonitor.shared.record(
+                    category: "Stripe", message: "Connect: no HTTPURLResponse",
+                    detail: "URL=\(url.absoluteString)"
+                )
                 lastPayoutError = isAdmin
-                    ? "No response from the payout backend."
+                    ? "No response from the payout backend at \(url.absoluteString)."
                     : "We couldn't reach Stripe right now. Check your connection and try again — your spot is saved."
                 return
             }
             guard http.statusCode == 200 else {
                 let serverMsg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+                ErrorMonitor.shared.record(
+                    category: "Stripe", message: "Connect HTTP \(http.statusCode)",
+                    detail: "URL=\(url.absoluteString) body=\(String(data: data, encoding: .utf8)?.prefix(200) ?? "")"
+                )
                 lastPayoutError = isAdmin
                     ? "Stripe onboarding failed (\(http.statusCode))\(serverMsg.map { ": \($0)" } ?? "")."
-                    : "Stripe couldn't start onboarding right now. Try again in a minute."
+                    : "Stripe couldn't start onboarding right now (\(http.statusCode)). Try again in a minute."
                 return
             }
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -974,9 +990,17 @@ final class MarketplaceStore: ObservableObject {
                 }
             }
         } catch {
-            lastPayoutError = isAdmin
-                ? "Couldn't reach the payout backend: \(error.localizedDescription)"
-                : "We couldn't reach Stripe right now. Check your connection and try again."
+            // The real cause lives here — surface it. Apple's
+            // localizedDescription for common URLError cases is
+            // user-readable ("Could not connect to the server.",
+            // "A server with the specified hostname could not be
+            // found.", "The Internet connection appears to be
+            // offline.") and points at the right thing to fix.
+            ErrorMonitor.shared.record(
+                category: "Stripe", message: "Connect: URLSession threw",
+                error: error
+            )
+            lastPayoutError = "Couldn't reach the payout backend at \(url.absoluteString): \(error.localizedDescription)"
         }
     }
 
