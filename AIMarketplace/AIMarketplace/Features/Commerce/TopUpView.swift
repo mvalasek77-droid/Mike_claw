@@ -193,8 +193,21 @@ struct TopUpView: View {
             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 28)).foregroundStyle(Theme.warning)
             Text("Credit packs unavailable right now")
                 .font(.system(size: 15, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
-            Text("Please check your connection and try again. If the issue persists, contact support.")
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
+            // Surface the actual reason — usually an App Store Connect
+            // setup gap (IAPs not Ready-to-Submit, Paid Apps Agreement
+            // unsigned, bundle-id mismatch). Without this, "unavailable"
+            // is a dead end. On TestFlight/prod the error comes from
+            // StoreKitService.loadProducts when Apple returns 0 products.
+            if let err = storeKit.errorMessage {
+                Text(err)
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Theme.warning)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+            } else {
+                Text("Please check your connection and try again. If the issue persists, contact support.")
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
+            }
             Button("Try again") {
                 Task { await storeKit.loadProducts() }
             }

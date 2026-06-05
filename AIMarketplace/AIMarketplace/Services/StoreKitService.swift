@@ -64,6 +64,22 @@ final class StoreKitService: ObservableObject {
         do {
             let loaded = try await Product.products(for: Self.creditProductIDs)
             products = loaded.sorted { $0.price < $1.price }
+            // Product.products(for:) doesn't throw when the App Store
+            // returns 0 — it just returns []. Without a hint, the UI
+            // says "Credit packs unavailable" with no clue why. The
+            // four usual causes are: (1) IAPs not yet created or not
+            // "Ready to Submit" in App Store Connect; (2) Paid Apps
+            // Agreement unsigned in App Store Connect → Business;
+            // (3) bundle id mismatch between the build and the app
+            // record; (4) StoreKit catalog hasn't propagated yet
+            // (give it 15–30 min after creating IAPs).
+            if loaded.isEmpty {
+                errorMessage = "App Store returned 0 products for \(Self.creditProductIDs.joined(separator: ", ")). "
+                    + "Usually one of: IAPs not created / not Ready-to-Submit in App Store Connect, "
+                    + "Paid Apps Agreement not signed, bundle id mismatch, or catalog still propagating."
+            } else {
+                errorMessage = nil
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
