@@ -1,23 +1,25 @@
 {
   "ticker": "WTI",
-  "price": 93.16999816894531,
-  "direction": "SHORT",
-  "entry": 93.16999816894531,
-  "target": 84.37,
-  "stop": 119.48,
-  "grade": "D",
-  "win_rate": 0.95,
+  "price": 90.38999938964844,
+  "direction": "LONG",
+  "entry": 90.38999938964844,
+  "target": 97.89,
+  "stop": 84.37,
+  "grade": "C",
+  "win_rate": 0.61,
   "pattern": "M",
-  "pattern_pct": 74.9,
+  "pattern_pct": 82.9,
   "regime": "DOWN",
   "source": "macro_M",
-  "rsi": 40.3,
-  "rr": 0.33,
+  "rsi": 31.1,
+  "rr": 1.25,
   "notes": [
-    "M 75% confirm",
+    "M-bounce KING",
+    "mom-vs-position!",
+    "RSI31!",
     "conf+",
-    "floor$84",
-    "R:R0.3!"
+    "ret50%$102",
+    "1M=M cap65%"
   ],
-  "time": "2026-06-04T16:10:08.132936-04:00"
+  "time": "2026-06-05T12:32:29.099490-04:00"
 }

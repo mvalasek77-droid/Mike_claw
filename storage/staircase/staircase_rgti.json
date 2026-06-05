@@ -1,0 +1,44 @@
+{
+  "STAIRCASE_SHORT_22.14_-4.3": {
+    "type": "STAIRCASE_SHORT",
+    "d1_loss": -4.3,
+    "d1_bars": 4,
+    "bounce_gain": 0.8,
+    "bounce_bars": 2,
+    "bounce_ratio": 18.5,
+    "d2_loss": -2.21,
+    "d2_bars": 2,
+    "entry": 22.14,
+    "target": 21.86,
+    "stop": 22.25,
+    "fresh": true
+  },
+  "STAIRCASE_SHORT_21.53_-1.8": {
+    "type": "STAIRCASE_SHORT",
+    "d1_loss": -1.84,
+    "d1_bars": 5,
+    "bounce_gain": 0.47,
+    "bounce_bars": 2,
+    "bounce_ratio": 25.3,
+    "d2_loss": -2.13,
+    "d2_bars": 7,
+    "entry": 21.53,
+    "target": 21.32,
+    "stop": 21.64,
+    "fresh": false
+  },
+  "STAIRCASE_SHORT_21.22_-2.1": {
+    "type": "STAIRCASE_SHORT",
+    "d1_loss": -2.13,
+    "d1_bars": 7,
+    "bounce_gain": 0.66,
+    "bounce_bars": 2,
+    "bounce_ratio": 31.2,
+    "d2_loss": -1.24,
+    "d2_bars": 4,
+    "entry": 21.22,
+    "target": 20.97,
+    "stop": 21.32,
+    "fresh": false
+  }
+}

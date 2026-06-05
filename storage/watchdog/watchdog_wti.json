@@ -1,9 +1,17 @@
 {
+  "momentum_SELL_3": {
+    "type": "MOMENTUM_SELL",
+    "consecutive_red": 5,
+    "total_drop_pct": 3.26,
+    "accelerating": false,
+    "action": "SELL",
+    "strength": 1.0
+  },
   "macro_SELL_119": {
     "type": "MACRO_M_OVERRIDE",
     "ceiling": 119.48,
     "floor": 84.37,
-    "pct": 74.9,
+    "pct": 84.3,
     "amplitude": 29.4,
     "action": "SELL",
     "strength": 1.0

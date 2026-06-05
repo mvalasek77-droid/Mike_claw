@@ -1,0 +1,30 @@
+{
+  "STAIRCASE_SHORT_3.92_-1.9": {
+    "type": "STAIRCASE_SHORT",
+    "d1_loss": -1.87,
+    "d1_bars": 3,
+    "bounce_gain": 0.26,
+    "bounce_bars": 2,
+    "bounce_ratio": 13.7,
+    "d2_loss": -0.13,
+    "d2_bars": 3,
+    "entry": 3.92,
+    "target": 3.89,
+    "stop": 3.94,
+    "fresh": false
+  },
+  "STAIRCASE_SHORT_3.87_-1.5": {
+    "type": "STAIRCASE_SHORT",
+    "d1_loss": -1.54,
+    "d1_bars": 6,
+    "bounce_gain": 0.26,
+    "bounce_bars": 2,
+    "bounce_ratio": 16.8,
+    "d2_loss": -0.78,
+    "d2_bars": 3,
+    "entry": 3.87,
+    "target": 3.84,
+    "stop": 3.88,
+    "fresh": false
+  }
+}
