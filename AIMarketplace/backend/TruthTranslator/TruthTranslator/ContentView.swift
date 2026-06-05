@@ -37,7 +37,7 @@ struct ContentView: View {
                 Color.clear.frame(height: 28)
             }
         }
-        .sheet(isPresented: $showingReleaseGateway) {
+        .fullScreenCover(isPresented: $showingReleaseGateway) {
             ReleaseGatewayView()
                 .preferredColorScheme(.dark)
         }
@@ -191,13 +191,17 @@ struct ContentView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     ResultBlock(title: "The translation", icon: "captions.bubble.fill", text: viewModel.result.translation)
-                    ResultBlock(title: "The psychology", icon: "brain.head.profile", text: viewModel.result.psychology)
+                    if viewModel.result != .placeholder {
+                        ResultBlock(title: "The psychology", icon: "brain.head.profile", text: viewModel.result.psychology)
+                    }
                 }
 
-                FlowTags(values: viewModel.result.receipts, icon: "checkmark.seal.fill")
+                if viewModel.result != .placeholder {
+                    FlowTags(values: viewModel.result.receipts, icon: "checkmark.seal.fill")
 
-                if !viewModel.result.flags.isEmpty {
-                    FlowTags(values: viewModel.result.flags, icon: "exclamationmark.triangle.fill", tint: AppTheme.orange)
+                    if !viewModel.result.flags.isEmpty {
+                        FlowTags(values: viewModel.result.flags, icon: "exclamationmark.triangle.fill", tint: AppTheme.orange)
+                    }
                 }
             }
         }
@@ -278,8 +282,8 @@ final class DecodeViewModel: ObservableObject {
         context = .dating
         result = DecodeResult(
             headline: "He left the calendar in witness protection.",
-            translation: "He likes access to you more than he likes making an actual plan. Cute fog machine, zero reservation.",
-            psychology: "Vague future language keeps the door open without requiring effort. The useful test is simple: ask for a day, time, and place.",
+            translation: "He wants access, not a plan.",
+            psychology: "Vague future language keeps the door open without requiring effort. A clear plan is the useful test.",
             receipts: ["No date", "Soft enthusiasm", "Future fog", "Low logistical effort"],
             suggestedReplies: [
                 "I like clear plans. What day and time works?",

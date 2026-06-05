@@ -27,10 +27,10 @@ final class StoreKitService: ObservableObject {
     @Published var errorMessage: String?
 
     nonisolated static let products: [(id: String, credit: Double)] = [
-        ("com.valasek.aimarketplace.credits50",  50),
-        ("com.valasek.aimarketplace.credits100", 100),
-        ("com.valasek.aimarketplace.credits200", 200),
-        ("com.valasek.aimarketplace.credits400", 400),
+        ("com.valasek.aimarketplace.credits5",   5),
+        ("com.valasek.aimarketplace.credits10",  10),
+        ("com.valasek.aimarketplace.credits15",  15),
+        ("com.valasek.aimarketplace.credits20",  20),
     ]
 
     nonisolated static var creditProductIDs: [String] { products.map(\.id) }

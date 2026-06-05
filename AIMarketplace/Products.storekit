@@ -5,61 +5,61 @@
     {
       "displayPrice" : "4.99",
       "familyShareable" : false,
-      "internalID" : "credits-50",
+      "internalID" : "credits-5",
       "localizations" : [
         {
-          "description" : "50 AI Marketplace credits.",
-          "displayName" : "50 Credits",
+          "description" : "5 AI Marketplace credits.",
+          "displayName" : "5 Credits",
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.valasek.aimarketplace.credits50",
-      "referenceName" : "Credits 50",
+      "productID" : "com.valasek.aimarketplace.credits5",
+      "referenceName" : "Credits 5",
       "type" : "Consumable"
     },
     {
       "displayPrice" : "9.99",
       "familyShareable" : false,
-      "internalID" : "credits-100",
+      "internalID" : "credits-10",
       "localizations" : [
         {
-          "description" : "100 AI Marketplace credits.",
-          "displayName" : "100 Credits",
+          "description" : "10 AI Marketplace credits.",
+          "displayName" : "10 Credits",
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.valasek.aimarketplace.credits100",
-      "referenceName" : "Credits 100",
+      "productID" : "com.valasek.aimarketplace.credits10",
+      "referenceName" : "Credits 10",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "14.99",
+      "familyShareable" : false,
+      "internalID" : "credits-15",
+      "localizations" : [
+        {
+          "description" : "15 AI Marketplace credits.",
+          "displayName" : "15 Credits",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.aimarketplace.credits15",
+      "referenceName" : "Credits 15",
       "type" : "Consumable"
     },
     {
       "displayPrice" : "19.99",
       "familyShareable" : false,
-      "internalID" : "credits-200",
+      "internalID" : "credits-20",
       "localizations" : [
         {
-          "description" : "200 AI Marketplace credits.",
-          "displayName" : "200 Credits",
+          "description" : "20 AI Marketplace credits.",
+          "displayName" : "20 Credits",
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.valasek.aimarketplace.credits200",
-      "referenceName" : "Credits 200",
-      "type" : "Consumable"
-    },
-    {
-      "displayPrice" : "39.99",
-      "familyShareable" : false,
-      "internalID" : "credits-400",
-      "localizations" : [
-        {
-          "description" : "400 AI Marketplace credits.",
-          "displayName" : "400 Credits",
-          "locale" : "en_US"
-        }
-      ],
-      "productID" : "com.valasek.aimarketplace.credits400",
-      "referenceName" : "Credits 400",
+      "productID" : "com.valasek.aimarketplace.credits20",
+      "referenceName" : "Credits 20",
       "type" : "Consumable"
     }
   ],
