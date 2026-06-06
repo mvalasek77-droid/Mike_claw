@@ -17,8 +17,14 @@ full Reduce-Motion / dark-mode / Dynamic-Type support.
 1. **Import** any screenshot straight from your iPhone (PHPicker, no full
    library access required).
 2. **Frame** it in a device bezel over a tasteful gradient or solid backdrop.
-3. **Caption** it with a marketing headline (auto-contrast or custom color).
-4. **Export** every required App Store Connect size at exact pixels, saved to
+3. **Clean the status bar** — overlay a crisp 9:41 / full-battery / full-signal
+   bar (editable), tuned per device class: Dynamic Island, notch, classic
+   iPhone, and iPad.
+4. **Make it pop** — one-tap color presets (Pop, Vivid, Punch, Warm, Cool,
+   Noir) plus brightness / contrast / saturation / warmth sliders. These are
+   SwiftUI color filters, so the exact look survives export.
+5. **Caption** it with a marketing headline (auto-contrast or custom color).
+6. **Export** every required App Store Connect size at exact pixels, saved to
    a dedicated "Screenshot Studio" Photos album, ready to upload.
 
 ## App Store Connect sizes

@@ -13,6 +13,9 @@ struct ScreenshotCanvas: View {
     let style: CanvasStyle
     let image: UIImage?
     let captionText: String
+    /// Status-bar layout for the target device class. Defaults to a modern
+    /// iPhone so callers that don't care still render sensibly.
+    var statusBarLayout: StatusBarLayoutKind = .dynamicIsland
 
     private var sourcePixelSize: CGSize {
         guard let image else { return .zero }
@@ -97,13 +100,32 @@ struct ScreenshotCanvas: View {
                 x: 0, y: canvasSize.width * 0.012)
     }
 
+    /// Apply the "pop" color adjustments. These are SwiftUI color filters, so
+    /// the exact look is preserved through `ImageRenderer` on export.
+    @ViewBuilder
+    private func adjusted(_ content: some View) -> some View {
+        let adj = style.adjustments
+        content
+            .saturation(adj.clampedSaturation)
+            .contrast(adj.clampedContrast)
+            .brightness(adj.clampedBrightness)
+            .colorMultiply(adj.warmthTint)
+    }
+
     @ViewBuilder
     private func screenshotLayer(in l: ComposedLayout) -> some View {
         if let image {
-            Image(uiImage: image)
+            adjusted(Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .frame(width: l.screenRect.width, height: l.screenRect.height)
+                .frame(width: l.screenRect.width, height: l.screenRect.height))
+                .overlay(alignment: .top) {
+                    if style.statusBar.enabled {
+                        StatusBarOverlay(kind: statusBarLayout,
+                                         style: style.statusBar,
+                                         width: l.screenRect.width)
+                    }
+                }
         } else {
             // Empty-slide placeholder — still looks intentional in preview.
             ZStack {

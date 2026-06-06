@@ -94,6 +94,8 @@ struct ASCGuideView: View {
     ]
 
     private let tips = [
+        "Turn on Clean status bar so every shot reads 9:41 with full battery — not your real time and 47% charge.",
+        "A subtle “Pop” enhancement lifts contrast and color without looking edited.",
         "Keep the most compelling screenshot first — it's the one shown in search results.",
         "Use a consistent caption style across all slides for a cohesive store listing.",
         "Captions over ~5 words get truncated on small previews; keep them punchy.",

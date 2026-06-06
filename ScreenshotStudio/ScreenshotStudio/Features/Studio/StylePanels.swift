@@ -5,6 +5,11 @@ import SwiftUI
 struct LayoutPanel: View {
     @Binding var project: ScreenshotProject
 
+    private var batteryBinding: Binding<Double> {
+        Binding(get: { Double(project.style.statusBar.batteryPercent) },
+                set: { project.style.statusBar.batteryPercent = Int($0.rounded()) })
+    }
+
     var body: some View {
         VStack(spacing: 18) {
             GlassSegmented(
@@ -19,6 +24,117 @@ struct LayoutPanel: View {
             if project.style.deviceFramed {
                 SliderRow(label: "Corner radius", value: $project.style.cornerFraction, range: 0...0.12)
             }
+
+            Divider().overlay(.white.opacity(0.1))
+
+            ToggleRow(label: "Clean status bar", systemImage: "clock.fill",
+                      isOn: $project.style.statusBar.enabled)
+            if project.style.statusBar.enabled {
+                statusBarControls
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var statusBarControls: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Text("Time")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                Spacer()
+                TextField("9:41", text: $project.style.statusBar.time)
+                    .multilineTextAlignment(.trailing)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(LiquidGlass.primaryText)
+                    .frame(maxWidth: 110)
+                    .padding(.horizontal, 10).padding(.vertical, 7)
+                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+
+            GlassSegmented(
+                options: StatusBarStyle.GlyphAppearance.allCases.map { ($0, $0.label) },
+                selection: $project.style.statusBar.appearance
+            )
+
+            ToggleRow(label: "Cellular", systemImage: "cellularbars", isOn: $project.style.statusBar.showCellular)
+            ToggleRow(label: "Wi-Fi", systemImage: "wifi", isOn: $project.style.statusBar.showWiFi)
+            ToggleRow(label: "Battery %", systemImage: "battery.100", isOn: $project.style.statusBar.showBatteryPercent)
+            SliderRow(label: "Battery", value: batteryBinding, range: 0...100,
+                      format: { String(format: "%.0f%%", $0) })
+
+            ToggleRow(label: "Carrier name", systemImage: "antenna.radiowaves.left.and.right",
+                      isOn: $project.style.statusBar.showCarrier)
+            if project.style.statusBar.showCarrier {
+                TextField("Carrier", text: $project.style.statusBar.carrier)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                    .padding(.horizontal, 10).padding(.vertical, 8)
+                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
+        .padding(.top, 2)
+    }
+}
+
+// MARK: - Enhance (color "pop")
+
+struct EnhancePanel: View {
+    @Binding var project: ScreenshotProject
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(EnhancePreset.all) { preset in
+                        let isSelected = project.style.adjustments == preset.adjustments
+                        Button {
+                            Motion.run(Motion.snap) { project.style.adjustments = preset.adjustments }
+                            Haptics.selection()
+                        } label: {
+                            VStack(spacing: 6) {
+                                Image(systemName: preset.symbol)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(LiquidGlass.primaryText.opacity(0.6)))
+                                    .frame(width: 56, height: 48)
+                                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .strokeBorder(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(Color.white.opacity(0.12)),
+                                                          lineWidth: isSelected ? 2 : 1)
+                                    )
+                                Text(preset.name)
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.primaryText.opacity(isSelected ? 0.95 : 0.55))
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(preset.name) enhancement")
+                        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+
+            SliderRow(label: "Brightness", value: $project.style.adjustments.brightness, range: -0.25...0.25,
+                      format: { String(format: "%+.0f", $0 * 400) })
+            SliderRow(label: "Contrast", value: $project.style.adjustments.contrast, range: 0.6...1.5,
+                      format: { String(format: "%.0f%%", $0 * 100) })
+            SliderRow(label: "Saturation", value: $project.style.adjustments.saturation, range: 0...2,
+                      format: { String(format: "%.0f%%", $0 * 100) })
+            SliderRow(label: "Warmth", value: $project.style.adjustments.warmth, range: -1...1,
+                      format: { String(format: "%+.0f", $0 * 100) })
+
+            Button {
+                Motion.run(Motion.snap) { project.style.adjustments = ImageAdjustments() }
+                Haptics.selection()
+            } label: {
+                Label("Reset", systemImage: "arrow.uturn.backward")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 }

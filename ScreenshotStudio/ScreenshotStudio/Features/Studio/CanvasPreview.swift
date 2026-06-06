@@ -9,6 +9,7 @@ struct CanvasPreview: View {
     let style: CanvasStyle
     let image: UIImage?
     let captionText: String
+    var statusBarLayout: StatusBarLayoutKind = .dynamicIsland
 
     var body: some View {
         GeometryReader { geo in
@@ -18,7 +19,8 @@ struct CanvasPreview: View {
                 canvasSize: canvasSize,
                 style: style,
                 image: image,
-                captionText: captionText
+                captionText: captionText,
+                statusBarLayout: statusBarLayout
             )
             .frame(width: canvasSize.width, height: canvasSize.height)
             .scaleEffect(scale, anchor: .topLeading)
@@ -37,5 +39,6 @@ extension CanvasPreview {
         self.style = project.style
         self.image = slide.flatMap { ImageStore.load($0.imageFile) }
         self.captionText = slide.map { project.captionText(for: $0) } ?? project.style.caption.text
+        self.statusBarLayout = project.deviceSize.statusBarLayout
     }
 }

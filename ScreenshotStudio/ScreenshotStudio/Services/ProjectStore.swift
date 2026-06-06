@@ -43,6 +43,11 @@ final class ProjectStore: ObservableObject {
     func create(name: String = "Untitled Set") -> ScreenshotProject {
         var project = ScreenshotProject.newProject(name: name)
         project.style.caption.text = "Built for the moment"
+        // Start punchy: a clean status bar and a tasteful color "pop" are on by
+        // default, since that's the look App Store screenshots want.
+        if let pop = EnhancePreset.all.first(where: { $0.id == "pop" }) {
+            project.style.adjustments = pop.adjustments
+        }
         projects.insert(project, at: 0)
         persist()
         return project

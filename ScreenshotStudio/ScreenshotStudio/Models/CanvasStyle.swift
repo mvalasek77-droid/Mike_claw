@@ -150,4 +150,8 @@ struct CanvasStyle: Codable, Hashable {
     var cornerFraction: Double = 0.052
     /// Drop shadow under the device.
     var shadow: Bool = true
+    /// Clean, synthetic status bar drawn over the screenshot.
+    var statusBar: StatusBarStyle = StatusBarStyle()
+    /// Color adjustments applied to the source screenshot.
+    var adjustments: ImageAdjustments = ImageAdjustments()
 }

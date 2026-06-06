@@ -53,13 +53,15 @@ final class ExportCoordinator: ObservableObject {
 
         for slot in slots {
             let canvasSize = slot.pixelSize(for: project.orientation)
+            let layout = slot.statusBarLayout
             for slide in project.slides {
                 let source = ImageStore.load(slide.imageFile)
                 if let rendered = ScreenshotRenderer.render(
                     canvasSize: canvasSize,
                     style: project.style,
                     image: source,
-                    captionText: project.captionText(for: slide)
+                    captionText: project.captionText(for: slide),
+                    statusBarLayout: layout
                 ) {
                     images.append(rendered)
                 }

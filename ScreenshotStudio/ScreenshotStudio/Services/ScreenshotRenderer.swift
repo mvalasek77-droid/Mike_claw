@@ -13,12 +13,14 @@ enum ScreenshotRenderer {
     static func render(canvasSize: CGSize,
                        style: CanvasStyle,
                        image: UIImage?,
-                       captionText: String) -> UIImage? {
+                       captionText: String,
+                       statusBarLayout: StatusBarLayoutKind) -> UIImage? {
         let canvas = ScreenshotCanvas(
             canvasSize: canvasSize,
             style: style,
             image: image,
-            captionText: captionText
+            captionText: captionText,
+            statusBarLayout: statusBarLayout
         )
         .frame(width: canvasSize.width, height: canvasSize.height)
 
@@ -33,12 +35,14 @@ enum ScreenshotRenderer {
     static func renderSlides(of project: ScreenshotProject,
                              for device: ASCDeviceSize) -> [UIImage] {
         let canvasSize = device.pixelSize(for: project.orientation)
+        let layout = device.statusBarLayout
         return project.slides.compactMap { slide in
             let source = ImageStore.load(slide.imageFile)
             return render(canvasSize: canvasSize,
                           style: project.style,
                           image: source,
-                          captionText: project.captionText(for: slide))
+                          captionText: project.captionText(for: slide),
+                          statusBarLayout: layout)
         }
     }
 }

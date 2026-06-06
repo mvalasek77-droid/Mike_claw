@@ -22,13 +22,14 @@ struct StudioView: View {
     }
 
     enum Panel: String, CaseIterable, Identifiable {
-        case layout = "Layout", background = "Backdrop", caption = "Caption", device = "Sizes"
+        case layout = "Layout", background = "Backdrop", caption = "Caption", enhance = "Enhance", device = "Sizes"
         var id: String { rawValue }
         var icon: String {
             switch self {
             case .layout: return "square.resize"
             case .background: return "paintbrush.fill"
             case .caption: return "textformat"
+            case .enhance: return "wand.and.stars"
             case .device: return "iphone.gen3"
             }
         }
@@ -273,6 +274,7 @@ struct StudioView: View {
         case .layout:     LayoutPanel(project: $project)
         case .background: BackgroundPanel(project: $project)
         case .caption:    CaptionPanel(project: $project)
+        case .enhance:    EnhancePanel(project: $project)
         case .device:     DevicePanel(project: $project)
         }
     }
