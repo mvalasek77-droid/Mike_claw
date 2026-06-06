@@ -1,0 +1,81 @@
+import XCTest
+@testable import ScreenshotStudio
+
+final class ModelCodableTests: XCTestCase {
+
+    func testProjectRoundTripsThroughJSON() throws {
+        var project = ScreenshotProject.newProject(name: "Launch Set")
+        project.style.background = BackgroundStyle.presets[2]
+        project.style.caption.text = "Ship it"
+        project.style.caption.placement = .bottom
+        project.orientation = .landscape
+        project.deviceSizeID = "iphone-6_5"
+        project.additionalSizeIDs = ["ipad-13"]
+        project.slides = [
+            Slide(imageFile: "a.png", captionOverride: "First", sourcePixelWidth: 1179, sourcePixelHeight: 2556),
+            Slide(imageFile: "b.png")
+        ]
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let data = try encoder.encode(project)
+        let decoded = try decoder.decode(ScreenshotProject.self, from: data)
+
+        XCTAssertEqual(decoded.id, project.id)
+        XCTAssertEqual(decoded.name, "Launch Set")
+        XCTAssertEqual(decoded.orientation, .landscape)
+        XCTAssertEqual(decoded.deviceSizeID, "iphone-6_5")
+        XCTAssertEqual(decoded.additionalSizeIDs, ["ipad-13"])
+        XCTAssertEqual(decoded.slides.count, 2)
+        XCTAssertEqual(decoded.style.caption.placement, .bottom)
+        XCTAssertEqual(decoded.style.background.id, BackgroundStyle.presets[2].id)
+    }
+
+    func testExportSizesDeduplicatesAndKeepsCatalogOrder() {
+        var project = ScreenshotProject.newProject()
+        project.deviceSizeID = "iphone-6_5"
+        // Include a duplicate of the primary plus an out-of-order extra.
+        project.additionalSizeIDs = ["ipad-13", "iphone-6_5", "iphone-6_9"]
+
+        let ids = project.exportSizes.map(\.id)
+        XCTAssertEqual(Set(ids).count, ids.count, "no duplicates")
+        // Catalog order: 6.9 comes before 6.5 which comes before iPad 13.
+        XCTAssertEqual(ids, ["iphone-6_9", "iphone-6_5", "ipad-13"])
+    }
+
+    func testCaptionTextPrefersSlideOverride() {
+        var project = ScreenshotProject.newProject()
+        project.style.caption.text = "Shared"
+        let withOverride = Slide(imageFile: "x.png", captionOverride: "Specific")
+        let withoutOverride = Slide(imageFile: "y.png")
+        let blankOverride = Slide(imageFile: "z.png", captionOverride: "")
+
+        XCTAssertEqual(project.captionText(for: withOverride), "Specific")
+        XCTAssertEqual(project.captionText(for: withoutOverride), "Shared")
+        XCTAssertEqual(project.captionText(for: blankOverride), "Shared")
+    }
+
+    func testRGBAColorHexInit() {
+        let c = RGBAColor(hex: 0xFF8000)
+        XCTAssertEqual(c.red, 1.0, accuracy: 0.001)
+        XCTAssertEqual(c.green, 128.0 / 255.0, accuracy: 0.001)
+        XCTAssertEqual(c.blue, 0.0, accuracy: 0.001)
+    }
+
+    func testLuminanceOrdering() {
+        XCTAssertGreaterThan(RGBAColor.white.luminance, RGBAColor.black.luminance)
+        XCTAssertEqual(RGBAColor.white.luminance, 1.0, accuracy: 0.01)
+        XCTAssertEqual(RGBAColor.black.luminance, 0.0, accuracy: 0.01)
+    }
+
+    func testBackgroundAverageLuminanceWithinBounds() {
+        for preset in BackgroundStyle.presets {
+            let l = preset.averageLuminance
+            XCTAssertGreaterThanOrEqual(l, 0)
+            XCTAssertLessThanOrEqual(l, 1)
+        }
+    }
+}
