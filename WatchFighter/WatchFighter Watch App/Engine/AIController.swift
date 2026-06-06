@@ -1,0 +1,63 @@
+import CoreGraphics
+
+/// A lightweight, deterministic-ish CPU opponent. Reads the public combat
+/// state each tick and returns at most one `Intent`. Difficulty scales
+/// reaction probability and how often it charges/parries.
+struct AIController {
+    enum Difficulty { case easy, normal, hard
+        var aggression: Double { self == .hard ? 0.55 : self == .normal ? 0.4 : 0.25 }
+        var parryChance: Double { self == .hard ? 0.45 : self == .normal ? 0.2 : 0.05 }
+        var reaction: Int { self == .hard ? 6 : self == .normal ? 12 : 20 } // ticks
+    }
+
+    let difficulty: Difficulty
+    private var cooldown = 0
+    private var rng = SystemRandomNumberGenerator()
+
+    init(difficulty: Difficulty = .normal) { self.difficulty = difficulty }
+
+    /// `self` here is the opponent; `player` is the human.
+    mutating func decide(opponent me: Fighter, player: Fighter) -> Intent? {
+        if cooldown > 0 { cooldown -= 1; return nil }
+        guard me.canAct else { return nil }
+
+        let dist = abs(me.position - player.position)
+        let inLightRange = dist <= Move.light.reach + CombatSystem.bodyHalfWidth + 6
+        let inSpecialRange = dist <= me.spec.special.reach + CombatSystem.bodyHalfWidth
+
+        // React to an incoming heavy with a parry attempt.
+        if player.state == .startup, player.currentMove?.kind == .heavy,
+           roll(difficulty.parryChance) {
+            cooldown = difficulty.reaction
+            return .parry
+        }
+
+        // Throw a loaded special when in range.
+        if me.meter >= CombatSystem.chargeToFire, inSpecialRange, roll(0.5) {
+            cooldown = difficulty.reaction
+            return .special
+        }
+
+        // Poke when close.
+        if inLightRange, roll(difficulty.aggression) {
+            cooldown = difficulty.reaction / 2
+            return roll(0.3) ? .heavyAttack : .lightAttack
+        }
+
+        // Otherwise close the gap, or charge meter at range.
+        if dist > me.spec.special.reach {
+            if me.meter < 100, roll(0.4) {
+                return .charge(0.12)            // top up the dial from neutral
+            }
+            return .stepForward
+        }
+
+        // In poke range but not committing: occasionally back off / block.
+        if roll(0.15) { return .beginBlock }
+        return nil
+    }
+
+    private mutating func roll(_ p: Double) -> Bool {
+        Double.random(in: 0...1, using: &rng) < p
+    }
+}

@@ -1,0 +1,36 @@
+import CoreGraphics
+
+/// Normalised player/AI commands. The raw hardware layer (`InputController`)
+/// and the `AIController` both emit these, so the combat core never knows or
+/// cares whether a move came from the Crown, a tap, or the CPU.
+enum Intent: Equatable {
+    case lightAttack
+    case heavyAttack
+    case special           // Crown snap-release of a charged meter
+    case parry             // Crown press
+    case stepForward
+    case stepBack
+    case jump
+    case beginBlock
+    case endBlock
+    case charge(CGFloat)   // Crown rotation delta -> meter charge
+}
+
+/// Discrete feedback the presentation layer (haptics + FX) should fire.
+/// The combat core returns these; it never calls UIKit/SpriteKit directly,
+/// keeping the engine pure and testable.
+enum CombatEvent: Equatable {
+    case hitLanded(attacker: Side, damage: Int)
+    case blocked(defender: Side, chip: Int)
+    case parried(by: Side)
+    case guardBroken(Side)
+    case heavyWindup(Side)     // telegraph -> haptic the opponent can feel
+    case specialReady(Side)
+    case knockdown(Side)
+    case roundOver(winner: Side?)
+}
+
+enum Side: Equatable {
+    case player
+    case opponent
+}
