@@ -2,20 +2,30 @@
 import SwiftUI
 import SpriteKit
 
-/// Hosts the SpriteKit scene and pipes the Digital Crown into it. The Crown is
-/// the only analog input watchOS gives third-party apps, so it drives the
-/// special-meter charge dial.
-struct GameView: View {
-    @State private var crownValue: Double = 0
-    @State private var lastCrown: Double = 0
+/// Hosts a single match's `FightScene` and pipes the Digital Crown + drag
+/// gestures into it. Recreated per fight via `.id(...)` from the parent.
+struct FightView: View {
+    let playerSpec: CharacterSpec
+    let opponentSpec: CharacterSpec
+    let stage: StageSpec
+    let onResult: (Side) -> Void
+
+    @State private var crownValue = 0.0
+    @State private var lastCrown = 0.0
     @State private var dragStart: Date?
     @FocusState private var focused: Bool
+    @State private var scene: FightScene
 
-    private let scene: GameScene = {
-        let s = GameScene()
-        s.scaleMode = .resizeFill
-        return s
-    }()
+    init(playerSpec: CharacterSpec, opponentSpec: CharacterSpec,
+         stage: StageSpec, onResult: @escaping (Side) -> Void) {
+        self.playerSpec = playerSpec
+        self.opponentSpec = opponentSpec
+        self.stage = stage
+        self.onResult = onResult
+        _scene = State(initialValue: FightScene(
+            playerSpec: playerSpec, opponentSpec: opponentSpec,
+            stage: stage, onResult: onResult))
+    }
 
     var body: some View {
         SpriteView(scene: scene)
@@ -23,11 +33,9 @@ struct GameView: View {
             .focusable(true)
             .focused($focused)
             .digitalCrownRotation(
-                $crownValue,
-                from: -1_000_000, through: 1_000_000,
+                $crownValue, from: -1_000_000, through: 1_000_000,
                 by: 0.01, sensitivity: .medium,
-                isContinuous: true, isHapticFeedbackEnabled: false
-            )
+                isContinuous: true, isHapticFeedbackEnabled: false)
             .onChange(of: crownValue) { _, newValue in
                 let delta = newValue - lastCrown
                 lastCrown = newValue
@@ -36,24 +44,16 @@ struct GameView: View {
             .gesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .local)
                     .onChanged { _ in
-                        if dragStart == nil {
-                            dragStart = Date()
-                            scene.touchDown()
-                        }
+                        if dragStart == nil { dragStart = Date(); scene.touchDown() }
                     }
                     .onEnded { value in
                         let held = dragStart.map { Date().timeIntervalSince($0) } ?? 0
                         scene.touchUp(translation: value.translation,
-                                      startLocation: value.startLocation,
-                                      held: held)
+                                      startLocation: value.startLocation, held: held)
                         dragStart = nil
                     }
             )
             .onAppear { focused = true }
     }
-}
-
-#Preview {
-    GameView()
 }
 #endif

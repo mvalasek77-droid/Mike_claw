@@ -1,47 +1,83 @@
 import CoreGraphics
 
-/// The pure simulation core. Holds two fighters, consumes `Intent`s, advances
-/// the fight one fixed tick at a time, and emits `CombatEvent`s for the
-/// presentation layer (rendering + haptics) to react to.
+/// A travelling projectile (fireball archetype) spawned by a projectile special.
+struct Projectile: Equatable {
+    var position: CGFloat
+    let velocity: CGFloat       // signed points per tick
+    let owner: Side
+    let damage: Int
+    let chip: Int
+    let hitstun: Int
+    var alive = true
+}
+
+/// The pure simulation core. Holds two fighters + projectiles, consumes
+/// `Intent`s, advances the fight one fixed tick at a time, and emits
+/// `CombatEvent`s for the presentation layer (rendering + haptics).
 ///
 /// Deliberately free of SpriteKit / SwiftUI so it can be unit-tested headless.
 struct CombatSystem {
 
     // MARK: Tunables
-    static let tickRate: Double = 60          // fixed simulation Hz
+    static let tickRate: Double = 60
     static let laneMin: CGFloat = 20
     static let laneMax: CGFloat = 380
     static let bodyHalfWidth: CGFloat = 18
-    static let minSeparation: CGFloat = 30     // fighters can't overlap/pass through
-    static let parryWindow = 6                  // ticks
-    static let chargeToFire: Int = 50           // meter needed to throw a special
-    static let chargeRate: CGFloat = 140        // meter per unit of Crown rotation
+    static let minSeparation: CGFloat = 30
+    static let parryWindow = 6
+    static let chargeToFire: Int = 50
+    static let chargeRate: CGFloat = 140
     static let blockChipScale: CGFloat = 1.0
     static let staminaPerBlock: CGFloat = 9
-    static let staminaRegen: CGFloat = 0.4      // per idle tick
+    static let staminaRegen: CGFloat = 0.4
+    static let launchHitstun = 34
 
     // MARK: State
     private(set) var player: Fighter
     private(set) var opponent: Fighter
-    private(set) var roundTimer: Int            // ticks remaining
+    private(set) var projectiles: [Projectile] = []
+    private(set) var roundTimer: Int
     private(set) var isOver = false
     private(set) var winner: Side?
+
+    private let roundTicks: Int
 
     init(playerSpec: CharacterSpec, opponentSpec: CharacterSpec, roundSeconds: Int = 30) {
         player = Fighter(spec: playerSpec, facingRight: true, position: 120)
         opponent = Fighter(spec: opponentSpec, facingRight: false, position: 280)
-        roundTimer = roundSeconds * Int(CombatSystem.tickRate)
+        roundTicks = roundSeconds * Int(CombatSystem.tickRate)
+        roundTimer = roundTicks
     }
 
     func fighter(_ side: Side) -> Fighter { side == .player ? player : opponent }
 
     private var distance: CGFloat { abs(player.position - opponent.position) }
 
+    /// Reset both fighters + projectiles for a fresh round in the same match.
+    mutating func resetForNewRound() {
+        player.resetForRound(position: 120)
+        opponent.resetForRound(position: 280)
+        projectiles.removeAll()
+        roundTimer = roundTicks
+        isOver = false
+        winner = nil
+    }
+
+    // MARK: - Move-chain ranking (combo cancels: light -> heavy -> special)
+
+    private func rank(_ kind: MoveKind) -> Int {
+        switch kind { case .light: return 0; case .heavy: return 1; case .special, .ex: return 2 }
+    }
+
+    /// May `side` start `move` right now — from neutral, or as a valid cancel?
+    private func canPerform(_ move: Move, _ f: Fighter) -> Bool {
+        if f.state == .idle { return true }
+        guard f.canCancel, let cur = f.currentMove else { return false }
+        return rank(move.kind) > rank(cur.kind)     // only cancel "upward"
+    }
+
     // MARK: - Public API
 
-    /// Apply one intent for a side. Operates on a local copy and commits, so we
-    /// never hold an inout borrow of `self` while mutating — keeping Swift's
-    /// exclusivity checker happy.
     mutating func apply(_ intent: Intent, from side: Side) -> [CombatEvent] {
         guard !isOver else { return [] }
         var events: [CombatEvent] = []
@@ -76,19 +112,21 @@ struct CombatSystem {
             }
 
         case .jump:
-            break // reserved for M1 (anti-air); no-op in prototype
+            break
 
         case .lightAttack:
-            if f.canAct { f.startMove(.light) }
+            if canPerform(.light, f) { f.startMove(.light) }
 
         case .heavyAttack:
-            if f.canAct { f.startMove(.heavy); events.append(.heavyWindup(side)) }
+            if canPerform(.heavy, f) { f.startMove(.heavy); events.append(.heavyWindup(side)) }
 
         case .special:
-            if f.canAct && f.meter >= CombatSystem.chargeToFire {
+            if f.meter >= CombatSystem.chargeToFire {
                 let move = f.meterFull ? f.spec.exSpecial : f.spec.special
-                f.meter = 0
-                f.startMove(move)
+                if canPerform(move, f) {
+                    f.meter = 0
+                    f.startMove(move)
+                }
             }
         }
 
@@ -104,14 +142,13 @@ struct CombatSystem {
         player.advanceTimers()
         opponent.advanceTimers()
 
-        // Resolve attacks: an `active` fighter checks reach against the other.
         events += resolveAttack(attacker: .player)
         events += resolveAttack(attacker: .opponent)
+        events += updateProjectiles()
 
         player.regenStamina()
         opponent.regenStamina()
 
-        // Round end conditions.
         roundTimer -= 1
         if !player.isAlive || !opponent.isAlive || roundTimer <= 0 {
             isOver = true
@@ -121,7 +158,7 @@ struct CombatSystem {
         return events
     }
 
-    // MARK: - Hit resolution
+    // MARK: - Melee resolution
 
     private mutating func resolveAttack(attacker side: Side) -> [CombatEvent] {
         var events: [CombatEvent] = []
@@ -134,55 +171,116 @@ struct CombatSystem {
         guard atk.state == .active, let move = atk.currentMove, !atk.hasConnectedThisMove
         else { return [] }
 
-        guard distance <= move.reach + CombatSystem.bodyHalfWidth else { return [] }
+        // Projectile specials spawn a travelling hitbox instead of melee.
+        if move.isProjectile {
+            atk.hasConnectedThisMove = true
+            let dir: CGFloat = atk.facingRight ? 1 : -1
+            projectiles.append(Projectile(
+                position: atk.position + dir * (CombatSystem.bodyHalfWidth + 6),
+                velocity: dir * move.projectileSpeed,
+                owner: atkSide, damage: move.damage, chip: move.chip,
+                hitstun: move.hitstun))
+            commit(atkSide, atk)
+            return events
+        }
 
+        guard distance <= move.reach + CombatSystem.bodyHalfWidth else { return [] }
         atk.hasConnectedThisMove = true
 
-        // Defender parried? (Crown press / swipe-down timed into the active frames.)
-        if def.state == .parry {
-            // Attacker frozen in a long recovery; parrier may punish.
+        let outcome = applyHit(move: move, from: &atk, to: &def, atkSide: atkSide, defSide: defSide)
+        events += outcome
+        commit(atkSide, atk); commit(defSide, def)
+        return events
+    }
+
+    /// Shared hit resolution for melee + projectiles. Mutates atk/def in place.
+    private func applyHit(move: Move, from atk: inout Fighter, to def: inout Fighter,
+                          atkSide: Side, defSide: Side) -> [CombatEvent] {
+        var events: [CombatEvent] = []
+
+        // Parry (melee only — projectiles ignore the parry window for clarity).
+        if def.state == .parry && !move.isProjectile {
             atk.enter(.recovery, ticks: move.recovery + 12)
             def.enter(.idle, ticks: 0)
-            commit(atkSide, atk); commit(defSide, def)
             events.append(.parried(by: defSide))
             return events
         }
 
-        // Defender blocking?
+        // Block.
         if def.isBlocking {
             let chip = Int(CGFloat(move.chip) * CombatSystem.blockChipScale)
             def.health = max(0, def.health - chip)
             def.stamina -= CombatSystem.staminaPerBlock
             applyPushback(&def, move.pushback, from: atk)
             atk.addMeter(move.meterGain / 2)
-
+            def.comboCount = 0
             if def.stamina <= 0 {
                 def.isBlocking = false
                 def.enter(.knockdown, ticks: 24)
-                events.append(.guardBroken(defSide))
-                events.append(.knockdown(defSide))
+                events.append(.guardBroken(defSide)); events.append(.knockdown(defSide))
             } else {
                 def.enter(.blockStun, ticks: move.blockstun)
                 events.append(.blocked(defender: defSide, chip: chip))
             }
-            commit(atkSide, atk); commit(defSide, def)
             return events
         }
 
         // Clean hit.
         def.health = max(0, def.health - move.damage)
-        def.addMeter(move.meterGain)            // taking damage builds a little meter
+        def.addMeter(move.meterGain)
         atk.addMeter(move.meterGain)
         applyPushback(&def, move.pushback, from: atk)
-        def.enter(.hitStun, ticks: move.hitstun)
+        def.comboCount += 1
+        if move.cancelable { atk.canCancel = true }   // open the combo window
+
+        if move.launches {
+            def.enter(.launched, ticks: CombatSystem.launchHitstun)
+        } else {
+            def.enter(.hitStun, ticks: move.hitstun)
+        }
         events.append(.hitLanded(attacker: atkSide, damage: move.damage))
+        if def.comboCount >= 2 { events.append(.comboHit(by: atkSide, count: def.comboCount)) }
 
         if def.health <= 0 {
             def.enter(.knockdown, ticks: 30)
             events.append(.knockdown(defSide))
         }
+        return events
+    }
 
-        commit(atkSide, atk); commit(defSide, def)
+    // MARK: - Projectiles
+
+    private mutating func updateProjectiles() -> [CombatEvent] {
+        var events: [CombatEvent] = []
+        guard !projectiles.isEmpty else { return [] }
+
+        for i in projectiles.indices {
+            guard projectiles[i].alive else { continue }
+            projectiles[i].position += projectiles[i].velocity
+
+            if projectiles[i].position < CombatSystem.laneMin
+                || projectiles[i].position > CombatSystem.laneMax {
+                projectiles[i].alive = false
+                continue
+            }
+
+            let targetSide: Side = projectiles[i].owner == .player ? .opponent : .player
+            var target = fighter(targetSide)
+            if abs(projectiles[i].position - target.position) <= CombatSystem.bodyHalfWidth {
+                // Reuse melee resolution via a synthetic projectile "move".
+                let p = projectiles[i]
+                var dummyAtk = fighter(p.owner)
+                let move = Move(kind: .special, startup: 0, active: 1, recovery: 0,
+                                damage: p.damage, chip: p.chip, hitstun: p.hitstun,
+                                blockstun: 10, pushback: 10, reach: 0, meterGain: 0,
+                                isProjectile: true)
+                events += applyHit(move: move, from: &dummyAtk, to: &target,
+                                   atkSide: p.owner, defSide: targetSide)
+                commit(targetSide, target)
+                projectiles[i].alive = false
+            }
+        }
+        projectiles.removeAll { !$0.alive }
         return events
     }
 
@@ -197,14 +295,10 @@ struct CombatSystem {
         min(CombatSystem.laneMax, max(CombatSystem.laneMin, x))
     }
 
-    /// Stop a forward-walking fighter from passing through the other.
     private func clampSeparation(_ x: CGFloat, side: Side) -> CGFloat {
         let otherPos = (side == .player ? opponent : player).position
-        if side == .player {                 // faces +x: stay left of opponent
-            return min(x, otherPos - CombatSystem.minSeparation)
-        } else {                             // faces -x: stay right of player
-            return max(x, otherPos + CombatSystem.minSeparation)
-        }
+        return side == .player ? min(x, otherPos - CombatSystem.minSeparation)
+                               : max(x, otherPos + CombatSystem.minSeparation)
     }
 
     private func decideWinner() -> Side? {

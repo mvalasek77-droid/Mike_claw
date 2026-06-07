@@ -1,31 +1,30 @@
 import CoreGraphics
 
 /// A playable character archetype. Re-skins the same state machine with
-/// different frame data + one signature special.
+/// different frame data, a signature special, and presentation metadata.
+/// Concrete characters live in `Roster.swift`.
 struct CharacterSpec: Equatable {
+    let id: String
     let name: String
+    let title: String              // fighting-game-style epithet
+    let bio: String
     let maxHealth: Int
-    let walkSpeed: CGFloat          // points per tick
+    let walkSpeed: CGFloat         // points per tick
     let special: Move
     let exSpecial: Move
+    let homeStageID: String
 
-    static let volt = CharacterSpec(
-        name: "Volt",
-        maxHealth: 100,
-        walkSpeed: 2.4,
-        special: { let s = Move.special(damage: 16, reach: 60, pushback: 18, startup: 5)
-                    return s }(),
-        exSpecial: Move.ex(from: Move.special(damage: 16, reach: 60, pushback: 18, startup: 5))
-    )
+    // Presentation: RGB silhouette + accent (0...1).
+    let bodyColor: RGBA
+    let accentColor: RGBA
+}
 
-    static let bastion = CharacterSpec(
-        name: "Bastion",
-        maxHealth: 120,
-        walkSpeed: 1.6,
-        special: { let s = Move.special(damage: 20, reach: 40, pushback: 26, startup: 8)
-                    return s }(),
-        exSpecial: Move.ex(from: Move.special(damage: 20, reach: 40, pushback: 26, startup: 8))
-    )
+/// Tiny color value so the engine stays free of SpriteKit/UIKit.
+struct RGBA: Equatable {
+    let r, g, b, a: CGFloat
+    init(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) {
+        self.r = r; self.g = g; self.b = b; self.a = a
+    }
 }
 
 /// The lifecycle of a fighter on any given tick. Drives what input is legal.
@@ -36,7 +35,8 @@ enum FighterState: Equatable {
     case recovery     // post-attack vulnerability
     case blockStun
     case hitStun
-    case parry        // brief Crown-press defensive window
+    case launched     // juggle state after a launcher
+    case parry        // brief defensive window
     case knockdown
     case wakeup
 }
@@ -56,6 +56,8 @@ struct Fighter {
     var currentMove: Move?
     var isBlocking: Bool = false
     var hasConnectedThisMove = false  // prevents one move hitting twice
+    var canCancel = false             // a connected cancelable move opened a window
+    var comboCount = 0                // hits in the current combo (for the HUD)
 
     init(spec: CharacterSpec, facingRight: Bool, position: CGFloat) {
         self.spec = spec
@@ -68,23 +70,35 @@ struct Fighter {
     var healthFraction: CGFloat { CGFloat(health) / CGFloat(spec.maxHealth) }
     var meterFull: Bool { meter >= 100 }
 
-    /// Only neutral/idle fighters can start a new action.
+    /// Neutral fighters can act; a connected cancelable move also opens a window.
     var canAct: Bool { state == .idle }
-
-    /// The leading edge of this fighter's hitbox when an attack is active.
-    func hitboxFront(reach: CGFloat) -> CGFloat {
-        facingRight ? position + reach : position - reach
+    var canStartAttack: Bool {
+        state == .idle || (canCancel && (state == .active || state == .recovery))
     }
 
     mutating func addMeter(_ amount: Int) {
         meter = min(100, meter + amount)
     }
 
+    /// Reset everything that should not carry across rounds.
+    mutating func resetForRound(position: CGFloat) {
+        health = spec.maxHealth
+        meter = 0
+        stamina = 100
+        self.position = position
+        state = .idle
+        stateTimer = 0
+        currentMove = nil
+        isBlocking = false
+        hasConnectedThisMove = false
+        canCancel = false
+        comboCount = 0
+    }
+
     // MARK: - State transitions
-    // These live on `Fighter` (not `CombatSystem`) so the system can call them
-    // directly on its stored `player`/`opponent` properties — a single write
-    // access — instead of borrowing `self` inout and tripping Swift's
-    // exclusive-access checks.
+    // These live on `Fighter` so `CombatSystem` can call them directly on its
+    // stored `player`/`opponent` properties — a single write access — instead
+    // of borrowing `self` inout and tripping Swift's exclusivity checks.
 
     mutating func enter(_ newState: FighterState, ticks: Int) {
         state = newState
@@ -94,6 +108,7 @@ struct Fighter {
     mutating func startMove(_ move: Move) {
         currentMove = move
         hasConnectedThisMove = false
+        canCancel = false
         isBlocking = false
         enter(.startup, ticks: move.startup)
     }
@@ -109,8 +124,10 @@ struct Fighter {
             if let m = currentMove { enter(.active, ticks: m.active) } else { state = .idle }
         case .active:
             if let m = currentMove { enter(.recovery, ticks: m.recovery) } else { state = .idle }
-        case .recovery, .blockStun, .hitStun, .parry, .wakeup:
+        case .recovery, .blockStun, .hitStun, .parry, .wakeup, .launched:
             currentMove = nil
+            canCancel = false
+            comboCount = 0
             state = .idle
         case .knockdown:
             enter(.wakeup, ticks: 12)

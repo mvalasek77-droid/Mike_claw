@@ -12,6 +12,8 @@ enum Haptics {
             device.play(.directionUp)          // "incoming heavy" — feel & parry
         case .hitLanded(let attacker, _):
             device.play(attacker == viewer ? .success : .failure)
+        case .comboHit(let by, _) where by == viewer:
+            device.play(.click)
         case .blocked(let defender, _):
             if defender == viewer { device.play(.click) }
         case .parried(let by):

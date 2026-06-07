@@ -132,11 +132,21 @@ different frame data + one unique special.
 
 ## 7. Roadmap
 
-- **M0 (this prototype):** Engine core, 2 fighters, crown-charge special,
-  parry/block, AI opponent, health/meter bars, haptics. *Single device, vs CPU.*
-- **M1:** Animations + sprite atlases, sound, round flow & match UI.
-- **M2:** Local multiplayer over GameKit (two Watches), training mode.
-- **M3:** Full 6-char roster, fatalities, progression/unlocks.
+- **M0 ✅:** Engine core, 2 fighters, crown-charge special, parry/block, AI
+  opponent, health/meter bars, haptics. *Single device, vs CPU.*
+- **M1 ✅:** 6-char roster + boss, projectiles, combo cancels (light→heavy→
+  special), best-of-3 match flow, procedural parallax stages, full presentation
+  (ROUND/FIGHT!/K.O./win, combo counter, round pips), **story mode** with
+  character select, original arcade ladder + dialogue, and ending screens.
+  Original cast & narrative — see `STORY.md`.
+- **M2:** Sprite atlases + skeletal animation, sound/music, local multiplayer
+  over GameKit (two Watches), training mode.
+- **M3:** Cinematic finishers, progression/unlocks, per-character movelists,
+  balance pass.
+
+> **Note on cloning the real games:** mechanics and presentation conventions are
+> replicated; copyrighted characters/names/art are not. The roster, stages, and
+> story are original so the project is both legally clean and shippable.
 
 ---
 

@@ -21,6 +21,7 @@ enum Intent: Equatable {
 /// keeping the engine pure and testable.
 enum CombatEvent: Equatable {
     case hitLanded(attacker: Side, damage: Int)
+    case comboHit(by: Side, count: Int)
     case blocked(defender: Side, chip: Int)
     case parried(by: Side)
     case guardBroken(Side)

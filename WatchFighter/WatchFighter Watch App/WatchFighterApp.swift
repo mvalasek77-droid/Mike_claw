@@ -5,7 +5,7 @@ import SwiftUI
 struct WatchFighterApp: App {
     var body: some Scene {
         WindowGroup {
-            GameView()
+            RootView()
         }
     }
 }
