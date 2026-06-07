@@ -139,10 +139,27 @@ different frame data + one unique special.
   (ROUND/FIGHT!/K.O./win, combo counter, round pips), **story mode** with
   character select, original arcade ladder + dialogue, and ending screens.
   Original cast & narrative — see `STORY.md`.
-- **M2:** Sprite atlases + skeletal animation, sound/music, local multiplayer
-  over GameKit (two Watches), training mode.
+- **M2 ✅:** Procedural **skeletal animation** driven by the pure `Animator`
+  (pose-per-state, smoothed in the renderer); asset-free **synthesised SFX**
+  (enveloped tone generator, swap for samples later); **training mode** (dummy
+  behaviours, infinite health/meter, frame-data overlay); **local 2-Watch
+  multiplayer** via deterministic input-delay **lockstep** netcode over a
+  swappable `MatchTransport` (loopback for tests, GameKit for real play).
 - **M3:** Cinematic finishers, progression/unlocks, per-character movelists,
-  balance pass.
+  balance pass, versus character-select sync, real audio samples + music.
+
+### Netplay architecture (M2)
+The combat sim is deterministic (no RNG on the PvP path), so two Watches stay in
+sync by exchanging only inputs:
+- `InputFrame` (Codable) carries one tick's intents.
+- `LockstepSession` buffers local + remote inputs with an `inputDelay`; a tick
+  advances only when both sides' inputs for it have arrived. Inputs entered now
+  apply `inputDelay` ticks later, hiding latency.
+- `MatchTransport` abstracts the wire — `LoopbackTransport` (in-process, tested)
+  and `GameKitTransport` (real-time GameKit). Side assignment is deterministic
+  (sorted player IDs), so both devices agree which fighter is which.
+- *Limitation:* no rollback, so it's input-delay lockstep — fine on a good local
+  link, sensitive to spikes. Rollback is a future option.
 
 > **Note on cloning the real games:** mechanics and presentation conventions are
 > replicated; copyrighted characters/names/art are not. The roster, stages, and

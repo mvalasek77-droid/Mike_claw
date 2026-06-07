@@ -309,4 +309,13 @@ struct CombatSystem {
     private mutating func commit(_ side: Side, _ f: Fighter) {
         if side == .player { player = f } else { opponent = f }
     }
+
+    // MARK: - Training hooks (do not use in normal matches)
+
+    mutating func debugSetHealth(_ side: Side, _ value: Int) {
+        var f = fighter(side); f.health = max(0, min(f.spec.maxHealth, value)); commit(side, f)
+    }
+    mutating func debugSetMeter(_ side: Side, _ value: Int) {
+        var f = fighter(side); f.meter = max(0, min(100, value)); commit(side, f)
+    }
 }

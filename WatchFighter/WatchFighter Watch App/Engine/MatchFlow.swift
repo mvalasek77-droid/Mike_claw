@@ -51,4 +51,17 @@ struct MatchFlow {
         currentRound += 1
         combat.resetForNewRound()
     }
+
+    // MARK: - Training helpers
+
+    /// Apply training conveniences (infinite health/meter) to the live round.
+    mutating func applyTraining(_ options: TrainingOptions) {
+        TrainingRules.apply(options, to: &combat)
+    }
+
+    /// Reset the live round without touching the (irrelevant) scoreline — used
+    /// for never-ending practice.
+    mutating func resetCurrentRound() {
+        combat.resetForNewRound()
+    }
 }

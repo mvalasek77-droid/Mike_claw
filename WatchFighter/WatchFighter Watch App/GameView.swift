@@ -5,11 +5,6 @@ import SpriteKit
 /// Hosts a single match's `FightScene` and pipes the Digital Crown + drag
 /// gestures into it. Recreated per fight via `.id(...)` from the parent.
 struct FightView: View {
-    let playerSpec: CharacterSpec
-    let opponentSpec: CharacterSpec
-    let stage: StageSpec
-    let onResult: (Side) -> Void
-
     @State private var crownValue = 0.0
     @State private var lastCrown = 0.0
     @State private var dragStart: Date?
@@ -17,14 +12,10 @@ struct FightView: View {
     @State private var scene: FightScene
 
     init(playerSpec: CharacterSpec, opponentSpec: CharacterSpec,
-         stage: StageSpec, onResult: @escaping (Side) -> Void) {
-        self.playerSpec = playerSpec
-        self.opponentSpec = opponentSpec
-        self.stage = stage
-        self.onResult = onResult
+         stage: StageSpec, mode: FightMode, onResult: @escaping (Side) -> Void) {
         _scene = State(initialValue: FightScene(
             playerSpec: playerSpec, opponentSpec: opponentSpec,
-            stage: stage, onResult: onResult))
+            stage: stage, mode: mode, onResult: onResult))
     }
 
     var body: some View {

@@ -3,7 +3,7 @@ import CoreGraphics
 /// Normalised player/AI commands. The raw hardware layer (`InputController`)
 /// and the `AIController` both emit these, so the combat core never knows or
 /// cares whether a move came from the Crown, a tap, or the CPU.
-enum Intent: Equatable {
+enum Intent: Equatable, Codable {
     case lightAttack
     case heavyAttack
     case special           // Crown snap-release of a charged meter
