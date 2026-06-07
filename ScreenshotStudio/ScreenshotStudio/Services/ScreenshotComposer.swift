@@ -20,6 +20,20 @@ struct ComposedLayout: Equatable {
     var captionFontSize: CGFloat
 }
 
+/// Per-device-class framing tuning, expressed as fractions of canvas width so
+/// it scales across every resolution. iPads have proportionally thinner,
+/// uniform bezels and much less rounded corners than iPhones — feeding that in
+/// here is what makes an iPad frame read as an iPad rather than a giant phone.
+struct FrameProfile: Equatable {
+    /// Bezel thickness as a fraction of canvas width.
+    var bezelScale: CGFloat
+    /// Multiplier applied to the user's corner-radius fraction.
+    var cornerScale: CGFloat
+
+    static let iPhone = FrameProfile(bezelScale: 0.013, cornerScale: 1.0)
+    static let iPad   = FrameProfile(bezelScale: 0.016, cornerScale: 0.42)
+}
+
 /// Pure, deterministic layout engine. Given a target canvas and a style, it
 /// computes exactly where the caption, device and screenshot land. Keeping
 /// this free of UIKit/SwiftUI is what lets us pin the behaviour down with
@@ -56,7 +70,10 @@ enum ScreenshotComposer {
     ///   - sourceSize: pixel size of the imported screenshot. When `.zero`,
     ///     the layout falls back to the canvas aspect ratio so a placeholder
     ///     still composes sensibly.
-    static func layout(canvas: CGSize, style: CanvasStyle, sourceSize: CGSize) -> ComposedLayout {
+    static func layout(canvas: CGSize,
+                       style: CanvasStyle,
+                       sourceSize: CGSize,
+                       profile: FrameProfile = .iPhone) -> ComposedLayout {
         let canvasRect = CGRect(origin: .zero, size: canvas)
 
         // --- Caption region ----------------------------------------------
@@ -97,12 +114,16 @@ enum ScreenshotComposer {
 
         let deviceRect = aspectFit(aspect: aspect, in: deviceContainer)
 
-        // Thin, modern bezel proportional to canvas width.
-        let bezel = style.deviceFramed ? max(canvas.width * 0.013, 4).rounded() : 0
+        // Thin, modern bezel proportional to canvas width, tuned per device
+        // class (iPad bezels are uniform; iPhone bezels a touch thinner).
+        let bezel = style.deviceFramed ? max(canvas.width * profile.bezelScale, 4).rounded() : 0
         let screenRect = deviceRect.insetBy(dx: bezel, dy: bezel)
 
+        // iPads have far less rounded corners than iPhones for the same slider
+        // value; `cornerScale` encodes that difference.
         let corner = style.deviceFramed
-            ? min(canvas.width * clamp(style.cornerFraction, 0, 0.25), min(screenRect.width, screenRect.height) / 2)
+            ? min(canvas.width * clamp(style.cornerFraction, 0, 0.25) * profile.cornerScale,
+                  min(screenRect.width, screenRect.height) / 2)
             : 0
 
         let captionFont = (canvas.width * clamp(style.caption.sizeFraction, 0.02, 0.18)).rounded()

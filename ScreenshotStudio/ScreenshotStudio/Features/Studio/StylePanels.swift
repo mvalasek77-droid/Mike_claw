@@ -255,12 +255,30 @@ struct DevicePanel: View {
     @Binding var project: ScreenshotProject
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Primary size")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Tap a size to make it primary, or + to also export it. The 6.9\" iPhone and 13\" iPad sets are what App Store Connect requires.")
+                .font(.system(size: 12, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                .fixedSize(horizontal: false, vertical: true)
 
-            ForEach(ASCDeviceSize.catalog) { size in
+            familySection("iPhone", symbol: "iphone", family: .iPhone)
+            familySection("iPad", symbol: "ipad", family: .iPad)
+        }
+    }
+
+    @ViewBuilder
+    private func familySection(_ title: String, symbol: String, family: DeviceFamily) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 7) {
+                Image(systemName: symbol)
+                    .font(.system(size: 12, weight: .bold))
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+            }
+            .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+            .padding(.bottom, 2)
+
+            ForEach(ASCDeviceSize.catalog.filter { $0.family == family }) { size in
                 deviceRow(size)
             }
         }

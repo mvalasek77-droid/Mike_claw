@@ -10,6 +10,9 @@ enum StatusBarLayoutKind: String, Codable, Hashable {
 
     var hasIsland: Bool { self == .dynamicIsland }
     var isModern: Bool { self == .dynamicIsland || self == .notch }
+
+    /// Device-class-appropriate bezel/corner tuning for the frame.
+    var frameProfile: FrameProfile { self == .pad ? .iPad : .iPhone }
 }
 
 extension ASCDeviceSize {

@@ -127,6 +127,41 @@ final class ScreenshotComposerTests: XCTestCase {
         XCTAssertGreaterThan(layout.deviceRect.height, 0)
     }
 
+    // MARK: device-class framing
+
+    func testFrameProfileMapping() {
+        XCTAssertEqual(StatusBarLayoutKind.pad.frameProfile, .iPad)
+        XCTAssertEqual(StatusBarLayoutKind.dynamicIsland.frameProfile, .iPhone)
+        XCTAssertEqual(StatusBarLayoutKind.notch.frameProfile, .iPhone)
+        XCTAssertEqual(StatusBarLayoutKind.classic.frameProfile, .iPhone)
+    }
+
+    func testIPadCornersAreLessRoundedThanIPhoneForSameStyle() {
+        var style = CanvasStyle()
+        style.deviceFramed = true
+        style.cornerFraction = 0.05
+        let iPadCanvas = CGSize(width: 2064, height: 2752)
+        let iPadShot = CGSize(width: 2048, height: 2732)
+
+        let phoneLike = ScreenshotComposer.layout(canvas: iPadCanvas, style: style, sourceSize: iPadShot, profile: .iPhone)
+        let padLike = ScreenshotComposer.layout(canvas: iPadCanvas, style: style, sourceSize: iPadShot, profile: .iPad)
+
+        XCTAssertLessThan(padLike.cornerRadius, phoneLike.cornerRadius)
+        XCTAssertGreaterThan(padLike.cornerRadius, 0)
+    }
+
+    func testIPadProfileStillKeepsScreenInsideDevice() {
+        var style = CanvasStyle()
+        style.deviceFramed = true
+        let iPadCanvas = CGSize(width: 2064, height: 2752)
+        let layout = ScreenshotComposer.layout(canvas: iPadCanvas, style: style,
+                                               sourceSize: CGSize(width: 2048, height: 2732), profile: .iPad)
+        XCTAssertGreaterThan(layout.bezelWidth, 0)
+        XCTAssertTrue(layout.deviceRect.insetBy(dx: -1, dy: -1).contains(layout.screenRect))
+        XCTAssertLessThanOrEqual(layout.deviceRect.maxX, iPadCanvas.width + 1)
+        XCTAssertLessThanOrEqual(layout.deviceRect.maxY, iPadCanvas.height + 1)
+    }
+
     func testCaptionFontScalesWithCanvasWidth() {
         var style = CanvasStyle()
         style.caption.sizeFraction = 0.07

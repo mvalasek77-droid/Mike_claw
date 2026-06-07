@@ -40,6 +40,12 @@ Rendered at the exact resolutions Apple validates:
 | iPad 13"    | 2064 × 2752 | ✅ |
 | iPad 12.9"  | 2048 × 2732 | |
 
+Full **iPad** support: the Sizes panel groups slots by family, the device frame
+adapts per class (iPads get thinner, uniform bezels and far less rounded
+corners than iPhones), the status bar uses the iPad's centered layout, and both
+portrait and landscape export at exact pixels. Mix iPhone + iPad slots in one
+set and export them all in a single pass.
+
 ## Architecture
 
 ```

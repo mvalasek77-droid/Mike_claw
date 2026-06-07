@@ -24,7 +24,10 @@ struct ScreenshotCanvas: View {
     }
 
     private var layout: ComposedLayout {
-        ScreenshotComposer.layout(canvas: canvasSize, style: style, sourceSize: sourcePixelSize)
+        ScreenshotComposer.layout(canvas: canvasSize,
+                                  style: style,
+                                  sourceSize: sourcePixelSize,
+                                  profile: statusBarLayout.frameProfile)
     }
 
     var body: some View {
