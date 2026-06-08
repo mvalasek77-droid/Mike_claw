@@ -121,6 +121,14 @@ struct CaptionStyle: Codable, Hashable {
     var weight: FontWeightToken = .bold
     /// `nil` means "auto contrast against the background".
     var customColor: RGBAColor? = nil
+    /// Per-language headline overrides, keyed by App Store language code. The
+    /// primary language always lives in `text`; other locales live here so a
+    /// single set can drive a fully localized App Store listing.
+    var localized: [String: String] = [:]
+
+    enum CodingKeys: String, CodingKey {
+        case text, placement, heightFraction, sizeFraction, weight, customColor, localized
+    }
 
     enum FontWeightToken: String, Codable, CaseIterable, Identifiable, Hashable {
         case regular, medium, semibold, bold, heavy
@@ -154,4 +162,41 @@ struct CanvasStyle: Codable, Hashable {
     var statusBar: StatusBarStyle = StatusBarStyle()
     /// Color adjustments applied to the source screenshot.
     var adjustments: ImageAdjustments = ImageAdjustments()
+    /// Free-floating text annotations and stickers placed over the canvas.
+    var overlays: [CanvasOverlay] = []
+
+    enum CodingKeys: String, CodingKey {
+        case background, caption, deviceFramed, marginFraction
+        case cornerFraction, shadow, statusBar, adjustments, overlays
+    }
+}
+
+extension CaptionStyle {
+    /// Tolerant decoding so pre-localization documents still load.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        text = try c.decodeIfPresent(String.self, forKey: .text) ?? "Your headline here"
+        placement = try c.decodeIfPresent(CaptionPlacement.self, forKey: .placement) ?? .top
+        heightFraction = try c.decodeIfPresent(Double.self, forKey: .heightFraction) ?? 0.18
+        sizeFraction = try c.decodeIfPresent(Double.self, forKey: .sizeFraction) ?? 0.072
+        weight = try c.decodeIfPresent(FontWeightToken.self, forKey: .weight) ?? .bold
+        customColor = try c.decodeIfPresent(RGBAColor.self, forKey: .customColor)
+        localized = try c.decodeIfPresent([String: String].self, forKey: .localized) ?? [:]
+    }
+}
+
+extension CanvasStyle {
+    /// Tolerant decoding so documents written before overlays existed load.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        background = try c.decodeIfPresent(BackgroundStyle.self, forKey: .background) ?? .default
+        caption = try c.decodeIfPresent(CaptionStyle.self, forKey: .caption) ?? CaptionStyle()
+        deviceFramed = try c.decodeIfPresent(Bool.self, forKey: .deviceFramed) ?? true
+        marginFraction = try c.decodeIfPresent(Double.self, forKey: .marginFraction) ?? 0.12
+        cornerFraction = try c.decodeIfPresent(Double.self, forKey: .cornerFraction) ?? 0.052
+        shadow = try c.decodeIfPresent(Bool.self, forKey: .shadow) ?? true
+        statusBar = try c.decodeIfPresent(StatusBarStyle.self, forKey: .statusBar) ?? StatusBarStyle()
+        adjustments = try c.decodeIfPresent(ImageAdjustments.self, forKey: .adjustments) ?? ImageAdjustments()
+        overlays = try c.decodeIfPresent([CanvasOverlay].self, forKey: .overlays) ?? []
+    }
 }

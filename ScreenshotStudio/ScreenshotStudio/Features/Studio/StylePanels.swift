@@ -194,6 +194,11 @@ struct BackgroundPanel: View {
 
 struct CaptionPanel: View {
     @Binding var project: ScreenshotProject
+    /// The slide currently shown in the editor, so we can offer a per-slide
+    /// caption override. `nil` when the set has no slides.
+    var slideIndex: Int? = nil
+
+    private var isPrimaryLanguage: Bool { project.activeLanguage == project.primaryLanguage }
 
     private var customColorBinding: Binding<Color> {
         Binding(
@@ -214,15 +219,37 @@ struct CaptionPanel: View {
         )
     }
 
+    /// Headline for the active language: primary lives in `text`, others in
+    /// the localized dictionary.
+    private var headlineBinding: Binding<String> {
+        Binding(
+            get: {
+                isPrimaryLanguage ? project.style.caption.text
+                                  : (project.style.caption.localized[project.activeLanguage] ?? "")
+            },
+            set: { newValue in
+                if isPrimaryLanguage {
+                    project.style.caption.text = newValue
+                } else {
+                    project.style.caption.localized[project.activeLanguage] = newValue
+                }
+            }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            TextField("Marketing headline", text: $project.style.caption.text, axis: .vertical)
+            languageBar
+
+            TextField("Marketing headline", text: headlineBinding, axis: .vertical)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
                 .lineLimit(1...3)
                 .padding(12)
                 .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+
+            perSlideOverride
 
             GlassSegmented(
                 options: CaptionPlacement.allCases.map { ($0, $0.label) },
@@ -246,6 +273,143 @@ struct CaptionPanel: View {
                 }
             }
         }
+    }
+
+    // MARK: Localization
+
+    private var addableLanguages: [ASCLanguage] {
+        ASCLanguage.catalog.filter { !project.languages.contains($0.code) }
+    }
+
+    private var languageBar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Language")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(project.languages, id: \.self) { code in
+                        languageChip(code)
+                    }
+                    Menu {
+                        ForEach(addableLanguages) { lang in
+                            Button(lang.name) { addLanguage(lang.code) }
+                        }
+                    } label: {
+                        Label("Add", systemImage: "plus")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.accent)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(.white.opacity(0.06), in: Capsule())
+                            .overlay(Capsule().strokeBorder(.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                    }
+                    .disabled(addableLanguages.isEmpty)
+                }
+                .padding(.horizontal, 2)
+            }
+
+            if project.languages.count > 1 {
+                Text("Editing \(ASCLanguage.displayName(for: project.activeLanguage)). Each language exports its own caption set.")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func languageChip(_ code: String) -> some View {
+        let isSelected = code == project.activeLanguage
+        let isPrimary = code == project.primaryLanguage
+        return Button {
+            Motion.run(Motion.snap) { project.activeLanguage = code }
+            Haptics.selection()
+        } label: {
+            HStack(spacing: 5) {
+                Text(code)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                if isPrimary {
+                    Image(systemName: "star.fill").font(.system(size: 8))
+                }
+            }
+            .foregroundStyle(isSelected ? .white : LiquidGlass.primaryText.opacity(0.7))
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(
+                Group {
+                    if isSelected { Capsule().fill(LiquidGlass.auroraGradient.opacity(0.9)) }
+                    else { Capsule().fill(.white.opacity(0.06)) }
+                }
+            )
+            .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            if !isPrimary {
+                Button(role: .destructive) { removeLanguage(code) } label: {
+                    Label("Remove \(ASCLanguage.displayName(for: code))", systemImage: "trash")
+                }
+            }
+        }
+        .accessibilityLabel("\(ASCLanguage.displayName(for: code))\(isPrimary ? ", primary" : "")")
+    }
+
+    @ViewBuilder
+    private var perSlideOverride: some View {
+        if let index = slideIndex, project.slides.indices.contains(index) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("This screenshot's caption")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                TextField("Use shared headline", text: overrideBinding(index), axis: .vertical)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                    .lineLimit(1...3)
+                    .padding(12)
+                    .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.1), lineWidth: 0.5))
+                Text("Leave empty to use the shared headline above.")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+            }
+        }
+    }
+
+    private func overrideBinding(_ index: Int) -> Binding<String> {
+        Binding(
+            get: {
+                guard project.slides.indices.contains(index) else { return "" }
+                let slide = project.slides[index]
+                return isPrimaryLanguage ? (slide.captionOverride ?? "")
+                                         : (slide.localizedOverrides[project.activeLanguage] ?? "")
+            },
+            set: { newValue in
+                guard project.slides.indices.contains(index) else { return }
+                let value: String? = newValue.isEmpty ? nil : newValue
+                if isPrimaryLanguage {
+                    project.slides[index].captionOverride = value
+                } else {
+                    project.slides[index].localizedOverrides[project.activeLanguage] = value
+                }
+            }
+        )
+    }
+
+    private func addLanguage(_ code: String) {
+        guard !project.languages.contains(code) else { return }
+        project.languages.append(code)
+        project.activeLanguage = code
+        Haptics.success()
+    }
+
+    private func removeLanguage(_ code: String) {
+        guard code != project.primaryLanguage else { return }
+        project.languages.removeAll { $0 == code }
+        project.style.caption.localized[code] = nil
+        for i in project.slides.indices {
+            project.slides[i].localizedOverrides[code] = nil
+        }
+        if project.activeLanguage == code { project.activeLanguage = project.primaryLanguage }
+        Haptics.warning()
     }
 }
 

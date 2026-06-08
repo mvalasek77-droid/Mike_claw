@@ -58,6 +58,99 @@ final class ModelCodableTests: XCTestCase {
         XCTAssertEqual(project.captionText(for: blankOverride), "Shared")
     }
 
+    func testProjectRoundTripsOverlaysAndLocalization() throws {
+        var project = ScreenshotProject.newProject(name: "Localized")
+        project.languages = ["en-US", "fr-FR", "ja"]
+        project.activeLanguage = "fr-FR"
+        project.style.caption.localized = ["fr-FR": "Bonjour", "ja": "こんにちは"]
+        project.style.overlays = [
+            CanvasOverlay.text("NEW"),
+            CanvasOverlay.sticker("star.fill", isSymbol: true)
+        ]
+        project.slides = [
+            Slide(imageFile: "a.png", captionOverride: "Base",
+                  localizedOverrides: ["fr-FR": "Salut"])
+        ]
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let data = try encoder.encode(project)
+        let decoded = try decoder.decode(ScreenshotProject.self, from: data)
+
+        XCTAssertEqual(decoded.languages, ["en-US", "fr-FR", "ja"])
+        XCTAssertEqual(decoded.activeLanguage, "fr-FR")
+        XCTAssertEqual(decoded.style.caption.localized["fr-FR"], "Bonjour")
+        XCTAssertEqual(decoded.style.overlays.count, 2)
+        XCTAssertEqual(decoded.style.overlays.first?.content, "NEW")
+        XCTAssertEqual(decoded.slides.first?.localizedOverrides["fr-FR"], "Salut")
+    }
+
+    func testLegacyProjectDecodesWithLocalizationDefaults() throws {
+        // A document encoded before localization/overlays existed must still
+        // decode, picking up sensible defaults for the new fields.
+        let legacy = """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "name": "Legacy",
+          "createdAt": "2024-01-01T00:00:00Z",
+          "modifiedAt": "2024-01-01T00:00:00Z",
+          "orientation": "portrait",
+          "deviceSizeID": "iphone-6_9",
+          "additionalSizeIDs": [],
+          "slides": [],
+          "style": {
+            "background": { "id": "aurora", "name": "Aurora", "kind": "gradient",
+                            "colors": [], "angle": 135 },
+            "caption": { "text": "Hi", "placement": "top", "heightFraction": 0.18,
+                         "sizeFraction": 0.072, "weight": "bold" },
+            "deviceFramed": true, "marginFraction": 0.12, "cornerFraction": 0.052,
+            "shadow": true,
+            "statusBar": { "enabled": true, "time": "9:41", "batteryPercent": 100,
+                           "showBatteryPercent": false, "carrier": "Carrier",
+                           "showCarrier": false, "showCellular": true,
+                           "showWiFi": true, "appearance": "light" },
+            "adjustments": { "brightness": 0, "contrast": 1, "saturation": 1, "warmth": 0 }
+          }
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let project = try decoder.decode(ScreenshotProject.self, from: legacy)
+
+        XCTAssertEqual(project.languages, [ASCLanguage.base])
+        XCTAssertEqual(project.activeLanguage, ASCLanguage.base)
+        XCTAssertTrue(project.style.overlays.isEmpty)
+        XCTAssertTrue(project.style.caption.localized.isEmpty)
+    }
+
+    func testCaptionResolutionAcrossLanguages() {
+        var project = ScreenshotProject.newProject()
+        project.languages = ["en-US", "fr-FR"]
+        project.style.caption.text = "Hello"
+        project.style.caption.localized = ["fr-FR": "Bonjour"]
+
+        let plain = Slide(imageFile: "a.png")
+        let baseOverride = Slide(imageFile: "b.png", captionOverride: "Base only")
+        let frOverride = Slide(imageFile: "c.png", localizedOverrides: ["fr-FR": "Salut"])
+
+        // Shared headline per language.
+        XCTAssertEqual(project.captionText(for: plain, language: "en-US"), "Hello")
+        XCTAssertEqual(project.captionText(for: plain, language: "fr-FR"), "Bonjour")
+
+        // Per-slide override only affects its own language; base falls back.
+        XCTAssertEqual(project.captionText(for: baseOverride, language: "en-US"), "Base only")
+        XCTAssertEqual(project.captionText(for: baseOverride, language: "fr-FR"), "Base only")
+        XCTAssertEqual(project.captionText(for: frOverride, language: "fr-FR"), "Salut")
+        XCTAssertEqual(project.captionText(for: frOverride, language: "en-US"), "Hello")
+
+        // A language with no localized headline falls back to the base text.
+        XCTAssertEqual(project.captionText(for: plain, language: "ja"), "Hello")
+    }
+
     func testRGBAColorHexInit() {
         let c = RGBAColor(hex: 0xFF8000)
         XCTAssertEqual(c.red, 1.0, accuracy: 0.001)

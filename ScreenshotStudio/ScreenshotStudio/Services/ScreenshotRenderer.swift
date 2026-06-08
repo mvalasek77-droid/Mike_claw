@@ -31,6 +31,32 @@ enum ScreenshotRenderer {
         return renderer.uiImage
     }
 
+    /// Render a small, cache-friendly thumbnail of a project's representative
+    /// slide. We rasterize at a modest scale rather than live-scaling a full
+    /// 1320×2868 canvas inside every grid cell — that keeps the gallery fast
+    /// and, crucially, never renders blank under lazy layout.
+    static func thumbnail(of project: ScreenshotProject,
+                          slide: Slide?,
+                          targetWidth: CGFloat = 320) -> UIImage? {
+        let canvasSize = project.deviceSize.pixelSize(for: project.orientation)
+        guard canvasSize.width > 0, canvasSize.height > 0 else { return nil }
+        let source = slide.flatMap { ImageStore.load($0.imageFile) }
+        let caption = slide.map { project.captionText(for: $0) } ?? project.style.caption.text
+        let canvas = ScreenshotCanvas(
+            canvasSize: canvasSize,
+            style: project.style,
+            image: source,
+            captionText: caption,
+            statusBarLayout: project.deviceSize.statusBarLayout
+        )
+        .frame(width: canvasSize.width, height: canvasSize.height)
+
+        let renderer = ImageRenderer(content: canvas)
+        renderer.scale = max(targetWidth / canvasSize.width, 0.05)
+        renderer.isOpaque = true
+        return renderer.uiImage
+    }
+
     /// Render every slide of a project for a single device slot.
     static func renderSlides(of project: ScreenshotProject,
                              for device: ASCDeviceSize) -> [UIImage] {
@@ -63,6 +89,35 @@ enum ScreenshotRenderer {
                 out.append(image)
             }
             await Task.yield()
+        }
+        return out
+    }
+
+    /// Render every slide across every selected slot and language — used by the
+    /// share path so "Share PNGs" hands off the complete export, not just the
+    /// primary size in one language.
+    static func renderAllAsync(of project: ScreenshotProject,
+                               sizes: [ASCDeviceSize],
+                               languages: [String]) async -> [UIImage] {
+        let slots = sizes.isEmpty ? [project.deviceSize] : sizes
+        let langs = languages.isEmpty ? [project.activeLanguage] : languages
+        var out: [UIImage] = []
+        out.reserveCapacity(slots.count * langs.count * project.slides.count)
+        for slot in slots {
+            let canvasSize = slot.pixelSize(for: project.orientation)
+            let layout = slot.statusBarLayout
+            for lang in langs {
+                for slide in project.slides {
+                    if let image = render(canvasSize: canvasSize,
+                                          style: project.style,
+                                          image: ImageStore.load(slide.imageFile),
+                                          captionText: project.captionText(for: slide, language: lang),
+                                          statusBarLayout: layout) {
+                        out.append(image)
+                    }
+                    await Task.yield()
+                }
+            }
         }
         return out
     }

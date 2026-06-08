@@ -46,9 +46,43 @@ struct ScreenshotCanvas: View {
             device(in: l)
                 .frame(width: l.deviceRect.width, height: l.deviceRect.height)
                 .offset(x: l.deviceRect.minX, y: l.deviceRect.minY)
+
+            // Text & sticker overlays sit above the device, positioned in
+            // normalized canvas space so they export pixel-identically.
+            ForEach(style.overlays) { overlay in
+                overlayView(overlay)
+                    .position(x: overlay.x * canvasSize.width,
+                              y: overlay.y * canvasSize.height)
+            }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
         .clipped()
+    }
+
+    // MARK: Overlays
+
+    @ViewBuilder
+    private func overlayView(_ o: CanvasOverlay) -> some View {
+        let size = canvasSize.width * o.sizeFraction
+        Group {
+            switch o.kind {
+            case .text:
+                Text(o.content.isEmpty ? " " : o.content)
+                    .font(.system(size: size, weight: o.weight.swiftUIWeight, design: .rounded))
+                    .foregroundStyle(o.color.color)
+            case .sticker:
+                if o.isSymbol {
+                    Image(systemName: o.content)
+                        .font(.system(size: size, weight: .semibold))
+                        .foregroundStyle(o.color.color)
+                } else {
+                    Text(o.content)
+                        .font(.system(size: size))
+                }
+            }
+        }
+        .rotationEffect(.degrees(o.rotation))
+        .shadow(color: .black.opacity(0.25), radius: max(size * 0.04, 1), y: max(size * 0.02, 1))
     }
 
     // MARK: Caption

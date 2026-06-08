@@ -28,6 +28,20 @@ final class ASCDeviceSizeTests: XCTestCase {
 
         let iPad13 = ASCDeviceSize.named("ipad-13")
         XCTAssertEqual(iPad13?.portraitSize, CGSize(width: 2064, height: 2752))
+
+        let iPad129 = ASCDeviceSize.named("ipad-12_9")
+        XCTAssertEqual(iPad129?.portraitSize, CGSize(width: 2048, height: 2732))
+
+        let sixSeven = ASCDeviceSize.named("iphone-6_7")
+        XCTAssertEqual(sixSeven?.portraitSize, CGSize(width: 1290, height: 2796))
+    }
+
+    func testStatusBarLayoutPerDeviceClass() {
+        XCTAssertEqual(ASCDeviceSize.named("iphone-6_9")?.statusBarLayout, .dynamicIsland)
+        XCTAssertEqual(ASCDeviceSize.named("iphone-6_5")?.statusBarLayout, .notch)
+        XCTAssertEqual(ASCDeviceSize.named("iphone-5_5")?.statusBarLayout, .classic)
+        XCTAssertEqual(ASCDeviceSize.named("ipad-13")?.statusBarLayout, .pad)
+        XCTAssertEqual(ASCDeviceSize.named("ipad-12_9")?.statusBarLayout, .pad)
     }
 
     func testLandscapeSwapsDimensions() {

@@ -10,9 +10,13 @@ struct ExportSheet: View {
     @StateObject private var coordinator = ExportCoordinator()
     @State private var shareItems: [UIImage]?
     @State private var isPreparingShare = false
+    @State private var allLanguages = false
 
     private var sizes: [ASCDeviceSize] { project.exportSizes }
-    private var totalImages: Int { sizes.count * project.slides.count }
+    private var languages: [String] {
+        (project.languages.count > 1 && allLanguages) ? project.languages : [project.activeLanguage]
+    }
+    private var totalImages: Int { sizes.count * languages.count * project.slides.count }
 
     var body: some View {
         ScrollView {
@@ -26,6 +30,7 @@ struct ExportSheet: View {
                     errorCard(message: message)
                 default:
                     planCard
+                    if project.languages.count > 1 { languageCard }
                     if coordinator.isRunning { progressCard }
                 }
 
@@ -93,6 +98,21 @@ struct ExportSheet: View {
         }
     }
 
+    private var languageCard: some View {
+        GlassCard(title: "Languages", icon: "globe") {
+            VStack(alignment: .leading, spacing: 8) {
+                ToggleRow(label: "Export all \(project.languages.count) languages",
+                          systemImage: "character.bubble", isOn: $allLanguages)
+                Text(allLanguages
+                     ? "Renders every language's caption set — \(project.languages.map { $0 }.joined(separator: ", "))."
+                     : "Renders only \(ASCLanguage.displayName(for: project.activeLanguage)).")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
     private var progressCard: some View {
         GlassCard {
             VStack(spacing: 12) {
@@ -147,7 +167,7 @@ struct ExportSheet: View {
         case .failed:
             VStack(spacing: 10) {
                 PrimaryButton(title: "Try again", systemImage: "arrow.clockwise") {
-                    Task { await coordinator.export(project: project, sizes: sizes) }
+                    Task { await coordinator.export(project: project, sizes: sizes, languages: languages) }
                 }
                 Button("Close") { dismiss() }
                     .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -157,14 +177,14 @@ struct ExportSheet: View {
             VStack(spacing: 10) {
                 PrimaryButton(title: "Save to Photos", systemImage: "photo.badge.checkmark",
                               isEnabled: !coordinator.isRunning && totalImages > 0) {
-                    Task { await coordinator.export(project: project, sizes: sizes) }
+                    Task { await coordinator.export(project: project, sizes: sizes, languages: languages) }
                 }
                 PrimaryButton(title: isPreparingShare ? "Preparing…" : "Share PNGs",
                               systemImage: "square.and.arrow.up", style: .glass,
                               isEnabled: !coordinator.isRunning && !isPreparingShare && totalImages > 0) {
                     isPreparingShare = true
                     Task {
-                        let rendered = await ScreenshotRenderer.renderSlidesAsync(of: project, for: project.deviceSize)
+                        let rendered = await ScreenshotRenderer.renderAllAsync(of: project, sizes: sizes, languages: languages)
                         isPreparingShare = false
                         shareItems = rendered
                     }

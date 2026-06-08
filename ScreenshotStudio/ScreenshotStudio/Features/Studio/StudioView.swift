@@ -16,19 +16,30 @@ struct StudioView: View {
     @State private var isRenaming = false
     @State private var draftName = ""
     @State private var saveTask: Task<Void, Never>?
+    @State private var showImportOptions = false
+    @State private var showVideoPicker = false
+    @State private var frameBatch: FrameBatch?
+    @State private var isExtractingVideo = false
+    /// The project as it was opened, so closing without edits doesn't bump the
+    /// modified date and silently reshuffle the gallery.
+    @State private var original: ScreenshotProject
 
     init(project: ScreenshotProject) {
         _project = State(initialValue: project)
+        _original = State(initialValue: project)
     }
 
     enum Panel: String, CaseIterable, Identifiable {
-        case layout = "Layout", background = "Backdrop", caption = "Caption", enhance = "Enhance", device = "Sizes"
+        case templates = "Templates", layout = "Layout", background = "Backdrop",
+             caption = "Caption", overlays = "Overlays", enhance = "Enhance", device = "Sizes"
         var id: String { rawValue }
         var icon: String {
             switch self {
+            case .templates: return "square.stack.3d.up.fill"
             case .layout: return "square.resize"
             case .background: return "paintbrush.fill"
             case .caption: return "textformat"
+            case .overlays: return "plus.bubble.fill"
             case .enhance: return "wand.and.stars"
             case .device: return "iphone.gen3"
             }
@@ -101,9 +112,37 @@ struct StudioView: View {
             }
         }
         .safeAreaInset(edge: .bottom) { bottomBar }
+        .confirmationDialog("Add to set", isPresented: $showImportOptions, titleVisibility: .visible) {
+            Button("Photos") { showPhotoPicker = true }
+            Button("App Preview video") { showVideoPicker = true }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Import screenshots, or pull frames from an App Preview video.")
+        }
         .sheet(isPresented: $showPhotoPicker) {
             PhotoPicker { images in addImages(images) }
                 .ignoresSafeArea()
+        }
+        .sheet(isPresented: $showVideoPicker) {
+            VideoPicker { url in
+                guard let url else { return }
+                isExtractingVideo = true
+                Task {
+                    let frames = await VideoFrameExtractor.frames(from: url)
+                    isExtractingVideo = false
+                    frameBatch = FrameBatch(images: frames)
+                    try? FileManager.default.removeItem(at: url)
+                }
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(item: $frameBatch) { batch in
+            FrameChooserSheet(frames: batch.images) { picked in addImages(picked) }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .overlay {
+            if isExtractingVideo { extractingOverlay }
         }
         .sheet(isPresented: $showExport) {
             ExportSheet(project: project)
@@ -127,8 +166,25 @@ struct StudioView: View {
         }
         .onDisappear {
             saveTask?.cancel()
-            store.upsert(project)
+            // Only persist when something actually changed, so simply opening
+            // and closing a set doesn't bump its date and reshuffle the gallery.
+            if project != original { store.upsert(project) }
         }
+    }
+
+    private var extractingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.45).ignoresSafeArea()
+            VStack(spacing: 14) {
+                ProgressView().tint(.white)
+                Text("Reading video frames…")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            .padding(28)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .transition(.opacity)
     }
 
     private func scheduleSave(_ snapshot: ScreenshotProject) {
@@ -197,7 +253,7 @@ struct StudioView: View {
 
                 Button {
                     Haptics.tap()
-                    showPhotoPicker = true
+                    showImportOptions = true
                 } label: {
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .fill(.white.opacity(0.06))
@@ -239,30 +295,33 @@ struct StudioView: View {
     // MARK: Panels
 
     private var panelPicker: some View {
-        HStack(spacing: 6) {
-            ForEach(Panel.allCases) { p in
-                let isSelected = p == panel
-                Button {
-                    Motion.run(Motion.snap) { panel = p }
-                    Haptics.selection()
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: p.icon).font(.system(size: 15, weight: .semibold))
-                        Text(p.rawValue).font(.system(size: 11, weight: .semibold, design: .rounded))
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(Panel.allCases) { p in
+                    let isSelected = p == panel
+                    Button {
+                        Motion.run(Motion.snap) { panel = p }
+                        Haptics.selection()
+                    } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: p.icon).font(.system(size: 15, weight: .semibold))
+                            Text(p.rawValue).font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(isSelected ? .white : LiquidGlass.primaryText.opacity(0.55))
+                        .frame(width: 66)
+                        .padding(.vertical, 8)
+                        .background(
+                            Group { if isSelected { RoundedRectangle(cornerRadius: 12, style: .continuous).fill(LiquidGlass.auroraGradient.opacity(0.85)) } }
+                        )
                     }
-                    .foregroundStyle(isSelected ? .white : LiquidGlass.primaryText.opacity(0.55))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(
-                        Group { if isSelected { RoundedRectangle(cornerRadius: 12, style: .continuous).fill(LiquidGlass.auroraGradient.opacity(0.85)) } }
-                    )
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(p.rawValue)
+                    .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(p.rawValue)
-                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             }
+            .padding(6)
         }
-        .padding(6)
         .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .padding(.horizontal, 18)
         .padding(.top, 4)
@@ -271,9 +330,12 @@ struct StudioView: View {
     @ViewBuilder
     private var panelContent: some View {
         switch panel {
+        case .templates:  TemplatePanel(project: $project)
         case .layout:     LayoutPanel(project: $project)
         case .background: BackgroundPanel(project: $project)
-        case .caption:    CaptionPanel(project: $project)
+        case .caption:    CaptionPanel(project: $project,
+                                       slideIndex: project.slides.isEmpty ? nil : currentSlide)
+        case .overlays:   OverlayPanel(project: $project)
         case .enhance:    EnhancePanel(project: $project)
         case .device:     DevicePanel(project: $project)
         }
@@ -284,7 +346,7 @@ struct StudioView: View {
     private var bottomBar: some View {
         HStack(spacing: 12) {
             PrimaryButton(title: "Add", systemImage: "photo.badge.plus", style: .glass) {
-                showPhotoPicker = true
+                showImportOptions = true
             }
             .frame(maxWidth: 130)
 

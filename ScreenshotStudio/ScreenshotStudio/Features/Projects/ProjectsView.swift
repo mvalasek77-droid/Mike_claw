@@ -105,7 +105,7 @@ private struct ProjectCard: View {
     var body: some View {
         GlassSurface(tier: .flat, corner: 18) {
             VStack(alignment: .leading, spacing: 0) {
-                CanvasPreview(project: project, slide: project.slides.first)
+                ProjectThumbnail(project: project)
                     .frame(height: 200)
                     .padding(10)
 

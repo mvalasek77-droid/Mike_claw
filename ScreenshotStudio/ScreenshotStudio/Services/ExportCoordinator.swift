@@ -34,10 +34,13 @@ final class ExportCoordinator: ObservableObject {
 
     func reset() { phase = .idle }
 
-    /// Render the chosen slots and save them to Photos.
-    func export(project: ScreenshotProject, sizes: [ASCDeviceSize]) async {
+    /// Render the chosen slots (and languages) and save them to Photos.
+    func export(project: ScreenshotProject,
+                sizes: [ASCDeviceSize],
+                languages: [String] = []) async {
         let slots = sizes.isEmpty ? [project.deviceSize] : sizes
-        let total = slots.count * max(project.slides.count, 0)
+        let langs = languages.isEmpty ? [project.activeLanguage] : languages
+        let total = slots.count * langs.count * max(project.slides.count, 0)
         guard total > 0 else {
             phase = .failed("Add at least one screenshot before exporting.")
             Haptics.error()
@@ -58,24 +61,26 @@ final class ExportCoordinator: ObservableObject {
         for slot in slots {
             let canvasSize = slot.pixelSize(for: project.orientation)
             let layout = slot.statusBarLayout
-            for slide in project.slides {
-                autoreleasepool {
-                    let source = ImageStore.load(slide.imageFile)
-                    if let rendered = ScreenshotRenderer.render(
-                        canvasSize: canvasSize,
-                        style: project.style,
-                        image: source,
-                        captionText: project.captionText(for: slide),
-                        statusBarLayout: layout
-                    ), let data = rendered.pngData() {
-                        pngs.append(data)
+            for lang in langs {
+                for slide in project.slides {
+                    autoreleasepool {
+                        let source = ImageStore.load(slide.imageFile)
+                        if let rendered = ScreenshotRenderer.render(
+                            canvasSize: canvasSize,
+                            style: project.style,
+                            image: source,
+                            captionText: project.captionText(for: slide, language: lang),
+                            statusBarLayout: layout
+                        ), let data = rendered.pngData() {
+                            pngs.append(data)
+                        }
                     }
+                    done += 1
+                    phase = .rendering(done: done, total: total)
+                    // Yield so the progress meter animates smoothly instead of
+                    // freezing the run loop on big batches.
+                    await Task.yield()
                 }
-                done += 1
-                phase = .rendering(done: done, total: total)
-                // Yield so the progress meter animates smoothly instead of
-                // freezing the run loop on big batches.
-                await Task.yield()
             }
         }
 

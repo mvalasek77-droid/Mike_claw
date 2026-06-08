@@ -1,15 +1,15 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @State private var tab: Tab = .studio
+    @State private var tab: Tab = .projects
 
-    enum Tab: Hashable { case studio, projects, guide, settings }
+    enum Tab: Hashable { case projects, guide, settings }
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Group {
                 switch tab {
-                case .studio, .projects: ProjectsView()
+                case .projects: ProjectsView()
                 case .guide:    ASCGuideView()
                 case .settings: SettingsView()
                 }
@@ -69,9 +69,5 @@ private struct TabBar: View {
         .accessibilityAddTraits(isSelected(t) ? .isSelected : [])
     }
 
-    // "Sets" and the studio share the projects surface; treat both as selected.
-    private func isSelected(_ t: MainTabView.Tab) -> Bool {
-        if t == .projects { return selected == .projects || selected == .studio }
-        return selected == t
-    }
+    private func isSelected(_ t: MainTabView.Tab) -> Bool { selected == t }
 }

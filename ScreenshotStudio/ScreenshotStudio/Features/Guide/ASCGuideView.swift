@@ -107,11 +107,13 @@ struct ASCGuideView: View {
 /// The public feature roadmap, surfaced in-app so the product feels alive.
 struct RoadmapCard: View {
     private let items: [(status: String, color: Color, title: String, detail: String)] = [
-        ("Now", LiquidGlass.success, "Frames, backdrops & captions", "Pixel-exact export to every App Store Connect size."),
-        ("Next", LiquidGlass.accent, "Text & sticker overlays", "Drop annotations and badges anywhere on the canvas."),
-        ("Next", LiquidGlass.accent, "Template gallery", "One-tap professional layouts tuned per category."),
-        ("Later", LiquidGlass.warning, "Localized caption sets", "Manage every App Store language from one project."),
-        ("Later", LiquidGlass.warning, "App Preview video frames", "The same studio treatment for 15–30s previews.")
+        ("Shipped", LiquidGlass.success, "Frames, backdrops & captions", "Pixel-exact export to every App Store Connect size."),
+        ("Shipped", LiquidGlass.success, "Template gallery", "One-tap professional looks you can apply and tweak."),
+        ("Shipped", LiquidGlass.success, "Text & sticker overlays", "Drop annotations and badges anywhere on the canvas."),
+        ("Shipped", LiquidGlass.success, "Localized caption sets", "Manage every App Store language from one project."),
+        ("Shipped", LiquidGlass.success, "App Preview video frames", "Pull stills from a preview video straight into the studio."),
+        ("Next", LiquidGlass.accent, "Drag-to-place overlays", "Position annotations by dragging right on the canvas."),
+        ("Later", LiquidGlass.warning, "App Preview video export", "Render the full studio treatment over 15–30s previews.")
     ]
 
     var body: some View {
