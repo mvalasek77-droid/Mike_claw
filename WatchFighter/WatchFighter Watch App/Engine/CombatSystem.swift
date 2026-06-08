@@ -147,12 +147,12 @@ struct CombatSystem {
         case .lightAttack:
             if f.airborne {
                 if f.canAirAct { f.startMove(.airLight); f.airActionUsed = true }
-            } else if canPerform(.light, f) { f.startMove(.light) }
+            } else if canPerform(f.spec.light, f) { f.startMove(f.spec.light) }
 
         case .heavyAttack:
             if f.airborne {
                 if f.canAirAct { f.startMove(.airHeavy); f.airActionUsed = true }
-            } else if canPerform(.heavy, f) { f.startMove(.heavy); events.append(.heavyWindup(side)) }
+            } else if canPerform(f.spec.heavy, f) { f.startMove(f.spec.heavy); events.append(.heavyWindup(side)) }
 
         case .special:
             if f.meter >= CombatSystem.chargeToFire {

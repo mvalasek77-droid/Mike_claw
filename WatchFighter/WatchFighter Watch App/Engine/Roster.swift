@@ -30,7 +30,11 @@ extension CharacterSpec {
         special: Move.special(damage: 20, reach: 40, pushback: 26, startup: 8, launches: true),
         exSpecial: Move.ex(from: Move.special(damage: 20, reach: 40, pushback: 26, startup: 8, launches: true)),
         homeStageID: "ruins",
-        bodyColor: RGBA(0.62, 0.55, 0.45), accentColor: RGBA(1.0, 0.7, 0.2)
+        bodyColor: RGBA(0.62, 0.55, 0.45), accentColor: RGBA(1.0, 0.7, 0.2),
+        // Slow but crushing — Bastion's heavy hits like a wrecking ball.
+        heavy: Move(kind: .heavy, startup: 12, active: 3, recovery: 18,
+                    damage: 19, chip: 4, hitstun: 22, blockstun: 14,
+                    pushback: 18, reach: 34, meterGain: 12, cancelable: true)
     )
 
     /// Fire zoner — keeps distance with projectiles.
@@ -165,7 +169,14 @@ extension CharacterSpec {
         special: Move.special(damage: 18, reach: 84, pushback: 16, startup: 7, launches: true),
         exSpecial: Move.ex(from: Move.special(damage: 18, reach: 84, pushback: 16, startup: 7, launches: true)),
         homeStageID: "garden",
-        bodyColor: RGBA(0.55, 0.10, 0.18), accentColor: RGBA(0.88, 0.90, 0.96)
+        bodyColor: RGBA(0.55, 0.10, 0.18), accentColor: RGBA(0.88, 0.90, 0.96),
+        // The blade gives Vesper the longest normals in the cast.
+        light: Move(kind: .light, startup: 4, active: 2, recovery: 7,
+                    damage: 6, chip: 1, hitstun: 12, blockstun: 8,
+                    pushback: 6, reach: 34, meterGain: 6, cancelable: true),
+        heavy: Move(kind: .heavy, startup: 10, active: 3, recovery: 17,
+                    damage: 14, chip: 3, hitstun: 20, blockstun: 12,
+                    pushback: 14, reach: 42, meterGain: 10, cancelable: true)
     )
 
     /// Acrobatic athlete (original lifeguard/swimmer archetype) — fast, mobile,
@@ -180,7 +191,10 @@ extension CharacterSpec {
         special: Move.special(damage: 15, reach: 50, pushback: 20, startup: 5),
         exSpecial: Move.ex(from: Move.special(damage: 15, reach: 50, pushback: 20, startup: 5)),
         homeStageID: "pier",
-        bodyColor: RGBA(0.95, 0.55, 0.35), accentColor: RGBA(0.2, 0.7, 0.9)
+        bodyColor: RGBA(0.95, 0.55, 0.35), accentColor: RGBA(0.2, 0.7, 0.9),
+        light: Move(kind: .light, startup: 2, active: 2, recovery: 5,
+                    damage: 5, chip: 1, hitstun: 12, blockstun: 8,
+                    pushback: 5, reach: 24, meterGain: 6, cancelable: true)
     )
 
     /// Selectable cast (bosses excluded from the select screen).
@@ -193,5 +207,24 @@ extension CharacterSpec {
 
     static func byID(_ id: String) -> CharacterSpec {
         (selectable + [onyx, titus]).first { $0.id == id } ?? tetsu
+    }
+
+    /// Flavor name for this character's special, shown in the movelist.
+    var specialName: String {
+        switch id {
+        case "tetsu":   return "Rising Palm"
+        case "volt":    return "Arc Dash"
+        case "ember":   return "Cinderbolt"
+        case "frost":   return "Glacier Spike"
+        case "mirage":  return "Phase Strike"
+        case "bastion": return "Quake Slam"
+        case "corsair": return "Cutlass Rush"
+        case "nova":    return "Plasma Shot"
+        case "vesper":  return "Drawing Cut"
+        case "marina":  return "Riptide"
+        case "onyx":    return "Ascendant Crush"
+        case "titus":   return "Haymaker"
+        default:        return "Special"
+        }
     }
 }

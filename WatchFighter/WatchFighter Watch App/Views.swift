@@ -18,6 +18,7 @@ struct RootView: View {
             case .storyCard:     StoryCardView(flow: flow)
             case .fight:         fightContent.id(flow.fightToken)
             case .ending:        EndingView(flow: flow)
+            case .howTo:         HowToPlayView(flow: flow)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: flow.screen)
@@ -80,6 +81,9 @@ struct MainMenuView: View {
                 menuButton("STORY", color: Color(red: 0.9, green: 0.1, blue: 0.4)) { flow.chooseMode(.story) }
                 menuButton("TRAINING", color: .blue) { flow.chooseMode(.training) }
                 menuButton("VERSUS", color: .green) { flow.chooseMode(.versus) }
+                menuButton("HOW TO PLAY", color: .gray) { flow.screen = .howTo }
+                Text("Wins: \(flow.progression.totalWins)")
+                    .font(.system(size: 8)).foregroundStyle(.secondary)
                 Text("Versus = two Watches over Game Center (experimental)")
                     .font(.system(size: 8)).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal, 8)
@@ -96,23 +100,75 @@ struct MainMenuView: View {
 struct CharacterSelectView: View {
     @ObservedObject var flow: GameFlow
     private let cols = [GridItem(.flexible()), GridItem(.flexible())]
+
+    private var roster: [CharacterSpec] {
+        // Onyx joins the select screen once the story is cleared.
+        CharacterSpec.selectable + (flow.progression.isUnlocked("onyx") ? [.onyx] : [])
+    }
+
     var body: some View {
         ScrollView {
             Text("CHOOSE YOUR FIGHTER").font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.secondary).padding(.vertical, 4)
             LazyVGrid(columns: cols, spacing: 8) {
-                ForEach(CharacterSpec.selectable, id: \.id) { spec in
-                    Button(action: { flow.selectCharacter(spec) }) {
-                        VStack(spacing: 3) {
-                            RoundedRectangle(cornerRadius: 6).fill(spec.bodyColor.color)
-                                .frame(height: 38)
-                                .overlay(RoundedRectangle(cornerRadius: 6)
-                                    .stroke(spec.accentColor.color, lineWidth: 2))
-                            Text(spec.name).font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
+                ForEach(roster, id: \.id) { spec in
+                    let unlocked = flow.progression.isUnlocked(spec.id)
+                    Button(action: { if unlocked { flow.selectCharacter(spec) } }) {
+                        VStack(spacing: 2) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(unlocked ? spec.bodyColor.color : Color(white: 0.18))
+                                    .frame(height: 38)
+                                    .overlay(RoundedRectangle(cornerRadius: 6)
+                                        .stroke(unlocked ? spec.accentColor.color : .gray, lineWidth: 2))
+                                if !unlocked { Image(systemName: "lock.fill").foregroundStyle(.gray) }
+                            }
+                            Text(unlocked ? spec.name : (flow.progression.unlockHint(spec.id) ?? "Locked"))
+                                .font(.system(size: unlocked ? 9 : 7, weight: .bold))
+                                .foregroundStyle(unlocked ? .white : .secondary)
+                                .lineLimit(1)
                         }
-                    }.buttonStyle(.plain)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!unlocked)
                 }
             }.padding(.horizontal, 6)
+        }.background(Color.black.ignoresSafeArea())
+    }
+}
+
+struct HowToPlayView: View {
+    @ObservedObject var flow: GameFlow
+    private let rows: [(String, String)] = [
+        ("Crown", "charge super meter"),
+        ("Tap top / bottom", "light / heavy"),
+        ("Tap far-left", "throw (beats block)"),
+        ("Tap far-right", "special (meter ≥ 50)"),
+        ("Swipe up", "jump (then tap = air attack)"),
+        ("Swipe ← / →", "step back / forward"),
+        ("Swipe down", "parry"),
+        ("Hold", "block"),
+    ]
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("HOW TO PLAY").font(.system(size: 12, weight: .heavy))
+                    .foregroundStyle(.white).frame(maxWidth: .infinity)
+                ForEach(rows, id: \.0) { row in
+                    HStack(alignment: .top, spacing: 6) {
+                        Text(row.0).font(.system(size: 9, weight: .bold)).foregroundStyle(.cyan)
+                            .frame(width: 74, alignment: .leading)
+                        Text(row.1).font(.system(size: 9)).foregroundStyle(.white)
+                    }
+                }
+                Text("Combo: light → heavy → special. Parry beats armor. Throws beat block. Big stun = DIZZY.")
+                    .font(.system(size: 8)).foregroundStyle(.secondary).padding(.top, 2)
+                Text("Final boss TITUS is invincible until you perform the rite: ▽ ▽ • ◆ ★")
+                    .font(.system(size: 8)).foregroundStyle(.yellow)
+                Button(action: { flow.goToMenu() }) {
+                    Text("BACK").font(.system(size: 11, weight: .bold)).frame(maxWidth: .infinity)
+                }.tint(.gray).padding(.top, 4)
+            }.padding(8)
         }.background(Color.black.ignoresSafeArea())
     }
 }
@@ -213,6 +269,11 @@ struct StoryCardView: View {
                 Text(speaker.title).font(.system(size: 8)).foregroundStyle(.secondary)
                 Text("“\(line)”").font(.system(size: 10)).italic().foregroundStyle(.white)
                     .multilineTextAlignment(.center).padding(.horizontal, 8)
+                if !pre && !flow.newlyUnlocked.isEmpty {
+                    Text("★ UNLOCKED: " + flow.newlyUnlocked.map { $0.uppercased() }.joined(separator: ", "))
+                        .font(.system(size: 9, weight: .bold)).foregroundStyle(.yellow)
+                        .multilineTextAlignment(.center)
+                }
                 if pre && opp.guardedByRitual {
                     VStack(spacing: 2) {
                         Text("⚠ HE CANNOT BE BEATEN BY DAMAGE ALONE")

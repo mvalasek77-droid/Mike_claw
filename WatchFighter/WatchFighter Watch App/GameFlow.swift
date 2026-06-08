@@ -6,7 +6,7 @@ import SwiftUI
 /// so no explicit actor isolation is needed.
 final class GameFlow: ObservableObject {
     enum Screen: Equatable {
-        case title, menu, select, trainingSetup, versusLobby, storyCard, fight, ending
+        case title, menu, select, trainingSetup, versusLobby, storyCard, fight, ending, howTo
     }
     enum AppMode { case story, training, versus }
     enum CardKind { case preFight, postWin }
@@ -21,6 +21,8 @@ final class GameFlow: ObservableObject {
     @Published var endKind: EndKind = .defeat
     @Published var versusStatus = "Tap to search for an opponent"
     @Published var versusReady = false
+    @Published var progression = ProgressionStore.load()
+    @Published var newlyUnlocked: [String] = []
     /// Bumped each fight so SwiftUI rebuilds the SpriteView with a fresh scene.
     @Published var fightToken = 0
 
@@ -81,11 +83,14 @@ final class GameFlow: ObservableObject {
     func matchEnded(winner: Side) {
         switch appMode {
         case .story:
-            if winner == .player { cardKind = .postWin; screen = .storyCard }
-            else { endKind = .defeat; screen = .ending }
+            if winner == .player {
+                unlock(progression.recordWin())     // each floor cleared is a win
+                cardKind = .postWin; screen = .storyCard
+            } else { endKind = .defeat; screen = .ending }
         case .training:
             screen = .trainingSetup            // back to the practice menu
         case .versus:
+            if winner == .player { unlock(progression.recordWin()) }
             endKind = winner == .player ? .victory : .defeat
             versusTransport = nil
             screen = .ending
@@ -94,8 +99,14 @@ final class GameFlow: ObservableObject {
 
     /// Continue after the player's post-win story card.
     func continueStory() {
+        newlyUnlocked = []
         if story.advance() { cardKind = .preFight; screen = .storyCard }
-        else { endKind = .victory; screen = .ending }
+        else { unlock(progression.clearStory()); endKind = .victory; screen = .ending }
+    }
+
+    private func unlock(_ ids: [String]) {
+        ProgressionStore.save(progression)
+        if !ids.isEmpty { newlyUnlocked = ids }
     }
 }
 #endif

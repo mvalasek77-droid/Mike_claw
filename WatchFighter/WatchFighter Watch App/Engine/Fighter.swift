@@ -21,6 +21,11 @@ struct CharacterSpec: Equatable {
     /// If true, this fighter is INVINCIBLE (takes no damage) until the player
     /// performs the secret ritual perfectly. The final boss, Titus, uses this.
     var guardedByRitual: Bool = false
+
+    /// Per-character normals. Default to the shared normals so most characters
+    /// need no override. (Flavor `specialName` is computed in Roster.swift.)
+    var light: Move = .light
+    var heavy: Move = .heavy
 }
 
 /// Tiny color value so the engine stays free of SpriteKit/UIKit.

@@ -132,7 +132,11 @@ off-device), so the combat core, match flow, and story compile/test headless.
       undefeated final boss **Titus** (invincible until the secret rite)
 - [x] **Firm-up (classic base)** — jump/gravity + air normals + 2D boxes, throws +
       techs, combo damage scaling, stun→dizzy; plus a "FINISH!" finisher beat
-- [ ] **M3 (cont.)** — unlocks/progression, per-character movelists & special
+- [x] **Progression** — win-milestone + story-clear **unlocks** (persisted),
+      locked character-select with hints, per-character **normals/movelists**,
+      and a **How To Play** screen
+- [ ] **M3 (cont.)** — versus character-select sync, real audio samples & music,
+      deeper balance pass
       balance pass, character-select sync for versus, real audio samples & music
 
 > **M2 caveat:** still not compiled here (no Swift toolchain on Linux). Pure
