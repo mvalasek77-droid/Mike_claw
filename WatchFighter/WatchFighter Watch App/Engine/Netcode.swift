@@ -71,29 +71,48 @@ final class LockstepSession {
     }
 }
 
-/// Abstracts the wire so the netplay layer doesn't care whether frames travel
+/// Everything that crosses the wire: a one-time character-pick handshake
+/// (`setup`) followed by the per-tick `input` stream.
+enum NetMessage: Codable, Equatable {
+    case setup(characterID: String)
+    case input(InputFrame)
+}
+
+/// Resolves which fighter is on which side so BOTH devices build an identical
+/// world from their two picks. Deterministic: the `.player`-side device's pick
+/// is always the left fighter (the one it controls).
+enum VersusMatchup {
+    static func resolve(localSide: Side, localPick: String,
+                        remotePick: String) -> (player: CharacterSpec, opponent: CharacterSpec) {
+        let leftID  = localSide == .player ? localPick  : remotePick
+        let rightID = localSide == .player ? remotePick : localPick
+        return (.byID(leftID), .byID(rightID))
+    }
+}
+
+/// Abstracts the wire so the netplay layer doesn't care whether messages travel
 /// over GameKit, Watch Connectivity, or an in-process loopback.
 protocol MatchTransport: AnyObject {
-    var onReceiveFrame: ((InputFrame) -> Void)? { get set }
+    var onReceive: ((NetMessage) -> Void)? { get set }
     var onDisconnect: (() -> Void)? { get set }
-    func send(_ frame: InputFrame)
+    func send(_ message: NetMessage)
     func disconnect()
 }
 
 extension MatchTransport {
-    /// Convenience: encode/decode `InputFrame` to `Data` for byte-based transports.
-    func encode(_ frame: InputFrame) -> Data? { try? JSONEncoder().encode(frame) }
-    func decodeFrame(_ data: Data) -> InputFrame? { try? JSONDecoder().decode(InputFrame.self, from: data) }
+    /// Convenience: encode/decode a `NetMessage` to `Data` for byte transports.
+    func encode(_ m: NetMessage) -> Data? { try? JSONEncoder().encode(m) }
+    func decodeMessage(_ data: Data) -> NetMessage? { try? JSONDecoder().decode(NetMessage.self, from: data) }
 }
 
-/// In-process transport that delivers frames straight to a paired instance.
+/// In-process transport that delivers messages straight to a paired instance.
 /// Used for tests and a single-device demo; also a reference for real transports.
 final class LoopbackTransport: MatchTransport {
-    var onReceiveFrame: ((InputFrame) -> Void)?
+    var onReceive: ((NetMessage) -> Void)?
     var onDisconnect: (() -> Void)?
     weak var peer: LoopbackTransport?
 
-    func send(_ frame: InputFrame) { peer?.onReceiveFrame?(frame) }
+    func send(_ message: NetMessage) { peer?.onReceive?(message) }
     func disconnect() { onDisconnect?(); peer?.onDisconnect?() }
 
     /// Wire two endpoints together.

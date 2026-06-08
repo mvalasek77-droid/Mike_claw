@@ -135,8 +135,12 @@ off-device), so the combat core, match flow, and story compile/test headless.
 - [x] **Progression** — win-milestone + story-clear **unlocks** (persisted),
       locked character-select with hints, per-character **normals/movelists**,
       and a **How To Play** screen
-- [ ] **M3 (cont.)** — versus character-select sync, real audio samples & music,
-      deeper balance pass
+- [x] **Versus sync** — both Watches pick fighters; a deterministic
+      `NetMessage` handshake (`VersusMatchup`) builds an identical world on both
+- [x] **Music** — asset-free looping lo-fi track (synth), toggle in the menu;
+      first-pass **balance** with guardrail tests (see `BALANCE.md`)
+- [ ] **M3 (cont.)** — per-character aerials, projectile recovery pass, AI
+      difficulty selector, real audio samples
       balance pass, character-select sync for versus, real audio samples & music
 
 > **M2 caveat:** still not compiled here (no Swift toolchain on Linux). Pure

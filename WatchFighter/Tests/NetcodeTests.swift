@@ -55,10 +55,32 @@ final class NetcodeTests: XCTestCase {
 
     func testLoopbackTransportDelivers() {
         let (a, b) = LoopbackTransport.pair()
-        var received: InputFrame?
-        b.onReceiveFrame = { received = $0 }
-        a.send(InputFrame(tick: 7, intents: [.special]))
-        XCTAssertEqual(received, InputFrame(tick: 7, intents: [.special]))
+        var received: NetMessage?
+        b.onReceive = { received = $0 }
+        a.send(.input(InputFrame(tick: 7, intents: [.special])))
+        XCTAssertEqual(received, .input(InputFrame(tick: 7, intents: [.special])))
+    }
+
+    func testNetMessageCodableRoundTrip() throws {
+        let messages: [NetMessage] = [.setup(characterID: "vesper"),
+                                      .input(InputFrame(tick: 3, intents: [.grab]))]
+        for m in messages {
+            let data = try JSONEncoder().encode(m)
+            XCTAssertEqual(try JSONDecoder().decode(NetMessage.self, from: data), m)
+        }
+    }
+
+    /// Both devices must derive the SAME left/right fighters from their picks,
+    /// regardless of which side each is on.
+    func testVersusMatchupAgreesOnBothDevices() {
+        // Device A is the player side and picked Volt; device B is opponent
+        // side and picked Ember.
+        let a = VersusMatchup.resolve(localSide: .player, localPick: "volt", remotePick: "ember")
+        let b = VersusMatchup.resolve(localSide: .opponent, localPick: "ember", remotePick: "volt")
+        XCTAssertEqual(a.player.id, b.player.id)
+        XCTAssertEqual(a.opponent.id, b.opponent.id)
+        XCTAssertEqual(a.player.id, "volt")
+        XCTAssertEqual(a.opponent.id, "ember")
     }
 
     func testTrainingDummyBlocks() {

@@ -96,7 +96,8 @@ final class FightScene: SKScene {
             allowHitstop = false      // keep deterministic lockstep pacing clean
             self.transport = transport
             self.session = LockstepSession(localSide: localSide)
-            transport.onReceiveFrame = { [weak self] frame in
+            transport.onReceive = { [weak self] message in
+                guard case .input(let frame) = message else { return }   // setup done in lobby
                 DispatchQueue.main.async { self?.session?.receiveRemote(frame) }
             }
             transport.onDisconnect = { [weak self] in
@@ -289,7 +290,7 @@ final class FightScene: SKScene {
         guard let s = session else { return }
         let frame = s.submitLocal(pendingLocal)
         pendingLocal.removeAll()
-        transport?.send(frame)
+        transport?.send(.input(frame))
 
         var advanced = 0
         while advanced < 4, let (p, o) = s.consumeCurrentTick() {

@@ -30,10 +30,9 @@ final class GameFlow: ObservableObject {
     var versusTransport: MatchTransport?
     var versusLocalSide: Side = .player
 
-    // Fixed versus matchup until character-select sync lands (M3). Both devices
-    // must agree on both fighters for the deterministic lockstep sim.
-    let versusPlayer: CharacterSpec = .tetsu
-    let versusOpponent: CharacterSpec = .volt
+    // Versus matchup, resolved by the lobby handshake so both devices agree.
+    var versusPlayer: CharacterSpec = .tetsu
+    var versusOpponent: CharacterSpec = .volt
 
     // MARK: Derived
 
@@ -57,10 +56,7 @@ final class GameFlow: ObservableObject {
 
     func chooseMode(_ m: AppMode) {
         appMode = m
-        switch m {
-        case .story, .training: screen = .select
-        case .versus:           versusReady = false; versusStatus = "Tap to search for an opponent"; screen = .versusLobby
-        }
+        screen = .select          // pick a fighter first (versus picks too)
     }
 
     func selectCharacter(_ spec: CharacterSpec) {
@@ -73,8 +69,37 @@ final class GameFlow: ObservableObject {
         case .training:
             screen = .trainingSetup
         case .versus:
-            break
+            versusStatus = "Tap to search for an opponent"
+            screen = .versusLobby
         }
+    }
+
+    // Handshake state (order-independent: connect + remote pick can arrive in
+    // either order; we resolve once both are known).
+    private var pendingSide: Side?
+    private var pendingRemotePick: String?
+
+    func versusConnected(side: Side, transport: MatchTransport) {
+        pendingSide = side
+        transport.send(.setup(characterID: playerSpec.id))   // announce my pick
+        tryResolveVersus(transport)
+    }
+
+    func versusReceivedSetup(id: String, transport: MatchTransport) {
+        pendingRemotePick = id
+        tryResolveVersus(transport)
+    }
+
+    private func tryResolveVersus(_ transport: MatchTransport) {
+        guard let side = pendingSide, let remote = pendingRemotePick else { return }
+        pendingSide = nil; pendingRemotePick = nil
+        let m = VersusMatchup.resolve(localSide: side,
+                                      localPick: playerSpec.id, remotePick: remote)
+        versusPlayer = m.player
+        versusOpponent = m.opponent
+        versusLocalSide = side
+        versusTransport = transport
+        beginFight()
     }
 
     func beginFight() { fightToken += 1; screen = .fight }

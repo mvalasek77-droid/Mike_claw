@@ -13,15 +13,19 @@ final class SoundEngine {
 
     private let engine = AVAudioEngine()
     private let players: [AVAudioPlayerNode]
+    private let musicNode = AVAudioPlayerNode()
     private var rr = 0                                   // round-robin voice
     private let format: AVAudioFormat
     private var cache: [String: AVAudioPCMBuffer] = [:]
     private var started = false
+    private(set) var musicEnabled = true
 
     private init() {
         format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
         players = (0..<6).map { _ in AVAudioPlayerNode() }
         players.forEach { engine.attach($0); engine.connect($0, to: engine.mainMixerNode, format: format) }
+        engine.attach(musicNode)
+        engine.connect(musicNode, to: engine.mainMixerNode, format: format)
     }
 
     func start() {
@@ -32,9 +36,50 @@ final class SoundEngine {
             try engine.start()
             players.forEach { $0.play() }
             started = true
+            startMusic()
         } catch {
             started = false       // stay silent rather than crash
         }
+    }
+
+    // MARK: - Music (asset-free looping lo-fi bassline)
+
+    func setMusicEnabled(_ on: Bool) {
+        musicEnabled = on
+        if on { startMusic() } else { musicNode.stop() }
+    }
+
+    func startMusic() {
+        guard started, musicEnabled, let buf = musicBuffer() else { return }
+        musicNode.stop()
+        musicNode.scheduleBuffer(buf, at: nil, options: .loops, completionHandler: nil)
+        musicNode.play()
+    }
+
+    private func musicBuffer() -> AVAudioPCMBuffer? {
+        let sr = format.sampleRate
+        let beat = 0.22
+        // A minor-ish arpeggio loop (0 == rest).
+        let steps: [Double] = [110, 0, 164.81, 196, 130.81, 0, 196, 164.81,
+                               110, 0, 146.83, 174.61, 98, 0, 146.83, 130.81]
+        let total = AVAudioFrameCount(sr * beat * Double(steps.count))
+        guard total > 0, let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: total),
+              let ch = buf.floatChannelData?[0] else { return nil }
+        buf.frameLength = total
+        var i = 0
+        let stepFrames = Int(sr * beat)
+        for f in steps {
+            for k in 0..<stepFrames {
+                let t = Double(k) / sr
+                var v = 0.0
+                if f > 0 {
+                    let env = exp(-3 * t / beat)
+                    v = (sin(2 * .pi * f * t) * 0.6 + sin(2 * .pi * f * 0.5 * t) * 0.4) * env
+                }
+                if i < Int(total) { ch[i] = Float(v * 0.10); i += 1 }
+            }
+        }
+        return buf
     }
 
     func play(_ sfx: SFX) {

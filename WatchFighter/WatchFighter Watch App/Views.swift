@@ -74,6 +74,7 @@ struct TitleView: View {
 
 struct MainMenuView: View {
     @ObservedObject var flow: GameFlow
+    @State private var music = SoundEngine.shared.musicEnabled
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
@@ -82,6 +83,9 @@ struct MainMenuView: View {
                 menuButton("TRAINING", color: .blue) { flow.chooseMode(.training) }
                 menuButton("VERSUS", color: .green) { flow.chooseMode(.versus) }
                 menuButton("HOW TO PLAY", color: .gray) { flow.screen = .howTo }
+                menuButton(music ? "MUSIC: ON" : "MUSIC: OFF", color: .purple) {
+                    music.toggle(); SoundEngine.shared.setMusicEnabled(music)
+                }
                 Text("Wins: \(flow.progression.totalWins)")
                     .font(.system(size: 8)).foregroundStyle(.secondary)
                 Text("Versus = two Watches over Game Center (experimental)")
@@ -211,7 +215,7 @@ struct VersusLobbyView: View {
         ScrollView {
             VStack(spacing: 8) {
                 Text("VERSUS").font(.system(size: 14, weight: .heavy)).foregroundStyle(.green)
-                Text("\(flow.versusPlayer.name)  vs  \(flow.versusOpponent.name)")
+                Text("YOU: \(flow.playerSpec.name)  vs  ???")
                     .font(.system(size: 9)).foregroundStyle(.secondary)
                 Text(flow.versusStatus).font(.system(size: 10)).foregroundStyle(.white)
                     .multilineTextAlignment(.center).padding(.horizontal, 8)
@@ -230,11 +234,14 @@ struct VersusLobbyView: View {
         transport = t
         flow.versusStatus = "Connecting to Game Center…"
         t.onError = { msg in DispatchQueue.main.async { flow.versusStatus = msg } }
+        t.onReceive = { msg in
+            guard case .setup(let id) = msg else { return }
+            DispatchQueue.main.async { flow.versusReceivedSetup(id: id, transport: t) }
+        }
         t.onConnected = { side in
             DispatchQueue.main.async {
-                flow.versusLocalSide = side
-                flow.versusTransport = t
-                flow.beginFight()
+                flow.versusStatus = "Opponent found — syncing fighters…"
+                flow.versusConnected(side: side, transport: t)
             }
         }
         t.authenticate { ok in

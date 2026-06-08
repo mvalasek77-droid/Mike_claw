@@ -11,7 +11,7 @@ import GameKit
 /// app degrades gracefully to an error state if authentication/matchmaking
 /// fails so the rest of the game keeps working.
 final class GameKitTransport: NSObject, MatchTransport, GKMatchDelegate {
-    var onReceiveFrame: ((InputFrame) -> Void)?
+    var onReceive: ((NetMessage) -> Void)?
     var onDisconnect: (() -> Void)?
 
     /// Called once both players are connected; provides the deterministic side
@@ -50,8 +50,10 @@ final class GameKitTransport: NSObject, MatchTransport, GKMatchDelegate {
         onConnected?(side)
     }
 
-    func send(_ frame: InputFrame) {
-        guard let match, let data = encode(frame) else { return }
+    func send(_ message: NetMessage) {
+        guard let match, let data = encode(message) else { return }
+        // Setup uses reliable; inputs are time-sensitive but small — reliable
+        // keeps the deterministic lockstep simple (no dropped-frame handling yet).
         try? match.sendData(toAllPlayers: data, with: .reliable)
     }
 
@@ -64,7 +66,7 @@ final class GameKitTransport: NSObject, MatchTransport, GKMatchDelegate {
     // MARK: GKMatchDelegate
 
     func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
-        if let frame = decodeFrame(data) { onReceiveFrame?(frame) }
+        if let message = decodeMessage(data) { onReceive?(message) }
     }
 
     func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
