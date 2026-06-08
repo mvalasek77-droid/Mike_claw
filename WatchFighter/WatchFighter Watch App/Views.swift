@@ -83,6 +83,9 @@ struct MainMenuView: View {
                 menuButton("TRAINING", color: .blue) { flow.chooseMode(.training) }
                 menuButton("VERSUS", color: .green) { flow.chooseMode(.versus) }
                 menuButton("HOW TO PLAY", color: .gray) { flow.screen = .howTo }
+                menuButton("CPU: \(flow.cpuDifficulty.label)", color: .orange) {
+                    flow.cpuDifficulty = flow.cpuDifficulty.nextSelectable
+                }
                 menuButton(music ? "MUSIC: ON" : "MUSIC: OFF", color: .purple) {
                     music.toggle(); SoundEngine.shared.setMusicEnabled(music)
                 }

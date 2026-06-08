@@ -17,6 +17,16 @@ struct AIController {
             switch self { case .boss: return 4; case .hard: return 6
                           case .normal: return 12; case .easy: return 20 }
         }
+        var label: String {
+            switch self { case .boss: return "Boss"; case .hard: return "Hard"
+                          case .normal: return "Normal"; case .easy: return "Easy" }
+        }
+        /// Player-selectable difficulties (boss tier is reserved for the boss).
+        static let selectable: [Difficulty] = [.easy, .normal, .hard]
+        var nextSelectable: Difficulty {
+            let i = Difficulty.selectable.firstIndex(of: self) ?? 0
+            return Difficulty.selectable[(i + 1) % Difficulty.selectable.count]
+        }
     }
 
     let difficulty: Difficulty

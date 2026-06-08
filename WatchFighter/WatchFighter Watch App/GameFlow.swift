@@ -39,14 +39,10 @@ final class GameFlow: ObservableObject {
     var opponentSpec: CharacterSpec { story.currentOpponent }
     var stageSpec: StageSpec { StageLibrary.stage(id: opponentSpec.homeStageID) }
 
-    /// CPU difficulty scales as you climb the ladder; the boss gets boss AI.
+    /// Player-chosen CPU difficulty (the final boss always gets boss-tier AI).
+    @Published var cpuDifficulty: AIController.Difficulty = .normal
     var storyDifficulty: AIController.Difficulty {
-        if opponentSpec.id == "titus" { return .boss }
-        switch story.ladderIndex {
-        case 0...2: return .easy
-        case 3...5: return .normal
-        default:    return .hard
-        }
+        opponentSpec.id == "titus" ? .boss : cpuDifficulty
     }
 
     // MARK: Navigation

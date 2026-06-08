@@ -176,7 +176,11 @@ extension CharacterSpec {
                     pushback: 6, reach: 34, meterGain: 6, cancelable: true),
         heavy: Move(kind: .heavy, startup: 10, active: 3, recovery: 17,
                     damage: 14, chip: 3, hitstun: 20, blockstun: 12,
-                    pushback: 14, reach: 42, meterGain: 10, cancelable: true)
+                    pushback: 14, reach: 42, meterGain: 10, cancelable: true),
+        // A long downward air slash to match the reach of her ground blade.
+        airHeavy: Move(kind: .heavy, startup: 6, active: 4, recovery: 8,
+                       damage: 13, chip: 3, hitstun: 18, blockstun: 10,
+                       pushback: 10, reach: 38, meterGain: 9, loY: -26, hiY: 40)
     )
 
     /// Acrobatic athlete (original lifeguard/swimmer archetype) — fast, mobile,
@@ -194,7 +198,11 @@ extension CharacterSpec {
         bodyColor: RGBA(0.95, 0.55, 0.35), accentColor: RGBA(0.2, 0.7, 0.9),
         light: Move(kind: .light, startup: 2, active: 2, recovery: 5,
                     damage: 5, chip: 1, hitstun: 12, blockstun: 8,
-                    pushback: 5, reach: 24, meterGain: 6, cancelable: true)
+                    pushback: 5, reach: 24, meterGain: 6, cancelable: true),
+        // The strongest aerials on the roster — a long, lingering dive kick.
+        airHeavy: Move(kind: .heavy, startup: 5, active: 6, recovery: 8,
+                       damage: 14, chip: 3, hitstun: 18, blockstun: 10,
+                       pushback: 10, reach: 32, meterGain: 9, loY: -30, hiY: 42)
     )
 
     /// Selectable cast (bosses excluded from the select screen).

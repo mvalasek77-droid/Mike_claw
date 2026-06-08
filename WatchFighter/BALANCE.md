@@ -44,11 +44,17 @@ trivial to retune. Numbers are in engine ticks (60/s) and lane points.
 | Throw tech window | 4 ticks | `CombatSystem.throwTechWindow` |
 | Special meter cost | 50 (EX at 100) | `CombatSystem.chargeToFire` |
 
+## Recent passes
+
+- **Per-character aerials** — `CharacterSpec.airLight/airHeavy` (default shared);
+  Marina gets a long, lingering dive kick, Vesper a long downward air slash.
+- **Projectile cooldown** — `CombatSystem.projectileCooldown` (45 ticks, longer
+  than the move) so fireballs can't be spammed and whiffs are punishable.
+- **CPU difficulty selector** — Easy / Normal / Hard chosen from the menu
+  (`GameFlow.cpuDifficulty`); the final boss always uses boss-tier AI.
+
 ## Known tuning TODOs
 
-- Air normals are shared across the cast; per-character aerials would deepen the
-  jump game (Marina especially).
-- Projectile characters (Ember/Frost/Nova) want a recovery/cooldown pass so
-  fireball spam is punishable on whiff.
-- Boss AI (`.boss`) reaction (4 ticks) may be too strict for casual players — a
-  difficulty selector is a candidate for the next pass.
+- Projectile damage/recovery still wants a finer pass per zoner.
+- Air normals could get unique properties (cross-ups, air-to-air) per character.
+- Real recorded SFX/music to replace the synth placeholders.

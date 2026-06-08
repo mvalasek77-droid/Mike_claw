@@ -139,8 +139,10 @@ off-device), so the combat core, match flow, and story compile/test headless.
       `NetMessage` handshake (`VersusMatchup`) builds an identical world on both
 - [x] **Music** — asset-free looping lo-fi track (synth), toggle in the menu;
       first-pass **balance** with guardrail tests (see `BALANCE.md`)
-- [ ] **M3 (cont.)** — per-character aerials, projectile recovery pass, AI
-      difficulty selector, real audio samples
+- [x] **Polish** — per-character aerials (Marina dive kick, Vesper air slash),
+      projectile **cooldown** (anti-spam), and a CPU **difficulty selector**
+- [ ] **Next** — real recorded audio, per-zoner projectile pass, an Xcode build
+      pass to compile the watchOS/SpriteKit/SwiftUI/GameKit layers
       balance pass, character-select sync for versus, real audio samples & music
 
 > **M2 caveat:** still not compiled here (no Swift toolchain on Linux). Pure

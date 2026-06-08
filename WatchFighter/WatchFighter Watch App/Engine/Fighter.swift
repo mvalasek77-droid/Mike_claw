@@ -26,6 +26,8 @@ struct CharacterSpec: Equatable {
     /// need no override. (Flavor `specialName` is computed in Roster.swift.)
     var light: Move = .light
     var heavy: Move = .heavy
+    var airLight: Move = .airLight
+    var airHeavy: Move = .airHeavy
 }
 
 /// Tiny color value so the engine stays free of SpriteKit/UIKit.

@@ -44,6 +44,9 @@ struct CombatSystem {
     static let minScale: CGFloat = 0.25
     // Throws
     static let throwTechWindow = 4           // ticks both grabs count as a tech
+    // Zoning: a per-side fireball cooldown (longer than the move itself) so
+    // projectiles can't be spammed back-to-back — whiffs become punishable.
+    static let projectileCooldown = 45
 
     // MARK: State
     private(set) var player: Fighter
@@ -59,6 +62,7 @@ struct CombatSystem {
 
     private(set) var tickCount = 0
     private var grabTick: [Side: Int] = [.player: -100, .opponent: -100]
+    private var lastProjectileTick: [Side: Int] = [.player: -1000, .opponent: -1000]
 
     private let roundTicks: Int
 
@@ -146,20 +150,23 @@ struct CombatSystem {
 
         case .lightAttack:
             if f.airborne {
-                if f.canAirAct { f.startMove(.airLight); f.airActionUsed = true }
+                if f.canAirAct { f.startMove(f.spec.airLight); f.airActionUsed = true }
             } else if canPerform(f.spec.light, f) { f.startMove(f.spec.light) }
 
         case .heavyAttack:
             if f.airborne {
-                if f.canAirAct { f.startMove(.airHeavy); f.airActionUsed = true }
+                if f.canAirAct { f.startMove(f.spec.airHeavy); f.airActionUsed = true }
             } else if canPerform(f.spec.heavy, f) { f.startMove(f.spec.heavy); events.append(.heavyWindup(side)) }
 
         case .special:
             if f.meter >= CombatSystem.chargeToFire {
                 let move = f.meterFull ? f.spec.exSpecial : f.spec.special
-                if canPerform(move, f) {
+                let onCooldown = move.isProjectile
+                    && tickCount - (lastProjectileTick[side] ?? -1000) < CombatSystem.projectileCooldown
+                if canPerform(move, f) && !onCooldown {
                     f.meter = 0
                     f.startMove(move)
+                    if move.isProjectile { lastProjectileTick[side] = tickCount }
                 }
             }
         }

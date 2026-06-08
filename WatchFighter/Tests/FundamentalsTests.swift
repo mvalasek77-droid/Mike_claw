@@ -83,6 +83,29 @@ final class FundamentalsTests: XCTestCase {
         XCTAssertTrue(dizzied, "accumulated stun should eventually cause a dizzy")
     }
 
+    func testProjectileCooldownBlocksSpam() {
+        var sys = CombatSystem(playerSpec: .ember, opponentSpec: .bastion)
+        _ = sys.apply(.charge(1.0), from: .player)
+        _ = sys.apply(.special, from: .player)          // first fireball (tick 0)
+        XCTAssertEqual(sys.player.state, .startup)
+        for _ in 0..<40 { _ = sys.tick() }              // let the move fully recover
+        XCTAssertEqual(sys.player.state, .idle)
+
+        _ = sys.apply(.charge(1.0), from: .player)      // refill meter
+        _ = sys.apply(.special, from: .player)          // still within cooldown
+        XCTAssertEqual(sys.player.state, .idle, "second fireball on cooldown is blocked")
+
+        for _ in 0..<10 { _ = sys.tick() }              // wait out the cooldown
+        _ = sys.apply(.charge(1.0), from: .player)
+        _ = sys.apply(.special, from: .player)
+        XCTAssertEqual(sys.player.state, .startup, "fireball fires again after cooldown")
+    }
+
+    func testPerCharacterAerials() {
+        XCTAssertGreaterThan(CharacterSpec.marina.airHeavy.reach, Move.airHeavy.reach)
+        XCTAssertEqual(CharacterSpec.tetsu.airHeavy, Move.airHeavy, "default aerials unchanged")
+    }
+
     func testGroundedHitDetectionUnchanged() {
         // Regression: the 2D box check must not break grounded-vs-grounded.
         var sys = CombatSystem(playerSpec: .tetsu, opponentSpec: .bastion)
