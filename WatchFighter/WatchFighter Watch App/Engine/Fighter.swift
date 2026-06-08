@@ -17,6 +17,10 @@ struct CharacterSpec: Equatable {
     // Presentation: RGB silhouette + accent (0...1).
     let bodyColor: RGBA
     let accentColor: RGBA
+
+    /// If true, this fighter is INVINCIBLE (takes no damage) until the player
+    /// performs the secret ritual perfectly. The final boss, Titus, uses this.
+    var guardedByRitual: Bool = false
 }
 
 /// Tiny color value so the engine stays free of SpriteKit/UIKit.
@@ -58,6 +62,7 @@ struct Fighter {
     var hasConnectedThisMove = false  // prevents one move hitting twice
     var canCancel = false             // a connected cancelable move opened a window
     var comboCount = 0                // hits in the current combo (for the HUD)
+    var armorAvailable = false        // armored move can still absorb a hit
 
     init(spec: CharacterSpec, facingRight: Bool, position: CGFloat) {
         self.spec = spec
@@ -93,6 +98,7 @@ struct Fighter {
         hasConnectedThisMove = false
         canCancel = false
         comboCount = 0
+        armorAvailable = false
     }
 
     // MARK: - State transitions
@@ -110,6 +116,7 @@ struct Fighter {
         hasConnectedThisMove = false
         canCancel = false
         isBlocking = false
+        armorAvailable = move.armor
         enter(.startup, ticks: move.startup)
     }
 

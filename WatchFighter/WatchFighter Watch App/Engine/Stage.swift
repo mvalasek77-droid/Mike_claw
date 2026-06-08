@@ -9,6 +9,8 @@ enum StageMotif: Equatable {
     case temple      // pagoda silhouettes
     case dojo        // beams + paper screens
     case throne      // monolithic obsidian hall
+    case ship        // mast + sail (pirate)
+    case ring        // ropes + corner posts (boxing arena)
 }
 
 /// A fighting-game stage, described purely as colors + a motif so the engine
@@ -62,6 +64,21 @@ enum StageLibrary {
                   farColor: RGBA(0.06, 0.02, 0.10), midColor: RGBA(0.12, 0.03, 0.16),
                   groundColor: RGBA(0.04, 0.01, 0.06), accent: RGBA(0.9, 0.1, 0.55),
                   motif: .throne),
+        StageSpec(id: "ship", name: "ROGUE TIDE",
+                  skyTop: RGBA(0.04, 0.06, 0.16), skyBottom: RGBA(0.45, 0.40, 0.30),
+                  farColor: RGBA(0.10, 0.12, 0.22), midColor: RGBA(0.16, 0.14, 0.18),
+                  groundColor: RGBA(0.16, 0.10, 0.06), accent: RGBA(0.95, 0.8, 0.3),
+                  motif: .ship),
+        StageSpec(id: "spaceport", name: "ORBIT NINE",
+                  skyTop: RGBA(0.02, 0.02, 0.08), skyBottom: RGBA(0.10, 0.06, 0.22),
+                  farColor: RGBA(0.08, 0.10, 0.20), midColor: RGBA(0.14, 0.16, 0.28),
+                  groundColor: RGBA(0.05, 0.06, 0.10), accent: RGBA(1.0, 0.5, 0.1),
+                  motif: .city),
+        StageSpec(id: "ring", name: "THE LAST BELL",
+                  skyTop: RGBA(0.02, 0.02, 0.03), skyBottom: RGBA(0.20, 0.05, 0.05),
+                  farColor: RGBA(0.10, 0.08, 0.08), midColor: RGBA(0.18, 0.10, 0.10),
+                  groundColor: RGBA(0.22, 0.18, 0.16), accent: RGBA(1.0, 0.85, 0.4),
+                  motif: .ring),
     ]
 
     static func stage(id: String) -> StageSpec {

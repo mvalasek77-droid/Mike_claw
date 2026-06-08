@@ -44,6 +44,16 @@ final class FightScene: SKScene {
     private var clock: CGFloat = 0
     private let step = 1.0 / CombatSystem.tickRate
 
+    // Game feel ("juice")
+    private let cam = SKCameraNode()
+    private var hitstop = 0                 // frames the sim is frozen on impact
+    private var allowHitstop = true         // off in versus to keep lockstep clean
+
+    // Secret ritual (final-boss invincibility)
+    private var ritual = BossRitual()
+    private let ritualLabel = SKLabelNode(text: "")
+    private var isBossFight: Bool { flow.opponentSpec.guardedByRitual }
+
     // Nodes
     private var playerSkel: SkeletonRenderer!
     private var oppSkel: SkeletonRenderer!
@@ -83,6 +93,7 @@ final class FightScene: SKScene {
             trainingOptions = opts
             dummy = TrainingDummy(options: opts)
         case .versus(let localSide, let transport):
+            allowHitstop = false      // keep deterministic lockstep pacing clean
             self.transport = transport
             self.session = LockstepSession(localSide: localSide)
             transport.onReceiveFrame = { [weak self] frame in
@@ -96,6 +107,9 @@ final class FightScene: SKScene {
 
     override func didMove(to view: SKView) {
         SoundEngine.shared.start()
+        cam.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        addChild(cam)
+        camera = cam
         buildStage()
         buildFighters()
         buildHUD()
@@ -104,6 +118,8 @@ final class FightScene: SKScene {
 
     override func didChangeSize(_ oldSize: CGSize) {
         guard isNodeTreeReady else { return }
+        cam.removeAllActions()
+        cam.position = CGPoint(x: size.width / 2, y: size.height / 2)
         rebuildStage(); layoutHUD()
     }
     private var isNodeTreeReady = false
@@ -136,8 +152,10 @@ final class FightScene: SKScene {
         styleLabel(frameDataLabel, size: 8); frameDataLabel.fontColor = .green
         frameDataLabel.horizontalAlignmentMode = .left
         frameDataLabel.alpha = (trainingOptions?.showFrameData == true) ? 1 : 0
-        [nameLabelP, nameLabelO, timerLabel, comboLabel, announcer, telegraph, frameDataLabel]
-            .forEach { $0.zPosition = 6; addChild($0) }
+        styleLabel(ritualLabel, size: 9); ritualLabel.fontColor = .yellow
+        ritualLabel.alpha = isBossFight ? 1 : 0
+        [nameLabelP, nameLabelO, timerLabel, comboLabel, announcer, telegraph,
+         frameDataLabel, ritualLabel].forEach { $0.zPosition = 6; addChild($0) }
         for _ in 0..<4 {
             let pip = SKShapeNode(circleOfRadius: 2.5)
             pip.fillColor = .darkGray; pip.strokeColor = .clear; pip.zPosition = 6
@@ -161,6 +179,7 @@ final class FightScene: SKScene {
         announcer.position = CGPoint(x: size.width/2, y: size.height * 0.62)
         comboLabel.position = CGPoint(x: size.width * 0.28, y: size.height * 0.55)
         frameDataLabel.position = CGPoint(x: 4, y: size.height * 0.34)
+        ritualLabel.position = CGPoint(x: size.width / 2, y: 16)
         for (i, pip) in pipNodes.enumerated() {
             let idx = CGFloat(i % 2)
             pip.position = CGPoint(x: i < 2 ? 8 + idx * 9 : size.width - 8 - idx * 9, y: top - 22)
@@ -224,6 +243,8 @@ final class FightScene: SKScene {
     }
 
     private func stepFighting(dt: TimeInterval) {
+        // Hitstop: freeze the sim a few frames on impact for punchy feedback.
+        if hitstop > 0 { hitstop -= 1; return }
         drainCrownIntoPending()
         switch mode {
         case .story, .training: stepLocalAuthoritative(dt: dt)
@@ -233,8 +254,13 @@ final class FightScene: SKScene {
 
     /// vs-CPU / training: this device owns the whole simulation.
     private func stepLocalAuthoritative(dt: TimeInterval) {
-        // Apply local inputs once per frame.
-        for intent in pendingLocal { dispatch(flow.apply(intent, from: .player)) }
+        // Apply local inputs once per frame; feed the boss ritual tracker.
+        for intent in pendingLocal {
+            dispatch(flow.apply(intent, from: .player))
+            if isBossFight && !flow.combat.ritualBroken && ritual.note(intent) {
+                onRitualComplete()
+            }
+        }
         pendingLocal.removeAll()
 
         accumulator += dt
@@ -285,6 +311,14 @@ final class FightScene: SKScene {
         beginPhase(.matchResult)
     }
 
+    /// The player nailed the secret process — the boss is mortal at last.
+    private func onRitualComplete() {
+        flow.breakRitualGuard()
+        showAnnouncer("THE BELL RINGS!", color: SKColor(red: 1, green: 0.85, blue: 0.25, alpha: 1))
+        SoundEngine.shared.play(.ready)
+        shake(12)
+    }
+
     private func endRound() {
         let winner = flow.combat.winner
         flow.recordRoundResult(winner)
@@ -311,8 +345,29 @@ final class FightScene: SKScene {
             Haptics.play(for: e, viewer: .player)
             SoundEngine.shared.play(for: e, viewer: .player)
             switch e {
-            case .heavyWindup(let s) where s == .opponent: flashTelegraph()
-            case .comboHit(_, let count): showCombo(count)
+            case .heavyWindup(let s) where s == .opponent:
+                flashTelegraph()
+            case .comboHit(_, let count):
+                showCombo(count)
+            case .hitLanded(let attacker, let dmg):
+                let victim: Side = attacker == .player ? .opponent : .player
+                spawnHitSpark(at: victim, big: dmg >= 12)
+                if allowHitstop { hitstop = dmg >= 12 ? 4 : 2 }
+                shake(dmg >= 12 ? 6 : 3)
+            case .armorAbsorbed(let s):
+                spawnHitSpark(at: s, big: false)
+                SoundEngine.shared.play(.block)
+                shake(2)
+            case .invulnerable(let s):
+                spawnHitSpark(at: s, big: false)
+                SoundEngine.shared.play(.block)   // metallic "clank" — no effect
+                shake(1)
+            case .knockdown:
+                if allowHitstop { hitstop = 6 }
+                shake(9)
+            case .parried(let by):
+                spawnHitSpark(at: by, big: true)
+                shake(4)
             default: break
             }
         }
@@ -340,6 +395,22 @@ final class FightScene: SKScene {
         updatePips(); renderProjectiles()
         telegraph.position = CGPoint(x: laneToX(c.opponent.position), y: groundY + 70)
         if trainingOptions?.showFrameData == true { updateFrameData(c) }
+        if isBossFight { updateRitualHint(c) }
+    }
+
+    /// Boss fight HUD: shows the secret process + progress, or "MORTAL" once
+    /// the bell has been rung. Without this, the boss is unbeatable on purpose.
+    private func updateRitualHint(_ c: CombatSystem) {
+        if c.ritualBroken {
+            ritualLabel.text = "TITUS IS MORTAL"
+            ritualLabel.fontColor = SKColor(red: 0.4, green: 1, blue: 0.5, alpha: 1)
+        } else {
+            let seq = BossRitual.glyphs.enumerated().map { i, g in
+                i < ritual.progress ? "[\(g)]" : g
+            }.joined(separator: " ")
+            ritualLabel.text = "RING THE BELL  \(seq)"
+            ritualLabel.fontColor = .yellow
+        }
     }
 
     private func updateFrameData(_ c: CombatSystem) {
@@ -398,10 +469,51 @@ final class FightScene: SKScene {
         telegraph.run(.fadeOut(withDuration: 0.35))
     }
     private func showCombo(_ count: Int) {
-        comboLabel.text = "\(count) HITS"
+        let praise = count >= 6 ? "SAVAGE!" : count >= 4 ? "BRUTAL!" : count >= 3 ? "NICE!" : ""
+        comboLabel.text = praise.isEmpty ? "\(count) HITS" : "\(count) HITS  \(praise)"
+        comboLabel.fontColor = count >= 6 ? .red : count >= 4 ? .orange : .yellow
         comboLabel.removeAllActions(); comboLabel.setScale(1.4); comboLabel.alpha = 1
         comboLabel.run(.group([.scale(to: 1.0, duration: 0.2),
                                .sequence([.wait(forDuration: 0.6), .fadeOut(withDuration: 0.3)])]))
+    }
+
+    /// Quick burst of accent-coloured shards at the victim's position.
+    private func spawnHitSpark(at side: Side, big: Bool) {
+        let c = flow.combat
+        let f = side == .player ? c.player : c.opponent
+        let spec = side == .player ? flow.playerSpec : flow.opponentSpec
+        let origin = CGPoint(x: laneToX(f.position), y: size.height * 0.42 + 32)
+        let shards = big ? 8 : 5
+        for _ in 0..<shards {
+            let shard = SKShapeNode(rectOf: CGSize(width: big ? 4 : 3, height: big ? 4 : 3))
+            shard.fillColor = spec.accentColor.skColor
+            shard.strokeColor = .clear
+            shard.blendMode = .add
+            shard.position = origin
+            shard.zPosition = 4
+            addChild(shard)
+            let angle = CGFloat.random(in: 0..<(2 * .pi))
+            let dist = CGFloat.random(in: 8...(big ? 26 : 16))
+            let move = SKAction.move(by: CGVector(dx: cos(angle) * dist, dy: sin(angle) * dist),
+                                     duration: 0.22)
+            move.timingMode = .easeOut
+            shard.run(.sequence([.group([move, .fadeOut(withDuration: 0.22),
+                                         .scale(to: 0.2, duration: 0.22)]), .removeFromParent()]))
+        }
+    }
+
+    /// Camera shake for impact weight. No-op visual; never touches the sim.
+    private func shake(_ intensity: CGFloat) {
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        cam.removeAction(forKey: "shake")
+        var steps: [SKAction] = []
+        for _ in 0..<5 {
+            let dx = CGFloat.random(in: -intensity...intensity)
+            let dy = CGFloat.random(in: -intensity...intensity)
+            steps.append(.move(to: CGPoint(x: center.x + dx, y: center.y + dy), duration: 0.02))
+        }
+        steps.append(.move(to: center, duration: 0.03))
+        cam.run(.sequence(steps), withKey: "shake")
     }
 
     // MARK: - Gesture input (forwarded from SwiftUI; queued, not applied directly)

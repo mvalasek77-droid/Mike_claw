@@ -4,10 +4,19 @@ import CoreGraphics
 /// state each tick and returns at most one `Intent`. Difficulty scales
 /// reaction probability and how often it charges/parries.
 struct AIController {
-    enum Difficulty { case easy, normal, hard
-        var aggression: Double { self == .hard ? 0.55 : self == .normal ? 0.4 : 0.25 }
-        var parryChance: Double { self == .hard ? 0.45 : self == .normal ? 0.2 : 0.05 }
-        var reaction: Int { self == .hard ? 6 : self == .normal ? 12 : 20 } // ticks
+    enum Difficulty { case easy, normal, hard, boss
+        var aggression: Double {
+            switch self { case .boss: return 0.7; case .hard: return 0.55
+                          case .normal: return 0.4; case .easy: return 0.25 }
+        }
+        var parryChance: Double {
+            switch self { case .boss: return 0.6; case .hard: return 0.45
+                          case .normal: return 0.2; case .easy: return 0.05 }
+        }
+        var reaction: Int { // ticks
+            switch self { case .boss: return 4; case .hard: return 6
+                          case .normal: return 12; case .easy: return 20 }
+        }
     }
 
     let difficulty: Difficulty

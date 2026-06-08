@@ -24,6 +24,9 @@ enum CombatEvent: Equatable {
     case comboHit(by: Side, count: Int)
     case blocked(defender: Side, chip: Int)
     case parried(by: Side)
+    case armorAbsorbed(Side)   // armored attacker powered through a hit
+    case invulnerable(Side)    // ritual-guarded boss: hit did NOTHING
+    case ritualBroken          // the secret process completed — boss now mortal
     case guardBroken(Side)
     case heavyWindup(Side)     // telegraph -> haptic the opponent can feel
     case specialReady(Side)

@@ -40,6 +40,10 @@ struct CombatSystem {
     private(set) var isOver = false
     private(set) var winner: Side?
 
+    /// Set once the player completes the secret ritual; a ritual-guarded boss
+    /// becomes mortal. Persists across rounds within the same match.
+    private(set) var ritualBroken = false
+
     private let roundTicks: Int
 
     init(playerSpec: CharacterSpec, opponentSpec: CharacterSpec, roundSeconds: Int = 30) {
@@ -206,6 +210,17 @@ struct CombatSystem {
             return events
         }
 
+        // Armor: a defender winding up an armored move powers through one hit —
+        // takes reduced "chip" damage but no hitstun, and keeps attacking. This
+        // is what makes the boss's haymaker terrifying; only a parry stops it.
+        if def.state == .startup, def.armorAvailable, def.currentMove?.armor == true {
+            def.armorAvailable = false
+            def.health = max(0, def.health - move.chip)
+            atk.addMeter(move.meterGain)
+            events.append(.armorAbsorbed(defSide))
+            return events
+        }
+
         // Block.
         if def.isBlocking {
             let chip = Int(CGFloat(move.chip) * CombatSystem.blockChipScale)
@@ -222,6 +237,18 @@ struct CombatSystem {
                 def.enter(.blockStun, ticks: move.blockstun)
                 events.append(.blocked(defender: defSide, chip: chip))
             }
+            return events
+        }
+
+        // Ritual guard: an undefeated boss is INVINCIBLE until the secret
+        // process is performed. Hits connect for feel but deal zero damage, so
+        // the boss cannot be beaten on damage — run out the clock and he wins.
+        if def.spec.guardedByRitual && !ritualBroken {
+            def.comboCount = 0
+            applyPushback(&def, move.pushback * 0.25, from: atk)
+            def.enter(.hitStun, ticks: 4)
+            atk.addMeter(move.meterGain)
+            events.append(.invulnerable(defSide))
             return events
         }
 
@@ -309,6 +336,10 @@ struct CombatSystem {
     private mutating func commit(_ side: Side, _ f: Fighter) {
         if side == .player { player = f } else { opponent = f }
     }
+
+    /// Called when the player completes the secret ritual — the boss can now
+    /// be damaged. Stays broken for the rest of the match.
+    mutating func breakRitualGuard() { ritualBroken = true }
 
     // MARK: - Training hooks (do not use in normal matches)
 

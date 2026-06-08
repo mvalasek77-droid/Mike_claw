@@ -100,12 +100,104 @@ final class MechanicsTests: XCTestCase {
     }
 
     func testRosterIntegrity() {
-        XCTAssertEqual(CharacterSpec.selectable.count, 6)
+        XCTAssertEqual(CharacterSpec.selectable.count, 8)
         for spec in CharacterSpec.selectable {
             XCTAssertGreaterThan(spec.maxHealth, 0)
-            XCTAssertFalse(StageLibrary.stage(id: spec.homeStageID).id.isEmpty)
+            // Every character's home stage must resolve to a real stage.
+            XCTAssertEqual(StageLibrary.stage(id: spec.homeStageID).id, spec.homeStageID)
         }
+        XCTAssertEqual(CharacterSpec.byID("titus").id, "titus", "final boss resolvable")
         XCTAssertEqual(CharacterSpec.byID("onyx").id, "onyx")
         XCTAssertEqual(CharacterSpec.byID("nonsense").id, "tetsu", "unknown id falls back to default")
+        XCTAssertEqual(CharacterSpec.arcadeLadder.last?.id, "titus", "ladder ends at the boss")
+    }
+
+    func testArmorPowersThroughAHit() {
+        // TITUS's special is armored: a poke during its startup is absorbed,
+        // he keeps his move, and only takes chip damage.
+        var sys = CombatSystem(playerSpec: .tetsu, opponentSpec: .titus)
+        for _ in 0..<60 { _ = sys.apply(.stepForward, from: .player) }
+        _ = sys.apply(.charge(0.4), from: .opponent)        // enough meter for base special
+        _ = sys.apply(.special, from: .opponent)            // boss starts armored haymaker
+        XCTAssertEqual(sys.opponent.state, .startup)
+
+        let bossHPBefore = sys.opponent.health
+        _ = sys.apply(.lightAttack, from: .player)          // poke into the armor
+        var absorbed = false
+        for _ in 0..<8 {
+            if sys.tick().contains(.armorAbsorbed(.opponent)) { absorbed = true; break }
+        }
+        XCTAssertTrue(absorbed, "armored startup should absorb the poke")
+        XCTAssertNotEqual(sys.opponent.health, bossHPBefore, "armor still takes chip")
+        // The boss was not put into hitstun by the poke.
+        XCTAssertNotEqual(sys.opponent.state, .hitStun)
+    }
+
+    func testBossIsInvincibleUntilRitual() {
+        var sys = CombatSystem(playerSpec: .tetsu, opponentSpec: .titus)
+        for _ in 0..<60 { _ = sys.apply(.stepForward, from: .player) }
+        let hp = sys.opponent.health
+        var sawInvuln = false
+        for _ in 0..<10 {
+            _ = sys.apply(.lightAttack, from: .player)
+            for _ in 0..<(Move.light.totalDuration + 1) {
+                if sys.tick().contains(.invulnerable(.opponent)) { sawInvuln = true }
+            }
+        }
+        XCTAssertTrue(sawInvuln, "hits on the guarded boss should report no effect")
+        XCTAssertEqual(sys.opponent.health, hp, "boss takes ZERO damage before the ritual")
+    }
+
+    func testRitualMakesBossMortal() {
+        var sys = CombatSystem(playerSpec: .tetsu, opponentSpec: .titus)
+        for _ in 0..<60 { _ = sys.apply(.stepForward, from: .player) }
+        sys.breakRitualGuard()
+        let hp = sys.opponent.health
+        _ = sys.apply(.lightAttack, from: .player)
+        for _ in 0..<(Move.light.totalDuration + 1) { _ = sys.tick() }
+        XCTAssertLessThan(sys.opponent.health, hp, "after the ritual the boss can be hurt")
+    }
+
+    func testBossRitualRequiresPerfectSequence() {
+        var r = BossRitual()
+        XCTAssertFalse(r.note(.parry))
+        XCTAssertFalse(r.note(.parry))
+        XCTAssertFalse(r.note(.lightAttack))
+        XCTAssertFalse(r.note(.heavyAttack))
+        XCTAssertTrue(r.note(.special), "correct full sequence completes the ritual")
+        XCTAssertTrue(r.complete)
+    }
+
+    func testBossRitualResetsOnWrongKey() {
+        var r = BossRitual()
+        _ = r.note(.parry)                 // progress 1
+        _ = r.note(.heavyAttack)           // wrong key -> reset
+        XCTAssertEqual(r.progress, 0)
+        XCTAssertFalse(r.complete)
+    }
+
+    func testBossRitualIgnoresIncidentalInputs() {
+        var r = BossRitual()
+        _ = r.note(.beginBlock)            // ignored
+        _ = r.note(.charge(0.5))           // ignored
+        _ = r.note(.stepForward)           // ignored
+        _ = r.note(.parry)                 // counts
+        XCTAssertEqual(r.progress, 1, "block/charge/step must not break the chain")
+    }
+
+    func testParryBeatsArmor() {
+        // The intended answer to the armored haymaker: parry it.
+        var sys = CombatSystem(playerSpec: .tetsu, opponentSpec: .titus)
+        for _ in 0..<60 { _ = sys.apply(.stepForward, from: .player) }
+        _ = sys.apply(.charge(0.4), from: .opponent)
+        _ = sys.apply(.special, from: .opponent)
+        // Boss special has 6f startup; parry (6f window) just before it goes active.
+        for _ in 0..<4 { _ = sys.tick() }
+        _ = sys.apply(.parry, from: .player)
+        var parried = false
+        for _ in 0..<10 {
+            if sys.tick().contains(.parried(by: .player)) { parried = true; break }
+        }
+        XCTAssertTrue(parried, "a well-timed parry should stop even the armored boss")
     }
 }

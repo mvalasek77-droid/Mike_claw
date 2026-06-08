@@ -64,4 +64,7 @@ struct MatchFlow {
     mutating func resetCurrentRound() {
         combat.resetForNewRound()
     }
+
+    /// Player completed the secret ritual — the boss becomes mortal.
+    mutating func breakRitualGuard() { combat.breakRitualGuard() }
 }

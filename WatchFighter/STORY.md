@@ -53,10 +53,31 @@ A demolition golem awakened beneath a fallen city. Believes the tournament
 decides who rebuilds the world. Slow, tanky, a launching slam.
 **Home stage:** Fallen City.
 
-### Onyx — "The Ascendant"  *(final boss)*
-The one who built the tower and never lost it. Wears every champion's last move
-as a trophy. Overtuned health and damage.
+### Corsair — "The Tipsy Tide"  *(swashbuckler duelist)*
+A grinning sea-rogue climbing the tower for the one treasure the ocean never
+gave up. Loose footwork, long cutlass reach, lands hard when you least expect.
+*(Original pirate archetype — not based on any actor or existing character.)*
+**Home stage:** Rogue Tide.
+
+### Nova — "The Last Contract"  *(bounty-hunter zoner)*
+A helmeted gun-for-hire tracking a bounty that climbed the tower and never came
+back down. Keeps the lane honest with plasma. *(Original sci-fi archetype.)*
+**Home stage:** Orbit Nine.
+
+### Onyx — "The Ascendant"  *(penultimate boss / tower host)*
+The one who built the tower. He guards the second-to-last floor and steps aside
+for whoever can reach the true final door. Overtuned launcher.
 **Home stage:** The Summit.
+
+### Titus — "The Undefeated"  *(FINAL BOSS)*
+An undefeated heavyweight boxer with bold geometric face markings, silent behind
+his fists. The tower's last door is a square of canvas and two gloves. His
+**haymaker is armored** — it powers straight through your pokes and launches for
+huge damage. The only safe answer is a clean **parry**; mistime it and the round
+is gone. Brutally hard, *but beatable* — the wall that finally cracks when you
+master it, not a literally impossible fight.
+*(Original character — not based on any real boxer's name, face, or likeness.)*
+**Home stage:** The Last Bell (a boxing ring).
 
 ---
 
@@ -79,20 +100,44 @@ ground + accent glow) so they cost almost nothing in memory:
 
 ## Arcade ladder (Story Mode)
 
-The player picks any of the six and climbs the same six-floor ladder. Before each
+The player picks any selectable fighter and climbs the same ladder. Before each
 fight the opponent speaks; after each win the player reflects. Beat the boss to
 reach one of two endings (victory = you keep and re-open the gate; defeat = the
 tower keeps what it takes, retry).
 
-1. **Volt** — *"You came up the wrong stairwell, slow-hand. I'll show you the express."*
-2. **Ember** — *"The flame remembers everyone who climbs. It will remember you burning."*
+1. **Volt** — *"You came up the wrong stairwell, slow-hand…"*
+2. **Ember** — *"The flame remembers everyone who climbs…"*
 3. **Frost** — *"...you are warm. That is your only mistake."*
-4. **Mirage** — *"Which of us is real? Win and I'll tell you. Lose and it won't matter."*
-5. **Bastion** — *"The tower falls one day. I decide who is standing when it does."*
-6. **Onyx** — *"You climbed well. Now learn why no one keeps what they win up here."*
+4. **Corsair** — *"Every tide takes the high ground back. Drink?"*
+5. **Mirage** — *"Which of us is real? Win and I'll tell you."*
+6. **Nova** — *"Nothing personal. You're just standing in front of a contract."*
+7. **Bastion** — *"The tower falls one day. I decide who is standing when it does."*
+8. **Onyx** — *"You climbed well. The last door was never mine."*
+9. **Titus** *(FINAL BOSS)* — *(silence; he just raises his fists)*
 
-(Full pre-fight and post-win lines live in `Engine/StoryMode.swift` as
-`StoryScript.ladder`, so writers can edit copy without touching game logic.)
+(Full pre/post lines live in `Engine/StoryMode.swift` as `StoryScript.ladder`.)
+
+---
+
+## The final boss is UNBEATABLE — until "the rite"
+
+Titus cannot be hurt by normal means. Every clean hit reads **NO EFFECT** and
+deals zero damage; if the timer runs out he wins. He is only made mortal by
+performing a secret **process, perfectly**, mid-fight:
+
+> **▽ parry · ▽ parry · • light · ◆ heavy · ★ special**
+> (swipe-down, swipe-down, tap-top, tap-bottom, then charge the Crown to ≥50%
+> and tap the far right for the special)
+
+The key gestures must land **in order**. Incidental inputs (block, step, Crown
+charge) are forgiven, but a wrong *key* gesture resets the chain. Land all five
+and **THE BELL RINGS** — Titus becomes mortal for the rest of the match and you
+can finally take him down. The on-screen "RING THE BELL ▽ ▽ • ◆ ★" tracker shows
+your progress; the pre-fight card spells it out.
+
+Design intent: not a cheap "impossible" wall, but a hidden mastery check — the
+champ is untouchable until you prove you know the rite, then it's a real fight.
+Implemented as the pure `BossRitual` tracker + `CombatSystem.ritualBroken`.
 
 ---
 

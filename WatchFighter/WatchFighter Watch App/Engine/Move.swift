@@ -26,6 +26,7 @@ struct Move: Equatable {
     let meterGain: Int      // special meter gained on a clean hit
     let cancelable: Bool    // can this be canceled into another move on hit?
     let launches: Bool      // does a hit launch (juggle / cinematic) ?
+    let armor: Bool         // armored startup: absorbs one hit, powers through
 
     // Projectile (fireball-style) behaviour — genre-staple zoning tool.
     let isProjectile: Bool
@@ -36,13 +37,13 @@ struct Move: Equatable {
     init(kind: MoveKind, startup: Int, active: Int, recovery: Int,
          damage: Int, chip: Int, hitstun: Int, blockstun: Int,
          pushback: CGFloat, reach: CGFloat, meterGain: Int,
-         cancelable: Bool = false, launches: Bool = false,
+         cancelable: Bool = false, launches: Bool = false, armor: Bool = false,
          isProjectile: Bool = false, projectileSpeed: CGFloat = 0) {
         self.kind = kind; self.startup = startup; self.active = active
         self.recovery = recovery; self.damage = damage; self.chip = chip
         self.hitstun = hitstun; self.blockstun = blockstun
         self.pushback = pushback; self.reach = reach; self.meterGain = meterGain
-        self.cancelable = cancelable; self.launches = launches
+        self.cancelable = cancelable; self.launches = launches; self.armor = armor
         self.isProjectile = isProjectile; self.projectileSpeed = projectileSpeed
     }
 }
@@ -65,12 +66,13 @@ extension Move {
     /// Melee special — parameters overridden per character.
     static func special(
         damage: Int, reach: CGFloat, pushback: CGFloat, startup: Int = 6,
-        launches: Bool = false
+        launches: Bool = false, armor: Bool = false
     ) -> Move {
         Move(
             kind: .special, startup: startup, active: 4, recovery: 18,
             damage: damage, chip: damage / 3, hitstun: 24, blockstun: 14,
-            pushback: pushback, reach: reach, meterGain: 0, launches: launches
+            pushback: pushback, reach: reach, meterGain: 0,
+            launches: launches, armor: armor
         )
     }
 
@@ -94,7 +96,7 @@ extension Move {
             damage: base.damage * 2, chip: base.chip * 2,
             hitstun: base.hitstun + 8, blockstun: base.blockstun + 4,
             pushback: base.pushback * 1.5, reach: base.reach * 1.2,
-            meterGain: 0, launches: base.launches,
+            meterGain: 0, launches: base.launches, armor: true,
             isProjectile: base.isProjectile,
             projectileSpeed: base.projectileSpeed * 1.3
         )

@@ -1,4 +1,7 @@
-# WatchFighter: Ascendant 🥊⌚
+# ETERNAL COMBAT: Ascendant 🥊⌚
+
+*(working codename `WatchFighter` — name "Eternal Combat" chosen deliberately to
+avoid the "Kombat" trademark; do a clearance search before any release)*
 
 A fighting game **built for the Apple Watch** — Digital Crown, touchscreen, and
 Taptic Engine instead of a 6-button arcade stick. It clones the *mechanics and
@@ -59,7 +62,17 @@ WatchFighter/
 | **Frost** | Ice zoner | Slow freezing projectile |
 | **Mirage** | Teleport rushdown | Long phase strike |
 | **Bastion** | Armored grappler | Quake slam (launcher) |
-| **Onyx** *(boss)* | The Ascendant | Overtuned everything |
+| **Corsair** | Swashbuckler duelist | Long cutlass lunge |
+| **Nova** | Bounty-hunter zoner | Fast plasma shot |
+| **Onyx** *(boss)* | The Ascendant | Overtuned launcher |
+| **Titus** *(FINAL BOSS)* | Undefeated boxer | **Armored** haymaker — plows through pokes; parry it or lose |
+
+> **On real-world/pop-culture characters:** requested likenesses (a Mike-Tyson-style
+> boxer, a Johnny-Depp-style pirate, etc.) are real people and copyrighted
+> characters — those can't ship. Instead the cast draws on the same *archetypes*
+> with **original** designs: Titus is an original undefeated heavyweight, Corsair
+> an original sea-rogue, Nova an original bounty hunter. The boss feels
+> "unbeatable" the fun way — armored attacks beaten only by a clean parry.
 
 ### Controls (using inputs watchOS exposes to apps)
 
@@ -102,6 +115,9 @@ off-device), so the combat core, match flow, and story compile/test headless.
 - [x] **M2** — **skeletal animation** (`Skeleton.swift` + `SkeletonRenderer.swift`),
       asset-free **synthesised SFX** (`SoundEngine.swift`), **training mode**, and
       **local 2-Watch multiplayer** via lockstep netcode + GameKit transport
+- [x] **Game feel** — hitstop on impact, camera shake, hit-spark bursts, combo
+      praise ("NICE!/BRUTAL!/SAVAGE!"), and an **armor** mechanic powering the
+      undefeated final boss **Titus** (armored haymaker, parry-or-lose)
 - [ ] **M3** — cinematic finishers, unlocks/progression, per-character movelists,
       balance pass, character-select sync for versus, real audio samples & music
 

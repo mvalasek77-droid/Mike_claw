@@ -103,13 +103,64 @@ extension CharacterSpec {
         bodyColor: RGBA(0.12, 0.12, 0.16), accentColor: RGBA(0.8, 0.1, 0.5)
     )
 
-    /// Selectable cast (boss excluded from select screen).
-    static let selectable: [CharacterSpec] = [tetsu, volt, ember, frost, mirage, bastion]
+    /// Swashbuckling duelist (original pirate archetype) — long cutlass reach,
+    /// unpredictable drunken footwork. Not based on any real actor or character.
+    static let corsair = CharacterSpec(
+        id: "corsair",
+        name: "CORSAIR",
+        title: "The Tipsy Tide",
+        bio: "A grinning sea-rogue who climbs the tower for the one treasure the "
+           + "ocean never gave up. Fights loose, lands hard.",
+        maxHealth: 100, walkSpeed: 2.3,
+        special: Move.special(damage: 16, reach: 78, pushback: 16, startup: 6),
+        exSpecial: Move.ex(from: Move.special(damage: 16, reach: 78, pushback: 16, startup: 6)),
+        homeStageID: "ship",
+        bodyColor: RGBA(0.30, 0.22, 0.16), accentColor: RGBA(0.95, 0.8, 0.25)
+    )
 
-    /// The arcade-ladder order the player climbs in story mode.
-    static let arcadeLadder: [CharacterSpec] = [volt, ember, frost, mirage, bastion, onyx]
+    /// Armored bounty hunter (original sci-fi archetype) — blaster zoning.
+    static let nova = CharacterSpec(
+        id: "nova",
+        name: "NOVA",
+        title: "The Last Contract",
+        bio: "A helmeted gun-for-hire tracking a bounty that climbed the tower "
+           + "and never came down. Keeps the lane honest with plasma.",
+        maxHealth: 98, walkSpeed: 2.2,
+        special: Move.projectile(damage: 15, speed: 8, startup: 7),
+        exSpecial: Move.ex(from: Move.projectile(damage: 15, speed: 8, startup: 7)),
+        homeStageID: "spaceport",
+        bodyColor: RGBA(0.35, 0.38, 0.42), accentColor: RGBA(1.0, 0.55, 0.1)
+    )
+
+    /// FINAL BOSS — an undefeated heavyweight boxer with bold geometric face
+    /// markings (an original design). His haymaker is ARMORED and devastating:
+    /// it plows through pokes, so the only safe answer is a clean parry. Brutal
+    /// but fair — not literally unbeatable, just the hardest wall in the tower.
+    /// Original character; not based on any real boxer's name, face, or likeness.
+    static let titus = CharacterSpec(
+        id: "titus",
+        name: "TITUS",
+        title: "The Undefeated",
+        bio: "No one has heard him speak and no one has heard a bell save him. "
+           + "The tower's last door is a square of canvas and two fists.",
+        maxHealth: 180, walkSpeed: 2.5,
+        special: Move.special(damage: 30, reach: 52, pushback: 30, startup: 6,
+                              launches: true, armor: true),
+        exSpecial: Move.ex(from: Move.special(damage: 30, reach: 52, pushback: 30,
+                                              startup: 6, launches: true, armor: true)),
+        homeStageID: "ring",
+        bodyColor: RGBA(0.36, 0.22, 0.14), accentColor: RGBA(0.95, 0.95, 1.0),
+        guardedByRitual: true            // INVINCIBLE until the ritual is performed
+    )
+
+    /// Selectable cast (bosses excluded from the select screen).
+    static let selectable: [CharacterSpec] = [tetsu, volt, ember, frost, mirage, bastion, corsair, nova]
+
+    /// The arcade-ladder order the player climbs — ends with the boss, TITUS.
+    static let arcadeLadder: [CharacterSpec] =
+        [volt, ember, frost, corsair, mirage, nova, bastion, onyx, titus]
 
     static func byID(_ id: String) -> CharacterSpec {
-        (selectable + [onyx]).first { $0.id == id } ?? tetsu
+        (selectable + [onyx, titus]).first { $0.id == id } ?? tetsu
     }
 }

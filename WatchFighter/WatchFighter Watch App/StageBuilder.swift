@@ -112,6 +112,27 @@ enum StageBuilder {
                 path.addRect(CGRect(x: x, y: groundY, width: 4, height: size.height * 0.34))
                 x += size.width * 0.35
             }
+
+        case .ship:
+            // A central mast with a triangular sail + a deck rail.
+            let mastX = size.width * (depth == .far ? 0.7 : 0.4)
+            let mastH = size.height * (depth == .far ? 0.34 : 0.46)
+            path.addRect(CGRect(x: mastX, y: groundY, width: 5, height: mastH))
+            path.move(to: CGPoint(x: mastX, y: groundY + mastH * 0.25))
+            path.addLine(to: CGPoint(x: mastX - 46, y: groundY + mastH * 0.15))
+            path.addLine(to: CGPoint(x: mastX, y: groundY + mastH * 0.85))
+            path.closeSubpath()
+            path.addRect(CGRect(x: 0, y: groundY + 6, width: size.width, height: 4))
+
+        case .ring:
+            // Boxing ring: three ropes + four corner posts.
+            for i in 0..<3 {
+                let y = groundY + 8 + CGFloat(i) * 9
+                path.addRect(CGRect(x: 0, y: y, width: size.width, height: 2))
+            }
+            for px in [CGFloat(6), size.width - 12] {
+                path.addRect(CGRect(x: px, y: groundY, width: 6, height: 34))
+            }
         }
 
         let shape = SKShapeNode(path: path)

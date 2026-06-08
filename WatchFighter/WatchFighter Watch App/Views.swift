@@ -54,11 +54,13 @@ struct TitleView: View {
         ZStack {
             LinearGradient(colors: [.black, Color(red: 0.25, green: 0.02, blue: 0.18)],
                            startPoint: .top, endPoint: .bottom).ignoresSafeArea()
-            VStack(spacing: 6) {
-                Text("WATCHFIGHTER").font(.system(size: 18, weight: .heavy, design: .rounded))
+            VStack(spacing: 4) {
+                Text("ETERNAL").font(.system(size: 20, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
-                Text("ASCENDANT").font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Color(red: 1, green: 0.3, blue: 0.55)).tracking(4)
+                Text("COMBAT").font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(red: 1, green: 0.3, blue: 0.55))
+                Text("ASCENDANT").font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary).tracking(4)
                 Button(action: { flow.goToMenu() }) {
                     Text("START").font(.system(size: 13, weight: .bold)).frame(maxWidth: .infinity)
                 }
@@ -211,6 +213,19 @@ struct StoryCardView: View {
                 Text(speaker.title).font(.system(size: 8)).foregroundStyle(.secondary)
                 Text("“\(line)”").font(.system(size: 10)).italic().foregroundStyle(.white)
                     .multilineTextAlignment(.center).padding(.horizontal, 8)
+                if pre && opp.guardedByRitual {
+                    VStack(spacing: 2) {
+                        Text("⚠ HE CANNOT BE BEATEN BY DAMAGE ALONE")
+                            .font(.system(size: 8, weight: .bold)).foregroundStyle(.red)
+                        Text("Perform the rite perfectly to make him mortal:")
+                            .font(.system(size: 8)).foregroundStyle(.secondary)
+                        Text(BossRitual.glyphs.joined(separator: " "))
+                            .font(.system(size: 13, weight: .heavy)).foregroundStyle(.yellow)
+                        Text("parry · parry · light · heavy · special")
+                            .font(.system(size: 7)).foregroundStyle(.secondary)
+                    }
+                    .multilineTextAlignment(.center).padding(.horizontal, 6)
+                }
                 Button(action: { pre ? flow.beginFight() : flow.continueStory() }) {
                     Text(pre ? "FIGHT" : "CONTINUE").font(.system(size: 12, weight: .bold))
                         .frame(maxWidth: .infinity)
