@@ -55,8 +55,9 @@ final class SkeletonRenderer {
         current = current.lerp(to: target, 0.4)
 
         let facing: CGFloat = f.facingRight ? 1 : -1
+        let feetY = groundY + f.height                 // jump height lifts the body
         func P(_ p: CGPoint) -> CGPoint {
-            CGPoint(x: originX + p.x * facing, y: groundY + p.y)
+            CGPoint(x: originX + p.x * facing, y: feetY + p.y)
         }
 
         let pelvis = P(current.pelvis), chest = P(current.chest), headP = P(current.head)
@@ -68,6 +69,9 @@ final class SkeletonRenderer {
         frontLeg.path = segment(pelvis, P(current.frontFoot))
         backLeg.path = segment(pelvis, P(current.backFoot))
 
+        // Shadow stays on the ground and shrinks with height.
+        let shrink = max(0.4, 1 - f.height / 120)
+        shadow.setScale(shrink)
         shadow.position = CGPoint(x: originX, y: groundY + 1)
 
         let hit = flashHit || f.state == .hitStun || f.state == .launched

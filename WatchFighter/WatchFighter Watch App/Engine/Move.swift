@@ -28,6 +28,13 @@ struct Move: Equatable {
     let launches: Bool      // does a hit launch (juggle / cinematic) ?
     let armor: Bool         // armored startup: absorbs one hit, powers through
 
+    // Vertical hitbox range relative to the attacker's feet (for the aerial
+    // game). Defaults span a standing body so grounded normals are unchanged.
+    let loY: CGFloat
+    let hiY: CGFloat
+    let isThrow: Bool       // a grab: beats block, whiffs on airborne foes
+    let scaling: Bool       // counts toward combo damage scaling
+
     // Projectile (fireball-style) behaviour — genre-staple zoning tool.
     let isProjectile: Bool
     let projectileSpeed: CGFloat   // points per tick
@@ -38,12 +45,14 @@ struct Move: Equatable {
          damage: Int, chip: Int, hitstun: Int, blockstun: Int,
          pushback: CGFloat, reach: CGFloat, meterGain: Int,
          cancelable: Bool = false, launches: Bool = false, armor: Bool = false,
+         loY: CGFloat = 0, hiY: CGFloat = 70, isThrow: Bool = false, scaling: Bool = true,
          isProjectile: Bool = false, projectileSpeed: CGFloat = 0) {
         self.kind = kind; self.startup = startup; self.active = active
         self.recovery = recovery; self.damage = damage; self.chip = chip
         self.hitstun = hitstun; self.blockstun = blockstun
         self.pushback = pushback; self.reach = reach; self.meterGain = meterGain
         self.cancelable = cancelable; self.launches = launches; self.armor = armor
+        self.loY = loY; self.hiY = hiY; self.isThrow = isThrow; self.scaling = scaling
         self.isProjectile = isProjectile; self.projectileSpeed = projectileSpeed
     }
 }
@@ -61,6 +70,28 @@ extension Move {
         kind: .heavy, startup: 9, active: 3, recovery: 16,
         damage: 14, chip: 3, hitstun: 20, blockstun: 12,
         pushback: 14, reach: 32, meterGain: 10, cancelable: true
+    )
+
+    /// Air light — a quick downward jump-in; hitbox reaches below the feet so
+    /// it connects with grounded defenders on the way down.
+    static let airLight = Move(
+        kind: .light, startup: 3, active: 4, recovery: 5,
+        damage: 7, chip: 1, hitstun: 14, blockstun: 8,
+        pushback: 6, reach: 24, meterGain: 6, loY: -22, hiY: 34
+    )
+
+    /// Air heavy — a committal jump-in that leads to a grounded combo.
+    static let airHeavy = Move(
+        kind: .heavy, startup: 6, active: 4, recovery: 8,
+        damage: 13, chip: 3, hitstun: 18, blockstun: 10,
+        pushback: 10, reach: 28, meterGain: 9, loY: -26, hiY: 40
+    )
+
+    /// Throw — beats block, can't grab an airborne foe; hard knockdown.
+    static let throwMove = Move(
+        kind: .heavy, startup: 2, active: 2, recovery: 16,
+        damage: 16, chip: 0, hitstun: 30, blockstun: 0,
+        pushback: 34, reach: 30, meterGain: 8, isThrow: true, scaling: false
     )
 
     /// Melee special — parameters overridden per character.

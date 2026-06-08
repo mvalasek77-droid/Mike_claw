@@ -145,8 +145,24 @@ different frame data + one unique special.
   behaviours, infinite health/meter, frame-data overlay); **local 2-Watch
   multiplayer** via deterministic input-delay **lockstep** netcode over a
   swappable `MatchTransport` (loopback for tests, GameKit for real play).
-- **M3:** Cinematic finishers, progression/unlocks, per-character movelists,
-  balance pass, versus character-select sync, real audio samples + music.
+- **M3 (in progress):** **Firmed up to the classic 2D-fighter base** — a real
+  vertical **jump/gravity** axis with **air normals** and **2D hitbox/hurtbox**
+  overlap (jump-ins, anti-airs, whiff-under-jump), **throws + throw-techs**,
+  **combo damage scaling** (juggle taper), and a **stun → dizzy** stagger, plus
+  a **"FINISH!"** finisher beat and the boss's **ritual-invincibility**. These
+  are genre conventions implemented from scratch — no game's code/assets used.
+  *Remaining:* progression/unlocks, per-character movelists, balance pass,
+  versus character-select sync, real audio samples + music.
+
+### Firm-up: fundamentals modelled on the classic base
+- **Vertical axis:** `Fighter.height/vSpeed/airborne`; gravity integrated each
+  tick; `Move.loY/hiY` define a vertical hitbox so the aerial game works.
+- **Throws:** `Move.isThrow` beats block, whiffs on airborne foes, techs when
+  both grab within a window.
+- **Scaling:** `CombatSystem.scaling[]` tapers successive combo hits.
+- **Dizzy:** hits accrue `stun`; crossing the threshold causes a `.dizzy`
+  free-punish stagger.
+- All deterministic (no RNG in the sim), so it stays netplay-safe.
 
 ### Netplay architecture (M2)
 The combat sim is deterministic (no RNG on the PvP path), so two Watches stay in

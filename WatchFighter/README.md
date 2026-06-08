@@ -64,15 +64,19 @@ WatchFighter/
 | **Bastion** | Armored grappler | Quake slam (launcher) |
 | **Corsair** | Swashbuckler duelist | Long cutlass lunge |
 | **Nova** | Bounty-hunter zoner | Fast plasma shot |
+| **Vesper** | Swordmaster | Longest-reach drawing cut (launcher) |
+| **Marina** | Acrobatic athlete | Fast rushdown, strong aerials |
 | **Onyx** *(boss)* | The Ascendant | Overtuned launcher |
-| **Titus** *(FINAL BOSS)* | Undefeated boxer | **Armored** haymaker — plows through pokes; parry it or lose |
+| **Titus** *(FINAL BOSS)* | Undefeated boxer | **Invincible** until the secret rite; armored haymaker |
 
-> **On real-world/pop-culture characters:** requested likenesses (a Mike-Tyson-style
-> boxer, a Johnny-Depp-style pirate, etc.) are real people and copyrighted
-> characters — those can't ship. Instead the cast draws on the same *archetypes*
-> with **original** designs: Titus is an original undefeated heavyweight, Corsair
-> an original sea-rogue, Nova an original bounty hunter. The boss feels
-> "unbeatable" the fun way — armored attacks beaten only by a clean parry.
+> **On real-world / pop-culture characters:** requested likenesses (a
+> Mike-Tyson-style boxer, a Johnny-Depp-style pirate, a Pam-Anderson/Baywatch
+> athlete, a Uma-Thurman/Kill-Bill swordswoman, etc.) are real people and
+> copyrighted characters — those can't ship, and "the same thing renamed" is
+> still infringement. Instead the cast draws on those *archetypes* with
+> **original** designs: Titus (undefeated boxer), Corsair (sea-rogue), Nova
+> (bounty hunter), Vesper (swordmaster), Marina (rescue-swimmer athlete). All
+> designed as capable, non-objectified fighters.
 
 ### Controls (using inputs watchOS exposes to apps)
 
@@ -80,10 +84,18 @@ WatchFighter/
 |-------|--------|
 | **Rotate Crown** | Charge the special meter (analog — spin speed = charge rate) |
 | **Tap top / bottom** | Light / Heavy attack (light→heavy→special cancels into combos) |
+| **Tap far-left** | Throw (beats block; whiffs on airborne foes) |
 | **Tap far-right (meter ≥ 50)** | Fire special; at full meter it's the EX super |
+| **Swipe up** | Jump (jump-in with an air light/heavy) |
 | **Swipe ← / →** | Step back / forward |
 | **Swipe down** | Parry (6-frame window → punish) |
 | **Hold** | Block (chip + stamina drain; empty = guard break) |
+
+**Firmed-up fundamentals (classic-fighter base):** a real **vertical jump** with
+gravity + air normals and 2D hitbox/hurtbox overlap (jump-ins, anti-airs,
+whiff-under-jump), **throws + throw-techs**, **combo damage scaling** (long
+juggles taper off), and a **stun → dizzy** stagger. Mechanics are genre
+conventions, implemented from scratch — no game's code or assets are used.
 
 ## Build & run
 
@@ -117,8 +129,10 @@ off-device), so the combat core, match flow, and story compile/test headless.
       **local 2-Watch multiplayer** via lockstep netcode + GameKit transport
 - [x] **Game feel** — hitstop on impact, camera shake, hit-spark bursts, combo
       praise ("NICE!/BRUTAL!/SAVAGE!"), and an **armor** mechanic powering the
-      undefeated final boss **Titus** (armored haymaker, parry-or-lose)
-- [ ] **M3** — cinematic finishers, unlocks/progression, per-character movelists,
+      undefeated final boss **Titus** (invincible until the secret rite)
+- [x] **Firm-up (classic base)** — jump/gravity + air normals + 2D boxes, throws +
+      techs, combo damage scaling, stun→dizzy; plus a "FINISH!" finisher beat
+- [ ] **M3 (cont.)** — unlocks/progression, per-character movelists & special
       balance pass, character-select sync for versus, real audio samples & music
 
 > **M2 caveat:** still not compiled here (no Swift toolchain on Linux). Pure

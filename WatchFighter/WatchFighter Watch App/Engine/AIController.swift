@@ -28,6 +28,11 @@ struct AIController {
     /// `self` here is the opponent; `player` is the human.
     mutating func decide(opponent me: Fighter, player: Fighter) -> Intent? {
         if cooldown > 0 { cooldown -= 1; return nil }
+
+        // Air normal on the way down from a jump-in (allowed while airborne).
+        if me.canAirAct, me.vSpeed < 0, roll(0.6) {
+            return roll(0.4) ? .heavyAttack : .lightAttack
+        }
         guard me.canAct else { return nil }
 
         let dist = abs(me.position - player.position)
@@ -47,17 +52,24 @@ struct AIController {
             return .special
         }
 
+        // Throw a turtling opponent that's holding block up close.
+        if inLightRange, player.isBlocking, roll(difficulty.aggression) {
+            cooldown = difficulty.reaction
+            return .grab
+        }
+
         // Poke when close.
         if inLightRange, roll(difficulty.aggression) {
             cooldown = difficulty.reaction / 2
             return roll(0.3) ? .heavyAttack : .lightAttack
         }
 
-        // Otherwise close the gap, or charge meter at range.
+        // Otherwise close the gap (sometimes with a jump-in), or charge at range.
         if dist > me.spec.special.reach {
             if me.meter < 100, roll(0.4) {
                 return .charge(0.12)            // top up the dial from neutral
             }
+            if roll(0.18) { cooldown = difficulty.reaction; return .jump }   // approach
             return .stepForward
         }
 

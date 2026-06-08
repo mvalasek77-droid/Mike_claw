@@ -153,8 +153,39 @@ extension CharacterSpec {
         guardedByRitual: true            // INVINCIBLE until the ritual is performed
     )
 
+    /// Swordmaster (original katana archetype) — longest melee reach, a drawing
+    /// cut that launches. Original character; not based on any actor or film role.
+    static let vesper = CharacterSpec(
+        id: "vesper",
+        name: "VESPER",
+        title: "The Drawn Blade",
+        bio: "A wandering swordmaster who answers the tower's bell to test one "
+           + "thing: a single, perfect cut.",
+        maxHealth: 94, walkSpeed: 2.4,
+        special: Move.special(damage: 18, reach: 84, pushback: 16, startup: 7, launches: true),
+        exSpecial: Move.ex(from: Move.special(damage: 18, reach: 84, pushback: 16, startup: 7, launches: true)),
+        homeStageID: "garden",
+        bodyColor: RGBA(0.55, 0.10, 0.18), accentColor: RGBA(0.88, 0.90, 0.96)
+    )
+
+    /// Acrobatic athlete (original lifeguard/swimmer archetype) — fast, mobile,
+    /// strong aerials. Original character; not based on any real person.
+    static let marina = CharacterSpec(
+        id: "marina",
+        name: "MARINA",
+        title: "The Riptide",
+        bio: "A champion open-water rescue swimmer who fights like the sea — "
+           + "fast, relentless, impossible to hold down.",
+        maxHealth: 100, walkSpeed: 2.8,
+        special: Move.special(damage: 15, reach: 50, pushback: 20, startup: 5),
+        exSpecial: Move.ex(from: Move.special(damage: 15, reach: 50, pushback: 20, startup: 5)),
+        homeStageID: "pier",
+        bodyColor: RGBA(0.95, 0.55, 0.35), accentColor: RGBA(0.2, 0.7, 0.9)
+    )
+
     /// Selectable cast (bosses excluded from the select screen).
-    static let selectable: [CharacterSpec] = [tetsu, volt, ember, frost, mirage, bastion, corsair, nova]
+    static let selectable: [CharacterSpec] =
+        [tetsu, volt, ember, frost, mirage, bastion, corsair, nova, vesper, marina]
 
     /// The arcade-ladder order the player climbs — ends with the boss, TITUS.
     static let arcadeLadder: [CharacterSpec] =

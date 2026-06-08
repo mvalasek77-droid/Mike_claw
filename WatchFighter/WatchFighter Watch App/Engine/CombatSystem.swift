@@ -31,6 +31,19 @@ struct CombatSystem {
     static let staminaPerBlock: CGFloat = 9
     static let staminaRegen: CGFloat = 0.4
     static let launchHitstun = 34
+    // Aerial game
+    static let gravity: CGFloat = 0.85
+    static let jumpVelocity: CGFloat = 11
+    static let jumpDrift: CGFloat = 1.6      // forward/back horizontal speed in air
+    // Stun / dizzy
+    static let stunThreshold: CGFloat = 100
+    static let stunDecay: CGFloat = 0.5
+    static let dizzyTicks = 70
+    // Combo damage scaling — successive hits in a combo do less (classic juggle).
+    static let scaling: [CGFloat] = [1.0, 1.0, 0.8, 0.65, 0.5, 0.4, 0.3]
+    static let minScale: CGFloat = 0.25
+    // Throws
+    static let throwTechWindow = 4           // ticks both grabs count as a tech
 
     // MARK: State
     private(set) var player: Fighter
@@ -43,6 +56,9 @@ struct CombatSystem {
     /// Set once the player completes the secret ritual; a ritual-guarded boss
     /// becomes mortal. Persists across rounds within the same match.
     private(set) var ritualBroken = false
+
+    private(set) var tickCount = 0
+    private var grabTick: [Side: Int] = [.player: -100, .opponent: -100]
 
     private let roundTicks: Int
 
@@ -116,13 +132,27 @@ struct CombatSystem {
             }
 
         case .jump:
-            break
+            if f.canAct {
+                let other = (side == .player ? opponent : player).position
+                let dir: CGFloat = other > f.position ? 1 : -1
+                f.jump(CombatSystem.jumpVelocity, drift: dir * CombatSystem.jumpDrift)
+            }
+
+        case .grab:
+            if f.canAct {
+                grabTick[side] = tickCount
+                f.startMove(.throwMove)
+            }
 
         case .lightAttack:
-            if canPerform(.light, f) { f.startMove(.light) }
+            if f.airborne {
+                if f.canAirAct { f.startMove(.airLight); f.airActionUsed = true }
+            } else if canPerform(.light, f) { f.startMove(.light) }
 
         case .heavyAttack:
-            if canPerform(.heavy, f) { f.startMove(.heavy); events.append(.heavyWindup(side)) }
+            if f.airborne {
+                if f.canAirAct { f.startMove(.airHeavy); f.airActionUsed = true }
+            } else if canPerform(.heavy, f) { f.startMove(.heavy); events.append(.heavyWindup(side)) }
 
         case .special:
             if f.meter >= CombatSystem.chargeToFire {
@@ -142,9 +172,12 @@ struct CombatSystem {
     mutating func tick() -> [CombatEvent] {
         guard !isOver else { return [] }
         var events: [CombatEvent] = []
+        tickCount += 1
 
         player.advanceTimers()
         opponent.advanceTimers()
+        _ = player.applyGravity(gravity: CombatSystem.gravity)
+        _ = opponent.applyGravity(gravity: CombatSystem.gravity)
 
         events += resolveAttack(attacker: .player)
         events += resolveAttack(attacker: .opponent)
@@ -189,8 +222,15 @@ struct CombatSystem {
         }
 
         guard distance <= move.reach + CombatSystem.bodyHalfWidth else { return [] }
-        atk.hasConnectedThisMove = true
 
+        // 2D box check: the attacker's vertical hitbox must overlap the
+        // defender's hurtbox. This is what makes jump-ins, anti-airs, and
+        // whiffing-under-a-jump work (grounded normals span the full body, so
+        // grounded-vs-grounded is unchanged).
+        let atkLo = atk.height + move.loY, atkHi = atk.height + move.hiY
+        guard atkLo <= def.hurtTop && atkHi >= def.height else { return [] }
+
+        atk.hasConnectedThisMove = true
         let outcome = applyHit(move: move, from: &atk, to: &def, atkSide: atkSide, defSide: defSide)
         events += outcome
         commit(atkSide, atk); commit(defSide, def)
@@ -201,6 +241,28 @@ struct CombatSystem {
     private func applyHit(move: Move, from atk: inout Fighter, to def: inout Fighter,
                           atkSide: Side, defSide: Side) -> [CombatEvent] {
         var events: [CombatEvent] = []
+
+        // Throws: beat block, can't grab an airborne or downed foe, ignore armor
+        // and parry. Two simultaneous grabs tech out.
+        if move.isThrow {
+            if def.airborne || def.state == .knockdown || def.state == .wakeup
+                || (def.spec.guardedByRitual && !ritualBroken) { return [] }
+            if tickCount - (grabTick[defSide] ?? -100) <= CombatSystem.throwTechWindow {
+                applyPushback(&def, 18, from: atk); applyPushback(&atk, 18, from: def)
+                atk.enter(.recovery, ticks: 8); def.enter(.recovery, ticks: 8)
+                events.append(.throwTeched)
+                return events
+            }
+            def.isBlocking = false
+            def.health = max(0, def.health - move.damage)
+            atk.addMeter(move.meterGain)
+            applyPushback(&def, move.pushback, from: atk)
+            def.comboCount = 0; def.comboScalingHits = 0
+            def.enter(.knockdown, ticks: 30)
+            events.append(.thrown(defSide))
+            if def.health <= 0 { events.append(.knockdown(defSide)) }
+            return events
+        }
 
         // Parry (melee only — projectiles ignore the parry window for clarity).
         if def.state == .parry && !move.isProjectile {
@@ -252,20 +314,32 @@ struct CombatSystem {
             return events
         }
 
-        // Clean hit.
-        def.health = max(0, def.health - move.damage)
+        // Clean hit — apply combo damage scaling so long juggles taper off.
+        let scaleIdx = min(def.comboScalingHits, CombatSystem.scaling.count - 1)
+        let factor = move.scaling ? max(CombatSystem.minScale, CombatSystem.scaling[scaleIdx]) : 1
+        let dealt = max(1, Int(CGFloat(move.damage) * factor))
+        def.health = max(0, def.health - dealt)
         def.addMeter(move.meterGain)
         atk.addMeter(move.meterGain)
         applyPushback(&def, move.pushback, from: atk)
         def.comboCount += 1
+        if move.scaling { def.comboScalingHits += 1 }
         if move.cancelable { atk.canCancel = true }   // open the combo window
 
-        if move.launches {
+        // Stun accrues toward a dizzy (a free-punish stagger).
+        def.stun += CGFloat(move.damage) * 1.6
+        let willDizzy = def.stun >= CombatSystem.stunThreshold && !move.launches
+
+        if willDizzy {
+            def.stun = 0
+            def.enter(.dizzy, ticks: CombatSystem.dizzyTicks)
+            events.append(.dizzy(defSide))
+        } else if move.launches {
             def.enter(.launched, ticks: CombatSystem.launchHitstun)
         } else {
             def.enter(.hitStun, ticks: move.hitstun)
         }
-        events.append(.hitLanded(attacker: atkSide, damage: move.damage))
+        events.append(.hitLanded(attacker: atkSide, damage: dealt))
         if def.comboCount >= 2 { events.append(.comboHit(by: atkSide, count: def.comboCount)) }
 
         if def.health <= 0 {

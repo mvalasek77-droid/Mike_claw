@@ -11,6 +11,7 @@ enum Intent: Equatable, Codable {
     case stepForward
     case stepBack
     case jump
+    case grab              // throw / command grab (beats block)
     case beginBlock
     case endBlock
     case charge(CGFloat)   // Crown rotation delta -> meter charge
@@ -31,10 +32,14 @@ enum CombatEvent: Equatable {
     case heavyWindup(Side)     // telegraph -> haptic the opponent can feel
     case specialReady(Side)
     case knockdown(Side)
+    case thrown(Side)          // a throw connected on this side
+    case throwTeched           // both grabbed at once — teched, no damage
+    case dizzy(Side)           // stun maxed out — free punish state
+    case finisher(by: Side)    // cinematic KO in the final round
     case roundOver(winner: Side?)
 }
 
-enum Side: Equatable {
+enum Side: Equatable, Hashable {
     case player
     case opponent
 }

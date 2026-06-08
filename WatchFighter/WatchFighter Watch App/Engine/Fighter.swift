@@ -43,6 +43,7 @@ enum FighterState: Equatable {
     case parry        // brief defensive window
     case knockdown
     case wakeup
+    case dizzy        // stunned (free punish) after taking too much
 }
 
 /// Mutable per-round state for one combatant.
@@ -63,6 +64,14 @@ struct Fighter {
     var canCancel = false             // a connected cancelable move opened a window
     var comboCount = 0                // hits in the current combo (for the HUD)
     var armorAvailable = false        // armored move can still absorb a hit
+    var comboScalingHits = 0          // hits used for combo damage scaling
+
+    // Vertical axis (the aerial game).
+    var height: CGFloat = 0           // feet height above the floor (points)
+    var vSpeed: CGFloat = 0           // vertical velocity (points/tick)
+    var airborne = false
+    var airActionUsed = false         // one air normal per jump
+    var stun: CGFloat = 0             // builds toward a dizzy
 
     init(spec: CharacterSpec, facingRight: Bool, position: CGFloat) {
         self.spec = spec
@@ -74,12 +83,18 @@ struct Fighter {
     var isAlive: Bool { health > 0 }
     var healthFraction: CGFloat { CGFloat(health) / CGFloat(spec.maxHealth) }
     var meterFull: Bool { meter >= 100 }
+    var standHeight: CGFloat { 58 }
 
-    /// Neutral fighters can act; a connected cancelable move also opens a window.
-    var canAct: Bool { state == .idle }
+    /// Hurtbox top in world Y (feet height + standing height).
+    var hurtTop: CGFloat { height + standHeight }
+
+    /// Grounded neutral can act; a connected cancelable move also opens a window.
+    var canAct: Bool { state == .idle && !airborne }
     var canStartAttack: Bool {
-        state == .idle || (canCancel && (state == .active || state == .recovery))
+        (state == .idle && !airborne) || (canCancel && (state == .active || state == .recovery))
     }
+    /// One attack is allowed while airborne (the jump-in).
+    var canAirAct: Bool { state == .idle && airborne && !airActionUsed }
 
     mutating func addMeter(_ amount: Int) {
         meter = min(100, meter + amount)
@@ -98,7 +113,10 @@ struct Fighter {
         hasConnectedThisMove = false
         canCancel = false
         comboCount = 0
+        comboScalingHits = 0
         armorAvailable = false
+        height = 0; vSpeed = 0; airborne = false; airActionUsed = false
+        stun = 0
     }
 
     // MARK: - State transitions
@@ -131,10 +149,11 @@ struct Fighter {
             if let m = currentMove { enter(.active, ticks: m.active) } else { state = .idle }
         case .active:
             if let m = currentMove { enter(.recovery, ticks: m.recovery) } else { state = .idle }
-        case .recovery, .blockStun, .hitStun, .parry, .wakeup, .launched:
+        case .recovery, .blockStun, .hitStun, .parry, .wakeup, .launched, .dizzy:
             currentMove = nil
             canCancel = false
             comboCount = 0
+            comboScalingHits = 0
             state = .idle
         case .knockdown:
             enter(.wakeup, ticks: 12)
@@ -147,5 +166,33 @@ struct Fighter {
         if state == .idle && !isBlocking {
             stamina = min(100, stamina + CombatSystem.staminaRegen)
         }
+        // Stun bleeds off slowly while not being hit.
+        if state == .idle { stun = max(0, stun - CombatSystem.stunDecay) }
+    }
+
+    // MARK: - Aerial physics
+
+    mutating func jump(_ velocity: CGFloat, drift: CGFloat) {
+        guard !airborne, state == .idle else { return }
+        airborne = true
+        vSpeed = velocity
+        airActionUsed = false
+        pendingDrift = drift
+    }
+    var pendingDrift: CGFloat = 0
+
+    /// Integrate gravity each tick. Returns true on the frame the fighter lands.
+    mutating func applyGravity(gravity: CGFloat) -> Bool {
+        guard airborne else { return false }
+        vSpeed -= gravity
+        height = max(0, height + vSpeed)
+        position += pendingDrift
+        if height <= 0 {
+            height = 0; vSpeed = 0; airborne = false; pendingDrift = 0
+            // Land out of an air normal into a brief, vulnerable recovery.
+            if state == .active || state == .startup { enter(.recovery, ticks: 6) }
+            return true
+        }
+        return false
     }
 }

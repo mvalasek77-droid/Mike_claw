@@ -64,6 +64,19 @@ A helmeted gun-for-hire tracking a bounty that climbed the tower and never came
 back down. Keeps the lane honest with plasma. *(Original sci-fi archetype.)*
 **Home stage:** Orbit Nine.
 
+### Vesper — "The Drawn Blade"  *(swordmaster)*
+A wandering swordmaster who answers the bell to test one thing: a single,
+perfect cut. Longest melee reach in the cast; a drawing slash that launches.
+*(Original katana archetype — not based on any actor or film role.)*
+**Home stage:** Blade Garden.
+
+### Marina — "The Riptide"  *(acrobatic athlete)*
+A champion open-water rescue swimmer who fights like the sea — fast, relentless,
+impossible to hold down. The strongest aerial game on the roster.
+*(Original lifeguard/athlete archetype — not based on any real person. Designed
+as a capable, non-objectified fighter.)*
+**Home stage:** Sunset Pier.
+
 ### Onyx — "The Ascendant"  *(penultimate boss / tower host)*
 The one who built the tower. He guards the second-to-last floor and steps aside
 for whoever can reach the true final door. Overtuned launcher.

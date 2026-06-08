@@ -79,6 +79,16 @@ enum StageLibrary {
                   farColor: RGBA(0.10, 0.08, 0.08), midColor: RGBA(0.18, 0.10, 0.10),
                   groundColor: RGBA(0.22, 0.18, 0.16), accent: RGBA(1.0, 0.85, 0.4),
                   motif: .ring),
+        StageSpec(id: "garden", name: "BLADE GARDEN",
+                  skyTop: RGBA(0.10, 0.04, 0.10), skyBottom: RGBA(0.55, 0.25, 0.30),
+                  farColor: RGBA(0.16, 0.08, 0.16), midColor: RGBA(0.26, 0.12, 0.22),
+                  groundColor: RGBA(0.10, 0.06, 0.10), accent: RGBA(1.0, 0.6, 0.7),
+                  motif: .temple),
+        StageSpec(id: "pier", name: "SUNSET PIER",
+                  skyTop: RGBA(0.10, 0.10, 0.28), skyBottom: RGBA(0.95, 0.55, 0.35),
+                  farColor: RGBA(0.20, 0.16, 0.30), midColor: RGBA(0.30, 0.20, 0.30),
+                  groundColor: RGBA(0.18, 0.12, 0.14), accent: RGBA(0.3, 0.8, 0.95),
+                  motif: .ship),
     ]
 
     static func stage(id: String) -> StageSpec {

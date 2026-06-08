@@ -323,8 +323,13 @@ final class FightScene: SKScene {
         let winner = flow.combat.winner
         flow.recordRoundResult(winner)
         let ko = !flow.combat.player.isAlive || !flow.combat.opponent.isAlive
-        showAnnouncer(ko ? "K.O." : "TIME", color: SKColor(red: 1, green: 0.3, blue: 0.3, alpha: 1))
+        // Final, decisive KO gets a cinematic "FINISH!" beat.
+        let finish = ko && flow.isMatchOver && flow.matchWinner == .player
+        showAnnouncer(finish ? "FINISH!" : (ko ? "K.O." : "TIME"),
+                      color: finish ? SKColor(red: 1, green: 0.85, blue: 0.2, alpha: 1)
+                                    : SKColor(red: 1, green: 0.3, blue: 0.3, alpha: 1))
         SoundEngine.shared.play(.ko)
+        if finish { shake(14); if allowHitstop { hitstop = 10 } }
         beginPhase(.roundResult)
     }
 
@@ -368,6 +373,16 @@ final class FightScene: SKScene {
             case .parried(let by):
                 spawnHitSpark(at: by, big: true)
                 shake(4)
+            case .thrown(let s):
+                spawnHitSpark(at: s, big: true)
+                if allowHitstop { hitstop = 5 }
+                shake(8)
+            case .dizzy(let s):
+                spawnHitSpark(at: s, big: true)
+                showAnnouncer("DIZZY!", color: SKColor(red: 1, green: 0.9, blue: 0.3, alpha: 1))
+                shake(5)
+            case .throwTeched:
+                shake(3)
             default: break
             }
         }
@@ -428,6 +443,7 @@ final class FightScene: SKScene {
         case .parry: return "PRY\(f.stateTimer)"
         case .knockdown: return "down"
         case .wakeup: return "wake"
+        case .dizzy: return "DIZZY"
         }
     }
 
@@ -533,7 +549,9 @@ final class FightScene: SKScene {
             }
         } else if held < 0.4 {
             let p = CGPoint(x: startLocation.x, y: size.height - startLocation.y)
-            if flow.combat.player.meter >= CombatSystem.chargeToFire && p.x > size.width * 0.66 {
+            if p.x < size.width * 0.2 {
+                pendingLocal.append(.grab); SoundEngine.shared.play(.heavy)   // far-left = throw
+            } else if flow.combat.player.meter >= CombatSystem.chargeToFire && p.x > size.width * 0.66 {
                 pendingLocal.append(.special); SoundEngine.shared.play(.special)
             } else {
                 let intent = InputController.tapIntent(at: p, in: size)

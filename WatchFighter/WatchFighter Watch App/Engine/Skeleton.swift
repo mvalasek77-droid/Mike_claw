@@ -126,10 +126,31 @@ enum Animator {
 
     /// Top-level: choose + parameterise the pose for a fighter snapshot.
     /// `clock` is a free-running seconds timer (for idle bob / walk cadence).
+    /// A tucked airborne pose (jump / jump-in).
+    static func airborne() -> Pose {
+        Pose(pelvis: CGPoint(x: 0, y: 20), chest: CGPoint(x: 1, y: 36),
+             head: CGPoint(x: 2, y: 48),
+             frontHand: CGPoint(x: 14, y: 30), backHand: CGPoint(x: -2, y: 34),
+             frontFoot: CGPoint(x: 8, y: 8), backFoot: CGPoint(x: -6, y: 12))
+    }
+
+    /// Woozy dizzy sway.
+    static func dizzy(clock: CGFloat) -> Pose {
+        let s = sin(clock * 6) * 4
+        return Pose(pelvis: CGPoint(x: s * 0.4, y: 21), chest: CGPoint(x: s, y: 37),
+                    head: CGPoint(x: s * 1.5, y: 49),
+                    frontHand: CGPoint(x: 6, y: 28), backHand: CGPoint(x: -2, y: 26),
+                    frontFoot: CGPoint(x: 9, y: 0), backFoot: CGPoint(x: -9, y: 0))
+    }
+
     static func pose(for f: Fighter, clock: CGFloat) -> Pose {
+        // Airborne neutral overrides the ground idle pose.
+        if f.airborne && f.state == .idle { return airborne() }
         switch f.state {
         case .idle:
             return f.isBlocking ? block() : idle(clock: clock)
+        case .dizzy:
+            return dizzy(clock: clock)
         case .startup, .active, .recovery:
             let move = f.currentMove
             let total = max(1, move?.totalDuration ?? 1)
