@@ -21,9 +21,9 @@ struct ComposedLayout: Equatable {
 }
 
 /// Per-device-class framing tuning, expressed as fractions of canvas width so
-/// it scales across every resolution. iPads have proportionally thinner,
-/// uniform bezels and much less rounded corners than iPhones — feeding that in
-/// here is what makes an iPad frame read as an iPad rather than a giant phone.
+/// it scales across every resolution. iPads have uniform bezels and much less
+/// rounded corners than iPhones — feeding that in here is what makes an iPad
+/// frame read as an iPad rather than a giant phone.
 struct FrameProfile: Equatable {
     /// Bezel thickness as a fraction of canvas width.
     var bezelScale: CGFloat
@@ -114,8 +114,8 @@ enum ScreenshotComposer {
 
         let deviceRect = aspectFit(aspect: aspect, in: deviceContainer)
 
-        // Thin, modern bezel proportional to canvas width, tuned per device
-        // class (iPad bezels are uniform; iPhone bezels a touch thinner).
+        // Thin, modern bezel proportional to canvas width, applied as a uniform
+        // inset on all four sides and tuned per device class.
         let bezel = style.deviceFramed ? max(canvas.width * profile.bezelScale, 4).rounded() : 0
         let screenRect = deviceRect.insetBy(dx: bezel, dy: bezel)
 

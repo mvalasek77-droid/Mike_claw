@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import ScreenshotStudio
 
 final class EnhanceAndStatusBarTests: XCTestCase {
@@ -85,8 +86,12 @@ final class EnhanceAndStatusBarTests: XCTestCase {
 
     func testWarmthTintNeutralAtZero() {
         let adj = ImageAdjustments(warmth: 0)
-        // A near-white multiply tint is effectively a no-op.
-        let tint = adj.warmthTint
-        XCTAssertNotNil(tint) // constructed without crashing; value is white
+        // At warmth 0 the multiply tint must be (near) pure white so that
+        // `.colorMultiply(warmthTint)` is a genuine no-op.
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(adj.warmthTint).getRed(&r, green: &g, blue: &b, alpha: &a)
+        XCTAssertEqual(r, 1, accuracy: 0.001)
+        XCTAssertEqual(g, 1, accuracy: 0.001)
+        XCTAssertEqual(b, 1, accuracy: 0.001)
     }
 }

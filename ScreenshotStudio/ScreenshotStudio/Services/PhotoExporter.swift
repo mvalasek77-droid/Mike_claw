@@ -29,13 +29,12 @@ enum PhotoExporter {
     /// across launches even under add-only access (where title search fails).
     private static let albumIDKey = "ScreenshotStudio.albumLocalIdentifier"
 
-    /// Save a batch of images. Throws a clear, catchable error on failure —
-    /// never an uncatchable Objective-C exception.
-    static func save(_ images: [UIImage]) async throws {
-        // Photos raises an *uncatchable* NSException if asked to create an asset
-        // from a UIImage with no backing CGImage, so filter those out up front.
-        let valid = images.filter { $0.cgImage != nil }
-        guard !valid.isEmpty else { throw ExportError.nothingToSave }
+    /// Save a batch of already-encoded PNGs. Throws a clear, catchable error on
+    /// failure — never an uncatchable Objective-C exception. Taking `Data`
+    /// (rather than `UIImage`) keeps peak memory bounded on large exports and
+    /// sidesteps the `NSException` Photos raises for a CGImage-less image.
+    static func save(_ pngs: [Data]) async throws {
+        guard !pngs.isEmpty else { throw ExportError.nothingToSave }
 
         try await ensureAuthorized()
 
@@ -46,8 +45,9 @@ enum PhotoExporter {
 
         do {
             try await PHPhotoLibrary.shared().performChanges {
-                for image in valid {
-                    let request = PHAssetChangeRequest.creationRequestForAsset(from: image)
+                for data in pngs {
+                    let request = PHAssetCreationRequest.forAsset()
+                    request.addResource(with: .photo, data: data, options: nil)
                     if let album,
                        let placeholder = request.placeholderForCreatedAsset,
                        let albumChange = PHAssetCollectionChangeRequest(for: album) {

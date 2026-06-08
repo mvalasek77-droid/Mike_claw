@@ -9,6 +9,7 @@ struct ExportSheet: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var coordinator = ExportCoordinator()
     @State private var shareItems: [UIImage]?
+    @State private var isPreparingShare = false
 
     private var sizes: [ASCDeviceSize] { project.exportSizes }
     private var totalImages: Int { sizes.count * project.slides.count }
@@ -158,9 +159,15 @@ struct ExportSheet: View {
                               isEnabled: !coordinator.isRunning && totalImages > 0) {
                     Task { await coordinator.export(project: project, sizes: sizes) }
                 }
-                PrimaryButton(title: "Share PNGs", systemImage: "square.and.arrow.up", style: .glass,
-                              isEnabled: !coordinator.isRunning && totalImages > 0) {
-                    shareItems = ScreenshotRenderer.renderSlides(of: project, for: project.deviceSize)
+                PrimaryButton(title: isPreparingShare ? "Preparing…" : "Share PNGs",
+                              systemImage: "square.and.arrow.up", style: .glass,
+                              isEnabled: !coordinator.isRunning && !isPreparingShare && totalImages > 0) {
+                    isPreparingShare = true
+                    Task {
+                        let rendered = await ScreenshotRenderer.renderSlidesAsync(of: project, for: project.deviceSize)
+                        isPreparingShare = false
+                        shareItems = rendered
+                    }
                 }
             }
         }

@@ -47,23 +47,29 @@ final class ExportCoordinator: ObservableObject {
         phase = .rendering(done: 0, total: total)
         Haptics.ramp()
 
-        var images: [UIImage] = []
-        images.reserveCapacity(total)
+        // Encode each render to PNG data immediately and drop the decoded
+        // bitmap, so peak memory stays at roughly one image instead of holding
+        // every full-resolution bitmap (a full iPhone+iPad batch would
+        // otherwise pin hundreds of MB and risk an out-of-memory termination).
+        var pngs: [Data] = []
+        pngs.reserveCapacity(total)
         var done = 0
 
         for slot in slots {
             let canvasSize = slot.pixelSize(for: project.orientation)
             let layout = slot.statusBarLayout
             for slide in project.slides {
-                let source = ImageStore.load(slide.imageFile)
-                if let rendered = ScreenshotRenderer.render(
-                    canvasSize: canvasSize,
-                    style: project.style,
-                    image: source,
-                    captionText: project.captionText(for: slide),
-                    statusBarLayout: layout
-                ) {
-                    images.append(rendered)
+                autoreleasepool {
+                    let source = ImageStore.load(slide.imageFile)
+                    if let rendered = ScreenshotRenderer.render(
+                        canvasSize: canvasSize,
+                        style: project.style,
+                        image: source,
+                        captionText: project.captionText(for: slide),
+                        statusBarLayout: layout
+                    ), let data = rendered.pngData() {
+                        pngs.append(data)
+                    }
                 }
                 done += 1
                 phase = .rendering(done: done, total: total)
@@ -73,7 +79,7 @@ final class ExportCoordinator: ObservableObject {
             }
         }
 
-        guard !images.isEmpty else {
+        guard !pngs.isEmpty else {
             phase = .failed("Those slides couldn't be rendered. Please try again.")
             Haptics.error()
             return
@@ -81,8 +87,8 @@ final class ExportCoordinator: ObservableObject {
 
         phase = .saving
         do {
-            try await PhotoExporter.save(images)
-            phase = .finished(count: images.count)
+            try await PhotoExporter.save(pngs)
+            phase = .finished(count: pngs.count)
             Haptics.success()
         } catch {
             phase = .failed(error.localizedDescription)

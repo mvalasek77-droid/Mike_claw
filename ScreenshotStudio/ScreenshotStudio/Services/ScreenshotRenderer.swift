@@ -45,4 +45,25 @@ enum ScreenshotRenderer {
                           statusBarLayout: layout)
         }
     }
+
+    /// Async variant that yields between slides so a multi-slide share render
+    /// doesn't freeze the main run loop while the UI shows a "preparing" state.
+    static func renderSlidesAsync(of project: ScreenshotProject,
+                                  for device: ASCDeviceSize) async -> [UIImage] {
+        let canvasSize = device.pixelSize(for: project.orientation)
+        let layout = device.statusBarLayout
+        var out: [UIImage] = []
+        out.reserveCapacity(project.slides.count)
+        for slide in project.slides {
+            if let image = render(canvasSize: canvasSize,
+                                  style: project.style,
+                                  image: ImageStore.load(slide.imageFile),
+                                  captionText: project.captionText(for: slide),
+                                  statusBarLayout: layout) {
+                out.append(image)
+            }
+            await Task.yield()
+        }
+        return out
+    }
 }
