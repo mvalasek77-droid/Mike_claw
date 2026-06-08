@@ -126,10 +126,10 @@ struct StudioView: View {
         .sheet(isPresented: $showVideoPicker) {
             VideoPicker { url in
                 guard let url else { return }
-                isExtractingVideo = true
+                withAnimation(.easeInOut) { isExtractingVideo = true }
                 Task {
                     let frames = await VideoFrameExtractor.frames(from: url)
-                    isExtractingVideo = false
+                    withAnimation(.easeInOut) { isExtractingVideo = false }
                     frameBatch = FrameBatch(images: frames)
                     try? FileManager.default.removeItem(at: url)
                 }
