@@ -73,6 +73,12 @@ final class ExportCoordinator: ObservableObject {
             }
         }
 
+        guard !images.isEmpty else {
+            phase = .failed("Those slides couldn't be rendered. Please try again.")
+            Haptics.error()
+            return
+        }
+
         phase = .saving
         do {
             try await PhotoExporter.save(images)
