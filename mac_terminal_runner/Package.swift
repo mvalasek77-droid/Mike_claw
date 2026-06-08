@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-    name: "CodeGenieCompanion",
+    name: "CodeGenieTerminalRunner",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "codegenie-companion", targets: ["CodeGenieCompanion"]),
+        .executable(name: "codegenie-terminal-runner", targets: ["CodeGenieCompanion"]),
     ],
     targets: [
         .executableTarget(

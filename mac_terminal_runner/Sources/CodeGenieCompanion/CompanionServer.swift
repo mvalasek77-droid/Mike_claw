@@ -1,14 +1,13 @@
 import Foundation
 import Network
 
-/// A minimal WebSocket-ish server that speaks the CodeGenie Companion
-/// protocol described in `docs/COMPANION_PROTOCOL.md`.
+/// A minimal newline-delimited JSON server that speaks the CodeGenie
+/// terminal runner protocol described in `docs/COMPANION_PROTOCOL.md`.
 ///
 /// We use Apple's `Network.framework` instead of pulling in a full
-/// WebSocket library so the daemon stays a single binary with no
-/// external dependencies. The framing implemented here is a pragmatic
-/// subset of RFC 6455 — enough to talk to URLSessionWebSocketTask on
-/// the iOS side, not enough to be a general-purpose WebSocket server.
+/// WebSocket library so the runner stays a single binary with no
+/// external dependencies. The framing implemented here is newline-
+/// delimited JSON, matching the iOS `NWConnection` client.
 public final class CompanionServer {
     public struct Pairing {
         public let host: String
@@ -19,7 +18,7 @@ public final class CompanionServer {
     private let listener: NWListener
     private let token: String
     private var connections: [UUID: ClientConnection] = [:]
-    private let queue = DispatchQueue(label: "com.codegenie.companion.server")
+    private let queue = DispatchQueue(label: "com.codegenie.terminal-runner.server")
 
     public init(port: UInt16) throws {
         let params = NWParameters(tls: nil)
@@ -38,8 +37,8 @@ public final class CompanionServer {
 
         // Wait for the listener to bind before reporting the port.
         let port = try await waitForPort()
-        // Bonjour
-        listener.service = NWListener.Service(name: "CodeGenie", type: "_codegenie-companion._tcp")
+        // Bonjour lets the iPhone find the terminal process on the same Wi-Fi.
+        listener.service = NWListener.Service(name: "CodeGenie Terminal", type: "_codegenie-runner._tcp")
         return Pairing(host: "127.0.0.1", port: port, token: token)
     }
 
@@ -53,12 +52,12 @@ public final class CompanionServer {
 
     private func waitForPort() async throws -> UInt16 {
         for _ in 0..<200 {
-            if case let .ready = listener.state, let p = listener.port?.rawValue {
+            if case .ready = listener.state, let p = listener.port?.rawValue {
                 return p
             }
             try await Task.sleep(for: .milliseconds(25))
         }
-        throw NSError(domain: "Companion", code: 1, userInfo: [
+        throw NSError(domain: "CodeGenieTerminalRunner", code: 1, userInfo: [
             NSLocalizedDescriptionKey: "listener never became ready"
         ])
     }

@@ -27,7 +27,7 @@
 - Splash, vector CodeGenie logo, MainTabView (Home / Build / Play /
   Apps / Settings)
 - Settings: LLM cost table, BYOK keys, subscription pairing, hosted
-  plans, cost estimator, Pair-your-Mac sheet
+  plans, cost estimator, terminal-first Pair-your-Mac sheet
 - **Accessibility & Reduce-Motion-correct everywhere** — Splash, the
   animated background orbs, the progress orb, every tab transition,
   the tutorial dots all honour `accessibilityReduceMotion`
@@ -49,9 +49,9 @@
 - SQLite-backed project memory, paste-prepended into every agent prompt
 - 116 pytest tests, all green; agent prompts in `prompts/*.md`
 
-**Mac companion (`mac_companion/`)**
-- Native Swift Package, macOS 14+, Network.framework server
-- Bonjour `_codegenie-companion._tcp` advertisement, token auth
+**Mac Terminal runner (`mac_terminal_runner/`)**
+- Native Swift Package, macOS 14+, Network.framework server run from Terminal
+- Bonjour `_codegenie-runner._tcp` advertisement, token auth
 - Commands: ping, open_xcode_project, open_safari, xcodebuild (with
   streamed line events), screenshot, `app_store_connect.fill`
   (AppleScript + JS, mandatory per-call user confirmation)
@@ -82,7 +82,7 @@
 - **Comment threads on diffs** — left-margin inline comments stored in Memory
 - **review.finding inbox** — triaged sheet, severity filter, autofix
 - **Multi-target builds** — same spec → iOS + macOS + watchOS in parallel
-- **ASC screenshot generator** — Mac companion drives the simulator
+- **ASC screenshot generator** — Terminal runner drives the simulator
 - **TestFlight invite automation** — add internal testers post-upload
 - **Submission rehearsal** — dry-run metadata validation
 
@@ -96,7 +96,7 @@
 - **Plugin marketplace** — third-party agents (RevenueCat wiring,
   Firebase setup) that drop into the swarm
 - **WWDC theme presets** — each year's keynote-feel as one-tap themes
-- **Native Mac menu bar app** for the companion (replaces the CLI)
+- **Terminal runner polish** — clearer setup script, QR output, health checks
 
 ## Forever
 

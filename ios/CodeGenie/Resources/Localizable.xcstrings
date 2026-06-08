@@ -301,7 +301,7 @@
         }
       }
     },
-    "Build, quality gates, icon generation, TestFlight upload, and status polling are automated once credentials and an IPA exist. Xcode account setup, Apple sign-in, App Store Connect review fields, screenshots, and final submission still need Mac companion wiring or Apple confirmation." : {
+    "Build, quality gates, icon generation, TestFlight upload, and status polling are automated once credentials and an IPA exist. Xcode account setup, Apple sign-in, App Store Connect review fields, screenshots, and final submission still need Terminal runner wiring or Apple confirmation." : {
 
     },
     "Builds the swarm marked failed. Tap a row to see what it was reasoning about when it broke." : {
@@ -313,7 +313,7 @@
     "Category" : {
 
     },
-    "cd ~/code/codegenie/mac_companion\nswift run codegenie-companion" : {
+    "cd ~/code/Mike_claw/mac_terminal_runner\nswift run codegenie-terminal-runner" : {
 
     },
     "ChatGPT image-1 · ~$0.04 per icon · stripped to App-Store-safe before export" : {
@@ -336,7 +336,7 @@
     "CodeGenie wires Claude, GPT, and Xcode together so you can ship to the App Store from anywhere." : {
 
     },
-    "CodeGenie's Mac companion handles the OAuth handshake. We never see your password." : {
+    "CodeGenie's terminal runner handles the OAuth handshake. We never see your password." : {
 
     },
     "Comma-separated. Leave empty for full access. Available: read_file, list_dir, grep, swiftlint, shell, apple_docs, recall_memory." : {
@@ -615,7 +615,7 @@
     "Loading…" : {
 
     },
-    "Looking for `_codegenie-companion._tcp` …" : {
+    "Looking for `_codegenie-runner._tcp` ..." : {
 
     },
     "Maintenance + storage controls. Active jobs are always skipped." : {
@@ -805,7 +805,7 @@
     "Route per agent" : {
 
     },
-    "Run the CodeGenie Companion on your Mac, then pair it once. The phone keeps reaching back into Xcode + Safari from there." : {
+    "Run the CodeGenie terminal runner on your Mac, then pair over Wi-Fi. No companion Mac app or download is required." : {
 
     },
     "Scan QR code" : {

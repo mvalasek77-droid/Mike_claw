@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// UI flow for pairing the iPhone with the user's Mac companion daemon.
+/// UI flow for pairing the iPhone with the user's Mac terminal runner.
 ///
 /// Two paths in:
 ///  • **Bonjour list** — happy path on a shared Wi-Fi network.
@@ -59,7 +59,7 @@ struct PairMacView: View {
             Text("Pair your Mac")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
-            Text("Run the CodeGenie Companion on your Mac, then pair it once. The phone keeps reaching back into Xcode + Safari from there.")
+            Text("Run the CodeGenie terminal runner on your Mac, then pair over Wi-Fi. No companion Mac app or download is required.")
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
         }
@@ -84,9 +84,8 @@ struct PairMacView: View {
         }
     }
 
-    /// Spelled-out prerequisite list so a first-timer knows what
-    /// "Companion" means and where to get it before they hit a
-    /// confusing "Could not connect" error from the scan flow.
+    /// Spelled-out prerequisite list so a first-timer knows what must
+    /// be running before they hit a confusing "Could not connect" error.
     private var prereqBlock: some View {
         GlassCard(title: "What you need first", icon: "questionmark.circle.fill", tint: LiquidGlass.warning) {
             VStack(alignment: .leading, spacing: 10) {
@@ -96,23 +95,11 @@ struct PairMacView: View {
                     body: "It's free in the Mac App Store. Open it once and sign in with your Apple ID so it can finish setup."
                 )
                 prereqRow(
-                    icon: "menubar.dock.rectangle",
-                    title: "CodeGenie Companion running",
-                    body: "Small free Mac app that lets your phone reach into Xcode. Download from our site, run it once — it lives in the menu bar."
+                    icon: "terminal.fill",
+                    title: "Terminal runner running",
+                    body: "Open Terminal in the CodeGenie repo and run the command below. Keep that Terminal window open while the phone builds."
                 )
-                Link(destination: URL(string: "https://codegenie.app/companion")!) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.down.circle.fill")
-                        Text("Download CodeGenie Companion")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        Spacer()
-                        Image(systemName: "arrow.up.right.square")
-                    }
-                    .padding(.horizontal, 14).padding(.vertical, 12)
-                    .background(LiquidGlass.auroraGradient, in: RoundedRectangle(cornerRadius: 14))
-                    .foregroundStyle(LiquidGlass.primaryText)
-                }
-                .accessibilityHint("Opens the Companion download page in Safari")
+                terminalCommandBox
             }
         }
     }
@@ -169,7 +156,7 @@ struct PairMacView: View {
             if bridge.discovered.isEmpty {
                 HStack(spacing: 8) {
                     ProgressView().tint(LiquidGlass.primaryText)
-                    Text("Looking for `_codegenie-companion._tcp` …")
+                    Text("Looking for `_codegenie-runner._tcp` ...")
                         .font(.system(size: 13, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 }
@@ -198,7 +185,7 @@ struct PairMacView: View {
     private var manualBlock: some View {
         GlassCard(title: "Or pair manually", icon: "qrcode.viewfinder", tint: LiquidGlass.accentSecondary) {
             VStack(spacing: 10) {
-                Text("Paste the pairing URL from the Mac terminal:")
+                Text("Paste the pairing URL from the Mac Terminal:")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                 TextField("codegenie://pair?host=…&port=…&token=…", text: $pasteURL, axis: .vertical)
@@ -221,21 +208,26 @@ struct PairMacView: View {
     }
 
     private var helpBlock: some View {
-        GlassCard(title: "Install the companion", icon: "terminal.fill", tint: LiquidGlass.warning) {
+        GlassCard(title: "Run from Terminal", icon: "terminal.fill", tint: LiquidGlass.warning) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("On your Mac, run:")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                Text("cd ~/code/codegenie/mac_companion\nswift run codegenie-companion")
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(LiquidGlass.primaryText)
-                    .padding(10)
-                    .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
-                Text("It prints a `codegenie://pair?…` URL — paste that here, or scan the QR code shown by the menu bar app once we ship it.")
+                terminalCommandBox
+                Text("It prints a `codegenie://pair?...` URL. Paste that URL here, or scan the QR code if your terminal setup shows one.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             }
         }
+    }
+
+    private var terminalCommandBox: some View {
+        Text("cd ~/code/Mike_claw/mac_terminal_runner\nswift run codegenie-terminal-runner")
+            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+            .foregroundStyle(LiquidGlass.primaryText)
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private var label: String {

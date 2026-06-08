@@ -2,9 +2,9 @@
 
 > Build your next iOS app from your phone.
 >
-> CodeGenie wires Claude, GPT-5, and Xcode together so you can ship to the
-> App Store from anywhere. It is the love-child of Claude Code, Cursor, and
-> Codex — but it lives in your pocket and ends with a TestFlight link.
+> CodeGenie wires Claude, GPT-5, your iPhone, and your Mac's Xcode together
+> so you can ship to the App Store from your phone. It lives in your pocket,
+> while a terminal runner on your Mac handles the Apple-only build steps.
 
 ## Architecture
 
@@ -28,11 +28,11 @@
 │                                                                 │
 │   Each agent = ConversationRuntime + sandboxed tools            │
 └──────────────────┬──────────────────────────────────────────────┘
-                   │  SSH / agent
+                   │  local Wi-Fi pairing
                    ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│         Hosted macOS runner (Mac mini, M-series, on-demand)     │
-│   xcodebuild · simctl · swiftlint · TestFlight altool           │
+│          Mac Terminal Runner (this repo: mac_terminal_runner/)  │
+│   codegenie-terminal-runner · xcodebuild · simctl · Safari      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -54,8 +54,15 @@ export ANTHROPIC_API_KEY=…
 uvicorn app:app --reload    # mounts genie_swarm.api.router
 ```
 
-Then on the phone, point CodeGenie at your laptop's tunnel URL and tap
-**Start a new build**.
+Then start the Mac-side terminal runner from the repo root:
+
+```bash
+cd /path/to/CodeGenie/mac_terminal_runner
+swift run codegenie-terminal-runner
+```
+
+On the phone, open **Settings → Pair your Mac**, paste the
+`codegenie://pair?...` URL printed in Terminal, and tap **Start a new build**.
 
 ## File map (ios/CodeGenie)
 

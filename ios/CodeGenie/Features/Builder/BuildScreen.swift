@@ -545,7 +545,7 @@ struct BuildScreen: View {
                         Text("Build green")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                        Text("Ready to test in the cloud simulator. Run Perfection Mode before App Store handoff.")
+                        Text("Ready to test through your Mac's simulator. Run Perfection Mode before App Store handoff.")
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)

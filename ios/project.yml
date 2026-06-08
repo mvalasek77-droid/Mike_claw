@@ -34,9 +34,9 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true
         NSBonjourServices:
-          - _codegenie-companion._tcp
-        NSCameraUsageDescription: Scan a pairing QR code to connect to your Mac companion.
-        NSLocalNetworkUsageDescription: CodeGenie connects to your Mac on the local network to pair with the desktop companion app that drives Xcode and Safari for you.
+          - _codegenie-runner._tcp
+        NSCameraUsageDescription: Scan a pairing QR code to connect to your Mac terminal runner.
+        NSLocalNetworkUsageDescription: CodeGenie connects to your Mac on the local network to pair with the Terminal runner that drives Xcode and Safari for you.
         NSPhotoLibraryAddUsageDescription: Save generated app icons and TestFlight screenshots to your Photos library.
         UILaunchScreen:
           UIColorName: AccentColor

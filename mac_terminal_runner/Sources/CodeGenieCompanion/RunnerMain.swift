@@ -1,17 +1,15 @@
 import Foundation
 
-/// Entry point for the CodeGenie Companion daemon.
+/// Entry point for the CodeGenie terminal runner.
 ///
-/// Runs as a long-lived process. On launch it:
+/// Runs as a long-lived Terminal process. On launch it:
 ///   1. Generates (or reads) a pairing token from `~/Library/Application
-///      Support/CodeGenie/companion.token`.
-///   2. Starts a WebSocket server on a random port.
-///   3. Advertises itself via Bonjour as `_codegenie-companion._tcp`.
-///   4. Prints a QR-friendly pairing URL on stdout for scripted setup.
+///      Support/CodeGenie/terminal-runner.token`.
+///   2. Starts a local network server on a random port.
+///   3. Advertises itself via Bonjour as `_codegenie-runner._tcp`.
+///   4. Prints a pairing URL on stdout for the iOS app.
 ///
-/// In a shipping product this is a menu-bar app. For now it's a CLI so
-/// it builds and runs anywhere with the Swift toolchain.
-
+/// This is intentionally a CLI, not a packaged Mac app.
 @main
 struct Main {
     static func main() async throws {
@@ -19,11 +17,11 @@ struct Main {
         let server = try CompanionServer(port: port)
         let pairing = try await server.start()
         let qrPayload = "codegenie://pair?host=\(pairing.host)&port=\(pairing.port)&token=\(pairing.token)"
-        print("CodeGenie Companion ready.")
+        print("CodeGenie Terminal Runner ready.")
         print("Pairing URL: \(qrPayload)")
         print("Token: \(pairing.token)")
-        print("Use ⌃C to stop.")
-        // Keep the run loop alive — server is held by the task.
+        print("Use ^C to stop.")
+        // Keep the run loop alive; server is held by this task.
         try await Task.sleep(for: .seconds(60 * 60 * 24 * 365))
     }
 }

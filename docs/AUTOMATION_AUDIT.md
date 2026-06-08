@@ -29,18 +29,18 @@ requires account ownership or review responsibility.
   metadata, archives, and DerivedData.
 - Decision memory: searchable decisions across builds.
 
-## Mac-Assisted
+## Terminal-Assisted
 
-- Pairing: iPhone can pair with the local Mac companion over the local
+- Pairing: iPhone can pair with the local Mac Terminal runner over the local
   network.
-- Xcode/Safari: companion has commands to open Xcode projects and App
+- Xcode/Safari: Terminal runner has commands to open Xcode projects and App
   Store Connect pages.
-- App Store Connect fill: companion has a narrow
+- App Store Connect fill: Terminal runner has a narrow
   `app_store_connect.fill` command, but production use still needs the
-  iPhone flow to bind specific metadata fields to companion commands.
+  iPhone flow to bind specific metadata fields to runner commands.
 - Archive/export: Xcode signing and IPA export remain Mac-assisted until
   the paired Mac is signed into the user's Apple Developer account.
-- Screenshots: companion can capture displays; scripted simulator
+- Screenshots: Terminal runner can capture displays; scripted simulator
   walkthrough and App Store-size screenshot export are partially wired
   but still need production flow binding.
 
