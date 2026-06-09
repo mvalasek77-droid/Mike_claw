@@ -109,6 +109,13 @@ final class LocalBuildClient {
         case "building_ipa":          .buildingIPA
         case "packaging", "archiving": .buildingIPA
         case "completed", "succeeded": .readyForTest
+        case "patching":               .readyForTest
+        case "generating_icon":        .scaffolding
+        case "running_perfection":     .perfecting
+        case "generating_metadata":    .prepping
+        case "taking_screenshots":     .prepping
+        case "uploading_asc":          .prepping
+        case "submitting":             .shipping
         case "failed":                .failed
         default:                      .planning
         }

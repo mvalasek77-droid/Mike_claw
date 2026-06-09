@@ -326,7 +326,7 @@ struct BuildScreen: View {
                 jargonTip("Each row is one of the 8 AI agents working on your app — architect, coder, designer, tester. They run in order; the green dot is the current step.") {
                     jargonHelp = .pipeline
                 }
-                ForEach(BuildJob.Stage.allCases.filter { $0 != .failed && $0 != .shipping }, id: \.self) { s in
+                ForEach(BuildJob.Stage.allCases.filter { $0 != .failed && $0 != .shipping && $0 != .previewing && $0 != .perfecting && $0 != .prepping }, id: \.self) { s in
                     PipelineRow(stage: s, current: stage)
                 }
             }
@@ -1130,6 +1130,12 @@ struct BuildScreen: View {
             push(.info, time, "↪ xcodebuild archive -scheme App")
         case .readyForTest:
             push(.ok, time, "✓ build succeeded — .app ready")
+        case .previewing:
+            push(.info, time, "↪ previewing app in simulator")
+        case .perfecting:
+            push(.info, time, "↪ running perfection checks")
+        case .prepping:
+            push(.info, time, "↪ preparing App Store submission")
         case .shipping:
             push(.ok, time, "✓ archive uploaded to App Store Connect")
         case .failed:

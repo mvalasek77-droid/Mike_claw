@@ -486,6 +486,13 @@ final class SwarmClient: ObservableObject {
         case "building":               .generatingUI
         case "testing":                .linting
         case "reviewing":              .linting
+        case "patching":               .readyForTest
+        case "generating_icon":         .scaffolding
+        case "running_perfection":      .perfecting
+        case "generating_metadata":     .prepping
+        case "taking_screenshots":      .prepping
+        case "uploading_asc":           .prepping
+        case "submitting":              .shipping
         case "succeeded":              .readyForTest
         case "failed":                 .failed
         default:                       nil

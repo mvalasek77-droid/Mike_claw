@@ -68,6 +68,9 @@ struct BuildJob: Identifiable, Hashable {
         case linting       = "Linting & polish"
         case buildingIPA   = "Building IPA"
         case readyForTest  = "Ready to test"
+        case previewing    = "Previewing app"
+        case perfecting    = "Running perfection checks"
+        case prepping      = "Preparing App Store submission"
         case shipping      = "Ready to ship"
         case failed        = "Build failed"
 
@@ -80,6 +83,9 @@ struct BuildJob: Identifiable, Hashable {
             case .linting: 0.74
             case .buildingIPA: 0.88
             case .readyForTest: 0.96
+            case .previewing: 0.97
+            case .perfecting: 0.98
+            case .prepping: 0.99
             case .shipping: 1.0
             case .failed: 1.0
             }
@@ -94,6 +100,9 @@ struct BuildJob: Identifiable, Hashable {
             case .linting: "sparkles"
             case .buildingIPA: "hammer.fill"
             case .readyForTest: "play.circle.fill"
+            case .previewing: "eye.fill"
+            case .perfecting: "checkmark.shield.fill"
+            case .prepping: "doc.text.fill"
             case .shipping: "paperplane.fill"
             case .failed: "exclamationmark.triangle.fill"
             }
@@ -108,6 +117,9 @@ struct BuildJob: Identifiable, Hashable {
             case .linting:      "Polishing animations, accessibility, and dark mode."
             case .buildingIPA:  "Compiling the .app archive on remote Xcode."
             case .readyForTest: "Open the simulator preview to try it live."
+            case .previewing:   "Previewing your app in the simulator."
+            case .perfecting:   "Running ten thousand quality probes."
+            case .prepping:     "Generating metadata, screenshots, and packaging."
             case .shipping:     "Submission package ready for App Store Connect."
             case .failed:       "We hit a build error — let's diagnose."
             }
