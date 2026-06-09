@@ -42,12 +42,49 @@ final class Commands {
         case "app_store_connect.fill":
             return try await fillAppStoreConnect(payload: payload)
 
+        case "start_build":
+            return try await startBuild(payload: payload)
+
+        case "build_status":
+            return try await buildStatus(payload: payload)
+
+        case "push_to_github":
+            return try await pushToGithub(payload: payload)
+
         default:
             throw CmdError.bad("unknown command: \(type)")
         }
     }
 
-    // MARK: Helpers
+    // MARK: - Claw Build Commands
+
+    private func startBuild(payload: [String: Any]) async throws -> [String: Any] {
+        // Forward the app spec payload directly to Claw's /api/build
+        return try await ClawService.shared.startBuild(payload: payload)
+    }
+
+    private func buildStatus(payload: [String: Any]) async throws -> [String: Any] {
+        guard let jobID = payload["job_id"] as? String else {
+            throw CmdError.bad("job_id missing")
+        }
+        return try await ClawService.shared.buildStatus(jobID: jobID)
+    }
+
+    private func pushToGithub(payload: [String: Any]) async throws -> [String: Any] {
+        guard let jobID = payload["job_id"] as? String else {
+            throw CmdError.bad("job_id missing")
+        }
+        // Extract GitHub-specific fields from the payload; pass everything
+        // to ClawService which forwards them to the Claw server.
+        var githubPayload: [String: Any] = [:]
+        if let v = payload["repo_url"] as? String { githubPayload["repo_url"] = v }
+        if let v = payload["branch"] as? String { githubPayload["branch"] = v }
+        if let v = payload["commit_message"] as? String { githubPayload["commit_message"] = v }
+        if let v = payload["token"] as? String { githubPayload["token"] = v }
+        return try await ClawService.shared.pushToGithub(jobID: jobID, payload: githubPayload)
+    }
+
+    // MARK: - Helpers
 
     private func requireExists(_ path: String) throws {
         var isDir: ObjCBool = false

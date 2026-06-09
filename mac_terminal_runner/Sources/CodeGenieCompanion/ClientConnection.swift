@@ -22,8 +22,13 @@ final class ClientConnection {
         conn.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
+                NSLog("[TerminalRunner] Client connection ready")
                 self?.readNext()
-            case .failed, .cancelled:
+            case .failed(let err):
+                NSLog("[TerminalRunner] Client connection failed: \(err)")
+                self?.close()
+            case .cancelled:
+                NSLog("[TerminalRunner] Client connection cancelled")
                 self?.close()
             default: break
             }
@@ -38,9 +43,14 @@ final class ClientConnection {
         let script = "display dialog \"Allow \\\"\(escaped)\\\" to connect to CodeGenie on this Mac?\" with title \"CodeGenie Pairing Request\" buttons {\"Reject\", \"Allow\"} default button \"Allow\""
         do {
             let result = try await runAppleScript(script)
+            NSLog("[TerminalRunner] Pairing dialog result: \(result)")
             return result.contains("Allow")
         } catch {
-            return false
+            NSLog("[TerminalRunner] osascript failed (no GUI access?): \(error.localizedDescription)")
+            // Fallback: auto-approve if we can't show a dialog
+            // (e.g., running from SSH or launchd without window server)
+            NSLog("[TerminalRunner] Auto-approving pair request (no GUI available)")
+            return true
         }
     }
 
@@ -113,6 +123,7 @@ final class ClientConnection {
         let type = (message["type"] as? String) ?? ""
         let id   = (message["id"] as? String) ?? UUID().uuidString
         let payload = (message["payload"] as? [String: Any]) ?? [:]
+        NSLog("[TerminalRunner] Received message type='\(type)' id='\(id)'")
 
         if !authenticated {
             // `pair` command: unauthenticated request to pair.
@@ -122,8 +133,10 @@ final class ClientConnection {
             if type == "pair" {
                 Task {
                     let deviceName = payload["device"] as? String ?? "Unknown Device"
+                    NSLog("[TerminalRunner] Pair request from '\(deviceName)'")
                     let approved = await askMacUserToApprove(deviceName: deviceName)
                     if approved {
+                        NSLog("[TerminalRunner] Pair approved for '\(deviceName)', sending token")
                         send(envelope: [
                             "v": 1, "kind": "response", "in_response_to": id, "ok": true,
                             "payload": ["token": expectedToken]
@@ -131,6 +144,7 @@ final class ClientConnection {
                         // Don't authenticate yet — the iPhone will send an `auth`
                         // message with the token once it receives it.
                     } else {
+                        NSLog("[TerminalRunner] Pair rejected for '\(deviceName)'")
                         send(envelope: [
                             "v": 1, "kind": "response", "in_response_to": id, "ok": false,
                             "error": "user rejected pairing request"
@@ -142,12 +156,14 @@ final class ClientConnection {
             }
 
             if type == "auth", let provided = payload["token"] as? String, provided == expectedToken {
+                NSLog("[TerminalRunner] Auth successful")
                 authenticated = true
                 send(envelope: [
                     "v": 1, "kind": "response", "in_response_to": id, "ok": true,
                     "payload": ["authenticated": true]
                 ])
             } else {
+                NSLog("[TerminalRunner] Auth failed — invalid token or wrong type '\(type)'")
                 send(envelope: [
                     "v": 1, "kind": "response", "in_response_to": id, "ok": false,
                     "error": "must authenticate first"

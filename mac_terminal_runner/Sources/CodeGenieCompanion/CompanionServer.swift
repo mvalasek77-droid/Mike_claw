@@ -105,10 +105,12 @@ public final class CompanionServer {
         var address: String?
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else {
+            NSLog("[TerminalRunner] getifaddrs failed, falling back to 127.0.0.1")
             return "127.0.0.1"
         }
         defer { freeifaddrs(ifaddr) }
 
+        var foundEn0 = false
         var ptr: UnsafeMutablePointer<ifaddrs>? = firstAddr
         while let current = ptr {
             let interface = current.pointee
@@ -130,18 +132,23 @@ public final class CompanionServer {
                            &hostname, socklen_t(hostname.count),
                            nil, 0, NI_NUMERICHOST) == 0 {
                 let ip = String(cString: hostname)
-                // Prefer en0 (Wi-Fi), but accept any non-loopback interface
+                // Prefer en0 (Wi-Fi)
                 if name == "en0" {
+                    NSLog("[TerminalRunner] Found LAN IP on en0: \(ip)")
+                    foundEn0 = true
                     return ip
                 }
                 if address == nil {
                     address = ip
+                    NSLog("[TerminalRunner] Found candidate IP on \(name): \(ip)")
                 }
             }
 
             ptr = current.pointee.ifa_next
         }
-        return address ?? "127.0.0.1"
+        let result = address ?? "127.0.0.1"
+        NSLog("[TerminalRunner] Using LAN IP: \(result)")
+        return result
     }
 }
 
