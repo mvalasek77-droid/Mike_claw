@@ -553,5 +553,4 @@ struct GithubPushResult {
 extension AppSpec {
     var model: String { "" }
     var authMode: String { "" }
-    var apiKey: String { "" }
 }

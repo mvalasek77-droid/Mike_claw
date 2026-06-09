@@ -745,6 +745,7 @@ struct AppSpec: Hashable {
     var style: String = "liquidGlass"
     var targetIOS: String = "17.0"
     var features: [String] = []
+    var apiKey: String = ""
 }
 
 extension AppSpec {

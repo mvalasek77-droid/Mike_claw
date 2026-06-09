@@ -770,7 +770,9 @@ struct BuildScreen: View {
             if let backendID = attachToBackendID {
                 id = backendID
             } else {
-                id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+                var spec = AppSpec(initialJob.description)
+                spec.apiKey = Credentials.shared.anthropicKey
+                id = try await swarm.startBuild(spec: spec)
                 // Persist the backend ID so we can resume if the app is killed
                 session.currentJobBackendID = id
             }
@@ -809,8 +811,11 @@ struct BuildScreen: View {
     /// Polls for status updates and drives the UI stages.
     private func runLocalClawBuild() async {
         let client = LocalBuildClient(bridge: bridge)
-        let spec = AppSpec(initialJob.description)
-
+        let spec = {
+            var s = AppSpec(initialJob.description)
+            s.apiKey = Credentials.shared.anthropicKey
+            return s
+        }()
         push(.info, formattedTime(), "↪ sending build to paired Mac…")
         do {
             let finalResult = try await client.runBuildToCompletion(spec: spec) { newStage in
@@ -858,7 +863,9 @@ struct BuildScreen: View {
             if let backendID = attachToBackendID {
                 id = backendID
             } else {
-                id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+                var spec = AppSpec(initialJob.description)
+                spec.apiKey = Credentials.shared.anthropicKey
+                id = try await swarm.startBuild(spec: spec)
                 session.currentJobBackendID = id
             }
             swarm.openStream(jobID: id) { event in
