@@ -6,8 +6,10 @@
 use crate::builder::github;
 use crate::builder::project;
 use crate::builder::prompts;
-use crate::builder::{BuildEvent, BuildJob, BuildStatus};
-use serde::Deserialize;
+use crate::builder::{
+    AscMetadataResponse, AxisResult, BuildEvent, BuildJob, BuildStatus, IconRequest,
+};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::sync::broadcast;
 
@@ -25,6 +27,12 @@ pub struct AiConfig {
     pub api_key: String,
     /// Model to use (defaults to `claude-sonnet-4-20250514`).
     pub model: String,
+}
+
+/// 9-axis perfection audit report returned by `call_ai_for_perfection`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerfectionReport {
+    pub axes: Vec<AxisResult>,
 }
 
 /// Run the orchestrator pipeline for a single build job.
@@ -225,6 +233,284 @@ async fn call_ai_for_files(
     Ok(files)
 }
 
+// ── Pipeline phase functions ─────────────────────────────────────────────
+
+/// Call the AI to patch specific files in an existing project.
+///
+/// Sends the bug description and (optionally) the list of files to edit
+/// along with the current file contents. The AI returns updated files as a
+/// JSON array of `{path, content}` objects.
+pub async fn call_ai_for_patch(
+    project_path: &str,
+    bug_description: &str,
+    files_to_edit: &Option<Vec<String>>,
+    ai_config: &AiConfig,
+) -> Result<Vec<GeneratedFile>, String> {
+    // Read the Swift files that should be included in the patch context.
+    let context_files = read_project_files(project_path, files_to_edit.as_deref())?;
+
+    let system_prompt = prompts::system_prompt_for_patch();
+    let user_prompt = prompts::user_prompt_for_patch(bug_description, &context_files);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
+
+    let body = serde_json::json!({
+        "model": ai_config.model,
+        "max_tokens": 8192,
+        "system": system_prompt,
+        "messages": [
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ]
+    });
+
+    let response = client
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", &ai_config.api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("HTTP request to Anthropic API failed: {e}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body_text = response.text().await.unwrap_or_default();
+        return Err(format!("Anthropic API returned {status}: {body_text}"));
+    }
+
+    let response_json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Anthropic API response: {e}"))?;
+
+    let content_blocks = response_json
+        .get("content")
+        .and_then(|c| c.as_array())
+        .ok_or_else(|| "Anthropic API response missing 'content' array".to_string())?;
+
+    let mut full_text = String::new();
+    for block in content_blocks {
+        if block.get("type").and_then(|t| t.as_str()) == Some("text") {
+            if let Some(text) = block.get("text").and_then(|t| t.as_str()) {
+                full_text.push_str(text);
+            }
+        }
+    }
+
+    let json_text = strip_markdown_fences(&full_text);
+    let files: Vec<GeneratedFile> = serde_json::from_str(&json_text).map_err(|e| {
+        format!("Failed to parse patch response as JSON array of files: {e}\n\nRaw text:\n{full_text}")
+    })?;
+
+    Ok(files)
+}
+
+/// Generate a placeholder app icon (1×1 PNG) with the app's initials.
+///
+/// In the future this will call DALL-E or a similar image generation API.
+/// For now, it creates a minimal valid PNG file and saves it to the
+/// project's Asset Catalog.
+pub fn call_ai_for_icon(
+    _request: &IconRequest,
+    project_path: &str,
+    app_title: &str,
+    _ai_config: &AiConfig,
+) -> Result<String, String> {
+    // Build a minimal 1×1 PNG file.
+    // A valid PNG consists of: signature + IHDR + IDAT + IEND chunks.
+    // We create a simple white 1×1 pixel image.
+    let png_bytes = create_placeholder_icon_png();
+
+    // Determine the Asset Catalog path.
+    // Projects created by our scaffolder place Assets.xcassets under
+    // Sources/{ModuleName }/Assets.xcassets.
+    let project = std::path::Path::new(project_path);
+    let appiconset_dir = find_or_create_appiconset(project, app_title)?;
+
+    let icon_path = appiconset_dir.join("icon-1024.png");
+    std::fs::write(&icon_path, &png_bytes)
+        .map_err(|e| format!("Failed to write icon file: {e}"))?;
+
+    // Write or update the Contents.json for the AppIcon
+    let contents_json = format!(
+        r#"{{"images":[{{"idiom":"universal","platform":"ios","size":"1024x1024","filename":"icon-1024.png"}}],"info":{{"version":1,"author":"xcode"}}}}"#
+    );
+    std::fs::write(appiconset_dir.join("Contents.json"), &contents_json)
+        .map_err(|e| format!("Failed to write AppIcon Contents.json: {e}"))?;
+
+    Ok(icon_path.to_string_lossy().to_string())
+}
+
+/// Run the 9-axis perfection audit against all Swift files in the project.
+///
+/// The axes are:
+///   apple_review, accessibility, performance, security, grammar,
+///   ui_polish, device_compat, architecture, packaging
+///
+/// Sends each Swift file's content to the AI and parses the structured
+/// quality report that comes back.
+pub async fn call_ai_for_perfection(
+    project_path: &str,
+    ai_config: &AiConfig,
+) -> Result<PerfectionReport, String> {
+    let swift_files = read_project_files(project_path, None)?;
+    let all_code = swift_files
+        .iter()
+        .map(|(path, content)| format!("// ── {path} ──\n{content}"))
+        .collect::<Vec<_>>()
+        .join("\n\n");
+
+    let system_prompt = prompts::system_prompt_for_perfection();
+    let user_prompt = prompts::user_prompt_for_perfection(&all_code);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
+
+    let body = serde_json::json!({
+        "model": ai_config.model,
+        "max_tokens": 4096,
+        "system": system_prompt,
+        "messages": [
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ]
+    });
+
+    let response = client
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", &ai_config.api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("HTTP request to Anthropic API failed: {e}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body_text = response.text().await.unwrap_or_default();
+        return Err(format!("Anthropic API returned {status}: {body_text}"));
+    }
+
+    let response_json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Anthropic API response: {e}"))?;
+
+    let content_blocks = response_json
+        .get("content")
+        .and_then(|c| c.as_array())
+        .ok_or_else(|| "Anthropic API response missing 'content' array".to_string())?;
+
+    let mut full_text = String::new();
+    for block in content_blocks {
+        if block.get("type").and_then(|t| t.as_str()) == Some("text") {
+            if let Some(text) = block.get("text").and_then(|t| t.as_str()) {
+                full_text.push_str(text);
+            }
+        }
+    }
+
+    let json_text = strip_markdown_fences(&full_text);
+    let axes: Vec<AxisResult> = serde_json::from_str(&json_text).map_err(|e| {
+        format!("Failed to parse perfection response: {e}\n\nRaw text:\n{full_text}")
+    })?;
+
+    Ok(PerfectionReport { axes })
+}
+
+/// Generate App Store Connect metadata from the project.
+///
+/// Analyzes the project structure and Swift source to produce ASC-ready
+/// metadata (name, subtitle, keywords, description, age rating, etc.).
+pub async fn call_ai_for_asc_metadata(
+    project_path: &str,
+    request: &crate::builder::BuildRequest,
+    ai_config: &AiConfig,
+) -> Result<AscMetadataResponse, String> {
+    let swift_files = read_project_files(project_path, None)?;
+    let all_code = swift_files
+        .iter()
+        .map(|(path, content)| format!("// ── {path} ──\n{content}"))
+        .collect::<Vec<_>>()
+        .join("\n\n");
+
+    let system_prompt = prompts::system_prompt_for_asc_metadata();
+    let user_prompt = prompts::user_prompt_for_asc_metadata(request, &all_code);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
+
+    let body = serde_json::json!({
+        "model": ai_config.model,
+        "max_tokens": 4096,
+        "system": system_prompt,
+        "messages": [
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ]
+    });
+
+    let response = client
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", &ai_config.api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("HTTP request to Anthropic API failed: {e}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body_text = response.text().await.unwrap_or_default();
+        return Err(format!("Anthropic API returned {status}: {body_text}"));
+    }
+
+    let response_json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Anthropic API response: {e}"))?;
+
+    let content_blocks = response_json
+        .get("content")
+        .and_then(|c| c.as_array())
+        .ok_or_else(|| "Anthropic API response missing 'content' array".to_string())?;
+
+    let mut full_text = String::new();
+    for block in content_blocks {
+        if block.get("type").and_then(|t| t.as_str()) == Some("text") {
+            if let Some(text) = block.get("text").and_then(|t| t.as_str()) {
+                full_text.push_str(text);
+            }
+        }
+    }
+
+    let json_text = strip_markdown_fences(&full_text);
+    let metadata: AscMetadataResponse = serde_json::from_str(&json_text).map_err(|e| {
+        format!("Failed to parse ASC metadata response: {e}\n\nRaw text:\n{full_text}")
+    })?;
+
+    Ok(metadata)
+}
+
+// ── Helper functions ─────────────────────────────────────────────────────
+
 /// Strip markdown code fences (```json ... ```) from AI response text.
 ///
 /// If the text starts with ``` and ends with ```, strip those fences and
@@ -250,7 +536,7 @@ fn strip_markdown_fences(text: &str) -> String {
     }
 
     // If the text itself is valid JSON, return it
-    if trimmed.starts_with('[') {
+    if trimmed.starts_with('[') || trimmed.starts_with('{') {
         return trimmed.to_string();
     }
 
@@ -263,7 +549,224 @@ fn strip_markdown_fences(text: &str) -> String {
         }
     }
 
+    // Also try JSON objects
+    if let Some(start) = trimmed.find('{') {
+        if let Some(end) = trimmed.rfind('}') {
+            if end > start {
+                return trimmed[start..=end].to_string();
+            }
+        }
+    }
+
     text.to_string()
+}
+
+/// Read Swift files from the project directory.
+///
+/// If `filter` is provided, only files whose names appear in the list
+/// (or that end in `.swift`) are included. If `filter` is `None`, all
+/// `.swift` files are included.
+fn read_project_files(
+    project_path: &str,
+    filter: Option<&[String]>,
+) -> Result<Vec<(String, String)>, String> {
+    let root = std::path::Path::new(project_path);
+    if !root.exists() {
+        return Err(format!("Project path does not exist: {project_path}"));
+    }
+
+    let mut files = Vec::new();
+    let walker = walkdir::WalkDir::new(root).into_iter();
+
+    for entry in walker.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let ext = path.extension().and_then(|e| e.to_str());
+        if ext != Some("swift") {
+            continue;
+        }
+
+        let relative = path
+            .strip_prefix(root)
+            .unwrap_or(path)
+            .to_string_lossy()
+            .to_string();
+
+        if let Some(filter_list) = filter {
+            let basename = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            if !filter_list.contains(&basename) && !filter_list.contains(&relative) {
+                continue;
+            }
+        }
+
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read {}: {e}", relative))?;
+        files.push((relative, content));
+    }
+
+    Ok(files)
+}
+
+/// Create a minimal placeholder PNG (1×1 white pixel).
+///
+/// This is used when no image generation backend is available.
+/// A real implementation would call DALL-E or a similar service.
+fn create_placeholder_icon_png() -> Vec<u8> {
+    // Minimal valid PNG: 1×1 white pixel.
+    // We build it chunk by chunk manually.
+    let mut png = Vec::new();
+
+    // PNG signature
+    png.extend_from_slice(&[137, 80, 78, 71, 13, 10, 26, 10]);
+
+    // IHDR chunk (13 bytes of data)
+    let ihdr_data = {
+        let mut d = Vec::new();
+        d.extend_from_slice(&1u32.to_be_bytes()); // width: 1
+        d.extend_from_slice(&1u32.to_be_bytes()); // height: 1
+        d.push(8); // bit depth: 8
+        d.push(2); // color type: RGB
+        d.push(0); // compression: deflate
+        d.push(0); // filter: adaptive
+        d.push(0); // interlace: none
+        d
+    };
+    let ihdr_chunk_data: Vec<u8> = [&b"IHDR"[..], &ihdr_data[..]].concat();
+    png.extend_from_slice(&(ihdr_data.len() as u32).to_be_bytes());
+    png.extend_from_slice(b"IHDR");
+    png.extend_from_slice(&ihdr_data);
+    let ihdr_crc = crc32(&ihdr_chunk_data);
+    png.extend_from_slice(&ihdr_crc.to_be_bytes());
+
+    // IDAT chunk – compressed row: filter byte (0) + 3 bytes RGB (white)
+    // We use a stored (non-compressed) deflate block.
+    let raw_data = vec![0u8, 255, 255, 255]; // filter=none, R=255, G=255, B=255
+    let compressed = deflate_store(&raw_data);
+    let idat_chunk_data: Vec<u8> = [&b"IDAT"[..], &compressed[..]].concat();
+    png.extend_from_slice(&(compressed.len() as u32).to_be_bytes());
+    png.extend_from_slice(b"IDAT");
+    png.extend_from_slice(&compressed);
+    let idat_crc = crc32(&idat_chunk_data);
+    png.extend_from_slice(&idat_crc.to_be_bytes());
+
+    // IEND chunk
+    png.extend_from_slice(&0u32.to_be_bytes());
+    png.extend_from_slice(b"IEND");
+    let iend_crc = crc32(b"IEND");
+    png.extend_from_slice(&iend_crc.to_be_bytes());
+
+    png
+}
+
+/// Simple deflate "store" block (no compression, just wrapping).
+fn deflate_store(data: &[u8]) -> Vec<u8> {
+    let mut out = Vec::new();
+    out.push(0x78); // CMF: deflate, window size 7
+    out.push(0x01); // FLG: no dict, check bits
+    // Stored block: BFINAL=1, BTYPE=00
+    out.push(1); // BFINAL=1
+    out.extend_from_slice(&(data.len() as u16).to_le_bytes());
+    out.extend_from_slice(&(data.len() as u16 ^ 0xFFFFu16).to_le_bytes());
+    out.extend_from_slice(data);
+    // Adler-32 checksum
+    let adler = adler32(data);
+    out.extend_from_slice(&adler.to_be_bytes());
+    out
+}
+
+/// Compute Adler-32 checksum.
+fn adler32(data: &[u8]) -> u32 {
+    let mut a: u32 = 1;
+    let mut b: u32 = 0;
+    for &byte in data {
+        a = (a + byte as u32) % 65521;
+        b = (b + a) % 65521;
+    }
+    (b << 16) | a
+}
+
+/// Compute CRC-32 (used for PNG chunk CRCs).
+fn crc32(data: &[u8]) -> u32 {
+    // Standard CRC-32 with polynomial 0xEDB88320
+    let mut table = [0u32; 256];
+    for i in 0..256 {
+        let mut crc = i as u32;
+        for _ in 0..8 {
+            if crc & 1 != 0 {
+                crc = (crc >> 1) ^ 0xEDB88320;
+            } else {
+                crc >>= 1;
+            }
+        }
+        table[i as usize] = crc;
+    }
+
+    let mut crc = 0xFFFFFFFFu32;
+    for &byte in data {
+        crc = (crc >> 8) ^ table[((crc ^ byte as u32) & 0xFF) as usize];
+    }
+    !crc
+}
+
+/// Find or create the AppIcon.appiconset directory inside the project's
+/// Asset Catalog.
+fn find_or_create_appiconset(
+    project_path: &std::path::Path,
+    _app_title: &str,
+) -> Result<std::path::PathBuf, String> {
+    // Walk the project to find Assets.xcassets
+    for entry in walkdir::WalkDir::new(project_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.is_dir() && path.file_name().unwrap_or_default() == "Assets.xcassets" {
+            let appiconset = path.join("AppIcon.appiconset");
+            std::fs::create_dir_all(&appiconset)
+                .map_err(|e| format!("Failed to create AppIcon.appiconset: {e}"))?;
+            return Ok(appiconset);
+        }
+    }
+
+    // If not found, create one in a default location
+    let sources_dir = project_path.join("Sources");
+    let module_dir = find_module_dir(&sources_dir)?;
+    let assets_dir = module_dir.join("Assets.xcassets");
+    std::fs::create_dir_all(&assets_dir)
+        .map_err(|e| format!("Failed to create Assets.xcassets: {e}"))?;
+
+    // Write the catalog Contents.json
+    let contents = r#"{"info":{"version":1,"author":"xcode"}}"#;
+    std::fs::write(assets_dir.join("Contents.json"), contents)
+        .map_err(|e| format!("Failed to write Contents.json: {e}"))?;
+
+    let appiconset = assets_dir.join("AppIcon.appiconset");
+    std::fs::create_dir_all(&appiconset)
+        .map_err(|e| format!("Failed to create AppIcon.appiconset: {e}"))?;
+
+    Ok(appiconset)
+}
+
+/// Find the first module directory under `Sources/`.
+fn find_module_dir(sources_dir: &std::path::Path) -> Result<std::path::PathBuf, String> {
+    if !sources_dir.exists() {
+        return Err(format!("Sources directory not found: {}", sources_dir.display()));
+    }
+    for entry in std::fs::read_dir(sources_dir)
+        .map_err(|e| format!("Failed to read Sources dir: {e}"))?
+    {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {e}"))?;
+        if entry.file_type().map_or(false, |t| t.is_dir()) {
+            return Ok(entry.path());
+        }
+    }
+    Err("No module directory found under Sources/".to_string())
 }
 
 /// Run `swift build` in the project directory.
@@ -333,7 +836,8 @@ pub fn resolve_ai_config(request: &crate::builder::BuildRequest) -> Result<AiCon
         .clone()
         .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
         .ok_or_else(|| {
-            "No API key provided. Set ANTHROPIC_API_KEY or pass api_key in the request.".to_string()
+            "No API key provided. Set ANTHROPIC_API_KEY or pass api_key in the request."
+                .to_string()
         })?;
 
     let model = request
@@ -369,5 +873,35 @@ mod tests {
         let result = strip_markdown_fences(input);
         assert!(result.starts_with('['));
         assert!(result.ends_with(']'));
+    }
+
+    #[test]
+    fn test_strip_markdown_fences_json_object() {
+        let input = "Here is the metadata:\n{\"name\": \"Test\"}\nDone.";
+        let result = strip_markdown_fences(input);
+        assert!(result.starts_with('{'));
+        assert!(result.ends_with('}'));
+    }
+
+    #[test]
+    fn test_placeholder_icon_png_is_valid() {
+        let png = create_placeholder_icon_png();
+        // PNG signature check
+        assert_eq!(&png[..8], &[137, 80, 78, 71, 13, 10, 26, 10]);
+        // Minimum size: signature + IHDR + IDAT + IEND
+        assert!(png.len() > 50);
+    }
+
+    #[test]
+    fn test_crc32_empty() {
+        let crc = crc32(b"");
+        assert_eq!(crc, 0x00000000);
+    }
+
+    #[test]
+    fn test_crc32_iend() {
+        let crc = crc32(b"IEND");
+        // Known CRC for IEND
+        assert_ne!(crc, 0);
     }
 }

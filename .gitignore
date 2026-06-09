@@ -12,3 +12,5 @@ codegenie-*-check.png
 .venv/
 .venv*/
 venv/
+.claude/
+target/

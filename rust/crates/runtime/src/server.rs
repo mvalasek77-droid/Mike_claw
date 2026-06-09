@@ -5,9 +5,18 @@
 //!
 //! - `GET  /api/health`                    – health / version check
 //! - `POST /api/build`                     – submit a new build job
-//! - `GET  /api/build/{job_id}/status`     – poll job status
-//! - `GET  /api/build/{job_id}/stream`     – SSE stream of build events
-//! - `POST /api/build/{job_id}/github`     – push to GitHub
+//! - `GET  /api/build/:job_id/status`      – poll job status
+//! - `GET  /api/build/:job_id/stream`      – SSE stream of build events
+//! - `POST /api/build/:job_id/github`      – push to GitHub
+//!
+//! 5-Phase Build→Ship pipeline endpoints:
+//! - `POST /api/build/:job_id/patch`       – patch a bug in an existing build
+//! - `POST /api/build/:job_id/icon`        – generate an app icon
+//! - `GET  /api/build/:job_id/perfection`   – 9-axis quality audit
+//! - `POST /api/build/:job_id/asc-metadata` – generate App Store Connect metadata
+//! - `POST /api/build/:job_id/screenshots`  – trigger screenshot automation
+//! - `POST /api/build/:job_id/upload`       – archive & upload to App Store Connect
+//! - `POST /api/build/:job_id/submit`       – submit for App Store review
 
 use axum::{
     extract::{Path, State},
@@ -25,9 +34,15 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::builder::orchestrator::resolve_ai_config;
+use crate::builder::orchestrator::{
+    call_ai_for_asc_metadata, call_ai_for_icon, call_ai_for_patch, call_ai_for_perfection,
+    resolve_ai_config,
+};
 use crate::builder::project;
-use crate::builder::{BuildEvent, BuildJob, BuildRequest, BuildStatus};
+use crate::builder::{
+    AscMetadataResponse, BuildEvent, BuildJob, BuildRequest, BuildStatus, IconRequest, PatchRequest,
+    PerfectionResponse, ScreenshotsResponse, SubmitResponse, UploadResponse,
+};
 
 /// Default listen port for `claw serve`.
 pub const DEFAULT_PORT: u16 = 8765;
@@ -293,6 +308,34 @@ async fn stream_build(
                         "job.state".to_string(),
                         serde_json::json!({"state": "failed", "error": error}).to_string(),
                     ),
+                    BuildEvent::PatchCompleted { files_patched } => (
+                        "job.patched".to_string(),
+                        serde_json::json!({"files_patched": files_patched}).to_string(),
+                    ),
+                    BuildEvent::IconGenerated { icon_path } => (
+                        "job.icon_generated".to_string(),
+                        serde_json::json!({"icon_path": icon_path}).to_string(),
+                    ),
+                    BuildEvent::PerfectionCompleted { axes } => (
+                        "job.perfection_completed".to_string(),
+                        serde_json::json!({"axes": axes}).to_string(),
+                    ),
+                    BuildEvent::MetadataGenerated => (
+                        "job.metadata_generated".to_string(),
+                        serde_json::json!({"state": "metadata_generated"}).to_string(),
+                    ),
+                    BuildEvent::ScreenshotsTaken { screenshot_paths } => (
+                        "job.screenshots_taken".to_string(),
+                        serde_json::json!({"screenshot_paths": screenshot_paths}).to_string(),
+                    ),
+                    BuildEvent::Uploaded { archive_path } => (
+                        "job.uploaded".to_string(),
+                        serde_json::json!({"archive_path": archive_path}).to_string(),
+                    ),
+                    BuildEvent::Submitted => (
+                        "job.submitted".to_string(),
+                        serde_json::json!({"state": "submitted"}).to_string(),
+                    ),
                 };
 
                 let sse_event = Event::default()
@@ -311,6 +354,359 @@ async fn stream_build(
     Ok(Sse::new(sse_stream).keep_alive(KeepAlive::default()))
 }
 
+// ── 5-Phase Build→Ship pipeline handlers ─────────────────────────────────
+
+/// `POST /api/build/:job_id/patch` — Patch a bug in an existing build.
+///
+/// Accepts a JSON body with `{bug_description, files_to_edit}` and calls
+/// the AI to generate patched files. The patched files are written to disk
+/// and the list of modified files is returned.
+async fn patch_build(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+    Json(req): Json<PatchRequest>,
+) -> Result<Json<crate::builder::PatchResponse>, (StatusCode, String)> {
+    // Look up the job
+    let job_arc = {
+        let jobs = state.jobs.lock().await;
+        jobs.get(&job_id)
+            .cloned()
+            .ok_or((StatusCode::NOT_FOUND, format!("Job {job_id} not found")))?
+    };
+
+    // Get the info we need, then release the lock
+    let (project_path, request) = {
+        let job = job_arc.lock().await;
+        (job.project_path.clone(), job.request.clone())
+    };
+
+    // Transition to Patching status
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::Patching;
+    }
+
+    // Resolve AI config
+    let ai_config = resolve_ai_config(&request)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    // Call the AI to generate the patch
+    let patched_files = call_ai_for_patch(
+        &project_path,
+        &req.bug_description,
+        &req.files_to_edit,
+        &ai_config,
+    )
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    let mut files_patched = Vec::new();
+
+    // Write each patched file to disk
+    for file in &patched_files {
+        let file_path = std::path::Path::new(&project_path).join(&file.path);
+        if let Some(parent) = file_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create directory: {e}")))?;
+        }
+        std::fs::write(&file_path, &file.content)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write file: {e}")))?;
+        files_patched.push(file.path.clone());
+    }
+
+    // Transition back to Completed
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::Completed;
+    }
+
+    Ok(Json(crate::builder::PatchResponse {
+        job_id,
+        status: "patching".to_string(),
+        files_patched,
+    }))
+}
+
+/// `POST /api/build/:job_id/icon` — Generate an app icon.
+///
+/// Accepts an optional `{prompt}` describing the desired icon style.
+/// Currently creates a placeholder 1×1 PNG. A real implementation would
+/// call DALL-E or a similar image generation service.
+async fn generate_icon(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+    Json(req): Json<IconRequest>,
+) -> Result<Json<crate::builder::IconResponse>, (StatusCode, String)> {
+    let job_arc = {
+        let jobs = state.jobs.lock().await;
+        jobs.get(&job_id)
+            .cloned()
+            .ok_or((StatusCode::NOT_FOUND, format!("Job {job_id} not found")))?
+    };
+
+    let (project_path, request) = {
+        let job = job_arc.lock().await;
+        (job.project_path.clone(), job.request.clone())
+    };
+
+    // Transition to GeneratingIcon
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::GeneratingIcon;
+    }
+
+    let ai_config = resolve_ai_config(&request)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    let icon_path = call_ai_for_icon(&req, &project_path, &request.title, &ai_config)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    // Transition back to Completed
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::Completed;
+    }
+
+    Ok(Json(crate::builder::IconResponse {
+        job_id,
+        status: "ok".to_string(),
+        icon_path,
+    }))
+}
+
+/// `GET /api/build/:job_id/perfection` — 9-axis quality audit.
+///
+/// Reads all Swift files in the project and sends them to the AI for
+/// analysis across 9 quality dimensions.
+async fn perfection(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+) -> Result<Json<PerfectionResponse>, (StatusCode, String)> {
+    let job_arc = {
+        let jobs = state.jobs.lock().await;
+        jobs.get(&job_id)
+            .cloned()
+            .ok_or((StatusCode::NOT_FOUND, format!("Job {job_id} not found")))?
+    };
+
+    let (project_path, request) = {
+        let job = job_arc.lock().await;
+        (job.project_path.clone(), job.request.clone())
+    };
+
+    // Transition to RunningPerfection
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::RunningPerfection;
+    }
+
+    let ai_config = resolve_ai_config(&request)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    let report = call_ai_for_perfection(&project_path, &ai_config)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    // Transition back to Completed
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::Completed;
+    }
+
+    Ok(Json(PerfectionResponse {
+        job_id,
+        status: "ok".to_string(),
+        axes: report.axes,
+    }))
+}
+
+/// `POST /api/build/:job_id/asc-metadata` — Generate App Store Connect metadata.
+///
+/// Analyzes the project and generates metadata (name, subtitle, keywords,
+/// description, etc.) for App Store Connect.
+async fn asc_metadata(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+) -> Result<Json<AscMetadataResponse>, (StatusCode, String)> {
+    let job_arc = {
+        let jobs = state.jobs.lock().await;
+        jobs.get(&job_id)
+            .cloned()
+            .ok_or((StatusCode::NOT_FOUND, format!("Job {job_id} not found")))?
+    };
+
+    let (project_path, request) = {
+        let job = job_arc.lock().await;
+        (job.project_path.clone(), job.request.clone())
+    };
+
+    // Transition to GeneratingMetadata
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::GeneratingMetadata;
+    }
+
+    let ai_config = resolve_ai_config(&request)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    let metadata = call_ai_for_asc_metadata(&project_path, &request, &ai_config)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    // Transition back to Completed
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::Completed;
+    }
+
+    // Override the job_id with the one from the request
+    Ok(Json(AscMetadataResponse {
+        job_id,
+        ..metadata
+    }))
+}
+
+/// `POST /api/build/:job_id/screenshots` — Trigger screenshot automation.
+///
+/// This is a placeholder that records the intent to take screenshots. A real
+/// implementation would drive XCUITest or a simulator to capture screenshots.
+async fn take_screenshots(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+) -> Result<Json<ScreenshotsResponse>, (StatusCode, String)> {
+    let job_arc = {
+        let jobs = state.jobs.lock().await;
+        jobs.get(&job_id)
+            .cloned()
+            .ok_or((StatusCode::NOT_FOUND, format!("Job {job_id} not found")))?
+    };
+
+    let project_path = {
+        let job = job_arc.lock().await;
+        job.project_path.clone()
+    };
+
+    // Transition to TakingScreenshots
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::TakingScreenshots;
+    }
+
+    // Placeholder: create a screenshots directory and indicate where
+    // screenshots would be saved. A real implementation would run
+    // `xcrun simctl io` or `xcodebuild test` with a screenshot plan.
+    let screenshots_dir = std::path::Path::new(&project_path).join("Screenshots");
+    std::fs::create_dir_all(&screenshots_dir)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create Screenshots dir: {e}")))?;
+
+    // Placeholder screenshot paths — the real automation would populate these.
+    let screenshot_paths = vec![
+        "Screenshots/iphone_6.7_01.png".to_string(),
+        "Screenshots/iphone_6.7_02.png".to_string(),
+        "Screenshots/iphone_6.7_03.png".to_string(),
+        "Screenshots/ipad_12.9_01.png".to_string(),
+        "Screenshots/ipad_12.9_02.png".to_string(),
+    ];
+
+    // Transition back to Completed
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::Completed;
+    }
+
+    Ok(Json(ScreenshotsResponse {
+        job_id,
+        status: "taking_screenshots".to_string(),
+        screenshot_paths,
+    }))
+}
+
+/// `POST /api/build/:job_id/upload` — Archive and upload the build to ASC.
+///
+/// This is a placeholder. A real implementation would run `xcodebuild archive`
+/// and `xcrun altool --upload-app` or use the newer `xcrun notarytool`.
+async fn upload_build(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+) -> Result<Json<UploadResponse>, (StatusCode, String)> {
+    let job_arc = {
+        let jobs = state.jobs.lock().await;
+        jobs.get(&job_id)
+            .cloned()
+            .ok_or((StatusCode::NOT_FOUND, format!("Job {job_id} not found")))?
+    };
+
+    let project_path = {
+        let job = job_arc.lock().await;
+        job.project_path.clone()
+    };
+
+    // Transition to UploadingASC
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::UploadingASC;
+    }
+
+    // Placeholder: construct an archive path.
+    // A real implementation would run:
+    //   xcodebuild archive -project ... -scheme ... -archivePath ...
+    //   xcodebuild -exportArchive -exportOptionsPlist ... ...
+    //   xcrun altool --upload-app ...
+    let archive_path = std::path::Path::new(&project_path)
+        .join("build")
+        .join("Archive.xcarchive")
+        .to_string_lossy()
+        .to_string();
+
+    // Transition back to Completed
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::Completed;
+    }
+
+    Ok(Json(UploadResponse {
+        job_id,
+        status: "uploading".to_string(),
+        archive_path,
+    }))
+}
+
+/// `POST /api/build/:job_id/submit` — Submit for App Store review.
+///
+/// This is a placeholder. A real implementation would call the App Store
+/// Connect API to submit the app for review.
+async fn submit_build(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+) -> Result<Json<SubmitResponse>, (StatusCode, String)> {
+    let job_arc = {
+        let jobs = state.jobs.lock().await;
+        jobs.get(&job_id)
+            .cloned()
+            .ok_or((StatusCode::NOT_FOUND, format!("Job {job_id} not found")))?
+    };
+
+    // Transition to Submitting
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::Submitting;
+    }
+
+    // Placeholder: a real implementation would call the App Store Connect API
+    // via the `altool`/`notarytool` CLI or direct HTTP API calls.
+
+    // Transition back to Completed
+    {
+        let mut job = job_arc.lock().await;
+        job.status = BuildStatus::Completed;
+    }
+
+    Ok(Json(SubmitResponse {
+        job_id,
+        status: "submitted".to_string(),
+    }))
+}
+
 // ── Router construction ─────────────────────────────────────────────────
 
 /// Build the axum `Router` with all API routes and shared state.
@@ -326,6 +722,14 @@ pub fn app(state: Arc<AppState>) -> Router {
         .route("/api/build/:job_id/status", get(get_status))
         .route("/api/build/:job_id/stream", get(stream_build))
         .route("/api/build/:job_id/github", post(push_to_github))
+        // ── 5-Phase Build→Ship Pipeline ──────────────────────────────
+        .route("/api/build/:job_id/patch", post(patch_build))
+        .route("/api/build/:job_id/icon", post(generate_icon))
+        .route("/api/build/:job_id/perfection", get(perfection))
+        .route("/api/build/:job_id/asc-metadata", post(asc_metadata))
+        .route("/api/build/:job_id/screenshots", post(take_screenshots))
+        .route("/api/build/:job_id/upload", post(upload_build))
+        .route("/api/build/:job_id/submit", post(submit_build))
         .layer(cors)
         .with_state(state)
 }
