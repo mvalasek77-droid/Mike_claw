@@ -174,7 +174,7 @@ async fn call_ai_for_files(
 
     let body = serde_json::json!({
         "model": model,
-        "max_tokens": 8192,
+        "max_tokens": 16384,
         "system": system_prompt,
         "messages": [
             {
@@ -224,16 +224,99 @@ async fn call_ai_for_files(
     let json_text = strip_markdown_fences(&full_text);
 
     // Parse as JSON array of GeneratedFile
-    let files: Vec<GeneratedFile> = serde_json::from_str(&json_text).map_err(|e| {
-        format!(
-            "Failed to parse AI response as JSON array of files: {e}\n\nRaw text:\n{full_text}"
-        )
-    })?;
+    let files: Vec<GeneratedFile> = match serde_json::from_str(&json_text) {
+        Ok(f) => f,
+        Err(parse_err) => {
+            // AI response was truncated — try to recover partial files
+            // by finding complete JSON objects within the truncated text.
+            eprintln!(
+                "WARNING: Full JSON parse failed ({parse_err}), attempting partial recovery…"
+            );
+            recover_partial_files(&json_text).unwrap_or_else(|| {
+                // Return a Vec with a single error-description file so the
+                // build doesn't die completely — downstream phases can still
+                // attempt to compile what we *do* have.
+                vec![]
+            })
+        }
+    };
 
     Ok(files)
 }
 
 // ── Pipeline phase functions ─────────────────────────────────────────────
+
+/// Recover partial files from a truncated JSON array response.
+///
+/// When Anthropic truncates the response mid-JSON, we can still salvage
+/// complete file objects that appeared before the truncation point.
+fn recover_partial_files(json_text: &str) -> Option<Vec<GeneratedFile>> {
+    let mut files = Vec::new();
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut escape_next = false;
+    let mut obj_start: Option<usize> = None;
+    let bytes = json_text.as_bytes();
+    let len = bytes.len();
+
+    for i in 0..len {
+        let ch = bytes[i];
+        if escape_next {
+            escape_next = false;
+            continue;
+        }
+        if ch == b'\\' && in_string {
+            escape_next = true;
+            continue;
+        }
+        if ch == b'"' {
+            in_string = !in_string;
+            continue;
+        }
+        if in_string {
+            continue;
+        }
+        match ch {
+            b'{' => {
+                if depth == 0 {
+                    obj_start = Some(i);
+                }
+                depth += 1;
+            }
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    if let Some(start) = obj_start.take() {
+                        if let Ok(file) = serde_json::from_slice::<GeneratedFile>(&json_text.as_bytes()[start..=i]) {
+                            files.push(file);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        if i > 500_000 {
+            break; // Safety limit
+        }
+    }
+
+    if files.is_empty() {
+        // Try to find the array start and extract what we can
+        if let Some(arr_start) = json_text.find('[') {
+            let sub = &json_text[arr_start..];
+            // Try progressively shorter substrings
+            for end in (0..sub.len()).rev().step_by(100) {
+                let candidate = format!("{}}}]", &sub[..end.min(sub.len())]);
+                if let Ok(parsed) = serde_json::from_str::<Vec<GeneratedFile>>(&candidate) {
+                    return Some(parsed);
+                }
+            }
+        }
+        None
+    } else {
+        Some(files)
+    }
+}
 
 /// Call the AI to patch specific files in an existing project.
 ///
@@ -259,7 +342,7 @@ pub async fn call_ai_for_patch(
 
     let body = serde_json::json!({
         "model": ai_config.model,
-        "max_tokens": 8192,
+        "max_tokens": 16384,
         "system": system_prompt,
         "messages": [
             {

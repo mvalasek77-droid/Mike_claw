@@ -23,5 +23,9 @@ uuid = { version = "1", features = ["v4"] }
 walkdir = "2"
 whoami = "1"
 
+[[bin]]
+name = "claw-serve"
+path = "src/bin/claw-serve.rs"
+
 [lints]
 workspace = true

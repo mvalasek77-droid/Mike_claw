@@ -1,14 +1,17 @@
-//! Core runtime primitives for the `claw` CLI and supporting crates.
+//! Core runtime primitives for the `claw` CLI — slim server-only build.
 //!
-//! This crate owns session persistence, permission evaluation, prompt assembly,
-//! MCP plumbing, tool-facing file operations, and the core conversation loop
-//! that drives interactive and one-shot turns.
+//! Only the builder + server modules are real implementations.
+//! All other modules are stubbed until their source files are migrated.
+
+pub mod builder;
+pub mod server;
+
+// ── Stub modules (empty for now) ──────────────────────────────────────
 
 mod bash;
 pub mod bash_validation;
 mod bootstrap;
 pub mod branch_lock;
-pub mod builder;
 mod compact;
 mod config;
 pub mod config_validate;
@@ -35,10 +38,8 @@ mod prompt;
 pub mod recovery_recipes;
 mod remote;
 pub mod sandbox;
-pub mod server;
 mod session;
 pub mod session_control;
-pub use session_control::SessionStore;
 mod sse;
 pub mod stale_base;
 pub mod stale_branch;
@@ -46,10 +47,10 @@ pub mod summary_compression;
 pub mod task_packet;
 pub mod task_registry;
 pub mod team_cron_registry;
-#[cfg(test)]
-mod trust_resolver;
 mod usage;
 pub mod worker_boot;
+
+// ── Re-exports (stub types for compilation) ────────────────────────────
 
 pub use bash::{execute_bash, BashCommandInput, BashCommandOutput};
 pub use bootstrap::{BootstrapPhase, BootstrapPlan};
@@ -107,11 +108,11 @@ pub use mcp_server::{McpServer, McpServerSpec, ToolCallHandler, MCP_SERVER_PROTO
 pub use mcp_stdio::{
     spawn_mcp_stdio_process, JsonRpcError, JsonRpcId, JsonRpcRequest, JsonRpcResponse,
     ManagedMcpTool, McpDiscoveryFailure, McpInitializeClientInfo, McpInitializeParams,
-    McpInitializeResult, McpInitializeServerInfo, McpListResourcesParams, McpListResourcesResult,
-    McpListToolsParams, McpListToolsResult, McpReadResourceParams, McpReadResourceResult,
-    McpResource, McpResourceContents, McpServerManager, McpServerManagerError, McpStdioProcess,
+    McpInitializeResult, McpInitializeServerInfo, McpListToolsParams, McpListToolsResult,
+    McpReadResourceParams, McpReadResourceResult, McpResource, McpResourceContents,
+    McpServerManager, McpServerManagerError, McpStdioProcess,
     McpTool, McpToolCallContent, McpToolCallParams, McpToolCallResult, McpToolDiscoveryReport,
-    UnsupportedMcpServer,
+    UnsupportedMcpServer, McpListResourcesParams, McpListResourcesResult,
 };
 pub use oauth::{
     clear_oauth_credentials, code_challenge_s256, credentials_path, generate_pkce_pair,
@@ -165,8 +166,6 @@ pub use stale_branch::{
     StaleBranchPolicy,
 };
 pub use task_packet::{validate_packet, TaskPacket, TaskPacketValidationError, ValidatedPacket};
-#[cfg(test)]
-pub use trust_resolver::{TrustConfig, TrustDecision, TrustEvent, TrustPolicy, TrustResolver};
 pub use usage::{
     format_usd, pricing_for_model, ModelPricing, TokenUsage, UsageCostEstimate, UsageTracker,
 };
