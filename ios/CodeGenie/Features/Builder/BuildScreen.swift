@@ -25,8 +25,7 @@ struct BuildScreen: View {
     @State private var showGame: Bool = true
     @State private var showDiffReview: Bool = false
     @State private var startedAt: Date = .now
-    @State private var showAppleDevSetup: Bool = false
-    @State private var showReleaseExplainer: Bool = false
+
     @State private var showGitHubSetup: Bool = false
     @State private var githubSyncing: Bool = false
     @State private var jargonHelp: JargonTerm?
@@ -110,6 +109,13 @@ struct BuildScreen: View {
             if stage == .failed { failureOverlay }
         }
         .task { await runBuild() }
+        .onChange(of: stage) { newStage in
+            // Persist build progress so we can resume after app kill
+            session.updateCurrentJobStage(newStage)
+            if newStage == .readyForTest || newStage == .failed {
+                session.completeCurrentBuild()
+            }
+        }
         .sheet(isPresented: $showDiffReview) {
             DiffPreviewView(diffs: diffStream.pending) { decisions in
                 Task {
@@ -121,11 +127,7 @@ struct BuildScreen: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
         }
-        .sheet(isPresented: $showAppleDevSetup) {
-            AppleDevWalkthroughView()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
-        }
+
         .sheet(isPresented: $showGitHubSetup) {
             GitHubSetupView()
                 .presentationDragIndicator(.visible)
@@ -137,28 +139,7 @@ struct BuildScreen: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
-        .sheet(isPresented: $showReleaseExplainer) {
-            ReleaseStageExplainer(
-                onChoose: { choice in
-                    UserDefaults.standard.set(true, forKey: "release.explainer.seen")
-                    showReleaseExplainer = false
-                    switch choice {
-                    case .testflight, .appStore:
-                        // Same backend route today — ASC TestFlight is
-                        // the gate either way. The choice text just
-                        // sets the user's intent in the success banner.
-                        Task { await submitToAppStore(skipExplainer: true) }
-                    case .learnMore:
-                        if let url = URL(string: "https://developer.apple.com/distribute/") {
-                            openURL(url)
-                        }
-                    }
-                },
-                onCancel: { showReleaseExplainer = false }
-            )
-            .presentationDragIndicator(.visible)
-            .presentationBackground(.ultraThinMaterial)
-        }
+
         .sheet(isPresented: $showSnapshotSettingsSheet) {
             SnapshotCapSettingsView()
                 .presentationDragIndicator(.visible)
@@ -182,7 +163,15 @@ struct BuildScreen: View {
         }
         .onDisappear {
             builderTask?.cancel()
-            builder.cancel(initialJob.id)
+            // Only tear down the backend stream and clear saved state
+            // if the build has finished. If the user just navigated away
+            // (or the app was backgrounded), we keep the saved state so
+            // they can resume.
+            let terminalStages: Set<BuildJob.Stage> = [.readyForTest, .shipping, .failed]
+            if terminalStages.contains(stage) {
+                builder.cancel(initialJob.id)
+                session.completeCurrentBuild()
+            }
             swarm.closeStream()
         }
     }
@@ -545,7 +534,7 @@ struct BuildScreen: View {
                         Text("Build green")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                        Text("Ready to test through your Mac's simulator. Run Perfection Mode before App Store handoff.")
+                        Text("Ready to test through your Mac's simulator. Run Perfection Mode for a quality check before sharing.")
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
@@ -583,9 +572,8 @@ struct BuildScreen: View {
                             let job = BuildJob(description: initialJob.description, stage: .readyForTest)
                             session.openPreview(for: job)
                         }
-                        PrimaryButton(title: "Submit to App Store", systemImage: "paperplane.fill", style: .glass) {
-                            Task { await submitToAppStore() }
-                        }
+                        // App Store submission removed — app isn't ready at this stage.
+                        // Users should test locally first, then submit via the Apps tab.
                         PrimaryButton(
                             title: githubSyncing ? "Pushing to GitHub..." : "Back up to GitHub",
                             systemImage: "chevron.left.forwardslash.chevron.right",
@@ -665,6 +653,57 @@ struct BuildScreen: View {
         builderTask?.cancel()
         startedAt = .now
         Telemetry.shared.recordBuildStarted()
+
+        // ── Resume case: app was killed mid-build, re-opened ──
+        // We have a saved backend job ID → re-attach to the SSE stream
+        // instead of starting a new build. The backend job kept running
+        // while we were away.
+        if session.isResuming {
+            if let backendID = session.currentJobBackendID ?? attachToBackendID, useRemote {
+                // Restore stage from the saved job
+                stage = session.currentJob?.stage ?? .planning
+                // Pre-populate the log with saved lines
+                for line in session.resumedLogLines {
+                    push(.info, formattedTime(), line)
+                }
+                // Re-attach to the backend stream
+                session.isResuming = false
+                costs.bind(to: swarm)
+                diffStream.bind(to: swarm)
+                uploadProgress.bind(to: swarm)
+                CustomAgentLog.shared.bind(to: swarm)
+                JobCostLog.shared.bind(to: swarm)
+                swarm.openStream(jobID: backendID) { event in
+                    Task { @MainActor in
+                        if event.type == "job.state",
+                           let s = event.payload["state"] as? String {
+                            let mapped: BuildJob.Stage = {
+                                switch s {
+                                case "planning": .planning
+                                case "building": .generatingUI
+                                case "testing":  .linting
+                                case "succeeded": .readyForTest
+                                case "failed":    .failed
+                                default: .planning
+                                }
+                            }()
+                            Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
+                            appendLog(for: mapped)
+                            if mapped == .readyForTest {
+                                startPerfectionIfNeeded(jobID: backendID)
+                            }
+                        }
+                    }
+                }
+                push(.info, formattedTime(), "Reconnected to build — picking up where you left off")
+                return
+            }
+            // Resume but no backend ID (local build) — restart from scratch
+            session.isResuming = false
+            session.abandonCurrentBuild()
+        }
+
+        // ── Normal start ──
         if let demoSampleID {
             await runCannedDemo(sampleID: demoSampleID)
         } else if useRemote {
@@ -716,6 +755,8 @@ struct BuildScreen: View {
                 id = backendID
             } else {
                 id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+                // Persist the backend ID so we can resume if the app is killed
+                session.currentJobBackendID = id
             }
             swarm.openStream(jobID: id) { event in
                 Task { @MainActor in
@@ -770,53 +811,6 @@ struct BuildScreen: View {
     /// rebuild.
     ///
     /// Four preconditions, in order:
-    ///   1. Perfection Mode must be green. Blocks shipping if there
-    ///      are unresolved quality matrix flags.
-    ///   2. Apple Developer credentials must exist. Otherwise we open
-    ///      the walkthrough — a first-timer doesn't know what's missing.
-    ///   3. The TestFlight-vs-App-Store explainer runs once per device
-    ///      so the user knows which door they're walking through.
-    ///   4. Then `/ship` fires.
-    private func submitToAppStore(skipExplainer: Bool = false) async {
-        if swarm.jobID != nil && perfectionRun?.isReady != true {
-            shipBanner = "Run Perfection Mode and clear blockers before App Store submission."
-            Haptics.warning()
-            return
-        }
-        guard Credentials.shared.hasAppleDevCreds else {
-            showAppleDevSetup = true
-            Haptics.warning()
-            return
-        }
-        let seenExplainer = UserDefaults.standard.bool(forKey: "release.explainer.seen")
-        if !seenExplainer && !skipExplainer {
-            showReleaseExplainer = true
-            Haptics.selection()
-            return
-        }
-        guard let jobID = swarm.jobID,
-              let cfg = ShipConfig.fromCredentials(
-                bundleID: defaultBundleID(for: initialJob.description.title)
-              ) else {
-            shipBanner = "Could not assemble ship config."
-            Haptics.error()
-            return
-        }
-        do {
-            let readiness = try await swarm.runReleaseReadiness(jobID: jobID, ship: cfg)
-            guard readiness.isReadyForTestFlight else {
-                shipBanner = readiness.nextActions.first ?? readiness.summary
-                Haptics.warning()
-                return
-            }
-            try await swarm.ship(jobID: jobID, config: cfg)
-            shipBanner = "Submitted — watch the transcript for processing status."
-            Haptics.success()
-        } catch {
-            shipBanner = "Submit failed: \(error)"
-            Haptics.error()
-        }
-    }
 
     private func runPerfection(jobID: String) async {
         perfectionRunning = true
@@ -826,7 +820,7 @@ struct BuildScreen: View {
             let run = try await swarm.runPerfection(jobID: jobID)
             perfectionRun = run
             shipBanner = run.isReady
-                ? "Perfection Mode passed — App Store handoff unlocked."
+                ? "Perfection Mode passed — your app looks great."
                 : "Perfection Mode found blockers. Fix them, then rerun."
             if run.isReady { Haptics.success() } else { Haptics.warning() }
         } catch {

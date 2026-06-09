@@ -91,7 +91,7 @@ struct HomeView: View {
                 .environmentObject(session)
         }
         .fullScreenCover(item: $session.pendingPreview) { job in
-            RemoteBuildView(job: job)
+            SimulatorPreviewView(job: job)
                 .environmentObject(session)
         }
         .fullScreenCover(item: $session.pendingASC) { job in

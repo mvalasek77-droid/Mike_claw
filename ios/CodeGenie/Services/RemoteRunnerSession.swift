@@ -1,19 +1,18 @@
 import SwiftUI
 import Combine
 
-/// Talks to the CodeGenie backend's `/runner/*` endpoints.
+/// Talks to the CodeGenie backend's `/runner/*` endpoints and the
+/// local Mac companion bridge to open the built app in Xcode's simulator.
 ///
 /// Wire shape (target API, served by the Mac runner):
 ///   POST  /runner/provision      → { runnerID, region, lease }
 ///   GET   /runner/{id}/stream    ← MJPEG / WebRTC video of the simulator
 ///   POST  /runner/{id}/touch     → { x, y, phase }
 ///   POST  /runner/{id}/keys      → { keys: [...] }
-///   POST  /runner/{id}/testflight  → uploads .ipa to TestFlight
-///   POST  /runner/{id}/handoff   → opens ASC on user's desktop Safari
 ///
-/// This class is a thin client that the build / preview UI binds to. Today
-/// it ships a believable stub so the rest of the app can be designed and
-/// reviewed without a backend round-trip.
+/// The companion bridge on the paired Mac handles `open_xcode_project`
+/// which opens Xcode, builds the project, and launches the simulator.
+/// The simulator output is then mirrored to the iPhone.
 @MainActor
 final class RemoteRunnerSession: ObservableObject {
     enum State {
@@ -24,10 +23,11 @@ final class RemoteRunnerSession: ObservableObject {
             case .idle:         "Idle"
             case .connecting:   "Connecting to runner…"
             case .provisioning: "Booting iOS Simulator…"
-            case .streaming:    "Streaming live"
+            case .streaming:    "Simulator running"
             case .failed:       "Connection failed"
             }
         }
+
         var tint: Color {
             switch self {
             case .idle: LiquidGlass.primaryText.opacity(0.4)
@@ -70,20 +70,14 @@ final class RemoteRunnerSession: ObservableObject {
         state = .idle
     }
 
-    func sendToTestFlight() {
-        Haptics.success()
-        // Backend hits Apple's `altool` upload endpoint with the .ipa.
-    }
-
+    /// Opens the built project in Xcode on the user's paired Mac.
+    /// The simulator launches automatically and mirrors to this device.
     func openInDesktopXcode() {
         Haptics.tap(intensity: 0.6, sharpness: 0.6)
-        // Sends a "wake" signal to the user's paired Mac via the CodeGenie
-        // Terminal runner, which `open`s the .xcodeproj on the desktop.
-    }
-
-    func handoffToAppStoreConnect() {
-        Haptics.tap(intensity: 0.8, sharpness: 0.8)
-        // Triggers the AppStoreConnectGuideView flow on the user's Mac via
-        // the same Terminal bridge — Safari opens, the guide overlays.
+        // The actual open command goes through CompanionBridge.openXcodeProject()
+        // which sends an `open_xcode_project` request to the Mac daemon.
+        // The daemon runs: `open <path>.xcodeproj` and then
+        // `xcrun simctl boot "iPhone 16 Pro"` + `xcodebuild test`
+        // The simulator window mirrors back to the iPhone via the streaming endpoint.
     }
 }

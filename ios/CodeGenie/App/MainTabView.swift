@@ -2,9 +2,11 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject private var session: AppSession
-    @State private var tab: Tab = .home
+    @SceneStorage("CodeGenie.selectedTab") private var tab: Tab = .home
 
-    enum Tab: Hashable { case home, build, play, apps, settings }
+    enum Tab: String, Hashable {
+        case home, build, play, apps, settings
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
