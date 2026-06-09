@@ -1,29 +1,25 @@
 import Foundation
 import Network
+import UIKit
 
 /// Talks to the CodeGenie terminal runner running on the user's Mac.
 ///
-/// Two phases:
-///  1. **Discovery.** Listen for Bonjour services advertising
-///     `_codegenie-runner._tcp` on the local network and surface
-///     candidates to `discovered`. The user picks one.
-///  2. **Connect.** Open a Network.framework TCP connection (line-
-///     delimited JSON, matching the runner's wire format), send `auth`
-///     with the paired token, then dispatch typed commands.
-///
-/// We deliberately avoid `URLSessionWebSocketTask` because the Mac
-/// daemon ships a minimal newline-delimited JSON server (no full RFC
-/// 6455 framing); using NWConnection on the iOS side keeps the wire
-/// format symmetric.
+/// Two connection paths:
+///  1. **Wi-Fi discovery (primary).** Browse for `_codegenie-runner._tcp`
+///     Bonjour services. User taps a discovered Mac → iPhone confirmation
+///     dialog → sends `pair` request → Mac shows confirmation dialog
+///     → if approved, token is returned → `auth` completes the connection.
+///  2. **Manual URL.** Copy the `codegenie://pair?…` URL from Terminal
+///     and paste it. Token is embedded, so no Mac-side confirmation needed.
 @MainActor
-final class CompanionBridge: ObservableObject {
+final class CompanionBridge: NSObject, ObservableObject, NetServiceBrowserDelegate, NetServiceDelegate {
 
     @Published private(set) var discovered: [Discovered] = []
     @Published private(set) var status: Status = .idle
     @Published private(set) var lastError: String?
 
     enum Status: Equatable {
-        case idle, browsing, connecting, authenticating, connected, failed(String)
+        case idle, browsing, connecting, waitingForApproval, authenticating, connected, failed(String)
     }
 
     struct Discovered: Identifiable, Hashable {
@@ -35,39 +31,140 @@ final class CompanionBridge: ObservableObject {
 
     // MARK: - Discovery
 
-    private var browser: NWBrowser?
+    private var nwBrowser: NWBrowser?
+    private var nsBrowser: NetServiceBrowser?
+    private var resolvingServices: [String: NetService] = [:]  // name -> service
+    private var resolvedEntries: [String: Discovered] = [:]     // name -> resolved entry
 
     func startBrowsing() {
         status = .browsing
+        discovered = []
+        resolvedEntries = [:]
+
+        // Use NetServiceBrowser to discover services — it can resolve
+        // host and port, unlike NWBrowser which only gives the name.
+        let nsb = NetServiceBrowser()
+        nsb.delegate = self
+        nsb.searchForServices(ofType: "_codegenie-runner._tcp", inDomain: "local.")
+        self.nsBrowser = nsb
+
+        // Also use NWBrowser for faster name-based discovery
         let params = NWParameters(tls: nil)
         params.includePeerToPeer = true
-        let browser = NWBrowser(
+        let nwBrowser = NWBrowser(
             for: .bonjour(type: "_codegenie-runner._tcp", domain: nil),
             using: params
         )
-        browser.browseResultsChangedHandler = { [weak self] results, _ in
-            Task { @MainActor in self?.handle(browseResults: results) }
+        nwBrowser.browseResultsChangedHandler = { [weak self] results, _ in
+            Task { @MainActor in
+                self?.handleNWBrowserResults(results)
+            }
         }
-        browser.start(queue: .main)
-        self.browser = browser
+        nwBrowser.start(queue: .main)
+        self.nwBrowser = nwBrowser
     }
 
     func stopBrowsing() {
-        browser?.cancel(); browser = nil
+        nwBrowser?.cancel(); nwBrowser = nil
+        nsBrowser?.stop(); nsBrowser = nil
+        resolvingServices.removeAll()
         if status == .browsing { status = .idle }
     }
 
-    private func handle(browseResults: Set<NWBrowser.Result>) {
-        var entries: [Discovered] = []
-        for r in browseResults {
-            guard case let .service(name, _, _, _) = r.endpoint else { continue }
-            entries.append(Discovered(name: name, host: name + ".local", port: 0))
+    // MARK: - NetServiceBrowserDelegate
+
+    nonisolated func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
+        Task { @MainActor in
+            // Resolve each service to get host + port
+            service.delegate = self
+            resolvingServices[service.name] = service
+            service.resolve(withTimeout: 5.0)
         }
-        // De-dupe by name; sort for stable UI.
+    }
+
+    nonisolated func netServiceBrowser(_ browser: NetServiceBrowser, didRemove service: NetService, moreComing: Bool) {
+        Task { @MainActor in
+            resolvingServices.removeValue(forKey: service.name)
+            resolvedEntries.removeValue(forKey: service.name)
+            updateDiscoveredList()
+        }
+    }
+
+    // MARK: - NetServiceDelegate
+
+    nonisolated func netServiceDidResolveAddress(_ sender: NetService) {
+        Task { @MainActor in
+            let name = sender.name
+            let port = UInt16(sender.port)
+
+            // Get the IPv4 address from addresses
+            var host = name + ".local"
+            if let addresses = sender.addresses, !addresses.isEmpty {
+                // Parse sockaddr to get IP string
+                for addrData in addresses {
+                    var addr = addrData.withUnsafeBytes { ptr -> sockaddr_in in
+                        ptr.baseAddress!.assumingMemoryBound(to: sockaddr_in.self).pointee
+                    }
+                    if addr.sin_family == AF_INET {
+                        var ipBuffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+                        let ipStr = inet_ntop(AF_INET, &addr.sin_addr, &ipBuffer, socklen_t(INET_ADDRSTRLEN))
+                        if ipStr != nil {
+                            host = String(cString: ipBuffer)
+                            break
+                        }
+                    }
+                }
+            }
+
+            if port > 0 {
+                resolvedEntries[name] = Discovered(name: name, host: host, port: port)
+                updateDiscoveredList()
+            }
+        }
+    }
+
+    nonisolated func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) {
+        Task { @MainActor in
+            // Resolution failed — we might still connect via .local hostname
+            // if we get port from the NWBrowser results
+        }
+    }
+
+    private func updateDiscoveredList() {
+        // Merge resolved entries with any unresolved ones
+        var entries: [Discovered] = Array(resolvedEntries.values)
+
+        // Also check NWBrowser results for services we haven't resolved yet
+        for entry in discovered where !resolvedEntries.keys.contains(entry.name) {
+            // Keep the unresolved entry only if we don't have a resolved version
+            if !entries.contains(where: { $0.name == entry.name }) {
+                entries.append(entry)
+            }
+        }
+
         let unique = Array(Dictionary(grouping: entries, by: { $0.name })
-            .map { _, vs in vs[0] })
+            .map { _, vs in vs.first(where: { $0.port > 0 }) ?? vs[0] })
             .sorted { $0.name < $1.name }
         self.discovered = unique
+    }
+
+    // MARK: - NWBrowser results (supplementary)
+
+    private func handleNWBrowserResults(_ results: Set<NWBrowser.Result>) {
+        // We mainly use NWBrowser for change notifications to trigger
+        // NetServiceBrowser resolution. But we also track discovered
+        // names here in case NetServiceBrowser doesn't fire.
+        var needsUpdate = false
+        for r in results {
+            guard case let .service(name, _, _, _) = r.endpoint else { continue }
+            if resolvedEntries[name] == nil && !discovered.contains(where: { $0.name == name }) {
+                // Add unresolved entry — will be filled in when NetService resolves
+                needsUpdate = true
+            }
+        }
+        if needsUpdate {
+            updateDiscoveredList()
+        }
     }
 
     // MARK: - Connection
@@ -75,9 +172,7 @@ final class CompanionBridge: ObservableObject {
     private var conn: NWConnection?
     private var pending: [String: CheckedContinuation<[String: Any], Error>] = [:]
 
-    /// Connect via a paired URL of the shape
-    /// `codegenie://pair?host=…&port=…&token=…`
-    /// (the terminal runner prints this on launch; the iOS UI shows a QR scanner).
+    /// Connect via a pairing URL (manual paste flow).
     func connect(pairingURL: URL) async {
         guard let host = pairingURL.queryItem("host"),
               let portStr = pairingURL.queryItem("port"),
@@ -88,22 +183,97 @@ final class CompanionBridge: ObservableObject {
         await connect(host: host, port: port, token: token)
     }
 
+    /// Connect to a discovered Mac via Wi-Fi.
+    /// Sends a `pair` request — Mac shows a confirmation dialog.
+    func connectToDiscovered(_ mac: Discovered) async {
+        guard mac.port > 0 else {
+            // Try to resolve the service on the fly
+            let resolved = await resolveService(name: mac.name)
+            guard let resolved else {
+                status = .failed("Could not resolve \(mac.name). Make sure the terminal runner is running on your Mac and both devices are on the same Wi-Fi.")
+                return
+            }
+            await connectToDiscovered(resolved)
+            return
+        }
+
+        status = .connecting
+
+        let nwHost = NWEndpoint.Host(mac.host)
+        let nwPort = NWEndpoint.Port(rawValue: mac.port)!
+        let connection = NWConnection(host: nwHost, port: nwPort, using: .tcp)
+        self.conn = connection
+
+        let ready = await waitForReady(connection)
+        if !ready {
+            status = .failed("Could not reach \(mac.name)")
+            return
+        }
+
+        startReadLoop(connection)
+
+        // Step 1: Send `pair` request — Mac shows confirmation dialog
+        status = .waitingForApproval
+        do {
+            let deviceName = UIDevice.current.name
+            let response = try await request(type: "pair", payload: ["device": deviceName])
+            guard let token = response["token"] as? String else {
+                status = .failed("Invalid pairing response")
+                return
+            }
+
+            // Step 2: Authenticate with the received token
+            status = .authenticating
+            Credentials.shared.setBackendToken(token)
+            _ = try await request(type: "auth", payload: ["token": token])
+            status = .connected
+            lastError = nil
+        } catch {
+            status = .failed("Pairing failed: \(error)")
+            disconnect()
+        }
+    }
+
+    /// Resolve a Bonjour service by name to get host and port.
+    private func resolveService(name: String) async -> Discovered? {
+        await withCheckedContinuation { continuation in
+            let service = NetService(domain: "local.", type: "_codegenie-runner._tcp", name: name)
+            service.delegate = self
+            resolvingServices[name] = service
+
+            // Set a timeout
+            let timeout = DispatchWorkItem { [weak self] in
+                Task { @MainActor in
+                    self?.resolvingServices.removeValue(forKey: name)
+                    if let entry = self?.resolvedEntries[name] {
+                        continuation.resume(returning: entry)
+                    } else {
+                        continuation.resume(returning: nil)
+                    }
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: timeout)
+
+            service.resolve(withTimeout: 5.0)
+        }
+    }
+
+    /// Connect with a known host, port, and token (manual URL flow).
     func connect(host: String, port: UInt16, token: String) async {
         status = .connecting
         let nwHost = NWEndpoint.Host(host)
         let nwPort = NWEndpoint.Port(rawValue: port) ?? .any
-        let conn = NWConnection(host: nwHost, port: nwPort, using: .tcp)
-        self.conn = conn
+        let connection = NWConnection(host: nwHost, port: nwPort, using: .tcp)
+        self.conn = connection
 
-        let ready = await waitForReady(conn)
+        let ready = await waitForReady(connection)
         if !ready {
-            status = .failed("could not reach \(host):\(port)"); return
+            status = .failed("Could not reach \(host):\(port)")
+            return
         }
 
-        // Persist token so the user doesn't re-pair each launch.
         Credentials.shared.setBackendToken(token)
-
-        startReadLoop(conn)
+        startReadLoop(connection)
 
         status = .authenticating
         do {
@@ -111,7 +281,7 @@ final class CompanionBridge: ObservableObject {
             status = .connected
             lastError = nil
         } catch {
-            status = .failed("auth failed: \(error)")
+            status = .failed("Auth failed: \(error)")
             disconnect()
         }
     }
@@ -218,9 +388,6 @@ final class CompanionBridge: ObservableObject {
                 cont?.resume(throwing: BridgeError.remote(err))
             }
         }
-        // "event" frames are surfaced to subscribers via NotificationCenter
-        // so individual screens (e.g. RemoteBuildView) can stream
-        // `xcodebuild.line` events without owning the bridge directly.
         if kind == "event" {
             NotificationCenter.default.post(
                 name: .companionEvent,

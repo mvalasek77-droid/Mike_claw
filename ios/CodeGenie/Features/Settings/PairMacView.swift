@@ -43,14 +43,14 @@ struct PairMacView: View {
             Button("Connect") {
                 guard let mac = pendingMac else { return }
                 Task {
-                    await bridge.connect(host: mac.host, port: mac.port > 0 ? mac.port : 9000, token: "")
+                    await bridge.connectToDiscovered(mac)
                 }
             }
             Button("Cancel", role: .cancel) {
                 pendingMac = nil
             }
         } message: {
-            Text("This will allow CodeGenie on this iPhone to send commands to \(pendingMac?.name ?? "that Mac"). Only connect to Macs you trust.")
+            Text("CodeGenie will ask for permission on the Mac. Only connect to Macs you trust.")
         }
     }
 
@@ -401,12 +401,13 @@ struct PairMacView: View {
 
     private var label: String {
         switch bridge.status {
-        case .idle:           "Not paired"
-        case .browsing:       "Searching Wi-Fi…"
-        case .connecting:     "Connecting…"
-        case .authenticating: "Authenticating…"
-        case .connected:      "Connected ✓"
-        case .failed(let m):  "Failed: \(m)"
+        case .idle:               "Not paired"
+        case .browsing:           "Searching Wi-Fi…"
+        case .connecting:          "Connecting…"
+        case .waitingForApproval:  "Waiting for approval on Mac…"
+        case .authenticating:      "Authenticating…"
+        case .connected:           "Connected ✓"
+        case .failed(let m):       "Failed: \(m)"
         }
     }
 
@@ -414,6 +415,7 @@ struct PairMacView: View {
         switch bridge.status {
         case .connected:                            LiquidGlass.success
         case .connecting, .authenticating, .browsing: LiquidGlass.warning
+        case .waitingForApproval:                   .orange
         case .failed:                               .red
         case .idle:                                 LiquidGlass.primaryText.opacity(0.4)
         }
