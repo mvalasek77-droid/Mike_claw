@@ -39,6 +39,14 @@ struct PairMacView: View {
         }
         .onAppear { bridge.startBrowsing() }
         .onDisappear { bridge.stopBrowsing() }
+        .onChange(of: bridge.status) { _, newStatus in
+            // Auto-expand manual section when Wi-Fi pairing fails
+            if case .failed = newStatus {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    showManual = true
+                }
+            }
+        }
         .alert("Connect to \(pendingMac?.name ?? "Mac")?", isPresented: $showConfirmConnect) {
             Button("Connect") {
                 guard let mac = pendingMac else { return }

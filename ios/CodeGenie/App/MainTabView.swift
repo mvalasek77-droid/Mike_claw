@@ -19,12 +19,14 @@ struct MainTabView: View {
                 case .settings: SettingsView()
                 }
             }
+            .id(tab)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             TabBar(selected: $tab)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
         }
+        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: tab)
         .ignoresSafeArea(.keyboard)
     }
 }
@@ -47,7 +49,7 @@ private struct TabBar: View {
 
     private func tab(_ t: MainTabView.Tab, icon: String, label: String) -> some View {
         Button {
-            Motion.run(Motion.snap) { selected = t }
+            selected = t
             Haptics.selection()
         } label: {
             VStack(spacing: 3) {

@@ -81,6 +81,7 @@
 		DFCFFD7F113BF5B145C5BFC5 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF6ED841F20A9C7F3225ABD7 /* QRScannerView.swift */; };
 		DFD64F9CA5D229E0EC0EFD45 /* CustomAgentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF3FFEDC066681FE876FC500 /* CustomAgentsView.swift */; };
 		E55717D20B4BEB08C7857F12 /* CostTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10E3BD7AF61F4DE50CECD13 /* CostTracker.swift */; };
+		AABB11223344556677880001 /* LocalBuildClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB11223344556677880002 /* LocalBuildClient.swift */; };
 		E5F2FA3399C3D128E5D39901 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50A201442AF088A90E59B839 /* SettingsView.swift */; };
 		E7879C342437F47C6ACAA539 /* CustomAgentLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A548A80FB88D1EC9819EDE94 /* CustomAgentLog.swift */; };
 		EABD4216ED8E28881B809CEA /* SnapshotCapSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE6C4536E3528EAEDECAAD9 /* SnapshotCapSettingsView.swift */; };
@@ -149,6 +150,7 @@
 		9F0A38DF28F6ADDE3275A043 /* RemoteRunnerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteRunnerSession.swift; sourceTree = "<group>"; };
 		A0881F123A4B806263C20916 /* AppleDevSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleDevSetupView.swift; sourceTree = "<group>"; };
 		A10E3BD7AF61F4DE50CECD13 /* CostTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CostTracker.swift; sourceTree = "<group>"; };
+		AABB11223344556677880002 /* LocalBuildClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalBuildClient.swift; sourceTree = "<group>"; };
 		A4CEBB2E0B2D67C44CC553FC /* SnapshotPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotPickerView.swift; sourceTree = "<group>"; };
 		A548A80FB88D1EC9819EDE94 /* CustomAgentLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomAgentLog.swift; sourceTree = "<group>"; };
 		A90A0CF90092EDC662A84D67 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -371,6 +373,7 @@
 				4725280780E83CE683540A18 /* BuildStateStore.swift */,
 				E40B72546110E4535389C923 /* CompanionBridge.swift */,
 				A10E3BD7AF61F4DE50CECD13 /* CostTracker.swift */,
+				AABB11223344556677880002 /* LocalBuildClient.swift */,
 				97D5746BFEB5339D35160745 /* Credentials.swift */,
 				A548A80FB88D1EC9819EDE94 /* CustomAgentLog.swift */,
 				21501B00A591743415A317DA /* DemoSwarmDriver.swift */,
@@ -552,6 +555,7 @@
 				289A3810DF8686B7C7546299 /* CompareJobsView.swift in Sources */,
 				D2805C7AABE61ED8178E9641 /* CostBadge.swift in Sources */,
 				E55717D20B4BEB08C7857F12 /* CostTracker.swift in Sources */,
+				AABB11223344556677880001 /* LocalBuildClient.swift in Sources */,
 				153DE667962B34025F9F79DD /* CrashLogView.swift in Sources */,
 				5AFC2CC421D01AC3AF540512 /* Credentials.swift in Sources */,
 				C08A7B58B278DFE9A94CC626 /* CustomAgent.swift in Sources */,

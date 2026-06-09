@@ -197,6 +197,8 @@ final class CompanionBridge: NSObject, ObservableObject, NetServiceBrowserDelega
             return
         }
 
+        // Stop browsing to free network resources before connecting
+        stopBrowsing()
         status = .connecting
 
         let nwHost = NWEndpoint.Host(mac.host)
@@ -204,32 +206,41 @@ final class CompanionBridge: NSObject, ObservableObject, NetServiceBrowserDelega
         let connection = NWConnection(host: nwHost, port: nwPort, using: .tcp)
         self.conn = connection
 
+        NSLog("[CompanionBridge] Connecting to \(mac.host):\(mac.port)")
         let ready = await waitForReady(connection)
         if !ready {
-            status = .failed("Could not reach \(mac.name)")
+            NSLog("[CompanionBridge] Connection failed — could not reach \(mac.host):\(mac.port)")
+            status = .failed("Could not reach \(mac.name). Try the manual pairing method instead.")
             return
         }
 
+        NSLog("[CompanionBridge] TCP connected, starting read loop")
         startReadLoop(connection)
 
         // Step 1: Send `pair` request — Mac shows confirmation dialog
         status = .waitingForApproval
         do {
             let deviceName = UIDevice.current.name
-            let response = try await request(type: "pair", payload: ["device": deviceName])
+            NSLog("[CompanionBridge] Sending pair request as '\(deviceName)'")
+            let response = try await request(type: "pair", payload: ["device": deviceName], timeout: 60)
             guard let token = response["token"] as? String else {
-                status = .failed("Invalid pairing response")
+                let errMsg = response["error"] as? String ?? "Invalid pairing response"
+                NSLog("[CompanionBridge] Pair rejected: \(errMsg)")
+                status = .failed("\(errMsg). Try the manual pairing method instead.")
                 return
             }
 
             // Step 2: Authenticate with the received token
             status = .authenticating
+            NSLog("[CompanionBridge] Pair approved, authenticating with token")
             Credentials.shared.setBackendToken(token)
-            _ = try await request(type: "auth", payload: ["token": token])
+            _ = try await request(type: "auth", payload: ["token": token], timeout: 15)
+            NSLog("[CompanionBridge] Authenticated successfully")
             status = .connected
             lastError = nil
         } catch {
-            status = .failed("Pairing failed: \(error)")
+            NSLog("[CompanionBridge] Pairing failed: \(error)")
+            status = .failed("\(error). Try the manual pairing method instead.")
             disconnect()
         }
     }
@@ -308,20 +319,83 @@ final class CompanionBridge: NSObject, ObservableObject, NetServiceBrowserDelega
         return (r["pong"] as? Bool) ?? false
     }
 
+    // MARK: - Build commands (forwarded to local Claw server on Mac)
+
+    /// Start a Claw build on the paired Mac. Returns the job ID, project path,
+    /// and initial status from the Mac runner.
+    func startBuild(spec: AppSpec) async throws -> BuildResult {
+        var payload: [String: Any] = [
+            "title": spec.title,
+            "prompt": spec.prompt,
+            "category": spec.category,
+            "style": spec.style,
+            "target_ios": spec.targetIOS,
+            "features": spec.features,
+        ]
+        if !spec.model.isEmpty { payload["model"] = spec.model }
+        if !spec.authMode.isEmpty { payload["auth_mode"] = spec.authMode }
+        if !spec.apiKey.isEmpty { payload["api_key"] = spec.apiKey }
+
+        let response = try await request(type: "start_build", payload: payload, timeout: 120)
+        return BuildResult(
+            jobID: (response["job_id"] as? String) ?? "",
+            projectPath: (response["project_path"] as? String) ?? "",
+            status: (response["status"] as? String) ?? "planning"
+        )
+    }
+
+    /// Poll the status of a build running on the paired Mac.
+    func buildStatus(jobID: String) async throws -> BuildStatusResult {
+        let response = try await request(type: "build_status", payload: ["job_id": jobID], timeout: 30)
+        return BuildStatusResult(
+            jobID: (response["job_id"] as? String) ?? jobID,
+            status: (response["status"] as? String) ?? "building",
+            progress: (response["progress"] as? Double) ?? 0,
+            projectPath: (response["project_path"] as? String) ?? "",
+            error: response["error"] as? String
+        )
+    }
+
+    /// Push the completed project to GitHub via the paired Mac.
+    func pushToGithub(jobID: String, repoURL: String, branch: String, commitMessage: String, token: String?) async throws -> GithubPushResult {
+        var payload: [String: Any] = [
+            "job_id": jobID,
+            "repo_url": repoURL,
+            "branch": branch,
+            "commit_message": commitMessage,
+        ]
+        if let token { payload["token"] = token }
+        let response = try await request(type: "push_to_github", payload: payload, timeout: 120)
+        return GithubPushResult(
+            ok: (response["ok"] as? Bool) ?? false,
+            branch: (response["branch"] as? String) ?? "",
+            remote: (response["remote"] as? String) ?? ""
+        )
+    }
+
     // MARK: - Internals
 
-    private func request(type: String, payload: [String: Any]) async throws -> [String: Any] {
+    private func request(type: String, payload: [String: Any], timeout: TimeInterval = 30) async throws -> [String: Any] {
         guard let conn else { throw BridgeError.notConnected }
         let id = "msg_" + UUID().uuidString.prefix(12)
         let envelope: [String: Any] = [
             "v": 1, "id": id, "kind": "request", "type": type, "payload": payload,
         ]
-        return try await withCheckedThrowingContinuation { cont in
+        // Send the request and race against a timeout
+        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<[String: Any], Error>) in
             pending[id] = cont
-            send(conn: conn, envelope: envelope) { error in
+            send(conn: conn, envelope: envelope) { [weak self] error in
                 if let error {
-                    self.pending.removeValue(forKey: id)
+                    self?.pending.removeValue(forKey: id)
                     cont.resume(throwing: error)
+                }
+            }
+            // Set up a timeout to cancel the continuation if no response arrives
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(timeout))
+                guard let self else { return }
+                if self.pending.removeValue(forKey: id) != nil {
+                    cont.resume(throwing: BridgeError.timeout)
                 }
             }
         }
@@ -355,8 +429,13 @@ final class CompanionBridge: NSObject, ObservableObject, NetServiceBrowserDelega
         var buffer = Data()
 
         func tick() {
-            conn.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, _ in
+            conn.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
                 guard let self else { return }
+                if let error {
+                    NSLog("[CompanionBridge] Read error: \(error)")
+                    Task { @MainActor in self.disconnect() }
+                    return
+                }
                 if let data { buffer.append(data) }
                 while let nl = buffer.firstIndex(of: 0x0A) {
                     let line = buffer[..<nl]
@@ -366,7 +445,13 @@ final class CompanionBridge: NSObject, ObservableObject, NetServiceBrowserDelega
                     }
                 }
                 if isComplete {
-                    Task { @MainActor in self.disconnect() }
+                    NSLog("[CompanionBridge] Connection closed by remote")
+                    // Don't immediately disconnect — give pending
+                    // requests a moment to complete first.
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5s grace
+                        self.disconnect()
+                    }
                 } else {
                     Task { @MainActor in tick() }
                 }
@@ -423,17 +508,50 @@ private extension URL {
 }
 
 enum BridgeError: Error, CustomStringConvertible {
-    case notConnected, disconnected, malformed, remote(String)
+    case notConnected, disconnected, malformed, remote(String), timeout
     var description: String {
         switch self {
         case .notConnected: "not connected"
         case .disconnected: "connection dropped"
         case .malformed:    "malformed message"
         case .remote(let m): m
+        case .timeout:      "timed out"
         }
     }
 }
 
 extension Notification.Name {
     static let companionEvent = Notification.Name("CodeGenie.CompanionEvent")
+}
+
+// MARK: - Build result types
+
+/// Result of starting a build through the Mac runner.
+struct BuildResult {
+    let jobID: String
+    let projectPath: String
+    let status: String
+}
+
+/// Status of an in-progress build on the Mac runner.
+struct BuildStatusResult {
+    let jobID: String
+    let status: String
+    let progress: Double
+    let projectPath: String
+    let error: String?
+}
+
+/// Result of pushing a project to GitHub via the Mac runner.
+struct GithubPushResult {
+    let ok: Bool
+    let branch: String
+    let remote: String
+}
+
+/// Extended AppSpec with optional fields for local builds.
+extension AppSpec {
+    var model: String { "" }
+    var authMode: String { "" }
+    var apiKey: String { "" }
 }

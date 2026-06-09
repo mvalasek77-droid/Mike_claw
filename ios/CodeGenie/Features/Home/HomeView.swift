@@ -13,7 +13,6 @@ struct HomeView: View {
     @State private var showAppleDev = false
     @State private var showGitHub = false
     @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
-    @State private var showSampleApps = false
     @State private var showAppOfYearDNA = false
     @State private var showAutomationAudit = false
     @State private var showFirstBuildPrompt = false
@@ -54,12 +53,6 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showTutorial) {
             TutorialView(mode: .replay) { showTutorial = false }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
-        }
-        .sheet(isPresented: $showSampleApps) {
-            SampleAppsView()
-                .environmentObject(session)
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -336,7 +329,6 @@ struct HomeView: View {
     private var quickGrid: some View {
         VStack(spacing: 12) {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                QuickTile(title: "Try a sample",    subtitle: "Watch one build live",  icon: "sparkles",            tint: LiquidGlass.accent)          { showSampleApps = true }
                 QuickTile(title: "Watch the tour",  subtitle: "7-step tutorial",       icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
                 QuickTile(title: "Xcode steps",     subtitle: "Pocket guide",          icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
                 QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }

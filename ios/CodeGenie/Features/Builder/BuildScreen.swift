@@ -63,14 +63,20 @@ struct BuildScreen: View {
     @StateObject private var costs = CostTracker(modelID: Credentials.shared.preferredModelID)
     @StateObject private var diffStream = DiffStream()
     @StateObject private var uploadProgress = UploadProgressTracker()
+    @StateObject private var bridge = CompanionBridge()
+
+    /// Project path returned by a local Claw build (nil for cloud/simulated builds).
+    @State private var localProjectPath: String?
 
     private let builder: BuilderService = LocalSimulatedBuilder()
     /// Whether to show the "live" UI surface (cost badge, retry badge,
     /// transcript card, upload progress strip). True for either a real
-    /// backend run OR a canned demo — both stream `SwarmEvent`s
+    /// backend run, a local Claw build, OR a canned demo — both stream `SwarmEvent`s
     /// through `swarm` and the user shouldn't see a different layout.
     private var useRemote: Bool {
         if demoSampleID != nil { return true }
+        // Connected Mac means we can run local Claw builds (full UI)
+        if case .connected = bridge.status { return true }
         let url = Credentials.shared.backendURL
         return !url.isEmpty && !url.hasPrefix("https://api.codegenie.app")
     }
@@ -596,6 +602,10 @@ struct BuildScreen: View {
                             }
                             .accessibilityLabel("Download workspace zip")
                         }
+                        // Local build project path card
+                        if let projectPath = localProjectPath, !projectPath.isEmpty {
+                            localProjectPathCard(path: projectPath)
+                        }
                         if let banner = shipBanner {
                             Text(banner)
                                 .font(.system(size: 12, weight: .medium, design: .rounded))
@@ -741,6 +751,12 @@ struct BuildScreen: View {
     }
 
     private func runRemoteBuild() async {
+        // Prefer local Claw build when a Mac is paired
+        if case .connected = bridge.status {
+            await runLocalClawBuild()
+            return
+        }
+
         costs.bind(to: swarm)
         diffStream.bind(to: swarm)
         uploadProgress.bind(to: swarm)
@@ -785,6 +801,89 @@ struct BuildScreen: View {
         } catch {
             // Fall back to the local simulator so the user always sees progress.
             appendLog(for: .planning)
+            await runLocalFallback(reason: "\(error)")
+        }
+    }
+
+    /// Run a build on the paired Mac via CompanionBridge.
+    /// Polls for status updates and drives the UI stages.
+    private func runLocalClawBuild() async {
+        let client = LocalBuildClient(bridge: bridge)
+        let spec = AppSpec(initialJob.description)
+
+        push(.info, formattedTime(), "↪ sending build to paired Mac…")
+        do {
+            let finalResult = try await client.runBuildToCompletion(spec: spec) { newStage in
+                Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
+                    stage = newStage
+                }
+                appendLog(for: newStage)
+                Haptics.tap(intensity: 0.4, sharpness: 0.55)
+            }
+
+            if finalResult.succeeded {
+                localProjectPath = finalResult.projectPath
+                if !finalResult.projectPath.isEmpty {
+                    push(.ok, formattedTime(), "✓ saved to \(finalResult.projectPath)")
+                }
+                Haptics.success()
+            } else {
+                let errMsg = finalResult.error ?? "unknown error"
+                push(.err, formattedTime(), "✗ local build failed: \(errMsg)")
+                stage = .failed
+                Haptics.error()
+            }
+        } catch {
+            // CompanionBridge failed — try cloud or fallback
+            push(.warn, formattedTime(), "Local build failed (\(error)), trying cloud…")
+            // Check if cloud is available
+            let url = Credentials.shared.backendURL
+            if !url.isEmpty && !url.hasPrefix("https://api.codegenie.app") {
+                await runCloudBuild()
+            } else {
+                await runLocalFallback(reason: "\(error)")
+            }
+        }
+    }
+
+    /// Cloud-only build path (Skips local bridge attempt).
+    private func runCloudBuild() async {
+        costs.bind(to: swarm)
+        diffStream.bind(to: swarm)
+        uploadProgress.bind(to: swarm)
+        CustomAgentLog.shared.bind(to: swarm)
+        JobCostLog.shared.bind(to: swarm)
+        do {
+            let id: String
+            if let backendID = attachToBackendID {
+                id = backendID
+            } else {
+                id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+                session.currentJobBackendID = id
+            }
+            swarm.openStream(jobID: id) { event in
+                Task { @MainActor in
+                    if event.type == "job.state",
+                       let s = event.payload["state"] as? String {
+                        let mapped: BuildJob.Stage = {
+                            switch s {
+                            case "planning": .planning
+                            case "building": .generatingUI
+                            case "testing":  .linting
+                            case "succeeded": .readyForTest
+                            case "failed":    .failed
+                            default: .planning
+                            }
+                        }()
+                        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
+                        appendLog(for: mapped)
+                        if mapped == .readyForTest {
+                            startPerfectionIfNeeded(jobID: id)
+                        }
+                    }
+                }
+            }
+        } catch {
             await runLocalFallback(reason: "\(error)")
         }
     }
@@ -937,6 +1036,75 @@ struct BuildScreen: View {
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .joined()
         return "com.codegenie.\(slug.isEmpty ? "app" : slug)"
+    }
+
+    // MARK: - Local project path card
+
+    @State private var pathCopied: Bool = false
+
+    private func localProjectPathCard(path: String) -> some View {
+        GlassSurface(tier: .raised, corner: 18) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Project saved on Mac")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text(path)
+                            .font(.system(size: 12, weight: .regular, design: .monospaced))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                            .lineLimit(2)
+                            .textSelection(.enabled)
+                    }
+                    Spacer()
+                }
+                HStack(spacing: 10) {
+                    Button {
+                        UIPasteboard.general.string = path
+                        pathCopied = true
+                        Haptics.selection()
+                        Task {
+                            try? await Task.sleep(nanoseconds: 2_000_000_000)
+                            pathCopied = false
+                        }
+                    } label: {
+                        Label(pathCopied ? "Copied!" : "Copy path", systemImage: pathCopied ? "checkmark.circle.fill" : "doc.on.doc")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .foregroundStyle(LiquidGlass.primaryText)
+                            .background(.white.opacity(0.08), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Copy project path to clipboard")
+
+                    if case .connected = bridge.status {
+                        Button {
+                            Task {
+                                do {
+                                    try await bridge.openXcodeProject(path)
+                                    Haptics.success()
+                                } catch {
+                                    shipBanner = "Could not open Xcode: \(error)"
+                                    Haptics.error()
+                                }
+                            }
+                        } label: {
+                            Label("Open in Xcode", systemImage: "macbook.and.iphone")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .foregroundStyle(.white)
+                                .background(LiquidGlass.auroraGradient.opacity(0.85), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open project in Xcode on paired Mac")
+                    }
+                }
+            }
+            .padding(14)
+        }
     }
 
     private func appendLog(for stage: BuildJob.Stage) {
