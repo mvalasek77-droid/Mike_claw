@@ -51,9 +51,9 @@ BASE_WR = {
     'UP_SELL':   0.30,   # Against regime
 }
 
-# Regime adjustments (v5 symmetric)
+# Regime adjustments (v6 — DOWN+BUY much harsher after 6/5 misses)
 REGIME_ADJ_BINARY = {
-    'DOWN':    {'BUY': -0.10, 'SELL': 0.05},
+    'DOWN':    {'BUY': -0.20, 'SELL': 0.05},   # DOWN+BUY was 30% WR, cost us WTI
     'UP':      {'BUY':  0.05, 'SELL': -0.05},
     'SIDEWAYS': {'BUY': 0,    'SELL': 0},
 }
@@ -73,6 +73,14 @@ def binary_signal(ticker, send_alerts=True):
     price = float(data['1d']['close'][-1])
     regime = wt.detect_regime(data['1d']['close'])
     atr = wt.compute_atr(data['1d']['high'], data['1d']['low'], data['1d']['close'])
+
+    # v6: Intraday regime override — if stock is crashing -5%+ today,
+    # force DOWN regardless of what the SMA says (prevent buying in freefall)
+    if '15m' in data and len(data['15m']['close']) > 0:
+        intraday_open = float(data['15m']['close'][0])
+        daily_chg_pct = ((price - intraday_open) / intraday_open) * 100 if intraday_open > 0 else 0
+        if daily_chg_pct < -5 and regime != 'DOWN':
+            regime = 'DOWN'  # intraday crash overrides SMA regime
 
     # Collect all signals from tactical scanner
     signals = wt.tactical_signal(
@@ -106,7 +114,20 @@ def binary_signal(ticker, send_alerts=True):
             pattern_floor = ma['floor']
             pattern_ceil = ma['ceiling']
             pattern_conf = min(1.0, ma['strength'] + 0.3)
-            pattern_action = 'BUY'
+            # W override says BUY but W_BUY is only 9.4% WR
+            # Check shorter timeframe signals for sell pressure (crash detection)
+            shorter_sell = False
+            for tf in ['1h', '30m']:
+                if tf in signals and signals[tf].get('action') == 'SELL':
+                    shorter_sell = True
+                    break
+            # Also check if daily change is deeply negative
+            daily_sell = ma.get('daily_chg_pct', 0) < -5
+            if shorter_sell or daily_sell:
+                pattern_action = 'WAIT'   # sell signals on shorter TF = trap
+                pattern_type = 'NONE'     # cancel W pattern, let detectors win
+            else:
+                pattern_action = 'BUY'
             source = 'macro_W'
 
     if pattern_type == 'NONE' and '2h' in signals:
@@ -159,7 +180,15 @@ def binary_signal(ticker, send_alerts=True):
             direction = 'LONG'
             key = 'M_BUY'
             win_rate = BASE_WR['M_BUY']
-            notes.append(f"M-bounce KING")
+            # BUT: M-bounce in DOWN regime is dangerous (30% WR)
+            # v6: CANCEL the trade entirely in DOWN regime
+            if regime == 'DOWN':
+                direction = 'SHORT'     # flip to SHORT — respect the regime
+                key = 'M_SELL'
+                win_rate = BASE_WR['M_SELL'] * 0.70   # moderate SHORT
+                notes.append(f"M-bounce DOWN⚠️→FLIP SHORT")
+            else:
+                notes.append(f"M-bounce KING")
         elif pattern_pct >= 60:
             # Confirmation zone: M completing downward -> SHORT
             direction = 'SHORT'
@@ -281,8 +310,16 @@ def binary_signal(ticker, send_alerts=True):
                 win_rate = max(0.2, win_rate - 0.05)
                 notes.append(f"RSI{rsi:.0f}-vs")
         elif rsi <= 30:
-            win_rate = max(0.2, win_rate - 0.25)
-            notes.append(f"RSI{rsi:.0f}!!")
+            # v6: Oversold depends on context
+            if direction == 'SHORT' and regime == 'DOWN':
+                win_rate = min(1.0, win_rate + 0.05)  # oversold in downtrend = momentum
+                notes.append(f"RSI{rsi:.0f}+freefall")
+            elif direction == 'LONG' and regime == 'DOWN':
+                win_rate = max(0.05, win_rate - 0.30)  # oversold LONG in DOWN = trap
+                notes.append(f"RSI{rsi:.0f}!!TRAP")
+            else:
+                win_rate = max(0.2, win_rate - 0.15)   # mild penalty in UP
+                notes.append(f"RSI{rsi:.0f}!!")
         elif rsi < 40:
             if direction == 'LONG':
                 win_rate = max(0.2, win_rate - 0.15)
@@ -295,7 +332,7 @@ def binary_signal(ticker, send_alerts=True):
         win_rate = min(1.0, win_rate + 0.03)
         notes.append("conf+")
 
-    # Regime adjustment (v5)
+    # Regime adjustment (v6)
     regime_adj = REGIME_ADJ_BINARY.get(regime, {'BUY': 0, 'SELL': 0})
     action_key = 'BUY' if direction == 'LONG' else 'SELL'
     win_rate += regime_adj.get(action_key, 0)
@@ -361,12 +398,10 @@ def binary_signal(ticker, send_alerts=True):
     else:  # SHORT
         # Target = downside
         if source.startswith('macro'):
-            # Macro M sell: target = 61.8% or full extension of M drop
-            m_drop = pattern_ceil - pattern_floor
-            target_full = pattern_floor
-            target_127 = pattern_floor - m_drop * 0.27  # 127% extension
-            # Use floor as target (full M completion)
-            target = target_full
+            # v7: Use 2h floor if available (more recent structure),
+            # otherwise macro floor. Never use the macro ceiling as stop —
+            # it can be months old and 5× ATR away.
+            target = signals['2h'].get('floor', pattern_floor) if '2h' in signals else pattern_floor
             notes.append(f"floor${target:.0f}")
         elif '2h' in signals and signals['2h'].get('floor'):
             target = signals['2h']['floor']
@@ -377,7 +412,13 @@ def binary_signal(ticker, send_alerts=True):
 
         # Stop = upside
         if source.startswith('macro'):
-            stop = pattern_ceil
+            # v7: ATR-capped stop — never wider than 2× ATR.
+            # Macro ceiling can be absurdly far (months-old highs).
+            recent_high = signals['2h'].get('ceil', pattern_ceil) if '2h' in signals else pattern_ceil
+            stop_atr = round(price + atr * 2, 2)
+            stop_struct = recent_high if (recent_high and recent_high < stop_atr) else stop_atr
+            stop = min(stop_atr, stop_struct)
+            notes.append(f"stop${stop:.0f}")
         elif '2h' in signals and signals['2h'].get('ceil'):
             stop = signals['2h']['ceil']
         elif pattern_type in ('M', 'W'):

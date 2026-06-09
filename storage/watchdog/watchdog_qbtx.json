@@ -1,20 +1,29 @@
 {
-  "spike_SELL_24": {
+  "spike_SELL_20": {
     "type": "SPIKE_REVERSE",
-    "peak": 23.84,
-    "trough": 21.24,
-    "spike_pct": 8.9,
-    "reverse_pct": 7.7,
-    "bars_since_peak": 5,
+    "peak": 19.75,
+    "trough": 18.13,
+    "spike_pct": 7.9,
+    "reverse_pct": 6.2,
+    "bars_since_peak": 7,
     "action": "SELL",
     "strength": 1.0
   },
-  "momentum_SELL_6": {
+  "momentum_SELL_4": {
     "type": "MOMENTUM_SELL",
     "consecutive_red": 2,
-    "total_drop_pct": 6.3,
+    "total_drop_pct": 3.99,
     "accelerating": false,
     "action": "SELL",
     "strength": 0.4
+  },
+  "macro_BUY_20": {
+    "type": "MACRO_W_OVERRIDE",
+    "floor": 9.99,
+    "ceiling": 20.15,
+    "pct": 84.0,
+    "amplitude": 101.7,
+    "action": "BUY",
+    "strength": 1.0
   }
 }

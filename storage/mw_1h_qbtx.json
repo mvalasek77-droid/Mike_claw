@@ -1,0 +1,40 @@
+{
+  "ticker": "QBTX",
+  "price": 18.520000457763672,
+  "primary_action": "SELL",
+  "primary_tf": "1h",
+  "atr": 4.67,
+  "entry": 18.520000457763672,
+  "target": 9.17,
+  "stop": 23.19,
+  "timeframes": {
+    "2h": {
+      "pattern": "W",
+      "pct": 0,
+      "action": "WAIT",
+      "floor": 20.23,
+      "ceil": 28.24
+    },
+    "1h": {
+      "pattern": "M",
+      "pct": 100,
+      "action": "SELL",
+      "floor": 21.24,
+      "ceil": 23.84
+    },
+    "30m": {
+      "pattern": "W",
+      "pct": 24.1,
+      "action": "WAIT",
+      "floor": 18.13,
+      "ceil": 19.75
+    },
+    "5m": {
+      "pattern": "W",
+      "pct": 63.3,
+      "action": "HOLD",
+      "floor": 18.18,
+      "ceil": 18.72
+    }
+  }
+}

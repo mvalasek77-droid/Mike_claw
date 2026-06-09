@@ -1,65 +1,59 @@
 {
   "ticker": "RGTI",
-  "price": 20.959999084472656,
+  "price": 21.764999389648438,
   "regime": "UP",
   "signals": {
-    "1h": {
-      "type": "W",
-      "pct": "98.08302387170922",
-      "action": "SELL",
-      "target": "17.89",
-      "stop": "21.02",
-      "confidence": "0.714",
-      "rsi": "23.9",
-      "amplitude": "22.27",
-      "trend": "\u2193"
-    },
-    "1h_double": {
-      "type": "DOUBLE_TOP",
-      "action": "SELL",
-      "level": "24.72",
-      "amplitude": "5.3"
+    "30m": {
+      "type": "M",
+      "pct": "33.132563806179654",
+      "action": "WAIT",
+      "target": "20.1",
+      "stop": "22.59",
+      "confidence": "0.618",
+      "rsi": "39.9",
+      "amplitude": "11.02"
     },
     "2h": {
-      "type": "W",
-      "pct": "98.95102499143444",
+      "type": "M",
+      "pct": "96.17265917975303",
       "action": "SELL",
-      "target": "15.3",
-      "stop": "21.02",
+      "target": "21.53",
+      "stop": "27.67",
       "confidence": "0.936",
-      "rsi": "56.1",
+      "rsi": "60.1",
       "amplitude": "37.39",
       "trend": "\u2191",
-      "comp_prob": "1",
-      "floor": "15.3",
-      "ceil": "21.02"
+      "comp_prob": "0.97",
+      "floor": "21.53",
+      "ceil": "27.67"
+    },
+    "spike": {
+      "type": "SPIKE_REVERSE",
+      "peak": "22.79",
+      "trough": "21.76",
+      "spike_pct": "3.4",
+      "reverse_pct": "4.5",
+      "bars_since_peak": "7",
+      "action": "SELL",
+      "strength": "0.8995186351050556"
     },
     "momentum": {
       "type": "MOMENTUM_SELL",
-      "consecutive_red": "5",
-      "total_drop_pct": "15.53",
+      "consecutive_red": "3",
+      "total_drop_pct": "3.35",
       "accelerating": "False",
       "action": "SELL",
-      "strength": "1.0"
-    },
-    "macro": {
-      "type": "MACRO_W_OVERRIDE",
-      "floor": "15.3",
-      "ceiling": "21.02",
-      "pct": "99.0",
-      "amplitude": "37.4",
-      "action": "BUY",
-      "strength": "1.0"
+      "strength": "0.6"
     }
   },
   "after_hours": {
-    "expected_up": 22.84,
-    "expected_down": 13.57,
-    "atr": 2.89,
-    "avg_daily_range": 2.58,
+    "expected_up": 22.8,
+    "expected_down": 17.15,
+    "atr": 2.96,
+    "avg_daily_range": 2.66,
     "avg_gap_pct": 0.0,
-    "momentum_4h": -13.21,
+    "momentum_4h": -3.4,
     "direction": "BEAR"
   },
-  "time": "2026-06-05T12:10:41.182675-04:00"
+  "time": "2026-06-08T18:59:13.488687-04:00"
 }

@@ -1,0 +1,35 @@
+{
+  "ticker": "QBTX",
+  "price": 18.520000457763672,
+  "direction": "SHORT",
+  "entry": 18.52,
+  "target": 13.69,
+  "stop": 20.15,
+  "grade": "D",
+  "win_rate": 0.25,
+  "rr": 2.96,
+  "rsi": 35.1,
+  "regime": "DOWN",
+  "1m_letter": "NONE",
+  "1w_letter": "W",
+  "1w_pct": 6.2,
+  "1d_letter": "W",
+  "1d_pct": 84.0,
+  "1h_letter": "W",
+  "1h_pct": 73.5,
+  "source": "1D",
+  "notes": [
+    "W completing (weak)",
+    "spike\u2713",
+    "mom\u2717!",
+    "RSI35!"
+  ],
+  "atr": 4.83,
+  "move_detectors": {
+    "spike": true,
+    "dip": false,
+    "momentum": "MOMENTUM_SELL",
+    "macro": "MACRO_W_OVERRIDE"
+  },
+  "time": "2026-06-08T19:18:42.861784-04:00"
+}

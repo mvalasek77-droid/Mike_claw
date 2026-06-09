@@ -1,0 +1,63 @@
+1h M/W Analysis Report - Week of Jun 1-5, 2026
+================================================================================
+
+WTI Actionable Signals:
+  06/01 Mon 00:00 $89.65 M@14% BUY 4b=+1.30% WIN
+  06/01 Mon 01:00 $89.75 M@12% BUY 4b=+1.17% WIN
+  06/01 Mon 02:00 $90.16 M@1% BUY 4b=+0.53% WIN
+  06/01 Mon 03:00 $90.37 M@9% BUY 4b=-0.13% LOSS
+  06/01 Mon 05:00 $90.80 M@9% BUY 4b=+3.68% WIN
+  06/01 Mon 06:00 $90.64 M@13% BUY 4b=+4.28% WIN
+  06/01 Mon 07:00 $90.25 M@21% BUY 4b=+3.91% WIN
+  06/01 Mon 22:00 $91.77 M@76% SELL 4b=-0.24% WIN
+  06/01 Mon 23:00 $91.45 M@84% SELL 4b=-0.69% WIN
+  06/02 Tue 00:00 $91.21 M@90% SELL 4b=-0.61% WIN
+  06/02 Tue 01:00 $91.37 M@86% SELL 4b=-0.39% WIN
+  06/02 Tue 02:00 $91.55 M@81% SELL 4b=-0.41% WIN
+  06/02 Tue 03:00 $90.82 M@100% SELL 4b=+0.22% LOSS
+  06/02 Tue 04:00 $90.65 M@100% SELL 4b=+0.54% LOSS
+  06/02 Tue 05:00 $91.01 M@95% SELL 4b=+1.40% LOSS
+  06/02 Tue 13:00 $93.84 M@24% BUY 4b=+0.44% WIN
+  06/02 Tue 14:00 $93.90 M@22% BUY 4b=+0.76% WIN
+  06/02 Tue 15:00 $93.69 M@8% BUY 4b=+0.74% WIN
+  06/02 Tue 16:00 $93.39 M@16% BUY 4b=+1.56% WIN
+  06/02 Tue 18:00 $94.25 M@13% BUY 4b=+0.50% WIN
+  06/04 Thu 02:00 $95.21 M@75% SELL 4b=-0.32% WIN
+  06/04 Thu 04:00 $94.88 W@24% BUY 4b=-2.34% LOSS
+  06/04 Thu 05:00 $94.51 W@8% BUY 4b=-2.27% LOSS
+  06/04 Thu 09:00 $92.36 W@12% BUY 4b=-0.03% LOSS
+  06/04 Thu 12:00 $92.39 M@87% SELL 4b=+0.56% LOSS
+  06/04 Thu 13:00 $92.33 M@89% SELL 4b=+0.62% LOSS
+  06/04 Thu 20:00 $92.69 M@79% SELL 4b=+0.37% LOSS
+  06/05 Fri 02:00 $92.76 M@78% SELL 4b=+0.11% LOSS
+  06/05 Fri 03:00 $92.69 M@79% SELL 4b=+0.22% LOSS
+  06/05 Fri 04:00 $92.84 M@75% SELL 4b=-0.48% WIN
+  06/05 Fri 09:00 $91.48 M@100% SELL 4b=-1.58% WIN
+  06/05 Fri 13:00 $90.03 W@9% BUY 4b=+0.26% WIN
+  06/05 Fri 14:00 $90.30 W@16% BUY 4b=-0.04% LOSS
+  06/05 Fri 15:00 $90.24 W@14% BUY 4b=+0.02% WIN
+  06/05 Fri 16:00 $90.26 W@15% BUY 4b=+0.00% LOSS
+
+RGTI Actionable Signals:
+  06/02 Tue 15:30 $26.89 M@17% BUY 4b=-10.24% LOSS
+  06/03 Wed 10:30 $24.57 M@87% SELL 4b=-1.40% WIN
+  06/03 Wed 11:30 $24.33 M@93% SELL 4b=-0.95% WIN
+  06/03 Wed 12:30 $24.14 M@98% SELL 4b=-1.16% WIN
+  06/03 Wed 13:30 $24.51 W@16% BUY 4b=-0.73% LOSS
+  06/03 Wed 14:30 $24.22 W@10% BUY 4b=-0.42% LOSS
+  06/03 Wed 15:30 $24.09 W@6% BUY 4b=+1.06% WIN
+  06/04 Thu 09:30 $23.85 W@1% BUY 4b=+4.02% WIN
+  06/04 Thu 11:30 $24.12 W@23% BUY 4b=+0.12% WIN
+  06/04 Thu 15:30 $24.15 W@24% BUY 4b=-13.95% LOSS
+
+QBTX Actionable Signals:
+  06/01 Mon 09:30 $24.72 M@24% BUY 4b=+8.82% WIN
+  06/01 Mon 12:30 $26.89 M@20% BUY 4b=-3.27% LOSS
+  06/01 Mon 13:30 $26.90 M@19% BUY 4b=-3.79% LOSS
+  06/03 Wed 10:30 $22.15 M@94% SELL 4b=-0.88% WIN
+  06/03 Wed 11:30 $22.15 M@94% SELL 4b=-1.53% WIN
+  06/03 Wed 12:30 $21.98 M@97% SELL 4b=-3.05% WIN
+  06/03 Wed 13:30 $22.53 M@88% SELL 4b=-0.98% WIN
+  06/03 Wed 14:30 $21.95 M@97% SELL 4b=-1.48% WIN
+  06/03 Wed 15:30 $21.81 M@99% SELL 4b=+2.38% LOSS
+

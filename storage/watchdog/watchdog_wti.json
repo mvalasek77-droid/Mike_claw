@@ -1,18 +1,18 @@
 {
-  "momentum_SELL_3": {
-    "type": "MOMENTUM_SELL",
-    "consecutive_red": 5,
-    "total_drop_pct": 3.26,
+  "momentum_BUY_0": {
+    "type": "MOMENTUM_BUY",
+    "consecutive_green": 4,
+    "total_gain_pct": 0.22,
     "accelerating": false,
-    "action": "SELL",
-    "strength": 1.0
+    "action": "BUY",
+    "strength": 0.8
   },
-  "macro_SELL_119": {
+  "macro_SELL_118": {
     "type": "MACRO_M_OVERRIDE",
-    "ceiling": 119.48,
-    "floor": 84.37,
-    "pct": 84.3,
-    "amplitude": 29.4,
+    "ceiling": 117.63,
+    "floor": 80.56,
+    "pct": 71.0,
+    "amplitude": 31.5,
     "action": "SELL",
     "strength": 1.0
   }

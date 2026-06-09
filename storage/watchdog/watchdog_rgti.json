@@ -1,10 +1,20 @@
 {
+  "spike_SELL_23": {
+    "type": "SPIKE_REVERSE",
+    "peak": 22.79,
+    "trough": 21.76,
+    "spike_pct": 3.4,
+    "reverse_pct": 4.5,
+    "bars_since_peak": 7,
+    "action": "SELL",
+    "strength": 0.8995186351050556
+  },
   "momentum_SELL_3": {
     "type": "MOMENTUM_SELL",
-    "consecutive_red": 2,
-    "total_drop_pct": 2.68,
+    "consecutive_red": 3,
+    "total_drop_pct": 3.35,
     "accelerating": false,
     "action": "SELL",
-    "strength": 0.4
+    "strength": 0.6
   }
 }

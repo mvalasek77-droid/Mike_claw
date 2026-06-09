@@ -31,6 +31,45 @@ final class ClientConnection {
         conn.start(queue: queue)
     }
 
+    /// Show a macOS confirmation dialog asking the Mac user to approve
+    /// the pairing request from an iPhone.
+    private func askMacUserToApprove(deviceName: String) async -> Bool {
+        let escaped = deviceName.replacingOccurrences(of: "\"", with: "\\\"")
+        let script = "display dialog \"Allow \\\"\(escaped)\\\" to connect to CodeGenie on this Mac?\" with title \"CodeGenie Pairing Request\" buttons {\"Reject\", \"Allow\"} default button \"Allow\""
+        do {
+            let result = try await runAppleScript(script)
+            return result.contains("Allow")
+        } catch {
+            return false
+        }
+    }
+
+    private func runAppleScript(_ source: String) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+                process.arguments = ["-e", source]
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                process.standardError = pipe
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: data, encoding: .utf8) ?? ""
+                    if process.terminationStatus == 0 {
+                        continuation.resume(returning: output)
+                    } else {
+                        continuation.resume(returning: "")
+                    }
+                } catch {
+                    continuation.resume(returning: "")
+                }
+            }
+        }
+    }
+
     func close() {
         conn.cancel()
         onClose()
@@ -76,6 +115,32 @@ final class ClientConnection {
         let payload = (message["payload"] as? [String: Any]) ?? [:]
 
         if !authenticated {
+            // `pair` command: unauthenticated request to pair.
+            // Shows a confirmation dialog on the Mac before handing out the token.
+            // This is the Wi-Fi discovery flow — the iPhone found this Mac
+            // via Bonjour and needs the auth token.
+            if type == "pair" {
+                Task {
+                    let deviceName = payload["device"] as? String ?? "Unknown Device"
+                    let approved = await askMacUserToApprove(deviceName: deviceName)
+                    if approved {
+                        send(envelope: [
+                            "v": 1, "kind": "response", "in_response_to": id, "ok": true,
+                            "payload": ["token": expectedToken]
+                        ])
+                        // Don't authenticate yet — the iPhone will send an `auth`
+                        // message with the token once it receives it.
+                    } else {
+                        send(envelope: [
+                            "v": 1, "kind": "response", "in_response_to": id, "ok": false,
+                            "error": "user rejected pairing request"
+                        ])
+                        close()
+                    }
+                }
+                return
+            }
+
             if type == "auth", let provided = payload["token"] as? String, provided == expectedToken {
                 authenticated = true
                 send(envelope: [

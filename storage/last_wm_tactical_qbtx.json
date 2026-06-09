@@ -1,52 +1,79 @@
 {
   "ticker": "QBTX",
-  "price": 21.540000915527344,
-  "regime": "SIDEWAYS",
+  "price": 18.520000457763672,
+  "regime": "UP",
   "signals": {
     "30m": {
       "type": "W",
-      "pct": "48.161793580091775",
-      "action": "WAIT",
-      "target": "20.23",
-      "stop": "22.95",
-      "confidence": "0.702",
-      "rsi": "46.7",
-      "amplitude": "13.45"
+      "pct": "24.0741416641255",
+      "action": "BUY",
+      "target": "19.75",
+      "stop": "18.13",
+      "confidence": "0.931",
+      "rsi": "49.3",
+      "amplitude": "8.94"
     },
     "1h": {
-      "type": "M",
-      "pct": "75.59958169597698",
-      "action": "SELL",
-      "target": "19.2",
-      "stop": "28.79",
+      "type": "W",
+      "pct": "73.45277975899064",
+      "action": "WAIT",
+      "target": "14.01",
+      "stop": "20.15",
       "confidence": "0.584",
-      "rsi": "26.5",
+      "rsi": "35.1",
       "amplitude": "13.56",
       "trend": "\u2193"
     },
-    "1h_double": {
-      "type": "DOUBLE_TOP",
+    "2h": {
+      "type": "W",
+      "pct": "83.9567009326109",
+      "action": "WAIT",
+      "target": "9.99",
+      "stop": "20.15",
+      "confidence": "0.951",
+      "rsi": "58.7",
+      "amplitude": "101.7",
+      "trend": "\u2191",
+      "comp_prob": "0.93",
+      "floor": "9.99",
+      "ceil": "20.15"
+    },
+    "spike": {
+      "type": "SPIKE_REVERSE",
+      "peak": "19.75",
+      "trough": "18.13",
+      "spike_pct": "7.9",
+      "reverse_pct": "6.2",
+      "bars_since_peak": "7",
       "action": "SELL",
-      "level": "22.7",
-      "amplitude": "13.4"
+      "strength": "1.0"
     },
     "momentum": {
       "type": "MOMENTUM_SELL",
       "consecutive_red": "2",
-      "total_drop_pct": "4.2",
+      "total_drop_pct": "3.99",
       "accelerating": "False",
       "action": "SELL",
       "strength": "0.4"
+    },
+    "macro": {
+      "type": "MACRO_W_OVERRIDE",
+      "floor": "9.99",
+      "ceiling": "20.15",
+      "pct": "84.0",
+      "amplitude": "101.7",
+      "action": "BUY",
+      "strength": "1.0"
     }
   },
   "after_hours": {
-    "expected_up": 24.48,
-    "expected_down": 19.37,
-    "atr": 4.35,
-    "avg_daily_range": 4.26,
+    "expected_up": 21.66,
+    "expected_down": 14.68,
+    "atr": 4.83,
+    "avg_daily_range": 4.15,
     "avg_gap_pct": 0.0,
-    "momentum_4h": 0.7,
-    "direction": "BULL"
+    "momentum_4h": -3.15,
+    "direction": "BEAR"
   },
-  "time": "2026-06-04T12:55:28.660730-04:00"
+  "time": "2026-06-08T18:59:17.856462-04:00"
 }
