@@ -59,6 +59,23 @@ final class PipelineClient: ObservableObject {
         let message: String
     }
 
+    struct AscSignInResult: Hashable {
+        let jobID: String
+        let status: String   // "signed_in" or "needs_sign_in"
+        let appID: String?
+        let appName: String?
+        let bundleID: String?
+        let message: String?
+    }
+
+    struct LegalPagesResult: Hashable {
+        let jobID: String
+        let status: String
+        let privacyURL: String
+        let termsURL: String
+        let repoURL: String
+    }
+
     // MARK: - State
 
     @Published private(set) var isPatching: Bool = false
@@ -68,6 +85,8 @@ final class PipelineClient: ObservableObject {
     @Published private(set) var isTakingScreenshots: Bool = false
     @Published private(set) var isUploading: Bool = false
     @Published private(set) var isSubmitting: Bool = false
+    @Published private(set) var isCheckingAscSignIn: Bool = false
+    @Published private(set) var isGeneratingLegalPages: Bool = false
     @Published private(set) var lastError: String?
 
     private let credentials: Credentials
@@ -162,6 +181,40 @@ final class PipelineClient: ObservableObject {
 
     // MARK: - Phase 5 – Ship
 
+    /// Check if an app record exists in App Store Connect for the build's bundle ID.
+    /// Returns whether the user is signed in and the app exists, or a helpful message.
+    func checkAscSignIn(jobID: String) async throws -> AscSignInResult {
+        isCheckingAscSignIn = true
+        defer { isCheckingAscSignIn = false }
+        lastError = nil
+        let r = try await getJSON("/api/build/\(jobID)/asc-signin")
+        return AscSignInResult(
+            jobID: (r["job_id"] as? String) ?? jobID,
+            status: (r["status"] as? String) ?? "needs_sign_in",
+            appID: r["app_id"] as? String,
+            appName: r["app_name"] as? String,
+            bundleID: r["bundle_id"] as? String,
+            message: r["message"] as? String
+        )
+    }
+
+    /// Generate and publish privacy policy & terms of use HTML to GitHub Pages.
+    func generateLegalPages(jobID: String) async throws -> LegalPagesResult {
+        isGeneratingLegalPages = true
+        defer { isGeneratingLegalPages = false }
+        lastError = nil
+        let r = try await postJSON("/api/build/\(jobID)/legal-pages", body: [:])
+        return LegalPagesResult(
+            jobID: (r["job_id"] as? String) ?? jobID,
+            status: (r["status"] as? String) ?? "unknown",
+            privacyURL: (r["privacy_url"] as? String) ?? "",
+            termsURL: (r["terms_url"] as? String) ?? "",
+            repoURL: (r["repo_url"] as? String) ?? ""
+        )
+    }
+
+    // MARK: - Phase 5 – Ship (legacy)
+
     /// Upload the built IPA to App Store Connect.
     func uploadBuild(jobID: String) async throws -> UploadResult {
         isUploading = true
@@ -191,6 +244,25 @@ final class PipelineClient: ObservableObject {
     }
 
     // MARK: - HTTP helpers
+
+    private func getJSON(_ path: String) async throws -> [String: Any] {
+        guard let url = URL(string: credentials.backendURL + path) else {
+            throw PipelineError.invalidURL
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if !credentials.backendToken.isEmpty {
+            req.setValue("Bearer \(credentials.backendToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            throw PipelineError.httpError(statusCode: statusCode)
+        }
+        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+    }
 
     private func postJSON(_ path: String, body: [String: Any]) async throws -> [String: Any] {
         guard let url = URL(string: credentials.backendURL + path) else {

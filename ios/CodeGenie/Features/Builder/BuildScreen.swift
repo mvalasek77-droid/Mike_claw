@@ -33,12 +33,23 @@ struct BuildScreen: View {
 
     enum JargonTerm: String, Identifiable {
         case pipeline, bitdrop, perfection
+        // Ship pipeline step jargon help
+        case pipelinePerfection, pipelineMetadata, pipelineLegalPages, pipelineAscSignIn, pipelineScreenshots, pipelineArchive, pipelineUpload, pipelineSubmit
+
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .pipeline:   "Pipeline"
-            case .bitdrop:    "BitDrop"
-            case .perfection: "Perfection Mode"
+            case .pipeline:            "Pipeline"
+            case .bitdrop:             "BitDrop"
+            case .perfection:          "Perfection Mode"
+            case .pipelinePerfection:  "Perfection Mode"
+            case .pipelineMetadata:    "Generate Metadata"
+            case .pipelineLegalPages:  "Legal Pages"
+            case .pipelineAscSignIn:   "ASC Sign-In"
+            case .pipelineScreenshots: "Take Screenshots"
+            case .pipelineArchive:     "Archive & Export"
+            case .pipelineUpload:      "Upload to ASC"
+            case .pipelineSubmit:      "Submit for Review"
             }
         }
         var body: String {
@@ -49,6 +60,22 @@ struct BuildScreen: View {
                 "A small built-in puzzle game so you have something to do while the AI works. It's optional — every cleared row gives a tiny build-speed boost as a thank-you, but ignoring it won't slow your app down."
             case .perfection:
                 "A 10,000-probe quality check across nine axes — Apple Review readiness, accessibility, performance, security, polish, and more. Run it before submitting to the App Store. If it flags blockers, fix them; if it's green, you have a much better shot at getting through App Review on the first try."
+            case .pipelinePerfection:
+                "A 10,000-probe quality check across nine axes — Apple Review readiness, accessibility, performance, security, polish, and more. Run it before submitting to the App Store. If it flags blockers, fix them; if it's green, you have a much better shot at getting through App Review on the first try."
+            case .pipelineMetadata:
+                "CodeGenie writes your App Store listing — title, subtitle, keywords, description, and privacy policy URL — all optimized for discoverability."
+            case .pipelineLegalPages:
+                "Generates a professional privacy policy and terms of use for your app, then publishes them to GitHub Pages so you have URLs ready for App Store Connect. Required for App Store submission."
+            case .pipelineAscSignIn:
+                "Checks whether your Apple Developer account already has an app record in App Store Connect. If not, it tells you exactly which bundle ID to create an app for — this is required before you can upload builds."
+            case .pipelineScreenshots:
+                "Automatic screenshots are taken by running your app in the simulator and capturing each screen."
+            case .pipelineArchive:
+                "Your app is compiled into an IPA file — the package format Apple uses for App Store distribution."
+            case .pipelineUpload:
+                "The IPA is uploaded securely to App Store Connect using your Apple Developer credentials."
+            case .pipelineSubmit:
+                "Your app is submitted to Apple for review. This is the final step — once approved, it goes live on the App Store."
             }
         }
     }
@@ -64,6 +91,8 @@ struct BuildScreen: View {
     @StateObject private var diffStream = DiffStream()
     @StateObject private var uploadProgress = UploadProgressTracker()
     @StateObject private var bridge = CompanionBridge()
+    @StateObject private var pipelineRun = PipelineRun()
+    @StateObject private var pipelineClient = PipelineClient()
 
     /// Project path returned by a local Claw build (nil for cloud/simulated builds).
     @State private var localProjectPath: String?
@@ -533,6 +562,7 @@ struct BuildScreen: View {
             GlassSurface(tier: .deep) {
                 ScrollView {
                     VStack(spacing: 14) {
+                        // ── Header ──
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 56, weight: .bold))
                             .foregroundStyle(LiquidGlass.success)
@@ -540,23 +570,44 @@ struct BuildScreen: View {
                         Text("Build green")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                        Text("Ready to test through your Mac's simulator. Run Perfection Mode for a quality check before sharing.")
+                        Text("Your app compiled successfully. Run the ship pipeline to prep for the App Store, or explore individual steps below.")
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
-                        Button {
-                            Haptics.selection()
-                            jargonHelp = .perfection
-                        } label: {
-                            Label("What's Perfection Mode?", systemImage: "info.circle.fill")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(LiquidGlass.accent)
-                        }
-                        .accessibilityHint("Open a plain-English explainer for Perfection Mode")
+
+                        // ── Pipeline status card ──
+                        PipelineStatusCard(
+                            pipeline: pipelineRun,
+                            onRunStep: { step in
+                                if let jobID = swarm.jobID {
+                                    Task { await runPipelineStep(step, jobID: jobID) }
+                                }
+                            },
+                            onJargonHelp: { step in
+                                let term: JargonTerm = switch step {
+                                case .perfection:  .pipelinePerfection
+                                case .metadata:    .pipelineMetadata
+                                case .legalPages:  .pipelineLegalPages
+                                case .ascSignIn:   .pipelineAscSignIn
+                                case .screenshots: .pipelineScreenshots
+                                case .archive:     .pipelineArchive
+                                case .upload:      .pipelineUpload
+                                case .submit:      .pipelineSubmit
+                                }
+                                jargonHelp = term
+                            }
+                        )
+
+                        // ── Run Pipeline CTA ──
                         if let jobID = swarm.jobID {
+                            RunPipelineButton(pipeline: pipelineRun) {
+                                Task { await runFullPipeline(jobID: jobID) }
+                            }
+
+                            // ── Individual Perfection Mode button (kept for quick access) ──
                             PrimaryButton(
-                                title: perfectionRunning ? "Running Perfection Mode..." : "Run Perfection Mode",
-                                systemImage: "checkmark.seal.fill",
+                                title: perfectionRunning ? "Running Perfection Mode…" : "Run Perfection Mode",
+                                systemImage: "checkmark.shield.fill",
                                 style: perfectionRun?.isReady == true ? .glass : .filled
                             ) {
                                 Task { await runPerfection(jobID: jobID) }
@@ -564,6 +615,7 @@ struct BuildScreen: View {
                             .disabled(perfectionRunning)
                             .accessibilityLabel("Run ten thousand probe Perfection Mode")
                         }
+
                         if let perfectionRun {
                             perfectionSummary(perfectionRun)
                         }
@@ -574,12 +626,12 @@ struct BuildScreen: View {
                                 .multilineTextAlignment(.center)
                                 .accessibilityLabel("Perfection Mode failed: \(perfectionError)")
                         }
+
+                        // ── Misc actions ──
                         PrimaryButton(title: "Open simulator preview", systemImage: "play.rectangle.fill", style: .filled) {
                             let job = BuildJob(description: initialJob.description, stage: .readyForTest)
                             session.openPreview(for: job)
                         }
-                        // App Store submission removed — app isn't ready at this stage.
-                        // Users should test locally first, then submit via the Apps tab.
                         PrimaryButton(
                             title: githubSyncing ? "Pushing to GitHub..." : "Back up to GitHub",
                             systemImage: "chevron.left.forwardslash.chevron.right",
@@ -602,7 +654,6 @@ struct BuildScreen: View {
                             }
                             .accessibilityLabel("Download workspace zip")
                         }
-                        // Local build project path card
                         if let projectPath = localProjectPath, !projectPath.isEmpty {
                             localProjectPathCard(path: projectPath)
                         }
@@ -616,7 +667,6 @@ struct BuildScreen: View {
                     }
                     .padding(24)
                 }
-                .frame(maxHeight: 620)
                 .scrollIndicators(.hidden)
             }
             .padding(.horizontal, 28)
@@ -933,6 +983,107 @@ struct BuildScreen: View {
             perfectionError = "Could not run Perfection Mode: \(error)"
             Haptics.error()
         }
+    }
+
+    // MARK: - Pipeline execution
+
+    /// Run a single pipeline step manually.
+    private func runPipelineStep(_ step: PipelineStep, jobID: String) async {
+        pipelineRun.markRunning(step)
+        push(.info, formattedTime(), "↪ \(step.rawValue)…")
+        do {
+            switch step {
+            case .perfection:
+                let result = try await pipelineClient.runPerfection(jobID: jobID)
+                pipelineRun.perfectionResult = result
+                pipelineRun.markComplete(step)
+                push(.ok, formattedTime(), "✓ Perfection Mode score: \(String(format: "%.1f", result.score))/100")
+                Haptics.success()
+
+            case .metadata:
+                let result = try await pipelineClient.generateMetadata(jobID: jobID)
+                pipelineRun.metadataResult = result
+                pipelineRun.markComplete(step)
+                push(.ok, formattedTime(), "✓ Metadata generated: \(result.name)")
+                Haptics.success()
+
+            case .legalPages:
+                let result = try await pipelineClient.generateLegalPages(jobID: jobID)
+                pipelineRun.legalPagesResult = result
+                pipelineRun.markComplete(step)
+                push(.ok, formattedTime(), "✓ Legal pages published: \(result.privacyURL)")
+                Haptics.success()
+
+            case .ascSignIn:
+                let result = try await pipelineClient.checkAscSignIn(jobID: jobID)
+                pipelineRun.ascSignInResult = result
+                if result.status == "signed_in" {
+                    pipelineRun.markComplete(step)
+                    push(.ok, formattedTime(), "✓ ASC sign-in verified: \(result.appName ?? "app")")
+                } else {
+                    pipelineRun.markComplete(step)
+                    push(.warn, formattedTime(), "⚠ ASC: \(result.message ?? "No app record found")")
+                }
+                Haptics.success()
+
+            case .screenshots:
+                let result = try await pipelineClient.takeScreenshots(jobID: jobID)
+                pipelineRun.screenshotsResult = result
+                pipelineRun.markComplete(step)
+                push(.ok, formattedTime(), "✓ Screenshots taken: \(result.screenshotURLs.count) screens")
+                Haptics.success()
+
+            case .archive:
+                // Archive step uses the swarm's existing build infrastructure.
+                // We call the upload endpoint which implicitly archives.
+                let result = try await pipelineClient.uploadBuild(jobID: jobID)
+                pipelineRun.uploadResult = result
+                pipelineRun.markComplete(step)
+                push(.ok, formattedTime(), "✓ Archive & export complete")
+                Haptics.success()
+
+            case .upload:
+                let result = try await pipelineClient.uploadBuild(jobID: jobID)
+                pipelineRun.uploadResult = result
+                pipelineRun.markComplete(step)
+                push(.ok, formattedTime(), "✓ Uploaded to App Store Connect")
+                Haptics.success()
+
+            case .submit:
+                let result = try await pipelineClient.submitForReview(jobID: jobID)
+                pipelineRun.submitResult = result
+                pipelineRun.markComplete(step)
+                push(.ok, formattedTime(), "✓ Submitted for App Store Review")
+                shipBanner = "Your app is submitted! Apple will review it within 24–48 hours."
+                Haptics.success()
+            }
+        } catch {
+            pipelineRun.markFailed(step, error: error.localizedDescription)
+            push(.err, formattedTime(), "✗ \(step.rawValue) failed: \(error.localizedDescription)")
+            Haptics.error()
+        }
+    }
+
+    /// Run the full pipeline from the first incomplete step to the end.
+    /// Each step is run sequentially; the pipeline stops on the first failure.
+    private func runFullPipeline(jobID: String) async {
+        guard !pipelineRun.isRunning else { return }
+        Haptics.selection()
+
+        for step in PipelineStep.allCases {
+            let status = pipelineRun.status(for: step)
+            // Skip already-complete steps
+            if status.isComplete { continue }
+            // If a step previously failed, retry it
+            if status.isFailed { pipelineRun.retry(step) }
+
+            await runPipelineStep(step, jobID: jobID)
+
+            // If the step failed, stop the pipeline
+            if pipelineRun.status(for: step).isFailed { return }
+        }
+
+        shipBanner = "Pipeline complete — your app is submitted for review!"
     }
 
     private func startPerfectionIfNeeded(jobID: String) {
