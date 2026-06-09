@@ -7,7 +7,7 @@ use crate::builder::github;
 use crate::builder::project;
 use crate::builder::prompts;
 use crate::builder::{
-    AscMetadataResponse, AxisResult, BuildEvent, BuildJob, BuildStatus, IconRequest,
+    AscMetadataAIOutput, AscMetadataResponse, AxisResult, BuildEvent, BuildJob, BuildStatus, IconRequest,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -585,11 +585,11 @@ pub async fn call_ai_for_asc_metadata(
     }
 
     let json_text = strip_markdown_fences(&full_text);
-    let metadata: AscMetadataResponse = serde_json::from_str(&json_text).map_err(|e| {
+    let ai_output: AscMetadataAIOutput = serde_json::from_str(&json_text).map_err(|e| {
         format!("Failed to parse ASC metadata response: {e}\n\nRaw text:\n{full_text}")
     })?;
 
-    Ok(metadata)
+    Ok(ai_output.into())
 }
 
 // ── Helper functions ─────────────────────────────────────────────────────
@@ -603,19 +603,21 @@ fn strip_markdown_fences(text: &str) -> String {
 
     // Try to detect and strip ```json ... ``` blocks
     if trimmed.starts_with("```") {
-        // Use strip_prefix instead of manual slicing
-        let after_first_fence = trimmed.strip_prefix("```").unwrap_or(trimmed);
-        let lang_end = match after_first_fence.find('\n') {
+        // Find the first newline after the opening ``` (skips ```json, ```json\n, etc.)
+        let first_newline = match trimmed.find('\n') {
             Some(i) => i + 1,
             None => return text.to_string(),
         };
-        // Find the closing ```
-        let closing = trimmed.rfind("```");
-        if let Some(closing_pos) = closing {
-            if closing_pos > lang_end {
-                return trimmed[lang_end..closing_pos].trim().to_string();
+        // Find the closing ``` — search after the first newline
+        let closing = trimmed[first_newline..].rfind("```");
+        if let Some(relative_pos) = closing {
+            let closing_pos = first_newline + relative_pos;
+            if closing_pos > first_newline {
+                return trimmed[first_newline..closing_pos].trim().to_string();
             }
         }
+        // No closing fence — extract everything after first newline
+        return trimmed[first_newline..].trim().to_string();
     }
 
     // If the text itself is valid JSON, return it

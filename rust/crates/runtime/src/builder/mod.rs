@@ -75,6 +75,12 @@ pub enum BuildStatus {
     UploadingASC,
     /// Submitting the build for App Store review.
     Submitting,
+    /// Checking App Store Connect sign-in / app record.
+    CheckingAscSignIn,
+    /// Generating privacy policy & terms of use HTML.
+    GeneratingLegalPages,
+    /// Publishing legal pages to GitHub Pages.
+    PublishingLegalPages,
 }
 
 impl std::fmt::Display for BuildStatus {
@@ -95,6 +101,9 @@ impl std::fmt::Display for BuildStatus {
             Self::TakingScreenshots => write!(f, "taking_screenshots"),
             Self::UploadingASC => write!(f, "uploading_asc"),
             Self::Submitting => write!(f, "submitting"),
+            Self::CheckingAscSignIn => write!(f, "checking_asc_sign_in"),
+            Self::GeneratingLegalPages => write!(f, "generating_legal_pages"),
+            Self::PublishingLegalPages => write!(f, "publishing_legal_pages"),
         }
     }
 }
@@ -183,6 +192,16 @@ pub enum BuildEvent {
     /// Build was submitted for review.
     #[serde(rename = "submitted")]
     Submitted,
+    /// Detailed progress event for a sub-step within a pipeline phase.
+    #[serde(rename = "pipeline_step")]
+    PipelineStep {
+        /// Which overall phase this step belongs to (e.g. "upload", "submit", "screenshots").
+        phase: String,
+        /// Which sub-step (e.g. "archiving", "exporting_ipa", "uploading_to_asc", "booting_simulator").
+        step: String,
+        /// Human-readable progress message.
+        message: String,
+    },
 }
 
 // ── Request types for the new endpoints ─────────────────────────────────
@@ -247,8 +266,26 @@ pub struct AxisResult {
     pub recommendations: Vec<String>,
 }
 
+/// Intermediate type for parsing AI response — `job_id` is absent from AI output.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AscMetadataAIOutput {
+    #[serde(default)]
+    pub job_id: String,
+    pub name: String,
+    pub subtitle: String,
+    pub primary_category: String,
+    pub keywords: Vec<String>,
+    pub description: String,
+    pub promotional_text: String,
+    pub support_url: String,
+    pub marketing_url: String,
+    pub age_rating: String,
+    pub privacy_policy_url: String,
+}
+
 /// Response for `POST /api/build/:job_id/asc-metadata`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// This is the API response type with `job_id` filled in by the server.
+#[derive(Debug, Clone, Serialize)]
 pub struct AscMetadataResponse {
     pub job_id: String,
     pub name: String,
@@ -263,7 +300,23 @@ pub struct AscMetadataResponse {
     pub privacy_policy_url: String,
 }
 
-/// Response for `POST /api/build/:job_id/screenshots`.
+impl From<AscMetadataAIOutput> for AscMetadataResponse {
+    fn from(ai: AscMetadataAIOutput) -> Self {
+        Self {
+            job_id: ai.job_id,
+            name: ai.name,
+            subtitle: ai.subtitle,
+            primary_category: ai.primary_category,
+            keywords: ai.keywords,
+            description: ai.description,
+            promotional_text: ai.promotional_text,
+            support_url: ai.support_url,
+            marketing_url: ai.marketing_url,
+            age_rating: ai.age_rating,
+            privacy_policy_url: ai.privacy_policy_url,
+        }
+    }
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScreenshotsResponse {
     pub job_id: String,
@@ -284,4 +337,26 @@ pub struct UploadResponse {
 pub struct SubmitResponse {
     pub job_id: String,
     pub status: String,
+}
+
+/// Response for `GET /api/build/:job_id/asc-signin`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AscSignInResponse {
+    pub job_id: String,
+    /// "signed_in" or "needs_sign_in"
+    pub status: String,
+    pub app_id: Option<String>,
+    pub app_name: Option<String>,
+    pub bundle_id: Option<String>,
+    pub message: Option<String>,
+}
+
+/// Response for `POST /api/build/:job_id/legal-pages`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LegalPagesResponse {
+    pub job_id: String,
+    pub status: String,
+    pub privacy_url: String,
+    pub terms_url: String,
+    pub repo_url: String,
 }
