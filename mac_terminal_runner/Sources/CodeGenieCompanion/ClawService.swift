@@ -172,6 +172,75 @@ final class ClawService {
         return try await postJSON(url: url, body: payload)
     }
 
+    // MARK: - Pipeline endpoints (Build → Ship)
+
+    /// POST /api/build/{job_id}/patch — incremental bug fix.
+    func patchBuild(jobID: String, bugDescription: String, filesToEdit: [String]? = nil) async throws -> [String: Any] {
+        try await ensureServerRunning()
+        guard let url = URL(string: "\(baseURL)/api/build/\(jobID)/patch") else {
+            throw ClawError.bad("Invalid job ID")
+        }
+        var body: [String: Any] = ["bug_description": bugDescription]
+        if let files = filesToEdit { body["files_to_edit"] = files }
+        return try await postJSON(url: url, body: body)
+    }
+
+    /// POST /api/build/{job_id}/icon — generate/regenerate app icon.
+    func generateIcon(jobID: String, prompt: String? = nil) async throws -> [String: Any] {
+        try await ensureServerRunning()
+        guard let url = URL(string: "\(baseURL)/api/build/\(jobID)/icon") else {
+            throw ClawError.bad("Invalid job ID")
+        }
+        var body: [String: Any] = [:]
+        if let p = prompt { body["prompt"] = p }
+        return try await postJSON(url: url, body: body)
+    }
+
+    /// GET /api/build/{job_id}/perfection — run 9-axis quality audit.
+    func runPerfection(jobID: String) async throws -> [String: Any] {
+        try await ensureServerRunning()
+        guard let url = URL(string: "\(baseURL)/api/build/\(jobID)/perfection") else {
+            throw ClawError.bad("Invalid job ID")
+        }
+        return try await getJSON(url: url)
+    }
+
+    /// POST /api/build/{job_id}/asc-metadata — generate App Store Connect metadata.
+    func generateMetadata(jobID: String) async throws -> [String: Any] {
+        try await ensureServerRunning()
+        guard let url = URL(string: "\(baseURL)/api/build/\(jobID)/asc-metadata") else {
+            throw ClawError.bad("Invalid job ID")
+        }
+        return try await postJSON(url: url, body: [:])
+    }
+
+    /// POST /api/build/{job_id}/screenshots — trigger screenshot automation.
+    func takeScreenshots(jobID: String) async throws -> [String: Any] {
+        try await ensureServerRunning()
+        guard let url = URL(string: "\(baseURL)/api/build/\(jobID)/screenshots") else {
+            throw ClawError.bad("Invalid job ID")
+        }
+        return try await postJSON(url: url, body: [:])
+    }
+
+    /// POST /api/build/{job_id}/upload — archive and upload to App Store Connect.
+    func uploadBuild(jobID: String) async throws -> [String: Any] {
+        try await ensureServerRunning()
+        guard let url = URL(string: "\(baseURL)/api/build/\(jobID)/upload") else {
+            throw ClawError.bad("Invalid job ID")
+        }
+        return try await postJSON(url: url, body: [:])
+    }
+
+    /// POST /api/build/{job_id}/submit — submit for App Store review.
+    func submitForReview(jobID: String) async throws -> [String: Any] {
+        try await ensureServerRunning()
+        guard let url = URL(string: "\(baseURL)/api/build/\(jobID)/submit") else {
+            throw ClawError.bad("Invalid job ID")
+        }
+        return try await postJSON(url: url, body: [:])
+    }
+
     // MARK: - URLSession helpers
 
     private func postJSON(url: URL, body: [String: Any]) async throws -> [String: Any] {
