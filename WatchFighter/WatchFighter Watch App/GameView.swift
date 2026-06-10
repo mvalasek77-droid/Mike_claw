@@ -9,7 +9,7 @@ struct FightView: View {
     @State private var crownValue = 0.0
     @State private var lastCrown = 0.0
     @State private var dragStart: Date?
-    @State private var usePad = GameSettings.virtualPad
+    @State private var usePad = GameSettings.controls == .buttons
     @FocusState private var focused: Bool
     @State private var scene: FightScene
     let onExit: () -> Void

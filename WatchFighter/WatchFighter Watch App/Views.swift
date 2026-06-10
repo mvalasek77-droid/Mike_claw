@@ -78,7 +78,7 @@ struct MainMenuView: View {
     @State private var music = SoundEngine.shared.musicEnabled
     @State private var blood = GameSettings.blood
     @State private var turbo = GameSettings.turbo
-    @State private var pad = GameSettings.virtualPad
+    @State private var controls = GameSettings.controls
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
@@ -87,8 +87,8 @@ struct MainMenuView: View {
                 menuButton("TRAINING", color: .blue) { flow.chooseMode(.training) }
                 menuButton("VERSUS", color: .green) { flow.chooseMode(.versus) }
                 menuButton("HOW TO PLAY", color: .gray) { flow.screen = .howTo }
-                menuButton(pad ? "CONTROLS: BUTTONS" : "CONTROLS: GESTURES", color: .teal) {
-                    pad.toggle(); GameSettings.virtualPad = pad
+                menuButton("CONTROLS: \(controls.label)", color: .teal) {
+                    controls = controls.next; GameSettings.controls = controls
                 }
                 menuButton("CPU: \(flow.cpuDifficulty.label)", color: .orange) {
                     flow.cpuDifficulty = flow.cpuDifficulty.nextSelectable
@@ -184,15 +184,16 @@ struct CharacterSelectView: View {
 
 struct HowToPlayView: View {
     @ObservedObject var flow: GameFlow
+    // Default CROWN+TAP scheme (switch schemes in the menu).
     private let rows: [(String, String)] = [
-        ("Crown", "charge super meter"),
-        ("◀ ▶ (hold)", "walk back / forward"),
-        ("↑", "jump (then L/H = air attack)"),
-        ("L / H", "light / heavy attack"),
-        ("S", "special (meter ≥ 50)"),
-        ("GR", "throw (beats block)"),
-        ("P", "parry"),
-        ("BLK (hold)", "block"),
+        ("Rotate Crown", "WALK forward / back"),
+        ("Tap top / bottom", "light / heavy attack"),
+        ("Tap far-left", "throw (beats block)"),
+        ("Tap far-right", "special (meter ≥ 50)"),
+        ("Swipe up", "jump (then tap = air attack)"),
+        ("Swipe down", "parry"),
+        ("Hold", "block"),
+        ("Menu → CONTROLS", "Crown / Buttons / Gestures"),
     ]
     var body: some View {
         ScrollView {

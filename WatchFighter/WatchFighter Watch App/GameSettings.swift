@@ -26,14 +26,30 @@ enum GameSettings {
     /// Real-time → simulation speed multiplier.
     static var gameSpeed: Double { turbo ? 1.75 : 1.18 }
 
-    private static let padKey = "eternalcombat.virtualpad"
+    private static let padKey = "eternalcombat.controls"
 
-    /// On-screen virtual gamepad for fights (vs. the gesture/tap-zone scheme).
-    /// Default ON. The scene reads this directly to disable gesture handling.
-    static var virtualPad: Bool = {
-        UserDefaults.standard.object(forKey: padKey) as? Bool ?? true
+    /// Control scheme. `crown` = rotate the Digital Crown to WALK + tap to fight
+    /// (the only physical control watchOS exposes is the Crown's rotation; the
+    /// side/Action buttons are not available to apps). `buttons` = on-screen pad.
+    /// `gestures` = swipe/tap zones.
+    enum ControlScheme: String, CaseIterable {
+        case crown, buttons, gestures
+        var label: String {
+            switch self { case .crown: return "CROWN+TAP"
+                          case .buttons: return "BUTTONS"; case .gestures: return "GESTURES" }
+        }
+        var next: ControlScheme {
+            let all = ControlScheme.allCases
+            return all[(all.firstIndex(of: self)! + 1) % all.count]
+        }
+    }
+
+    static var controls: ControlScheme = {
+        if let s = UserDefaults.standard.string(forKey: padKey),
+           let c = ControlScheme(rawValue: s) { return c }
+        return .crown
     }() {
-        didSet { UserDefaults.standard.set(virtualPad, forKey: padKey) }
+        didSet { UserDefaults.standard.set(controls.rawValue, forKey: padKey) }
     }
 }
 #endif

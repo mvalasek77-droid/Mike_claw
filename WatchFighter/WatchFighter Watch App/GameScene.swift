@@ -40,6 +40,8 @@ final class FightScene: SKScene {
     // Loop bookkeeping
     private var pendingLocal: [Intent] = []
     private var holdDir = 0               // virtual-pad: -1 back, 0 none, +1 forward
+    private var crownDir = 0              // crown-mode walk direction
+    private var crownTimer = 0            // frames the crown walk persists after a turn
     private var pendingCrown: CGFloat = 0
     private var lastTime: TimeInterval = 0
     private var accumulator: TimeInterval = 0
@@ -210,7 +212,15 @@ final class FightScene: SKScene {
 
     // MARK: - Crown
 
-    func feedCrown(delta: CGFloat) { pendingCrown += delta }
+    /// Crown rotation: in CROWN mode it drives walking; otherwise it charges the
+    /// super meter. (Rotation is the only physical control watchOS gives apps.)
+    func feedCrown(delta: CGFloat) {
+        if GameSettings.controls == .crown {
+            if abs(delta) > 0.0008 { crownDir = delta > 0 ? 1 : -1; crownTimer = 8 }
+        } else {
+            pendingCrown += delta
+        }
+    }
 
     // MARK: - Phase machine
 
@@ -265,6 +275,10 @@ final class FightScene: SKScene {
     private func stepFighting(dt: TimeInterval) {
         // Hitstop: freeze the sim a few frames on impact for punchy feedback.
         if hitstop > 0 { hitstop -= 1; return }
+        // CROWN mode: the Crown rotation drives walking (decays when you stop).
+        if GameSettings.controls == .crown {
+            if crownTimer > 0 { crownTimer -= 1; holdDir = crownDir } else { holdDir = 0 }
+        }
         drainCrownIntoPending()
         switch mode {
         case .story, .training: stepLocalAuthoritative(dt: dt)
@@ -665,15 +679,20 @@ final class FightScene: SKScene {
     // MARK: - Gesture scheme (only when the virtual pad is OFF)
 
     func touchDown() {
-        guard phase == .fighting, !GameSettings.virtualPad else { return }
+        guard phase == .fighting, GameSettings.controls != .buttons else { return }
         pendingLocal.append(.beginBlock)
     }
     func touchUp(translation: CGSize, startLocation: CGPoint, held: TimeInterval) {
-        guard phase == .fighting, !GameSettings.virtualPad else { return }
+        guard phase == .fighting, GameSettings.controls != .buttons else { return }
         pendingLocal.append(.endBlock)
         let dx = translation.width, dy = -translation.height
         if hypot(dx, dy) > 24 {
             if let intent = InputController.swipeIntent(dx: dx, dy: dy) {
+                // In CROWN mode the Crown handles walking, so ignore horizontal
+                // swipe-steps (keep jump/parry).
+                if GameSettings.controls == .crown, intent == .stepForward || intent == .stepBack {
+                    return
+                }
                 pendingLocal.append(intent)
                 if intent == .parry { SoundEngine.shared.play(.parry) }
             }
