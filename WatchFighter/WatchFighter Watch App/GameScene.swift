@@ -368,9 +368,10 @@ final class FightScene: SKScene {
                 spawnHitSpark(at: s, big: false)
                 SoundEngine.shared.play(.block)   // metallic "clank" — no effect
                 shake(1)
-            case .knockdown:
+            case .knockdown(let s):
                 if allowHitstop { hitstop = 6 }
                 shake(9)
+                koSplatter(at: s)
             case .parried(let by):
                 spawnHitSpark(at: by, big: true)
                 shake(4)
@@ -494,28 +495,55 @@ final class FightScene: SKScene {
                                .sequence([.wait(forDuration: 0.6), .fadeOut(withDuration: 0.3)])]))
     }
 
-    /// Quick burst of accent-coloured shards at the victim's position.
+    /// Quick burst of shards at the victim's position. Uses the attacker's
+    /// accent colour normally, or red gore when the optional BLOOD setting is on.
     private func spawnHitSpark(at side: Side, big: Bool) {
         let c = flow.combat
         let f = side == .player ? c.player : c.opponent
         let spec = side == .player ? flow.playerSpec : flow.opponentSpec
         let origin = CGPoint(x: laneToX(f.position), y: size.height * 0.42 + 32)
-        let shards = big ? 8 : 5
+        let gore = GameSettings.blood
+        let color: SKColor = gore ? SKColor(red: 0.75, green: 0.05, blue: 0.08, alpha: 1)
+                                  : spec.accentColor.skColor
+        let shards = (big ? 8 : 5) + (gore ? 4 : 0)
         for _ in 0..<shards {
-            let shard = SKShapeNode(rectOf: CGSize(width: big ? 4 : 3, height: big ? 4 : 3))
-            shard.fillColor = spec.accentColor.skColor
+            let s = big ? 4 : 3
+            let shard = SKShapeNode(rectOf: CGSize(width: s, height: s))
+            shard.fillColor = color
             shard.strokeColor = .clear
-            shard.blendMode = .add
+            shard.blendMode = gore ? .alpha : .add
             shard.position = origin
             shard.zPosition = 4
             addChild(shard)
             let angle = CGFloat.random(in: 0..<(2 * .pi))
-            let dist = CGFloat.random(in: 8...(big ? 26 : 16))
-            let move = SKAction.move(by: CGVector(dx: cos(angle) * dist, dy: sin(angle) * dist),
-                                     duration: 0.22)
+            let dist = CGFloat.random(in: 8...(big ? 26 : 16)) * (gore ? 1.3 : 1)
+            // Gore arcs downward (gravity); sparks fly straight out.
+            let dy = gore ? cos(angle) * dist - 10 : sin(angle) * dist
+            let move = SKAction.move(by: CGVector(dx: cos(angle) * dist, dy: dy), duration: 0.24)
             move.timingMode = .easeOut
-            shard.run(.sequence([.group([move, .fadeOut(withDuration: 0.22),
-                                         .scale(to: 0.2, duration: 0.22)]), .removeFromParent()]))
+            shard.run(.sequence([.group([move, .fadeOut(withDuration: 0.24),
+                                         .scale(to: 0.2, duration: 0.24)]), .removeFromParent()]))
+        }
+    }
+
+    /// Bigger one-off splatter on a KO when BLOOD is enabled.
+    private func koSplatter(at side: Side) {
+        guard GameSettings.blood else { return }
+        let f = side == .player ? flow.combat.player : flow.combat.opponent
+        let origin = CGPoint(x: laneToX(f.position), y: size.height * 0.42 + 28)
+        for _ in 0..<16 {
+            let drop = SKShapeNode(circleOfRadius: CGFloat.random(in: 1.5...3.5))
+            drop.fillColor = SKColor(red: 0.6, green: 0.03, blue: 0.05, alpha: 1)
+            drop.strokeColor = .clear
+            drop.position = origin
+            drop.zPosition = 4
+            addChild(drop)
+            let angle = CGFloat.random(in: 0..<(2 * .pi))
+            let dist = CGFloat.random(in: 14...40)
+            let move = SKAction.move(by: CGVector(dx: cos(angle) * dist, dy: sin(angle) * dist - 14),
+                                     duration: 0.4)
+            move.timingMode = .easeOut
+            drop.run(.sequence([.group([move, .fadeOut(withDuration: 0.45)]), .removeFromParent()]))
         }
     }
 

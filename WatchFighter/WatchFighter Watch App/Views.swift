@@ -29,19 +29,19 @@ struct RootView: View {
         case .story:
             FightView(playerSpec: flow.playerSpec, opponentSpec: flow.opponentSpec,
                       stage: flow.stageSpec, mode: .story(flow.storyDifficulty),
-                      onResult: { flow.matchEnded(winner: $0) })
+                      onResult: { flow.matchEnded(winner: $0) }, onExit: { flow.exitFight() })
         case .training:
             let opp = CharacterSpec.bastion
             FightView(playerSpec: flow.playerSpec, opponentSpec: opp,
                       stage: StageLibrary.stage(id: opp.homeStageID),
                       mode: .training(flow.trainingOptions),
-                      onResult: { flow.matchEnded(winner: $0) })
+                      onResult: { flow.matchEnded(winner: $0) }, onExit: { flow.exitFight() })
         case .versus:
             if let t = flow.versusTransport {
                 FightView(playerSpec: flow.versusPlayer, opponentSpec: flow.versusOpponent,
                           stage: StageLibrary.stage(id: flow.versusOpponent.homeStageID),
                           mode: .versus(localSide: flow.versusLocalSide, transport: t),
-                          onResult: { flow.matchEnded(winner: $0) })
+                          onResult: { flow.matchEnded(winner: $0) }, onExit: { flow.exitFight() })
             } else {
                 Color.black.onAppear { flow.backToTitle() }
             }
@@ -75,6 +75,7 @@ struct TitleView: View {
 struct MainMenuView: View {
     @ObservedObject var flow: GameFlow
     @State private var music = SoundEngine.shared.musicEnabled
+    @State private var blood = GameSettings.blood
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
@@ -88,6 +89,9 @@ struct MainMenuView: View {
                 }
                 menuButton(music ? "MUSIC: ON" : "MUSIC: OFF", color: .purple) {
                     music.toggle(); SoundEngine.shared.setMusicEnabled(music)
+                }
+                menuButton(blood ? "BLOOD: ON" : "BLOOD: OFF", color: .red) {
+                    blood.toggle(); GameSettings.blood = blood
                 }
                 Text("Wins: \(flow.progression.totalWins)")
                     .font(.system(size: 8)).foregroundStyle(.secondary)
@@ -172,6 +176,8 @@ struct HowToPlayView: View {
                     .font(.system(size: 8)).foregroundStyle(.secondary).padding(.top, 2)
                 Text("Final boss TITUS is invincible until you perform the rite: ▽ ▽ • ◆ ★")
                     .font(.system(size: 8)).foregroundStyle(.yellow)
+                Text("Found a bug? File an issue on the project's GitHub with your watch model + steps.")
+                    .font(.system(size: 7)).foregroundStyle(.secondary)
                 Button(action: { flow.goToMenu() }) {
                     Text("BACK").font(.system(size: 11, weight: .bold)).frame(maxWidth: .infinity)
                 }.tint(.gray).padding(.top, 4)
@@ -331,6 +337,12 @@ struct EndingView: View {
                              : "The tower keeps what it takes. Climb again.")
                         .font(.system(size: 10)).foregroundStyle(.white)
                         .multilineTextAlignment(.center).padding(.horizontal, 10)
+                    if win {
+                        Text("“\(flow.playerSpec.winQuote)”")
+                            .font(.system(size: 9)).italic()
+                            .foregroundStyle(flow.playerSpec.accentColor.color)
+                            .multilineTextAlignment(.center).padding(.horizontal, 10)
+                    }
                     if !win && flow.appMode == .story {
                         Button(action: { flow.beginFight() }) {
                             Text("RETRY").font(.system(size: 12, weight: .bold)).frame(maxWidth: .infinity)

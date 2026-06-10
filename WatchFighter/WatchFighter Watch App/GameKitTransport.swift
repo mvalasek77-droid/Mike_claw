@@ -1,84 +1,31 @@
 #if os(watchOS)
-import GameKit
+import Foundation
 
-/// Real-time GameKit transport for Watch-to-Watch versus. Implements the
-/// engine's `MatchTransport` so the netplay layer is identical whether running
-/// over GameKit or the in-process `LoopbackTransport`.
+/// Online-versus transport stub.
 ///
-/// NOTE (honesty): GameKit real-time matchmaking on watchOS is constrained and
-/// requires Game Center entitlement + a signed build to actually connect. This
-/// class is wired correctly against the API but is **untested on-device**; the
-/// app degrades gracefully to an error state if authentication/matchmaking
-/// fails so the rest of the game keeps working.
-final class GameKitTransport: NSObject, MatchTransport, GKMatchDelegate {
+/// IMPORTANT: real-time GameKit (`GKMatch` / `GKMatchmaker`) is **not available
+/// on watchOS** — those APIs are iOS/macOS/tvOS only. True Watch-to-Watch play
+/// therefore has to be relayed through a companion iPhone (WatchConnectivity +
+/// the phone's GameKit/Network stack), which is a roadmap item.
+///
+/// This stub keeps the `MatchTransport` architecture intact (the deterministic
+/// lockstep netcode, `VersusMatchup`, and `LoopbackTransport` are real and
+/// unit-tested) and reports a clear "coming soon" message instead of calling
+/// APIs that don't exist on the watch. No soft-lock: the lobby's BACK button
+/// always works.
+final class GameKitTransport: MatchTransport {
     var onReceive: ((NetMessage) -> Void)?
     var onDisconnect: (() -> Void)?
-
-    /// Called once both players are connected; provides the deterministic side
-    /// assignment (lower playerID == `.player`) so both devices agree.
     var onConnected: ((Side) -> Void)?
     var onError: ((String) -> Void)?
 
-    private var match: GKMatch?
-
-    func authenticate(completion: @escaping (Bool) -> Void) {
-        let local = GKLocalPlayer.local
-        local.authenticateHandler = { _, error in
-            completion(local.isAuthenticated && error == nil)
-        }
-    }
+    func authenticate(completion: @escaping (Bool) -> Void) { completion(true) }
 
     func findMatch() {
-        let request = GKMatchRequest()
-        request.minPlayers = 2
-        request.maxPlayers = 2
-        GKMatchmaker.shared().findMatch(for: request) { [weak self] match, error in
-            guard let self else { return }
-            if let error { self.onError?(error.localizedDescription); return }
-            guard let match else { self.onError?("No match found"); return }
-            self.match = match
-            match.delegate = self
-            self.resolveSidesIfReady()
-        }
+        onError?("Online Versus needs the companion iPhone app — coming soon. Story, Training and the netcode core all work today.")
     }
 
-    private func resolveSidesIfReady() {
-        guard let match, match.expectedPlayerCount == 0 else { return }
-        // Deterministic side assignment: sort gamePlayerIDs, index 0 -> player.
-        let ids = (match.players.map { $0.gamePlayerID } + [GKLocalPlayer.local.gamePlayerID]).sorted()
-        let side: Side = ids.first == GKLocalPlayer.local.gamePlayerID ? .player : .opponent
-        onConnected?(side)
-    }
-
-    func send(_ message: NetMessage) {
-        guard let match, let data = encode(message) else { return }
-        // Setup uses reliable; inputs are time-sensitive but small — reliable
-        // keeps the deterministic lockstep simple (no dropped-frame handling yet).
-        try? match.sendData(toAllPlayers: data, with: .reliable)
-    }
-
-    func disconnect() {
-        match?.disconnect()
-        match = nil
-        onDisconnect?()
-    }
-
-    // MARK: GKMatchDelegate
-
-    func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
-        if let message = decodeMessage(data) { onReceive?(message) }
-    }
-
-    func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
-        switch state {
-        case .connected:    resolveSidesIfReady()
-        case .disconnected: onDisconnect?()
-        default: break
-        }
-    }
-
-    func match(_ match: GKMatch, didFailWithError error: Error?) {
-        onError?(error?.localizedDescription ?? "Match failed")
-    }
+    func send(_ message: NetMessage) { /* no-op until iPhone relay lands */ }
+    func disconnect() { onDisconnect?() }
 }
 #endif

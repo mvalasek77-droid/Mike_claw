@@ -50,6 +50,18 @@ final class GameFlow: ObservableObject {
     func goToMenu() { screen = .menu }
     func backToTitle() { screen = .title }
 
+    /// Leave a fight in progress — wired to the in-fight pause button so no mode
+    /// (especially never-ending Training) can ever soft-lock.
+    func exitFight() {
+        switch appMode {
+        case .training: screen = .trainingSetup
+        case .story:    screen = .menu            // abandon run, no win recorded
+        case .versus:
+            versusTransport?.disconnect(); versusTransport = nil
+            screen = .menu
+        }
+    }
+
     func chooseMode(_ m: AppMode) {
         appMode = m
         screen = .select          // pick a fighter first (versus picks too)

@@ -217,6 +217,44 @@ extension CharacterSpec {
         (selectable + [onyx, titus]).first { $0.id == id } ?? tetsu
     }
 
+    /// A bit of personality: the winner's one-liner. All original, all silly.
+    var winQuote: String {
+        switch id {
+        case "tetsu":   return "The lesson continues. You were the homework."
+        case "volt":    return "Blink and you'll miss the rematch. ...You blinked."
+        case "ember":   return "You're toast. Literally. I double-checked."
+        case "frost":   return "Cool down. ...That was the whole joke, yes."
+        case "mirage":  return "Did I win? Did you? Even I lost track, honestly."
+        case "bastion": return "I am not stuck. You were simply in the way. Were."
+        case "corsair": return "No hard feelings! The rum has feelings. Not me."
+        case "nova":    return "Bounty collected. Tip jar's by the airlock."
+        case "vesper":  return "One cut. You blinked at the second out of politeness."
+        case "marina":  return "Out of your depth. Get it? Because I swim. Anyway."
+        case "onyx":    return "The tower thanks you for donating your dignity."
+        case "titus":   return "(He cracks his knuckles. That is the entire speech.)"
+        default:        return "GG."
+        }
+    }
+
+    /// Pre-round trash talk, shown on the VS card for flavor.
+    var taunt: String {
+        switch id {
+        case "tetsu":   return "Show me what your master forgot to teach you."
+        case "volt":    return "I already won. The light just hasn't reached you yet."
+        case "ember":   return "Stop, drop, and lose."
+        case "frost":   return "...this won't take long. It never does."
+        case "mirage":  return "Pick the real me. Wrong answer hurts."
+        case "bastion": return "Brace yourself. Or don't. Same result."
+        case "corsair": return "Best two falls out of a barrel of rum?"
+        case "nova":    return "Nothing personal. Mostly nothing."
+        case "vesper":  return "Draw your weapon. I only need one swing for both of us."
+        case "marina":  return "Hope you stretched. I didn't."
+        case "onyx":    return "Climbers fall. It's in the name of the job."
+        case "titus":   return "(silence, and two raised fists)"
+        default:        return "Let's go."
+        }
+    }
+
     /// Flavor name for this character's special, shown in the movelist.
     var specialName: String {
         switch id {

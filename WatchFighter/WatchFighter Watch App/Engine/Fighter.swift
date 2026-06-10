@@ -123,6 +123,7 @@ struct Fighter {
         comboScalingHits = 0
         armorAvailable = false
         height = 0; vSpeed = 0; airborne = false; airActionUsed = false
+        pendingDrift = 0
         stun = 0
     }
 

@@ -141,8 +141,12 @@ off-device), so the combat core, match flow, and story compile/test headless.
       first-pass **balance** with guardrail tests (see `BALANCE.md`)
 - [x] **Polish** — per-character aerials (Marina dive kick, Vesper air slash),
       projectile **cooldown** (anti-spam), and a CPU **difficulty selector**
-- [ ] **Next** — real recorded audio, per-zoner projectile pass, an Xcode build
-      pass to compile the watchOS/SpriteKit/SwiftUI/GameKit layers
+- [x] **Hardening** — fixed a Training **soft-lock** (in-fight exit button),
+      fixed the watchOS GameKit **compile blocker** (online versus stubbed),
+      added **humor** (win quotes + taunts) and an optional **BLOOD** toggle.
+      See `BUGLOG.md` (known issues) and `SHIP_CHECKLIST.md` (honest ship gate).
+- [ ] **Ship gate** — an Xcode build pass + device test (no Swift toolchain
+      here), real app icon, content rating, and the iPhone-relay for online play
       balance pass, character-select sync for versus, real audio samples & music
 
 > **M2 caveat:** still not compiled here (no Swift toolchain on Linux). Pure
