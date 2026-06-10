@@ -5,14 +5,23 @@ import CoreGraphics
 /// exact order — incidental inputs (block, step, charge) are ignored, but a
 /// wrong *key* gesture resets the chain. Complete it and the bell rings.
 ///
+/// The rite is intentionally a "1-in-a-million" sequence — long, exact, and
+/// capped by a meter-gated special you must charge mid-fight without dropping
+/// the chain. One wrong KEY gesture sends you back to the start.
+///
 /// Sequence (what the player does on the watch):
-///   ▽ parry  →  ▽ parry  →  • light  →  ◆ heavy  →  ★ special
-/// (swipe-down, swipe-down, tap-top, tap-bottom, charge+far-right-tap)
+///   ▽ • ◆ ▽ • ◆ ▽ ★
+///   parry, light, heavy, parry, light, heavy, parry, special
+/// (swipe-down / tap-top / tap-bottom … and a final charged far-right tap)
 struct BossRitual {
-    static let sequence: [Intent] = [.parry, .parry, .lightAttack, .heavyAttack, .special]
+    static let sequence: [Intent] = [
+        .parry, .lightAttack, .heavyAttack,
+        .parry, .lightAttack, .heavyAttack,
+        .parry, .special,
+    ]
 
     /// Glyphs for the on-screen hint, aligned 1:1 with `sequence`.
-    static let glyphs = ["▽", "▽", "•", "◆", "★"]
+    static let glyphs = ["▽", "•", "◆", "▽", "•", "◆", "▽", "★"]
 
     private(set) var index = 0
     private(set) var complete = false

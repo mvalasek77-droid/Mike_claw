@@ -89,6 +89,11 @@ enum StageLibrary {
                   farColor: RGBA(0.20, 0.16, 0.30), midColor: RGBA(0.30, 0.20, 0.30),
                   groundColor: RGBA(0.18, 0.12, 0.14), accent: RGBA(0.3, 0.8, 0.95),
                   motif: .ship),
+        StageSpec(id: "soundstage", name: "STAGE 7",
+                  skyTop: RGBA(0.03, 0.03, 0.04), skyBottom: RGBA(0.14, 0.12, 0.08),
+                  farColor: RGBA(0.10, 0.09, 0.06), midColor: RGBA(0.18, 0.15, 0.08),
+                  groundColor: RGBA(0.10, 0.09, 0.07), accent: RGBA(1.0, 0.85, 0.3),
+                  motif: .dojo),
     ]
 
     static func stage(id: String) -> StageSpec {

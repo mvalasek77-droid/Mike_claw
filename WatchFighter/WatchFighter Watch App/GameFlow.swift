@@ -6,7 +6,7 @@ import SwiftUI
 /// so no explicit actor isolation is needed.
 final class GameFlow: ObservableObject {
     enum Screen: Equatable {
-        case title, menu, select, trainingSetup, versusLobby, storyCard, fight, ending, howTo
+        case title, menu, select, trainingSetup, versusLobby, prologue, storyCard, fight, ending, howTo
     }
     enum AppMode { case story, training, versus }
     enum CardKind { case preFight, postWin }
@@ -73,7 +73,7 @@ final class GameFlow: ObservableObject {
         case .story:
             story = StoryMode(playerID: spec.id)
             cardKind = .preFight
-            screen = .storyCard
+            screen = .prologue        // opening crawl, then the first fight
         case .training:
             screen = .trainingSetup
         case .versus:

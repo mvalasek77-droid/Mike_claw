@@ -1,5 +1,6 @@
 #if os(watchOS)
 import SpriteKit
+import WatchKit
 
 /// What drives the opponent and how the round loop runs.
 enum FightMode {
@@ -48,6 +49,7 @@ final class FightScene: SKScene {
     private let cam = SKCameraNode()
     private var hitstop = 0                 // frames the sim is frozen on impact
     private var allowHitstop = true         // off in versus to keep lockstep clean
+    private var reduceMotion = false        // accessibility: skip shake/zoom
 
     // Secret ritual (final-boss invincibility)
     private var ritual = BossRitual()
@@ -108,6 +110,7 @@ final class FightScene: SKScene {
 
     override func didMove(to view: SKView) {
         SoundEngine.shared.start()
+        reduceMotion = WKAccessibilityIsReduceMotionEnabled()
         cam.position = CGPoint(x: size.width / 2, y: size.height / 2)
         addChild(cam)
         camera = cam
@@ -320,13 +323,16 @@ final class FightScene: SKScene {
         shake(12)
     }
 
+    private static let koCalls = ["K.O.!", "FLATLINED!", "GOODNIGHT!", "DEMOLISHED!", "OOF.", "SAT DOWN!"]
+
     private func endRound() {
         let winner = flow.combat.winner
         flow.recordRoundResult(winner)
         let ko = !flow.combat.player.isAlive || !flow.combat.opponent.isAlive
         // Final, decisive KO gets a cinematic "FINISH!" beat.
         let finish = ko && flow.isMatchOver && flow.matchWinner == .player
-        showAnnouncer(finish ? "FINISH!" : (ko ? "K.O." : "TIME"),
+        let text = finish ? "FINISH!" : (ko ? (FightScene.koCalls.randomElement() ?? "K.O.!") : "TIME")
+        showAnnouncer(text,
                       color: finish ? SKColor(red: 1, green: 0.85, blue: 0.2, alpha: 1)
                                     : SKColor(red: 1, green: 0.3, blue: 0.3, alpha: 1))
         SoundEngine.shared.play(.ko)
@@ -372,6 +378,7 @@ final class FightScene: SKScene {
                 if allowHitstop { hitstop = 6 }
                 shake(9)
                 koSplatter(at: s)
+                koZoom(at: s)
             case .parried(let by):
                 spawnHitSpark(at: by, big: true)
                 shake(4)
@@ -526,11 +533,25 @@ final class FightScene: SKScene {
         }
     }
 
-    /// Bigger one-off splatter on a KO when BLOOD is enabled.
+    /// Bigger one-off splatter on a KO when BLOOD is enabled, plus a lingering
+    /// pool on the floor that slowly fades.
     private func koSplatter(at side: Side) {
         guard GameSettings.blood else { return }
         let f = side == .player ? flow.combat.player : flow.combat.opponent
-        let origin = CGPoint(x: laneToX(f.position), y: size.height * 0.42 + 28)
+        let groundY = size.height * 0.42
+        // Lingering pool.
+        let pool = SKShapeNode(ellipseOf: CGSize(width: CGFloat.random(in: 26...40), height: 8))
+        pool.fillColor = SKColor(red: 0.45, green: 0.02, blue: 0.04, alpha: 0.9)
+        pool.strokeColor = .clear
+        pool.position = CGPoint(x: laneToX(f.position), y: groundY + 2)
+        pool.zPosition = 0
+        addChild(pool)
+        pool.setScale(0.2)
+        pool.run(.sequence([.scale(to: 1.0, duration: 0.3),
+                            .wait(forDuration: 3.5),
+                            .fadeOut(withDuration: 1.5), .removeFromParent()]))
+
+        let origin = CGPoint(x: laneToX(f.position), y: groundY + 28)
         for _ in 0..<16 {
             let drop = SKShapeNode(circleOfRadius: CGFloat.random(in: 1.5...3.5))
             drop.fillColor = SKColor(red: 0.6, green: 0.03, blue: 0.05, alpha: 1)
@@ -548,7 +569,9 @@ final class FightScene: SKScene {
     }
 
     /// Camera shake for impact weight. No-op visual; never touches the sim.
+    /// Skipped entirely when the system Reduce Motion setting is on.
     private func shake(_ intensity: CGFloat) {
+        guard !reduceMotion else { return }
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         cam.removeAction(forKey: "shake")
         var steps: [SKAction] = []
@@ -559,6 +582,20 @@ final class FightScene: SKScene {
         }
         steps.append(.move(to: center, duration: 0.03))
         cam.run(.sequence(steps), withKey: "shake")
+    }
+
+    /// Cinematic punch-in on the loser for a decisive KO. Restores afterwards.
+    private func koZoom(at side: Side) {
+        guard !reduceMotion else { return }
+        let f = side == .player ? flow.combat.player : flow.combat.opponent
+        let target = CGPoint(x: laneToX(f.position), y: size.height * 0.5)
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        cam.removeAction(forKey: "kozoom")
+        cam.run(.sequence([
+            .group([.move(to: target, duration: 0.12), .scale(to: 0.78, duration: 0.12)]),
+            .wait(forDuration: 0.18),
+            .group([.move(to: center, duration: 0.22), .scale(to: 1.0, duration: 0.22)]),
+        ]), withKey: "kozoom")
     }
 
     // MARK: - Gesture input (forwarded from SwiftUI; queued, not applied directly)

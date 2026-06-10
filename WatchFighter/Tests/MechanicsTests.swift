@@ -100,7 +100,7 @@ final class MechanicsTests: XCTestCase {
     }
 
     func testRosterIntegrity() {
-        XCTAssertEqual(CharacterSpec.selectable.count, 10)
+        XCTAssertEqual(CharacterSpec.selectable.count, 11)
         for spec in CharacterSpec.selectable {
             XCTAssertGreaterThan(spec.maxHealth, 0)
             // Every character's home stage must resolve to a real stage.
@@ -160,11 +160,11 @@ final class MechanicsTests: XCTestCase {
 
     func testBossRitualRequiresPerfectSequence() {
         var r = BossRitual()
-        XCTAssertFalse(r.note(.parry))
-        XCTAssertFalse(r.note(.parry))
-        XCTAssertFalse(r.note(.lightAttack))
-        XCTAssertFalse(r.note(.heavyAttack))
-        XCTAssertTrue(r.note(.special), "correct full sequence completes the ritual")
+        let seq = BossRitual.sequence
+        for (i, step) in seq.enumerated() {
+            let done = r.note(step)
+            XCTAssertEqual(done, i == seq.count - 1, "completes only on the final key gesture")
+        }
         XCTAssertTrue(r.complete)
     }
 

@@ -22,8 +22,10 @@ final class ProgressionTests: XCTestCase {
 
     func testAllWinUnlocksReached() {
         var p = Progression()
-        for _ in 0..<8 { _ = p.recordWin() }
+        let maxWins = Progression.winUnlocks.map(\.wins).max() ?? 0
+        for _ in 0..<maxWins { _ = p.recordWin() }
         for u in Progression.winUnlocks { XCTAssertTrue(p.isUnlocked(u.id)) }
+        XCTAssertTrue(p.isUnlocked("feng"), "secret fighter unlocks at 12 wins")
     }
 
     func testStoryClearUnlocksOnyx() {

@@ -205,9 +205,28 @@ extension CharacterSpec {
                        pushback: 10, reach: 32, meterGain: 9, loY: -30, hiY: 42)
     )
 
-    /// Selectable cast (bosses excluded from the select screen).
+    /// SECRET unlockable (12 wins) — an original martial-arts-cinema legend who
+    /// never left the soundstage and provides his own sound effects. Lightning
+    /// kicks, glass cannon, maximum ham. Not based on any real actor or film.
+    static let feng = CharacterSpec(
+        id: "feng",
+        name: "FENG",
+        title: "The Last Reel",
+        bio: "A washed-up B-movie kung-fu star who wandered into the tower looking "
+           + "for craft services and never found the exit. Still in character. Always.",
+        maxHealth: 94, walkSpeed: 2.9,
+        special: Move.special(damage: 16, reach: 62, pushback: 14, startup: 4, launches: true),
+        exSpecial: Move.ex(from: Move.special(damage: 16, reach: 62, pushback: 14, startup: 4, launches: true)),
+        homeStageID: "soundstage",
+        bodyColor: RGBA(0.86, 0.70, 0.20), accentColor: RGBA(1.0, 0.95, 0.7),
+        light: Move(kind: .light, startup: 2, active: 2, recovery: 6,
+                    damage: 6, chip: 1, hitstun: 12, blockstun: 8,
+                    pushback: 6, reach: 28, meterGain: 7, cancelable: true)
+    )
+
+    /// Selectable cast (bosses excluded; FENG starts locked behind 12 wins).
     static let selectable: [CharacterSpec] =
-        [tetsu, volt, ember, frost, mirage, bastion, corsair, nova, vesper, marina]
+        [tetsu, volt, ember, frost, mirage, bastion, corsair, nova, vesper, marina, feng]
 
     /// The arcade-ladder order the player climbs — ends with the boss, TITUS.
     static let arcadeLadder: [CharacterSpec] =
@@ -232,6 +251,7 @@ extension CharacterSpec {
         case "marina":  return "Out of your depth. Get it? Because I swim. Anyway."
         case "onyx":    return "The tower thanks you for donating your dignity."
         case "titus":   return "(He cracks his knuckles. That is the entire speech.)"
+        case "feng":    return "And… CUT! Print it, that's the take. Somebody fetch my smoothie."
         default:        return "GG."
         }
     }
@@ -251,6 +271,7 @@ extension CharacterSpec {
         case "marina":  return "Hope you stretched. I didn't."
         case "onyx":    return "Climbers fall. It's in the name of the job."
         case "titus":   return "(silence, and two raised fists)"
+        case "feng":    return "HYAAA! …sorry, that's contractual. Okay — HYAAA!"
         default:        return "Let's go."
         }
     }
@@ -270,6 +291,7 @@ extension CharacterSpec {
         case "marina":  return "Riptide"
         case "onyx":    return "Ascendant Crush"
         case "titus":   return "Haymaker"
+        case "feng":    return "Flying Reel Kick"
         default:        return "Special"
         }
     }

@@ -66,8 +66,9 @@ WatchFighter/
 | **Nova** | Bounty-hunter zoner | Fast plasma shot |
 | **Vesper** | Swordmaster | Longest-reach drawing cut (launcher) |
 | **Marina** | Acrobatic athlete | Fast rushdown, strong aerials |
+| **Feng** *(secret, 12 wins)* | B-movie kung-fu legend | Lightning kicks; shouts his own SFX |
 | **Onyx** *(boss)* | The Ascendant | Overtuned launcher |
-| **Titus** *(FINAL BOSS)* | Undefeated boxer | **Invincible** until the secret rite; armored haymaker |
+| **Titus** *(FINAL BOSS)* | Undefeated boxer | **INVINCIBLE** (zero damage) until the 8-step rite — armored haymaker |
 
 > **On real-world / pop-culture characters:** requested likenesses (a
 > Mike-Tyson-style boxer, a Johnny-Depp-style pirate, a Pam-Anderson/Baywatch

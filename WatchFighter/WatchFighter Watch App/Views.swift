@@ -15,6 +15,7 @@ struct RootView: View {
             case .select:        CharacterSelectView(flow: flow)
             case .trainingSetup: TrainingSetupView(flow: flow)
             case .versusLobby:   VersusLobbyView(flow: flow)
+            case .prologue:      PrologueView(flow: flow)
             case .storyCard:     StoryCardView(flow: flow)
             case .fight:         fightContent.id(flow.fightToken)
             case .ending:        EndingView(flow: flow)
@@ -108,6 +109,31 @@ struct MainMenuView: View {
     }
 }
 
+struct PrologueView: View {
+    @ObservedObject var flow: GameFlow
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 8) {
+                Text("THE ASCENDANT")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(red: 1, green: 0.3, blue: 0.55))
+                Text(StoryScript.prologue)
+                    .font(.system(size: 10)).foregroundStyle(.white)
+                    .multilineTextAlignment(.leading).padding(.horizontal, 8)
+                Text("— climbing as \(flow.playerSpec.name) —")
+                    .font(.system(size: 8)).foregroundStyle(.secondary)
+                Button(action: { flow.cardKind = .preFight; flow.screen = .storyCard }) {
+                    Text("BEGIN THE CLIMB").font(.system(size: 12, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                }
+                .tint(Color(red: 0.9, green: 0.1, blue: 0.4)).padding(.horizontal, 12)
+            }.padding(.vertical, 10)
+        }
+        .background(LinearGradient(colors: [.black, Color(red: 0.18, green: 0.02, blue: 0.14)],
+                                   startPoint: .top, endPoint: .bottom).ignoresSafeArea())
+    }
+}
+
 struct CharacterSelectView: View {
     @ObservedObject var flow: GameFlow
     private let cols = [GridItem(.flexible()), GridItem(.flexible())]
@@ -174,8 +200,10 @@ struct HowToPlayView: View {
                 }
                 Text("Combo: light → heavy → special. Parry beats armor. Throws beat block. Big stun = DIZZY.")
                     .font(.system(size: 8)).foregroundStyle(.secondary).padding(.top, 2)
-                Text("Final boss TITUS is invincible until you perform the rite: ▽ ▽ • ◆ ★")
+                Text("Final boss TITUS is INVINCIBLE — no damage counts — until you perform the rite in exact order:")
                     .font(.system(size: 8)).foregroundStyle(.yellow)
+                Text(BossRitual.glyphs.joined(separator: " "))
+                    .font(.system(size: 12, weight: .heavy)).foregroundStyle(.yellow)
                 Text("Found a bug? File an issue on the project's GitHub with your watch model + steps.")
                     .font(.system(size: 7)).foregroundStyle(.secondary)
                 Button(action: { flow.goToMenu() }) {
@@ -298,7 +326,7 @@ struct StoryCardView: View {
                             .font(.system(size: 8)).foregroundStyle(.secondary)
                         Text(BossRitual.glyphs.joined(separator: " "))
                             .font(.system(size: 13, weight: .heavy)).foregroundStyle(.yellow)
-                        Text("parry · parry · light · heavy · special")
+                        Text("exact order — one wrong move resets the whole rite")
                             .font(.system(size: 7)).foregroundStyle(.secondary)
                     }
                     .multilineTextAlignment(.center).padding(.horizontal, 6)
@@ -333,10 +361,12 @@ struct EndingView: View {
                     Text(win ? "ASCENDANT" : "DEFEATED")
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
                         .foregroundStyle(win ? Color(red: 0.4, green: 1, blue: 0.6) : .red)
-                    Text(win ? "You kept the gate — and left it open for the next climber."
+                    Text(win ? (flow.appMode == .story ? StoryScript.epilogue
+                                : "You kept the gate — and left it open for the next climber.")
                              : "The tower keeps what it takes. Climb again.")
-                        .font(.system(size: 10)).foregroundStyle(.white)
-                        .multilineTextAlignment(.center).padding(.horizontal, 10)
+                        .font(.system(size: 9)).foregroundStyle(.white)
+                        .multilineTextAlignment(win && flow.appMode == .story ? .leading : .center)
+                        .padding(.horizontal, 10)
                     if win {
                         Text("“\(flow.playerSpec.winQuote)”")
                             .font(.system(size: 9)).italic()
