@@ -9,7 +9,17 @@ struct SubmitWorkView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @Environment(\.dismiss) private var dismiss
 
-    @State private var draft = DraftWork()
+    @State private var draft: DraftWork
+    /// Non-nil when revising an existing bookshelf entry: the wizard starts
+    /// pre-filled with that draft and the old (non-live) entry is replaced
+    /// when the revision is submitted.
+    private let replacesSubmissionID: UUID?
+
+    init(reviseFrom submission: Submission? = nil) {
+        _draft = State(initialValue: submission?.draft ?? DraftWork())
+        replacesSubmissionID = submission?.id
+    }
+
     @State private var step = 0
     @State private var phase: Phase = .form
     @State private var submissionID: UUID?
@@ -191,6 +201,9 @@ struct SubmitWorkView: View {
                         showStripeGate = true
                         return
                     }
+                    // Revision: retire the old entry so the bookshelf doesn't
+                    // grow a duplicate. removeSubmission protects live titles.
+                    if let old = replacesSubmissionID { store.removeSubmission(old) }
                     submissionID = store.createSubmission(draft)
                     Motion.run(.easeInOut(duration: 0.4)) { phase = .reviewing }
                 }

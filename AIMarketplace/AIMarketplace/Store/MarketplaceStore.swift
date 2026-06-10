@@ -2531,6 +2531,23 @@ final class MarketplaceStore: ObservableObject {
         return submission.id
     }
 
+    /// Creator-side metadata edit for a LIVE title — price, synopsis, genre.
+    /// Mirrors straight into the catalogue entry so the storefront updates
+    /// immediately. Content/file changes still go through Revise & resubmit
+    /// so the AI Editor re-vets the actual bytes.
+    func updateLiveTitle(submissionID: UUID, price: Double, synopsis: String, genre: String) {
+        guard let idx = submissions.firstIndex(where: { $0.id == submissionID }),
+              let itemID = submissions[idx].publishedItemID else { return }
+        let clamped = min(19.99, max(0.99, price))
+        submissions[idx].draft.price = clamped
+        if !synopsis.trimmed.isEmpty { submissions[idx].draft.synopsis = synopsis.trimmed }
+        if !genre.trimmed.isEmpty { submissions[idx].draft.genre = genre.trimmed }
+        guard let cIdx = catalog.firstIndex(where: { $0.id == itemID }) else { return }
+        catalog[cIdx].price = clamped
+        if !synopsis.trimmed.isEmpty { catalog[cIdx].synopsis = synopsis.trimmed }
+        if !genre.trimmed.isEmpty { catalog[cIdx].genre = genre.trimmed }
+    }
+
     func publish(submissionID: UUID) {
         guard let idx = submissions.firstIndex(where: { $0.id == submissionID }),
               let review = submissions[idx].review, review.passed,
