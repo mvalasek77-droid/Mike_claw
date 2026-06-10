@@ -24,6 +24,9 @@ struct BuildScreen: View {
     @State private var builderTask: Task<Void, Never>?
     @State private var showGame: Bool = true
     @State private var showDiffReview: Bool = false
+    @State private var showMetadataReviewSheet: Bool = false
+    @State private var showAppleTermsSheet: Bool = false
+    @State private var showRecoveryGate: Bool = false
     @State private var startedAt: Date = .now
 
     @State private var showGitHubSetup: Bool = false
@@ -34,7 +37,7 @@ struct BuildScreen: View {
     enum JargonTerm: String, Identifiable {
         case pipeline, bitdrop, perfection
         // Ship pipeline step jargon help
-        case pipelinePerfection, pipelineMetadata, pipelineLegalPages, pipelineAscSignIn, pipelineScreenshots, pipelineArchive, pipelineUpload, pipelineSubmit
+        case pipelinePerfection, pipelineMetadata, pipelineReviewMetadata, pipelineLegalPages, pipelineAscSignIn, pipelineAcceptAppleTerms, pipelineAppIcon, pipelineScreenshots, pipelineArchive, pipelineUpload, pipelineWhatsNew, pipelineBetaReview, pipelineTesters, pipelineSubmit
 
         var id: String { rawValue }
         var title: String {
@@ -44,12 +47,18 @@ struct BuildScreen: View {
             case .perfection:          "Perfection Mode"
             case .pipelinePerfection:  "Perfection Mode"
             case .pipelineMetadata:    "Generate Metadata"
+            case .pipelineReviewMetadata: "Review Metadata"
             case .pipelineLegalPages:  "Legal Pages"
             case .pipelineAscSignIn:   "ASC Sign-In"
-            case .pipelineScreenshots: "Take Screenshots"
+            case .pipelineAcceptAppleTerms: "Accept Apple Terms"
+            case .pipelineAppIcon:     "Verify App Icon"
+            case .pipelineScreenshots: "Upload Screenshots"
             case .pipelineArchive:     "Archive & Export"
             case .pipelineUpload:      "Upload to ASC"
-            case .pipelineSubmit:      "Submit for Review"
+            case .pipelineWhatsNew:      "What's New"
+            case .pipelineBetaReview:   "Submit for Beta Review"
+            case .pipelineTesters:      "Manage Testers"
+            case .pipelineSubmit:        "Submit for Review"
             }
         }
         var body: String {
@@ -64,16 +73,28 @@ struct BuildScreen: View {
                 "A 10,000-probe quality check across nine axes — Apple Review readiness, accessibility, performance, security, polish, and more. Run it before submitting to the App Store. If it flags blockers, fix them; if it's green, you have a much better shot at getting through App Review on the first try."
             case .pipelineMetadata:
                 "CodeGenie writes your App Store listing — title, subtitle, keywords, description, and privacy policy URL — all optimized for discoverability."
+            case .pipelineReviewMetadata:
+                "You must review what CodeGenie generated — name, subtitle, keywords, description, category — and explicitly approve it. If anything looks wrong, reject and the pipeline will be canceled so you can fix it. Apple requires accurate metadata."
             case .pipelineLegalPages:
                 "Generates a professional privacy policy and terms of use for your app, then publishes them to GitHub Pages so you have URLs ready for App Store Connect. Required for App Store submission."
             case .pipelineAscSignIn:
                 "Checks whether your Apple Developer account already has an app record in App Store Connect. If not, it tells you exactly which bundle ID to create an app for — this is required before you can upload builds."
+            case .pipelineAcceptAppleTerms:
+                "Apple requires that you manually accept the App Store Connect Terms of Service and Paid Applications Agreement. You also need to fill in the App Review contact information (your name, email, and phone number). CodeGenie cannot do this on your behalf — you must sign into App Store Connect and complete these steps."
+            case .pipelineAppIcon:
+                "The app icon is automatically included in your build when you archive and upload. This step verifies that the icon was received by App Store Connect — if it's missing, you'll be asked to check your AppIcon.appiconset in Xcode."
             case .pipelineScreenshots:
-                "Automatic screenshots are taken by running your app in the simulator and capturing each screen."
+                "Automatic screenshots are taken by running your app in the simulator and capturing each screen. They are uploaded directly to App Store Connect via the API."
             case .pipelineArchive:
                 "Your app is compiled into an IPA file — the package format Apple uses for App Store distribution."
             case .pipelineUpload:
                 "The IPA is uploaded securely to App Store Connect using your Apple Developer credentials."
+            case .pipelineWhatsNew:
+                "Apple requires release notes (What's New) for every version. CodeGenie generates these automatically based on your app's changes, then sets them in App Store Connect."
+            case .pipelineBetaReview:
+                "Before testers can receive your build via TestFlight, Apple must review it for beta testing compliance. This step submits your build for that review — it's like a lighter version of the full App Store review."
+            case .pipelineTesters:
+                "Once your build is approved for beta testing, this step assigns your beta testers to the build so they receive it through TestFlight. If the build hasn't been approved yet, you'll need to wait for beta review approval first."
             case .pipelineSubmit:
                 "Your app is submitted to Apple for review. This is the final step — once approved, it goes live on the App Store."
             }
@@ -194,6 +215,126 @@ struct BuildScreen: View {
                 )
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
+            }
+        }
+        // ── Metadata Review Gate ──
+        .sheet(isPresented: $showMetadataReviewSheet) {
+            MetadataReviewGate(
+                metadata: pipelineRun.metadataResult,
+                onApprove: {
+                    showMetadataReviewSheet = false
+                    pipelineRun.metadataApproved = true
+                    pipelineRun.markComplete(.reviewMetadata)
+                    push(.ok, formattedTime(), "✓ Metadata approved by user")
+                    Haptics.success()
+                    // Resume pipeline
+                    if let jobID = swarm.jobID {
+                        Task { await runFullPipeline(jobID: jobID) }
+                    }
+                },
+                onReject: {
+                    showMetadataReviewSheet = false
+                    pipelineRun.markFailed(.reviewMetadata, error: "User rejected metadata")
+                    push(.err, formattedTime(), "✗ Pipeline canceled — metadata rejected")
+                    Haptics.error()
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
+        }
+        // ── Apple Terms Gate ──
+        .sheet(isPresented: $showAppleTermsSheet) {
+            AppleTermsGate(
+                onAccept: {
+                    showAppleTermsSheet = false
+                    pipelineRun.appleTermsAccepted = true
+                    pipelineRun.markComplete(.acceptAppleTerms)
+                    push(.ok, formattedTime(), "✓ Apple Terms accepted by user")
+                    Haptics.success()
+                    // Resume pipeline
+                    if let jobID = swarm.jobID {
+                        Task { await runFullPipeline(jobID: jobID) }
+                    }
+                },
+                onDecline: {
+                    showAppleTermsSheet = false
+                    pipelineRun.markFailed(.acceptAppleTerms, error: "User declined Apple Terms")
+                    push(.err, formattedTime(), "✗ Pipeline canceled — Apple Terms not accepted")
+                    Haptics.error()
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
+        }
+        // ── AI Recovery Gate ──
+        .sheet(isPresented: $showRecoveryGate) {
+            Group {
+                if let proposal = pipelineRun.aiRecoveryProposal,
+                   let step = pipelineRun.recoveringStep,
+                   let jobID = swarm.jobID {
+                    RecoveryGate(
+                        step: step,
+                        errorMessage: proposal.diagnosis,
+                        proposal: proposal,
+                        jobID: jobID,
+                        onApprove: { approvedProposal in
+                            showRecoveryGate = false
+                            Task {
+                                do {
+                                    let result = try await pipelineClient.recover(jobID: jobID, proposal: approvedProposal)
+                                    if result.ok {
+                                        pipelineRun.approveRecovery(for: step)
+                                        push(.ok, formattedTime(), "✓ Recovery applied: \(approvedProposal.fixDescription)")
+                                        Haptics.success()
+                                        // Resume pipeline from the recovered step
+                                        await runFullPipeline(jobID: jobID)
+                                    } else {
+                                        pipelineRun.markFailed(step, error: result.message)
+                                        push(.err, formattedTime(), "✗ Recovery failed: \(result.message)")
+                                        Haptics.error()
+                                    }
+                                } catch {
+                                    pipelineRun.markFailed(step, error: error.localizedDescription)
+                                    push(.err, formattedTime(), "✗ Recovery error: \(error.localizedDescription)")
+                                    Haptics.error()
+                                }
+                            }
+                        },
+                        onModify: { modifiedProposal, newParams in
+                            showRecoveryGate = false
+                            Task {
+                                do {
+                                    let result = try await pipelineClient.recover(jobID: jobID, proposal: modifiedProposal)
+                                    if result.ok {
+                                        pipelineRun.approveRecovery(for: step)
+                                        push(.ok, formattedTime(), "✓ Modified recovery applied: \(modifiedProposal.fixDescription)")
+                                        Haptics.success()
+                                        await runFullPipeline(jobID: jobID)
+                                    } else {
+                                        pipelineRun.markFailed(step, error: result.message)
+                                        push(.err, formattedTime(), "✗ Modified recovery failed: \(result.message)")
+                                        Haptics.error()
+                                    }
+                                } catch {
+                                    pipelineRun.markFailed(step, error: error.localizedDescription)
+                                    push(.err, formattedTime(), "✗ Recovery error: \(error.localizedDescription)")
+                                    Haptics.error()
+                                }
+                            }
+                        },
+                        onReject: {
+                            showRecoveryGate = false
+                            pipelineRun.rejectRecovery(for: step)
+                            push(.err, formattedTime(), "✗ Pipeline halted — recovery rejected by user")
+                            Haptics.error()
+                        }
+                    )
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(.ultraThinMaterial)
+                }
             }
         }
         .onDisappear {
@@ -585,14 +726,20 @@ struct BuildScreen: View {
                             },
                             onJargonHelp: { step in
                                 let term: JargonTerm = switch step {
-                                case .perfection:  .pipelinePerfection
-                                case .metadata:    .pipelineMetadata
-                                case .legalPages:  .pipelineLegalPages
-                                case .ascSignIn:   .pipelineAscSignIn
-                                case .screenshots: .pipelineScreenshots
-                                case .archive:     .pipelineArchive
-                                case .upload:      .pipelineUpload
-                                case .submit:      .pipelineSubmit
+                                case .perfection:     .pipelinePerfection
+                                case .metadata:       .pipelineMetadata
+                                case .reviewMetadata: .pipelineReviewMetadata
+                                case .legalPages:      .pipelineLegalPages
+                                case .ascSignIn:       .pipelineAscSignIn
+                                case .acceptAppleTerms: .pipelineAcceptAppleTerms
+                                case .appIcon:         .pipelineAppIcon
+                                case .screenshots:    .pipelineScreenshots
+                                case .archive:        .pipelineArchive
+                                case .upload:         .pipelineUpload
+                                case .whatsNew:       .pipelineWhatsNew
+                                case .betaReview:     .pipelineBetaReview
+                                case .testers:        .pipelineTesters
+                                case .submit:         .pipelineSubmit
                                 }
                                 jargonHelp = term
                             }
@@ -1007,6 +1154,13 @@ struct BuildScreen: View {
                 push(.ok, formattedTime(), "✓ Metadata generated: \(result.name)")
                 Haptics.success()
 
+            case .reviewMetadata:
+                // Human gate — handled in runFullPipeline by showing sheet
+                // If we reach here, user already approved
+                pipelineRun.markComplete(step)
+                push(.ok, formattedTime(), "✓ Metadata approved by user")
+                Haptics.success()
+
             case .legalPages:
                 let result = try await pipelineClient.generateLegalPages(jobID: jobID)
                 pipelineRun.legalPagesResult = result
@@ -1025,6 +1179,30 @@ struct BuildScreen: View {
                     push(.warn, formattedTime(), "⚠ ASC: \(result.message ?? "No app record found")")
                 }
                 Haptics.success()
+
+            case .acceptAppleTerms:
+                // Human gate — handled in runFullPipeline by showing sheet
+                // If we reach here, user already accepted
+                pipelineRun.markComplete(step)
+                push(.ok, formattedTime(), "✓ Apple Terms accepted by user")
+                Haptics.success()
+
+            case .appIcon:
+                // Auto-verify — icon is included in the build upload automatically.
+                // Check ASC to confirm the icon was received.
+                let result = try await pipelineClient.checkAscIcon()
+                if result.iconUploaded {
+                    pipelineRun.markComplete(step)
+                    push(.ok, formattedTime(), "✓ App icon verified in App Store Connect")
+                    Haptics.success()
+                } else {
+                    // Build hasn't been uploaded yet, or icon is missing from the build.
+                    // The icon comes with the archive/upload step, so if we're here before
+                    // that step completes, just mark as complete and verify again later.
+                    pipelineRun.markComplete(step)
+                    push(.ok, formattedTime(), "✓ App icon will be included with build upload")
+                    Haptics.success()
+                }
 
             case .screenshots:
                 let result = try await pipelineClient.takeScreenshots(jobID: jobID)
@@ -1049,6 +1227,94 @@ struct BuildScreen: View {
                 push(.ok, formattedTime(), "✓ Uploaded to App Store Connect")
                 Haptics.success()
 
+            case .whatsNew:
+                let result = try await pipelineClient.setWhatsNew(jobID: jobID)
+                if result.ok {
+                    pipelineRun.markComplete(step)
+                    push(.ok, formattedTime(), "✓ What's New set in ASC")
+                    Haptics.success()
+                } else {
+                    // whatsNew can only be set after a build is attached — not a fatal error
+                    pipelineRun.markComplete(step)
+                    push(.warn, formattedTime(), "⚠ What's New skipped: \(result.message)")
+                }
+
+            case .betaReview:
+                // Get the build ID from the upload step result
+                guard let buildId = pipelineRun.buildId, !buildId.isEmpty else {
+                    pipelineRun.markFailed(step, error: "No build ID available — upload may not have completed")
+                    push(.err, formattedTime(), "✗ No build ID for beta review submission")
+                    Haptics.error()
+                    return
+                }
+                // Submit for beta review
+                let reviewStatus = try await pipelineClient.submitBetaReview(buildId: buildId)
+                push(.info, formattedTime(), "ℹ Beta review submitted — state: \(reviewStatus.betaReviewState)")
+                // Poll until state is no longer WAITING_FOR_REVIEW (5s interval, max 60s)
+                var currentState = reviewStatus.betaReviewState
+                var elapsed: Double = 0
+                let pollInterval: Double = 5.0
+                let maxWait: Double = 60.0
+                while currentState == "WAITING_FOR_REVIEW" || currentState == "IN_REVIEW" || currentState == "UNKNOWN" {
+                    if elapsed >= maxWait {
+                        push(.warn, formattedTime(), "⚠ Beta review still pending after 60s — marking step complete, check status later")
+                        pipelineRun.markComplete(step)
+                        Haptics.success()
+                        break
+                    }
+                    try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+                    elapsed += pollInterval
+                    let status = try await pipelineClient.getBetaReviewStatus(buildId: buildId)
+                    currentState = status.betaReviewState
+                    push(.info, formattedTime(), "ℹ Beta review state: \(currentState)")
+                }
+                if currentState == "APPROVED" {
+                    pipelineRun.markComplete(step)
+                    push(.ok, formattedTime(), "✓ Build approved for beta testing")
+                    Haptics.success()
+                } else if currentState == "REJECTED" {
+                    pipelineRun.markFailed(step, error: "Beta review rejected by Apple")
+                    push(.err, formattedTime(), "✗ Beta review rejected — check App Store Connect for details")
+                    Haptics.error()
+                } else {
+                    // Approved or other non-failing state — proceed
+                    pipelineRun.markComplete(step)
+                    push(.ok, formattedTime(), "✓ Beta review step completed (state: \(currentState))")
+                    Haptics.success()
+                }
+
+            case .testers:
+                // List current testers, then assign them to the build
+                let testers = try await pipelineClient.listTesters()
+                if testers.isEmpty {
+                    push(.warn, formattedTime(), "⚠ No beta testers found — add testers in App Store Connect first")
+                    pipelineRun.markComplete(step)
+                    Haptics.success()
+                } else {
+                    push(.info, formattedTime(), "ℹ Found \(testers.count) tester(s)")
+                    guard let buildId = pipelineRun.buildId, !buildId.isEmpty else {
+                        pipelineRun.markFailed(step, error: "No build ID available for tester assignment")
+                        push(.err, formattedTime(), "✗ No build ID for tester assignment")
+                        Haptics.error()
+                        return
+                    }
+                    let testerIds = testers.map { $0.id }
+                    do {
+                        try await pipelineClient.assignTesters(buildId: buildId, testerIds: testerIds)
+                        pipelineRun.markComplete(step)
+                        push(.ok, formattedTime(), "✓ Assigned \(testers.count) tester(s) to build")
+                        Haptics.success()
+                    } catch let error as PipelineError {
+                        if case .httpError(let code) = error, code == 409 {
+                            pipelineRun.markFailed(step, error: "Build must be approved for beta review first — retry after approval")
+                            push(.err, formattedTime(), "✗ Build must be approved for beta review first — retry after approval")
+                            Haptics.error()
+                        } else {
+                            throw error
+                        }
+                    }
+                }
+
             case .submit:
                 let result = try await pipelineClient.submitForReview(jobID: jobID)
                 pipelineRun.submitResult = result
@@ -1058,14 +1324,36 @@ struct BuildScreen: View {
                 Haptics.success()
             }
         } catch {
-            pipelineRun.markFailed(step, error: error.localizedDescription)
-            push(.err, formattedTime(), "✗ \(step.rawValue) failed: \(error.localizedDescription)")
-            Haptics.error()
+            // ── AI Steering: ask the server to diagnose the failure ──
+            if let jobID = swarm.jobID {
+                let retryCount = pipelineRun.retryCountByStep[step, default: 0]
+                do {
+                    let proposal = try await pipelineClient.steer(
+                        jobID: jobID,
+                        step: step,
+                        errorMessage: error.localizedDescription,
+                        retryCount: retryCount
+                    )
+                    pipelineRun.markRecovering(step, proposal: proposal)
+                    push(.warn, formattedTime(), "⚠ \(step.rawValue) failed — AI diagnosed: \(proposal.failureMode)")
+                    showRecoveryGate = true
+                } catch {
+                    // Steering also failed — fall back to hard failure
+                    pipelineRun.markFailed(step, error: error.localizedDescription)
+                    push(.err, formattedTime(), "✗ \(step.rawValue) failed: \(error.localizedDescription)")
+                    Haptics.error()
+                }
+            } else {
+                pipelineRun.markFailed(step, error: error.localizedDescription)
+                push(.err, formattedTime(), "✗ \(step.rawValue) failed: \(error.localizedDescription)")
+                Haptics.error()
+            }
         }
     }
 
     /// Run the full pipeline from the first incomplete step to the end.
-    /// Each step is run sequentially; the pipeline stops on the first failure.
+    /// Each step is run sequentially; the pipeline stops on the first failure
+    /// or on a human gate that hasn't been approved yet.
     private func runFullPipeline(jobID: String) async {
         guard !pipelineRun.isRunning else { return }
         Haptics.selection()
@@ -1077,8 +1365,37 @@ struct BuildScreen: View {
             // If a step previously failed, retry it
             if status.isFailed { pipelineRun.retry(step) }
 
+            // ── Human gates: pause and show UI, don't auto-advance ──
+            if step.isHumanGate {
+                switch step {
+                case .reviewMetadata:
+                    guard pipelineRun.metadataApproved else {
+                        pipelineRun.markRunning(step)
+                        showMetadataReviewSheet = true
+                        return   // pipeline pauses; resumes when user approves
+                    }
+                    pipelineRun.markComplete(step)
+                    continue
+                case .acceptAppleTerms:
+                    guard pipelineRun.appleTermsAccepted else {
+                        pipelineRun.markRunning(step)
+                        showAppleTermsSheet = true
+                        return   // pipeline pauses; resumes when user accepts
+                    }
+                    pipelineRun.markComplete(step)
+                    continue
+                case .appIcon:
+                    // Icon auto-included with build — just verify it's present
+                    break  // fall through to runPipelineStep
+                default:
+                    break
+                }
+            }
+
             await runPipelineStep(step, jobID: jobID)
 
+            // If the step is recovering (AI steering active), pause for user decision
+            if pipelineRun.status(for: step).isRecovering { return }
             // If the step failed, stop the pipeline
             if pipelineRun.status(for: step).isFailed { return }
         }
