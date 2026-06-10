@@ -153,7 +153,9 @@ struct PublishHomeView: View {
             }
             .listStyle(.plain)
             .scrollDisabled(true)
-            .frame(minHeight: CGFloat(max(1, store.submissions.count)) * 96)
+            // Row height budget: 76pt thumbnail + 20pt padding + 12pt row
+            // insets = 108pt. Must match ShelfRow or the list clips rows.
+            .frame(minHeight: CGFloat(max(1, store.submissions.count)) * 108)
         }
     }
 

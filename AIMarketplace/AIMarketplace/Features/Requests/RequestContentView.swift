@@ -91,6 +91,8 @@ struct RequestContentView: View {
                 Text(usd(budget)).font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
             }
             Slider(value: $budget, in: 0.99...50, step: 0.50).tint(Theme.kdp)
+                .accessibilityLabel("Budget")
+                .accessibilityValue(usd(budget))
             Text("Paid from your wallet on delivery. The AI keeps 85% and AI Marketplace 15%.")
                 .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
         }

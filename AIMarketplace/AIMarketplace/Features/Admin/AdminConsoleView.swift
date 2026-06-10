@@ -425,11 +425,15 @@ struct AdminConsoleView: View {
             Button { activeSheet = .edit(item) } label: {
                 Image(systemName: "pencil").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.accent)
                     .frame(width: 34, height: 34).background(Circle().fill(Theme.accent.opacity(0.15)))
-            }.buttonStyle(.plain)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit \(item.title)")
             Button { deletingTitle = item } label: {
                 Image(systemName: "trash").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.warning)
                     .frame(width: 34, height: 34).background(Circle().fill(Theme.warning.opacity(0.15)))
-            }.buttonStyle(.plain)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Delete \(item.title)")
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))

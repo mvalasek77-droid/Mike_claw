@@ -55,6 +55,8 @@ struct DemoStripeView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(AppBackground().ignoresSafeArea())
             .navigationTitle("Demo Stripe setup")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

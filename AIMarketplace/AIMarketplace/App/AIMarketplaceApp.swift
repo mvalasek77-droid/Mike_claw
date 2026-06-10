@@ -126,7 +126,7 @@ struct SplashView: View {
             }
         }
         .onAppear {
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { appear = true }
+            Motion.run(.spring(response: 0.6, dampingFraction: 0.7)) { appear = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { onDone() }
         }
     }

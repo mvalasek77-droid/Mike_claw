@@ -30,12 +30,18 @@ struct ChartsView: View {
                     modeSwitch
                     typeFilter
 
-                    LazyVStack(spacing: 12) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                            ChartRow(rank: index + 1, item: item, metric: mode) { selected = item }
+                    if items.isEmpty {
+                        EmptyStateView(icon: "chart.bar",
+                                       title: "No \(type?.plural.lowercased() ?? "titles") \(mode == .top10 ? "charting" : "trending") yet",
+                                       message: "Check back soon — the charts refresh as the marketplace moves.")
+                    } else {
+                        LazyVStack(spacing: 12) {
+                            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                                ChartRow(rank: index + 1, item: item, metric: mode) { selected = item }
+                            }
                         }
+                        .screenPadding()
                     }
-                    .screenPadding()
                 }
                 .padding(.bottom, 96)
             }
@@ -77,6 +83,7 @@ struct ChartsView: View {
         let active = type == t
         return Button {
             Motion.run(Motion.snap) { type = t }
+            Haptics.selection()
         } label: {
             Text(label)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))

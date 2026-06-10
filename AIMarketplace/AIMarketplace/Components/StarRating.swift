@@ -14,6 +14,9 @@ struct StarRow: View {
                     .foregroundStyle(color)
             }
         }
+        // VoiceOver: read the rating once, not five star glyphs.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Rated \(rating.formatted()) out of 5 stars")
     }
 
     private func symbol(for index: Int) -> String {

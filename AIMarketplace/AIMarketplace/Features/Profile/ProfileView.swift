@@ -88,11 +88,13 @@ struct ProfileView: View {
         }
         .alert("Delete account?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
+                Haptics.warning()
                 deleting = true
                 Task { @MainActor in
                     let outcome = await store.deleteAccount()
                     deleting = false
                     if case .blockedByOutstandingBalance = outcome {
+                        Haptics.error()
                         deleteBlockedMessage = "Your Stripe payout account still holds a balance. Cash it out from Partner Program → Get Paid, then try again."
                     } else {
                         // ModerationStore persists to its own UserDefaults key,
@@ -232,6 +234,8 @@ struct ProfileView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(String(format: "$%.2f", store.walletBalance))
                     .font(.system(size: 34, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 Spacer()
                 PrimaryButton(title: "Top up", systemImage: "plus", style: .ghost) {
                     activeSheet = .topUp

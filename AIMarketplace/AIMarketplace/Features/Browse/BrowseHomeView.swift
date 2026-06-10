@@ -45,9 +45,15 @@ struct BrowseHomeView: View {
                     layerBar
 
                     if filter != nil || layerFilter != nil {
-                        MediaRow(title: filterTitle,
-                                 subtitle: "Sorted by AI Editor score",
-                                 items: filteredItems) { activeSheet = .detail($0) }
+                        if filteredItems.isEmpty {
+                            EmptyStateView(icon: "rectangle.on.rectangle.slash",
+                                           title: "Nothing in \(filterTitle) yet",
+                                           message: "New titles land here as soon as they clear the AI Editor. Try another filter.")
+                        } else {
+                            MediaRow(title: filterTitle,
+                                     subtitle: "Sorted by AI Editor score",
+                                     items: filteredItems) { activeSheet = .detail($0) }
+                        }
                     } else {
                         pendingProposalsRail
                         RankedRow(title: "Top 10 Today", items: store.topTen) { activeSheet = .detail($0) }

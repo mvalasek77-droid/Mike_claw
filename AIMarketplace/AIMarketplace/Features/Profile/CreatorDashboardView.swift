@@ -146,5 +146,8 @@ struct BarChart: View {
                 }
             }
         }
+        // VoiceOver: summarize the week instead of seven unlabeled bars.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Sales last 7 days, \(Int(values.reduce(0, +).rounded())) units total")
     }
 }
