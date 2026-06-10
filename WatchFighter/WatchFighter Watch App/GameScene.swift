@@ -39,6 +39,7 @@ final class FightScene: SKScene {
 
     // Loop bookkeeping
     private var pendingLocal: [Intent] = []
+    private var holdDir = 0               // virtual-pad: -1 back, 0 none, +1 forward
     private var pendingCrown: CGFloat = 0
     private var lastTime: TimeInterval = 0
     private var accumulator: TimeInterval = 0
@@ -285,6 +286,9 @@ final class FightScene: SKScene {
         accumulator += dt * GameSettings.gameSpeed     // TURBO / snappy base pacing
         while accumulator >= step {
             accumulator -= step
+            // Continuous walk while a direction is held (smooth, per-tick).
+            if holdDir > 0 { _ = flow.apply(.walkForward, from: .player) }
+            else if holdDir < 0 { _ = flow.apply(.walkBack, from: .player) }
             if let opts = trainingOptions {
                 flow.applyTraining(opts)
                 if let d = dummy?.decide(dummy: flow.combat.opponent, player: flow.combat.player) {
@@ -635,12 +639,37 @@ final class FightScene: SKScene {
 
     // MARK: - Gesture input (forwarded from SwiftUI; queued, not applied directly)
 
-    func touchDown() {
+    // MARK: - Virtual gamepad (preferred) — discrete button presses
+
+    /// Hold-to-walk direction: -1 back, +1 forward, 0 release.
+    func padMove(_ dir: Int) { holdDir = (phase == .fighting) ? dir : 0 }
+
+    /// A tap action button (light/heavy/special/grab/parry/jump).
+    func padTap(_ intent: Intent) {
         guard phase == .fighting else { return }
+        pendingLocal.append(intent)
+        switch intent {
+        case .heavyAttack: SoundEngine.shared.play(.heavy)
+        case .lightAttack: SoundEngine.shared.play(.light)
+        case .special:     SoundEngine.shared.play(.special)
+        case .parry:       SoundEngine.shared.play(.parry)
+        default: break
+        }
+    }
+
+    func padBlock(_ down: Bool) {
+        guard phase == .fighting else { return }
+        pendingLocal.append(down ? .beginBlock : .endBlock)
+    }
+
+    // MARK: - Gesture scheme (only when the virtual pad is OFF)
+
+    func touchDown() {
+        guard phase == .fighting, !GameSettings.virtualPad else { return }
         pendingLocal.append(.beginBlock)
     }
     func touchUp(translation: CGSize, startLocation: CGPoint, held: TimeInterval) {
-        guard phase == .fighting else { return }
+        guard phase == .fighting, !GameSettings.virtualPad else { return }
         pendingLocal.append(.endBlock)
         let dx = translation.width, dy = -translation.height
         if hypot(dx, dy) > 24 {

@@ -78,6 +78,7 @@ struct MainMenuView: View {
     @State private var music = SoundEngine.shared.musicEnabled
     @State private var blood = GameSettings.blood
     @State private var turbo = GameSettings.turbo
+    @State private var pad = GameSettings.virtualPad
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
@@ -86,6 +87,9 @@ struct MainMenuView: View {
                 menuButton("TRAINING", color: .blue) { flow.chooseMode(.training) }
                 menuButton("VERSUS", color: .green) { flow.chooseMode(.versus) }
                 menuButton("HOW TO PLAY", color: .gray) { flow.screen = .howTo }
+                menuButton(pad ? "CONTROLS: BUTTONS" : "CONTROLS: GESTURES", color: .teal) {
+                    pad.toggle(); GameSettings.virtualPad = pad
+                }
                 menuButton("CPU: \(flow.cpuDifficulty.label)", color: .orange) {
                     flow.cpuDifficulty = flow.cpuDifficulty.nextSelectable
                 }
@@ -182,13 +186,13 @@ struct HowToPlayView: View {
     @ObservedObject var flow: GameFlow
     private let rows: [(String, String)] = [
         ("Crown", "charge super meter"),
-        ("Tap top / bottom", "light / heavy"),
-        ("Tap far-left", "throw (beats block)"),
-        ("Tap far-right", "special (meter ≥ 50)"),
-        ("Swipe up", "jump (then tap = air attack)"),
-        ("Swipe ← / →", "step back / forward"),
-        ("Swipe down", "parry"),
-        ("Hold", "block"),
+        ("◀ ▶ (hold)", "walk back / forward"),
+        ("↑", "jump (then L/H = air attack)"),
+        ("L / H", "light / heavy attack"),
+        ("S", "special (meter ≥ 50)"),
+        ("GR", "throw (beats block)"),
+        ("P", "parry"),
+        ("BLK (hold)", "block"),
     ]
     var body: some View {
         ScrollView {

@@ -49,6 +49,8 @@ final class SkeletonRenderer: FighterRenderer {
     private var ribbon: [CGPoint] = [], ribbonPrev: [CGPoint] = []
     private var ribbonSeeded = false
     private let ribbonCount = 9, ribbonSeg: CGFloat = 5
+    private var lastOriginX: CGFloat = .nan   // for walk-cycle detection
+    private var walkPhase: CGFloat = 0
 
     private var current: Pose
     private let body: SKColor, accent: SKColor, dark: SKColor, hi: SKColor
@@ -120,7 +122,17 @@ final class SkeletonRenderer: FighterRenderer {
     }
 
     func update(for f: Fighter, clock: CGFloat, originX: CGFloat, groundY: CGFloat, flashHit: Bool) {
-        current = current.lerp(to: Animator.pose(for: f, clock: clock), 0.4)
+        // Walk cycle: if the fighter is moving on the ground in neutral, play the
+        // walk pose instead of the idle bob (fixes "sliding while standing").
+        if lastOriginX.isNaN { lastOriginX = originX }
+        let dx = originX - lastOriginX
+        lastOriginX = originX
+        var target = Animator.pose(for: f, clock: clock)
+        if f.state == .idle && !f.airborne && !f.isBlocking && abs(dx) > 0.2 {
+            walkPhase += abs(dx) * 0.22
+            target = Animator.walk(phase: walkPhase)
+        }
+        current = current.lerp(to: target, 0.4)
         let facing: CGFloat = f.facingRight ? 1 : -1
         let feetY = groundY + f.height
         func P(_ p: CGPoint) -> CGPoint {

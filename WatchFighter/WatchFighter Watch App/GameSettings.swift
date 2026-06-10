@@ -25,5 +25,15 @@ enum GameSettings {
 
     /// Real-time → simulation speed multiplier.
     static var gameSpeed: Double { turbo ? 1.75 : 1.18 }
+
+    private static let padKey = "eternalcombat.virtualpad"
+
+    /// On-screen virtual gamepad for fights (vs. the gesture/tap-zone scheme).
+    /// Default ON. The scene reads this directly to disable gesture handling.
+    static var virtualPad: Bool = {
+        UserDefaults.standard.object(forKey: padKey) as? Bool ?? true
+    }() {
+        didSet { UserDefaults.standard.set(virtualPad, forKey: padKey) }
+    }
 }
 #endif

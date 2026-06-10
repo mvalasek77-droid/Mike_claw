@@ -10,6 +10,8 @@ enum Intent: Equatable, Codable {
     case parry             // Crown press
     case stepForward
     case stepBack
+    case walkForward       // continuous (held) walk — small per-tick move
+    case walkBack
     case jump
     case grab              // throw / command grab (beats block)
     case beginBlock

@@ -135,6 +135,17 @@ struct CombatSystem {
                 f.position = clampLane(f.position - (f.facingRight ? 1 : -1) * f.spec.walkSpeed * 4)
             }
 
+        case .walkForward:    // held, applied every sim tick -> smooth walk
+            if f.canAct {
+                let target = f.position + (f.facingRight ? 1 : -1) * f.spec.walkSpeed * 1.5
+                f.position = clampLane(clampSeparation(target, side: side))
+            }
+
+        case .walkBack:
+            if f.canAct {
+                f.position = clampLane(f.position - (f.facingRight ? 1 : -1) * f.spec.walkSpeed * 1.5)
+            }
+
         case .jump:
             if f.canAct {
                 let other = (side == .player ? opponent : player).position
