@@ -94,6 +94,16 @@ enum StageLibrary {
                   farColor: RGBA(0.10, 0.09, 0.06), midColor: RGBA(0.18, 0.15, 0.08),
                   groundColor: RGBA(0.10, 0.09, 0.07), accent: RGBA(1.0, 0.85, 0.3),
                   motif: .dojo),
+        StageSpec(id: "runway", name: "THE RUNWAY",
+                  skyTop: RGBA(0.10, 0.02, 0.10), skyBottom: RGBA(0.55, 0.12, 0.35),
+                  farColor: RGBA(0.18, 0.05, 0.16), midColor: RGBA(0.30, 0.08, 0.24),
+                  groundColor: RGBA(0.12, 0.04, 0.10), accent: RGBA(1.0, 0.85, 0.4),
+                  motif: .city),
+        StageSpec(id: "plaza", name: "MIDNIGHT PLAZA",
+                  skyTop: RGBA(0.03, 0.04, 0.10), skyBottom: RGBA(0.10, 0.14, 0.26),
+                  farColor: RGBA(0.08, 0.10, 0.18), midColor: RGBA(0.14, 0.18, 0.28),
+                  groundColor: RGBA(0.07, 0.08, 0.12), accent: RGBA(0.4, 0.85, 1.0),
+                  motif: .city),
     ]
 
     static func stage(id: String) -> StageSpec {

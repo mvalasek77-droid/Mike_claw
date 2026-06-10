@@ -10,7 +10,8 @@ struct Progression: Codable, Equatable {
     static let starters: Set<String> = ["tetsu", "volt", "ember", "frost", "mirage", "bastion"]
     /// (winsRequired, characterID), in ascending order.
     static let winUnlocks: [(wins: Int, id: String)] =
-        [(2, "corsair"), (4, "nova"), (6, "vesper"), (8, "marina"), (12, "feng")]
+        [(2, "corsair"), (4, "nova"), (6, "vesper"), (8, "marina"),
+         (10, "sable"), (12, "feng"), (14, "groove"), (16, "verse")]
     static let storyClearUnlock = "onyx"
 
     var totalWins = 0

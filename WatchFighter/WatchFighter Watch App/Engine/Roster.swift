@@ -224,9 +224,55 @@ extension CharacterSpec {
                     pushback: 6, reach: 28, meterGain: 7, cancelable: true)
     )
 
-    /// Selectable cast (bosses excluded; FENG starts locked behind 12 wins).
+    /// Glamour zoner (original "supermodel" archetype) — blinding flash bulbs
+    /// for zoning, glass cannon. Original character; no real-person likeness.
+    static let sable = CharacterSpec(
+        id: "sable",
+        name: "SABLE",
+        title: "The Runway",
+        bio: "She heard the tower had the best lighting in the world. It does. She "
+           + "is not leaving until everyone agrees, ideally while unconscious.",
+        maxHealth: 92, walkSpeed: 2.6,
+        special: Move.projectile(damage: 14, speed: 8, startup: 7),
+        exSpecial: Move.ex(from: Move.projectile(damage: 14, speed: 8, startup: 7)),
+        homeStageID: "runway",
+        bodyColor: RGBA(0.95, 0.25, 0.55), accentColor: RGBA(1.0, 0.9, 0.4)
+    )
+
+    /// Showman dancer (original stage-performer archetype) — rhythmic mixups and
+    /// strong aerials. Original character; not based on any performer or routine.
+    static let groove = CharacterSpec(
+        id: "groove",
+        name: "GROOVE",
+        title: "The Showstopper",
+        bio: "Forty years on a stage that no longer exists. The tower gave him a "
+           + "new audience: everyone he beats has to clap.",
+        maxHealth: 98, walkSpeed: 2.8,
+        special: Move.special(damage: 16, reach: 56, pushback: 16, startup: 5, launches: true),
+        exSpecial: Move.ex(from: Move.special(damage: 16, reach: 56, pushback: 16, startup: 5, launches: true)),
+        homeStageID: "soundstage",
+        bodyColor: RGBA(0.15, 0.15, 0.18), accentColor: RGBA(0.95, 0.85, 0.3)
+    )
+
+    /// MC / poet-warrior (original hip-hop archetype) — charismatic, balanced,
+    /// strong mid-range. Original character; no real-person likeness, no lyrics.
+    static let verse = CharacterSpec(
+        id: "verse",
+        name: "VERSE",
+        title: "The Cypher",
+        bio: "Came up to the tower to drop the realest bars in history and found "
+           + "out the only critics left were fists. He adapted. Loudly.",
+        maxHealth: 104, walkSpeed: 2.3,
+        special: Move.special(damage: 17, reach: 50, pushback: 18, startup: 6, launches: true),
+        exSpecial: Move.ex(from: Move.special(damage: 17, reach: 50, pushback: 18, startup: 6, launches: true)),
+        homeStageID: "plaza",
+        bodyColor: RGBA(0.25, 0.35, 0.55), accentColor: RGBA(0.95, 0.8, 0.2)
+    )
+
+    /// Selectable cast (bosses excluded; later entries are win-gated unlocks).
     static let selectable: [CharacterSpec] =
-        [tetsu, volt, ember, frost, mirage, bastion, corsair, nova, vesper, marina, feng]
+        [tetsu, volt, ember, frost, mirage, bastion, corsair, nova, vesper, marina,
+         sable, feng, groove, verse]
 
     /// The arcade-ladder order the player climbs — ends with the boss, TITUS.
     static let arcadeLadder: [CharacterSpec] =
@@ -252,6 +298,9 @@ extension CharacterSpec {
         case "onyx":    return "The tower thanks you for donating your dignity."
         case "titus":   return "(He cracks his knuckles. That is the entire speech.)"
         case "feng":    return "And… CUT! Print it, that's the take. Somebody fetch my smoothie."
+        case "sable":   return "The judges are unanimous. You're a two. Out of a possible me."
+        case "groove":  return "Tip your waitstaff. They watched you lose."
+        case "verse":   return "Round's over. The mic stays warm."
         default:        return "GG."
         }
     }
@@ -272,6 +321,9 @@ extension CharacterSpec {
         case "onyx":    return "Climbers fall. It's in the name of the job."
         case "titus":   return "(silence, and two raised fists)"
         case "feng":    return "HYAAA! …sorry, that's contractual. Okay — HYAAA!"
+        case "sable":   return "Try not to fall in love. Or just… fall."
+        case "groove":  return "Two left feet? I'll only need one."
+        case "verse":   return "Bring a notebook. This is a lesson."
         default:        return "Let's go."
         }
     }
@@ -292,6 +344,9 @@ extension CharacterSpec {
         case "onyx":    return "Ascendant Crush"
         case "titus":   return "Haymaker"
         case "feng":    return "Flying Reel Kick"
+        case "sable":   return "Flashbulb"
+        case "groove":  return "Showstopper Spin"
+        case "verse":   return "Mic Drop"
         default:        return "Special"
         }
     }

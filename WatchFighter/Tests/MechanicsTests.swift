@@ -100,7 +100,7 @@ final class MechanicsTests: XCTestCase {
     }
 
     func testRosterIntegrity() {
-        XCTAssertEqual(CharacterSpec.selectable.count, 11)
+        XCTAssertEqual(CharacterSpec.selectable.count, 14)
         for spec in CharacterSpec.selectable {
             XCTAssertGreaterThan(spec.maxHealth, 0)
             // Every character's home stage must resolve to a real stage.
