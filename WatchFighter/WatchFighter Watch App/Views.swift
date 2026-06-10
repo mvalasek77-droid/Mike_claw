@@ -77,6 +77,7 @@ struct MainMenuView: View {
     @ObservedObject var flow: GameFlow
     @State private var music = SoundEngine.shared.musicEnabled
     @State private var blood = GameSettings.blood
+    @State private var turbo = GameSettings.turbo
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
@@ -93,6 +94,9 @@ struct MainMenuView: View {
                 }
                 menuButton(blood ? "BLOOD: ON" : "BLOOD: OFF", color: .red) {
                     blood.toggle(); GameSettings.blood = blood
+                }
+                menuButton(turbo ? "TURBO: ON ⚡" : "TURBO: OFF", color: .yellow) {
+                    turbo.toggle(); GameSettings.turbo = turbo
                 }
                 Text("Wins: \(flow.progression.totalWins)")
                     .font(.system(size: 8)).foregroundStyle(.secondary)

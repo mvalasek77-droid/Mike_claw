@@ -58,25 +58,30 @@ final class SoundEngine {
 
     private func musicBuffer() -> AVAudioPCMBuffer? {
         let sr = format.sampleRate
-        let beat = 0.22
-        // A minor-ish arpeggio loop (0 == rest).
-        let steps: [Double] = [110, 0, 164.81, 196, 130.81, 0, 196, 164.81,
-                               110, 0, 146.83, 174.61, 98, 0, 146.83, 130.81]
-        let total = AVAudioFrameCount(sr * beat * Double(steps.count))
+        let beat = 0.15                      // fast, driving — arcade-fighter energy
+        // Two original voices: a pulsing bass and a higher lead arpeggio (0 = rest).
+        let bass: [Double] = [55, 55, 0, 55, 73.42, 0, 55, 0,
+                              49, 49, 0, 49, 65.41, 0, 73.42, 82.41]
+        let lead: [Double] = [220, 0, 261.63, 329.63, 0, 293.66, 392, 0,
+                              220, 0, 246.94, 329.63, 392, 0, 440, 392]
+        let n = max(bass.count, lead.count)
+        let stepFrames = Int(sr * beat)
+        let total = AVAudioFrameCount(stepFrames * n)
         guard total > 0, let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: total),
               let ch = buf.floatChannelData?[0] else { return nil }
         buf.frameLength = total
         var i = 0
-        let stepFrames = Int(sr * beat)
-        for f in steps {
+        for s in 0..<n {
+            let bf = bass[s % bass.count], lf = lead[s % lead.count]
+            // A short "kick" thump on the downbeat of each pair of steps.
+            let kick = s % 2 == 0
             for k in 0..<stepFrames {
                 let t = Double(k) / sr
                 var v = 0.0
-                if f > 0 {
-                    let env = exp(-3 * t / beat)
-                    v = (sin(2 * .pi * f * t) * 0.6 + sin(2 * .pi * f * 0.5 * t) * 0.4) * env
-                }
-                if i < Int(total) { ch[i] = Float(v * 0.10); i += 1 }
+                if bf > 0 { v += (sin(2 * .pi * bf * t) >= 0 ? 1 : -1) * exp(-2.2 * t / beat) * 0.5 }
+                if lf > 0 { v += sin(2 * .pi * lf * t) * exp(-3.5 * t / beat) * 0.35 }
+                if kick { v += sin(2 * .pi * 70 * t) * exp(-22 * t) * 0.5 }   // kick drum
+                if i < Int(total) { ch[i] = Float(max(-1, min(1, v)) * 0.11); i += 1 }
             }
         }
         return buf

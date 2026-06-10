@@ -12,5 +12,18 @@ enum GameSettings {
     static var blood: Bool = UserDefaults.standard.bool(forKey: bloodKey) {
         didSet { UserDefaults.standard.set(blood, forKey: bloodKey) }
     }
+
+    private static let turboKey = "eternalcombat.turbo"
+
+    /// TURBO: arcade-speed fights. Off by default; the base speed is already a
+    /// touch quicker than 1:1 for a snappier feel. Purely a real-time pacing
+    /// multiplier on the local sim (engine tick logic is unchanged), so it never
+    /// affects determinism or the unit tests.
+    static var turbo: Bool = UserDefaults.standard.bool(forKey: turboKey) {
+        didSet { UserDefaults.standard.set(turbo, forKey: turboKey) }
+    }
+
+    /// Real-time → simulation speed multiplier.
+    static var gameSpeed: Double { turbo ? 1.75 : 1.18 }
 }
 #endif

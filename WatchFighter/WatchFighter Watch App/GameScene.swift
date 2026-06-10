@@ -57,8 +57,8 @@ final class FightScene: SKScene {
     private var isBossFight: Bool { flow.opponentSpec.guardedByRitual }
 
     // Nodes
-    private var playerSkel: SkeletonRenderer!
-    private var oppSkel: SkeletonRenderer!
+    private var playerSkel: FighterRenderer!
+    private var oppSkel: FighterRenderer!
     private let playerHP = SKShapeNode()
     private let oppHP = SKShapeNode()
     private let playerHPBack = SKShapeNode()
@@ -144,10 +144,18 @@ final class FightScene: SKScene {
     private func rebuildStage() { childNode(withName: "stage")?.removeFromParent(); buildStage() }
 
     private func buildFighters() {
-        playerSkel = SkeletonRenderer(spec: flow.playerSpec)
-        oppSkel = SkeletonRenderer(spec: flow.opponentSpec)
+        playerSkel = Self.makeRenderer(flow.playerSpec)
+        oppSkel = Self.makeRenderer(flow.opponentSpec)
         playerSkel.root.zPosition = 1; oppSkel.root.zPosition = 1
         addChild(playerSkel.root); addChild(oppSkel.root)
+    }
+
+    /// Use real sprite art if a `<id>_atlas` ships in the bundle; otherwise fall
+    /// back to the fully procedural (no-asset) renderer.
+    private static func makeRenderer(_ spec: CharacterSpec) -> FighterRenderer {
+        let atlas = SKTextureAtlas(named: "\(spec.id)_atlas")
+        if !atlas.textureNames.isEmpty { return SpriteFighter(spec: spec, atlas: atlas) }
+        return SkeletonRenderer(spec: spec)
         projectileLayer.zPosition = 2; addChild(projectileLayer)
     }
 
@@ -274,7 +282,7 @@ final class FightScene: SKScene {
         }
         pendingLocal.removeAll()
 
-        accumulator += dt
+        accumulator += dt * GameSettings.gameSpeed     // TURBO / snappy base pacing
         while accumulator >= step {
             accumulator -= step
             if let opts = trainingOptions {
