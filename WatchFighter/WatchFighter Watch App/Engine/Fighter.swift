@@ -38,6 +38,18 @@ struct RGBA: Equatable {
     }
 }
 
+/// Body type — drives the procedural fighter's proportions so silhouettes read
+/// as powerful, athletic, or graceful (tasteful presence, not caricature).
+enum Build: Equatable {
+    case heavy      // bulky, broad — bruisers
+    case athletic   // balanced default
+    case lithe      // slender, elegant
+
+    var widthScale: CGFloat { self == .heavy ? 1.32 : self == .lithe ? 0.84 : 1.0 }
+    var limbScale: CGFloat  { self == .heavy ? 1.45 : self == .lithe ? 0.82 : 1.0 }
+    var headScale: CGFloat  { self == .heavy ? 1.08 : self == .lithe ? 0.92 : 1.0 }
+}
+
 /// The lifecycle of a fighter on any given tick. Drives what input is legal.
 enum FighterState: Equatable {
     case idle

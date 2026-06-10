@@ -328,6 +328,15 @@ extension CharacterSpec {
         }
     }
 
+    /// Body type for the procedural renderer's proportions.
+    var build: Build {
+        switch id {
+        case "bastion", "titus", "onyx": return .heavy      // broad bruisers
+        case "ember", "frost", "mirage", "vesper", "marina", "sable": return .lithe
+        default: return .athletic
+        }
+    }
+
     /// Flavor name for this character's special, shown in the movelist.
     var specialName: String {
         switch id {

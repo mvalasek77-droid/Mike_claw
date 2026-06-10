@@ -379,6 +379,7 @@ final class FightScene: SKScene {
             case .hitLanded(let attacker, let dmg):
                 let victim: Side = attacker == .player ? .opponent : .player
                 spawnHitSpark(at: victim, big: dmg >= 12)
+                if dmg >= 12 { impactRing(at: victim) }
                 if allowHitstop { hitstop = dmg >= 12 ? 4 : 2 }
                 shake(dmg >= 12 ? 6 : 3)
             case .armorAbsorbed(let s):
@@ -581,6 +582,25 @@ final class FightScene: SKScene {
             move.timingMode = .easeOut
             drop.run(.sequence([.group([move, .fadeOut(withDuration: 0.45)]), .removeFromParent()]))
         }
+    }
+
+    /// A popping shockwave ring on heavy impacts — expands and fades for that
+    /// "WOW" hit feedback. Additive so it reads as a flash of energy.
+    private func impactRing(at side: Side) {
+        let c = flow.combat
+        let f = side == .player ? c.player : c.opponent
+        let spec = side == .player ? flow.playerSpec : flow.opponentSpec
+        let ring = SKShapeNode(circleOfRadius: 8)
+        ring.strokeColor = spec.accentColor.skColor
+        ring.fillColor = .clear
+        ring.lineWidth = 3
+        ring.glowWidth = 2
+        ring.blendMode = .add
+        ring.position = CGPoint(x: laneToX(f.position), y: size.height * 0.42 + 30)
+        ring.zPosition = 4
+        addChild(ring)
+        ring.run(.sequence([.group([.scale(to: 3.2, duration: 0.22),
+                                    .fadeOut(withDuration: 0.22)]), .removeFromParent()]))
     }
 
     /// Camera shake for impact weight. No-op visual; never touches the sim.

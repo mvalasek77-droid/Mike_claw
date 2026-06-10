@@ -294,29 +294,52 @@ struct VersusLobbyView: View {
     }
 }
 
+/// Anime-style pre/post-fight splash: a diagonal VS split, character panels,
+/// speed lines, a dramatic VS badge, and a manga caption box. All procedural.
 struct StoryCardView: View {
     @ObservedObject var flow: GameFlow
     var body: some View {
         let pre = flow.cardKind == .preFight
         let opp = flow.opponentSpec
-        let speaker = pre ? opp : flow.playerSpec
+        let me = flow.playerSpec
+        let speaker = pre ? opp : me
         let line = pre ? flow.story.currentBeat.preFight : flow.story.currentBeat.postWin
         return ScrollView {
-            VStack(spacing: 7) {
+            VStack(spacing: 6) {
+                // VS splash
+                ZStack {
+                    AnimeSplit(top: me.bodyColor.color, bottom: opp.bodyColor.color)
+                    SpeedLines().opacity(0.16)
+                    HStack {
+                        animePanel(me)
+                        Spacer()
+                        animePanel(opp)
+                    }.padding(.horizontal, 6)
+                    vsBadge
+                }
+                .frame(height: 94)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.18), lineWidth: 1))
+                .padding(.horizontal, 4)
+
                 if pre {
-                    Text("FLOOR \(flow.story.progress)").font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.secondary)
+                    Text("FLOOR \(flow.story.progress)")
+                        .font(.system(size: 9, weight: .black)).foregroundStyle(.secondary).tracking(2)
                 }
-                HStack(spacing: 8) {
-                    portrait(flow.playerSpec)
-                    Text("VS").font(.system(size: 12, weight: .heavy)).foregroundStyle(.white)
-                    portrait(opp)
-                }
-                Text(speaker.name).font(.system(size: 12, weight: .heavy))
+                Text(speaker.name)
+                    .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundStyle(speaker.accentColor.color)
-                Text(speaker.title).font(.system(size: 8)).foregroundStyle(.secondary)
-                Text("“\(line)”").font(.system(size: 10)).italic().foregroundStyle(.white)
-                    .multilineTextAlignment(.center).padding(.horizontal, 8)
+                    .shadow(color: .black, radius: 1)
+                Text(speaker.title.uppercased())
+                    .font(.system(size: 8, weight: .semibold)).foregroundStyle(.secondary).tracking(1)
+
+                Text("“\(line)”")
+                    .font(.system(size: 10)).italic().foregroundStyle(.white)
+                    .multilineTextAlignment(.center).padding(8)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(.black.opacity(0.55)))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.22), lineWidth: 1))
+                    .padding(.horizontal, 8)
+
                 if !pre && !flow.newlyUnlocked.isEmpty {
                     Text("★ UNLOCKED: " + flow.newlyUnlocked.map { $0.uppercased() }.joined(separator: ", "))
                         .font(.system(size: 9, weight: .bold)).foregroundStyle(.yellow)
@@ -324,7 +347,7 @@ struct StoryCardView: View {
                 }
                 if pre && opp.guardedByRitual {
                     VStack(spacing: 2) {
-                        Text("⚠ HE CANNOT BE BEATEN BY DAMAGE ALONE")
+                        Text("⚠ CANNOT BE BEATEN BY DAMAGE ALONE")
                             .font(.system(size: 8, weight: .bold)).foregroundStyle(.red)
                         Text("Perform the rite perfectly to make him mortal:")
                             .font(.system(size: 8)).foregroundStyle(.secondary)
@@ -336,19 +359,69 @@ struct StoryCardView: View {
                     .multilineTextAlignment(.center).padding(.horizontal, 6)
                 }
                 Button(action: { pre ? flow.beginFight() : flow.continueStory() }) {
-                    Text(pre ? "FIGHT" : "CONTINUE").font(.system(size: 12, weight: .bold))
+                    Text(pre ? "FIGHT!" : "CONTINUE").font(.system(size: 13, weight: .black))
                         .frame(maxWidth: .infinity)
                 }
                 .tint(pre ? Color(red: 0.9, green: 0.1, blue: 0.4) : .blue).padding(.horizontal, 14)
             }.padding(.vertical, 8)
         }
-        .background(LinearGradient(colors: [.black, opp.bodyColor.color.opacity(0.35)],
-                                   startPoint: .top, endPoint: .bottom).ignoresSafeArea())
+        .background(Color.black.ignoresSafeArea())
     }
-    private func portrait(_ spec: CharacterSpec) -> some View {
-        RoundedRectangle(cornerRadius: 5).fill(spec.bodyColor.color)
-            .frame(width: 34, height: 44)
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(spec.accentColor.color, lineWidth: 2))
+
+    private func animePanel(_ spec: CharacterSpec) -> some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(LinearGradient(colors: [spec.bodyColor.color, spec.bodyColor.color.opacity(0.35)],
+                                 startPoint: .top, endPoint: .bottom))
+            .frame(width: 50, height: 70)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(spec.accentColor.color, lineWidth: 2))
+            .overlay(Text(String(spec.name.prefix(1)))
+                .font(.system(size: 34, weight: .black, design: .rounded))
+                .foregroundStyle(spec.accentColor.color.opacity(0.9)))
+    }
+
+    private var vsBadge: some View {
+        Text("VS")
+            .font(.system(size: 24, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .rotationEffect(.degrees(-8))
+            .padding(7)
+            .background(Circle().fill(.black.opacity(0.55)))
+            .overlay(Circle().stroke(.white, lineWidth: 2).rotationEffect(.degrees(-8)))
+            .shadow(color: .black, radius: 2)
+    }
+}
+
+/// Diagonal two-colour VS split with a bright seam.
+struct AnimeSplit: View {
+    let top: Color; let bottom: Color
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            ZStack {
+                top
+                Path { p in
+                    p.move(to: CGPoint(x: w * 0.55, y: 0)); p.addLine(to: CGPoint(x: w, y: 0))
+                    p.addLine(to: CGPoint(x: w, y: h)); p.addLine(to: CGPoint(x: w * 0.30, y: h))
+                    p.closeSubpath()
+                }.fill(bottom)
+                Path { p in
+                    p.move(to: CGPoint(x: w * 0.55, y: 0)); p.addLine(to: CGPoint(x: w * 0.30, y: h))
+                }.stroke(.white.opacity(0.7), lineWidth: 2.5)
+            }
+        }
+    }
+}
+
+/// Diagonal manga speed lines.
+struct SpeedLines: View {
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            Path { p in
+                var x: CGFloat = -h
+                while x < w { p.move(to: CGPoint(x: x, y: h)); p.addLine(to: CGPoint(x: x + h * 0.55, y: 0)); x += 9 }
+            }.stroke(.white, lineWidth: 1)
+        }
     }
 }
 
