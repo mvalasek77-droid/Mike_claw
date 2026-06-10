@@ -360,3 +360,277 @@ pub struct LegalPagesResponse {
     pub terms_url: String,
     pub repo_url: String,
 }
+
+// ── New endpoint types ──────────────────────────────────────────────────
+
+/// Response for `POST /api/asc-icon`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AscIconResponse {
+    /// Whether the user needs to manually upload the icon via Safari.
+    pub needs_manual_action: bool,
+    /// The action type, e.g. "upload_app_icon".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
+    /// Human-readable message about what to do.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    /// URL to open in Safari for manual upload.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// If the icon is already uploaded.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon_uploaded: Option<bool>,
+}
+
+/// Request body for `POST /api/screenshots/upload`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenshotsUploadRequest {
+    /// App ID in ASC (e.g. "6778610091").
+    pub app_id: String,
+    /// Version localization ID in ASC.
+    pub version_localization_id: String,
+    /// Screenshot data: list of (display_type, filename, base64-encoded PNG).
+    pub screenshots: Vec<ScreenshotEntry>,
+}
+
+/// A single screenshot to upload to ASC.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenshotEntry {
+    /// ASC display type (e.g. "APP_IPHONE_67").
+    pub display_type: String,
+    /// Filename for the screenshot (e.g. "iphone_6.7_01.png").
+    pub filename: String,
+    /// Base64-encoded PNG data.
+    pub data_base64: String,
+}
+
+/// Result for a single screenshot upload.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenshotUploadResult {
+    pub filename: String,
+    pub display_type: String,
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screenshot_id: Option<String>,
+}
+
+/// Response for `POST /api/screenshots/upload`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenshotsUploadResponse {
+    pub results: Vec<ScreenshotUploadResult>,
+}
+
+/// Request body for `PATCH /api/asc-whatsnew`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AscWhatsNewRequest {
+    /// The version localization ID in ASC.
+    pub version_localization_id: String,
+    /// The "What's New" release notes text.
+    pub whats_new: String,
+}
+
+/// Response for `PATCH /api/asc-whatsnew`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AscWhatsNewResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+// ── Beta Tester / Beta Review types ─────────────────────────────────────
+
+/// A single beta tester returned by the ASC API.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BetaTester {
+    pub id: String,
+    pub email: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invite_type: Option<String>,
+}
+
+/// Response for `GET /api/testers`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListTestersResponse {
+    pub testers: Vec<BetaTester>,
+}
+
+/// Request body for `POST /api/testers` — add a beta tester by email.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AddTesterRequest {
+    pub email: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_name: Option<String>,
+}
+
+/// Request body for `POST /api/testers/assign-build`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssignTestersRequest {
+    pub build_id: String,
+    pub tester_ids: Vec<String>,
+}
+
+/// Response for `GET /api/beta-review`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BetaReviewStatusResponse {
+    pub beta_review_state: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub submitted_date: Option<String>,
+}
+
+/// Request body for `POST /api/beta-review/submit`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BetaReviewSubmitRequest {
+    pub build_id: String,
+}
+
+/// Request body for `POST /api/beta-review/detail`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BetaReviewDetailRequest {
+    pub contact_first_name: String,
+    pub contact_last_name: String,
+    pub contact_email: String,
+    pub contact_phone: String,
+}
+
+/// Request body for `POST /api/beta-review/localization`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BetaBuildLocalizationRequest {
+    pub build_id: String,
+    pub locale: String,
+    pub whats_new: String,
+}
+
+/// Request body for `POST /api/beta-review/app-localization`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BetaAppLocalizationRequest {
+    pub locale: String,
+    pub feedback_email: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+// ── AI Recovery Engine types ────────────────────────────────────────────
+
+/// Known failure modes that the AI steering engine can diagnose and recover from.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FailureMode {
+    /// ASC REST API returned 403 — user must sign in via Safari.
+    AscSignInRequired,
+    /// xcodebuild can't find the provisioning profile.
+    ProvisioningProfileNotFound,
+    /// ASC rejected the IPA because the app icon has an alpha channel.
+    IconAlphaChannel,
+    /// xcodebuild is waiting for Keychain unlock (codesign prompt).
+    KeychainAccessRequired,
+    /// No Apple Distribution certificate found in Keychain.
+    DistributionCertMissing,
+    /// ASC rejected upload because build number already exists.
+    BuildNumberConflict,
+    /// Something else went wrong — AI will attempt freeform diagnosis.
+    Unknown,
+}
+
+impl std::fmt::Display for FailureMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AscSignInRequired => write!(f, "asc_sign_in_required"),
+            Self::ProvisioningProfileNotFound => write!(f, "provisioning_profile_not_found"),
+            Self::IconAlphaChannel => write!(f, "icon_alpha_channel"),
+            Self::KeychainAccessRequired => write!(f, "keychain_access_required"),
+            Self::DistributionCertMissing => write!(f, "distribution_cert_missing"),
+            Self::BuildNumberConflict => write!(f, "build_number_conflict"),
+            Self::Unknown => write!(f, "unknown"),
+        }
+    }
+}
+
+/// Recovery actions the AI steering engine can propose.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RecoveryAction {
+    /// Retry the same step after a fix has been applied server-side.
+    RetryWithFix,
+    /// The user must perform a manual action (e.g. sign in to ASC in Safari).
+    ManualIntervention,
+    /// Skip this step — it's not critical and can be done later.
+    Skip,
+    /// Abort the entire pipeline.
+    Abort,
+}
+
+/// Context about the failure, sent to the steer endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ErrorContext {
+    /// Which pipeline step failed (e.g. "archive", "upload", "asc_signin").
+    pub step: String,
+    /// The error message from the failing command.
+    pub error_message: String,
+    /// Which known failure mode this is (if diagnosed).
+    #[serde(default)]
+    pub failure_mode: Option<FailureMode>,
+    /// How many times this step has been retried.
+    #[serde(default)]
+    pub retry_count: u32,
+}
+
+/// An AI-proposed recovery plan, returned by the steer endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecoveryProposal {
+    /// The diagnosed failure mode.
+    pub failure_mode: FailureMode,
+    /// Human-readable explanation of what went wrong.
+    pub diagnosis: String,
+    /// What the AI proposes to do about it.
+    pub action: RecoveryAction,
+    /// Human-readable description of the proposed fix.
+    pub fix_description: String,
+    /// Parameters for the fix (e.g. {"new_build_number": "2"}).
+    #[serde(default)]
+    pub fix_params: std::collections::HashMap<String, String>,
+    /// Whether this fix can be applied automatically without user confirmation.
+    pub auto_fix: bool,
+}
+
+/// Request body for `POST /api/build/:job_id/steer`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteerRequest {
+    /// Context about the failure.
+    pub error_context: ErrorContext,
+}
+
+/// Response from the steer endpoint — an AI-proposed recovery plan.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SteerResponse {
+    pub job_id: String,
+    pub proposal: RecoveryProposal,
+}
+
+/// Request body for `POST /api/build/:job_id/recover`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecoverRequest {
+    /// The approved recovery proposal (may have modified fix_params).
+    pub proposal: RecoveryProposal,
+}
+
+/// Response from the recover endpoint — result of applying the fix.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecoverResponse {
+    pub job_id: String,
+    /// Whether the fix was applied successfully.
+    pub success: bool,
+    /// Human-readable result message.
+    pub message: String,
+    /// If the fix was applied, which step to retry.
+    pub retry_step: Option<String>,
+}

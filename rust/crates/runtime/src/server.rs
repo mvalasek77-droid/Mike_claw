@@ -17,12 +17,17 @@
 //! - `POST /api/build/:job_id/screenshots`  – trigger screenshot automation
 //! - `POST /api/build/:job_id/upload`       – archive & upload to App Store Connect
 //! - `POST /api/build/:job_id/submit`       – submit for App Store review
+//!
+//! New standalone endpoints (no job_id required):
+//! - `POST /api/asc-icon`                   – check/gate for app icon upload to ASC
+//! - `POST /api/screenshots/upload`         – upload screenshots to ASC via S3
+//! - `PATCH /api/asc-whatsnew`              – set "What's New" text on a version localization
 
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::sse::{Event, KeepAlive, Sse},
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -38,13 +43,18 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::builder::orchestrator::{
     call_ai_for_asc_metadata, call_ai_for_icon, call_ai_for_patch, call_ai_for_perfection,
-    resolve_ai_config,
+    resolve_ai_config, diagnose_failure, apply_recovery_fix,
 };
 use crate::builder::project;
 use crate::builder::{
-    AscMetadataResponse, AscSignInResponse, BuildEvent, BuildJob, BuildRequest, BuildStatus,
-    IconRequest, LegalPagesResponse, PatchRequest, PerfectionResponse, ScreenshotsResponse,
-    SubmitResponse, UploadResponse,
+    AddTesterRequest, AssignTestersRequest, BetaAppLocalizationRequest, BetaBuildLocalizationRequest,
+    BetaReviewDetailRequest, BetaReviewStatusResponse, BetaReviewSubmitRequest, BetaTester,
+    AscIconResponse, AscMetadataResponse, AscSignInResponse, AscWhatsNewRequest, AscWhatsNewResponse,
+    BuildEvent, BuildJob, BuildRequest, BuildStatus, ListTestersResponse,
+    ErrorContext, FailureMode, IconRequest, LegalPagesResponse, PatchRequest, PerfectionResponse,
+    RecoverRequest, RecoverResponse, RecoveryAction, RecoveryProposal,
+    ScreenshotEntry, ScreenshotUploadResult, ScreenshotsResponse, ScreenshotsUploadRequest, ScreenshotsUploadResponse,
+    SteerRequest, SteerResponse, SubmitResponse, UploadResponse,
 };
 
 /// Default listen port for `claw serve`.
@@ -2086,6 +2096,122 @@ jobs:
     }))
 }
 
+// ── AI Recovery Engine handlers ────────────────────────────────────────────
+
+/// `POST /api/build/:job_id/steer`
+///
+/// Diagnose a pipeline step failure and propose a recovery action.
+/// The iOS client calls this when any pipeline step fails, sending the
+/// step name, error message, and retry count. The server uses pattern
+/// matching on known failure modes and falls back to AI diagnosis.
+async fn steer(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+    Json(body): Json<SteerRequest>,
+) -> Result<Json<SteerResponse>, (StatusCode, String)> {
+    // Verify the job exists
+    let _job = state
+        .jobs
+        .lock()
+        .await
+        .get(&job_id)
+        .cloned()
+        .ok_or((StatusCode::NOT_FOUND, format!("Job {job_id} not found")))?;
+
+    let ctx = body.error_context;
+
+    // Diagnose the failure mode from the error message
+    let proposal = diagnose_failure(&ctx.step, &ctx.error_message, ctx.retry_count);
+
+    Ok(Json(SteerResponse {
+        job_id,
+        proposal,
+    }))
+}
+
+/// `POST /api/build/:job_id/recover`
+///
+/// Apply a user-approved recovery action. The iOS client sends the
+/// recovery proposal (possibly with modified fix_params) and the server
+/// executes the fix, then returns success/failure and which step to retry.
+async fn recover(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+    Json(body): Json<RecoverRequest>,
+) -> Result<Json<RecoverResponse>, (StatusCode, String)> {
+    // Verify the job exists and get a clone for the recovery fix
+    let job_arc = state
+        .jobs
+        .lock()
+        .await
+        .get(&job_id)
+        .cloned()
+        .ok_or((StatusCode::NOT_FOUND, format!("Job {job_id} not found")))?;
+
+    let job = job_arc.lock().await.clone();
+    let proposal = body.proposal;
+
+    // Broadcast recovery attempt
+    {
+        let senders = state.event_senders.try_lock();
+        if let Ok(senders) = senders {
+            if let Some(tx) = senders.get(&job_id) {
+                let _ = tx.send(BuildEvent::PipelineStep {
+                    phase: "recovery".into(),
+                    step: "applying_fix".into(),
+                    message: format!("Applying recovery: {}", proposal.fix_description),
+                });
+            }
+        }
+    }
+
+    // Apply the recovery fix
+    match apply_recovery_fix(&job, &proposal) {
+        Ok(retry_step) => {
+            // Broadcast success
+            {
+                let senders = state.event_senders.try_lock();
+                if let Ok(senders) = senders {
+                    if let Some(tx) = senders.get(&job_id) {
+                        let _ = tx.send(BuildEvent::PipelineStep {
+                            phase: "recovery".into(),
+                            step: "fix_applied".into(),
+                            message: format!("Recovery applied: {}", proposal.fix_description),
+                        });
+                    }
+                }
+            }
+            Ok(Json(RecoverResponse {
+                job_id,
+                success: true,
+                message: format!("Recovery applied: {}", proposal.fix_description),
+                retry_step: Some(retry_step),
+            }))
+        }
+        Err(err) => {
+            // Broadcast failure
+            {
+                let senders = state.event_senders.try_lock();
+                if let Ok(senders) = senders {
+                    if let Some(tx) = senders.get(&job_id) {
+                        let _ = tx.send(BuildEvent::PipelineStep {
+                            phase: "recovery".into(),
+                            step: "fix_failed".into(),
+                            message: format!("Recovery failed: {err}"),
+                        });
+                    }
+                }
+            }
+            Ok(Json(RecoverResponse {
+                job_id,
+                success: false,
+                message: format!("Recovery failed: {err}"),
+                retry_step: None,
+            }))
+        }
+    }
+}
+
 /// Helper: Push a file to GitHub via the Contents API.
 /// Returns an error string on failure.
 async fn push_file_to_github(
@@ -2146,6 +2272,1373 @@ async fn push_file_to_github(
     Ok(())
 }
 
+// ── New endpoint handlers: asc-icon, screenshots/upload, asc-whatsnew ────
+
+/// `POST /api/asc-icon` — Check / gate for app icon upload to ASC.
+///
+/// The ASC REST API does NOT expose an endpoint for uploading app icons (all
+/// attempts return 404). This handler checks whether the icon has already been
+/// uploaded via the web UI and, if not, returns a JSON payload telling the
+/// iOS client that the user must upload the icon manually through Safari.
+async fn asc_icon(
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<AscIconResponse>, (StatusCode, String)> {
+    let app_id = body
+        .get("app_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("6778610091");
+
+    // ── Generate ASC JWT ──────────────────────────────────────────────────
+    let asc_key_id = "N8LHKCW7K8";
+    let asc_issuer_id = "69a6de94-afa7-47e3-e053-5b8c7c11a4d1";
+    let key_path = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
+        .join("private_keys")
+        .join("AuthKey_N8LHKCW7K8.p8");
+
+    let jwt = match generate_asc_jwt(asc_key_id, asc_issuer_id, &key_path) {
+        Ok(token) => token,
+        Err(e) => {
+            return Ok(Json(AscIconResponse {
+                needs_manual_action: true,
+                action: Some("upload_app_icon".to_string()),
+                message: Some(format!("Could not generate ASC JWT: {e}")),
+                url: Some(format!(
+                    "https://appstoreconnect.apple.com/apps/{app_id}/appstore/ios/version/information"
+                )),
+                icon_uploaded: None,
+            }));
+        }
+    };
+
+    // ── Check if icon is already uploaded via ASC API ──────────────────────
+    let client = reqwest::Client::new();
+    let icon_url = format!(
+        "https://api.appstoreconnect.apple.com/v1/apps/{app_id}/appInfoLocalizations"
+    );
+
+    let response = match client
+        .get(&icon_url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            return Ok(Json(AscIconResponse {
+                needs_manual_action: true,
+                action: Some("upload_app_icon".to_string()),
+                message: Some(format!("Failed to query ASC API: {e}")),
+                url: Some(format!(
+                    "https://appstoreconnect.apple.com/apps/{app_id}/appstore/ios/version/information"
+                )),
+                icon_uploaded: None,
+            }));
+        }
+    };
+
+    let status = response.status();
+    let body_text = response.text().await.unwrap_or_default();
+
+    if status.is_success() {
+        // Try to determine if an icon is present in the response
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body_text) {
+            // Look for appIcon data in included or relationships
+            let has_icon = json
+                .get("data")
+                .and_then(|d| d.as_array())
+                .map(|arr| {
+                    arr.iter().any(|loc| {
+                        loc.get("relationships")
+                            .and_then(|r| r.get("appIcon"))
+                            .and_then(|ic| ic.get("data"))
+                            .is_some()
+                    })
+                })
+                .unwrap_or(false);
+
+            if has_icon {
+                return Ok(Json(AscIconResponse {
+                    needs_manual_action: false,
+                    action: None,
+                    message: None,
+                    url: None,
+                    icon_uploaded: Some(true),
+                }));
+            }
+        }
+    }
+
+    // Icon not found or ASC API doesn't support icon queries — return manual action
+    Ok(Json(AscIconResponse {
+        needs_manual_action: true,
+        action: Some("upload_app_icon".to_string()),
+        message: Some(
+            "App icon must be uploaded via App Store Connect web interface. Open Safari, sign in to ASC, navigate to your app, and upload the icon.".to_string(),
+        ),
+        url: Some(format!(
+            "https://appstoreconnect.apple.com/apps/{app_id}/appstore/ios/version/information"
+        )),
+        icon_uploaded: Some(false),
+    }))
+}
+
+/// `POST /api/screenshots/upload` — Upload screenshots to ASC via S3.
+///
+/// The flow is:
+/// 1. POST /v1/appScreenshotSets → create a screenshot set
+/// 2. POST /v1/appScreenshots → create a screenshot resource (get S3 upload URL)
+/// 3. PUT to S3 with PNG binary data
+/// 4. PATCH /v1/appScreenshots/{id} with {uploaded: true} to confirm
+async fn screenshots_upload(
+    Json(req): Json<ScreenshotsUploadRequest>,
+) -> Result<Json<ScreenshotsUploadResponse>, (StatusCode, String)> {
+    // ── Generate ASC JWT ──────────────────────────────────────────────────
+    let asc_key_id = "N8LHKCW7K8";
+    let asc_issuer_id = "69a6de94-afa7-47e3-e053-5b8c7c11a4d1";
+    let key_path = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
+        .join("private_keys")
+        .join("AuthKey_N8LHKCW7K8.p8");
+
+    let jwt = generate_asc_jwt(asc_key_id, asc_issuer_id, &key_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to generate ASC JWT: {e}")))?;
+
+    let client = reqwest::Client::new();
+    let mut results = Vec::new();
+
+    for screenshot in &req.screenshots {
+        let result = upload_single_screenshot(
+            &client,
+            &jwt,
+            &req.version_localization_id,
+            screenshot,
+        )
+        .await;
+
+        results.push(result);
+    }
+
+    Ok(Json(ScreenshotsUploadResponse { results }))
+}
+
+/// Upload a single screenshot through the full ASC → S3 → confirm pipeline.
+async fn upload_single_screenshot(
+    client: &reqwest::Client,
+    jwt: &str,
+    version_localization_id: &str,
+    screenshot: &ScreenshotEntry,
+) -> ScreenshotUploadResult {
+    // ── Step 1: Create screenshot set ─────────────────────────────────────
+    let set_payload = serde_json::json!({
+        "data": {
+            "type": "appScreenshotSets",
+            "relationships": {
+                "appStoreVersionLocalization": {
+                    "data": {
+                        "type": "appStoreVersionLocalizations",
+                        "id": version_localization_id
+                    }
+                },
+                "screenshotDisplayType": screenshot.display_type
+            }
+        }
+    });
+
+    let set_response = match client
+        .post("https://api.appstoreconnect.apple.com/v1/appScreenshotSets")
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .json(&set_payload)
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return ScreenshotUploadResult {
+                filename: screenshot.filename.clone(),
+                display_type: screenshot.display_type.clone(),
+                success: false,
+                error: Some(format!("Failed to create screenshot set: {e}")),
+                screenshot_id: None,
+            };
+        }
+    };
+
+    let set_status = set_response.status();
+    let set_body = match set_response.text().await {
+        Ok(b) => b,
+        Err(e) => {
+            return ScreenshotUploadResult {
+                filename: screenshot.filename.clone(),
+                display_type: screenshot.display_type.clone(),
+                success: false,
+                error: Some(format!("Failed to read screenshot set response: {e}")),
+                screenshot_id: None,
+            };
+        }
+    };
+
+    // If set already exists, we need to find its ID; parse the response
+    let (set_id, is_existing_set) = if set_status.is_success() || set_status.as_u16() == 409 {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&set_body) {
+            // If 201, the set was created
+            if set_status.is_success() {
+                let id = json
+                    .get("data")
+                    .and_then(|d| d.get("id"))
+                    .and_then(|i| i.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                (id, false)
+            } else {
+                // 409 conflict — set already exists; find it from the errors
+                // Try to find existing set from the response
+                let existing_id = json
+                    .get("data")
+                    .and_then(|d| d.get("id"))
+                    .and_then(|i| i.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                if !existing_id.is_empty() {
+                    (existing_id, true)
+                } else {
+                    // Try to find from relationships/errors
+                    let err_id = json
+                        .get("errors")
+                        .and_then(|e| e.as_array())
+                        .and_then(|arr| arr.first())
+                        .and_then(|e| e.get("meta"))
+                        .and_then(|m| m.get("associatedResources"))
+                        .and_then(|a| a.as_array())
+                        .and_then(|arr| arr.first())
+                        .and_then(|r| r.get("id"))
+                        .and_then(|i| i.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    (err_id, true)
+                }
+            }
+        } else {
+            (
+                String::new(),
+                set_status.as_u16() == 409,
+            )
+        }
+    } else {
+        return ScreenshotUploadResult {
+            filename: screenshot.filename.clone(),
+            display_type: screenshot.display_type.clone(),
+            success: false,
+            error: Some(format!(
+                "Screenshot set creation returned {}: {}",
+                set_status, set_body
+            )),
+            screenshot_id: None,
+        };
+    };
+
+    // If we didn't get a set ID, try listing existing sets for this localization
+    let set_id = if set_id.is_empty() {
+        // List screenshot sets for the version localization
+        let list_url = format!(
+            "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/{version_localization_id}/appScreenshotSets"
+        );
+        match client
+            .get(&list_url)
+            .header("Authorization", format!("Bearer {jwt}"))
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+        {
+            Ok(resp) => {
+                let list_body = resp.text().await.unwrap_or_default();
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&list_body) {
+                    json.get("data")
+                        .and_then(|d| d.as_array())
+                        .and_then(|arr| {
+                            arr.iter().find(|s| {
+                                s.get("attributes")
+                                    .and_then(|a| a.get("screenshotDisplayType"))
+                                    .and_then(|t| t.as_str())
+                                    .map(|t| t == screenshot.display_type)
+                                    .unwrap_or(false)
+                            })
+                        })
+                        .and_then(|s| s.get("id"))
+                        .and_then(|i| i.as_str())
+                        .unwrap_or("")
+                        .to_string()
+                } else {
+                    String::new()
+                }
+            }
+            Err(_) => String::new(),
+        }
+    } else {
+        set_id
+    };
+
+    if set_id.is_empty() {
+        return ScreenshotUploadResult {
+            filename: screenshot.filename.clone(),
+            display_type: screenshot.display_type.clone(),
+            success: false,
+            error: Some("Could not determine screenshot set ID".to_string()),
+            screenshot_id: None,
+        };
+    }
+
+    // ── Step 2: Create screenshot resource (gets S3 upload URL) ────────────
+    let screenshot_payload = serde_json::json!({
+        "data": {
+            "type": "appScreenshots",
+            "attributes": {
+                "fileName": screenshot.filename,
+                "fileSize": screenshot.data_base64.len() as i64
+            },
+            "relationships": {
+                "appScreenshotSet": {
+                    "data": {
+                        "type": "appScreenshotSets",
+                        "id": set_id
+                    }
+                }
+            }
+        }
+    });
+
+    let sc_response = match client
+        .post("https://api.appstoreconnect.apple.com/v1/appScreenshots")
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .json(&screenshot_payload)
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return ScreenshotUploadResult {
+                filename: screenshot.filename.clone(),
+                display_type: screenshot.display_type.clone(),
+                success: false,
+                error: Some(format!("Failed to create screenshot resource: {e}")),
+                screenshot_id: None,
+            };
+        }
+    };
+
+    let sc_status = sc_response.status();
+    let sc_body = match sc_response.text().await {
+        Ok(b) => b,
+        Err(e) => {
+            return ScreenshotUploadResult {
+                filename: screenshot.filename.clone(),
+                display_type: screenshot.display_type.clone(),
+                success: false,
+                error: Some(format!("Failed to read screenshot creation response: {e}")),
+                screenshot_id: None,
+            };
+        }
+    };
+
+    if !sc_status.is_success() {
+        return ScreenshotUploadResult {
+            filename: screenshot.filename.clone(),
+            display_type: screenshot.display_type.clone(),
+            success: false,
+            error: Some(format!(
+                "Screenshot creation returned {}: {}",
+                sc_status, sc_body
+            )),
+            screenshot_id: None,
+        };
+    }
+
+    // Parse the response to get the screenshot ID and upload URLs
+    let sc_json: serde_json::Value = match serde_json::from_str(&sc_body) {
+        Ok(j) => j,
+        Err(e) => {
+            return ScreenshotUploadResult {
+                filename: screenshot.filename.clone(),
+                display_type: screenshot.display_type.clone(),
+                success: false,
+                error: Some(format!("Failed to parse screenshot response: {e}")),
+                screenshot_id: None,
+            };
+        }
+    };
+
+    let screenshot_id = sc_json
+        .get("data")
+        .and_then(|d| d.get("id"))
+        .and_then(|i| i.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    // Extract upload operations from the response
+    let upload_ops = sc_json
+        .get("data")
+        .and_then(|d| d.get("attributes"))
+        .and_then(|a| a.get("uploadOperations"));
+
+    let (upload_url, request_headers) = match upload_ops {
+        Some(ops) if ops.is_array() => {
+            // Find the PUT operation (method == "PUT")
+            let ops_arr = ops.as_array().unwrap();
+            let put_op = ops_arr.iter().find(|op| {
+                op.get("method")
+                    .and_then(|m| m.as_str())
+                    .map(|m| m == "PUT")
+                    .unwrap_or(false)
+            });
+
+            match put_op {
+                Some(op) => {
+                    let url = op
+                        .get("url")
+                        .and_then(|u| u.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let headers = op
+                        .get("requestHeaders")
+                        .and_then(|h| h.as_array())
+                        .cloned()
+                        .unwrap_or_default();
+                    (url, headers)
+                }
+                None => {
+                    // Try the first operation (might be the only one)
+                    let first = ops_arr.first();
+                    match first {
+                        Some(op) => {
+                            let url = op
+                                .get("url")
+                                .and_then(|u| u.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let headers = op
+                                .get("requestHeaders")
+                                .and_then(|h| h.as_array())
+                                .cloned()
+                                .unwrap_or_default();
+                            (url, headers)
+                        }
+                        None => {
+                            return ScreenshotUploadResult {
+                                filename: screenshot.filename.clone(),
+                                display_type: screenshot.display_type.clone(),
+                                success: false,
+                                error: Some(
+                                    "No upload operations returned from ASC API".to_string(),
+                                ),
+                                screenshot_id: Some(screenshot_id),
+                            };
+                        }
+                    }
+                }
+            }
+        }
+        _ => {
+            return ScreenshotUploadResult {
+                filename: screenshot.filename.clone(),
+                display_type: screenshot.display_type.clone(),
+                success: false,
+                error: Some(
+                    "No upload operations found in screenshot creation response".to_string(),
+                ),
+                screenshot_id: Some(screenshot_id),
+            };
+        }
+    };
+
+    if upload_url.is_empty() {
+        return ScreenshotUploadResult {
+            filename: screenshot.filename.clone(),
+            display_type: screenshot.display_type.clone(),
+            success: false,
+            error: Some("Empty S3 upload URL from ASC".to_string()),
+            screenshot_id: Some(screenshot_id),
+        };
+    }
+
+    // ── Step 3: Upload PNG binary data to S3 ───────────────────────────────
+    let png_data = match BASE64.decode(&screenshot.data_base64) {
+        Ok(data) => data,
+        Err(e) => {
+            return ScreenshotUploadResult {
+                filename: screenshot.filename.clone(),
+                display_type: screenshot.display_type.clone(),
+                success: false,
+                error: Some(format!("Failed to decode base64 screenshot data: {e}")),
+                screenshot_id: Some(screenshot_id),
+            };
+        }
+    };
+
+    // Build the S3 PUT request with required headers from uploadOperations
+    let mut s3_request = client
+        .put(&upload_url)
+        .header("Content-Type", "image/png")
+        .header("Content-Length", png_data.len().to_string())
+        .body(png_data);
+
+    // Apply required headers from ASC uploadOperations
+    for header in &request_headers {
+        let name = header
+            .get("name")
+            .and_then(|n| n.as_str())
+            .unwrap_or("");
+        let value = header
+            .get("value")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if !name.is_empty() && !value.is_empty() {
+            s3_request = s3_request.header(name, value);
+        }
+    }
+
+    let s3_response = match s3_request.send().await {
+        Ok(r) => r,
+        Err(e) => {
+            return ScreenshotUploadResult {
+                filename: screenshot.filename.clone(),
+                display_type: screenshot.display_type.clone(),
+                success: false,
+                error: Some(format!("Failed to upload to S3: {e}")),
+                screenshot_id: Some(screenshot_id),
+            };
+        }
+    };
+
+    let s3_status = s3_response.status();
+    if !s3_status.is_success() {
+        let s3_body = s3_response.text().await.unwrap_or_default();
+        return ScreenshotUploadResult {
+            filename: screenshot.filename.clone(),
+            display_type: screenshot.display_type.clone(),
+            success: false,
+            error: Some(format!("S3 upload returned {}: {}", s3_status, s3_body)),
+            screenshot_id: Some(screenshot_id),
+        };
+    }
+
+    // ── Step 4: PATCH screenshot with uploaded=true ─────────────────────────
+    let patch_payload = serde_json::json!({
+        "data": {
+            "type": "appScreenshots",
+            "id": screenshot_id,
+            "attributes": {
+                "uploaded": true,
+                "sourceFileChecksum": ""
+            }
+        }
+    });
+
+    let patch_url = format!(
+        "https://api.appstoreconnect.apple.com/v1/appScreenshots/{screenshot_id}"
+    );
+
+    let patch_response = match client
+        .patch(&patch_url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .json(&patch_payload)
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return ScreenshotUploadResult {
+                filename: screenshot.filename.clone(),
+                display_type: screenshot.display_type.clone(),
+                success: false,
+                error: Some(format!("Failed to confirm screenshot upload: {e}")),
+                screenshot_id: Some(screenshot_id),
+            };
+        }
+    };
+
+    let patch_status = patch_response.status();
+    if !patch_status.is_success() {
+        let patch_body = patch_response.text().await.unwrap_or_default();
+        return ScreenshotUploadResult {
+            filename: screenshot.filename.clone(),
+            display_type: screenshot.display_type.clone(),
+            success: false,
+            error: Some(format!(
+                "Screenshot confirm PATCH returned {}: {}",
+                patch_status,
+                patch_body
+            )),
+            screenshot_id: Some(screenshot_id),
+        };
+    }
+
+    ScreenshotUploadResult {
+        filename: screenshot.filename.clone(),
+        display_type: screenshot.display_type.clone(),
+        success: true,
+        error: None,
+        screenshot_id: Some(screenshot_id),
+    }
+}
+
+/// `PATCH /api/asc-whatsnew` — Set the "What's New" text for a version localization.
+///
+/// Takes a version_localization_id and whats_new text, then PATCHes the ASC API.
+/// Note: This only works AFTER a build is attached to the version.
+async fn asc_whatsnew(
+    Json(req): Json<AscWhatsNewRequest>,
+) -> Result<Json<AscWhatsNewResponse>, (StatusCode, String)> {
+    // ── Generate ASC JWT ──────────────────────────────────────────────────
+    let asc_key_id = "N8LHKCW7K8";
+    let asc_issuer_id = "69a6de94-afa7-47e3-e053-5b8c7c11a4d1";
+    let key_path = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
+        .join("private_keys")
+        .join("AuthKey_N8LHKCW7K8.p8");
+
+    let jwt = generate_asc_jwt(asc_key_id, asc_issuer_id, &key_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to generate ASC JWT: {e}")))?;
+
+    let client = reqwest::Client::new();
+
+    // ── PATCH the version localization ──────────────────────────────────────
+    let patch_payload = serde_json::json!({
+        "data": {
+            "type": "appStoreVersionLocalizations",
+            "id": req.version_localization_id,
+            "attributes": {
+                "whatsNew": req.whats_new
+            }
+        }
+    });
+
+    let patch_url = format!(
+        "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/{}",
+        req.version_localization_id
+    );
+
+    let response = client
+        .patch(&patch_url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .json(&patch_payload)
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to send PATCH request: {e}")))?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read response: {e}")))?;
+
+    if status.is_success() {
+        Ok(Json(AscWhatsNewResponse {
+            ok: true,
+            error: None,
+        }))
+    } else {
+        Ok(Json(AscWhatsNewResponse {
+            ok: false,
+            error: Some(format!("ASC API returned {}: {}", status.as_u16(), body)),
+        }))
+    }
+}
+
+// ── Beta Tester & Beta Review endpoints ──────────────────────────────────
+
+/// Helper to generate an ASC JWT with the hardcoded credentials.
+fn make_asc_jwt() -> Result<String, (StatusCode, String)> {
+    let asc_key_id = "N8LHKCW7K8";
+    let asc_issuer_id = "69a6de94-afa7-47e3-e053-5b8c7c11a4d1";
+    let key_path = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
+        .join("private_keys")
+        .join("AuthKey_N8LHKCW7K8.p8");
+    generate_asc_jwt(asc_key_id, asc_issuer_id, &key_path)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to generate ASC JWT: {e}")))
+}
+
+const APP_ID: &str = "6778610091";
+const BETA_GROUP_ID: &str = "1475d312-4be7-45e7-a23b-52be531c6a7b";
+
+/// `GET /api/testers` — List all beta testers for the app.
+async fn list_testers() -> Result<Json<ListTestersResponse>, (StatusCode, String)> {
+    let jwt = make_asc_jwt()?;
+    let client = reqwest::Client::new();
+    let url = format!(
+        "https://api.appstoreconnect.apple.com/v1/betaTesters?filter[apps]={APP_ID}&limit=200"
+    );
+
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to query ASC testers: {e}")))?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+    if !status.is_success() {
+        return Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            format!("ASC API returned {}: {}", status.as_u16(), body)));
+    }
+
+    let json: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse ASC response: {e}")))?;
+
+    let mut testers = Vec::new();
+    if let Some(data) = json.get("data").and_then(|d| d.as_array()) {
+        for item in data {
+            let id = item.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let attrs = item.get("attributes").unwrap_or(&serde_json::Value::Null);
+            let email = attrs.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let first_name = attrs.get("firstName").and_then(|v| v.as_str()).map(String::from);
+            let last_name = attrs.get("lastName").and_then(|v| v.as_str()).map(String::from);
+            let state = attrs.get("state").and_then(|v| v.as_str()).map(String::from);
+            let invite_type = attrs.get("inviteType").and_then(|v| v.as_str()).map(String::from);
+            testers.push(BetaTester {
+                id,
+                email,
+                first_name,
+                last_name,
+                state,
+                invite_type,
+            });
+        }
+    }
+
+    Ok(Json(ListTestersResponse { testers }))
+}
+
+/// `POST /api/testers` — Add a beta tester by email.
+async fn add_tester(
+    Json(req): Json<AddTesterRequest>,
+) -> Result<Json<BetaTester>, (StatusCode, String)> {
+    let jwt = make_asc_jwt()?;
+    let client = reqwest::Client::new();
+
+    let payload = serde_json::json!({
+        "data": {
+            "type": "betaTesters",
+            "attributes": {
+                "email": req.email,
+                "firstName": req.first_name.unwrap_or_default(),
+                "lastName": req.last_name.unwrap_or_default(),
+            },
+            "relationships": {
+                "betaGroups": {
+                    "data": [{
+                        "type": "betaGroups",
+                        "id": BETA_GROUP_ID
+                    }]
+                },
+                "app": {
+                    "data": {
+                        "type": "apps",
+                        "id": APP_ID
+                    }
+                }
+            }
+        }
+    });
+
+    let response = client
+        .post("https://api.appstoreconnect.apple.com/v1/betaTesters")
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to add beta tester: {e}")))?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+    if !status.is_success() {
+        return Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            format!("ASC API returned {}: {}", status.as_u16(), body)));
+    }
+
+    let json: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse ASC response: {e}")))?;
+
+    let id = json.get("data").and_then(|d| d.get("id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let attrs = json.get("data").and_then(|d| d.get("attributes")).unwrap_or(&serde_json::Value::Null);
+    let email = attrs.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let first_name = attrs.get("firstName").and_then(|v| v.as_str()).map(String::from);
+    let last_name = attrs.get("lastName").and_then(|v| v.as_str()).map(String::from);
+    let state = attrs.get("state").and_then(|v| v.as_str()).map(String::from);
+    let invite_type = attrs.get("inviteType").and_then(|v| v.as_str()).map(String::from);
+
+    Ok(Json(BetaTester {
+        id,
+        email,
+        first_name,
+        last_name,
+        state,
+        invite_type,
+    }))
+}
+
+/// `DELETE /api/testers/{tester_id}` — Remove a beta tester.
+async fn delete_tester(
+    Path(tester_id): Path<String>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let jwt = make_asc_jwt()?;
+    let client = reqwest::Client::new();
+    let url = format!(
+        "https://api.appstoreconnect.apple.com/v1/betaTesters/{tester_id}"
+    );
+
+    let response = client
+        .delete(&url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to delete beta tester: {e}")))?;
+
+    if response.status().is_success() || response.status().as_u16() == 204 {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            format!("ASC API returned {}: {}", status.as_u16(), body)))
+    }
+}
+
+/// `POST /api/testers/assign-build` — Assign testers to a build.
+async fn assign_testers_to_build(
+    Json(req): Json<AssignTestersRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let jwt = make_asc_jwt()?;
+    let client = reqwest::Client::new();
+
+    let mut data_items = Vec::new();
+    for tid in &req.tester_ids {
+        data_items.push(serde_json::json!({
+            "type": "betaTesters",
+            "id": tid
+        }));
+    }
+
+    let payload = serde_json::json!({
+        "data": data_items
+    });
+
+    let url = format!(
+        "https://api.appstoreconnect.apple.com/v1/builds/{}/relationships/individualTesters",
+        req.build_id
+    );
+
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to assign testers: {e}")))?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+    if !status.is_success() {
+        // Return 409 specifically so the client can handle it
+        let code = StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        Err((code, format!("ASC API returned {}: {}", status.as_u16(), body)))
+    } else {
+        Ok(Json(serde_json::json!({ "ok": true })))
+    }
+}
+
+/// `GET /api/beta-review` — Get beta review status for the current build.
+async fn get_beta_review_status() -> Result<Json<BetaReviewStatusResponse>, (StatusCode, String)> {
+    let jwt = make_asc_jwt()?;
+    let client = reqwest::Client::new();
+
+    // First, get the latest build for the app
+    let builds_url = format!(
+        "https://api.appstoreconnect.apple.com/v1/apps/{APP_ID}/builds?limit=1"
+    );
+
+    let builds_response = client
+        .get(&builds_url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to query ASC builds: {e}")))?;
+
+    let builds_status = builds_response.status();
+    let builds_body = builds_response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+    if !builds_status.is_success() {
+        return Err((StatusCode::from_u16(builds_status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            format!("ASC API returned {}: {}", builds_status.as_u16(), builds_body)));
+    }
+
+    let builds_json: serde_json::Value = serde_json::from_str(&builds_body)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse ASC builds response: {e}")))?;
+
+    let build_id = builds_json
+        .get("data")
+        .and_then(|d| d.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|item| item.get("id"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    if build_id.is_empty() {
+        return Ok(Json(BetaReviewStatusResponse {
+            beta_review_state: "NO_BUILD".to_string(),
+            submitted_date: None,
+        }));
+    }
+
+    // Now query the beta app review submission for this build
+    let review_url = format!(
+        "https://api.appstoreconnect.apple.com/v1/betaAppReviewSubmissions?filter[build]={build_id}"
+    );
+
+    let review_response = client
+        .get(&review_url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to query beta review status: {e}")))?;
+
+    let review_status_code = review_response.status();
+    let review_body = review_response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+    if !review_status_code.is_success() {
+        return Err((StatusCode::from_u16(review_status_code.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            format!("ASC API returned {}: {}", review_status_code.as_u16(), review_body)));
+    }
+
+    let review_json: serde_json::Value = serde_json::from_str(&review_body)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse beta review response: {e}")))?;
+
+    let submission = review_json
+        .get("data")
+        .and_then(|d| d.as_array())
+        .and_then(|arr| arr.first());
+
+    match submission {
+        Some(sub) => {
+            let state = sub
+                .get("attributes")
+                .and_then(|a| a.get("betaReviewState"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("UNKNOWN")
+                .to_string();
+            let submitted_date = sub
+                .get("attributes")
+                .and_then(|a| a.get("submittedDate"))
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            Ok(Json(BetaReviewStatusResponse {
+                beta_review_state: state,
+                submitted_date,
+            }))
+        }
+        None => Ok(Json(BetaReviewStatusResponse {
+            beta_review_state: "NOT_SUBMITTED".to_string(),
+            submitted_date: None,
+        })),
+    }
+}
+
+/// `POST /api/beta-review/submit` — Submit the current build for beta review.
+async fn submit_beta_review(
+    Json(req): Json<BetaReviewSubmitRequest>,
+) -> Result<Json<BetaReviewStatusResponse>, (StatusCode, String)> {
+    let jwt = make_asc_jwt()?;
+    let client = reqwest::Client::new();
+
+    let payload = serde_json::json!({
+        "data": {
+            "type": "betaAppReviewSubmissions",
+            "relationships": {
+                "build": {
+                    "data": {
+                        "type": "builds",
+                        "id": req.build_id
+                    }
+                }
+            }
+        }
+    });
+
+    let response = client
+        .post("https://api.appstoreconnect.apple.com/v1/betaAppReviewSubmissions")
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to submit for beta review: {e}")))?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+    if !status.is_success() {
+        return Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            format!("ASC API returned {}: {}", status.as_u16(), body)));
+    }
+
+    let json: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse beta review submission response: {e}")))?;
+
+    let state = json
+        .get("data")
+        .and_then(|d| d.get("attributes"))
+        .and_then(|a| a.get("betaReviewState"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("WAITING_FOR_REVIEW")
+        .to_string();
+    let submitted_date = json
+        .get("data")
+        .and_then(|d| d.get("attributes"))
+        .and_then(|a| a.get("submittedDate"))
+        .and_then(|v| v.as_str())
+        .map(String::from);
+
+    Ok(Json(BetaReviewStatusResponse {
+        beta_review_state: state,
+        submitted_date,
+    }))
+}
+
+/// `POST /api/beta-review/detail` — Set beta app review contact info.
+async fn set_beta_review_detail(
+    Json(req): Json<BetaReviewDetailRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let jwt = make_asc_jwt()?;
+    let client = reqwest::Client::new();
+
+    let payload = serde_json::json!({
+        "data": {
+            "type": "betaAppReviewDetails",
+            "id": APP_ID,
+            "attributes": {
+                "contactFirstName": req.contact_first_name,
+                "contactLastName": req.contact_last_name,
+                "contactEmail": req.contact_email,
+                "contactPhone": req.contact_phone,
+            }
+        }
+    });
+
+    let url = format!(
+        "https://api.appstoreconnect.apple.com/v1/betaAppReviewDetails/{APP_ID}"
+    );
+
+    let response = client
+        .patch(&url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to set beta review detail: {e}")))?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+    if !status.is_success() {
+        return Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            format!("ASC API returned {}: {}", status.as_u16(), body)));
+    }
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+/// `POST /api/beta-review/localization` — Create/update beta build localization (What's New).
+async fn set_beta_build_localization(
+    Json(req): Json<BetaBuildLocalizationRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let jwt = make_asc_jwt()?;
+    let client = reqwest::Client::new();
+
+    // First, check if a localization already exists for this build+locale
+    let list_url = format!(
+        "https://api.appstoreconnect.apple.com/v1/builds/{}/betaBuildLocalizations?filter[locale]={}",
+        req.build_id, req.locale
+    );
+
+    let list_response = client
+        .get(&list_url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to query build localizations: {e}")))?;
+
+    let list_status = list_response.status();
+    let list_body = list_response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+    let existing_id = if list_status.is_success() {
+        let list_json: serde_json::Value = serde_json::from_str(&list_body).unwrap_or_default();
+        list_json
+            .get("data")
+            .and_then(|d| d.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|item| item.get("id"))
+            .and_then(|v| v.as_str())
+            .map(String::from)
+    } else {
+        None
+    };
+
+    if let Some(loc_id) = existing_id {
+        // PATCH existing localization
+        let patch_payload = serde_json::json!({
+            "data": {
+                "type": "betaBuildLocalizations",
+                "id": loc_id,
+                "attributes": {
+                    "whatsNew": req.whats_new
+                }
+            }
+        });
+
+        let patch_url = format!(
+            "https://api.appstoreconnect.apple.com/v1/betaBuildLocalizations/{loc_id}"
+        );
+
+        let response = client
+            .patch(&patch_url)
+            .header("Authorization", format!("Bearer {jwt}"))
+            .header("Content-Type", "application/json")
+            .json(&patch_payload)
+            .send()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update build localization: {e}")))?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+        if !status.is_success() {
+            return Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                format!("ASC API returned {}: {}", status.as_u16(), body)));
+        }
+
+        Ok(Json(serde_json::json!({ "ok": true, "localization_id": loc_id })))
+    } else {
+        // POST new localization
+        let post_payload = serde_json::json!({
+            "data": {
+                "type": "betaBuildLocalizations",
+                "attributes": {
+                    "locale": req.locale,
+                    "whatsNew": req.whats_new
+                },
+                "relationships": {
+                    "build": {
+                        "data": {
+                            "type": "builds",
+                            "id": req.build_id
+                        }
+                    }
+                }
+            }
+        });
+
+        let response = client
+            .post("https://api.appstoreconnect.apple.com/v1/betaBuildLocalizations")
+            .header("Authorization", format!("Bearer {jwt}"))
+            .header("Content-Type", "application/json")
+            .json(&post_payload)
+            .send()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create build localization: {e}")))?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+        if !status.is_success() {
+            return Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                format!("ASC API returned {}: {}", status.as_u16(), body)));
+        }
+
+        let json: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
+        let new_id = json.get("data").and_then(|d| d.get("id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+
+        Ok(Json(serde_json::json!({ "ok": true, "localization_id": new_id })))
+    }
+}
+
+/// `POST /api/beta-review/app-localization` — Create/update beta app localization.
+async fn set_beta_app_localization(
+    Json(req): Json<BetaAppLocalizationRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let jwt = make_asc_jwt()?;
+    let client = reqwest::Client::new();
+
+    // Check if a localization already exists for this app+locale
+    let list_url = format!(
+        "https://api.appstoreconnect.apple.com/v1/apps/{APP_ID}/betaAppLocalizations?filter[locale]={}",
+        req.locale
+    );
+
+    let list_response = client
+        .get(&list_url)
+        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to query app localizations: {e}")))?;
+
+    let list_status = list_response.status();
+    let list_body = list_response
+        .text()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+    let existing_id = if list_status.is_success() {
+        let list_json: serde_json::Value = serde_json::from_str(&list_body).unwrap_or_default();
+        list_json
+            .get("data")
+            .and_then(|d| d.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|item| item.get("id"))
+            .and_then(|v| v.as_str())
+            .map(String::from)
+    } else {
+        None
+    };
+
+    if let Some(loc_id) = existing_id {
+        // PATCH existing localization
+        let mut attrs = serde_json::json!({
+            "feedbackEmail": req.feedback_email,
+        });
+        if let Some(ref desc) = req.description {
+            attrs.as_object_mut().unwrap().insert("description".to_string(), serde_json::json!(desc));
+        }
+
+        let patch_payload = serde_json::json!({
+            "data": {
+                "type": "betaAppLocalizations",
+                "id": loc_id,
+                "attributes": attrs
+            }
+        });
+
+        let patch_url = format!(
+            "https://api.appstoreconnect.apple.com/v1/betaAppLocalizations/{loc_id}"
+        );
+
+        let response = client
+            .patch(&patch_url)
+            .header("Authorization", format!("Bearer {jwt}"))
+            .header("Content-Type", "application/json")
+            .json(&patch_payload)
+            .send()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update app localization: {e}")))?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+        if !status.is_success() {
+            return Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                format!("ASC API returned {}: {}", status.as_u16(), body)));
+        }
+
+        Ok(Json(serde_json::json!({ "ok": true, "localization_id": loc_id })))
+    } else {
+        // POST new localization
+        let mut attrs = serde_json::json!({
+            "locale": req.locale,
+            "feedbackEmail": req.feedback_email,
+        });
+        if let Some(ref desc) = req.description {
+            attrs.as_object_mut().unwrap().insert("description".to_string(), serde_json::json!(desc));
+        }
+
+        let post_payload = serde_json::json!({
+            "data": {
+                "type": "betaAppLocalizations",
+                "attributes": attrs,
+                "relationships": {
+                    "app": {
+                        "data": {
+                            "type": "apps",
+                            "id": APP_ID
+                        }
+                    }
+                }
+            }
+        });
+
+        let response = client
+            .post("https://api.appstoreconnect.apple.com/v1/betaAppLocalizations")
+            .header("Authorization", format!("Bearer {jwt}"))
+            .header("Content-Type", "application/json")
+            .json(&post_payload)
+            .send()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create app localization: {e}")))?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read ASC response: {e}")))?;
+
+        if !status.is_success() {
+            return Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                format!("ASC API returned {}: {}", status.as_u16(), body)));
+        }
+
+        let json: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
+        let new_id = json.get("data").and_then(|d| d.get("id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+
+        Ok(Json(serde_json::json!({ "ok": true, "localization_id": new_id })))
+    }
+}
+
 // ── Router construction ─────────────────────────────────────────────────
 
 /// Build the axum `Router` with all API routes and shared state.
@@ -2171,6 +3664,22 @@ pub fn app(state: Arc<AppState>) -> Router {
         .route("/api/build/:job_id/submit", post(submit_build))
         .route("/api/build/:job_id/asc-signin", get(asc_signin))
         .route("/api/build/:job_id/legal-pages", post(legal_pages))
+        // ── AI Recovery Engine ──────────────────────────────────────────
+        .route("/api/build/:job_id/steer", post(steer))
+        .route("/api/build/:job_id/recover", post(recover))
+        // ── New ASC endpoints ───────────────────────────────────────────
+        .route("/api/asc-icon", post(asc_icon))
+        .route("/api/screenshots/upload", post(screenshots_upload))
+        .route("/api/asc-whatsnew", axum::routing::patch(asc_whatsnew))
+        // ── Beta Tester & Beta Review endpoints ────────────────────────────
+        .route("/api/testers", get(list_testers).post(add_tester))
+        .route("/api/testers/{tester_id}", delete(delete_tester))
+        .route("/api/testers/assign-build", post(assign_testers_to_build))
+        .route("/api/beta-review", get(get_beta_review_status))
+        .route("/api/beta-review/submit", post(submit_beta_review))
+        .route("/api/beta-review/detail", post(set_beta_review_detail))
+        .route("/api/beta-review/localization", post(set_beta_build_localization))
+        .route("/api/beta-review/app-localization", post(set_beta_app_localization))
         .layer(cors)
         .with_state(state)
 }

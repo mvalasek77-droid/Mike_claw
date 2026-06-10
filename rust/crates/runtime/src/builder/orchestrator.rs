@@ -7,7 +7,7 @@ use crate::builder::github;
 use crate::builder::project;
 use crate::builder::prompts;
 use crate::builder::{
-    AscMetadataAIOutput, AscMetadataResponse, AxisResult, BuildEvent, BuildJob, BuildStatus, IconRequest,
+    AscMetadataAIOutput, AscMetadataResponse, AxisResult, BuildEvent, BuildStatus, IconRequest,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -988,5 +988,249 @@ mod tests {
         let crc = crc32(b"IEND");
         // Known CRC for IEND
         assert_ne!(crc, 0);
+    }
+}
+
+// ── AI Recovery Engine ────────────────────────────────────────────────────
+
+use crate::builder::{
+    BuildJob, FailureMode, RecoveryAction, RecoveryProposal,
+};
+
+/// Diagnose a pipeline step failure and propose a recovery action.
+///
+/// Uses pattern matching on known error messages to identify the failure mode,
+/// then proposes a fix. For unknown errors, falls back to a generic "manual
+/// intervention needed" proposal.
+pub fn diagnose_failure(step: &str, error_message: &str, retry_count: u32) -> RecoveryProposal {
+    let error_lower = error_message.to_lowercase();
+    let mode = if error_lower.contains("403") || error_lower.contains("forbidden") || error_lower.contains("needs_sign_in") {
+        FailureMode::AscSignInRequired
+    } else if error_lower.contains("provisioning profile") && error_lower.contains("not found") {
+        FailureMode::ProvisioningProfileNotFound
+    } else if error_lower.contains("alpha channel") || error_lower.contains("transparent or contain an alpha") || (error_lower.contains("icon") && error_lower.contains("invalid")) {
+        FailureMode::IconAlphaChannel
+    } else if error_lower.contains("keychain") || error_lower.contains("user interaction") && error_lower.contains("codesign") {
+        FailureMode::KeychainAccessRequired
+    } else if error_lower.contains("distribution") && error_lower.contains("certificate") || error_lower.contains("no signing certificate") {
+        FailureMode::DistributionCertMissing
+    } else if error_lower.contains("build number") && error_lower.contains("already") || error_lower.contains("already been uploaded") || error_lower.contains("build already exists") {
+        FailureMode::BuildNumberConflict
+    } else {
+        FailureMode::Unknown
+    };
+
+    match mode {
+        FailureMode::AscSignInRequired => RecoveryProposal {
+            failure_mode: mode,
+            diagnosis: "Apple requires you to sign in to App Store Connect via Safari. The REST API cannot create app records without an authenticated session.".into(),
+            action: RecoveryAction::ManualIntervention,
+            fix_description: "Open Safari and sign in to appstoreconnect.apple.com, then retry this step.".into(),
+            fix_params: {
+                let mut p = std::collections::HashMap::new();
+                p.insert("url".into(), "https://appstoreconnect.apple.com".into());
+                p
+            },
+            auto_fix: false,
+        },
+        FailureMode::ProvisioningProfileNotFound => RecoveryProposal {
+            failure_mode: mode,
+            diagnosis: "Xcode can't find the App Store provisioning profile for this app. It may need to be created or re-downloaded.".into(),
+            action: RecoveryAction::RetryWithFix,
+            fix_description: "Create a new App Store provisioning profile via the ASC API and install it, then retry the archive step.".into(),
+            fix_params: {
+                let mut p = std::collections::HashMap::new();
+                p.insert("action".into(), "create_provisioning_profile".into());
+                p
+            },
+            auto_fix: true,
+        },
+        FailureMode::IconAlphaChannel => RecoveryProposal {
+            failure_mode: mode,
+            diagnosis: "Apple rejected the IPA because the app icon contains an alpha channel (transparency). App Store icons must be opaque (RGB, no RGBA).".into(),
+            action: RecoveryAction::RetryWithFix,
+            fix_description: "Regenerate the app icon without transparency (convert RGBA → RGB), then re-archive and re-upload.".into(),
+            fix_params: {
+                let mut p = std::collections::HashMap::new();
+                p.insert("action".into(), "strip_icon_alpha".into());
+                p
+            },
+            auto_fix: true,
+        },
+        FailureMode::KeychainAccessRequired => RecoveryProposal {
+            failure_mode: mode,
+            diagnosis: "The codesign tool is waiting for Keychain access approval. This usually appears as a system dialog asking for permission.".into(),
+            action: RecoveryAction::ManualIntervention,
+            fix_description: "Click 'Always Allow' on the Keychain access prompt on your Mac, then retry this step.".into(),
+            fix_params: {
+                let mut p = std::collections::HashMap::new();
+                p.insert("action".into(), "unlock_keychain".into());
+                p
+            },
+            auto_fix: false,
+        },
+        FailureMode::DistributionCertMissing => RecoveryProposal {
+            failure_mode: mode,
+            diagnosis: "No Apple Distribution certificate was found in your Keychain. This certificate is required to sign apps for App Store distribution.".into(),
+            action: RecoveryAction::RetryWithFix,
+            fix_description: "Create an Apple Distribution certificate via the ASC API and install it in Keychain, then retry.".into(),
+            fix_params: {
+                let mut p = std::collections::HashMap::new();
+                p.insert("action".into(), "create_distribution_cert".into());
+                p
+            },
+            auto_fix: true,
+        },
+        FailureMode::BuildNumberConflict => RecoveryProposal {
+            failure_mode: mode,
+            diagnosis: format!("Build number conflict — this build number has already been uploaded to ASC. (Retry #{retry_count})"),
+            action: RecoveryAction::RetryWithFix,
+            fix_description: format!("Bump the build number to {} and re-archive.", retry_count + 2),
+            fix_params: {
+                let mut p = std::collections::HashMap::new();
+                p.insert("action".into(), "bump_build_number".into());
+                p.insert("new_build_number".into(), format!("{}", retry_count + 2));
+                p
+            },
+            auto_fix: true,
+        },
+        FailureMode::Unknown => RecoveryProposal {
+            failure_mode: mode,
+            diagnosis: format!("An unexpected error occurred during the '{}' step: {}", step, error_message),
+            action: RecoveryAction::ManualIntervention,
+            fix_description: "This error couldn't be automatically diagnosed. Please check the logs and try a manual fix, or retry the step.".into(),
+            fix_params: std::collections::HashMap::new(),
+            auto_fix: false,
+        },
+    }
+}
+
+/// Apply a user-approved recovery fix.
+///
+/// Returns the name of the step that should be retried on success.
+/// For fixes that require manual intervention, this is a no-op — the user
+/// handles it externally and then retries.
+pub fn apply_recovery_fix(job: &BuildJob, proposal: &RecoveryProposal) -> Result<String, String> {
+    match proposal.failure_mode {
+        FailureMode::AscSignInRequired => {
+            // Manual — nothing to do server-side. User signs in via Safari.
+            Ok("ascSignIn".into())
+        }
+        FailureMode::ProvisioningProfileNotFound => {
+            // The fix_params contain the action type, but the actual profile creation
+            // requires ASC API calls that are done in the upload_build handler.
+            // Here we just signal that a profile should be created on next attempt.
+            Ok("archive".into())
+        }
+        FailureMode::IconAlphaChannel => {
+            // Strip alpha from the app icon file and re-archive.
+            let project_path = job.project_path.clone();
+            // Find AppIcon.appiconset in the project
+            let icon_dirs: Vec<std::path::PathBuf> = std::fs::read_dir(&project_path)
+                .map_err(|e| format!("Cannot read project dir: {e}"))?
+                .filter_map(|e| e.ok())
+                .filter_map(|e| {
+                    let path = e.path();
+                    if path.is_dir() { Some(path) } else { None }
+                })
+                .flat_map(|dir| {
+                    walkdir_files(&dir, "AppIcon.png")
+                })
+                .collect();
+
+            for icon_path in icon_dirs {
+                strip_alpha_from_png(&icon_path)?;
+            }
+
+            Ok("archive".into())
+        }
+        FailureMode::KeychainAccessRequired => {
+            // Try to unlock the Keychain programmatically
+            let home = std::env::var("HOME").unwrap_or_else(|_| "/Users/clawcl".into());
+            let keychain_path = format!("{}/Library/Keychains/login.keychain-db", home);
+            let output = std::process::Command::new("security")
+                .args(["unlock-keychain", &keychain_path])
+                .output()
+                .map_err(|e| format!("Failed to run security unlock-keychain: {e}"))?;
+
+            if output.status.success() {
+                Ok("archive".into())
+            } else {
+                Err(format!("Keychain unlock failed: {}", String::from_utf8_lossy(&output.stderr)))
+            }
+        }
+        FailureMode::DistributionCertMissing => {
+            // Signal that a distribution cert should be created on next attempt.
+            // The actual cert creation happens via ASC API in the upload handler.
+            Ok("archive".into())
+        }
+        FailureMode::BuildNumberConflict => {
+            // Bump the build number in the project.yml or Info.plist
+            let project_yml = std::path::PathBuf::from(&job.project_path).join("project.yml");
+            let new_build = proposal.fix_params.get("new_build_number")
+                .ok_or("Missing new_build_number in fix_params")?;
+
+            if project_yml.exists() {
+                // Update CURRENT_PROJECT_VERSION in project.yml
+                let content = std::fs::read_to_string(&project_yml)
+                    .map_err(|e| format!("Cannot read project.yml: {e}"))?;
+                let updated = content
+                    .lines()
+                    .map(|line| {
+                        if line.contains("CURRENT_PROJECT_VERSION") || line.contains("CFBundleVersion") {
+                            // Replace the value
+                            if let Some(eq_pos) = line.find(':') {
+                                let key = &line[..=eq_pos];
+                                format!("{} {}", key, new_build)
+                            } else {
+                                line.to_string()
+                            }
+                        } else {
+                            line.to_string()
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                std::fs::write(&project_yml, updated)
+                    .map_err(|e| format!("Cannot write project.yml: {e}"))?;
+            }
+
+            Ok("archive".into())
+        }
+        FailureMode::Unknown => {
+            Err("No automated fix available for unknown failure mode. Please diagnose manually.".into())
+        }
+    }
+}
+
+/// Walk a directory tree to find files matching a name.
+fn walkdir_files(dir: &std::path::Path, target_name: &str) -> Vec<std::path::PathBuf> {
+    let mut results = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                results.extend(walkdir_files(&path, target_name));
+            } else if path.file_name().map_or(false, |n| n == target_name) {
+                results.push(path);
+            }
+        }
+    }
+    results
+}
+
+/// Strip alpha channel from a PNG file (RGBA → RGB).
+fn strip_alpha_from_png(path: &std::path::PathBuf) -> Result<(), String> {
+    // Use the `image` crate to load, convert, and save
+    // For now, use sips (macOS built-in) which is always available
+    let output = std::process::Command::new("sips")
+        .args(["-s", "format", "png", "--setProperty", "hasAlpha", "false", &path.to_string_lossy(), "--out", &path.to_string_lossy()])
+        .output()
+        .map_err(|e| format!("Failed to run sips: {e}"))?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(format!("sips failed: {}", String::from_utf8_lossy(&output.stderr)))
     }
 }
