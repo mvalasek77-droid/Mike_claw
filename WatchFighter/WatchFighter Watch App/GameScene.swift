@@ -108,7 +108,13 @@ final class FightScene: SKScene {
         }
     }
 
-    override func didMove(to view: SKView) {
+    // One-time setup. watchOS has no `SKView`, so we do NOT override
+    // `didMove(to:)` (its parameter type is `SKView`). The SwiftUI `SpriteView`
+    // host drives `update(_:)`, so we set the scene up lazily on the first frame.
+    private var didSetup = false
+    private func setupSceneIfNeeded() {
+        guard !didSetup else { return }
+        didSetup = true
         SoundEngine.shared.start()
         reduceMotion = WKAccessibilityIsReduceMotionEnabled()
         cam.position = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -219,6 +225,7 @@ final class FightScene: SKScene {
     // MARK: - Game loop
 
     override func update(_ currentTime: TimeInterval) {
+        setupSceneIfNeeded()
         if lastTime == 0 { lastTime = currentTime }
         let dt = min(0.25, currentTime - lastTime)
         lastTime = currentTime

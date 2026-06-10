@@ -11,6 +11,7 @@ confirm).
 
 | # | Status | Area | Issue | Resolution |
 |---|--------|------|-------|------------|
+| 0 | **FIXED** | watchOS | Compile error: `SKScene.didMove(to view: SKView)` was overridden, but **`SKView` does not exist on watchOS** (no UIView there). | Removed the override; scene setup now runs lazily on the first `update(_:)` frame (`setupSceneIfNeeded`). Kept the SwiftUI `SpriteView` host — did **not** switch to the legacy `WKInterfaceSKScene` path. Build confirmed clearing. |
 | 1 | **FIXED** | GameKit | Real-time GameKit (`GKMatch`/`GKMatchmaker`) is **not available on watchOS** → `GameKitTransport.swift` would fail to compile. | Replaced with a compiling stub that reports "online versus coming via companion iPhone". Netcode core (`LockstepSession`, `VersusMatchup`, `LoopbackTransport`) stays and is unit-tested. |
 | 2 | **FIXED** | UX | **Soft-lock in Training**: endless practice never reports a result, and there was no way back to the menu from any fight. | Added an always-on in-fight exit button (`FightView` → `GameFlow.exitFight()`). |
 
