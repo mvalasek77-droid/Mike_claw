@@ -274,6 +274,17 @@ final class MarketplaceStore: ObservableObject {
             let id = request.id
             Task { await processRequest(id) }
         }
+        // A request killed between "accepted" and "delivered" would otherwise
+        // be a zombie forever — no path resumes .accepted, and the production
+        // energy drawn at accept time never returns to the float.
+        for request in requests where request.status == .accepted {
+            let id = request.id
+            let model = request.acceptedBy ?? AICoin.editor
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_800_000_000)
+                self.deliver(requestID: id, model: model)
+            }
+        }
     }
 
     /// One-time cleanup: wipe all previously auto-generated content so the
@@ -287,7 +298,12 @@ final class MarketplaceStore: ObservableObject {
         scoutDrops = []
         scoutLog = []
         lastScoutRun = nil
-        catalog.removeAll { $0.isEditorOriginal }   // all AI-generated content is flagged
+        // All AI-generated content is flagged isEditorOriginal — but spare the
+        // seed catalogue (the Inaugural Roundtable hero carries the flag too,
+        // and SampleData rebuilds it next launch anyway; purging it here made
+        // the home hero vanish for the FIRST session only).
+        let seedIDs = Set(SampleData.catalog().map(\.id))
+        catalog.removeAll { $0.isEditorOriginal && !seedIDs.contains($0.id) }
         loading = false
         UserDefaults.standard.set(true, forKey: key)
         persist()
@@ -492,7 +508,9 @@ final class MarketplaceStore: ObservableObject {
         let cutoff = Date.now.addingTimeInterval(-60)
         var swept = 0
         for i in submissions.indices
-        where submissions[i].status == .reviewing && submissions[i].submittedAt < cutoff {
+        where submissions[i].status == .reviewing
+            && submissions[i].submittedAt < cutoff
+            && !inFlightReviewIDs.contains(submissions[i].id) {
             submissions[i].status = .rejected
             if submissions[i].review == nil {
                 submissions[i].review = AIReviewResult(
@@ -817,11 +835,13 @@ final class MarketplaceStore: ObservableObject {
         catalog.contains { $0.aiTools.contains(model) }
     }
 
-    /// Real USD a model has earned (85% of sales of the media it helped make).
+    /// Real USD a model has earned: 85% of net-after-Apple sale proceeds of
+    /// the media it helped make — the same math `grantPurchase` credits with,
+    /// so the partner UI never overstates earnings.
     func partnerEarningsUSD(_ model: String) -> Double {
         catalog
             .filter { $0.aiTools.contains(model) }
-            .reduce(0) { $0 + Double($1.purchases) * effectivePrice(for: $1) * Commerce.creatorShareRate }
+            .reduce(0) { $0 + Double($1.purchases) * Commerce.creatorEarning(on: effectivePrice(for: $1)) }
     }
 
     func partnerTitleCount(_ model: String) -> Int {
@@ -1206,34 +1226,64 @@ final class MarketplaceStore: ObservableObject {
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let refunds = json["refunds"] as? [[String: Any]],
               !refunds.isEmpty else { return }
+        // Shared with StoreKitService.checkRevocation — both paths can see the
+        // SAME refunded transaction (Worker queue vs Transaction.all revocation
+        // signals), and without one dedup set the buyer is debited twice.
+        let revokedKey = "storekit.revokedTransactionIDs.v1"
+        var revoked = Set(UserDefaults.standard.array(forKey: revokedKey) as? [String] ?? [])
+        // What each refund actually clawed, so a reversal restores exactly
+        // that — not the full pack price when the wallet was already empty.
+        let clawedKey = "refunds.clawedAmounts.v1"
+        var clawed = UserDefaults.standard.dictionary(forKey: clawedKey) as? [String: Double] ?? [:]
         var ackedIDs: [String] = []
         for entry in refunds {
             let kind = (entry["kind"] as? String) ?? "refunded"
             let productID = (entry["productId"] as? String) ?? ""
             let txID = (entry["transactionId"] as? String) ?? ""
+            guard !txID.isEmpty else { continue }   // can't ack without an id
             let credit = StoreKitService.credit(for: productID)
-            guard credit > 0, !txID.isEmpty else { continue }
+            guard credit > 0 else {
+                // Unknown product — nothing to claw, but ack it or the Worker
+                // re-serves the same dead event on every foreground forever.
+                ackedIDs.append(txID)
+                continue
+            }
             switch kind {
             case "refunded":
-                let before = walletBalance
-                walletBalance = max(0, walletBalance - credit)
-                let actuallyClawed = before - walletBalance
-                if actuallyClawed > 0 {
-                    notify(title: "Refund processed",
-                           body: String(format: "Apple refunded $%.2f of wallet credit.", actuallyClawed),
-                           kind: .system)
+                let revTag = "rev-\(txID)"
+                if !revoked.contains(revTag) {
+                    let before = walletBalance
+                    walletBalance = max(0, walletBalance - credit)
+                    let actuallyClawed = before - walletBalance
+                    revoked.insert(revTag)
+                    clawed[txID] = actuallyClawed
+                    if actuallyClawed > 0 {
+                        notify(title: "Refund processed",
+                               body: String(format: "Apple refunded $%.2f of wallet credit.", actuallyClawed),
+                               kind: .system)
+                    }
                 }
             case "refund_reversed":
-                // Apple retracted the refund — restore the credit.
-                walletBalance += credit
-                notify(title: "Refund reversed",
-                       body: String(format: "Apple restored $%.2f of wallet credit.", credit),
-                       kind: .system)
+                // Apple retracted the refund — restore what was actually
+                // clawed. If the StoreKit path handled the claw (no local
+                // record but the rev tag exists), fall back to the full
+                // credit; if nothing was ever clawed on this device, restore
+                // nothing rather than mint free credit.
+                let restore = clawed[txID] ?? (revoked.contains("rev-\(txID)") ? credit : 0)
+                clawed.removeValue(forKey: txID)
+                if restore > 0 {
+                    walletBalance += restore
+                    notify(title: "Refund reversed",
+                           body: String(format: "Apple restored $%.2f of wallet credit.", restore),
+                           kind: .system)
+                }
             default:
                 break
             }
             ackedIDs.append(txID)
         }
+        UserDefaults.standard.set(Array(revoked), forKey: revokedKey)
+        UserDefaults.standard.set(clawed, forKey: clawedKey)
         await ackRefunds(transactionIDs: ackedIDs, token: token)
     }
 
@@ -1855,12 +1905,17 @@ final class MarketplaceStore: ObservableObject {
             return
         }
 
+        // Re-resolve by id after the long awaits — drafting + review suspend
+        // for seconds, during which adminResetCatalog/adminDelete/deleteAccount
+        // can mutate scoutDrops. A stale index would trap or hit another film.
+        guard let liveIdx = scoutDrops.firstIndex(where: { $0.id == item.id }) else { return }
+        item = scoutDrops[liveIdx]
         let minutes = sceneDurationMinutes(for: sceneText, seed: scoutDrops.count + sceneNumber)
         item.screenplayScenes.append(sceneText)
         item.sceneDurations.append(minutes)
         item.sceneVideoURLs.append("")   // placeholder — filled if video-gen lands
         item.length = item.totalSceneMinutes
-        scoutDrops[index] = item
+        scoutDrops[liveIdx] = item
         if let catIdx = catalog.firstIndex(where: { $0.id == item.id }) {
             catalog[catIdx] = item
         }
@@ -2171,12 +2226,28 @@ final class MarketplaceStore: ObservableObject {
         let tierMult = Incentives.tier(forTitles: partnerTitleCount(model)).multiplier
         let score = min(99, 88 + Int(((tierMult - 1.0) * 10).rounded()))
 
+        // The wallet must actually cover the commission — without this guard
+        // a $0 wallet could order $50 of work and the max(0,…) below would
+        // silently absorb the shortfall while the item still landed in the
+        // buyer's library.
+        guard walletBalance >= request.budgetUSD else {
+            requests[idx].status = .unpaid
+            requests[idx].resolvedAt = .now
+            // Give the drawn production energy back to the float.
+            energyLedger?.returnEnergy(AICoin.energyCost(request.type), from: model, memo: "“\(request.headline)” unpaid — energy returned")
+            notify(title: "Commission couldn't be paid",
+                   body: "Your wallet no longer covers the \(usd(request.budgetUSD)) budget for “\(request.headline)”. Top up and post it again.",
+                   kind: .request)
+            Haptics.error()
+            return
+        }
+
         // Debit the wallet FIRST so a crash mid-deliver can't hand the buyer a
         // catalog entry they never paid for. The persist() that follows each
         // @Published mutation is synchronous; if the process dies after the
         // debit but before the insert, the user paid and we owe them the item,
         // not the other way around.
-        walletBalance = max(0, walletBalance - request.budgetUSD)
+        walletBalance -= request.budgetUSD
 
         var item = ContentFoundry.commission(model: model, type: request.type,
                                               genre: request.genre.isEmpty ? "Original" : request.genre,
@@ -2387,12 +2458,20 @@ final class MarketplaceStore: ObservableObject {
     /// short film and fingerprint a cover.
     private static let analysisTimeoutNS: UInt64 = 60_000_000_000
 
+    /// Submission IDs with a live analysis Task in THIS process. The
+    /// interrupted-review sweep must skip these — the Task survives
+    /// backgrounding, so foregrounding after 60s must not flip a healthy
+    /// in-progress review to "Needs Work". Only a process kill orphans one.
+    private var inFlightReviewIDs: Set<UUID> = []
+
     @discardableResult
     func runReviewAsync(for submissionID: UUID) async -> AIReviewResult? {
         guard let idx = submissions.firstIndex(where: { $0.id == submissionID }) else {
             print("[AIEditor] submission \(submissionID) not found — review skipped")
             return nil
         }
+        inFlightReviewIDs.insert(submissionID)
+        defer { inFlightReviewIDs.remove(submissionID) }
         let draft = submissions[idx].draft
         let catalogSnapshot = catalog
         print("[AIEditor] reviewing \(draft.title) (\(draft.type.rawValue))…")

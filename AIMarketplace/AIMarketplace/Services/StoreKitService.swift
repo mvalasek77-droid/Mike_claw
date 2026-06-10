@@ -43,7 +43,13 @@ final class StoreKitService: ObservableObject {
     /// Wire this **once at app launch**, never inside a transient sheet — a
     /// transaction can arrive at any time and dropping the closure means
     /// dropping money.
-    var onCredit: ((Double) -> Void)?
+    ///
+    /// `init` starts draining transactions before the app root has had a
+    /// chance to attach this closure; anything that lands in that window is
+    /// left ungranted (see `grant`), so re-drain the moment we're wired.
+    var onCredit: ((Double) -> Void)? {
+        didSet { if onCredit != nil { Task { await drainPending() } } }
+    }
 
     private var updates: Task<Void, Never>?
     private let processedKey = "storekit.processedTransactionIDs.v1"
@@ -106,8 +112,9 @@ final class StoreKitService: ObservableObject {
             switch result {
             case .success(let verification):
                 let transaction = try Self.checkVerified(verification)
-                await grant(for: transaction)
-                await transaction.finish()
+                if await grant(for: transaction) {
+                    await transaction.finish()
+                }
                 return .success
             case .userCancelled:
                 return .cancelled
@@ -177,12 +184,14 @@ final class StoreKitService: ObservableObject {
             unfinishedCount += 1
             #endif
             guard let transaction = try? Self.checkVerified(update) else { continue }
-            await grant(for: transaction)
+            let handled = await grant(for: transaction)
             // A refunded transaction CAN show up as "unfinished" if the
             // refund landed while the app was killed — claw the credit
             // back here too, not just from currentEntitlements.
             await checkRevocation(for: transaction)
-            await transaction.finish()
+            // Only finish once the credit was actually delivered; otherwise
+            // keep it unfinished so the post-wiring drain replays it.
+            if handled { await transaction.finish() }
         }
         for await update in Transaction.currentEntitlements {
             #if DEBUG
@@ -247,31 +256,51 @@ final class StoreKitService: ObservableObject {
             #endif
             return
         }
-        revoked.insert(revKey)
-        UserDefaults.standard.set(Array(revoked), forKey: revokedKey)
         let credit = Self.credit(for: transaction.productID)
         guard credit > 0 else {
             #if DEBUG
             print("[StoreKit]   → skip: credit=\(credit) for product=\(transaction.productID)")
             #endif
+            // Unknown product — nothing to claw back; remember it so we
+            // don't keep re-inspecting the same transaction.
+            revoked.insert(revKey)
+            UserDefaults.standard.set(Array(revoked), forKey: revokedKey)
             return
         }
+        // Don't persist the revocation as handled unless the wallet hook is
+        // attached — otherwise the clawback is skipped once and never retried.
+        guard let onRevoke else {
+            #if DEBUG
+            print("[StoreKit]   → defer: onRevoke is nil — will retry on next drain")
+            #endif
+            return
+        }
+        revoked.insert(revKey)
+        UserDefaults.standard.set(Array(revoked), forKey: revokedKey)
         #if DEBUG
-        print("[StoreKit]   → revoking $\(credit) for tx=\(transaction.id); " +
-              "onRevoke is \(onRevoke == nil ? "nil — wallet WILL NOT decrement" : "set")")
+        print("[StoreKit]   → revoking $\(credit) for tx=\(transaction.id)")
         #endif
-        onRevoke?(credit)
+        onRevoke(credit)
     }
 
-    private func grant(for transaction: Transaction) async {
-        guard !processed.contains(transaction.id) else { return }
+    /// Returns true when the transaction's value is fully handled (credit
+    /// delivered, already processed, or unrecognised product) and it's safe
+    /// to `finish()`. Returns false when the wallet closure isn't attached
+    /// yet — the caller must NOT finish so a later drain retries the grant.
+    @discardableResult
+    private func grant(for transaction: Transaction) async -> Bool {
+        guard !processed.contains(transaction.id) else { return true }
         let credit = Self.credit(for: transaction.productID)
         // For unrecognised product ids, still mark processed so we don't
         // keep re-walking the same dead transaction on every launch.
         guard credit > 0 else {
             markProcessed(transaction.id)
-            return
+            return true
         }
+        // No wallet hook yet (init drains before the app root wires it).
+        // Leave the transaction unprocessed AND unfinished — marking it
+        // processed here would silently eat the buyer's money.
+        guard let onCredit else { return false }
         // Apply credit FIRST, then mark processed. Both writes are
         // synchronous-to-disk (wallet via SecureStore atomic write, processed
         // via UserDefaults). A crash between them is a microsecond window,
@@ -281,8 +310,9 @@ final class StoreKitService: ObservableObject {
         //   - mark-first ordering  → buyer gets nothing for their money
         //     (we keep the cash; user angry, App Store 1-star, refund)
         // Cheap overpay beats silent under-credit, so credit-first wins.
-        onCredit?(credit)
+        onCredit(credit)
         markProcessed(transaction.id)
+        return true
     }
 
     private func markProcessed(_ id: UInt64) {
@@ -303,12 +333,12 @@ final class StoreKitService: ObservableObject {
                 #if DEBUG
                 print("[StoreKit] listener received update tx=\(transaction.id) product=\(transaction.productID)")
                 #endif
-                await self.grant(for: transaction)
+                let handled = await self.grant(for: transaction)
                 // Refunds arrive HERE — Apple emits a Transaction.updates
                 // event when a refund is processed. Without this clawback
                 // call, the wallet keeps credit the buyer no longer paid for.
                 await self.checkRevocation(for: transaction)
-                await transaction.finish()
+                if handled { await transaction.finish() }
                 #if DEBUG
                 await MainActor.run { self.didProcessUpdateForTesting?(transaction) }
                 #endif
@@ -426,9 +456,9 @@ final class StoreKitService: ObservableObject {
                 guard let transaction = try? Self.checkVerified(update) else { continue }
                 updateCount += 1
                 print("[StoreKit] test-drainer received update #\(updateCount) tx=\(transaction.id)")
-                await self.grant(for: transaction)
+                let handled = await self.grant(for: transaction)
                 await self.checkRevocation(for: transaction)
-                await transaction.finish()
+                if handled { await transaction.finish() }
                 await MainActor.run { self.didProcessUpdateForTesting?(transaction) }
             }
         }

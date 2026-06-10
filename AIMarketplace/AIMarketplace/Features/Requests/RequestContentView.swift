@@ -14,6 +14,7 @@ struct RequestContentView: View {
 
     private var taker: String? { store.acceptingModel(for: type, budget: budget) }
     private var lowestAsk: Double { store.lowestAsk(for: type) }
+    private var canAfford: Bool { store.walletBalance >= budget }
 
     var body: some View {
         NavigationStack {
@@ -39,8 +40,15 @@ struct RequestContentView: View {
                     budgetCard
                     matchCard
 
+                    if !canAfford {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.warning)
+                            Text("Your wallet holds \(usd(store.walletBalance)) — top up from Profile before posting a \(usd(budget)) request.")
+                                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        }
+                    }
                     PrimaryButton(title: "Post request · \(usd(budget))", systemImage: "paperplane.fill",
-                                  tint: Theme.kdp, enabled: budget >= 0.99) {
+                                  tint: Theme.kdp, enabled: budget >= 0.99 && canAfford) {
                         store.submitRequest(type: type, genre: genre, brief: brief, budget: budget)
                         Haptics.success()
                         dismiss()

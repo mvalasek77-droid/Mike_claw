@@ -24,6 +24,7 @@ enum RequestStatus: String, Codable {
     case accepted    // an AI accepted, producing it
     case delivered   // produced and in the requester's library
     case unmatched   // no AI accepted at the offered budget
+    case unpaid      // produced, but the wallet couldn't cover the budget
 
     var label: String {
         switch self {
@@ -31,6 +32,7 @@ enum RequestStatus: String, Codable {
         case .accepted: return "Accepted — producing"
         case .delivered: return "Delivered"
         case .unmatched: return "No takers"
+        case .unpaid: return "Payment failed"
         }
     }
 }

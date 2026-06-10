@@ -247,7 +247,7 @@ struct MediaItem: Identifiable, Hashable, Codable {
 func stableHash(_ string: String) -> Int {
     var hash = 5381
     for byte in string.utf8 { hash = (hash &* 33) &+ Int(byte) }
-    return abs(hash)
+    return hash & Int.max   // abs(Int.min) traps; mask keeps it non-negative
 }
 
 extension MediaItem {

@@ -54,6 +54,13 @@ final class AVPlaybackModel: ObservableObject {
     }
 
     private func addObservers(for item: AVPlayerItem) {
+        // A second load() on the same instance must not stack observers — an
+        // orphaned periodic observer can never be removed and fights the new
+        // one over `progress`.
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        endObserver = nil
         let interval = CMTime(seconds: 0.4, preferredTimescale: 600)
         timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self else { return }
