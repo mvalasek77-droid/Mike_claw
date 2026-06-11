@@ -231,6 +231,7 @@ final class FightScene: SKScene {
         case .announceFight:
             showAnnouncer("FIGHT!", color: SKColor(red: 1, green: 0.85, blue: 0.2, alpha: 1))
             SoundEngine.shared.play(.ready)
+            sayBubble(.opponent, flow.opponentSpec.taunt)   // opponent trash-talks
         case .fighting: accumulator = 0; announcer.run(.fadeOut(withDuration: 0.2))
         case .roundResult, .matchResult: break
         }
@@ -392,8 +393,9 @@ final class FightScene: SKScene {
             switch e {
             case .heavyWindup(let s) where s == .opponent:
                 flashTelegraph()
-            case .comboHit(_, let count):
+            case .comboHit(let by, let count):
                 showCombo(count)
+                if count >= 3 { sayBubble(by, (by == .player ? flow.playerSpec : flow.opponentSpec).hype) }
             case .hitLanded(let attacker, let dmg):
                 let victim: Side = attacker == .player ? .opponent : .player
                 spawnHitSpark(at: victim, big: dmg >= 12)
@@ -409,6 +411,7 @@ final class FightScene: SKScene {
                 SoundEngine.shared.play(.block)   // metallic "clank" — no effect
                 shake(1)
             case .knockdown(let s):
+                sayBubble(s, (s == .player ? flow.playerSpec : flow.opponentSpec).hurt)
                 if allowHitstop { hitstop = 6 }
                 shake(9)
                 koSplatter(at: s)
@@ -602,6 +605,38 @@ final class FightScene: SKScene {
         }
     }
 
+    /// A character "voice": a small speech bubble above a fighter that fades.
+    /// One bubble per side at a time (named nodes) so they don't spam.
+    private func sayBubble(_ side: Side, _ text: String) {
+        guard !text.isEmpty else { return }
+        let name = side == .player ? "bubble_p" : "bubble_o"
+        if childNode(withName: name) != nil { return }
+        let c = flow.combat
+        let f = side == .player ? c.player : c.opponent
+        let spec = side == .player ? flow.playerSpec : flow.opponentSpec
+
+        let label = SKLabelNode(text: text)
+        label.fontName = "Menlo-Bold"; label.fontSize = 9
+        label.fontColor = .black
+        label.verticalAlignmentMode = .center; label.horizontalAlignmentMode = .center
+        let w = max(28, label.frame.width + 10)
+        let bubble = SKShapeNode(rectOf: CGSize(width: w, height: 16), cornerRadius: 6)
+        bubble.fillColor = spec.accentColor.skColor
+        bubble.strokeColor = .white
+        bubble.lineWidth = 1
+        bubble.name = name
+        bubble.zPosition = 8
+        bubble.addChild(label)
+        bubble.position = CGPoint(x: laneToX(f.position), y: size.height * 0.42 + 78 + f.height)
+        bubble.alpha = 0
+        bubble.setScale(0.6)
+        addChild(bubble)
+        bubble.run(.sequence([
+            .group([.fadeIn(withDuration: 0.1), .scale(to: 1, duration: 0.12)]),
+            .wait(forDuration: 1.1),
+            .fadeOut(withDuration: 0.3), .removeFromParent()]))
+    }
+
     /// A popping shockwave ring on heavy impacts — expands and fades for that
     /// "WOW" hit feedback. Additive so it reads as a flash of energy.
     private func impactRing(at side: Side) {
@@ -679,20 +714,15 @@ final class FightScene: SKScene {
     // MARK: - Gesture scheme (only when the virtual pad is OFF)
 
     func touchDown() {
-        guard phase == .fighting, GameSettings.controls != .buttons else { return }
+        guard phase == .fighting, GameSettings.controls == .gestures else { return }
         pendingLocal.append(.beginBlock)
     }
     func touchUp(translation: CGSize, startLocation: CGPoint, held: TimeInterval) {
-        guard phase == .fighting, GameSettings.controls != .buttons else { return }
+        guard phase == .fighting, GameSettings.controls == .gestures else { return }
         pendingLocal.append(.endBlock)
         let dx = translation.width, dy = -translation.height
         if hypot(dx, dy) > 24 {
             if let intent = InputController.swipeIntent(dx: dx, dy: dy) {
-                // In CROWN mode the Crown handles walking, so ignore horizontal
-                // swipe-steps (keep jump/parry).
-                if GameSettings.controls == .crown, intent == .stepForward || intent == .stepBack {
-                    return
-                }
                 pendingLocal.append(intent)
                 if intent == .parry { SoundEngine.shared.play(.parry) }
             }

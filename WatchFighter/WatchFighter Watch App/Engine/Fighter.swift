@@ -45,9 +45,9 @@ enum Build: Equatable {
     case athletic   // balanced default
     case lithe      // slender, elegant
 
-    var widthScale: CGFloat { self == .heavy ? 1.32 : self == .lithe ? 0.84 : 1.0 }
-    var limbScale: CGFloat  { self == .heavy ? 1.45 : self == .lithe ? 0.82 : 1.0 }
-    var headScale: CGFloat  { self == .heavy ? 1.08 : self == .lithe ? 0.92 : 1.0 }
+    var widthScale: CGFloat { self == .heavy ? 1.22 : self == .lithe ? 0.86 : 1.0 }
+    var limbScale: CGFloat  { self == .heavy ? 1.18 : self == .lithe ? 0.78 : 0.9 }
+    var headScale: CGFloat  { self == .heavy ? 1.06 : self == .lithe ? 0.9 : 0.96 }
 }
 
 /// The lifecycle of a fighter on any given tick. Drives what input is legal.

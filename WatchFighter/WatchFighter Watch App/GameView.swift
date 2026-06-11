@@ -10,6 +10,7 @@ struct FightView: View {
     @State private var lastCrown = 0.0
     @State private var dragStart: Date?
     @State private var usePad = GameSettings.controls == .buttons
+    @State private var crownMode = GameSettings.controls == .crown
     @FocusState private var focused: Bool
     @State private var scene: FightScene
     let onExit: () -> Void
@@ -52,6 +53,7 @@ struct FightView: View {
                 )
 
             if usePad { gamepad }
+            if crownMode { crownStrip }
 
             // Always-available exit — no mode (esp. endless Training) can soft-lock.
             Button(action: onExit) {
@@ -98,6 +100,25 @@ struct FightView: View {
                 }
             }
             .padding(.horizontal, 3).padding(.bottom, 2)
+        }
+        .ignoresSafeArea()
+    }
+
+    /// Crown mode: the Crown walks; these buttons sit in the dark ground strip
+    /// under the fighters for jump/punch/kick/block/special/throw.
+    private var crownStrip: some View {
+        VStack {
+            Spacer()
+            HStack(spacing: 5) {
+                PadButton("P", tint: .cyan) { scene.padTap(.lightAttack) }       // punch
+                PadButton("K", tint: .orange) { scene.padTap(.heavyAttack) }     // kick
+                PadButton("↑", tint: .green) { scene.padTap(.jump) }             // jump
+                HoldButton("BLK", tint: .blue,
+                           onDown: { scene.padBlock(true) }, onUp: { scene.padBlock(false) })
+                PadButton("SP", tint: .yellow) { scene.padTap(.special) }
+                PadButton("GR", tint: .purple) { scene.padTap(.grab) }
+            }
+            .padding(.horizontal, 3).padding(.bottom, 3)
         }
         .ignoresSafeArea()
     }

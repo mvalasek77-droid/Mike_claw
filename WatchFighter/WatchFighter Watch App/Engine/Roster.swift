@@ -328,12 +328,80 @@ extension CharacterSpec {
         }
     }
 
+    /// Skin tone for the procedural human look (golems/cyborgs get fitting tones).
+    var skin: RGBA {
+        switch id {
+        case "bastion": return RGBA(0.55, 0.50, 0.42)   // stone golem
+        case "onyx":    return RGBA(0.22, 0.20, 0.24)    // obsidian
+        case "titus":   return RGBA(0.42, 0.28, 0.20)
+        case "volt":    return RGBA(0.83, 0.66, 0.55)
+        case "ember":   return RGBA(0.80, 0.55, 0.42)
+        case "frost":   return RGBA(0.85, 0.80, 0.78)
+        case "mirage":  return RGBA(0.62, 0.50, 0.46)
+        case "nova":    return RGBA(0.70, 0.55, 0.45)
+        case "vesper":  return RGBA(0.80, 0.66, 0.56)
+        case "marina":  return RGBA(0.78, 0.58, 0.46)
+        case "corsair": return RGBA(0.72, 0.54, 0.42)
+        case "feng":    return RGBA(0.82, 0.64, 0.50)
+        case "sable":   return RGBA(0.55, 0.40, 0.32)
+        case "groove":  return RGBA(0.48, 0.34, 0.26)
+        case "verse":   return RGBA(0.50, 0.36, 0.28)
+        default:        return RGBA(0.80, 0.62, 0.50)    // tetsu + fallback
+        }
+    }
+
     /// Body type for the procedural renderer's proportions.
     var build: Build {
         switch id {
         case "bastion", "titus", "onyx": return .heavy      // broad bruisers
         case "ember", "frost", "mirage", "vesper", "marina", "sable": return .lithe
         default: return .athletic
+        }
+    }
+
+    /// Battle chatter — what they shout when they land a combo.
+    var hype: String {
+        switch id {
+        case "tetsu":   return "Felt that?"
+        case "volt":    return "Too slow!"
+        case "ember":   return "Well done!"
+        case "frost":   return "Stay down. Stay cold."
+        case "mirage":  return "Which hit was real?"
+        case "bastion": return "STAND. ASIDE."
+        case "corsair": return "Hah! Another round!"
+        case "nova":    return "Locked on."
+        case "vesper":  return "One cut. One."
+        case "marina":  return "Wipeout!"
+        case "onyx":    return "Climb DOWN."
+        case "titus":   return "(thud. thud. thud.)"
+        case "feng":    return "HWA-TAH! Did you get that on film?!"
+        case "sable":   return "Strike a pose. On the floor."
+        case "groove":  return "And a-one, and a-TWO!"
+        case "verse":   return "That's the hook. Literally."
+        default:        return "Hah!"
+        }
+    }
+
+    /// What they yelp when they take a big hit.
+    var hurt: String {
+        switch id {
+        case "tetsu":   return "Tch—!"
+        case "volt":    return "Short circuit!"
+        case "ember":   return "Snuffed?!"
+        case "frost":   return "...cold."
+        case "mirage":  return "Rude."
+        case "bastion": return "A crack. One crack."
+        case "corsair": return "Me rum!!"
+        case "nova":    return "Contract's getting personal."
+        case "vesper":  return "A scratch."
+        case "marina":  return "Riptide pulls back!"
+        case "onyx":    return "Impossible…"
+        case "titus":   return "(he barely blinks)"
+        case "feng":    return "That's NOT in the script!"
+        case "sable":   return "Not the face! The brand!"
+        case "groove":  return "Off-beat! OFF-BEAT!"
+        case "verse":   return "Aight, no more freestyle."
+        default:        return "Ngh!"
         }
     }
 
