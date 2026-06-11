@@ -92,6 +92,10 @@ struct RootView: View {
                 // session — the analysis Task can't survive a process kill,
                 // so anything older than the cutoff is genuinely orphaned.
                 store.sweepInterruptedReviews(forcePersist: true)
+                // Daily Scout cycle: launch isn't the only trigger — an app
+                // that stays alive for days still gets its daily slate on
+                // the first foreground of each day (no-op when not due).
+                store.runScoutIfDue()
                 Task { await store.refreshPayoutStatus() }
                 // Apple delivers consumable refunds via ASSN V2 (server →
                 // Worker → here). Drain any queued events on every

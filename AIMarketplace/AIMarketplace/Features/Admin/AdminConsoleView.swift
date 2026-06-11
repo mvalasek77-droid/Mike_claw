@@ -6,6 +6,7 @@ struct AdminConsoleView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @EnvironmentObject private var moderation: ModerationStore
     @EnvironmentObject private var storeKit: StoreKitService
+    @EnvironmentObject private var scoutFeed: ScoutFeedService
     @ObservedObject private var errorMonitor = ErrorMonitor.shared
     @State private var confirmUnblockAll = false
     @Environment(\.dismiss) private var dismiss
@@ -195,28 +196,46 @@ struct AdminConsoleView: View {
                      ? "The Scout is in outreach mode (you're posting)."
                      : "The Scout is auto-sourcing a premium daily slate (you're not posting).")
                     .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
-                // Scout drafting depends on the on-device model — when it's
-                // down, "make media" silently produced nothing. Say so HERE,
-                // where the admin controls live.
-                if let reason = OnDeviceAI.unavailabilityMessage {
+
+                Toggle(isOn: $store.scoutAutoProduceEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Let the Scout make media")
+                            .font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        Text("When on, the Scout produces its daily slate automatically — the AI Editor still gates everything at \(AIReviewResult.threshold)+/100. Paid external providers always wait for your authorization. Off → every proposal waits in the deck.")
+                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    }
+                }
+                .tint(Theme.accent)
+
+                // Drafting engine status. Without one, "make media" silently
+                // produced nothing — say so HERE, where the controls live.
+                if OnDeviceAI.isReady {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 11)).foregroundStyle(Theme.success)
+                            .accessibilityHidden(true)
+                        Text("On-device AI ready — Scout drafts free, on device.")
+                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.success)
+                    }
+                } else if scoutFeed.providers.textGenConfigured {
+                    HStack(spacing: 6) {
+                        Image(systemName: "cloud.fill")
+                            .font(.system(size: 11)).foregroundStyle(Theme.accent)
+                            .accessibilityHidden(true)
+                        Text("On-device AI unavailable — Scout drafts via your Worker's Claude fallback instead (uses your API credit).")
+                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.accent)
+                    }
+                } else if let reason = OnDeviceAI.unavailabilityMessage {
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 13)).foregroundStyle(Theme.warning)
                             .accessibilityHidden(true)
-                        Text("On-device AI unavailable — \(reason) Scout can propose and serve requests, but can't draft media until this is resolved.")
+                        Text("No drafting engine — \(reason) Scout can propose and serve requests, but can't draft media. Fix: enable Apple Intelligence, or set ANTHROPIC_API_KEY on the Worker to draft via the cloud.")
                             .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.warning)
                     }
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(Theme.warning.opacity(0.12)))
-                } else {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 11)).foregroundStyle(Theme.success)
-                            .accessibilityHidden(true)
-                        Text("On-device AI ready — Scout can draft novels, lyrics and screenplays.")
-                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.success)
-                    }
                 }
                 PrimaryButton(title: "Force The Scout to run now", systemImage: "binoculars.fill",
                               style: .ghost, tint: Theme.accent) {

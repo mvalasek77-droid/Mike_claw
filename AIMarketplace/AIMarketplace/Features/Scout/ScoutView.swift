@@ -61,30 +61,44 @@ struct ScoutView: View {
         }
     }
 
-    /// Loud, honest banner when the on-device model can't draft. Without it,
+    /// Loud, honest banner when NO drafting engine is available (neither the
+    /// on-device model nor the Worker's Claude fallback). Without it,
     /// authorizing a proposal looked like it did nothing — the real reason
     /// (Apple Intelligence off / unsupported device / model downloading)
-    /// never surfaced anywhere.
+    /// never surfaced anywhere. When the Worker fallback covers for the
+    /// on-device model, a quiet info line says so instead.
     @ViewBuilder
     private var onDeviceAIBanner: some View {
         if let reason = OnDeviceAI.unavailabilityMessage {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 16)).foregroundStyle(Theme.warning)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Scout can't draft media right now")
-                        .font(.system(size: 13, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Theme.ink)
-                    Text("\(reason) The Scout can still compose proposals and serve user requests, but drafting novels, lyrics and screenplays needs the on-device model.")
+            if scoutFeed.providers.textGenConfigured {
+                HStack(spacing: 8) {
+                    Image(systemName: "cloud.fill")
+                        .font(.system(size: 13)).foregroundStyle(Theme.accent)
+                        .accessibilityHidden(true)
+                    Text("On-device AI unavailable — Scout is drafting via your Worker's Claude fallback.")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Theme.inkSoft)
                 }
+                .padding(.horizontal, 4)
+            } else {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 16)).foregroundStyle(Theme.warning)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Scout can't draft media right now")
+                            .font(.system(size: 13, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                        Text("\(reason) The Scout can still compose proposals and serve user requests. Fix: enable Apple Intelligence on this device, or set ANTHROPIC_API_KEY on the Worker to draft via the cloud.")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Theme.inkSoft)
+                    }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.warning.opacity(0.12)))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.warning.opacity(0.35), lineWidth: 0.8))
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.warning.opacity(0.12)))
-            .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.warning.opacity(0.35), lineWidth: 0.8))
         }
     }
 
@@ -150,10 +164,13 @@ struct ScoutView: View {
         }
     }
 
-    /// True when this proposal would draft via the on-device model and that
-    /// model can't run right now — authorizing would be a guaranteed no-op.
+    /// True when this proposal needs text drafting and NO engine can run —
+    /// on-device model down AND no Worker fallback. Authorizing would be a
+    /// guaranteed no-op.
     private func foundationBlocked(_ p: ScoutProposal) -> Bool {
-        p.providerNeeded == .foundation && !OnDeviceAI.isReady
+        p.providerNeeded == .foundation
+            && !OnDeviceAI.isReady
+            && !scoutFeed.providers.textGenConfigured
     }
 
     private func proposalRow(_ p: ScoutProposal, pending: Bool) -> some View {

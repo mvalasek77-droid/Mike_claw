@@ -72,15 +72,29 @@ enum OnDeviceAI {
         return nil
     }
 
-    /// Drafts a punchy marketplace synopsis for a work-in-progress.
-    static func draftSynopsis(type: MediaType, title: String, genre: String, existing: String) async -> String? {
+    /// (instructions, prompt) pair for a generation request. Shared between the
+    /// on-device path and the Worker /scout/draft fallback so both produce the
+    /// same artifacts from the same brief.
+    struct Spec {
+        let instructions: String
+        let prompt: String
+    }
+
+    /// Prompt spec for a marketplace synopsis.
+    static func synopsisSpec(type: MediaType, title: String, genre: String, existing: String) -> Spec {
         let kind = type.title.lowercased()
         let instructions = "You are a marketing copywriter for an AI-media marketplace. Write a single vivid, commercial synopsis of 2–3 sentences. No preamble, no quotes, no markdown."
         var prompt = "Write a synopsis for a \(genre.isEmpty ? "" : genre + " ")\(kind)"
         if !title.trimmed.isEmpty { prompt += " titled \"\(title.trimmed)\"" }
         if existing.trimmed.count > 12 { prompt += ". Build on this draft: \(existing.trimmed)" }
         prompt += "."
-        return await generate(instructions: instructions, prompt: prompt)
+        return Spec(instructions: instructions, prompt: prompt)
+    }
+
+    /// Drafts a punchy marketplace synopsis for a work-in-progress.
+    static func draftSynopsis(type: MediaType, title: String, genre: String, existing: String) async -> String? {
+        let spec = synopsisSpec(type: type, title: title, genre: genre, existing: existing)
+        return await generate(instructions: spec.instructions, prompt: spec.prompt)
     }
 
     /// Drafts a substantial long-form artifact the AI Editor can vet end-to-end:
@@ -94,6 +108,14 @@ enum OnDeviceAI {
     /// provider is wired in later, that pathway can layer real bytes on top.
     static func draftLongForm(type: MediaType, title: String, genre: String,
                               formula: String, masters: [String]) async -> String? {
+        let spec = longFormSpec(type: type, title: title, genre: genre,
+                                formula: formula, masters: masters)
+        return await generate(instructions: spec.instructions, prompt: spec.prompt)
+    }
+
+    /// Prompt spec for the long-form artifact.
+    static func longFormSpec(type: MediaType, title: String, genre: String,
+                             formula: String, masters: [String]) -> Spec {
         let mastersClause: String
         if masters.isEmpty {
             mastersClause = ""
@@ -117,7 +139,7 @@ enum OnDeviceAI {
             instructions = "You are a screenwriter. Write a 400-600 word opening scene in proper screenplay format — slug lines (INT./EXT.), action lines, dialogue. Tight, visual writing. No preamble outside the screenplay."
             prompt = "Write the opening scene of the film.\(titleClause)\(genreClause)\(mastersClause)\(formulaClause)"
         }
-        return await generate(instructions: instructions, prompt: prompt)
+        return Spec(instructions: instructions, prompt: prompt)
     }
 
     #if canImport(FoundationModels)
@@ -131,4 +153,38 @@ enum OnDeviceAI {
         }
     }
     #endif
+}
+
+/// Worker-backed text drafting — the fallback the Scout uses when Apple's
+/// on-device Foundation Model isn't available (pre-iOS-26 device, Apple
+/// Intelligence off). POSTs the same instructions/prompt the on-device path
+/// would use to the Worker's /scout/draft, which proxies to Anthropic's
+/// Messages API. The API key never leaves the Worker.
+enum RemoteDraft {
+
+    /// Generates text via the Worker. Returns nil on any failure — callers
+    /// treat nil exactly like an on-device generation miss.
+    static func generate(instructions: String, prompt: String,
+                         baseURL: String, sharedSecret: String) async -> String? {
+        guard !baseURL.isEmpty, !sharedSecret.isEmpty,
+              let url = URL(string: "\(baseURL)/scout/draft") else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        // Long-form drafting can take a while; don't give up at the default 60s.
+        request.timeoutInterval = 120
+        request.setValue("Bearer \(sharedSecret)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "instructions": instructions,
+            "prompt": prompt,
+        ])
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let text = object["text"] as? String,
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }

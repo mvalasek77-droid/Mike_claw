@@ -64,6 +64,10 @@ interface Env {
   // slots can publish with real playable bytes.
   MUSIC_GEN_API_URL?: string;  // e.g. Suno-compatible POST endpoint
   MUSIC_GEN_API_KEY?: string;
+  // Text drafting fallback for Scout on devices without Apple Intelligence:
+  // /scout/draft proxies to Anthropic's Messages API with this key.
+  ANTHROPIC_API_KEY?: string;
+  SCOUT_TEXT_MODEL?: string;   // defaults to claude-opus-4-8
   VIDEO_GEN_API_URL?: string;  // e.g. Runway / Veo / Sora API
   VIDEO_GEN_API_KEY?: string;
   // Per-provider video-gen keys. When set, /scout/providers reports them
@@ -937,6 +941,56 @@ async function runVideoProvider(providerId: string | undefined, prompt: string,
     kind: "skipped",
     note: "No video provider configured. Set at least one of RUNWAY_API_KEY / LUMA_API_KEY / PIKA_API_KEY / KLING_API_KEY / VEO_API_KEY / SORA_API_KEY as a Wrangler secret to enable real video.",
   };
+}
+
+/** Scout text-drafting fallback — proxies to Anthropic's Messages API.
+ *  The app sends { instructions, prompt, max_tokens? }; we return { text }.
+ *  Keeps the API key server-side; the iOS client only ever sees the Worker.
+ *  Note: Opus 4.7+ rejects sampling params (temperature/top_p) — don't add them. */
+async function handleScoutDraft(request: Request, env: Env): Promise<Response> {
+  if (!env.ANTHROPIC_API_KEY) {
+    return json({ error: "Text generation not configured. Set ANTHROPIC_API_KEY as a Wrangler secret to enable the Scout drafting fallback." }, 503);
+  }
+  let body: { instructions?: string; prompt?: string; max_tokens?: number };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+  const instructions = (body.instructions ?? "").slice(0, 4000);
+  const prompt = (body.prompt ?? "").slice(0, 4000);
+  if (!prompt) return json({ error: "prompt is required" }, 400);
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: env.SCOUT_TEXT_MODEL || "claude-opus-4-8",
+      max_tokens: Math.min(4096, Math.max(256, body.max_tokens ?? 2048)),
+      ...(instructions ? { system: instructions } : {}),
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (!res.ok) {
+    return json({ error: `Claude API ${res.status}: ${(await res.text()).slice(0, 300)}` }, 502);
+  }
+  const data = await res.json() as {
+    content?: Array<{ type: string; text?: string }>;
+    stop_reason?: string;
+  };
+  const text = (data.content ?? [])
+    .filter((b) => b.type === "text")
+    .map((b) => b.text ?? "")
+    .join("\n")
+    .trim();
+  if (!text) {
+    return json({ error: `Model returned no text (stop_reason: ${data.stop_reason ?? "unknown"})` }, 502);
+  }
+  return json({ text });
 }
 
 function hasKey(providerId: string, env: Env): boolean {
@@ -2175,6 +2229,14 @@ export default {
         return await handleScoutGenerateMedia(request, env);
       }
 
+      // Text drafting fallback: devices without Apple Intelligence can't run
+      // the on-device Foundation Model, so the app routes Scout's manuscript/
+      // lyrics/screenplay drafting here instead. Proxies to Anthropic's
+      // Messages API; returns { text }. 503 until ANTHROPIC_API_KEY is set.
+      if (path === "/scout/draft" && method === "POST") {
+        return await handleScoutDraft(request, env);
+      }
+
       // Scout provider status: which generation providers are configured on
       // this Worker. The app uses this to set proposal budgets and routing.
       if (path === "/scout/providers" && method === "GET") {
@@ -2193,6 +2255,7 @@ export default {
           musicGenConfigured: !!(env.MUSIC_GEN_API_URL && env.MUSIC_GEN_API_KEY),
           videoGenConfigured: !!(env.VIDEO_GEN_API_URL && env.VIDEO_GEN_API_KEY)
                               || Object.values(videoProviders).some(Boolean),
+          textGenConfigured: !!env.ANTHROPIC_API_KEY,
           videoProviders,
         });
       }

@@ -106,6 +106,22 @@ final class MarketplaceStore: ObservableObject {
     /// films remain screenplay-only until you raise the budget."
     @Published var scoutFilmBudgetUSD: Double = 0 { didSet { persist() } }
 
+    /// "Let the Scout make media": when ON (default), the Scout authorizes
+    /// its own daily slate the moment it's composed and produces immediately —
+    /// the AI Editor's 85+ commercial bar still gates every publication, and
+    /// the deck records everything for audit. When OFF, every proposal waits
+    /// for manual authorization. Only free / text-drafted (foundation-provider)
+    /// proposals auto-produce; anything needing a PAID external provider
+    /// always waits for the admin.
+    @Published var scoutAutoProduceEnabled: Bool = {
+        let key = "scout.autoProduce.v1"
+        return UserDefaults.standard.object(forKey: key) == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: key)
+    }() {
+        didSet { UserDefaults.standard.set(scoutAutoProduceEnabled, forKey: "scout.autoProduce.v1") }
+    }
+
     /// Targets used by the feasibility check. ~10 scenes at 3 min/scene = 30 min.
     static let scoutFilmTargetScenes = 10
     static let scoutFilmTargetMinutes = 30
@@ -180,6 +196,43 @@ final class MarketplaceStore: ObservableObject {
     func attachScoutFeed(_ service: ScoutFeedService) {
         scoutFeed = service
         loadScoutProposals()
+    }
+
+    // MARK: - Scout drafting engines
+
+    /// True when SOME drafting engine can run: Apple's on-device model, or
+    /// the Worker's /scout/draft fallback (ANTHROPIC_API_KEY configured).
+    @MainActor
+    var scoutCanDraft: Bool {
+        OnDeviceAI.isReady || scoutFeed?.providers.textGenConfigured == true
+    }
+
+    /// Drafts long-form text on device when possible, else via the Worker.
+    private func draftLongFormAnywhere(type: MediaType, title: String, genre: String,
+                                       formula: String, masters: [String]) async -> String? {
+        if let text = await OnDeviceAI.draftLongForm(type: type, title: title, genre: genre,
+                                                     formula: formula, masters: masters) {
+            return text
+        }
+        guard scoutFeed?.providers.textGenConfigured == true else { return nil }
+        let spec = await OnDeviceAI.longFormSpec(type: type, title: title, genre: genre,
+                                                 formula: formula, masters: masters)
+        return await RemoteDraft.generate(instructions: spec.instructions, prompt: spec.prompt,
+                                          baseURL: payoutBaseURL, sharedSecret: payoutSharedSecret)
+    }
+
+    /// Drafts a synopsis on device when possible, else via the Worker.
+    private func draftSynopsisAnywhere(type: MediaType, title: String, genre: String,
+                                       existing: String) async -> String? {
+        if let text = await OnDeviceAI.draftSynopsis(type: type, title: title,
+                                                     genre: genre, existing: existing) {
+            return text
+        }
+        guard scoutFeed?.providers.textGenConfigured == true else { return nil }
+        let spec = await OnDeviceAI.synopsisSpec(type: type, title: title,
+                                                 genre: genre, existing: existing)
+        return await RemoteDraft.generate(instructions: spec.instructions, prompt: spec.prompt,
+                                          baseURL: payoutBaseURL, sharedSecret: payoutSharedSecret)
     }
 
     // MARK: - Scout proposals (admin-authorized production)
@@ -1672,6 +1725,30 @@ final class MarketplaceStore: ObservableObject {
             message: "Scout drafted \(composed.count) proposals — review the deck (admin) to authorize production. Budget: $\(String(format: "%.2f", composed.reduce(0) { $0 + $1.estimatedUSD })) + ~\(composed.reduce(0) { $0 + $1.estimatedTokens }) Foundation tokens.",
             kind: .brief, relatedItemID: nil), at: 0)
         trimScoutLog()
+
+        // Daily auto-production: when the admin has "Let the Scout make
+        // media" ON, free (foundation-provider) proposals go straight into
+        // the Editor-gated pipeline so the catalogue grows every cycle
+        // without a manual tap. Paid external-provider proposals always
+        // wait in the deck — auto-spending real money is never implied.
+        if scoutAutoProduceEnabled {
+            let toProduce = composed.filter { $0.providerNeeded == .foundation }
+            guard !toProduce.isEmpty else { return }
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "Auto-production is ON — producing \(toProduce.count) of today's slate now. The Editor still gates every piece at \(AIReviewResult.threshold)+/100; results land in the deck.",
+                kind: .brief, relatedItemID: nil), at: 0)
+            trimScoutLog()
+            let snapshot = catalog
+            for proposal in toProduce {
+                guard let idx = scoutProposals.firstIndex(where: { $0.id == proposal.id }),
+                      scoutProposals[idx].status == .pending else { continue }
+                scoutProposals[idx].status = .authorized
+                let authorized = scoutProposals[idx]
+                Task { @MainActor [weak self] in
+                    await self?.produceFromProposal(authorized, catalogSnapshot: snapshot)
+                }
+            }
+        }
     }
 
     private func providerAvailable(_ p: ScoutProposal.Provider) -> Bool {
@@ -1749,15 +1826,15 @@ final class MarketplaceStore: ObservableObject {
                                    cycleIndex: Int, fallbackGenre: String,
                                    catalogSnapshot: [MediaItem],
                                    fromProposal: UUID? = nil) async {
-        // Scout drafting runs on Apple's on-device Foundation Models. When the
-        // model isn't available (pre-iOS-26 device, Apple Intelligence off,
-        // model still downloading), `draftLongForm` returns nil and the draft
-        // falls back to a ~30-word placeholder synopsis — which the Editor
-        // correctly scores ~12/100. That burned all three attempts and
-        // reported "couldn't clear the bar", which read as the feature being
-        // broken. Fail fast with the REAL reason and put the proposal back to
-        // pending so the admin can authorize again once on-device AI is up.
-        if let reason = await OnDeviceAI.unavailabilityMessage {
+        // Scout drafting needs an engine: Apple's on-device model, or the
+        // Worker's Claude-backed /scout/draft fallback. With neither, drafts
+        // would collapse to a ~30-word placeholder synopsis the Editor rightly
+        // scores ~12/100 — which burned all three attempts and reported
+        // "couldn't clear the bar", reading as the feature being broken.
+        // Fail fast with the REAL reason and put the proposal back to pending
+        // so it can be authorized again once an engine is available.
+        if let reason = await OnDeviceAI.unavailabilityMessage,
+           scoutFeed?.providers.textGenConfigured != true {
             scoutLog.insert(ScoutEntry(date: .now,
                 message: "Scout can't draft media right now — \(reason)",
                 kind: .brief, relatedItemID: nil), at: 0)
@@ -1795,13 +1872,13 @@ final class MarketplaceStore: ObservableObject {
             // 2. Generate the long-form artifact the Editor will analyse.
             let formula = recipe?.formula ?? ""
             let masters = recipe?.masters ?? []
-            let longForm = await OnDeviceAI.draftLongForm(type: type, title: item.title,
-                                                          genre: item.genre,
-                                                          formula: formula, masters: masters)
+            let longForm = await draftLongFormAnywhere(type: type, title: item.title,
+                                                       genre: item.genre,
+                                                       formula: formula, masters: masters)
 
             // 3. Always also generate a short marketing synopsis for the card.
-            if let synopsis = await OnDeviceAI.draftSynopsis(type: type, title: item.title,
-                                                             genre: item.genre, existing: formula),
+            if let synopsis = await draftSynopsisAnywhere(type: type, title: item.title,
+                                                          genre: item.genre, existing: formula),
                !synopsis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 item.synopsis = synopsis
             }
@@ -1880,9 +1957,10 @@ final class MarketplaceStore: ObservableObject {
     /// scene. Stops growing a film when it hits its `targetMinutes`. Runs in
     /// the background; the proposal-driven new-film path is independent.
     private func extendInProgressFilms() async {
-        // No on-device model → every scene draft would no-op; skip the cycle.
-        // The Scout deck banner explains the state to the admin.
-        guard await OnDeviceAI.unavailabilityMessage == nil else { return }
+        // No drafting engine (neither on-device nor the Worker fallback) →
+        // every scene draft would no-op; skip the cycle. The Scout deck
+        // banner explains the state to the admin.
+        guard await scoutCanDraft else { return }
         let snapshot = catalog
         let inProgress = scoutDrops.enumerated().filter { $0.element.isFilmInProgress }
         for (i, _) in inProgress {
@@ -1907,7 +1985,7 @@ final class MarketplaceStore: ObservableObject {
                                            cycleIndex: scoutDrops.count + sceneNumber)
         let formula = recipe?.formula ?? ""
         let masters = recipe?.masters ?? []
-        let longForm = await OnDeviceAI.draftLongForm(type: .movie,
+        let longForm = await draftLongFormAnywhere(type: .movie,
                                                       title: "\(item.title) — Scene \(sceneNumber)",
                                                       genre: item.genre,
                                                       formula: formula, masters: masters)
