@@ -1749,6 +1749,27 @@ final class MarketplaceStore: ObservableObject {
                                    cycleIndex: Int, fallbackGenre: String,
                                    catalogSnapshot: [MediaItem],
                                    fromProposal: UUID? = nil) async {
+        // Scout drafting runs on Apple's on-device Foundation Models. When the
+        // model isn't available (pre-iOS-26 device, Apple Intelligence off,
+        // model still downloading), `draftLongForm` returns nil and the draft
+        // falls back to a ~30-word placeholder synopsis — which the Editor
+        // correctly scores ~12/100. That burned all three attempts and
+        // reported "couldn't clear the bar", which read as the feature being
+        // broken. Fail fast with the REAL reason and put the proposal back to
+        // pending so the admin can authorize again once on-device AI is up.
+        if let reason = await OnDeviceAI.unavailabilityMessage {
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "Scout can't draft media right now — \(reason)",
+                kind: .brief, relatedItemID: nil), at: 0)
+            trimScoutLog()
+            if let proposalID = fromProposal,
+               let pidx = scoutProposals.firstIndex(where: { $0.id == proposalID }) {
+                scoutProposals[pidx].status = .pending
+                scoutProposals[pidx].statusNote = reason
+            }
+            return
+        }
+
         // A proposal authorization always creates a NEW film. Extending
         // existing in-progress films happens separately in
         // `extendInProgressFilms()`, called once per Scout cycle. Mixing the
@@ -1859,6 +1880,9 @@ final class MarketplaceStore: ObservableObject {
     /// scene. Stops growing a film when it hits its `targetMinutes`. Runs in
     /// the background; the proposal-driven new-film path is independent.
     private func extendInProgressFilms() async {
+        // No on-device model → every scene draft would no-op; skip the cycle.
+        // The Scout deck banner explains the state to the admin.
+        guard await OnDeviceAI.unavailabilityMessage == nil else { return }
         let snapshot = catalog
         let inProgress = scoutDrops.enumerated().filter { $0.element.isFilmInProgress }
         for (i, _) in inProgress {

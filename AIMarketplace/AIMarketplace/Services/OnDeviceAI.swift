@@ -44,6 +44,18 @@ enum OnDeviceAI {
 
     static var isReady: Bool { status.isReady }
 
+    /// Admin-facing one-liner on why drafting is unavailable; nil when ready.
+    /// Surfaced in the Scout deck and Admin console so "Scout makes media"
+    /// never fails silently.
+    static var unavailabilityMessage: String? {
+        switch status {
+        case .ready: return nil
+        case .unavailable(let reason): return reason
+        case .unsupported:
+            return "This device or OS doesn't support Apple's on-device AI (requires iOS 26 with Apple Intelligence)."
+        }
+    }
+
     /// Generates text from the system model. Returns nil if unavailable or on error.
     static func generate(instructions: String, prompt: String) async -> String? {
         #if canImport(FoundationModels)
