@@ -55,7 +55,7 @@ final class GameFlow: ObservableObject {
     func exitFight() {
         switch appMode {
         case .training: screen = .trainingSetup
-        case .story:    screen = .menu            // abandon run, no win recorded
+        case .story:    ResumeStore.clear(); screen = .menu   // abandon run
         case .versus:
             versusTransport?.disconnect(); versusTransport = nil
             screen = .menu
@@ -110,7 +110,20 @@ final class GameFlow: ObservableObject {
         beginFight()
     }
 
-    func beginFight() { fightToken += 1; screen = .fight }
+    func beginFight() {
+        if appMode == .story { ResumeStore.save(playerID: playerSpec.id, ladderIndex: story.ladderIndex) }
+        fightToken += 1; screen = .fight
+    }
+
+    /// On launch, resume an interrupted story run (watch lock-out / suspend).
+    func restoreIfNeeded() {
+        guard screen == .title, let r = ResumeStore.load() else { return }
+        appMode = .story
+        playerSpec = CharacterSpec.byID(r.id)
+        story = StoryMode(playerID: r.id, startIndex: r.index)
+        cardKind = .preFight
+        screen = .storyCard
+    }
 
     /// Called by the fight scene when the match concludes.
     func matchEnded(winner: Side) {
@@ -119,7 +132,7 @@ final class GameFlow: ObservableObject {
             if winner == .player {
                 unlock(progression.recordWin())     // each floor cleared is a win
                 cardKind = .postWin; screen = .storyCard
-            } else { endKind = .defeat; screen = .ending }
+            } else { ResumeStore.clear(); endKind = .defeat; screen = .ending }
         case .training:
             screen = .trainingSetup            // back to the practice menu
         case .versus:
@@ -133,8 +146,10 @@ final class GameFlow: ObservableObject {
     /// Continue after the player's post-win story card.
     func continueStory() {
         newlyUnlocked = []
-        if story.advance() { cardKind = .preFight; screen = .storyCard }
-        else { unlock(progression.clearStory()); endKind = .victory; screen = .ending }
+        if story.advance() {
+            ResumeStore.save(playerID: playerSpec.id, ladderIndex: story.ladderIndex)
+            cardKind = .preFight; screen = .storyCard
+        } else { ResumeStore.clear(); unlock(progression.clearStory()); endKind = .victory; screen = .ending }
     }
 
     private func unlock(_ ids: [String]) {

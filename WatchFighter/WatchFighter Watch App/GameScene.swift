@@ -141,7 +141,11 @@ final class FightScene: SKScene {
 
     private func buildStage() {
         let bg = StageBuilder.build(stageSpec, size: size)
-        bg.name = "stage"; addChild(bg)
+        bg.name = "stage"
+        // Oversize + center so camera shake/zoom never reveals black at the edges.
+        bg.setScale(1.18)
+        bg.position = CGPoint(x: -size.width * 0.09, y: -size.height * 0.09)
+        addChild(bg)
         isNodeTreeReady = true
     }
     private func rebuildStage() { childNode(withName: "stage")?.removeFromParent(); buildStage() }
@@ -676,11 +680,16 @@ final class FightScene: SKScene {
     private func koZoom(at side: Side) {
         guard !reduceMotion else { return }
         let f = side == .player ? flow.combat.player : flow.combat.opponent
-        let target = CGPoint(x: laneToX(f.position), y: size.height * 0.5)
+        // Clamp the zoom target so the (scaled) view stays inside the stage —
+        // otherwise zooming on an edge fighter reveals/distorts the border.
+        let zoom: CGFloat = 0.82
+        let halfW = size.width * zoom / 2, halfH = size.height * zoom / 2
+        let tx = min(max(laneToX(f.position), halfW), size.width - halfW)
+        let target = CGPoint(x: tx, y: min(max(size.height * 0.5, halfH), size.height - halfH))
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         cam.removeAction(forKey: "kozoom")
         cam.run(.sequence([
-            .group([.move(to: target, duration: 0.12), .scale(to: 0.78, duration: 0.12)]),
+            .group([.move(to: target, duration: 0.12), .scale(to: zoom, duration: 0.12)]),
             .wait(forDuration: 0.18),
             .group([.move(to: center, duration: 0.22), .scale(to: 1.0, duration: 0.22)]),
         ]), withKey: "kozoom")

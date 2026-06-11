@@ -52,4 +52,24 @@ enum GameSettings {
         didSet { UserDefaults.standard.set(controls.rawValue, forKey: padKey) }
     }
 }
+
+/// Saves an in-progress STORY run so a watch lock-out / suspend can resume it
+/// instead of losing your place. (Progression/unlocks persist separately.)
+enum ResumeStore {
+    private static let idKey = "eternalcombat.resume.id"
+    private static let idxKey = "eternalcombat.resume.idx"
+
+    static func save(playerID: String, ladderIndex: Int) {
+        UserDefaults.standard.set(playerID, forKey: idKey)
+        UserDefaults.standard.set(ladderIndex, forKey: idxKey)
+    }
+    static func load() -> (id: String, index: Int)? {
+        guard let id = UserDefaults.standard.string(forKey: idKey) else { return nil }
+        return (id, UserDefaults.standard.integer(forKey: idxKey))
+    }
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: idKey)
+        UserDefaults.standard.removeObject(forKey: idxKey)
+    }
+}
 #endif

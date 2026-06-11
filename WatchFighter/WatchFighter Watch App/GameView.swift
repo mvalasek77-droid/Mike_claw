@@ -69,56 +69,46 @@ struct FightView: View {
         .onAppear { focused = true }
     }
 
-    /// On-screen virtual gamepad: hold-to-walk D-pad on the left, action buttons
-    /// on the right, block + jump in the corners. Crown still charges the meter.
+    /// On-screen virtual gamepad: walk D-pad + actions, in two centered rows
+    /// lifted clear of the super-meter bar and the round-screen corners.
     private var gamepad: some View {
         VStack {
             Spacer()
-            HStack(alignment: .bottom) {
-                // Left: movement
-                VStack(spacing: 3) {
-                    PadButton("↑") { scene.padTap(.jump) }
-                    HStack(spacing: 3) {
-                        HoldButton("◀", onDown: { scene.padMove(-1) }, onUp: { scene.padMove(0) })
-                        HoldButton("▶", onDown: { scene.padMove(1) }, onUp: { scene.padMove(0) })
-                    }
-                    HoldButton("BLK", tint: .blue,
-                               onDown: { scene.padBlock(true) }, onUp: { scene.padBlock(false) })
-                }
-                Spacer()
-                // Right: attacks
-                VStack(spacing: 3) {
-                    HStack(spacing: 3) {
-                        PadButton("L", tint: .cyan) { scene.padTap(.lightAttack) }
-                        PadButton("H", tint: .orange) { scene.padTap(.heavyAttack) }
-                    }
-                    HStack(spacing: 3) {
-                        PadButton("S", tint: .yellow) { scene.padTap(.special) }
-                        PadButton("GR", tint: .purple) { scene.padTap(.grab) }
-                    }
-                    PadButton("P", tint: .green) { scene.padTap(.parry) }
-                }
+            HStack(spacing: 5) {
+                HoldButton("◀", onDown: { scene.padMove(-1) }, onUp: { scene.padMove(0) })
+                HoldButton("▶", onDown: { scene.padMove(1) }, onUp: { scene.padMove(0) })
+                PadButton("↑", tint: .green) { scene.padTap(.jump) }
+                HoldButton("BLK", tint: .blue,
+                           onDown: { scene.padBlock(true) }, onUp: { scene.padBlock(false) })
             }
-            .padding(.horizontal, 3).padding(.bottom, 2)
+            HStack(spacing: 5) {
+                PadButton("P", tint: .cyan) { scene.padTap(.lightAttack) }
+                PadButton("K", tint: .orange) { scene.padTap(.heavyAttack) }
+                PadButton("SP", tint: .yellow) { scene.padTap(.special) }
+                PadButton("GR", tint: .purple) { scene.padTap(.grab) }
+            }
+            .padding(.bottom, 16)
         }
         .ignoresSafeArea()
     }
 
-    /// Crown mode: the Crown walks; these buttons sit in the dark ground strip
-    /// under the fighters for jump/punch/kick/block/special/throw.
+    /// Crown mode: the Crown walks; these action buttons sit in two centered rows
+    /// in the dark ground area (clear of the meter bar and the curved corners).
     private var crownStrip: some View {
         VStack {
             Spacer()
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 PadButton("P", tint: .cyan) { scene.padTap(.lightAttack) }       // punch
                 PadButton("K", tint: .orange) { scene.padTap(.heavyAttack) }     // kick
                 PadButton("↑", tint: .green) { scene.padTap(.jump) }             // jump
+            }
+            HStack(spacing: 6) {
                 HoldButton("BLK", tint: .blue,
                            onDown: { scene.padBlock(true) }, onUp: { scene.padBlock(false) })
                 PadButton("SP", tint: .yellow) { scene.padTap(.special) }
                 PadButton("GR", tint: .purple) { scene.padTap(.grab) }
             }
-            .padding(.horizontal, 3).padding(.bottom, 3)
+            .padding(.bottom, 16)
         }
         .ignoresSafeArea()
     }

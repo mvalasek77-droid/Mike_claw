@@ -23,6 +23,7 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: flow.screen)
+        .onAppear { flow.restoreIfNeeded() }
     }
 
     @ViewBuilder private var fightContent: some View {
@@ -162,11 +163,15 @@ struct CharacterSelectView: View {
                         VStack(spacing: 2) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 6)
-                                    .fill(unlocked ? spec.bodyColor.color : Color(white: 0.18))
-                                    .frame(height: 38)
+                                    .fill(LinearGradient(colors: unlocked
+                                        ? [spec.bodyColor.color, spec.bodyColor.color.opacity(0.4)]
+                                        : [Color(white: 0.2), Color(white: 0.12)],
+                                        startPoint: .top, endPoint: .bottom))
+                                    .frame(height: 40)
                                     .overlay(RoundedRectangle(cornerRadius: 6)
                                         .stroke(unlocked ? spec.accentColor.color : .gray, lineWidth: 2))
-                                if !unlocked { Image(systemName: "lock.fill").foregroundStyle(.gray) }
+                                if unlocked { FaceView(spec: spec, size: 32) }
+                                else { Image(systemName: "lock.fill").foregroundStyle(.gray) }
                             }
                             Text(unlocked ? spec.name : (flow.progression.unlockHint(spec.id) ?? "Locked"))
                                 .font(.system(size: unlocked ? 9 : 7, weight: .bold))
@@ -179,6 +184,44 @@ struct CharacterSelectView: View {
                 }
             }.padding(.horizontal, 6)
         }.background(Color.black.ignoresSafeArea())
+    }
+}
+
+/// Procedural "arcade face" portrait built from the character's skin, hair and
+/// accent colours — no art assets. Used on select tiles and VS cards.
+struct FaceView: View {
+    let spec: CharacterSpec
+    var size: CGFloat = 32
+    var body: some View {
+        ZStack {
+            // Hair back (skip for bald).
+            if spec.hairStyle != .bald {
+                Ellipse().fill(spec.hairColor.color)
+                    .frame(width: size * 0.92, height: size * 0.78)
+                    .offset(y: -size * 0.16)
+            }
+            // Face.
+            Circle().fill(spec.skin.color)
+                .frame(width: size * 0.66, height: size * 0.66)
+                .overlay(Circle().stroke(spec.skin.color.opacity(0.0001), lineWidth: 0))
+            // Hair fringe across the brow.
+            if spec.hairStyle != .bald {
+                Capsule().fill(spec.hairColor.color)
+                    .frame(width: size * 0.62, height: size * 0.18)
+                    .offset(y: -size * 0.2)
+            }
+            // Eyes.
+            HStack(spacing: size * 0.16) {
+                Capsule().fill(.black).frame(width: size * 0.07, height: size * 0.12)
+                Capsule().fill(.black).frame(width: size * 0.07, height: size * 0.12)
+            }
+            .offset(y: -size * 0.02)
+            // Accent brow/headband stripe (identity colour).
+            RoundedRectangle(cornerRadius: 1).fill(spec.accentColor.color)
+                .frame(width: size * 0.5, height: size * 0.05)
+                .offset(y: -size * 0.14)
+        }
+        .frame(width: size, height: size)
     }
 }
 
@@ -379,9 +422,7 @@ struct StoryCardView: View {
                                  startPoint: .top, endPoint: .bottom))
             .frame(width: 50, height: 70)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(spec.accentColor.color, lineWidth: 2))
-            .overlay(Text(String(spec.name.prefix(1)))
-                .font(.system(size: 34, weight: .black, design: .rounded))
-                .foregroundStyle(spec.accentColor.color.opacity(0.9)))
+            .overlay(FaceView(spec: spec, size: 40))
     }
 
     private var vsBadge: some View {

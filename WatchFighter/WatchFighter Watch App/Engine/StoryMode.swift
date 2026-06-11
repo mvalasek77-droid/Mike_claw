@@ -16,9 +16,10 @@ struct StoryMode {
     private(set) var ladderIndex = 0
     private(set) var isComplete = false
 
-    init(playerID: String, beats: [StoryBeat] = StoryScript.ladder) {
+    init(playerID: String, beats: [StoryBeat] = StoryScript.ladder, startIndex: Int = 0) {
         self.playerID = playerID
         self.beats = beats
+        self.ladderIndex = min(max(0, startIndex), beats.count - 1)
     }
 
     var currentBeat: StoryBeat { beats[min(ladderIndex, beats.count - 1)] }

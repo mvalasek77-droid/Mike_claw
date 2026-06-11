@@ -50,13 +50,37 @@ enum StageBuilder {
         ground.zPosition = -6
         root.addChild(ground)
 
-        // Ground line.
+        // Perspective floor grid — reads instantly as an arcade fighting stage.
+        let grid = SKShapeNode()
+        let gp = CGMutablePath()
+        let vanish = CGPoint(x: size.width / 2, y: groundH)        // horizon vanishing point
+        let cols = 9
+        for i in 0...cols {                                        // converging verticals
+            let x = size.width * CGFloat(i) / CGFloat(cols)
+            gp.move(to: CGPoint(x: x, y: 0))
+            gp.addLine(to: vanish)
+        }
+        var y: CGFloat = 0                                         // horizontals, closer near horizon
+        var step = groundH * 0.34
+        while y < groundH - 1 {
+            gp.move(to: CGPoint(x: 0, y: y)); gp.addLine(to: CGPoint(x: size.width, y: y))
+            y += step; step *= 0.62
+        }
+        grid.path = gp
+        grid.strokeColor = spec.accent.skColor
+        grid.lineWidth = 0.8
+        grid.alpha = 0.32
+        grid.zPosition = -5
+        root.addChild(grid)
+
+        // Bright horizon line.
         let line = SKSpriteNode(color: spec.accent.skColor,
-                                size: CGSize(width: size.width, height: 1.5))
+                                size: CGSize(width: size.width, height: 1.8))
         line.anchorPoint = CGPoint(x: 0, y: 0)
         line.position = CGPoint(x: 0, y: groundH)
-        line.alpha = 0.6
-        line.zPosition = -5
+        line.alpha = 0.75
+        line.blendMode = .add
+        line.zPosition = -4
         root.addChild(line)
 
         return root
