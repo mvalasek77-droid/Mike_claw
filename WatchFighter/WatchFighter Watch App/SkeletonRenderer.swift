@@ -45,11 +45,21 @@ final class SkeletonRenderer: FighterRenderer {
     private let frontFootN = SKShapeNode(circleOfRadius: 3.2)
     private let backFootN = SKShapeNode(circleOfRadius: 2.8)
 
-    // Face.
+    // Signature identity (weapon / gloves).
+    private let blade = SKShapeNode()
+    private var hasBlade = false
+    private var bladeColor: SKColor = .white
+    private var frontFistColor: SKColor = .white
+
+    // Face + figure.
     private let hairCap: SKShapeNode
     private let skinHead: SKShapeNode
+    private let shoulders: SKShapeNode
     private let eyeL = SKShapeNode(circleOfRadius: 0.95)
     private let eyeR = SKShapeNode(circleOfRadius: 0.95)
+    private let ribbonIsHair: Bool
+    private let hairCol: SKColor
+    private let torsoWidthMul: CGFloat
 
     private var current: Pose
     private let outfit: SKColor, outfitDark: SKColor, accent: SKColor
@@ -105,8 +115,14 @@ final class SkeletonRenderer: FighterRenderer {
         limbScale = spec.build.limbScale
         headR = 6.6 * spec.build.headScale
         current = Animator.idle(clock: 0)
+        hairCol = spec.hairColor.skColor
+        ribbonIsHair = spec.hairStyle == .long
+        torsoWidthMul = spec.feminine ? 0.82 : 1.0
         skinHead = SKShapeNode(circleOfRadius: headR)
         hairCap = SKShapeNode(ellipseOf: CGSize(width: headR * 2.1, height: headR * 1.35))
+        // Broad shoulders for men, narrow for women — the clearest dimorphism cue.
+        let shoulderW = (spec.feminine ? 11.0 : 17.0) * spec.build.widthScale
+        shoulders = SKShapeNode(ellipseOf: CGSize(width: shoulderW, height: 7))
 
         shadow.fillColor = SKColor(white: 0, alpha: 0.35); shadow.strokeColor = .clear
         shadow.zPosition = -1; root.addChild(shadow)
@@ -116,9 +132,15 @@ final class SkeletonRenderer: FighterRenderer {
         glow.size = CGSize(width: 50, height: 50); glow.alpha = 0.16; glow.zPosition = -0.5
         root.addChild(glow)
 
-        ribbonNode.strokeColor = accent; ribbonNode.lineWidth = 4
+        // The verlet ribbon is HAIR for long-haired fighters, else an energy trail.
+        if ribbonIsHair {
+            ribbonNode.strokeColor = hairCol; ribbonNode.lineWidth = 5.5
+            ribbonNode.blendMode = .alpha; ribbonNode.alpha = 0.96; ribbonNode.zPosition = -0.3
+        } else {
+            ribbonNode.strokeColor = accent; ribbonNode.lineWidth = 4
+            ribbonNode.blendMode = .add; ribbonNode.alpha = 0.55; ribbonNode.zPosition = -0.4
+        }
         ribbonNode.lineCap = .round; ribbonNode.lineJoin = .round
-        ribbonNode.blendMode = .add; ribbonNode.alpha = 0.55; ribbonNode.zPosition = -0.4
         root.addChild(ribbonNode)
         ribbon = Array(repeating: .zero, count: ribbonCount); ribbonPrev = ribbon
 
@@ -128,13 +150,33 @@ final class SkeletonRenderer: FighterRenderer {
         backFist.fillColor = skinDark; backFootN.fillColor = outfitDark
         for n in [backFist, backFootN] { n.strokeColor = .clear; root.addChild(n) }
         tint(torsoS, outfit); root.addChild(torsoS)
+        shoulders.fillColor = outfit; shoulders.strokeColor = outfitDark; shoulders.lineWidth = 1
+        shoulders.zPosition = 0.1; root.addChild(shoulders)
         tint(frontLegS, outfit); tint(frontArmS, skin)
         root.addChild(frontLegS); root.addChild(frontArmS)
         frontFist.fillColor = skin; frontFootN.fillColor = outfit
         for n in [frontFist, frontFootN] { n.strokeColor = .clear; root.addChild(n) }
+        frontFistColor = skin
 
-        // Face.
-        hairCap.fillColor = accent; hairCap.strokeColor = .clear; root.addChild(hairCap)
+        // Signature identity: a weapon for blades, big gloves for the boxer.
+        if spec.hasWeapon {
+            hasBlade = true
+            bladeColor = spec.weaponColor.skColor
+            blade.strokeColor = bladeColor; blade.lineWidth = 2.6
+            blade.lineCap = .round; blade.zPosition = 2; blade.glowWidth = 0.5
+            root.addChild(blade)
+        }
+        if spec.bigGloves {
+            frontFist.setScale(2.0); backFist.setScale(1.8)
+            frontFistColor = SKColor(red: 0.82, green: 0.10, blue: 0.10, alpha: 1)
+            frontFist.fillColor = frontFistColor
+            backFist.fillColor = SKColor(red: 0.6, green: 0.08, blue: 0.08, alpha: 1)
+        }
+
+        // Face: hair colour per character; bald fighters skip the hair cap.
+        hairCap.fillColor = hairCol; hairCap.strokeColor = .clear
+        hairCap.isHidden = (spec.hairStyle == .bald)
+        root.addChild(hairCap)
         skinHead.fillColor = skin; skinHead.strokeColor = spec.skin.darkened(0.55); skinHead.lineWidth = 1
         root.addChild(skinHead)
         eyeL.fillColor = .black; eyeR.fillColor = .black
@@ -172,13 +214,24 @@ final class SkeletonRenderer: FighterRenderer {
         let fH = P(current.frontHand), bH = P(current.backHand)
         let fF = P(current.frontFoot), bF = P(current.backFoot)
 
-        bone(torsoS, pelvis, chest, 13 * widthScale)
+        bone(torsoS, pelvis, chest, 13 * widthScale * torsoWidthMul)
+        shoulders.position = CGPoint(x: chest.x, y: chest.y - 1)
         bone(backArmS, chest, bH, 6 * limbScale)
         bone(backLegS, pelvis, bF, 7 * limbScale)
         bone(frontArmS, chest, fH, 6.5 * limbScale)
         bone(frontLegS, pelvis, fF, 7.5 * limbScale)
         frontFist.position = fH; backFist.position = bH
         frontFootN.position = fF; backFootN.position = bF
+
+        // Weapon: a blade extending from the front fist along the forearm.
+        if hasBlade {
+            let ax = fH.x - chest.x, ay = fH.y - chest.y
+            let m = max(0.001, (ax * ax + ay * ay).squareRoot())
+            let ux = ax / m, uy = ay / m
+            let tip = CGPoint(x: fH.x + ux * 26 * widthScale, y: fH.y + uy * 26 * widthScale)
+            let p = CGMutablePath(); p.move(to: fH); p.addLine(to: tip)
+            blade.path = p
+        }
 
         skinHead.position = headP
         hairCap.position = CGPoint(x: headP.x - facing * 0.6, y: headP.y + headR * 0.55)
@@ -196,14 +249,19 @@ final class SkeletonRenderer: FighterRenderer {
         frontArmS.color = hit ? .white : skin
         frontLegS.color = hit ? .white : outfit
         skinHead.fillColor = hit ? .white : skin
-        frontFist.fillColor = hit ? .white : skin
+        frontFist.fillColor = hit ? .white : frontFistColor
+        if hasBlade { blade.strokeColor = hit ? .white : bladeColor }
 
         let base: CGFloat = f.state == .active ? 0.9 : (f.state == .startup ? 0.45 : 0.16)
         glow.position = chest
         glow.alpha = hit ? 0.7 : base * (0.85 + 0.15 * sin(clock * 6))
         glow.color = hit ? .white : accent
 
-        updateRibbon(anchor: CGPoint(x: chest.x - facing * 7, y: chest.y + 5), hit: hit)
+        // Long hair flows from the back of the head; energy trail from the chest.
+        let anchor = ribbonIsHair
+            ? CGPoint(x: headP.x - facing * 3, y: headP.y + headR * 0.4)
+            : CGPoint(x: chest.x - facing * 7, y: chest.y + 5)
+        updateRibbon(anchor: anchor, hit: hit && !ribbonIsHair)
     }
 
     /// Verlet integration — the ribbon flows with gravity + inertia and rigid
@@ -234,7 +292,7 @@ final class SkeletonRenderer: FighterRenderer {
         path.move(to: ribbon[0])
         for i in 1..<ribbonCount { path.addLine(to: ribbon[i]) }
         ribbonNode.path = path
-        ribbonNode.strokeColor = hit ? .white : accent
+        if !ribbonIsHair { ribbonNode.strokeColor = hit ? .white : accent }
     }
 }
 #endif

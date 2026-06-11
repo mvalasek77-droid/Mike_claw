@@ -58,12 +58,19 @@ final class SoundEngine {
 
     private func musicBuffer() -> AVAudioPCMBuffer? {
         let sr = format.sampleRate
-        let beat = 0.15                      // fast, driving — arcade-fighter energy
-        // Two original voices: a pulsing bass and a higher lead arpeggio (0 = rest).
-        let bass: [Double] = [55, 55, 0, 55, 73.42, 0, 55, 0,
-                              49, 49, 0, 49, 65.41, 0, 73.42, 82.41]
-        let lead: [Double] = [220, 0, 261.63, 329.63, 0, 293.66, 392, 0,
-                              220, 0, 246.94, 329.63, 392, 0, 440, 392]
+        let beat = 0.14                      // fast, driving — arcade-fighter energy
+        // An original 32-step hook over an Am–G–F–E descent (a catchy, nostalgic
+        // minor progression). Lead melody + walking bass + kick + snare. 0 = rest.
+        let lead: [Double] = [
+            440, 0, 523.25, 659.25,  587.33, 0, 523.25, 440,
+            392, 0, 440, 523.25,     587.33, 0, 659.25, 0,
+            440, 0, 523.25, 659.25,  783.99, 0, 659.25, 587.33,
+            523.25, 0, 440, 392,     440, 0, 0, 0,
+        ]
+        let bass: [Double] = [
+            110, 0, 110, 0,  98, 0, 98, 0,   87.31, 0, 87.31, 0,  82.41, 0, 82.41, 98,
+            110, 0, 110, 0,  98, 0, 98, 0,   87.31, 0, 87.31, 0,  82.41, 82.41, 98, 110,
+        ]
         let n = max(bass.count, lead.count)
         let stepFrames = Int(sr * beat)
         let total = AVAudioFrameCount(stepFrames * n)
@@ -71,17 +78,25 @@ final class SoundEngine {
               let ch = buf.floatChannelData?[0] else { return nil }
         buf.frameLength = total
         var i = 0
+        var seed: UInt64 = 0x9E3779B97F4A7C15
+        func noise() -> Double {            // deterministic snare noise
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            return Double(Int64(bitPattern: seed)) / Double(Int64.max)
+        }
         for s in 0..<n {
             let bf = bass[s % bass.count], lf = lead[s % lead.count]
-            // A short "kick" thump on the downbeat of each pair of steps.
-            let kick = s % 2 == 0
+            let kick = s % 4 == 0, snare = s % 4 == 2
             for k in 0..<stepFrames {
                 let t = Double(k) / sr
                 var v = 0.0
-                if bf > 0 { v += (sin(2 * .pi * bf * t) >= 0 ? 1 : -1) * exp(-2.2 * t / beat) * 0.5 }
-                if lf > 0 { v += sin(2 * .pi * lf * t) * exp(-3.5 * t / beat) * 0.35 }
-                if kick { v += sin(2 * .pi * 70 * t) * exp(-22 * t) * 0.5 }   // kick drum
-                if i < Int(total) { ch[i] = Float(max(-1, min(1, v)) * 0.11); i += 1 }
+                if bf > 0 { v += (sin(2 * .pi * bf * t) >= 0 ? 1 : -1) * exp(-2.0 * t / beat) * 0.42 }
+                if lf > 0 {
+                    let env = exp(-2.4 * t / beat)
+                    v += (sin(2 * .pi * lf * t) * 0.7 + sin(4 * .pi * lf * t) * 0.18) * env * 0.34
+                }
+                if kick { v += sin(2 * .pi * 58 * t) * exp(-19 * t) * 0.6 }
+                if snare { v += noise() * exp(-32 * t) * 0.22 }
+                if i < Int(total) { ch[i] = Float(max(-1, min(1, v)) * 0.13); i += 1 }
             }
         }
         return buf

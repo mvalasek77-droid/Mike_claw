@@ -350,6 +350,43 @@ extension CharacterSpec {
         }
     }
 
+    /// Sex/figure read for proportions (broad shoulders vs. narrower frame).
+    var feminine: Bool {
+        ["volt", "ember", "frost", "marina", "sable", "vesper", "nova"].contains(id)
+    }
+
+    var hairStyle: HairStyle {
+        switch id {
+        case "bastion", "onyx", "titus": return .bald
+        case "vesper", "marina", "sable", "ember", "frost", "mirage": return .long
+        default: return .short
+        }
+    }
+
+    /// Distinct hair colours (not tied to the accent) for variety/ethnicity.
+    var hairColor: RGBA {
+        switch id {
+        case "volt":    return RGBA(0.85, 0.90, 1.0)   // electric white-blue
+        case "ember":   return RGBA(0.85, 0.30, 0.12)  // fiery
+        case "frost":   return RGBA(0.90, 0.92, 0.98)  // platinum
+        case "mirage":  return RGBA(0.45, 0.30, 0.65)  // violet
+        case "marina":  return RGBA(0.62, 0.45, 0.22)  // sun-bleached
+        case "sable":   return RGBA(0.08, 0.06, 0.07)  // jet black
+        case "vesper":  return RGBA(0.10, 0.09, 0.11)  // black
+        case "corsair": return RGBA(0.20, 0.12, 0.07)  // dark brown
+        case "nova":    return RGBA(0.22, 0.15, 0.10)
+        case "feng":    return RGBA(0.10, 0.09, 0.10)
+        case "groove":  return RGBA(0.20, 0.20, 0.22)  // greying
+        case "verse":   return RGBA(0.09, 0.08, 0.09)
+        default:        return RGBA(0.14, 0.10, 0.08)   // tetsu + fallback (dark brown)
+        }
+    }
+
+    /// Procedural identity (the SF2 "readable silhouette" idea, done originally).
+    var hasWeapon: Bool { id == "vesper" || id == "corsair" }
+    var weaponColor: RGBA { id == "vesper" ? RGBA(0.88, 0.90, 0.97) : RGBA(0.72, 0.62, 0.32) }
+    var bigGloves: Bool { id == "titus" }
+
     /// Body type for the procedural renderer's proportions.
     var build: Build {
         switch id {

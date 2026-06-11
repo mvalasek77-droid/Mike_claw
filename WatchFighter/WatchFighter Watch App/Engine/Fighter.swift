@@ -40,6 +40,8 @@ struct RGBA: Equatable {
 
 /// Body type — drives the procedural fighter's proportions so silhouettes read
 /// as powerful, athletic, or graceful (tasteful presence, not caricature).
+enum HairStyle: Equatable { case short, long, bald }
+
 enum Build: Equatable {
     case heavy      // bulky, broad — bruisers
     case athletic   // balanced default
