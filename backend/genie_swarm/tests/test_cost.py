@@ -127,9 +127,9 @@ async def test_orchestrator_halts_cleanly_on_cost_cap(tmp_path: Path, recorded_l
         workspace_root=tmp_path / "ws",
         parallel_build=False, parallel_test=False,
         skip_tests=False, max_retries=0, max_crash_recoveries=0,
-        # Default model is Opus → $15/M input, $75/M output.
-        # First agent: 200k * $15/M + 50k * $75/M = $3 + $3.75 = $6.75
-        cost_cap_usd=4.0,
+        # Default model is Opus → $5/M input, $25/M output.
+        # First agent: 200k * $5/M + 50k * $25/M = $1 + $1.25 = $2.25
+        cost_cap_usd=2.0,
     )
     orch = SwarmOrchestrator(llm=recorded_llm, bus=bus, config=config)
 

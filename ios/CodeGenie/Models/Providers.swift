@@ -89,8 +89,8 @@ enum ModelCatalogue {
             id: "claude-opus-4-7", provider: .anthropic,
             displayName: "Claude Opus 4.7",
             tagline: "Best Swift code, deepest reasoning",
-            inputUSDPerMTok: 15.0, outputUSDPerMTok: 75.0,
-            contextWindow: 200_000,
+            inputUSDPerMTok: 5.0, outputUSDPerMTok: 25.0,
+            contextWindow: 1_000_000,
             bestFor: "Architecture, hard refactors, gnarly bugs",
             tier: .flagship
         ),

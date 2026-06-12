@@ -5,9 +5,12 @@ import Foundation
 /// daemon can be restarted without re-pairing the iPhone.
 ///
 /// We deliberately do **not** put this in the keychain — the daemon
-/// runs unattended and the token has no value off the user's machine
-/// (the WebSocket only listens on local interfaces). 0600 perms on the
-/// file are sufficient.
+/// runs unattended. NOTE the honest threat model: the listener binds
+/// all interfaces and advertises over Bonjour so the iPhone can reach
+/// it across the LAN, and there is no TLS — so this token IS the only
+/// thing standing between anyone on the same Wi-Fi and the companion's
+/// commands (open Xcode, fill ASC pages). 0600 file perms protect it
+/// at rest; treat shared/untrusted networks accordingly.
 enum TokenStore {
     private static var path: URL {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

@@ -159,15 +159,23 @@ private struct TranscriptRow: View {
             let preview = lines.prefix(3).joined(separator: " · ")
             return "remembers: \(preview)"
         case "testflight.upload":
-            let bid = (event.payload["build_id"] as? String) ?? "—"
-            return "uploaded to TestFlight (build \(bid))"
+            // ok=false previously rendered as "uploaded to TestFlight" —
+            // a FAILED upload displayed as success. Never hide failure.
+            let ok = (event.payload["ok"] as? Bool) ?? false
+            if ok {
+                let bid = (event.payload["build_id"] as? String) ?? "—"
+                return "Uploaded to TestFlight ✓ (build \(bid))"
+            }
+            let preview = (event.payload["preview"] as? String) ?? "no detail"
+            return "TestFlight upload FAILED — \(preview)"
         case "testflight.upload.progress":
             let phase = (event.payload["phase"] as? String) ?? "?"
             let line  = (event.payload["line"] as? String) ?? ""
             return "[\(phase)] \(line)"
         case "testflight.status":
             let state = (event.payload["state"] as? String) ?? "?"
-            return "TestFlight: \(state)"
+            let detail = (event.payload["detail"] as? String) ?? ""
+            return Self.testFlightStatusCopy(state: state, detail: detail)
         case "job.state":
             return "state → \((event.payload["state"] as? String) ?? "?")"
         case "done":
@@ -177,6 +185,40 @@ private struct TranscriptRow: View {
             return (event.payload["message"] as? String) ?? "error"
         default:
             return event.type
+        }
+    }
+
+    /// Plain-English TestFlight processing states. Raw Apple/backend state
+    /// strings ("POLL_ERROR", "INVALID") are jargon to the non-developers
+    /// this app is for — every state says what's happening AND what to do.
+    static func testFlightStatusCopy(state: String, detail: String) -> String {
+        switch state {
+        case "PROCESSING":
+            return "Apple is processing the build — 5–30 minutes is normal."
+        case "VALID":
+            return "Build processed ✓ — it's live in TestFlight now."
+        case "WAITING_FOR_BUILD":
+            return detail.isEmpty
+                ? "Waiting for Apple to register the upload…"
+                : "Waiting on Apple: \(detail)"
+        case "INVALID", "FAILED":
+            return "Apple rejected the binary during processing. Check the email from App Store Connect for the exact reason — most often a missing icon size, export-compliance answer, or entitlement."
+        case "EXPIRED":
+            return "This build expired before processing finished. Upload a fresh build."
+        case "CREDENTIALS_ERROR", "AUTH_ERROR":
+            return detail.isEmpty
+                ? "Apple rejected the App Store Connect key — re-check Key ID, Issuer ID and the .p8 file in Settings → Apple credentials."
+                : detail
+        case "POLL_SKIPPED":
+            return "Upload finished ✓. To track Apple's processing automatically, add an App Store Connect API key in Settings → Apple credentials — otherwise check App Store Connect → TestFlight yourself in ~15 minutes."
+        case "POLL_ERROR":
+            return "Couldn't reach App Store Connect (will keep retrying). \(detail)"
+        case "TIMEOUT":
+            return detail.isEmpty
+                ? "Stopped watching after an hour. Check App Store Connect → TestFlight directly — the build will appear there when Apple finishes."
+                : detail
+        default:
+            return "TestFlight: \(state)\(detail.isEmpty ? "" : " — \(detail)")"
         }
     }
 }

@@ -40,7 +40,33 @@ public final class CompanionServer {
         let port = try await waitForPort()
         // Bonjour
         listener.service = NWListener.Service(name: "CodeGenie", type: "_codegenie-companion._tcp")
-        return Pairing(host: "127.0.0.1", port: port, token: token)
+        // The pairing host goes into the QR/paste URL — the fallback for
+        // when Bonjour is blocked. It must be the Mac's LAN address; the
+        // old hardcoded 127.0.0.1 made the iPhone connect to ITSELF, so
+        // the fallback was broken exactly when it was needed.
+        return Pairing(host: Self.lanIPv4() ?? "127.0.0.1", port: port, token: token)
+    }
+
+    /// Best-effort LAN IPv4 (prefers en0 — built-in Wi-Fi/Ethernet).
+    private static func lanIPv4() -> String? {
+        var best: String?
+        var ifaddrPtr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddrPtr) == 0, let first = ifaddrPtr else { return nil }
+        defer { freeifaddrs(ifaddrPtr) }
+        for ptr in sequence(first: first, next: { $0.pointee.ifa_next }) {
+            let ifa = ptr.pointee
+            guard let sa = ifa.ifa_addr, sa.pointee.sa_family == UInt8(AF_INET) else { continue }
+            let name = String(cString: ifa.ifa_name)
+            guard name.hasPrefix("en") else { continue }   // skip lo0, utun, awdl…
+            var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            guard getnameinfo(sa, socklen_t(sa.pointee.sa_len),
+                              &host, socklen_t(host.count),
+                              nil, 0, NI_NUMERICHOST) == 0 else { continue }
+            let address = String(cString: host)
+            if name == "en0" { return address }
+            if best == nil { best = address }
+        }
+        return best
     }
 
     public func stop() {

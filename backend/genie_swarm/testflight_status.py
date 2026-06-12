@@ -66,15 +66,56 @@ async def watch(
     `http_get` is injected for tests; in production we use the inline
     `_default_http_get` that hits the real ASC API."""
     fetcher = http_get or _default_http_get
+
+    # Fail fast on credentials that can NEVER work — without this the
+    # poller spent a full hour emitting raw POLL_ERROR spam (Apple 401s
+    # an unsigned token on every poll) and the user was never told the
+    # actual problem or what to do about it.
+    problem = credentials_problem(config)
+    if problem:
+        await events.emit("testflight.status", state="CREDENTIALS_ERROR", detail=problem)
+        return {"state": "CREDENTIALS_ERROR", "raw": None}
+
     deadline = time.time() + config.timeout_s
     backoff = config.poll_interval_s
     last_state: str | None = None
+    app_id: str | None = None
 
     while time.time() < deadline:
         token = mint_jwt(config)
         try:
-            body = await fetcher(_build_endpoint(config), token)
+            # ASC's /v1/builds endpoint can't filter by bundle id directly —
+            # resolve the numeric app id once via /v1/apps, then poll builds.
+            if app_id is None:
+                apps_body = await fetcher(_apps_endpoint(config), token)
+                app_id = _extract_app_id(apps_body)
+                if app_id is None:
+                    await events.emit(
+                        "testflight.status",
+                        state="WAITING_FOR_BUILD",
+                        detail=(
+                            f"No App Store Connect app record found for {config.bundle_id}. "
+                            "If you haven't created the app record yet, do it in App Store "
+                            "Connect → Apps → '+' (the poll picks it up automatically once it exists)."
+                        ),
+                    )
+                    await asyncio.sleep(backoff)
+                    continue
+            body = await fetcher(_build_endpoint(config, app_id), token)
         except Exception as exc:  # noqa: BLE001
+            status_code = getattr(exc, "code", None) \
+                or getattr(getattr(exc, "response", None), "status_code", None)
+            if status_code in (401, 403):
+                await events.emit(
+                    "testflight.status",
+                    state="AUTH_ERROR",
+                    detail=(
+                        f"Apple rejected the API credentials (HTTP {status_code}). "
+                        "Re-check the Key ID, Issuer ID and .p8 file in Settings → Apple "
+                        "credentials, and confirm the key's access role is App Manager or higher."
+                    ),
+                )
+                return {"state": "AUTH_ERROR", "raw": None}
             await events.emit(
                 "testflight.status",
                 state="POLL_ERROR",
@@ -112,9 +153,44 @@ async def watch(
     await events.emit(
         "testflight.status",
         state="TIMEOUT",
-        detail=f"no terminal state in {int(config.timeout_s)}s",
+        detail=(
+            f"Stopped watching after {int(config.timeout_s)}s without a terminal state. "
+            "Apple occasionally takes hours — check App Store Connect → TestFlight "
+            "directly; the build will appear there when processing finishes."
+        ),
     )
     return {"state": "TIMEOUT", "raw": None}
+
+
+def credentials_problem(config: PollerConfig) -> str | None:
+    """A definite, user-fixable reason JWT signing can't work — or None.
+
+    Run BEFORE polling: an unloadable key means every poll would 401
+    for the whole timeout window. The returned string is shown to a
+    non-developer, so it says exactly what to do."""
+    try:
+        from cryptography.hazmat.primitives import serialization
+    except BaseException:  # noqa: BLE001 — PyO3 PanicException is BaseException
+        return (
+            "The backend can't sign App Store Connect tokens because the "
+            "'cryptography' package isn't installed. On the Mac running the "
+            "backend: pip install cryptography, then retry."
+        )
+    try:
+        with open(config.p8_path, "rb") as f:
+            serialization.load_pem_private_key(f.read(), password=None)
+    except FileNotFoundError:
+        return (
+            f"The App Store Connect key file wasn't found at {config.p8_path}. "
+            "Re-add the .p8 key in Settings → Apple credentials."
+        )
+    except Exception as exc:  # noqa: BLE001
+        return (
+            f"The App Store Connect key at {config.p8_path} couldn't be read "
+            f"({type(exc).__name__}). Download a fresh .p8 from App Store Connect → "
+            "Users and Access → Integrations and re-add it in Settings."
+        )
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -142,14 +218,27 @@ async def _default_http_get(url: str, jwt: str) -> dict[str, Any]:
     return await asyncio.get_event_loop().run_in_executor(None, _do_request)
 
 
-def _build_endpoint(config: PollerConfig) -> str:
-    # `filter[app]=<bundleId>` doesn't work directly — ASC wants the
-    # numeric app id. The pragmatic workflow is to filter by bundleId
-    # via the `apps` endpoint, then by version. For the test surface we
-    # use the simpler `/v1/builds?filter[preReleaseVersion.app]=...`
-    # placeholder; production code should resolve the app id first.
+def _apps_endpoint(config: PollerConfig) -> str:
+    return (
+        "https://api.appstoreconnect.apple.com/v1/apps"
+        f"?filter[bundleId]={config.bundle_id}&limit=1"
+    )
+
+
+def _extract_app_id(body: dict[str, Any]) -> str | None:
+    data = body.get("data") if isinstance(body, dict) else None
+    if not isinstance(data, list) or not data:
+        return None
+    app_id = data[0].get("id")
+    return str(app_id) if app_id else None
+
+
+def _build_endpoint(config: PollerConfig, app_id: str) -> str:
+    # ASC's /v1/builds has no bundle-id filter (the old
+    # `filter[app.bundleId]` placeholder 400'd in production, which made
+    # every poll fail) — filter by the numeric app id resolved above.
     params = [
-        f"filter[app.bundleId]={config.bundle_id}",
+        f"filter[app]={app_id}",
         "limit=10",
         "sort=-uploadedDate",
     ]

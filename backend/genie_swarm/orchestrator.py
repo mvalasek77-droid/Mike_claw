@@ -120,6 +120,30 @@ class ShipConfig:
     poll_interval_s: float = 30.0
 
 
+def _explain_altool_failure(tail: str) -> str:
+    """Prefix raw altool output with a plain-English diagnosis when the
+    failure matches a known cause. Apple discontinued altool App Store
+    uploads (Nov 2023) on newer toolchains — without this, the user just
+    sees Apple's raw error and has no idea the TOOL is the problem, not
+    their app."""
+    lowered = tail.lower()
+    if "no longer supported" in lowered or ("altool" in lowered and "deprecated" in lowered):
+        return (
+            "Apple has retired altool for App Store uploads on this Xcode. "
+            "Until the backend migrates to xcodebuild's 'upload' export "
+            "destination, upload the IPA manually: open the Transporter app "
+            "on the Mac (free on the Mac App Store), sign in, and drop the "
+            ".ipa in. Raw output:\n" + tail
+        )
+    if "authentication" in lowered or "credentials" in lowered or "401" in lowered:
+        return (
+            "Apple rejected the upload credentials. Re-check Settings → Apple "
+            "credentials (ASC key: Key ID / Issuer ID / .p8; or Apple ID + "
+            "app-specific password from account.apple.com). Raw output:\n" + tail
+        )
+    return tail
+
+
 class SwarmOrchestrator:
     def __init__(self, *, llm: LLMClient, bus: EventBus, config: SwarmConfig | None = None) -> None:
         from .cost import CostMeter
@@ -614,8 +638,8 @@ class SwarmOrchestrator:
             )
             return
 
-        creds_argv = self._ship_creds_argv(ship, session)
-        if creds_argv is None:
+        creds = self._ship_creds_argv(ship, session)
+        if creds is None:
             await events.emit(
                 "testflight.upload", ok=False,
                 preview="no upload credentials configured",
@@ -626,15 +650,17 @@ class SwarmOrchestrator:
             )
             return
 
+        creds_argv, creds_env = creds
+
         # Validate first, then upload. Both stream output.
         ok_validate, validate_tail = await self._stream_altool(
             ["xcrun", "altool", "--validate-app", "-f", str(ipa_full), "-t", "ios", *creds_argv],
-            phase="validate", events=events,
+            phase="validate", events=events, env=creds_env,
         )
         if not ok_validate:
             await events.emit(
                 "testflight.upload", ok=False,
-                preview=f"validate failed:\n{validate_tail}",
+                preview=f"validate failed:\n{_explain_altool_failure(validate_tail)}",
             )
             self.memory.note_decision(
                 session.job.id, "shipping",
@@ -644,8 +670,10 @@ class SwarmOrchestrator:
 
         ok_upload, upload_tail = await self._stream_altool(
             ["xcrun", "altool", "--upload-app", "-f", str(ipa_full), "-t", "ios", *creds_argv],
-            phase="upload", events=events,
+            phase="upload", events=events, env=creds_env,
         )
+        if not ok_upload:
+            upload_tail = _explain_altool_failure(upload_tail)
         await events.emit(
             "testflight.upload",
             ok=ok_upload,
@@ -684,32 +712,44 @@ class SwarmOrchestrator:
         except Exception as exc:  # noqa: BLE001
             await events.emit("testflight.status", state="POLL_ERROR", detail=str(exc))
 
-    def _ship_creds_argv(self, ship: "ShipConfig", session: Session) -> list[str] | None:
+    def _ship_creds_argv(
+        self, ship: "ShipConfig", session: Session,
+    ) -> tuple[list[str], dict[str, str]] | None:
         """Prefer ASC API key (no 2FA prompts) over Apple-ID + app-
-        specific-password. Returns None when neither is configured."""
+        specific-password. Returns (argv, extra_env) or None when
+        neither is configured.
+
+        The password goes via altool's `@env:` indirection, NOT on the
+        command line — argv is visible to every process on the Mac via
+        `ps` and may be captured in logs."""
         if ship.asc_api_key_id and ship.asc_api_issuer_id and ship.asc_api_key_path:
             resolved = session.sandbox.safe_path(ship.asc_api_key_path)
             return [
                 "--apiKey", ship.asc_api_key_id,
                 "--apiIssuer", ship.asc_api_issuer_id,
                 "--apiKeyPath", str(resolved),
-            ]
+            ], {}
         if ship.apple_id and ship.app_specific_password:
-            return ["-u", ship.apple_id, "-p", ship.app_specific_password]
+            return (
+                ["-u", ship.apple_id, "-p", "@env:CODEGENIE_ASC_PASSWORD"],
+                {"CODEGENIE_ASC_PASSWORD": ship.app_specific_password},
+            )
         return None
 
     async def _stream_altool(
-        self, argv: list[str], *, phase: str, events,
+        self, argv: list[str], *, phase: str, events, env: dict[str, str] | None = None,
     ) -> tuple[bool, str]:
         """Run altool and stream each stdout line as a
         `testflight.upload.progress` event. Returns (ok, tail) where
         `tail` is the last 4 KB of combined output for the surrounding
         `testflight.upload` summary."""
         import asyncio as _asyncio
+        import os as _os
         proc = await _asyncio.create_subprocess_exec(
             *argv,
             stdout=_asyncio.subprocess.PIPE,
             stderr=_asyncio.subprocess.STDOUT,
+            env={**_os.environ, **env} if env else None,
         )
         assert proc.stdout is not None
 
