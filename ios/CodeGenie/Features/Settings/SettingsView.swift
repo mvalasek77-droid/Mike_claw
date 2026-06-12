@@ -26,10 +26,8 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     header
-                    authModePicker
-                    if creds.authMode == .byok { keyEntryBlock }
-                    if creds.authMode == .subscription { subscriptionBlock }
-                    if creds.authMode == .codegenie { hostedBlock }
+                    pricingCard
+                    keyEntryBlock
                     modelComparison
                     estimatorBlock
                     modeBlock
@@ -330,16 +328,15 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var authModePicker: some View {
-        GlassCard(title: "How CodeGenie pays for builds", icon: "creditcard.fill", tint: LiquidGlass.accent) {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(Credentials.AuthMode.allCases) { mode in
-                    AuthModeRow(
-                        mode: mode,
-                        selected: creds.authMode == mode,
-                        action: { creds.setAuthMode(mode); Haptics.selection() }
-                    )
-                }
+    /// The whole pricing model, in one honest card: free app, builds run
+    /// on the user's own key at provider cost, and future Pro features —
+    /// if any — arrive only as a StoreKit in-app purchase.
+    private var pricingCard: some View {
+        GlassCard(title: "How you pay (simple)", icon: "creditcard.fill", tint: LiquidGlass.accent) {
+            VStack(alignment: .leading, spacing: 8) {
+                pricingRow(label: "CodeGenie is free", value: "No subscription, no credits, no markup — the app itself costs nothing")
+                pricingRow(label: "Builds use your AI key", value: "Each build bills your Anthropic / OpenAI account directly, typically $0.20–$2 per build. You see the estimate before every build and a live meter during it")
+                pricingRow(label: "Hard spending cap", value: "Set a per-build dollar cap below — the build stops cleanly if it's ever reached")
             }
         }
     }
@@ -423,66 +420,6 @@ struct SettingsView: View {
                             withAnimation { savedFlash = nil }
                         }
                 }
-            }
-        }
-    }
-
-    private var subscriptionBlock: some View {
-        GlassCard(title: "Pair a subscription", icon: "person.crop.circle.badge.checkmark", tint: LiquidGlass.warning) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("If you already pay for Claude Pro/Max or ChatGPT Plus/Pro, route CodeGenie through that session — no per-token charges.")
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
-
-                ForEach(AIProvider.allCases) { p in
-                    HStack(spacing: 10) {
-                        Image(systemName: p == .anthropic ? "a.circle.fill" : "o.circle.fill")
-                            .foregroundStyle(p == .anthropic ? LiquidGlass.accentSecondary : LiquidGlass.success)
-                        Text(p.subscriptionName)
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText)
-                        Spacer()
-                        Link(destination: p.subscriptionURL) {
-                            Text("Sign in")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(LiquidGlass.auroraGradient, in: Capsule())
-                                .foregroundStyle(LiquidGlass.primaryText)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                Text("CodeGenie's Mac companion handles the OAuth handshake. We never see your password.")
-                    .font(.system(size: 11, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
-            }
-        }
-    }
-
-    private var hostedBlock: some View {
-        GlassCard(title: "CodeGenie hosted credits", icon: "sparkles", tint: LiquidGlass.accent) {
-            VStack(alignment: .leading, spacing: 12) {
-                // App Review 3.1.1: paid digital services consumed in-app must
-                // be sold through In-App Purchase. Until StoreKit plans ship,
-                // this block is informational ONLY — no prices presented as a
-                // buyable offer, no external purchase path.
-                Text("Zero setup — we pay the AI bill. While CodeGenie is in beta, hosted builds are free: 3 builds per month.")
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
-
-                HStack(spacing: 10) {
-                    PlanPill(label: "Beta", subtitle: "3 builds / month", price: "Free", highlighted: true)
-                }
-
-                Divider().background(.white.opacity(0.08))
-
-                VStack(alignment: .leading, spacing: 8) {
-                    pricingRow(label: "Need more builds today?", value: "Add your own AI key above — your builds bill to your provider account directly, with no CodeGenie markup")
-                    pricingRow(label: "Paid hosted plans", value: "Coming soon, offered as an App Store in-app purchase — you'll subscribe inside the app, through Apple")
-                    pricingRow(label: "Sonnet vs Opus", value: "Two AI models. Sonnet is fast and cheap, Opus is slower but smarter")
-                }
-                .padding(.top, 4)
             }
         }
     }
@@ -646,60 +583,6 @@ struct SettingsView: View {
 }
 
 // MARK: - Sub-views
-
-private struct AuthModeRow: View {
-    let mode: Credentials.AuthMode
-    let selected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                    .foregroundStyle(selected ? LiquidGlass.accent : LiquidGlass.primaryText.opacity(0.4))
-                    .font(.system(size: 22))
-                    .padding(.top, 1)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(mode.label)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText)
-                    Text(mode.blurb)
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer()
-            }
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct PlanPill: View {
-    let label: String, subtitle: String, price: String, highlighted: Bool
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(LiquidGlass.primaryText)
-            Text(price)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(highlighted ? LiquidGlass.success : LiquidGlass.primaryText)
-            Text(subtitle)
-                .font(.caption2)
-                .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
-                .lineLimit(2)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(highlighted ? 0.10 : 0.04), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(highlighted ? LiquidGlass.success.opacity(0.5) : .white.opacity(0.1))
-        )
-    }
-}
 
 private struct ModelRow: View {
     let model: AIModel

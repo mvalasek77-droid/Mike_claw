@@ -6,6 +6,9 @@ struct ProjectsGalleryView: View {
     @State private var showDescribe = false
     /// Set when the user picks "Compare with…" from a row's context menu.
     @State private var compareOrigin: BuildJob?
+    /// Set when the user picks "Revise this build…" — the TestFlight
+    /// iteration loop: test on the phone, come back, describe changes.
+    @State private var reviseOrigin: BuildJob?
 
     private var filtered: [BuildJob] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -44,6 +47,18 @@ struct ProjectsGalleryView: View {
                             .contextMenu {
                                 if session.backendJobIDs[job.id] != nil {
                                     Button {
+                                        reviseOrigin = job
+                                        Haptics.selection()
+                                    } label: {
+                                        Label("Revise this build…", systemImage: "arrow.triangle.2.circlepath")
+                                    }
+                                    Button {
+                                        session.openAppStoreConnect(for: job)
+                                        Haptics.selection()
+                                    } label: {
+                                        Label("Submit to the App Store", systemImage: "paperplane.fill")
+                                    }
+                                    Button {
                                         compareOrigin = job
                                         Haptics.selection()
                                     } label: {
@@ -67,6 +82,14 @@ struct ProjectsGalleryView: View {
             }
             .presentationDragIndicator(.visible)
             .presentationBackground(.ultraThinMaterial)
+        }
+        .sheet(item: $reviseOrigin) { job in
+            if let backend = session.backendJobIDs[job.id] {
+                ReviseBuildSheet(job: job, backendID: backend)
+                    .environmentObject(session)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(.ultraThinMaterial)
+            }
         }
         .sheet(item: $compareOrigin) { job in
             if let backend = session.backendJobIDs[job.id] {
@@ -204,5 +227,120 @@ private struct ProjectCard: View {
             }
             .padding(16)
         }
+    }
+}
+
+
+/// "I tested it on my phone — now change X." Collects a revision brief
+/// against a finished build and spawns the seeded follow-up job. The
+/// original build is never modified, so Compare can diff the two.
+private struct ReviseBuildSheet: View {
+    let job: BuildJob
+    let backendID: String
+    @EnvironmentObject private var session: AppSession
+    @Environment(\.dismiss) private var dismiss
+    private let client = SwarmClient()
+
+    @State private var prompt: String = ""
+    @State private var reupload: Bool = Credentials.shared.hasAppleDevCreds
+    @State private var submitting = false
+    @State private var errorText: String?
+
+    var body: some View {
+        ZStack {
+            LiquidGlassBackground().ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Revise \(job.description.title)")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text("Tested it in TestFlight? Describe what to change. CodeGenie revises the existing app — same project, new build number — and can re-upload automatically when it's green.")
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    GlassCard(title: "What should change?", icon: "pencil.and.outline", tint: LiquidGlass.accent) {
+                        TextEditor(text: $prompt)
+                            .frame(minHeight: 130)
+                            .scrollContentBackground(.hidden)
+                            .font(.system(size: 15, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                            .accessibilityLabel("Revision request")
+                        Text("Example: “The streak counter resets at midnight UTC — make it reset at local midnight. Also make the Add button bigger.”")
+                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                    }
+
+                    GlassCard(title: "After the revision", icon: "icloud.and.arrow.up", tint: LiquidGlass.accentSecondary) {
+                        Toggle(isOn: $reupload) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Re-upload to TestFlight when green")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.primaryText)
+                                Text(Credentials.shared.hasAppleDevCreds
+                                     ? "Uses your saved Apple credentials. Testers get the new build automatically."
+                                     : "Add Apple credentials in Settings to enable automatic re-upload.")
+                                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                            }
+                        }
+                        .tint(LiquidGlass.accent)
+                        .disabled(!Credentials.shared.hasAppleDevCreds)
+                    }
+
+                    if let errorText {
+                        Label(errorText, systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.warning)
+                            .accessibilityLabel("Error: \(errorText)")
+                    }
+
+                    PrimaryButton(
+                        title: submitting ? "Starting revision…" : "Start revision",
+                        systemImage: "arrow.triangle.2.circlepath",
+                        style: .filled
+                    ) { startRevision() }
+                    .disabled(submitting || prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Color.clear.frame(height: 20)
+                }
+                .padding(20)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func startRevision() {
+        let brief = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !brief.isEmpty, !submitting else { return }
+        submitting = true
+        errorText = nil
+        let ship = reupload
+            ? ShipConfig.fromCredentials(bundleID: defaultBundleID(for: job.description.title))
+            : nil
+        Task {
+            do {
+                let newID = try await client.revise(jobID: backendID, prompt: brief, ship: ship)
+                await MainActor.run {
+                    session.adoptForkedJob(originalDescription: job.description,
+                                           newID: newID, titleSuffix: "(rev)")
+                    Haptics.success()
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    submitting = false
+                    errorText = "Couldn't start the revision: \(error.localizedDescription)"
+                    Haptics.error()
+                }
+            }
+        }
+    }
+
+    private func defaultBundleID(for title: String) -> String {
+        let slug = title
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .joined()
+        return "com.codegenie.\(slug.isEmpty ? "app" : slug)"
     }
 }

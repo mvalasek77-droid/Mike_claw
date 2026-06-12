@@ -4,8 +4,8 @@ import SwiftUI
 /// First-time vs. power-user mode.
 ///
 /// **Why this exists.** Settings has ~12 things to think about (BYOK
-/// keys, subscription, snapshot cap, per-agent routing, custom
-/// agents, telemetry, Apple Developer creds, hosted credits, etc.).
+/// keys, snapshot cap, per-agent routing, custom agents, telemetry,
+/// Apple Developer creds, etc.).
 /// A new user does not need any of that to watch a sample build or
 /// describe their first app. We hide the entire power-user surface
 /// behind one bit.

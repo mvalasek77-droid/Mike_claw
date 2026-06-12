@@ -86,18 +86,6 @@ struct HomeView: View {
                 .accessibilityLabel("Close game")
             }
         }
-        .fullScreenCover(item: $session.currentJob) { job in
-            BuildScreen(job: job, attachToBackendID: session.currentJobBackendID)
-                .environmentObject(session)
-        }
-        .fullScreenCover(item: $session.pendingPreview) { job in
-            RemoteBuildView(job: job)
-                .environmentObject(session)
-        }
-        .fullScreenCover(item: $session.pendingASC) { job in
-            AppStoreConnectGuideView(job: job)
-                .environmentObject(session)
-        }
         .sheet(isPresented: $showXcodeReadiness, onDismiss: {
             UserDefaults.standard.set(true, forKey: "xcode.readiness.acknowledged")
             xcodeAcknowledged = true

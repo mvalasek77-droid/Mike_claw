@@ -63,14 +63,19 @@ class AnthropicClient(LLMClient):
             raise RuntimeError("install `anthropic` to use AnthropicClient") from e
 
         client = AsyncAnthropic(api_key=self.api_key)
-        ans = await client.messages.create(
-            model=kwargs["model"],
+        model = kwargs["model"]
+        request: dict[str, Any] = dict(
+            model=model,
             system=kwargs["system"],
             messages=_to_anthropic_messages(kwargs["messages"]),
             tools=kwargs["tools"],
             max_tokens=kwargs.get("max_tokens", 4096),
-            temperature=kwargs.get("temperature", 0.2),
         )
+        # Fable 5 and Opus 4.7+ removed sampling parameters — sending
+        # `temperature` returns a 400. Only older models accept it.
+        if not _model_rejects_sampling(model):
+            request["temperature"] = kwargs.get("temperature", 0.2)
+        ans = await client.messages.create(**request)
 
         text_parts: list[str] = []
         calls: list[ToolCall] = []
@@ -90,6 +95,19 @@ class AnthropicClient(LLMClient):
                 "output_tokens": getattr(ans.usage, "output_tokens", 0),
             },
         )
+
+
+def _model_rejects_sampling(model: str) -> bool:
+    """Anthropic removed temperature/top_p/top_k on Fable 5 and Opus 4.7+
+    (requests including them 400). Conservative prefix match."""
+    if model.startswith("claude-fable") or model.startswith("claude-mythos"):
+        return True
+    if model.startswith("claude-opus-4-"):
+        try:
+            return int(model.removeprefix("claude-opus-4-").split("-")[0]) >= 7
+        except ValueError:
+            return False
+    return False
 
 
 def _to_anthropic_messages(msgs: list[Message]) -> list[dict[str, Any]]:

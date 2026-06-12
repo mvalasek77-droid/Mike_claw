@@ -24,6 +24,22 @@ struct MainTabView: View {
                 .padding(.bottom, 12)
         }
         .ignoresSafeArea(.keyboard)
+        // Session-level covers live HERE, on the tab host — not inside any
+        // one tab. They used to hang off HomeView, so opening a job, a
+        // preview, or the App Store guide from the Apps tab silently did
+        // nothing until the user happened to visit Home.
+        .fullScreenCover(item: $session.currentJob) { job in
+            BuildScreen(job: job, attachToBackendID: session.currentJobBackendID)
+                .environmentObject(session)
+        }
+        .fullScreenCover(item: $session.pendingPreview) { job in
+            RemoteBuildView(job: job)
+                .environmentObject(session)
+        }
+        .fullScreenCover(item: $session.pendingASC) { job in
+            AppStoreConnectGuideView(job: job)
+                .environmentObject(session)
+        }
     }
 }
 

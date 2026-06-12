@@ -29,6 +29,7 @@ from .models import (
     GitHubSyncRequest,
     JobState,
     ReleaseReadinessRequest,
+    ReviseRequest,
     ShipRequest,
 )
 from .orchestrator import ShipConfig, SwarmConfig, SwarmOrchestrator
@@ -415,6 +416,118 @@ async def fork_snapshot(job_id: str, body: dict):
         "from": {"job_id": job_id, "label": label},
         "files_seeded": len(match.files_snapshot),
     }
+
+
+@router.post("/{job_id}/revise")
+async def revise_job(job_id: str, req: ReviseRequest):
+    """Revise a finished build — the TestFlight iteration loop.
+
+    The user installed the build, tested it, and came back with
+    changes. We spawn a NEW job whose workspace is seeded from the
+    source job's CURRENT files, append the revision brief to the spec
+    (so every agent sees the original intent AND the change request),
+    checkpoint past the Architect — the app's architecture already
+    exists on disk — and resume(): coder → designer → integrator →
+    tests → optional re-ship to TestFlight. The source job stays
+    untouched, so Compare can diff old vs new."""
+    original = state.jobs.get(job_id)
+    if not original:
+        raise HTTPException(404, "unknown job")
+    revision = (req.prompt or "").strip()
+    if not revision:
+        raise HTTPException(400, "prompt required — describe what to change")
+    if original.state in {JobState.queued, JobState.planning, JobState.building, JobState.testing}:
+        raise HTTPException(409, f"job is still running (state={original.state.value})")
+
+    from .session import Session
+    try:
+        source = Session.load(state.config.workspace_root, job_id)
+    except FileNotFoundError:
+        raise HTTPException(404, "no saved workspace for this job — only finished builds can be revised")
+
+    new_prompt = (
+        original.spec.prompt.rstrip()
+        + "\n\n--- REVISION REQUEST ---\n"
+        + revision
+        + "\nThis revises the EXISTING app already in the workspace: modify it, do not rebuild "
+          "from scratch. Increment the build number (CFBundleVersion) so TestFlight accepts "
+          "the new upload."
+    )
+    new_job = BuildJob(spec=original.spec.model_copy(update={"prompt": new_prompt}))
+    state.jobs[new_job.id] = new_job
+
+    revised = Session.open(new_job, state.config.workspace_root)
+    files_seeded = _seed_workspace(source.workspace, revised.workspace)
+    # The revision request must reach EVERY downstream agent. The spec
+    # block only appears in some prompts (the coder's, for example, just
+    # says "implement the Architect's plan" — and revise skips the
+    # Architect), so put the brief in the transcript, which every agent
+    # receives as conversation history.
+    from .models import Message
+    revised.transcript = [Message(
+        role="user",
+        content=(
+            "--- REVISION REQUEST (developer feedback after TestFlight testing) ---\n"
+            + revision
+            + "\nThe existing app is already in this workspace: modify it, do not "
+              "rebuild from scratch. Increment the build number (CFBundleVersion) "
+              "so TestFlight accepts the new upload."
+        ),
+    )]
+    # The seeded files ARE the architecture — checkpoint past the
+    # Architect so resume() starts at the build layer.
+    revised.checkpoint("after-architect")
+    revised.save()
+
+    ship_cfg = _to_ship_config(req.ship) if req.ship else None
+    cfg = dataclasses.replace(
+        state.config,
+        ship=ship_cfg,
+        cost_cap_usd=req.cost_cap_usd if req.cost_cap_usd is not None else state.config.cost_cap_usd,
+        pause_gate=_pause_gate_for_state,
+    )
+    orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=cfg)
+    state.tasks[new_job.id] = asyncio.create_task(_drive_resume(orch, new_job))
+    return {
+        "ok": True,
+        "job_id": new_job.id,
+        "from_job": job_id,
+        "files_seeded": files_seeded,
+    }
+
+
+async def _drive_resume(orch: SwarmOrchestrator, job: BuildJob) -> None:
+    try:
+        await orch.resume(job)
+    except Exception:
+        # The orchestrator already emitted error events; see _drive().
+        pass
+
+
+def _seed_workspace(src: Path, dst: Path) -> int:
+    """Copy the source workspace into the revision's workspace. Skips
+    build artifacts — a stale IPA would satisfy release-readiness with
+    the OLD binary — and bookkeeping dirs."""
+    import shutil
+    skip_dirs = {".git", ".codegenie", "DerivedData"}
+    skip_suffixes = {".ipa", ".xcarchive"}
+    count = 0
+    for path in sorted(src.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(src)
+        if any(part in skip_dirs or part.endswith(".xcarchive") for part in rel.parts):
+            continue
+        if path.suffix in skip_suffixes:
+            continue
+        target = dst / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy2(path, target)
+            count += 1
+        except OSError:
+            continue
+    return count
 
 
 @router.post("/{job_id}/snapshot")

@@ -53,6 +53,15 @@ class ShipRequest(BaseModel):
     poll_after_upload: bool = True
 
 
+class ReviseRequest(BaseModel):
+    """The TestFlight iteration loop: "change X" against a finished
+    build. Spawns a NEW job seeded from the source job's workspace so
+    the original stays untouched (and Compare can diff old vs new)."""
+    prompt: str
+    ship: ShipRequest | None = None
+    cost_cap_usd: float | None = None
+
+
 class GitHubSyncRequest(BaseModel):
     """Push a finished workspace to the user's GitHub repository.
 

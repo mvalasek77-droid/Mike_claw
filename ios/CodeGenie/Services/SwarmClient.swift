@@ -330,6 +330,19 @@ final class SwarmClient: ObservableObject {
     }
 
     /// Promote a green build to TestFlight without rebuilding.
+    /// Revise a finished build — the TestFlight iteration loop. Returns
+    /// the NEW job id; the original job and workspace stay untouched so
+    /// Compare can diff the two.
+    func revise(jobID: String, prompt: String, ship: ShipConfig? = nil) async throws -> String {
+        var body: [String: Any] = ["prompt": prompt]
+        if let ship { body["ship"] = ship.wireBody }
+        let response = try await postJSON("/api/coding/swarm/\(jobID)/revise", body: body)
+        guard let new = response["job_id"] as? String else {
+            throw SwarmError.malformed("missing job_id in revise response")
+        }
+        return new
+    }
+
     func ship(jobID: String, config: ShipConfig) async throws {
         _ = try await postJSON("/api/coding/swarm/\(jobID)/ship", body: config.wireBody)
     }

@@ -39,28 +39,18 @@ final class Credentials: ObservableObject {
     @Published private(set) var githubPAT: String = ""
     @Published var githubDefaultRepo: String = ""
 
+    /// One payment path, by design: the app is free and builds run on the
+    /// user's own provider key at cost. (Subscription routing and hosted
+    /// credits were removed — consumer-subscription routing violates the
+    /// AI providers' terms, and unbought "plans" were App Review 3.1.1
+    /// rejection bait. Future Pro features ship as a StoreKit IAP.)
     enum AuthMode: String, CaseIterable, Identifiable, Codable {
         case byok          // Bring your own API key
-        case subscription  // Use Claude Pro / ChatGPT Plus session
-        case codegenie     // CodeGenie-hosted (we eat the cost on a quota)
 
         var id: String { rawValue }
-        var label: String {
-            switch self {
-            case .byok:         "API key"
-            case .subscription: "Subscription"
-            case .codegenie:    "CodeGenie hosted"
-            }
-        }
+        var label: String { "Your API key" }
         var blurb: String {
-            switch self {
-            case .byok:
-                "Paste your own Anthropic / OpenAI key. CodeGenie never sees the bill — you pay providers directly. Best price."
-            case .subscription:
-                "Sign into Claude Pro / Max or ChatGPT Plus on your Mac and we'll route through your existing subscription. No per-token cost."
-            case .codegenie:
-                "Use our hosted credits — 3 builds free per month during the beta. Paid plans arrive later as an App Store in-app purchase."
-            }
+            "Paste your own Anthropic / OpenAI key. Builds bill to your provider account directly, at cost — CodeGenie adds no markup and never sees the bill."
         }
     }
 

@@ -26,20 +26,6 @@ enum AIProvider: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    var subscriptionURL: URL {
-        switch self {
-        case .anthropic: URL(string: "https://www.anthropic.com/pricing")!
-        case .openai:    URL(string: "https://chatgpt.com/#pricing")!
-        }
-    }
-
-    var subscriptionName: String {
-        switch self {
-        case .anthropic: "Claude Pro / Max"
-        case .openai:    "ChatGPT Plus / Pro"
-        }
-    }
-
     var keyEnvVar: String {
         switch self {
         case .anthropic: "ANTHROPIC_API_KEY"
@@ -85,6 +71,15 @@ enum ModelCatalogue {
     /// Hand-curated. Reorder = changes the recommendation order on Settings.
     static let all: [AIModel] = [
         // — Anthropic —
+        .init(
+            id: "claude-fable-5", provider: .anthropic,
+            displayName: "Claude Fable 5",
+            tagline: "Anthropic's most capable model",
+            inputUSDPerMTok: 10.0, outputUSDPerMTok: 50.0,
+            contextWindow: 1_000_000,
+            bestFor: "The hardest builds — complex apps, long autonomous runs",
+            tier: .flagship
+        ),
         .init(
             id: "claude-opus-4-7", provider: .anthropic,
             displayName: "Claude Opus 4.7",

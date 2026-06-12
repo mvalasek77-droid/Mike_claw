@@ -17,17 +17,10 @@ struct DescribeAppView: View {
     /// right now, plus the safety check that prevents the user from
     /// committing money before they've set up an auth path.
     private var preflight: Preflight {
-        switch creds.authMode {
-        case .byok:
-            let hasAnyKey = !creds.anthropicKey.isEmpty || !creds.openaiKey.isEmpty
-            return hasAnyKey
-                ? .ready("You're paying the AI provider directly per token. See estimate below.")
-                : .blocked("Add an Anthropic or OpenAI key in Settings → Costs & keys first.")
-        case .subscription:
-            return .ready("Routed through your existing Claude / ChatGPT subscription via the paired Mac.")
-        case .codegenie:
-            return .ready("Charged against your CodeGenie hosted plan. Free tier covers 3 builds/month.")
-        }
+        let hasAnyKey = !creds.anthropicKey.isEmpty || !creds.openaiKey.isEmpty
+        return hasAnyKey
+            ? .ready("You're paying the AI provider directly per token. See estimate below.")
+            : .blocked("Add an Anthropic or OpenAI key in Settings → Costs & keys first.")
     }
 
     private var estimatedCost: Double {

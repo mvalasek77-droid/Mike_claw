@@ -28,7 +28,7 @@ struct ChangelogView: View {
             date: "May 2026",
             highlights: [
                 "First public branch. Liquid Glass theme, 7-step cartoon tutorial, BitDrop game, build screen with live transcript, App Store Connect walkthrough.",
-                "Settings: LLM cost comparison, BYOK API keys, subscription pairing, hosted credits, per-agent model routing.",
+                "Settings: LLM cost comparison, BYOK API keys, per-agent model routing.",
                 "Pair-your-Mac flow with Bonjour discovery + QR code scanner.",
                 "Apple Developer onboarding (Team ID + ASC API key or Apple ID + app-specific password) — Keychain-stored.",
                 "Submit-to-App-Store from the build's success screen now actually uploads + polls TestFlight processing status.",
