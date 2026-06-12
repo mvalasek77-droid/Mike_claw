@@ -463,24 +463,24 @@ struct SettingsView: View {
     private var hostedBlock: some View {
         GlassCard(title: "CodeGenie hosted credits", icon: "sparkles", tint: LiquidGlass.accent) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Zero setup — we pay the AI bill, you pay us. No surprise API charges.")
+                // App Review 3.1.1: paid digital services consumed in-app must
+                // be sold through In-App Purchase. Until StoreKit plans ship,
+                // this block is informational ONLY — no prices presented as a
+                // buyable offer, no external purchase path.
+                Text("Zero setup — we pay the AI bill. While CodeGenie is in beta, hosted builds are free: 3 builds per month.")
                     .font(.system(size: 13, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
 
                 HStack(spacing: 10) {
-                    PlanPill(label: "Free", subtitle: "3 builds / month", price: "$0", highlighted: true)
-                    PlanPill(label: "Pro",  subtitle: "Unlimited Sonnet, 20 Opus", price: "$9.99/mo", highlighted: false)
-                    PlanPill(label: "Studio", subtitle: "Team seats, priority queue", price: "$29/mo", highlighted: false)
+                    PlanPill(label: "Beta", subtitle: "3 builds / month", price: "Free", highlighted: true)
                 }
 
                 Divider().background(.white.opacity(0.08))
 
                 VStack(alignment: .leading, spacing: 8) {
-                    pricingRow(label: "After 3 free builds", value: "Pay-as-you-go ≈ $0.50/build, or upgrade to Pro")
-                    pricingRow(label: "Pro plan ($9.99/mo)", value: "Flat fee — no per-build charge until you exceed the cap")
+                    pricingRow(label: "Need more builds today?", value: "Add your own AI key above — your builds bill to your provider account directly, with no CodeGenie markup")
+                    pricingRow(label: "Paid hosted plans", value: "Coming soon, offered as an App Store in-app purchase — you'll subscribe inside the app, through Apple")
                     pricingRow(label: "Sonnet vs Opus", value: "Two AI models. Sonnet is fast and cheap, Opus is slower but smarter")
-                    pricingRow(label: "Studio extras", value: "Multiple seats + faster build queue. Not needed for solo developers")
-                    pricingRow(label: "Cancel anytime", value: "Builds you already paid for keep working until the period ends")
                 }
                 .padding(.top, 4)
             }

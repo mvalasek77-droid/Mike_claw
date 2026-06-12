@@ -59,7 +59,7 @@ final class Credentials: ObservableObject {
             case .subscription:
                 "Sign into Claude Pro / Max or ChatGPT Plus on your Mac and we'll route through your existing subscription. No per-token cost."
             case .codegenie:
-                "Use our hosted credits. 3 builds free, then $9.99/mo for unlimited Sonnet builds + 20 Opus builds."
+                "Use our hosted credits — 3 builds free per month during the beta. Paid plans arrive later as an App Store in-app purchase."
             }
         }
     }

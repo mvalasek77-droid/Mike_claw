@@ -48,7 +48,7 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        UIUserInterfaceStyle: Automatic
+        UIUserInterfaceStyle: Dark   # 172 hardcoded glass-on-dark colors — light theme is a roadmap item, not a half-shipped state
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.codegenie.app
