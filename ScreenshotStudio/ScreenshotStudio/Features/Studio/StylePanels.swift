@@ -198,6 +198,8 @@ struct CaptionPanel: View {
     /// caption override. `nil` when the set has no slides.
     var slideIndex: Int? = nil
 
+    @State private var pendingRemoval: String?
+
     private var isPrimaryLanguage: Bool { project.activeLanguage == project.primaryLanguage }
 
     private var customColorBinding: Binding<Color> {
@@ -316,6 +318,19 @@ struct CaptionPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .confirmationDialog(
+            pendingRemoval.map { "Remove \(ASCLanguage.displayName(for: $0))?" } ?? "",
+            isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Remove language and its captions", role: .destructive) {
+                if let code = pendingRemoval { removeLanguage(code) }
+                pendingRemoval = nil
+            }
+            Button("Cancel", role: .cancel) { pendingRemoval = nil }
+        } message: {
+            Text("This language has captions that will be deleted.")
+        }
     }
 
     private func languageChip(_ code: String) -> some View {
@@ -345,7 +360,7 @@ struct CaptionPanel: View {
         .buttonStyle(.plain)
         .contextMenu {
             if !isPrimary {
-                Button(role: .destructive) { removeLanguage(code) } label: {
+                Button(role: .destructive) { requestRemoveLanguage(code) } label: {
                     Label("Remove \(ASCLanguage.displayName(for: code))", systemImage: "trash")
                 }
             }
@@ -399,6 +414,20 @@ struct CaptionPanel: View {
         project.languages.append(code)
         project.activeLanguage = code
         Haptics.success()
+    }
+
+    /// Whether a language has any captions that would be lost on removal.
+    private func languageHasCaptions(_ code: String) -> Bool {
+        if let headline = project.style.caption.localized[code], !headline.isEmpty { return true }
+        return project.slides.contains { ($0.localizedOverrides[code]?.isEmpty == false) }
+    }
+
+    private func requestRemoveLanguage(_ code: String) {
+        if languageHasCaptions(code) {
+            pendingRemoval = code
+        } else {
+            removeLanguage(code)
+        }
     }
 
     private func removeLanguage(_ code: String) {

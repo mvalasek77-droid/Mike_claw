@@ -9,7 +9,9 @@ struct StudioView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var project: ScreenshotProject
-    @State private var currentSlide = 0
+    /// Selection is tracked by slide identity, not index, so adding, deleting
+    /// or reordering slides can never desync the preview, filmstrip and panels.
+    @State private var selectedSlideID: UUID?
     @State private var panel: Panel = .layout
     @State private var showPhotoPicker = false
     @State private var showExport = false
@@ -27,6 +29,7 @@ struct StudioView: View {
     init(project: ScreenshotProject) {
         _project = State(initialValue: project)
         _original = State(initialValue: project)
+        _selectedSlideID = State(initialValue: project.slides.first?.id)
     }
 
     enum Panel: String, CaseIterable, Identifiable {
@@ -46,9 +49,15 @@ struct StudioView: View {
         }
     }
 
+    /// Index of the selected slide, resolved from identity at read time.
+    private var selectedIndex: Int? {
+        guard let id = selectedSlideID else { return nil }
+        return project.slides.firstIndex { $0.id == id }
+    }
+
     private var selectedSlide: Slide? {
-        guard project.slides.indices.contains(currentSlide) else { return project.slides.first }
-        return project.slides[currentSlide]
+        if let index = selectedIndex { return project.slides[index] }
+        return project.slides.first
     }
 
     var body: some View {
@@ -161,8 +170,11 @@ struct StudioView: View {
         // Persist edits, but debounce disk writes so dragging a slider doesn't
         // hammer the file system every frame. A final save fires on close.
         .onChange(of: project) { _, newValue in scheduleSave(newValue) }
-        .onChange(of: project.slides.count) { _, count in
-            currentSlide = min(currentSlide, max(0, count - 1))
+        .onChange(of: project.slides.count) { _, _ in
+            // Keep selection valid if slides changed out from under us.
+            if selectedSlideID == nil || !project.slides.contains(where: { $0.id == selectedSlideID }) {
+                selectedSlideID = project.slides.first?.id
+            }
         }
         .onDisappear {
             saveTask?.cancel()
@@ -205,12 +217,12 @@ struct StudioView: View {
                     .padding(.horizontal, 44)
                     .padding(.vertical, 10)
             } else {
-                TabView(selection: $currentSlide) {
-                    ForEach(Array(project.slides.enumerated()), id: \.element.id) { index, slide in
+                TabView(selection: $selectedSlideID) {
+                    ForEach(project.slides) { slide in
                         CanvasPreview(project: project, slide: slide)
                             .padding(.horizontal, 44)
                             .padding(.vertical, 10)
-                            .tag(index)
+                            .tag(Optional(slide.id))
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
@@ -226,9 +238,9 @@ struct StudioView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
                 ForEach(Array(project.slides.enumerated()), id: \.element.id) { index, slide in
-                    let isSelected = index == currentSlide
+                    let isSelected = slide.id == selectedSlideID
                     Button {
-                        Motion.run(Motion.snap) { currentSlide = index }
+                        Motion.run(Motion.snap) { selectedSlideID = slide.id }
                         Haptics.selection()
                     } label: {
                         thumb(for: slide)
@@ -256,7 +268,7 @@ struct StudioView: View {
                     showImportOptions = true
                 } label: {
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(.white.opacity(0.06))
+                        .fill(LiquidGlass.surface)
                         .frame(width: 46, height: 84)
                         .overlay(
                             Image(systemName: "plus")
@@ -265,7 +277,7 @@ struct StudioView: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .strokeBorder(.white.opacity(0.15), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                                .strokeBorder(LiquidGlass.hairline, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
                         )
                 }
                 .buttonStyle(.plain)
@@ -322,7 +334,7 @@ struct StudioView: View {
             }
             .padding(6)
         }
-        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .padding(.horizontal, 18)
         .padding(.top, 4)
     }
@@ -333,8 +345,7 @@ struct StudioView: View {
         case .templates:  TemplatePanel(project: $project)
         case .layout:     LayoutPanel(project: $project)
         case .background: BackgroundPanel(project: $project)
-        case .caption:    CaptionPanel(project: $project,
-                                       slideIndex: project.slides.isEmpty ? nil : currentSlide)
+        case .caption:    CaptionPanel(project: $project, slideIndex: selectedIndex)
         case .overlays:   OverlayPanel(project: $project)
         case .enhance:    EnhancePanel(project: $project)
         case .device:     DevicePanel(project: $project)
@@ -365,30 +376,45 @@ struct StudioView: View {
 
     private func addImages(_ images: [UIImage]) {
         guard !images.isEmpty else { return }
-        for image in images {
-            guard let file = ImageStore.save(image) else { continue }
-            let px = CGSize(width: image.size.width * image.scale,
-                            height: image.size.height * image.scale)
-            project.slides.append(Slide(imageFile: file,
-                                        sourcePixelWidth: px.width,
-                                        sourcePixelHeight: px.height))
+        var lastAddedID: UUID?
+        Motion.run(Motion.snap) {
+            for image in images {
+                guard let file = ImageStore.save(image) else { continue }
+                let px = CGSize(width: image.size.width * image.scale,
+                                height: image.size.height * image.scale)
+                let slide = Slide(imageFile: file,
+                                  sourcePixelWidth: px.width,
+                                  sourcePixelHeight: px.height)
+                project.slides.append(slide)
+                lastAddedID = slide.id
+            }
+            if let lastAddedID { selectedSlideID = lastAddedID }
         }
-        currentSlide = max(0, project.slides.count - 1)
         Haptics.success()
     }
 
     private func delete(_ slide: Slide) {
+        guard let index = project.slides.firstIndex(where: { $0.id == slide.id }) else { return }
         ImageStore.delete(slide.imageFile)
-        project.slides.removeAll { $0.id == slide.id }
-        currentSlide = min(currentSlide, max(0, project.slides.count - 1))
+        Motion.run(Motion.snap) {
+            project.slides.remove(at: index)
+            // Select a sensible neighbour so the editor never lands on nothing.
+            if project.slides.isEmpty {
+                selectedSlideID = nil
+            } else if slide.id == selectedSlideID {
+                selectedSlideID = project.slides[min(index, project.slides.count - 1)].id
+            }
+        }
         Haptics.warning()
     }
 
     private func move(from: Int, to: Int) {
         guard project.slides.indices.contains(from), to >= 0, to < project.slides.count else { return }
-        let slide = project.slides.remove(at: from)
-        project.slides.insert(slide, at: to)
-        currentSlide = to
+        Motion.run(Motion.snap) {
+            let slide = project.slides.remove(at: from)
+            project.slides.insert(slide, at: to)
+            selectedSlideID = slide.id
+        }
         Haptics.selection()
     }
 }

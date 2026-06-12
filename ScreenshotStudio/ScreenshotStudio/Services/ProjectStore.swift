@@ -82,6 +82,9 @@ final class ProjectStore: ObservableObject {
     }
 
     func delete(at offsets: IndexSet) {
-        for index in offsets { delete(projects[index]) }
+        // Resolve to concrete projects first: deleting mutates `projects`, so
+        // the offsets would otherwise go stale and risk an out-of-bounds access.
+        let targets = offsets.map { projects[$0] }
+        for project in targets { delete(project) }
     }
 }

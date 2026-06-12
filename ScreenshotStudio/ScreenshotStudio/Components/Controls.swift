@@ -88,7 +88,7 @@ struct GlassSegmented<T: Hashable>: View {
             }
         }
         .padding(4)
-        .background(.white.opacity(0.06), in: Capsule())
-        .overlay(Capsule().strokeBorder(.white.opacity(0.1), lineWidth: 0.5))
+        .background(LiquidGlass.surface, in: Capsule())
+        .overlay(Capsule().strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
     }
 }

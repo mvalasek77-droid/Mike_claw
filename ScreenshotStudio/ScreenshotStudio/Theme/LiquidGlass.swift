@@ -18,6 +18,22 @@ enum LiquidGlass {
             : UIColor.white
     })
 
+    /// Adaptive surface fill for glass chrome — a faint white veil in dark mode,
+    /// a faint dark veil in light mode — so capsules and cards stay visible in
+    /// both. Use instead of a hardcoded `.white.opacity(...)` for fills.
+    static let surface = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .light
+            ? UIColor.black.withAlphaComponent(0.05)
+            : UIColor.white.withAlphaComponent(0.06)
+    })
+
+    /// Adaptive hairline stroke that reads in both appearances.
+    static let hairline = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .light
+            ? UIColor.black.withAlphaComponent(0.12)
+            : UIColor.white.withAlphaComponent(0.14)
+    })
+
     static let cornerLarge: CGFloat = 28
     static let cornerMedium: CGFloat = 18
     static let cornerSmall: CGFloat = 12

@@ -49,7 +49,7 @@ struct ProjectThumbnail: View {
                     .fill(project.style.background.shapeStyle)
                     .overlay(
                         ProgressView()
-                            .tint(.white.opacity(0.7))
+                            .tint(LiquidGlass.accent)
                     )
             }
         }

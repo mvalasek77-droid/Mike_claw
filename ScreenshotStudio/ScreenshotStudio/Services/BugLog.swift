@@ -36,6 +36,7 @@ final class BugLog: ObservableObject {
 
     private let maxEntries = 400
     private var fileURL: URL { Workspace.root.appendingPathComponent("diagnostics.json") }
+    private var persistScheduled = false
 
     private init() { load() }
 
@@ -68,12 +69,23 @@ final class BugLog: ObservableObject {
         if entries.count > maxEntries {
             entries.removeFirst(entries.count - maxEntries)
         }
-        persist()
+        schedulePersist()
     }
 
     func clear() {
         entries.removeAll()
         persist()
+    }
+
+    /// Coalesce disk writes so a burst of log lines (e.g. a failing multi-image
+    /// import) writes the file once, not once per entry.
+    private func schedulePersist() {
+        guard !persistScheduled else { return }
+        persistScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.persistScheduled = false
+            self?.persist()
+        }
     }
 
     var hasFailures: Bool { entries.contains { $0.level != .info } }

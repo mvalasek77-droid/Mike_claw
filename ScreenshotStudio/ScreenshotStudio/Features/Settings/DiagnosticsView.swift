@@ -46,6 +46,7 @@ struct DiagnosticsView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
+                .accessibilityLabel("Log actions")
                 .disabled(log.entries.isEmpty)
             }
         }

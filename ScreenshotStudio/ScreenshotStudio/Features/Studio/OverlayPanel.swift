@@ -99,10 +99,13 @@ struct OverlayPanel: View {
                                     remove(overlay.id)
                                 } label: {
                                     Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 14))
+                                        .font(.system(size: 16))
                                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                                        .frame(width: 30, height: 30)
+                                        .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Remove overlay")
                             }
                             .padding(.horizontal, 10).padding(.vertical, 8)
                             .background(.white.opacity(isSelected ? 0.12 : 0.05), in: Capsule())
