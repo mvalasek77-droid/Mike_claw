@@ -26,7 +26,7 @@ from .agents import (
 )
 from typing import Callable
 
-from .agents.base import ARCHITECT, CODER, DESIGNER, INTEGRATOR, UNIT_TESTER
+from .agents.base import ARCHITECT, CODER, DESIGNER, INTEGRATOR, REVIEWER, SECURITY, UI_TESTER, UNIT_TESTER
 from .cost import BudgetExceeded
 from .llm import LLMClient
 from .memory import Memory
@@ -67,6 +67,14 @@ class SwarmConfig:
     workspace_root: Path = Path("/tmp/genie-swarm")
     parallel_build: bool = True   # run Coder ∥ Designer
     parallel_test: bool = True    # run all four test agents in parallel
+    # Extreme parallelism: Reviewer + Security only READ the workspace,
+    # so they start alongside the Unit Tester's first pass instead of
+    # waiting behind the red-green retry gate. If retries mutate the
+    # code they re-run at the end so reviews are never stale. UI Tester
+    # still waits for green (it needs an app that builds). Off by
+    # default: the overlap changes the call schedule (and re-reviews on
+    # retries cost extra tokens), so it's an explicit opt-in.
+    overlap_review: bool = False
     skip_tests: bool = False
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
     # Per-agent model overrides. Keys are AgentRole values
@@ -195,7 +203,10 @@ class SwarmOrchestrator:
             if not self.config.skip_tests:
                 session.update_state(JobState.testing)
                 await events.emit("job.state", state=session.job.state.value)
-                await self._run_test_layer(session, events)
+                if self.config.overlap_review:
+                    await self._run_test_layer_overlapped(session, events)
+                else:
+                    await self._run_test_layer(session, events)
                 await self._checkpoint(session, events, "after-tests")
 
             # ---- CUSTOM AGENTS (optional) ----
@@ -477,6 +488,82 @@ class SwarmOrchestrator:
             for bp in remaining:
                 await self._run_agent(bp, session, events, prompt=self._test_prompt(bp, session.job))
 
+    async def _run_test_layer_overlapped(self, session: Session, events) -> None:
+        """Extreme-parallel test layer (config.overlap_review).
+
+        Reviewer + Security are pure readers — they critique the code,
+        not the test results — so they run CONCURRENTLY with the Unit
+        Tester's first pass instead of queueing behind the retry gate.
+        Critical path drops from `unit-loop + max(reviewer, security,
+        ui)` to `max(unit-loop, reviewer, security) + ui`.
+
+        Correctness guard: if the retry loop mutated the workspace
+        (Coder re-ran), both re-run against the FINAL code at the end —
+        a review of code that no longer exists is worse than a slow one.
+        """
+        review_pass = asyncio.gather(
+            self._run_agent(REVIEWER, session, events,
+                            prompt=self._test_prompt(REVIEWER, session.job)),
+            self._run_agent(SECURITY, session, events,
+                            prompt=self._test_prompt(SECURITY, session.job)),
+        )
+
+        try:
+            unit_run = await self._run_agent(
+                UNIT_TESTER, session, events,
+                prompt=self._test_prompt(UNIT_TESTER, session.job),
+            )
+            attempts = 0
+            mutated = False
+            while attempts < self.config.max_retries and self._unit_tests_failed(unit_run):
+                attempts += 1
+                mutated = True
+                await events.emit(
+                    "retry.attempt", agent=UNIT_TESTER.title,
+                    attempt=attempts, max_retries=self.config.max_retries,
+                )
+                await self._run_agent(
+                    CODER, session, events,
+                    prompt=self._fix_prompt(session.job, unit_run.final_message.content),
+                )
+                await self._run_agent(
+                    INTEGRATOR, session, events,
+                    prompt="Tests just failed. Re-glue anything the Coder changed, "
+                           "then run `swift build` / `xcodebuild` until it's green.",
+                )
+                unit_run = await self._run_agent(
+                    UNIT_TESTER, session, events,
+                    prompt=self._test_prompt(UNIT_TESTER, session.job),
+                )
+        except BaseException:
+            # Don't orphan the concurrent reviews if the unit loop blows
+            # up (budget cap, cancel) — surface THEIR result too, then
+            # re-raise the original failure.
+            review_pass.cancel()
+            try:
+                await review_pass
+            except BaseException:
+                pass
+            raise
+
+        await review_pass
+
+        if mutated:
+            await events.emit(
+                "review.refresh",
+                detail="Code changed during test retries — re-running Reviewer + Security against the final workspace.",
+            )
+            await asyncio.gather(
+                self._run_agent(REVIEWER, session, events,
+                                prompt=self._test_prompt(REVIEWER, session.job)),
+                self._run_agent(SECURITY, session, events,
+                                prompt=self._test_prompt(SECURITY, session.job)),
+            )
+
+        # UI Tester needs a green, buildable app — always last.
+        await self._run_agent(UI_TESTER, session, events,
+                              prompt=self._test_prompt(UI_TESTER, session.job))
+
     @staticmethod
     def _unit_tests_failed(run) -> bool:
         """Heuristic: does the Unit Tester's final message indicate
@@ -561,7 +648,10 @@ class SwarmOrchestrator:
             if "after-tests" not in done and not self.config.skip_tests:
                 session.update_state(JobState.testing)
                 await events.emit("job.state", state=session.job.state.value)
-                await self._run_test_layer(session, events)
+                if self.config.overlap_review:
+                    await self._run_test_layer_overlapped(session, events)
+                else:
+                    await self._run_test_layer(session, events)
                 await self._checkpoint(session, events, "after-tests")
 
             if "after-custom-agents" not in done and self.config.custom_agents:

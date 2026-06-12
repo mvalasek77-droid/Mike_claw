@@ -89,11 +89,13 @@ async def start_build(req: BuildRequest, bg: BackgroundTasks):
     ship_cfg = _to_ship_config(req.ship) if req.ship else None
 
     if (req.workspace_root or req.model_overrides or req.skip_tests
-            or not req.parallel or ship_cfg or req.cost_cap_usd is not None
+            or not req.parallel or req.overlap_review or ship_cfg
+            or req.cost_cap_usd is not None
             or req.custom_agents or req.max_snapshot_bytes is not None):
         cfg = SwarmConfig(
             workspace_root=Path(req.workspace_root) if req.workspace_root else cfg.workspace_root,
             parallel_build=req.parallel,
+            overlap_review=req.overlap_review,
             skip_tests=req.skip_tests,
             runtime=cfg.runtime,
             model_overrides=req.model_overrides,

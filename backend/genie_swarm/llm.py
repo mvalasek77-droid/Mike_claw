@@ -55,18 +55,38 @@ class LLMClient(ABC):
 class AnthropicClient(LLMClient):
     def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        self._client: Any = None
+
+    def _get_client(self):
+        """One AsyncAnthropic per LLMClient instance. The old code built a
+        fresh client (= fresh connection pool) for EVERY call, paying a
+        TLS handshake per agent turn — a build makes dozens of calls, in
+        parallel, so connection reuse is a straight latency win."""
+        if self._client is None:
+            try:
+                from anthropic import AsyncAnthropic  # type: ignore[import-not-found]
+            except ImportError as e:  # pragma: no cover
+                raise RuntimeError("install `anthropic` to use AnthropicClient") from e
+            self._client = AsyncAnthropic(api_key=self.api_key)
+        return self._client
 
     async def complete(self, **kwargs) -> LLMResponse:
-        try:
-            from anthropic import AsyncAnthropic  # type: ignore[import-not-found]
-        except ImportError as e:  # pragma: no cover
-            raise RuntimeError("install `anthropic` to use AnthropicClient") from e
-
-        client = AsyncAnthropic(api_key=self.api_key)
+        client = self._get_client()
         model = kwargs["model"]
+        # Prompt caching: the system prompt + tool schemas are byte-stable
+        # across every turn of an agent's tool loop, and the loop re-sends
+        # the full history each turn. A cache breakpoint on the system
+        # block caches tools+system (render order: tools → system), so
+        # turn 2..N read the prefix at ~0.1× input price with lower
+        # latency. Below the model's cacheable minimum it's a silent no-op.
+        system = kwargs["system"]
+        system_param: Any = (
+            [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+            if system else system
+        )
         request: dict[str, Any] = dict(
             model=model,
-            system=kwargs["system"],
+            system=system_param,
             messages=_to_anthropic_messages(kwargs["messages"]),
             tools=kwargs["tools"],
             max_tokens=kwargs.get("max_tokens", 4096),
@@ -151,14 +171,20 @@ def _to_anthropic_messages(msgs: list[Message]) -> list[dict[str, Any]]:
 class OpenAIClient(LLMClient):
     def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
+        self._client: Any = None
+
+    def _get_client(self):
+        # Same connection-reuse rationale as AnthropicClient._get_client.
+        if self._client is None:
+            try:
+                from openai import AsyncOpenAI  # type: ignore[import-not-found]
+            except ImportError as e:  # pragma: no cover
+                raise RuntimeError("install `openai` to use OpenAIClient") from e
+            self._client = AsyncOpenAI(api_key=self.api_key)
+        return self._client
 
     async def complete(self, **kwargs) -> LLMResponse:
-        try:
-            from openai import AsyncOpenAI  # type: ignore[import-not-found]
-        except ImportError as e:  # pragma: no cover
-            raise RuntimeError("install `openai` to use OpenAIClient") from e
-
-        client = AsyncOpenAI(api_key=self.api_key)
+        client = self._get_client()
         msgs: list[dict[str, Any]] = [{"role": "system", "content": kwargs["system"]}]
         for m in kwargs["messages"]:
             msgs.append({"role": m.role, "content": m.content})

@@ -83,6 +83,9 @@ class BuildRequest(BaseModel):
     workspace_root: str | None = None
     parallel: bool = True
     skip_tests: bool = False
+    # Extreme parallelism: run Reviewer + Security alongside the Unit
+    # Tester's first pass (they re-run if retries mutate the code).
+    overlap_review: bool = False
     model_overrides: dict[str, str] = Field(default_factory=dict)
     ship: ShipRequest | None = None
     # Halt the build if rolling USD spend crosses this cap. None
@@ -174,6 +177,7 @@ class SwarmEvent(BaseModel):
         "test.result",
         "review.finding",
         "retry.attempt",
+        "review.refresh",
         "memory.briefing",
         "testflight.upload",
         "testflight.upload.progress",
