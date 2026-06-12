@@ -70,6 +70,9 @@ struct ProjectThumbnail: View {
         await Task.yield()
         guard !Task.isCancelled else { return }
         let rendered = ScreenshotRenderer.thumbnail(of: project, slide: project.slides.first)
+        if rendered == nil {
+            BugLog.warning("Thumbnail", "Couldn't render a thumbnail for “\(project.name)”.")
+        }
         ThumbnailCache.store(rendered, for: project)
         image = rendered
     }

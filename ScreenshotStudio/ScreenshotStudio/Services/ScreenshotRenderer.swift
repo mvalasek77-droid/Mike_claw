@@ -28,7 +28,11 @@ enum ScreenshotRenderer {
         renderer.scale = 1
         renderer.proposedSize = ProposedViewSize(canvasSize)
         renderer.isOpaque = true
-        return renderer.uiImage
+        let image = renderer.uiImage
+        if image == nil {
+            BugLog.error("Renderer", "ImageRenderer produced no image at \(Int(canvasSize.width))×\(Int(canvasSize.height)).")
+        }
+        return image
     }
 
     /// Render a small, cache-friendly thumbnail of a project's representative

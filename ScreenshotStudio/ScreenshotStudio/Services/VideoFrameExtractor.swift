@@ -20,7 +20,10 @@ enum VideoFrameExtractor {
         } else {
             seconds = 0
         }
-        guard seconds.isFinite, seconds > 0 else { return [] }
+        guard seconds.isFinite, seconds > 0 else {
+            BugLog.warning("Video", "Picked video has no readable duration.")
+            return []
+        }
 
         let n = max(count, 1)
         var images: [UIImage] = []
@@ -32,6 +35,9 @@ enum VideoFrameExtractor {
             if let cg = try? await generator.image(at: time).image {
                 images.append(UIImage(cgImage: cg))
             }
+        }
+        if images.isEmpty {
+            BugLog.warning("Video", "Couldn't extract any frames from the picked video.")
         }
         return images
     }

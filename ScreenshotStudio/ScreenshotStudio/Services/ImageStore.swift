@@ -11,12 +11,16 @@ enum ImageStore {
     static func save(_ image: UIImage) -> String? {
         let name = "shot-\(UUID().uuidString).png"
         let url = Workspace.imagesDirectory.appendingPathComponent(name)
-        guard let data = image.pngData() else { return nil }
+        guard let data = image.pngData() else {
+            BugLog.error("ImageStore", "Couldn't encode an imported image to PNG.")
+            return nil
+        }
         do {
             try data.write(to: url, options: .atomic)
             cache.setObject(image, forKey: name as NSString)
             return name
         } catch {
+            BugLog.error("ImageStore", "Failed to save image: \(error.localizedDescription)")
             return nil
         }
     }
@@ -25,7 +29,10 @@ enum ImageStore {
     static func load(_ name: String) -> UIImage? {
         if let cached = cache.object(forKey: name as NSString) { return cached }
         let url = Workspace.imagesDirectory.appendingPathComponent(name)
-        guard let data = try? Data(contentsOf: url), let image = UIImage(data: data) else { return nil }
+        guard let data = try? Data(contentsOf: url), let image = UIImage(data: data) else {
+            BugLog.warning("ImageStore", "Missing or unreadable image file: \(name)")
+            return nil
+        }
         cache.setObject(image, forKey: name as NSString)
         return image
     }

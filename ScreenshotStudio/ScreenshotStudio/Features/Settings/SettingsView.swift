@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var store: ProjectStore
+    @ObservedObject private var log = BugLog.shared
+    @State private var showBugReport = false
 
     private var appVersion: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -34,6 +36,30 @@ struct SettingsView: View {
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                     }
 
+                    GlassCard(title: "Help & feedback", icon: "questionmark.circle.fill") {
+                        VStack(spacing: 4) {
+                            Button { showBugReport = true } label: {
+                                settingsRow(icon: "ladybug.fill", title: "Report a bug",
+                                            subtitle: "Send us what went wrong")
+                            }
+                            .buttonStyle(.plain)
+
+                            Divider().overlay(.white.opacity(0.1))
+
+                            NavigationLink {
+                                DiagnosticsView()
+                            } label: {
+                                settingsRow(icon: log.hasFailures ? "exclamationmark.triangle.fill" : "checkmark.seal.fill",
+                                            title: "Diagnostics",
+                                            subtitle: log.hasFailures
+                                                ? "\(log.entries.count) events · some issues recorded"
+                                                : "Everything's running cleanly",
+                                            tint: log.hasFailures ? LiquidGlass.warning : LiquidGlass.success)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
                     GlassCard(title: "Privacy", icon: "lock.shield.fill", tint: LiquidGlass.success) {
                         VStack(alignment: .leading, spacing: 8) {
                             privacyLine("Everything runs on-device.")
@@ -61,6 +87,35 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
         }
+        .sheet(isPresented: $showBugReport) {
+            BugReportView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    private func settingsRow(icon: String, title: String, subtitle: String,
+                             tint: Color = LiquidGlass.accent) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 26)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.3))
+        }
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
     }
 
     private var brandHeader: some View {

@@ -42,6 +42,7 @@ final class ExportCoordinator: ObservableObject {
         let langs = languages.isEmpty ? [project.activeLanguage] : languages
         let total = slots.count * langs.count * max(project.slides.count, 0)
         guard total > 0 else {
+            BugLog.warning("Export", "Export attempted with nothing to render.")
             phase = .failed("Add at least one screenshot before exporting.")
             Haptics.error()
             return
@@ -85,6 +86,7 @@ final class ExportCoordinator: ObservableObject {
         }
 
         guard !pngs.isEmpty else {
+            BugLog.error("Export", "Rendering produced no images for \(slots.count) size(s) × \(langs.count) language(s).")
             phase = .failed("Those slides couldn't be rendered. Please try again.")
             Haptics.error()
             return
@@ -93,9 +95,11 @@ final class ExportCoordinator: ObservableObject {
         phase = .saving
         do {
             try await PhotoExporter.save(pngs)
+            BugLog.info("Export", "Saved \(pngs.count) screenshot(s) to Photos.")
             phase = .finished(count: pngs.count)
             Haptics.success()
         } catch {
+            BugLog.error("Export", "Saving to Photos failed: \(error.localizedDescription)")
             phase = .failed(error.localizedDescription)
             Haptics.error()
         }

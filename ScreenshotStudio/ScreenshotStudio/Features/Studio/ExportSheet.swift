@@ -104,7 +104,7 @@ struct ExportSheet: View {
                 ToggleRow(label: "Export all \(project.languages.count) languages",
                           systemImage: "character.bubble", isOn: $allLanguages)
                 Text(allLanguages
-                     ? "Renders every language's caption set — \(project.languages.map { $0 }.joined(separator: ", "))."
+                     ? "Renders every language's caption set — \(project.languages.map(ASCLanguage.displayName(for:)).joined(separator: ", "))."
                      : "Renders only \(ASCLanguage.displayName(for: project.activeLanguage)).")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))

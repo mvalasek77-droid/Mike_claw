@@ -20,8 +20,13 @@ final class ProjectStore: ObservableObject {
         guard let data = try? Data(contentsOf: Workspace.projectsFile) else { return }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        if let decoded = try? decoder.decode([ScreenshotProject].self, from: data) {
+        do {
+            let decoded = try decoder.decode([ScreenshotProject].self, from: data)
             projects = decoded.sorted { $0.modifiedAt > $1.modifiedAt }
+        } catch {
+            // Don't silently drop the user's library — record it so we can see
+            // exactly which document failed to decode.
+            BugLog.error("ProjectStore", "Couldn't load saved sets: \(error.localizedDescription)")
         }
     }
 
@@ -29,8 +34,12 @@ final class ProjectStore: ObservableObject {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(projects) else { return }
-        try? data.write(to: Workspace.projectsFile, options: .atomic)
+        do {
+            let data = try encoder.encode(projects)
+            try data.write(to: Workspace.projectsFile, options: .atomic)
+        } catch {
+            BugLog.error("ProjectStore", "Couldn't save your library: \(error.localizedDescription)")
+        }
     }
 
     // MARK: Mutations
