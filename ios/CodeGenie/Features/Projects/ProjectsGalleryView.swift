@@ -50,12 +50,6 @@ struct ProjectsGalleryView: View {
                                         Label("Compare with…", systemImage: "rectangle.split.2x1")
                                     }
                                 }
-                                Button(role: .destructive) {
-                                    session.deleteJob(job)
-                                    Haptics.warning()
-                                } label: {
-                                    Label("Remove from gallery", systemImage: "trash")
-                                }
                             }
                         }
                     }
