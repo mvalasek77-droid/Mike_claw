@@ -47,7 +47,7 @@ struct AppDescription: Codable, Hashable, Identifiable {
     }
 }
 
-struct BuildJob: Identifiable, Hashable {
+struct BuildJob: Identifiable, Hashable, Codable {
     let id: UUID
     let description: AppDescription
     var stage: Stage
@@ -60,7 +60,7 @@ struct BuildJob: Identifiable, Hashable {
         self.id = id; self.description = description; self.stage = stage; self.startedAt = startedAt
     }
 
-    enum Stage: String, CaseIterable, Hashable {
+    enum Stage: String, CaseIterable, Hashable, Codable {
         case planning      = "Planning architecture"
         case scaffolding   = "Scaffolding Xcode project"
         case generatingUI  = "Generating UI"

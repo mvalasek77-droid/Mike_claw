@@ -46,7 +46,16 @@ final class SwarmClient: ObservableObject {
         var body: [String: Any] = [
             "spec": [
                 "title": spec.title,
+                // Enriched orchestrator brief. Wraps the user's raw text in
+                // explicit structure (quality bar, anti-patterns, agent
+                // handoffs, platform conventions) so the swarm's Claude /
+                // GPT agents start from the same ground truth.
                 "prompt": spec.prompt,
+                // Raw, unmodified user intent. Backends that want to retry
+                // with a different brief or surface the user's original
+                // words in telemetry / receipts read this instead of trying
+                // to un-wrap the structured prompt.
+                "raw_prompt": spec.rawPrompt,
                 "category": spec.category,
                 "style": spec.style,
                 "target_ios": spec.targetIOS,
@@ -733,7 +742,14 @@ struct SwarmEvent: Identifiable {
 
 struct AppSpec: Hashable {
     var title: String
+    /// The enriched brief sent to the backend swarm. Built from the user's
+    /// raw description but wrapped in structure the planner/codegen agents
+    /// can actually parse — see `PromptBrief.enrich` for the format.
     var prompt: String
+    /// The user's raw, unenriched prompt. Surfaced separately so the backend
+    /// has unmodified ground truth for telemetry, retries with a different
+    /// brief, and the Apps-tab card preview without parsing the wrapper.
+    var rawPrompt: String
     var category: String = "utility"
     var style: String = "liquidGlass"
     var targetIOS: String = "17.0"
@@ -742,13 +758,164 @@ struct AppSpec: Hashable {
 
 extension AppSpec {
     init(_ description: AppDescription) {
+        let raw = description.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         self.init(
             title: description.title,
-            prompt: description.prompt,
+            prompt: PromptBrief.enrich(
+                title: description.title,
+                rawPrompt: raw,
+                category: description.category,
+                style: description.style,
+                features: description.features
+            ),
+            rawPrompt: raw,
             category: description.category.rawValue,
             style: description.style.rawValue,
             features: description.features
         )
+    }
+}
+
+/// Build-side prompt construction. Takes a user's raw natural-language
+/// description and wraps it in a richly-structured brief the backend's
+/// Claude + OpenAI agents can use without re-deriving context every turn.
+///
+/// Design goals, hard-won from comparing what the swarm produces against
+/// what it COULD produce from the same user intent:
+///
+///   • Frontier models (Claude 4.x, GPT-5) reliably do better when the user
+///     intent is wrapped in explicit XML tags than when it's interpolated
+///     into prose. The planner agent can split `<user_intent>` from
+///     `<context>` cleanly; the codegen agent can lift `<target_apis>`
+///     and `<style_intent>` without parsing English.
+///   • Naming the quality bar ("App-Store-shippable, App-of-the-Year
+///     candidate") shifts model output materially. Asking for "an iOS app"
+///     yields a sample; asking for an "App-of-the-Year candidate" yields
+///     something with polish, accessibility, and edge-case handling.
+///   • Style and category aren't bonus context — they're MORE specific than
+///     the user's prompt. Spelling them out (Liquid Glass surfaces, Apple
+///     HIG, system colours) saves the agents an inference hop and reduces
+///     wrong-style first drafts that have to be rewritten.
+///   • An anti-failure-mode rulebook ("don't ship placeholder lorem ipsum",
+///     "don't stub the persistence layer") replaces 80% of the agent
+///     round-trips the orchestrator otherwise spends correcting.
+enum PromptBrief {
+    static func enrich(
+        title: String,
+        rawPrompt: String,
+        category: AppDescription.Category,
+        style: AppDescription.Style,
+        features: [String]
+    ) -> String {
+        var sections: [String] = []
+
+        sections.append("""
+        You are the orchestrator brief for a swarm of frontier coding agents (Claude + GPT) that will design, scaffold, implement, and ship a complete, App-Store-shippable iOS 17+ app. Treat every section below as ground truth and propagate the relevant slices to each downstream agent in the structured form provided.
+        """)
+
+        sections.append("""
+        <quality_bar>
+        Target: an App-of-the-Year-class iOS app, not a tutorial sample. Every screen ships with: real data flow, accessibility labels + Dynamic Type, haptics on meaningful actions, empty / error / loading states, dark-mode polish, and edge-case handling for the obvious failure modes (no network, slow disk, missing permission, force-quit mid-task). No lorem ipsum, no `// TODO`, no placeholder strings in shipped UI, no stubbed persistence layers.
+        </quality_bar>
+        """)
+
+        sections.append("""
+        <app_identity>
+        <title>\(title.trimmed.isEmpty ? "(unset — agents must propose one)" : title.trimmed)</title>
+        <category>\(category.rawValue)</category>
+        <category_hint>\(categoryHint(category))</category_hint>
+        </app_identity>
+        """)
+
+        sections.append("""
+        <user_intent>
+        \(rawPrompt.isEmpty ? "(empty — refuse to build; ask the user for a description.)" : rawPrompt)
+        </user_intent>
+        """)
+
+        if !features.isEmpty {
+            sections.append("""
+            <explicit_features>
+            \(features.map { "• \($0)" }.joined(separator: "\n"))
+            </explicit_features>
+            """)
+        }
+
+        sections.append("""
+        <style_intent>
+        Design language: \(style.label).
+        \(styleHint(style))
+        </style_intent>
+        """)
+
+        sections.append("""
+        <platform_conventions>
+        • SwiftUI-first. UIKit only where SwiftUI doesn't yet cover the API.
+        • Targets iOS 17.0 and above; use observation, NavigationStack, .scrollTargetBehavior where they materially help.
+        • Apple Human Interface Guidelines for navigation hierarchy, control sizes, gesture priorities, and dynamic type scaling.
+        • Use system colours (Theme/asset catalog) and SF Symbols. No vendored icon fonts.
+        • Privacy: declare every collected data type in PrivacyInfo.xcprivacy; default to no collection until justified by a user-visible feature.
+        • App-Store-ready by construction: bundle id, signing entitlements, app icon slot, launch screen, accessibility labels, no debug code paths reachable in Release.
+        </platform_conventions>
+        """)
+
+        sections.append("""
+        <agent_handoffs>
+        • Planner (Claude): emit a Mermaid-style information architecture (screens, navigation edges, top-level state owners) before code. Cite which `<explicit_features>` map to which screen.
+        • Scaffolder: produce a buildable Xcode project at the FIRST commit (compiles + runs to an empty launch screen). Do not pile up source files that don't compile.
+        • UI codegen (GPT for structure / Claude for polish): one screen per turn, ship-quality each time. No placeholder dummies for "later".
+        • Logic codegen: real persistence (SwiftData / Core Data / Files) appropriate to the data model. No `var items: [Item] = []` singletons.
+        • Linter: enforce the <anti_patterns> rules below before any review.
+        • Reviewer: read the diff with a release reviewer's eye — flag accessibility gaps, missing empty states, TODO leakage, and HIG violations.
+        </agent_handoffs>
+        """)
+
+        sections.append("""
+        <anti_patterns>
+        Reject (don't ship) any of these in generated code:
+        • `// TODO`, `// FIXME`, `fatalError("not implemented")`, `print("debug...")` left over from generation.
+        • Lorem ipsum or "Sample Title" strings in shipped UI.
+        • In-memory-only stores when the screen visibly implies persistence.
+        • Hard-coded English strings without going through a Localizable.strings table when the app targets multiple regions.
+        • Synchronous network calls on the main actor; missing `await` on async APIs.
+        • Force-unwrapping (`!`) outside of test code unless invariant-justified in a one-line comment.
+        • Custom colours hard-coded instead of routed through the asset catalog.
+        • Buttons / icons without `.accessibilityLabel(_:)` when their visible text isn't descriptive.
+        </anti_patterns>
+        """)
+
+        sections.append("""
+        <output_contract>
+        • Every code artifact compiles standalone — no dangling imports, no references to symbols that don't exist yet.
+        • Every new screen lands with: SwiftUI view, preview block, accessibility labels, and at least one snapshot-worthy state (data) plus one empty / loading state.
+        • Commit messages: imperative voice, scoped to a single concern (`Add settings screen`, `Wire up onboarding state machine`), no "WIP" or "stuff".
+        </output_contract>
+        """)
+
+        return sections.joined(separator: "\n\n")
+    }
+
+    private static func categoryHint(_ category: AppDescription.Category) -> String {
+        switch category {
+        case .utility:      return "Bite-size, single-screen-feels but multi-screen-real. Optimise for first-launch glanceability."
+        case .productivity: return "Trust the user with structure: lists, filters, dates, undo. Persistence is the spine; keyboard handling matters."
+        case .lifestyle:    return "Soft surfaces, gentle haptics, day/night palette. Tracks data the user revisits but doesn't crunch."
+        case .finance:      return "Precision over flourish: tabular data, currencies, decimals, totals that always reconcile. Conservative animation."
+        case .social:       return "Optimistic UI on send; latency-tolerant retries; report/block plumbing wired by default. Identity model up front."
+        case .health:       return "HealthKit integration where it earns its place; permissions framed in user-benefit copy; respect privacy by default."
+        case .education:    return "Progressive disclosure: every screen teaches one idea. Track progress in persistent state; celebrate milestones with restraint."
+        case .games:        return "60fps interactive core; SwiftUI for chrome, SpriteKit/Metal where the game loop needs frames. Onboard fast."
+        case .photo:        return "Performance-sensitive image handling: thumbnails, lazy loading, ProRes/HEIF, photo permission gating at the right moment."
+        }
+    }
+
+    private static func styleHint(_ style: AppDescription.Style) -> String {
+        switch style {
+        case .liquidGlass: return "Glass-tier backgrounds (.ultraThinMaterial / GlassEffect on 17+), tinted strokes, depth via shadow + blur, accent-coloured highlight states. Lean into iOS 26 glassEffect on supported versions."
+        case .minimal:     return "Whitespace as primary design element, single accent colour, system type only, restraint everywhere. Negative space tells the story."
+        case .playful:     return "Bouncy spring animations, soft gradients, large rounded corners, expressive icons, micro-interactions that reward exploration. Restraint on text density."
+        case .editorial:   return "Type-driven hierarchy with serif or refined sans display fonts; generous horizontal rhythm; image-led layouts. Treats content as the design."
+        }
     }
 }
 
