@@ -23,6 +23,16 @@ enum Workspace {
         root.appendingPathComponent("projects.json", isDirectory: false)
     }
 
+    /// Total bytes used by stored source images.
+    static func imagesDirectorySize() -> Int64 {
+        let urls = (try? fileManager.contentsOfDirectory(
+            at: imagesDirectory, includingPropertiesForKeys: [.fileSizeKey])) ?? []
+        return urls.reduce(0) { total, url in
+            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            return total + Int64(size)
+        }
+    }
+
     /// Create a directory if it doesn't already exist. Failures here are
     /// non-fatal: persistence simply degrades to in-memory for the session.
     private static func ensure(_ url: URL) {

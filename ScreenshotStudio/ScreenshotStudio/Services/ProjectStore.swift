@@ -115,6 +115,25 @@ final class ProjectStore: ObservableObject {
         persist()
     }
 
+    /// Delete image files no longer referenced by any set (e.g. left over from
+    /// a crash mid-edit), and drop the thumbnail cache. Returns the count freed.
+    @discardableResult
+    func cleanUpOrphanedImages() -> Int {
+        var referenced = Set<String>()
+        for project in projects {
+            for slide in project.slides { referenced.insert(slide.imageFile) }
+            if let bg = project.style.background.imageFile { referenced.insert(bg) }
+        }
+        let urls = (try? Workspace.fileManager.contentsOfDirectory(
+            at: Workspace.imagesDirectory, includingPropertiesForKeys: nil)) ?? []
+        var removed = 0
+        for url in urls where !referenced.contains(url.lastPathComponent) {
+            ImageStore.delete(url.lastPathComponent)
+            removed += 1
+        }
+        return removed
+    }
+
     func delete(at offsets: IndexSet) {
         // Resolve to concrete projects first: deleting mutates `projects`, so
         // the offsets would otherwise go stale and risk an out-of-bounds access.

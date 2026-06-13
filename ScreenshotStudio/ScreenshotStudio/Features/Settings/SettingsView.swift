@@ -5,6 +5,8 @@ struct SettingsView: View {
     @EnvironmentObject private var store: ProjectStore
     @ObservedObject private var log = BugLog.shared
     @State private var showBugReport = false
+    @State private var storageBytes: Int64 = 0
+    @State private var cleanupNote: String?
 
     private var appVersion: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -68,11 +70,33 @@ struct SettingsView: View {
                         }
                     }
 
+                    GlassCard(title: "Storage", icon: "internaldrive.fill") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            row("Screenshots on disk", ByteCountFormatter.string(fromByteCount: storageBytes, countStyle: .file))
+                            if let cleanupNote {
+                                Text(cleanupNote)
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.success)
+                            }
+                            Button {
+                                let freed = store.cleanUpOrphanedImages()
+                                storageBytes = Workspace.imagesDirectorySize()
+                                cleanupNote = freed == 0 ? "Nothing to clean — every file is in use."
+                                                         : "Removed \(freed) unused file\(freed == 1 ? "" : "s")."
+                                Haptics.success()
+                            } label: {
+                                settingsRow(icon: "trash", title: "Clear unused files",
+                                            subtitle: "Remove images no set references")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
                     GlassCard(title: "About", icon: "info.circle.fill") {
                         VStack(alignment: .leading, spacing: 10) {
                             row("Version", appVersion)
                             row("Saved sets", "\(store.projects.count)")
-                            Divider().overlay(.white.opacity(0.1))
+                            Divider().overlay(LiquidGlass.hairline)
                             Text("Screenshot Studio turns raw iPhone screenshots into App Store Connect–ready images, rendered at exactly the pixel sizes Apple requires.")
                                 .font(.system(size: 13, weight: .regular, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
@@ -84,6 +108,7 @@ struct SettingsView: View {
                 .padding(.bottom, 120)
             }
             .background(LiquidGlassBackground().ignoresSafeArea())
+            .task { storageBytes = Workspace.imagesDirectorySize() }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
         }
