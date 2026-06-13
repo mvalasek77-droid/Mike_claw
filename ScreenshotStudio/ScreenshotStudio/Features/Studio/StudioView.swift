@@ -22,6 +22,7 @@ struct StudioView: View {
     @State private var showVideoPicker = false
     @State private var frameBatch: FrameBatch?
     @State private var isExtractingVideo = false
+    @State private var shareItem: ShareURLItem?
     /// The project as it was opened, so closing without edits doesn't bump the
     /// modified date and silently reshuffle the gallery.
     @State private var original: ScreenshotProject
@@ -150,6 +151,9 @@ struct StudioView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: [item.url])
+        }
         .overlay {
             if isExtractingVideo { extractingOverlay }
         }
@@ -259,6 +263,7 @@ struct StudioView: View {
                             Button { move(from: index, to: index + 1) } label: { Label("Move right", systemImage: "arrow.right") }
                         }
                         Button { duplicate(slide) } label: { Label("Duplicate", systemImage: "plus.square.on.square") }
+                        Button { shareSlide(slide) } label: { Label("Share", systemImage: "square.and.arrow.up") }
                         Button(role: .destructive) { delete(slide) } label: { Label("Delete", systemImage: "trash") }
                     }
                     .accessibilityLabel("Screenshot \(index + 1) of \(project.slides.count)")
@@ -429,6 +434,27 @@ struct StudioView: View {
         return true
     }
 
+    /// Render one slide at the primary device resolution and hand it to the
+    /// share sheet as a PNG file — a quick way to send a single screenshot.
+    private func shareSlide(_ slide: Slide) {
+        let canvasSize = project.deviceSize.pixelSize(for: project.orientation)
+        guard let image = ScreenshotRenderer.render(
+            canvasSize: canvasSize,
+            style: project.style,
+            image: ImageStore.load(slide.imageFile),
+            captionText: project.captionText(for: slide),
+            statusBarLayout: project.deviceSize.statusBarLayout
+        ), let data = image.pngData() else {
+            BugLog.warning("Share", "Couldn't render the slide for sharing.")
+            return
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ScreenshotStudio-\(UUID().uuidString).png")
+        guard (try? data.write(to: url, options: .atomic)) != nil else { return }
+        shareItem = ShareURLItem(url: url)
+        Haptics.tap()
+    }
+
     private func duplicate(_ slide: Slide) {
         guard let index = project.slides.firstIndex(where: { $0.id == slide.id }),
               let file = ImageStore.copy(slide.imageFile) else { return }
@@ -451,4 +477,10 @@ struct StudioView: View {
         }
         Haptics.selection()
     }
+}
+
+/// Identifiable wrapper so a single shared file URL can drive `.sheet(item:)`.
+private struct ShareURLItem: Identifiable {
+    let id = UUID()
+    let url: URL
 }

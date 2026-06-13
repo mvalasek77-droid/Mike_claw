@@ -225,6 +225,16 @@ struct BackgroundPanel: View {
                 SliderRow(label: "Gradient angle", value: $project.style.background.angle,
                           range: 0...360, format: { String(format: "%.0f°", $0) })
             }
+            if project.style.background.kind == .solid {
+                HStack {
+                    Text("Color")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                    Spacer()
+                    ColorPicker("Background color", selection: gradientColorBinding(0), supportsOpacity: false)
+                        .labelsHidden()
+                }
+            }
             if project.style.background.kind == .image {
                 SliderRow(label: "Dim", value: $project.style.background.imageDim, range: 0...0.85)
                 SliderRow(label: "Blur", value: $project.style.background.imageBlur, range: 0...0.04,
