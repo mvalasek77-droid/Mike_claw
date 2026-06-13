@@ -90,26 +90,26 @@ struct StudioCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 10) {
-                posterStack
-                Text(studio.name)
-                    .font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
-                    .lineLimit(1)
-                Text(studio.tagline)
-                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
-                    .lineLimit(2).multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                HStack(spacing: 6) {
-                    miniStat("\(studio.titleCount)", "titles")
-                    miniStat("\(studio.totalSales)", "sold")
-                    miniStat("\(studio.averageScore)", "avg")
+            // GlassSurface so the card picks up the real iOS 26 glassEffect
+            // (and depth) instead of re-implementing the material fallback.
+            GlassSurface(tint: studio.accent) {
+                VStack(alignment: .leading, spacing: 10) {
+                    posterStack
+                    Text(studio.name)
+                        .font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                    Text(studio.tagline)
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        .lineLimit(2).multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HStack(spacing: 6) {
+                        miniStat("\(studio.titleCount)", "titles")
+                        miniStat("\(studio.totalSales)", "sold")
+                        miniStat("\(studio.averageScore)", "avg")
+                    }
                 }
+                .padding(12)
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.cornerL, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerL, style: .continuous)
                     .strokeBorder(studio.accent.opacity(0.4), lineWidth: 0.8)

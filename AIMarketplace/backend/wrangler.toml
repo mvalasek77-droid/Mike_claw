@@ -10,6 +10,11 @@ compatibility_date = "2024-12-01"
 #                            future client-side Stripe.js / Elements flow)
 #   APP_SHARED_SECRET        long random string; also pasted into the app
 #   RESEND_API_KEY           (optional) enables the operator payout-digest email
+#   ANTHROPIC_API_KEY        (optional) enables /scout/draft — the Scout's text
+#                            drafting fallback for devices without Apple
+#                            Intelligence. Get one at console.anthropic.com.
+#                            Model defaults to claude-opus-4-8; override with
+#                            the SCOUT_TEXT_MODEL var if desired.
 
 [vars]
 STRIPE_CONNECT_TYPE = "express"

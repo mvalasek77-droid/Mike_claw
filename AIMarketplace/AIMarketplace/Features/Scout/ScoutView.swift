@@ -19,6 +19,7 @@ struct ScoutView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
                     missionCard
+                    onDeviceAIBanner
                     engineCard
                     statusCard
                     proposalsCard
@@ -56,6 +57,47 @@ struct ScoutView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
                 Text(body).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+            }
+        }
+    }
+
+    /// Loud, honest banner when NO drafting engine is available (neither the
+    /// on-device model nor the Worker's Claude fallback). Without it,
+    /// authorizing a proposal looked like it did nothing — the real reason
+    /// (Apple Intelligence off / unsupported device / model downloading)
+    /// never surfaced anywhere. When the Worker fallback covers for the
+    /// on-device model, a quiet info line says so instead.
+    @ViewBuilder
+    private var onDeviceAIBanner: some View {
+        if let reason = OnDeviceAI.unavailabilityMessage {
+            if scoutFeed.providers.textGenConfigured {
+                HStack(spacing: 8) {
+                    Image(systemName: "cloud.fill")
+                        .font(.system(size: 13)).foregroundStyle(Theme.accent)
+                        .accessibilityHidden(true)
+                    Text("On-device AI unavailable — Scout is drafting via your Worker's Claude fallback.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Theme.inkSoft)
+                }
+                .padding(.horizontal, 4)
+            } else {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 16)).foregroundStyle(Theme.warning)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Scout can't draft media right now")
+                            .font(.system(size: 13, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                        Text("\(reason) The Scout can still compose proposals and serve user requests. Fix: enable Apple Intelligence on this device, or set ANTHROPIC_API_KEY on the Worker to draft via the cloud.")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Theme.inkSoft)
+                    }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.warning.opacity(0.12)))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.warning.opacity(0.35), lineWidth: 0.8))
             }
         }
     }
@@ -122,6 +164,15 @@ struct ScoutView: View {
         }
     }
 
+    /// True when this proposal needs text drafting and NO engine can run —
+    /// on-device model down AND no Worker fallback. Authorizing would be a
+    /// guaranteed no-op.
+    private func foundationBlocked(_ p: ScoutProposal) -> Bool {
+        p.providerNeeded == .foundation
+            && !OnDeviceAI.isReady
+            && !scoutFeed.providers.textGenConfigured
+    }
+
     private func proposalRow(_ p: ScoutProposal, pending: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -162,7 +213,7 @@ struct ScoutView: View {
                             .background(Capsule().fill(Theme.accent))
                     }
                     .buttonStyle(.plain)
-                    .disabled(!p.providerAvailable)
+                    .disabled(!p.providerAvailable || foundationBlocked(p))
                     Button {
                         store.declineScoutProposal(p)
                         Haptics.warning()
@@ -177,6 +228,10 @@ struct ScoutView: View {
                 }
                 if !p.providerAvailable {
                     Text("⚠️ Provider not configured — set the API key in the Worker to enable.")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Theme.warning)
+                } else if foundationBlocked(p) {
+                    Text("⚠️ On-device AI unavailable — see the banner above. Authorize once it's back.")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Theme.warning)
                 }

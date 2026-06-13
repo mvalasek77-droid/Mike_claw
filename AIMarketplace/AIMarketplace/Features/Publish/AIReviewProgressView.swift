@@ -138,7 +138,9 @@ struct AIReviewProgressView: View {
     }
 
     private func start() {
-        pulse = true
+        // Reduce Motion: leave pulse false so the sparkles icon stays static
+        // instead of breathing for the whole (up to ~60s) review.
+        if !UIAccessibility.isReduceMotionEnabled { pulse = true }
 
         // 1. Kick off the real analysis IMMEDIATELY. This is what was broken
         //    before — the analysis used to start only after the animation

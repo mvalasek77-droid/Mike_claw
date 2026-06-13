@@ -64,6 +64,7 @@ struct ReportSheet: View {
                     .disabled(submitting || sent)
 
                     Button(role: .destructive) {
+                        Haptics.warning()
                         moderation.block(item.creator)
                         blocked = true
                     } label: {
@@ -78,6 +79,8 @@ struct ReportSheet: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(AppBackground().ignoresSafeArea())
             .navigationTitle("Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -105,6 +108,7 @@ struct ReportSheet: View {
         )
         submitting = false
         sent = true
+        Haptics.success()
         // Even if the network call failed we still ack — the report is in the
         // local set and the user has done their part. The operator inbox is
         // the authoritative log; offline reports sync next time the Worker

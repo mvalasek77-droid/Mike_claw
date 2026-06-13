@@ -9,7 +9,17 @@ struct SubmitWorkView: View {
     @EnvironmentObject private var store: MarketplaceStore
     @Environment(\.dismiss) private var dismiss
 
-    @State private var draft = DraftWork()
+    @State private var draft: DraftWork
+    /// Non-nil when revising an existing bookshelf entry: the wizard starts
+    /// pre-filled with that draft and the old (non-live) entry is replaced
+    /// when the revision is submitted.
+    private let replacesSubmissionID: UUID?
+
+    init(reviseFrom submission: Submission? = nil) {
+        _draft = State(initialValue: submission?.draft ?? DraftWork())
+        replacesSubmissionID = submission?.id
+    }
+
     @State private var step = 0
     @State private var phase: Phase = .form
     @State private var submissionID: UUID?
@@ -140,6 +150,7 @@ struct SubmitWorkView: View {
             Button { dismiss() } label: {
                 Image(systemName: "xmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.inkSoft)
             }
+            .accessibilityLabel("Close")
             Spacer()
             Text("Register Title")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -190,6 +201,9 @@ struct SubmitWorkView: View {
                         showStripeGate = true
                         return
                     }
+                    // Revision: retire the old entry so the bookshelf doesn't
+                    // grow a duplicate. removeSubmission protects live titles.
+                    if let old = replacesSubmissionID { store.removeSubmission(old) }
                     submissionID = store.createSubmission(draft)
                     Motion.run(.easeInOut(duration: 0.4)) { phase = .reviewing }
                 }
@@ -261,7 +275,7 @@ struct ProgressDots: View {
                     .frame(width: i == current ? 22 : 8, height: 6)
             }
         }
-        .animation(.spring(response: 0.3), value: current)
+        .motion(.spring(response: 0.3, dampingFraction: 0.85), value: current)
     }
 }
 
@@ -439,26 +453,28 @@ private struct LengthStepper: View {
                 .foregroundStyle(Theme.inkSoft)
             Spacer()
             HStack(spacing: 14) {
-                stepButton("minus") { draft.length = max(1, draft.length - step) }
+                stepButton("minus", "Decrease length") { draft.length = max(1, draft.length - step) }
                 Text("\(draft.length) \(unit)")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(Theme.ink)
                     .frame(minWidth: 100)
-                stepButton("plus") { draft.length += step }
+                stepButton("plus", "Increase length") { draft.length += step }
             }
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
     }
 
-    private func stepButton(_ icon: String, _ action: @escaping () -> Void) -> some View {
+    private func stepButton(_ icon: String, _ label: String, _ action: @escaping () -> Void) -> some View {
         Button { Haptics.tap(); action() } label: {
             Image(systemName: icon)
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(Theme.ink)
                 .frame(width: 30, height: 30)
                 .background(Circle().fill(.white.opacity(0.12)))
-        }.buttonStyle(.plain)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 
@@ -500,7 +516,9 @@ private struct DisclosureStep: View {
                         .font(.system(size: 16, weight: .bold)).foregroundStyle(.black)
                         .frame(width: 44, height: 44)
                         .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(Theme.kdp))
-                }.buttonStyle(.plain)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add AI tool")
             }
 
             if !draft.aiTools.isEmpty {
@@ -548,6 +566,7 @@ private struct ContentStep: View {
                         }
                         Spacer()
                         Button {
+                            Haptics.warning()
                             // Clear ALL real-content fields, not just the display name.
                             draft.fileName = nil
                             draft.fileSizeMB = 0
@@ -556,6 +575,7 @@ private struct ContentStep: View {
                         } label: {
                             Image(systemName: "trash").foregroundStyle(Theme.warning)
                         }
+                        .accessibilityLabel("Remove uploaded file")
                     }
                 }
             } else {
@@ -941,12 +961,14 @@ private struct PricingStep: View {
                         .foregroundStyle(Theme.ink)
                     Spacer()
                     HStack(spacing: 12) {
-                        priceButton("minus") { draft.price = max(0.99, draft.price - 1) }
-                        priceButton("plus") { draft.price = min(19.99, draft.price + 1) }
+                        priceButton("minus", "Decrease price") { draft.price = max(0.99, draft.price - 1) }
+                        priceButton("plus", "Increase price") { draft.price = min(19.99, draft.price + 1) }
                     }
                 }
                 Slider(value: $draft.price, in: 0.99...19.99, step: 0.50)
                     .tint(Theme.kdp)
+                    .accessibilityLabel("List price")
+                    .accessibilityValue(String(format: "$%.2f", draft.price))
             }
 
             GlassCard(title: "Where each $\(String(format: "%.2f", draft.price)) goes", icon: "percent", tint: Theme.kdp) {
@@ -986,11 +1008,13 @@ private struct PricingStep: View {
         }
     }
 
-    private func priceButton(_ icon: String, _ action: @escaping () -> Void) -> some View {
+    private func priceButton(_ icon: String, _ label: String, _ action: @escaping () -> Void) -> some View {
         Button { Haptics.tap(); action() } label: {
             Image(systemName: icon).font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.ink)
                 .frame(width: 34, height: 34).background(Circle().fill(.white.opacity(0.12)))
-        }.buttonStyle(.plain)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 

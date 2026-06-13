@@ -106,6 +106,22 @@ final class MarketplaceStore: ObservableObject {
     /// films remain screenplay-only until you raise the budget."
     @Published var scoutFilmBudgetUSD: Double = 0 { didSet { persist() } }
 
+    /// "Let the Scout make media": when ON (default), the Scout authorizes
+    /// its own daily slate the moment it's composed and produces immediately —
+    /// the AI Editor's 85+ commercial bar still gates every publication, and
+    /// the deck records everything for audit. When OFF, every proposal waits
+    /// for manual authorization. Only free / text-drafted (foundation-provider)
+    /// proposals auto-produce; anything needing a PAID external provider
+    /// always waits for the admin.
+    @Published var scoutAutoProduceEnabled: Bool = {
+        let key = "scout.autoProduce.v1"
+        return UserDefaults.standard.object(forKey: key) == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: key)
+    }() {
+        didSet { UserDefaults.standard.set(scoutAutoProduceEnabled, forKey: "scout.autoProduce.v1") }
+    }
+
     /// Targets used by the feasibility check. ~10 scenes at 3 min/scene = 30 min.
     static let scoutFilmTargetScenes = 10
     static let scoutFilmTargetMinutes = 30
@@ -180,6 +196,43 @@ final class MarketplaceStore: ObservableObject {
     func attachScoutFeed(_ service: ScoutFeedService) {
         scoutFeed = service
         loadScoutProposals()
+    }
+
+    // MARK: - Scout drafting engines
+
+    /// True when SOME drafting engine can run: Apple's on-device model, or
+    /// the Worker's /scout/draft fallback (ANTHROPIC_API_KEY configured).
+    @MainActor
+    var scoutCanDraft: Bool {
+        OnDeviceAI.isReady || scoutFeed?.providers.textGenConfigured == true
+    }
+
+    /// Drafts long-form text on device when possible, else via the Worker.
+    private func draftLongFormAnywhere(type: MediaType, title: String, genre: String,
+                                       formula: String, masters: [String]) async -> String? {
+        if let text = await OnDeviceAI.draftLongForm(type: type, title: title, genre: genre,
+                                                     formula: formula, masters: masters) {
+            return text
+        }
+        guard scoutFeed?.providers.textGenConfigured == true else { return nil }
+        let spec = await OnDeviceAI.longFormSpec(type: type, title: title, genre: genre,
+                                                 formula: formula, masters: masters)
+        return await RemoteDraft.generate(instructions: spec.instructions, prompt: spec.prompt,
+                                          baseURL: payoutBaseURL, sharedSecret: payoutSharedSecret)
+    }
+
+    /// Drafts a synopsis on device when possible, else via the Worker.
+    private func draftSynopsisAnywhere(type: MediaType, title: String, genre: String,
+                                       existing: String) async -> String? {
+        if let text = await OnDeviceAI.draftSynopsis(type: type, title: title,
+                                                     genre: genre, existing: existing) {
+            return text
+        }
+        guard scoutFeed?.providers.textGenConfigured == true else { return nil }
+        let spec = await OnDeviceAI.synopsisSpec(type: type, title: title,
+                                                 genre: genre, existing: existing)
+        return await RemoteDraft.generate(instructions: spec.instructions, prompt: spec.prompt,
+                                          baseURL: payoutBaseURL, sharedSecret: payoutSharedSecret)
     }
 
     // MARK: - Scout proposals (admin-authorized production)
@@ -274,6 +327,17 @@ final class MarketplaceStore: ObservableObject {
             let id = request.id
             Task { await processRequest(id) }
         }
+        // A request killed between "accepted" and "delivered" would otherwise
+        // be a zombie forever — no path resumes .accepted, and the production
+        // energy drawn at accept time never returns to the float.
+        for request in requests where request.status == .accepted {
+            let id = request.id
+            let model = request.acceptedBy ?? AICoin.editor
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_800_000_000)
+                self.deliver(requestID: id, model: model)
+            }
+        }
     }
 
     /// One-time cleanup: wipe all previously auto-generated content so the
@@ -287,7 +351,12 @@ final class MarketplaceStore: ObservableObject {
         scoutDrops = []
         scoutLog = []
         lastScoutRun = nil
-        catalog.removeAll { $0.isEditorOriginal }   // all AI-generated content is flagged
+        // All AI-generated content is flagged isEditorOriginal — but spare the
+        // seed catalogue (the Inaugural Roundtable hero carries the flag too,
+        // and SampleData rebuilds it next launch anyway; purging it here made
+        // the home hero vanish for the FIRST session only).
+        let seedIDs = Set(SampleData.catalog().map(\.id))
+        catalog.removeAll { $0.isEditorOriginal && !seedIDs.contains($0.id) }
         loading = false
         UserDefaults.standard.set(true, forKey: key)
         persist()
@@ -492,7 +561,9 @@ final class MarketplaceStore: ObservableObject {
         let cutoff = Date.now.addingTimeInterval(-60)
         var swept = 0
         for i in submissions.indices
-        where submissions[i].status == .reviewing && submissions[i].submittedAt < cutoff {
+        where submissions[i].status == .reviewing
+            && submissions[i].submittedAt < cutoff
+            && !inFlightReviewIDs.contains(submissions[i].id) {
             submissions[i].status = .rejected
             if submissions[i].review == nil {
                 submissions[i].review = AIReviewResult(
@@ -817,11 +888,13 @@ final class MarketplaceStore: ObservableObject {
         catalog.contains { $0.aiTools.contains(model) }
     }
 
-    /// Real USD a model has earned (85% of sales of the media it helped make).
+    /// Real USD a model has earned: 85% of net-after-Apple sale proceeds of
+    /// the media it helped make — the same math `grantPurchase` credits with,
+    /// so the partner UI never overstates earnings.
     func partnerEarningsUSD(_ model: String) -> Double {
         catalog
             .filter { $0.aiTools.contains(model) }
-            .reduce(0) { $0 + Double($1.purchases) * effectivePrice(for: $1) * Commerce.creatorShareRate }
+            .reduce(0) { $0 + Double($1.purchases) * Commerce.creatorEarning(on: effectivePrice(for: $1)) }
     }
 
     func partnerTitleCount(_ model: String) -> Int {
@@ -1206,34 +1279,64 @@ final class MarketplaceStore: ObservableObject {
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let refunds = json["refunds"] as? [[String: Any]],
               !refunds.isEmpty else { return }
+        // Shared with StoreKitService.checkRevocation — both paths can see the
+        // SAME refunded transaction (Worker queue vs Transaction.all revocation
+        // signals), and without one dedup set the buyer is debited twice.
+        let revokedKey = "storekit.revokedTransactionIDs.v1"
+        var revoked = Set(UserDefaults.standard.array(forKey: revokedKey) as? [String] ?? [])
+        // What each refund actually clawed, so a reversal restores exactly
+        // that — not the full pack price when the wallet was already empty.
+        let clawedKey = "refunds.clawedAmounts.v1"
+        var clawed = UserDefaults.standard.dictionary(forKey: clawedKey) as? [String: Double] ?? [:]
         var ackedIDs: [String] = []
         for entry in refunds {
             let kind = (entry["kind"] as? String) ?? "refunded"
             let productID = (entry["productId"] as? String) ?? ""
             let txID = (entry["transactionId"] as? String) ?? ""
+            guard !txID.isEmpty else { continue }   // can't ack without an id
             let credit = StoreKitService.credit(for: productID)
-            guard credit > 0, !txID.isEmpty else { continue }
+            guard credit > 0 else {
+                // Unknown product — nothing to claw, but ack it or the Worker
+                // re-serves the same dead event on every foreground forever.
+                ackedIDs.append(txID)
+                continue
+            }
             switch kind {
             case "refunded":
-                let before = walletBalance
-                walletBalance = max(0, walletBalance - credit)
-                let actuallyClawed = before - walletBalance
-                if actuallyClawed > 0 {
-                    notify(title: "Refund processed",
-                           body: String(format: "Apple refunded $%.2f of wallet credit.", actuallyClawed),
-                           kind: .system)
+                let revTag = "rev-\(txID)"
+                if !revoked.contains(revTag) {
+                    let before = walletBalance
+                    walletBalance = max(0, walletBalance - credit)
+                    let actuallyClawed = before - walletBalance
+                    revoked.insert(revTag)
+                    clawed[txID] = actuallyClawed
+                    if actuallyClawed > 0 {
+                        notify(title: "Refund processed",
+                               body: String(format: "Apple refunded $%.2f of wallet credit.", actuallyClawed),
+                               kind: .system)
+                    }
                 }
             case "refund_reversed":
-                // Apple retracted the refund — restore the credit.
-                walletBalance += credit
-                notify(title: "Refund reversed",
-                       body: String(format: "Apple restored $%.2f of wallet credit.", credit),
-                       kind: .system)
+                // Apple retracted the refund — restore what was actually
+                // clawed. If the StoreKit path handled the claw (no local
+                // record but the rev tag exists), fall back to the full
+                // credit; if nothing was ever clawed on this device, restore
+                // nothing rather than mint free credit.
+                let restore = clawed[txID] ?? (revoked.contains("rev-\(txID)") ? credit : 0)
+                clawed.removeValue(forKey: txID)
+                if restore > 0 {
+                    walletBalance += restore
+                    notify(title: "Refund reversed",
+                           body: String(format: "Apple restored $%.2f of wallet credit.", restore),
+                           kind: .system)
+                }
             default:
                 break
             }
             ackedIDs.append(txID)
         }
+        UserDefaults.standard.set(Array(revoked), forKey: revokedKey)
+        UserDefaults.standard.set(clawed, forKey: clawedKey)
         await ackRefunds(transactionIDs: ackedIDs, token: token)
     }
 
@@ -1622,6 +1725,30 @@ final class MarketplaceStore: ObservableObject {
             message: "Scout drafted \(composed.count) proposals — review the deck (admin) to authorize production. Budget: $\(String(format: "%.2f", composed.reduce(0) { $0 + $1.estimatedUSD })) + ~\(composed.reduce(0) { $0 + $1.estimatedTokens }) Foundation tokens.",
             kind: .brief, relatedItemID: nil), at: 0)
         trimScoutLog()
+
+        // Daily auto-production: when the admin has "Let the Scout make
+        // media" ON, free (foundation-provider) proposals go straight into
+        // the Editor-gated pipeline so the catalogue grows every cycle
+        // without a manual tap. Paid external-provider proposals always
+        // wait in the deck — auto-spending real money is never implied.
+        if scoutAutoProduceEnabled {
+            let toProduce = composed.filter { $0.providerNeeded == .foundation }
+            guard !toProduce.isEmpty else { return }
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "Auto-production is ON — producing \(toProduce.count) of today's slate now. The Editor still gates every piece at \(AIReviewResult.threshold)+/100; results land in the deck.",
+                kind: .brief, relatedItemID: nil), at: 0)
+            trimScoutLog()
+            let snapshot = catalog
+            for proposal in toProduce {
+                guard let idx = scoutProposals.firstIndex(where: { $0.id == proposal.id }),
+                      scoutProposals[idx].status == .pending else { continue }
+                scoutProposals[idx].status = .authorized
+                let authorized = scoutProposals[idx]
+                Task { @MainActor [weak self] in
+                    await self?.produceFromProposal(authorized, catalogSnapshot: snapshot)
+                }
+            }
+        }
     }
 
     private func providerAvailable(_ p: ScoutProposal.Provider) -> Bool {
@@ -1699,6 +1826,27 @@ final class MarketplaceStore: ObservableObject {
                                    cycleIndex: Int, fallbackGenre: String,
                                    catalogSnapshot: [MediaItem],
                                    fromProposal: UUID? = nil) async {
+        // Scout drafting needs an engine: Apple's on-device model, or the
+        // Worker's Claude-backed /scout/draft fallback. With neither, drafts
+        // would collapse to a ~30-word placeholder synopsis the Editor rightly
+        // scores ~12/100 — which burned all three attempts and reported
+        // "couldn't clear the bar", reading as the feature being broken.
+        // Fail fast with the REAL reason and put the proposal back to pending
+        // so it can be authorized again once an engine is available.
+        if let reason = await OnDeviceAI.unavailabilityMessage,
+           scoutFeed?.providers.textGenConfigured != true {
+            scoutLog.insert(ScoutEntry(date: .now,
+                message: "Scout can't draft media right now — \(reason)",
+                kind: .brief, relatedItemID: nil), at: 0)
+            trimScoutLog()
+            if let proposalID = fromProposal,
+               let pidx = scoutProposals.firstIndex(where: { $0.id == proposalID }) {
+                scoutProposals[pidx].status = .pending
+                scoutProposals[pidx].statusNote = reason
+            }
+            return
+        }
+
         // A proposal authorization always creates a NEW film. Extending
         // existing in-progress films happens separately in
         // `extendInProgressFilms()`, called once per Scout cycle. Mixing the
@@ -1724,13 +1872,13 @@ final class MarketplaceStore: ObservableObject {
             // 2. Generate the long-form artifact the Editor will analyse.
             let formula = recipe?.formula ?? ""
             let masters = recipe?.masters ?? []
-            let longForm = await OnDeviceAI.draftLongForm(type: type, title: item.title,
-                                                          genre: item.genre,
-                                                          formula: formula, masters: masters)
+            let longForm = await draftLongFormAnywhere(type: type, title: item.title,
+                                                       genre: item.genre,
+                                                       formula: formula, masters: masters)
 
             // 3. Always also generate a short marketing synopsis for the card.
-            if let synopsis = await OnDeviceAI.draftSynopsis(type: type, title: item.title,
-                                                             genre: item.genre, existing: formula),
+            if let synopsis = await draftSynopsisAnywhere(type: type, title: item.title,
+                                                          genre: item.genre, existing: formula),
                !synopsis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 item.synopsis = synopsis
             }
@@ -1809,6 +1957,10 @@ final class MarketplaceStore: ObservableObject {
     /// scene. Stops growing a film when it hits its `targetMinutes`. Runs in
     /// the background; the proposal-driven new-film path is independent.
     private func extendInProgressFilms() async {
+        // No drafting engine (neither on-device nor the Worker fallback) →
+        // every scene draft would no-op; skip the cycle. The Scout deck
+        // banner explains the state to the admin.
+        guard await scoutCanDraft else { return }
         let snapshot = catalog
         let inProgress = scoutDrops.enumerated().filter { $0.element.isFilmInProgress }
         for (i, _) in inProgress {
@@ -1833,7 +1985,7 @@ final class MarketplaceStore: ObservableObject {
                                            cycleIndex: scoutDrops.count + sceneNumber)
         let formula = recipe?.formula ?? ""
         let masters = recipe?.masters ?? []
-        let longForm = await OnDeviceAI.draftLongForm(type: .movie,
+        let longForm = await draftLongFormAnywhere(type: .movie,
                                                       title: "\(item.title) — Scene \(sceneNumber)",
                                                       genre: item.genre,
                                                       formula: formula, masters: masters)
@@ -1855,12 +2007,17 @@ final class MarketplaceStore: ObservableObject {
             return
         }
 
+        // Re-resolve by id after the long awaits — drafting + review suspend
+        // for seconds, during which adminResetCatalog/adminDelete/deleteAccount
+        // can mutate scoutDrops. A stale index would trap or hit another film.
+        guard let liveIdx = scoutDrops.firstIndex(where: { $0.id == item.id }) else { return }
+        item = scoutDrops[liveIdx]
         let minutes = sceneDurationMinutes(for: sceneText, seed: scoutDrops.count + sceneNumber)
         item.screenplayScenes.append(sceneText)
         item.sceneDurations.append(minutes)
         item.sceneVideoURLs.append("")   // placeholder — filled if video-gen lands
         item.length = item.totalSceneMinutes
-        scoutDrops[index] = item
+        scoutDrops[liveIdx] = item
         if let catIdx = catalog.firstIndex(where: { $0.id == item.id }) {
             catalog[catIdx] = item
         }
@@ -2171,12 +2328,28 @@ final class MarketplaceStore: ObservableObject {
         let tierMult = Incentives.tier(forTitles: partnerTitleCount(model)).multiplier
         let score = min(99, 88 + Int(((tierMult - 1.0) * 10).rounded()))
 
+        // The wallet must actually cover the commission — without this guard
+        // a $0 wallet could order $50 of work and the max(0,…) below would
+        // silently absorb the shortfall while the item still landed in the
+        // buyer's library.
+        guard walletBalance >= request.budgetUSD else {
+            requests[idx].status = .unpaid
+            requests[idx].resolvedAt = .now
+            // Give the drawn production energy back to the float.
+            energyLedger?.returnEnergy(AICoin.energyCost(request.type), from: model, memo: "“\(request.headline)” unpaid — energy returned")
+            notify(title: "Commission couldn't be paid",
+                   body: "Your wallet no longer covers the \(usd(request.budgetUSD)) budget for “\(request.headline)”. Top up and post it again.",
+                   kind: .request)
+            Haptics.error()
+            return
+        }
+
         // Debit the wallet FIRST so a crash mid-deliver can't hand the buyer a
         // catalog entry they never paid for. The persist() that follows each
         // @Published mutation is synchronous; if the process dies after the
         // debit but before the insert, the user paid and we owe them the item,
         // not the other way around.
-        walletBalance = max(0, walletBalance - request.budgetUSD)
+        walletBalance -= request.budgetUSD
 
         var item = ContentFoundry.commission(model: model, type: request.type,
                                               genre: request.genre.isEmpty ? "Original" : request.genre,
@@ -2387,12 +2560,20 @@ final class MarketplaceStore: ObservableObject {
     /// short film and fingerprint a cover.
     private static let analysisTimeoutNS: UInt64 = 60_000_000_000
 
+    /// Submission IDs with a live analysis Task in THIS process. The
+    /// interrupted-review sweep must skip these — the Task survives
+    /// backgrounding, so foregrounding after 60s must not flip a healthy
+    /// in-progress review to "Needs Work". Only a process kill orphans one.
+    private var inFlightReviewIDs: Set<UUID> = []
+
     @discardableResult
     func runReviewAsync(for submissionID: UUID) async -> AIReviewResult? {
         guard let idx = submissions.firstIndex(where: { $0.id == submissionID }) else {
             print("[AIEditor] submission \(submissionID) not found — review skipped")
             return nil
         }
+        inFlightReviewIDs.insert(submissionID)
+        defer { inFlightReviewIDs.remove(submissionID) }
         let draft = submissions[idx].draft
         let catalogSnapshot = catalog
         print("[AIEditor] reviewing \(draft.title) (\(draft.type.rawValue))…")
@@ -2450,6 +2631,23 @@ final class MarketplaceStore: ObservableObject {
         let submission = Submission(draft: draft, status: .reviewing)
         submissions.insert(submission, at: 0)
         return submission.id
+    }
+
+    /// Creator-side metadata edit for a LIVE title — price, synopsis, genre.
+    /// Mirrors straight into the catalogue entry so the storefront updates
+    /// immediately. Content/file changes still go through Revise & resubmit
+    /// so the AI Editor re-vets the actual bytes.
+    func updateLiveTitle(submissionID: UUID, price: Double, synopsis: String, genre: String) {
+        guard let idx = submissions.firstIndex(where: { $0.id == submissionID }),
+              let itemID = submissions[idx].publishedItemID else { return }
+        let clamped = min(19.99, max(0.99, price))
+        submissions[idx].draft.price = clamped
+        if !synopsis.trimmed.isEmpty { submissions[idx].draft.synopsis = synopsis.trimmed }
+        if !genre.trimmed.isEmpty { submissions[idx].draft.genre = genre.trimmed }
+        guard let cIdx = catalog.firstIndex(where: { $0.id == itemID }) else { return }
+        catalog[cIdx].price = clamped
+        if !synopsis.trimmed.isEmpty { catalog[cIdx].synopsis = synopsis.trimmed }
+        if !genre.trimmed.isEmpty { catalog[cIdx].genre = genre.trimmed }
     }
 
     func publish(submissionID: UUID) {

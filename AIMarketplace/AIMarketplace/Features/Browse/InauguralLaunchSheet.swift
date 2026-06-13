@@ -90,6 +90,7 @@ struct InauguralLaunchSheet: View {
                 .font(.system(size: 38, weight: .heavy))
                 .foregroundStyle(.white.opacity(0.85))
                 .shadow(radius: 8)
+                .accessibilityHidden(true)
         }
     }
 
@@ -141,6 +142,7 @@ struct InauguralLaunchSheet: View {
 
     private var playButton: some View {
         Button {
+            Haptics.tap(.medium)
             Self.markSeen()
             onPlay()
             dismiss()

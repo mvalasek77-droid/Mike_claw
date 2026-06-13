@@ -56,6 +56,7 @@ struct MediaDetailView: View {
                             }
                         } else {
                             Button(role: .destructive) {
+                                Haptics.warning()
                                 moderation.block(item.creator)
                             } label: {
                                 Label("Block creator", systemImage: "hand.raised")
@@ -282,7 +283,7 @@ struct MediaDetailView: View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: "Synopsis")
             Text(item.synopsis)
-                .font(.system(size: 15, weight: .regular))
+                .font(.subheadline)   // scales with Dynamic Type — main reading surface
                 .foregroundStyle(Theme.ink.opacity(0.9))
                 .lineSpacing(3)
         }
@@ -380,7 +381,7 @@ struct MediaDetailView: View {
                 Text(review.date, style: .date).font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkFaint)
             }
             if !review.text.isEmpty {
-                Text(review.text).font(.system(size: 13, weight: .regular)).foregroundStyle(Theme.inkSoft)
+                Text(review.text).font(.footnote).foregroundStyle(Theme.inkSoft)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

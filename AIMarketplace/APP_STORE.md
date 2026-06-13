@@ -73,3 +73,36 @@ Declared in `Resources/PrivacyInfo.xcprivacy`:
 - [ ] Provide a 1024×1024 marketing icon and device screenshots.
 - [ ] Set the real `DEVELOPMENT_TEAM` in `project.yml`.
 - [ ] Run on device with a sandbox account; verify a credit purchase + a title unlock.
+
+## Testing phase — read this before TestFlight and again before release
+
+Treat the first builds as **bug-hunting builds, not victory laps**. A static
+audit (even a thorough one) cannot catch what only real devices surface:
+StoreKit sandbox quirks, file-picker permission lapses, audio-session fights,
+memory pressure on older phones, and timing races that need a human thumb.
+**Expect bugs. Hunt them deliberately. Apple's approval does not mean the app
+is bug-free — review checks guidelines, not correctness — so keep testing
+with the same intensity *after* the app is live and ship patch releases fast.**
+
+Minimum hands-on pass, on a real iPhone (repeat on the smallest and largest
+screens you support):
+
+- [ ] **Money paths first** (these are reputation-enders):
+  - buy each credit pack with a sandbox account; force-quit mid-purchase and
+    relaunch — wallet must end up correct, never double-credited, never short
+  - request a sandbox refund; confirm the wallet claws back exactly once
+  - buy a title, then a commission; drain the wallet and confirm an
+    underfunded commission is blocked, not silently delivered
+- [ ] **Publishing pipeline**: submit a real novel/album/film file; background
+  the app mid-review; kill the app mid-review; relaunch — no zombie
+  "In Review" rows, no false rejections, Revise & resubmit pre-fills
+- [ ] **Players**: music, film, and reader — preview caps, lock-screen
+  controls, AirPlay, interruptions (phone call mid-playback)
+- [ ] **Account deletion** with a Stripe balance and without
+- [ ] **Accessibility**: one full session with VoiceOver on, one with
+  Dynamic Type at max, one with Reduce Motion on
+- [ ] **Chaos pass**: airplane mode everywhere, low storage, iPhone SE,
+  rotate during sheets, rapid-fire taps on every button you can find
+
+Log every oddity, however small — TestFlight crash logs plus your own notes
+are the roadmap for the first three patch releases.

@@ -9,10 +9,12 @@ struct CreatorDashboardView: View {
 
     private var titles: [MediaItem] { store.liveTitles }
     private var totalUnits: Int { titles.reduce(0) { $0 + $1.purchases } }
-    private var grossRevenue: Double { titles.reduce(0) { $0 + Double($1.purchases) * $1.price } }
+    // Real sales credit on the dynamic effective price, not the list price —
+    // keep the dashboard's math aligned with what grantPurchase actually pays.
+    private var grossRevenue: Double { titles.reduce(0) { $0 + Double($1.purchases) * store.effectivePrice(for: $1) } }
     private var appleCut: Double { Commerce.appleCut(on: grossRevenue) }
     private var netRevenue: Double { grossRevenue - appleCut }
-    private var proceeds: Double { titles.reduce(0) { $0 + Double($1.purchases) * Commerce.creatorEarning(on: $1.price) } }
+    private var proceeds: Double { titles.reduce(0) { $0 + Double($1.purchases) * Commerce.creatorEarning(on: store.effectivePrice(for: $1)) } }
 
     var body: some View {
         NavigationStack {
@@ -146,5 +148,8 @@ struct BarChart: View {
                 }
             }
         }
+        // VoiceOver: summarize the week instead of seven unlabeled bars.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Sales last 7 days, \(Int(values.reduce(0, +).rounded())) units total")
     }
 }

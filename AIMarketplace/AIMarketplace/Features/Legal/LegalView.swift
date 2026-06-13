@@ -43,7 +43,8 @@ private struct Clause: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink)
-            Text(text).font(.system(size: 14, weight: .regular)).foregroundStyle(Theme.inkSoft).lineSpacing(3)
+            // Longest prose in the app — must scale with Dynamic Type.
+            Text(text).font(.subheadline).foregroundStyle(Theme.inkSoft).lineSpacing(3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

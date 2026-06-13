@@ -144,6 +144,8 @@ struct AdminEditView: View {
                 Text(String(format: format, value.wrappedValue)).font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
             }
             Slider(value: value, in: range, step: step).tint(Theme.accent)
+                .accessibilityLabel(label)
+                .accessibilityValue(String(format: format, value.wrappedValue))
         }
     }
 }

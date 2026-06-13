@@ -57,6 +57,7 @@ struct SearchView: View {
                     Button { query = "" } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.inkFaint)
                     }
+                    .accessibilityLabel("Clear search")
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 11)

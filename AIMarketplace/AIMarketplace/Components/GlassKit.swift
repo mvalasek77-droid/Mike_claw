@@ -134,6 +134,33 @@ struct ScoreBadge: View {
     }
 }
 
+/// Standard placeholder for empty lists and filtered feeds.
+struct EmptyStateView: View {
+    let icon: String
+    let title: String
+    let message: String
+    var tint: Color = Theme.inkFaint
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 42))
+                .foregroundStyle(tint)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(Theme.ink)
+            Text(message)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 56)
+        .padding(.horizontal, 30)
+    }
+}
+
 struct SectionHeader: View {
     let title: String
     var subtitle: String? = nil

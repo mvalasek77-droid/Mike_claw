@@ -95,6 +95,10 @@ struct RankedRow: View {
                                 Text("\(index + 1)")
                                     .font(.system(size: 96, weight: .heavy, design: .rounded))
                                     .foregroundStyle(.white.opacity(0.16))
+                                    // Keep "10" inside its slot — at 96pt heavy
+                                    // two digits overflow a 60pt frame.
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.55)
                                     .frame(width: 60, alignment: .leading)
                                 PosterArt(item: item)
                                     .frame(width: 112, height: 166)
@@ -102,6 +106,9 @@ struct RankedRow: View {
                         }
                         .buttonStyle(.plain)
                         .padding(.trailing, 8)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Number \(index + 1): \(item.title), \(item.categoryLabel)")
+                        .accessibilityAddTraits(.isButton)
                     }
                 }
                 .screenPadding()

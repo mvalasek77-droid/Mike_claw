@@ -85,6 +85,9 @@ final class ScoutFeedService: ObservableObject {
         var foundation: Bool = true   // on-device, assumed available
         var musicGenConfigured: Bool = false
         var videoGenConfigured: Bool = false
+        /// Worker has ANTHROPIC_API_KEY set → /scout/draft can draft text for
+        /// devices without Apple Intelligence.
+        var textGenConfigured: Bool = false
 
         static let none = ProviderStatus()
     }
@@ -262,12 +265,14 @@ final class ScoutFeedService: ObservableObject {
                 var foundation: Bool?
                 var musicGenConfigured: Bool?
                 var videoGenConfigured: Bool?
+                var textGenConfigured: Bool?
             }
             if let r = try? JSONDecoder().decode(Response.self, from: data) {
                 providers = .init(
                     foundation: r.foundation ?? true,
                     musicGenConfigured: r.musicGenConfigured ?? false,
-                    videoGenConfigured: r.videoGenConfigured ?? false
+                    videoGenConfigured: r.videoGenConfigured ?? false,
+                    textGenConfigured: r.textGenConfigured ?? false
                 )
             }
         } catch { /* offline → keep defaults */ }

@@ -6,6 +6,8 @@ struct SubmissionDetailView: View {
     let submissionID: UUID
     @EnvironmentObject private var store: MarketplaceStore
     @Environment(\.dismiss) private var dismiss
+    @State private var revising = false
+    @State private var editingDetails = false
 
     private var submission: Submission? {
         store.submissions.first { $0.id == submissionID }
@@ -25,6 +27,16 @@ struct SubmissionDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+            .fullScreenCover(isPresented: $revising) {
+                if let sub = submission {
+                    SubmitWorkView(reviseFrom: sub)
+                }
+            }
+            .sheet(isPresented: $editingDetails) {
+                if let sub = submission {
+                    EditLiveTitleSheet(submission: sub)
+                }
             }
         }
     }
@@ -123,13 +135,26 @@ struct SubmissionDetailView: View {
             if review.passed {
                 if sub.publishedItemID != nil {
                     Chip(text: "Published to marketplace", systemImage: "checkmark.seal.fill", color: Theme.success, filled: true)
+                    PrimaryButton(title: "Edit details", systemImage: "slider.horizontal.3", style: .ghost) {
+                        editingDetails = true
+                    }
+                    Text("Price, genre and synopsis go live immediately. Content changes need a new submission so the AI Editor can re-vet the file.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Theme.inkFaint)
+                        .multilineTextAlignment(.center)
                 } else {
                     PrimaryButton(title: "Publish to Marketplace", systemImage: "tray.and.arrow.up.fill", tint: Theme.success) {
                         store.publish(submissionID: sub.id)
                     }
+                    PrimaryButton(title: "Revise & resubmit", systemImage: "pencil", style: .ghost) {
+                        revising = true
+                    }
                 }
             } else {
-                Text("Register a revised version from the bookshelf to try again.")
+                PrimaryButton(title: "Revise & resubmit", systemImage: "pencil", tint: Theme.kdp) {
+                    revising = true
+                }
+                Text("The wizard reopens pre-filled with this draft — fix what the Editor flagged and run the review again.")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
                     .multilineTextAlignment(.center)
@@ -153,6 +178,81 @@ struct SubmissionDetailView: View {
         case .rejected: return Theme.warning
         case .reviewing: return Theme.accent
         case .draft: return Theme.inkFaint
+        }
+    }
+}
+
+/// Creator-side metadata editor for a LIVE title. Price, genre and synopsis
+/// mirror straight into the storefront; content changes go through
+/// Revise & resubmit so the AI Editor re-vets the file.
+private struct EditLiveTitleSheet: View {
+    let submission: Submission
+    @EnvironmentObject private var store: MarketplaceStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var price: Double
+    @State private var genre: String
+    @State private var synopsis: String
+
+    init(submission: Submission) {
+        self.submission = submission
+        _price = State(initialValue: submission.draft.price)
+        _genre = State(initialValue: submission.draft.genre)
+        _synopsis = State(initialValue: submission.draft.synopsis)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Changes go live in the store immediately. Buyers who already own this title keep it at the price they paid.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.inkSoft)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("List price")
+                                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                            Spacer()
+                            Text(String(format: "$%.2f", price))
+                                .font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        }
+                        Slider(value: $price, in: 0.99...19.99, step: 0.50).tint(Theme.kdp)
+                            .accessibilityLabel("List price")
+                            .accessibilityValue(String(format: "$%.2f", price))
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Genre").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                        TextField("e.g. Sci-Fi, Lo-Fi, Thriller", text: $genre)
+                            .font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ink)
+                            .padding(.horizontal, 12).padding(.vertical, 12)
+                            .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Synopsis").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                        TextEditor(text: $synopsis)
+                            .frame(minHeight: 110).padding(8).scrollContentBackground(.hidden)
+                            .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
+                            .foregroundStyle(Theme.ink).font(.system(size: 14))
+                            .accessibilityLabel("Synopsis")
+                    }
+
+                    PrimaryButton(title: "Save changes", systemImage: "checkmark", tint: Theme.kdp) {
+                        store.updateLiveTitle(submissionID: submission.id,
+                                              price: price, synopsis: synopsis, genre: genre)
+                        Haptics.success()
+                        dismiss()
+                    }
+                }
+                .padding(18)
+                .padding(.bottom, 30)
+            }
+            .background(AppBackground(glow: Theme.kdp).ignoresSafeArea())
+            .navigationTitle("Edit details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
     }
 }

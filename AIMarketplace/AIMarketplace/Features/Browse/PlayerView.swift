@@ -125,14 +125,15 @@ enum PlayerPreview {
 struct PreviewEndedBanner: View {
     let type: MediaType
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "lock.fill").font(.system(size: 30)).foregroundStyle(.white)
-            Text("Preview ended").font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(.white)
-            Text("Buy this title to \(type.verb.lowercased()) it in full.")
-                .font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.8))
+        GlassSurface {
+            VStack(spacing: 8) {
+                Image(systemName: "lock.fill").font(.system(size: 30)).foregroundStyle(.white)
+                Text("Preview ended").font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                Text("Buy this title to \(type.verb.lowercased()) it in full.")
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.8))
+            }
+            .padding(28)
         }
-        .padding(28)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.cornerL))
     }
 }
 
@@ -326,6 +327,13 @@ struct PlaybackBar: View {
                 Text("-" + timeString(max(0, (1 - progress) * total))).font(.system(size: 11, weight: .medium, design: .monospaced))
             }
             .foregroundStyle(.white.opacity(0.6))
+        }
+        // VoiceOver: expose the bar as a single adjustable scrubber.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Playback position")
+        .accessibilityValue("\(timeString(progress * total)) of \(timeString(total))")
+        .accessibilityAdjustableAction { direction in
+            onSeek(min(1, max(0, progress + (direction == .increment ? 0.05 : -0.05))))
         }
     }
 }

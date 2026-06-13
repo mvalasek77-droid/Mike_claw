@@ -121,6 +121,7 @@ struct LibraryView: View {
         case .accepted: return "Accepted by \(r.acceptedBy ?? "an AI") — producing"
         case .delivered: return "Delivered by \(r.acceptedBy ?? "an AI") · tap to open"
         case .unmatched: return "No AI accepted — raise the budget"
+        case .unpaid: return "Wallet couldn't cover the budget — top up and repost"
         }
     }
 
@@ -128,7 +129,7 @@ struct LibraryView: View {
         switch r.status {
         case .open, .accepted: return Theme.accent
         case .delivered: return Theme.success
-        case .unmatched: return Theme.warning
+        case .unmatched, .unpaid: return Theme.warning
         }
     }
 
