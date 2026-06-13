@@ -38,8 +38,8 @@ struct OverlayPanel: View {
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                                 .padding(.horizontal, 12).padding(.vertical, 9)
-                                .background(.white.opacity(0.07), in: Capsule())
-                                .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+                                .background(LiquidGlass.surface, in: Capsule())
+                                .overlay(Capsule().strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
                         }
                         .buttonStyle(.plain)
                     }
@@ -68,8 +68,8 @@ struct OverlayPanel: View {
                                 }
                             }
                             .frame(width: 46, height: 46)
-                            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+                            .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Add sticker")
@@ -110,7 +110,7 @@ struct OverlayPanel: View {
                             .padding(.horizontal, 10).padding(.vertical, 8)
                             .background(.white.opacity(isSelected ? 0.12 : 0.05), in: Capsule())
                             .overlay(
-                                Capsule().strokeBorder(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(Color.white.opacity(0.12)),
+                                Capsule().strokeBorder(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(ColorLiquidGlass.hairline),
                                                        lineWidth: isSelected ? 2 : 0.5)
                             )
                         }
@@ -140,15 +140,15 @@ struct OverlayPanel: View {
     @ViewBuilder
     private func editor(for id: UUID) -> some View {
         let overlay = binding(for: id)
-        Divider().overlay(.white.opacity(0.1))
+        Divider().overlay(LiquidGlass.hairline)
         VStack(alignment: .leading, spacing: 14) {
             if overlay.wrappedValue.kind == .text {
                 TextField("Text", text: overlay.content)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
                     .padding(12)
-                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+                    .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
             }
 
             SliderRow(label: "Size", value: overlay.sizeFraction, range: 0.03...0.4)

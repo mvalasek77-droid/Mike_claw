@@ -8,7 +8,7 @@ struct ExportSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var coordinator = ExportCoordinator()
-    @State private var shareItems: [UIImage]?
+    @State private var shareURLs: [URL]?
     @State private var isPreparingShare = false
     @State private var allLanguages = false
 
@@ -40,10 +40,10 @@ struct ExportSheet: View {
         }
         .background(LiquidGlassBackground().ignoresSafeArea())
         .sheet(item: Binding(
-            get: { shareItems.map { ShareBox(images: $0) } },
-            set: { shareItems = $0?.images }
+            get: { shareURLs.map { ShareBox(urls: $0) } },
+            set: { shareURLs = $0?.urls }
         )) { box in
-            ShareSheet(items: box.images)
+            ShareSheet(items: box.urls)
         }
     }
 
@@ -184,9 +184,9 @@ struct ExportSheet: View {
                               isEnabled: !coordinator.isRunning && !isPreparingShare && totalImages > 0) {
                     isPreparingShare = true
                     Task {
-                        let rendered = await ScreenshotRenderer.renderAllAsync(of: project, sizes: sizes, languages: languages)
+                        let urls = await ScreenshotRenderer.renderShareFilesAsync(of: project, sizes: sizes, languages: languages)
                         isPreparingShare = false
-                        shareItems = rendered
+                        shareURLs = urls
                     }
                 }
             }
@@ -194,8 +194,8 @@ struct ExportSheet: View {
     }
 }
 
-/// Identifiable wrapper so a `[UIImage]` can drive `.sheet(item:)`.
+/// Identifiable wrapper so a `[URL]` can drive `.sheet(item:)`.
 private struct ShareBox: Identifiable {
     let id = UUID()
-    let images: [UIImage]
+    let urls: [URL]
 }

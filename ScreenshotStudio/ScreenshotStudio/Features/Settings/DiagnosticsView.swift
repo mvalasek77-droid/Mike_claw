@@ -122,8 +122,8 @@ struct DiagnosticsView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.08), lineWidth: 0.5))
+        .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
     }
 
     private func color(for level: BugLog.Level) -> Color {
@@ -164,8 +164,8 @@ struct BugReportView: View {
                         .foregroundStyle(LiquidGlass.primaryText)
                         .lineLimit(4...10)
                         .padding(14)
-                        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+                        .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
 
                     GlassCard {
                         VStack(alignment: .leading, spacing: 8) {

@@ -25,7 +25,7 @@ struct LayoutPanel: View {
                 SliderRow(label: "Corner radius", value: $project.style.cornerFraction, range: 0...0.12)
             }
 
-            Divider().overlay(.white.opacity(0.1))
+            Divider().overlay(LiquidGlass.hairline)
 
             ToggleRow(label: "Clean status bar", systemImage: "clock.fill",
                       isOn: $project.style.statusBar.enabled)
@@ -49,7 +49,7 @@ struct LayoutPanel: View {
                     .foregroundStyle(LiquidGlass.primaryText)
                     .frame(maxWidth: 110)
                     .padding(.horizontal, 10).padding(.vertical, 7)
-                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
 
             GlassSegmented(
@@ -70,7 +70,7 @@ struct LayoutPanel: View {
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
                     .padding(.horizontal, 10).padding(.vertical, 8)
-                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
         }
         .padding(.top, 2)
@@ -97,10 +97,10 @@ struct EnhancePanel: View {
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(LiquidGlass.primaryText.opacity(0.6)))
                                     .frame(width: 56, height: 48)
-                                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .strokeBorder(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(Color.white.opacity(0.12)),
+                                            .strokeBorder(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(ColorLiquidGlass.hairline),
                                                           lineWidth: isSelected ? 2 : 1)
                                     )
                                 Text(preset.name)
@@ -248,8 +248,8 @@ struct CaptionPanel: View {
                 .foregroundStyle(LiquidGlass.primaryText)
                 .lineLimit(1...3)
                 .padding(12)
-                .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+                .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
 
             perSlideOverride
 
@@ -303,8 +303,8 @@ struct CaptionPanel: View {
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .foregroundStyle(LiquidGlass.accent)
                             .padding(.horizontal, 12).padding(.vertical, 8)
-                            .background(.white.opacity(0.06), in: Capsule())
-                            .overlay(Capsule().strokeBorder(.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                            .background(LiquidGlass.surface, in: Capsule())
+                            .overlay(Capsule().strokeBorder(LiquidGlass.hairline, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                     }
                     .disabled(addableLanguages.isEmpty)
                 }
@@ -352,10 +352,10 @@ struct CaptionPanel: View {
             .background(
                 Group {
                     if isSelected { Capsule().fill(LiquidGlass.auroraGradient.opacity(0.9)) }
-                    else { Capsule().fill(.white.opacity(0.06)) }
+                    else { Capsule().fill(LiquidGlass.surface) }
                 }
             )
-            .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+            .overlay(Capsule().strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
         }
         .buttonStyle(.plain)
         .contextMenu {
@@ -380,8 +380,8 @@ struct CaptionPanel: View {
                     .foregroundStyle(LiquidGlass.primaryText)
                     .lineLimit(1...3)
                     .padding(12)
-                    .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.1), lineWidth: 0.5))
+                    .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
                 Text("Leave empty to use the shared headline above.")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))

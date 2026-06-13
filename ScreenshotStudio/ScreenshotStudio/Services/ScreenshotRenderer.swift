@@ -97,32 +97,46 @@ enum ScreenshotRenderer {
         return out
     }
 
-    /// Render every slide across every selected slot and language — used by the
-    /// share path so "Share PNGs" hands off the complete export, not just the
-    /// primary size in one language.
-    static func renderAllAsync(of project: ScreenshotProject,
-                               sizes: [ASCDeviceSize],
-                               languages: [String]) async -> [UIImage] {
+    /// Render the full export (every slide × selected slot × language) to
+    /// temporary PNG files and return their URLs — used by the "Share PNGs"
+    /// path. Streaming to disk and dropping each bitmap immediately keeps peak
+    /// memory bounded; holding a whole all-sizes × all-languages batch of
+    /// full-resolution `UIImage`s in memory could otherwise risk an
+    /// out-of-memory termination.
+    static func renderShareFilesAsync(of project: ScreenshotProject,
+                                      sizes: [ASCDeviceSize],
+                                      languages: [String]) async -> [URL] {
         let slots = sizes.isEmpty ? [project.deviceSize] : sizes
         let langs = languages.isEmpty ? [project.activeLanguage] : languages
-        var out: [UIImage] = []
-        out.reserveCapacity(slots.count * langs.count * project.slides.count)
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ShareExport-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        var urls: [URL] = []
+        var index = 0
         for slot in slots {
             let canvasSize = slot.pixelSize(for: project.orientation)
             let layout = slot.statusBarLayout
             for lang in langs {
                 for slide in project.slides {
-                    if let image = render(canvasSize: canvasSize,
-                                          style: project.style,
-                                          image: ImageStore.load(slide.imageFile),
-                                          captionText: project.captionText(for: slide, language: lang),
-                                          statusBarLayout: layout) {
-                        out.append(image)
+                    index += 1
+                    let n = index
+                    autoreleasepool {
+                        guard let image = render(canvasSize: canvasSize,
+                                                 style: project.style,
+                                                 image: ImageStore.load(slide.imageFile),
+                                                 captionText: project.captionText(for: slide, language: lang),
+                                                 statusBarLayout: layout),
+                              let data = image.pngData() else { return }
+                        let url = dir.appendingPathComponent("\(slot.id)-\(lang)-\(n).png")
+                        if (try? data.write(to: url, options: .atomic)) != nil {
+                            urls.append(url)
+                        }
                     }
                     await Task.yield()
                 }
             }
         }
-        return out
+        return urls
     }
 }
