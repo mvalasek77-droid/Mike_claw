@@ -110,7 +110,7 @@ struct OverlayPanel: View {
                             .padding(.horizontal, 10).padding(.vertical, 8)
                             .background(.white.opacity(isSelected ? 0.12 : 0.05), in: Capsule())
                             .overlay(
-                                Capsule().strokeBorder(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(ColorLiquidGlass.hairline),
+                                Capsule().strokeBorder(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(LiquidGlass.hairline),
                                                        lineWidth: isSelected ? 2 : 0.5)
                             )
                         }

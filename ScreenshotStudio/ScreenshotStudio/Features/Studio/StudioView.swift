@@ -136,7 +136,7 @@ struct StudioView: View {
             VideoPicker { url in
                 guard let url else { return }
                 withAnimation(.easeInOut) { isExtractingVideo = true }
-                Task {
+                Task { @MainActor in
                     let frames = await VideoFrameExtractor.frames(from: url)
                     withAnimation(.easeInOut) { isExtractingVideo = false }
                     frameBatch = FrameBatch(images: frames)

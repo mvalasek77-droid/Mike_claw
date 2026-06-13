@@ -42,13 +42,13 @@ final class BugLog: ObservableObject {
 
     // MARK: Recording (safe to call from any thread)
 
-    nonisolated static func info(_ category: String, _ message: String) {
+    static func info(_ category: String, _ message: String) {
         shared.record(.info, category, message)
     }
-    nonisolated static func warning(_ category: String, _ message: String) {
+    static func warning(_ category: String, _ message: String) {
         shared.record(.warning, category, message)
     }
-    nonisolated static func error(_ category: String, _ message: String) {
+    static func error(_ category: String, _ message: String) {
         shared.record(.error, category, message)
     }
 

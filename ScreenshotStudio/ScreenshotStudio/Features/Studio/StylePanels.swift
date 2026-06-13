@@ -100,7 +100,7 @@ struct EnhancePanel: View {
                                     .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .strokeBorder(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(ColorLiquidGlass.hairline),
+                                            .strokeBorder(isSelected ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(LiquidGlass.hairline),
                                                           lineWidth: isSelected ? 2 : 1)
                                     )
                                 Text(preset.name)

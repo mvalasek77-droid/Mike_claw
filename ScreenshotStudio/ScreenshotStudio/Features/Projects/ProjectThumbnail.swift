@@ -3,7 +3,7 @@ import SwiftUI
 /// An in-memory cache of rendered gallery thumbnails. Keyed by the project's
 /// identity *and* its modification time + representative slide, so an edit
 /// naturally invalidates the stale thumbnail without any manual bookkeeping.
-@MainActor
+/// `NSCache` is thread-safe and the key is pure, so this needs no isolation.
 enum ThumbnailCache {
     private static let cache = NSCache<NSString, UIImage>()
 

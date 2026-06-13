@@ -41,6 +41,12 @@ struct ASCDeviceSize: Identifiable, Hashable, Codable {
     /// Representative devices, shown to the user for context.
     let exampleDevices: String
 
+    // `CGSize` is `Equatable`/`Codable` but not `Hashable`, so synthesized
+    // `Hashable` can't be derived from `portraitSize`. Catalog ids are unique,
+    // so identity-based conformance is both correct and cheap.
+    static func == (lhs: ASCDeviceSize, rhs: ASCDeviceSize) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+
     /// Pixel size for a given orientation.
     func pixelSize(for orientation: CanvasOrientation) -> CGSize {
         switch orientation {
