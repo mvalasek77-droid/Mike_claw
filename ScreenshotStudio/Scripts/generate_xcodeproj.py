@@ -4,7 +4,8 @@
 This is a small, dependency-free stand-in for XcodeGen so the project file can
 be regenerated in any environment (CI, Linux, a fresh clone) without extra
 tooling. It walks the source folders, builds the PBX object graph with
-deterministic identifiers, and writes a `project.pbxproj` (objectVersion 77)
+deterministic identifiers, and writes a `project.pbxproj` (objectVersion 56,
+readable by Xcode 14–16+)
 plus the shared scheme and workspace.
 
 `project.yml` remains the canonical spec; running `xcodegen generate` produces
@@ -294,7 +295,7 @@ def build():
     # ---- Serialize -------------------------------------------------------
     body = "\n".join(f"\t\t{u} = {obj};" for u, obj in sorted(p.objects))
     pbxproj = ("// !$*UTF8*$!\n{\n\tarchiveVersion = 1;\n\tclasses = {\n\t};\n"
-               "\tobjectVersion = 77;\n\tobjects = {\n"
+               "\tobjectVersion = 56;\n\tobjects = {\n"
                f"{body}\n"
                "\t};\n"
                f"\trootObject = {uid('project')} /* Project object */;\n}}\n")

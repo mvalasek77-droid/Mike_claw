@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 56;
 	objects = {
 		00CA982B9C7BDFB8D32CE904 = {isa = PBXBuildFile; fileRef = 0B6C10CCC091809FA143F2FB /* PhotoPicker.swift */; };
 		020BA6822E1C1541F756CA50 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExportCoordinator.swift"; sourceTree = "<group>"; };
