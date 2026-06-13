@@ -199,6 +199,11 @@ struct BackgroundPanel: View {
                 SliderRow(label: "Gradient angle", value: $project.style.background.angle,
                           range: 0...360, format: { String(format: "%.0f°", $0) })
             }
+            if project.style.background.kind == .image {
+                SliderRow(label: "Dim", value: $project.style.background.imageDim, range: 0...0.85)
+                SliderRow(label: "Blur", value: $project.style.background.imageBlur, range: 0...0.04,
+                          format: { String(format: "%.0f%%", min($0 / 0.04, 1) * 100) })
+            }
         }
         .sheet(isPresented: $showPhotoPicker) {
             PhotoPicker(selectionLimit: 1) { images in
@@ -327,6 +332,11 @@ struct CaptionPanel: View {
                 GlassSegmented(
                     options: CaptionStyle.FontWeightToken.allCases.map { ($0, $0.label) },
                     selection: $project.style.caption.weight
+                )
+
+                GlassSegmented(
+                    options: CaptionStyle.FontDesignToken.allCases.map { ($0, $0.label) },
+                    selection: $project.style.caption.design
                 )
 
                 ToggleRow(label: "Custom text color", systemImage: "paintpalette", isOn: usesCustomColor)

@@ -63,6 +63,9 @@ final class ModelCodableTests: XCTestCase {
         project.languages = ["en-US", "fr-FR", "ja"]
         project.activeLanguage = "fr-FR"
         project.style.caption.localized = ["fr-FR": "Bonjour", "ja": "こんにちは"]
+        project.style.caption.design = .serif
+        project.style.bezelTone = .white
+        project.style.background.imageDim = 0.4
         project.style.overlays = [
             CanvasOverlay.text("NEW"),
             CanvasOverlay.sticker("star.fill", isSymbol: true)
@@ -83,6 +86,9 @@ final class ModelCodableTests: XCTestCase {
         XCTAssertEqual(decoded.languages, ["en-US", "fr-FR", "ja"])
         XCTAssertEqual(decoded.activeLanguage, "fr-FR")
         XCTAssertEqual(decoded.style.caption.localized["fr-FR"], "Bonjour")
+        XCTAssertEqual(decoded.style.caption.design, .serif)
+        XCTAssertEqual(decoded.style.bezelTone, .white)
+        XCTAssertEqual(decoded.style.background.imageDim, 0.4, accuracy: 0.001)
         XCTAssertEqual(decoded.style.overlays.count, 2)
         XCTAssertEqual(decoded.style.overlays.first?.content, "NEW")
         XCTAssertEqual(decoded.slides.first?.localizedOverrides["fr-FR"], "Salut")

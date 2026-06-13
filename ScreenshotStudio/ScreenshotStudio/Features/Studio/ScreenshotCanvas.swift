@@ -70,6 +70,9 @@ struct ScreenshotCanvas: View {
                 .scaledToFill()
                 .frame(width: canvasSize.width, height: canvasSize.height)
                 .clipped()
+                .blur(radius: canvasSize.width * max(style.background.imageBlur, 0))
+                .overlay(Color.black.opacity(min(max(style.background.imageDim, 0), 0.85)))
+                .clipped()
         } else {
             Rectangle().fill(style.background.shapeStyle)
         }
@@ -114,7 +117,7 @@ struct ScreenshotCanvas: View {
         Text(captionText.isEmpty ? " " : captionText)
             .font(.system(size: l.captionFontSize,
                           weight: style.caption.weight.swiftUIWeight,
-                          design: .rounded))
+                          design: style.caption.design.design))
             .foregroundStyle(captionColor)
             .multilineTextAlignment(.center)
             .lineLimit(3)

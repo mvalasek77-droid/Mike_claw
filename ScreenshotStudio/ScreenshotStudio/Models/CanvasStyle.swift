@@ -46,6 +46,14 @@ struct BackgroundStyle: Identifiable, Codable, Hashable {
     var angle: Double = 135
     /// Backing image file name when `kind == .image` (drawn by the canvas).
     var imageFile: String? = nil
+    /// Darkening scrim over a photo backdrop (0…0.8) — keeps captions legible.
+    var imageDim: Double = 0
+    /// Blur applied to a photo backdrop, as a fraction of canvas width (0…0.04).
+    var imageBlur: Double = 0
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, kind, colors, angle, imageFile, imageDim, imageBlur
+    }
 
     /// SwiftUI shape style ready to drop into `.background()` / `.fill()`.
     /// For `.image` this is just a fallback fill; the canvas draws the photo.
@@ -72,6 +80,22 @@ struct BackgroundStyle: Identifiable, Codable, Hashable {
         if kind == .image { return 0.3 }
         guard !colors.isEmpty else { return 0 }
         return colors.map(\.luminance).reduce(0, +) / Double(colors.count)
+    }
+}
+
+extension BackgroundStyle {
+    /// Tolerant decoding so backgrounds saved before photo/dim/blur existed
+    /// keep loading (synthesized Decodable would otherwise throw on the new keys).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        kind = try c.decodeIfPresent(Kind.self, forKey: .kind) ?? .gradient
+        colors = try c.decodeIfPresent([RGBAColor].self, forKey: .colors) ?? []
+        angle = try c.decodeIfPresent(Double.self, forKey: .angle) ?? 135
+        imageFile = try c.decodeIfPresent(String.self, forKey: .imageFile)
+        imageDim = try c.decodeIfPresent(Double.self, forKey: .imageDim) ?? 0
+        imageBlur = try c.decodeIfPresent(Double.self, forKey: .imageBlur) ?? 0
     }
 }
 
@@ -118,6 +142,28 @@ enum CaptionPlacement: String, Codable, CaseIterable, Identifiable, Hashable {
 
 /// The headline drawn above or below the framed device.
 struct CaptionStyle: Codable, Hashable {
+    /// Typeface family for the caption.
+    enum FontDesignToken: String, Codable, CaseIterable, Identifiable, Hashable {
+        case rounded, standard, serif, monospaced
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .rounded: return "Rounded"
+            case .standard: return "Default"
+            case .serif: return "Serif"
+            case .monospaced: return "Mono"
+            }
+        }
+        var design: Font.Design {
+            switch self {
+            case .rounded: return .rounded
+            case .standard: return .default
+            case .serif: return .serif
+            case .monospaced: return .monospaced
+            }
+        }
+    }
+
     var text: String = "Your headline here"
     var placement: CaptionPlacement = .top
     /// Caption height as a fraction of the canvas height (0…0.45).
@@ -126,6 +172,7 @@ struct CaptionStyle: Codable, Hashable {
     /// across every device resolution.
     var sizeFraction: Double = 0.072
     var weight: FontWeightToken = .bold
+    var design: FontDesignToken = .rounded
     /// `nil` means "auto contrast against the background".
     var customColor: RGBAColor? = nil
     /// Per-language headline overrides, keyed by App Store language code. The
@@ -134,7 +181,7 @@ struct CaptionStyle: Codable, Hashable {
     var localized: [String: String] = [:]
 
     enum CodingKeys: String, CodingKey {
-        case text, placement, heightFraction, sizeFraction, weight, customColor, localized
+        case text, placement, heightFraction, sizeFraction, weight, design, customColor, localized
     }
 
     enum FontWeightToken: String, Codable, CaseIterable, Identifiable, Hashable {
@@ -209,6 +256,7 @@ extension CaptionStyle {
         heightFraction = try c.decodeIfPresent(Double.self, forKey: .heightFraction) ?? 0.18
         sizeFraction = try c.decodeIfPresent(Double.self, forKey: .sizeFraction) ?? 0.072
         weight = try c.decodeIfPresent(FontWeightToken.self, forKey: .weight) ?? .bold
+        design = try c.decodeIfPresent(FontDesignToken.self, forKey: .design) ?? .rounded
         customColor = try c.decodeIfPresent(RGBAColor.self, forKey: .customColor)
         localized = try c.decodeIfPresent([String: String].self, forKey: .localized) ?? [:]
     }
