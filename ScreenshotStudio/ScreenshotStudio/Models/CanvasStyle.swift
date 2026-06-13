@@ -121,7 +121,19 @@ extension BackgroundStyle {
         .init(id: "ink", name: "Ink", kind: .solid,
               colors: [RGBAColor(hex: 0x0B0B0F)]),
         .init(id: "coral", name: "Coral", kind: .gradient,
-              colors: [RGBAColor(hex: 0xFF512F), RGBAColor(hex: 0xDD2476)], angle: 135)
+              colors: [RGBAColor(hex: 0xFF512F), RGBAColor(hex: 0xDD2476)], angle: 135),
+        .init(id: "violet", name: "Violet", kind: .gradient,
+              colors: [RGBAColor(hex: 0x7F00FF), RGBAColor(hex: 0xE100FF)], angle: 135),
+        .init(id: "forest", name: "Forest", kind: .gradient,
+              colors: [RGBAColor(hex: 0x134E5E), RGBAColor(hex: 0x71B280)], angle: 135),
+        .init(id: "ember", name: "Ember", kind: .gradient,
+              colors: [RGBAColor(hex: 0xF12711), RGBAColor(hex: 0xF5AF19)], angle: 120),
+        .init(id: "slate", name: "Slate", kind: .gradient,
+              colors: [RGBAColor(hex: 0x232526), RGBAColor(hex: 0x414345)], angle: 135),
+        .init(id: "sky", name: "Sky", kind: .gradient,
+              colors: [RGBAColor(hex: 0x2980B9), RGBAColor(hex: 0x6DD5FA), RGBAColor(hex: 0xFFFFFF)], angle: 120),
+        .init(id: "bubblegum", name: "Bubblegum", kind: .gradient,
+              colors: [RGBAColor(hex: 0xFC5C7D), RGBAColor(hex: 0x6A82FB)], angle: 135)
     ]
 
     static var `default`: BackgroundStyle { presets[1] } // Aurora
@@ -175,13 +187,15 @@ struct CaptionStyle: Codable, Hashable {
     var design: FontDesignToken = .rounded
     /// `nil` means "auto contrast against the background".
     var customColor: RGBAColor? = nil
+    /// Draw a soft shadow behind the caption — boosts legibility over photos.
+    var shadow: Bool = false
     /// Per-language headline overrides, keyed by App Store language code. The
     /// primary language always lives in `text`; other locales live here so a
     /// single set can drive a fully localized App Store listing.
     var localized: [String: String] = [:]
 
     enum CodingKeys: String, CodingKey {
-        case text, placement, heightFraction, sizeFraction, weight, design, customColor, localized
+        case text, placement, heightFraction, sizeFraction, weight, design, customColor, shadow, localized
     }
 
     enum FontWeightToken: String, Codable, CaseIterable, Identifiable, Hashable {
@@ -258,6 +272,7 @@ extension CaptionStyle {
         weight = try c.decodeIfPresent(FontWeightToken.self, forKey: .weight) ?? .bold
         design = try c.decodeIfPresent(FontDesignToken.self, forKey: .design) ?? .rounded
         customColor = try c.decodeIfPresent(RGBAColor.self, forKey: .customColor)
+        shadow = try c.decodeIfPresent(Bool.self, forKey: .shadow) ?? false
         localized = try c.decodeIfPresent([String: String].self, forKey: .localized) ?? [:]
     }
 }

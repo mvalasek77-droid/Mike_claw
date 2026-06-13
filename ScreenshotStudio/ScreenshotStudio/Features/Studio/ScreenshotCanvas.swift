@@ -122,6 +122,9 @@ struct ScreenshotCanvas: View {
             .multilineTextAlignment(.center)
             .lineLimit(3)
             .minimumScaleFactor(0.5)
+            .shadow(color: style.caption.shadow ? .black.opacity(0.45) : .clear,
+                    radius: style.caption.shadow ? l.captionFontSize * 0.08 : 0,
+                    x: 0, y: style.caption.shadow ? l.captionFontSize * 0.04 : 0)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, canvasSize.width * 0.08)
     }

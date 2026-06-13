@@ -77,6 +77,24 @@ extension StyleTemplate {
 
         StyleTemplate(id: "clean-light", name: "Clean",
             style: make(background: "snow", placement: .top, size: 0.07, weight: .bold,
-                        captionColor: .gray(0.07), margin: 0.15))
+                        captionColor: .gray(0.07), margin: 0.15)),
+
+        StyleTemplate(id: "violet-pop", name: "Violet",
+            style: make(background: "violet", placement: .top, size: 0.08, weight: .heavy,
+                        margin: 0.11,
+                        adjustments: ImageAdjustments(brightness: 0.02, contrast: 1.18, saturation: 1.45, warmth: 0.1))),
+
+        StyleTemplate(id: "forest-calm", name: "Forest",
+            style: make(background: "forest", placement: .bottom, size: 0.072, weight: .bold,
+                        margin: 0.12)),
+
+        StyleTemplate(id: "ember-warm", name: "Ember",
+            style: make(background: "ember", placement: .top, size: 0.082, weight: .heavy,
+                        margin: 0.1,
+                        adjustments: ImageAdjustments(brightness: 0.02, contrast: 1.08, saturation: 1.12, warmth: 0.6))),
+
+        StyleTemplate(id: "slate-pro", name: "Slate",
+            style: make(background: "slate", placement: .bottom, size: 0.072, weight: .semibold,
+                        margin: 0.13, corner: 0.05))
     ]
 }

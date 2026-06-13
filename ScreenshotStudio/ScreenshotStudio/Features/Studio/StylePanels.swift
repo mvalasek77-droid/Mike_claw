@@ -408,6 +408,8 @@ struct CaptionPanel: View {
                     selection: $project.style.caption.design
                 )
 
+                ToggleRow(label: "Text shadow", systemImage: "shadow", isOn: $project.style.caption.shadow)
+
                 ToggleRow(label: "Custom text color", systemImage: "paintpalette", isOn: usesCustomColor)
                 if project.style.caption.customColor != nil {
                     ColorPicker("Text color", selection: customColorBinding, supportsOpacity: false)
