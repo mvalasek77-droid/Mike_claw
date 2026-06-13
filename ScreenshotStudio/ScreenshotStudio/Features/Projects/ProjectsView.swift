@@ -25,6 +25,10 @@ struct ProjectsView: View {
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
+                                Button {
+                                    Motion.run(Motion.spring) { store.duplicate(project) }
+                                    Haptics.success()
+                                } label: { Label("Duplicate", systemImage: "plus.square.on.square") }
                                 Button(role: .destructive) {
                                     Motion.run(Motion.spring) { store.delete(project) }
                                     Haptics.warning()

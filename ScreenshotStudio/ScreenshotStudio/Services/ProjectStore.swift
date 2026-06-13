@@ -74,6 +74,35 @@ final class ProjectStore: ObservableObject {
         persist()
     }
 
+    /// Duplicate a set into an independent copy — each slide gets its own image
+    /// file so editing or deleting one set never affects the other.
+    @discardableResult
+    func duplicate(_ project: ScreenshotProject) -> ScreenshotProject {
+        var copy = project
+        copy.id = UUID()
+        copy.name = Self.duplicateName(for: project.name, existing: projects.map(\.name))
+        copy.createdAt = Date()
+        copy.modifiedAt = Date()
+        copy.slides = project.slides.map { slide in
+            var s = slide
+            s.id = UUID()
+            if let file = ImageStore.copy(slide.imageFile) { s.imageFile = file }
+            return s
+        }
+        projects.insert(copy, at: 0)
+        projects.sort { $0.modifiedAt > $1.modifiedAt }
+        persist()
+        return copy
+    }
+
+    private static func duplicateName(for base: String, existing: [String]) -> String {
+        let candidate = "\(base) copy"
+        if !existing.contains(candidate) { return candidate }
+        var n = 2
+        while existing.contains("\(candidate) \(n)") { n += 1 }
+        return "\(candidate) \(n)"
+    }
+
     func delete(_ project: ScreenshotProject) {
         // Clean up the project's source images so we don't leak disk.
         for slide in project.slides { ImageStore.delete(slide.imageFile) }

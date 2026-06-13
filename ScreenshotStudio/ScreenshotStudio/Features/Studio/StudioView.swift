@@ -258,6 +258,7 @@ struct StudioView: View {
                         if index < project.slides.count - 1 {
                             Button { move(from: index, to: index + 1) } label: { Label("Move right", systemImage: "arrow.right") }
                         }
+                        Button { duplicate(slide) } label: { Label("Duplicate", systemImage: "plus.square.on.square") }
                         Button(role: .destructive) { delete(slide) } label: { Label("Delete", systemImage: "trash") }
                     }
                     .accessibilityLabel("Screenshot \(index + 1) of \(project.slides.count)")
@@ -406,6 +407,19 @@ struct StudioView: View {
             }
         }
         Haptics.warning()
+    }
+
+    private func duplicate(_ slide: Slide) {
+        guard let index = project.slides.firstIndex(where: { $0.id == slide.id }),
+              let file = ImageStore.copy(slide.imageFile) else { return }
+        var copy = slide
+        copy.id = UUID()
+        copy.imageFile = file
+        Motion.run(Motion.snap) {
+            project.slides.insert(copy, at: index + 1)
+            selectedSlideID = copy.id
+        }
+        Haptics.success()
     }
 
     private func move(from: Int, to: Int) {

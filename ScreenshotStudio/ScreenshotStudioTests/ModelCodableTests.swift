@@ -153,6 +153,21 @@ final class ModelCodableTests: XCTestCase {
         XCTAssertEqual(project.captionText(for: plain, language: "ja"), "Hello")
     }
 
+    @MainActor
+    func testDuplicateCreatesIndependentlyNamedCopy() {
+        let store = ProjectStore(loadFromDisk: false)
+        let original = ScreenshotProject.newProject(name: "Launch")
+
+        let dup = store.duplicate(original)
+        XCTAssertNotEqual(dup.id, original.id)
+        XCTAssertEqual(dup.name, "Launch copy")
+        XCTAssertTrue(store.projects.contains { $0.id == dup.id })
+
+        // A second duplicate avoids a name collision.
+        let dup2 = store.duplicate(original)
+        XCTAssertEqual(dup2.name, "Launch copy 2")
+    }
+
     func testRGBAColorHexInit() {
         let c = RGBAColor(hex: 0xFF8000)
         XCTAssertEqual(c.red, 1.0, accuracy: 0.001)

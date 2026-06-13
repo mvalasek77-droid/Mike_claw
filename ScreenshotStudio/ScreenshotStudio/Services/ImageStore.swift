@@ -37,6 +37,26 @@ enum ImageStore {
         return image
     }
 
+    /// Duplicate a stored image file, returning the new file name. Used when
+    /// duplicating a set or slide so each copy owns its own source image and
+    /// deleting one never removes another's file.
+    @discardableResult
+    static func copy(_ name: String) -> String? {
+        let newName = "shot-\(UUID().uuidString).png"
+        let src = Workspace.imagesDirectory.appendingPathComponent(name)
+        let dst = Workspace.imagesDirectory.appendingPathComponent(newName)
+        do {
+            try Workspace.fileManager.copyItem(at: src, to: dst)
+            return newName
+        } catch {
+            // The raw file may be gone (only the in-memory cache has it) — fall
+            // back to re-encoding a loaded copy before giving up.
+            if let image = load(name) { return save(image) }
+            BugLog.error("ImageStore", "Couldn't duplicate image \(name): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     /// Remove an image file (best-effort) and drop it from the cache.
     static func delete(_ name: String) {
         cache.removeObject(forKey: name as NSString)

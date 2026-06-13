@@ -251,6 +251,8 @@ struct CaptionPanel: View {
                 .background(LiquidGlass.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
 
+            captionLengthHint
+
             perSlideOverride
 
             GlassSegmented(
@@ -275,6 +277,27 @@ struct CaptionPanel: View {
                 }
             }
         }
+    }
+
+    // MARK: Caption length hint
+
+    @ViewBuilder
+    private var captionLengthHint: some View {
+        let text = headlineBinding.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let words = text.isEmpty ? 0 : text.split { $0 == " " || $0 == "\n" }.count
+        let tooLong = words > 6 || text.count > 42
+        HStack(spacing: 6) {
+            Image(systemName: tooLong ? "exclamationmark.triangle.fill" : "textformat.size")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(tooLong ? LiquidGlass.warning : LiquidGlass.primaryText.opacity(0.4))
+            Text(tooLong
+                 ? "\(words) words — long captions truncate on small previews. Keep it punchy."
+                 : "\(words) word\(words == 1 ? "" : "s")")
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundStyle(tooLong ? LiquidGlass.warning : LiquidGlass.primaryText.opacity(0.5))
+            Spacer(minLength: 0)
+        }
+        .animation(Motion.snap, value: tooLong)
     }
 
     // MARK: Localization
