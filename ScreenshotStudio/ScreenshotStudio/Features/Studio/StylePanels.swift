@@ -41,7 +41,32 @@ struct LayoutPanel: View {
             if project.style.statusBar.enabled {
                 statusBarControls
             }
+
+            Divider().overlay(LiquidGlass.hairline)
+
+            Button {
+                resetStyle()
+            } label: {
+                Label("Reset style", systemImage: "arrow.uturn.backward")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
+    }
+
+    /// Reset the visual style to defaults while keeping the user's words
+    /// (caption text + localizations) and any overlays.
+    private func resetStyle() {
+        Motion.run(Motion.snap) {
+            var fresh = CanvasStyle()
+            fresh.caption.text = project.style.caption.text
+            fresh.caption.localized = project.style.caption.localized
+            fresh.overlays = project.style.overlays
+            project.style = fresh
+        }
+        Haptics.warning()
     }
 
     @ViewBuilder
@@ -196,6 +221,7 @@ struct BackgroundPanel: View {
             }
 
             if project.style.background.kind == .gradient {
+                gradientEditors
                 SliderRow(label: "Gradient angle", value: $project.style.background.angle,
                           range: 0...360, format: { String(format: "%.0f°", $0) })
             }
@@ -216,6 +242,39 @@ struct BackgroundPanel: View {
             }
             .ignoresSafeArea()
         }
+    }
+
+    @ViewBuilder
+    private var gradientEditors: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(project.style.background.shapeStyle)
+                .frame(height: 26)
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
+            HStack(spacing: 14) {
+                ForEach(project.style.background.colors.indices, id: \.self) { i in
+                    ColorPicker("Color \(i + 1)", selection: gradientColorBinding(i), supportsOpacity: false)
+                        .labelsHidden()
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private func gradientColorBinding(_ index: Int) -> Binding<Color> {
+        Binding(
+            get: {
+                guard project.style.background.colors.indices.contains(index) else { return .white }
+                return project.style.background.colors[index].color
+            },
+            set: { newValue in
+                guard project.style.background.colors.indices.contains(index) else { return }
+                let ui = UIColor(newValue)
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                ui.getRed(&r, green: &g, blue: &b, alpha: &a)
+                project.style.background.colors[index] = RGBAColor(red: r, green: g, blue: b, alpha: a)
+            }
+        )
     }
 
     private var photoButton: some View {

@@ -5,6 +5,34 @@ import SwiftUI
 struct ProjectsView: View {
     @EnvironmentObject private var store: ProjectStore
     @State private var editing: ScreenshotProject?
+    @State private var sort: SortMode = .recent
+
+    enum SortMode: String, CaseIterable, Identifiable {
+        case recent, name, size
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .recent: return "Recently edited"
+            case .name: return "Name"
+            case .size: return "Most screenshots"
+            }
+        }
+        var icon: String {
+            switch self {
+            case .recent: return "clock"
+            case .name: return "textformat"
+            case .size: return "photo.stack"
+            }
+        }
+    }
+
+    private var sortedProjects: [ScreenshotProject] {
+        switch sort {
+        case .recent: return store.projects // already modifiedAt-descending
+        case .name: return store.projects.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .size: return store.projects.sorted { $0.slides.count > $1.slides.count }
+        }
+    }
 
     private let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
 
@@ -16,7 +44,7 @@ struct ProjectsView: View {
                     emptyState
                 } else {
                     LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(store.projects) { project in
+                        ForEach(sortedProjects) { project in
                             Button {
                                 Haptics.tap()
                                 editing = project
@@ -60,6 +88,23 @@ struct ProjectsView: View {
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
             }
             Spacer()
+            if store.projects.count > 1 {
+                Menu {
+                    Picker("Sort", selection: $sort) {
+                        ForEach(SortMode.allCases) { mode in
+                            Label(mode.label, systemImage: mode.icon).tag(mode)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                        .frame(width: 44, height: 44)
+                        .background(LiquidGlass.surface, in: Circle())
+                        .overlay(Circle().strokeBorder(LiquidGlass.hairline, lineWidth: 0.5))
+                }
+                .accessibilityLabel("Sort sets")
+            }
             Button {
                 let project = store.create()
                 Haptics.success()
