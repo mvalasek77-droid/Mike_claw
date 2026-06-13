@@ -20,6 +20,10 @@ final class Credentials: ObservableObject {
     @Published var agentModels: [String: String] = [:]
     /// Optional per-build USD cap. `nil` disables enforcement.
     @Published var costCapUSD: Double?
+    /// Maximum speed: run Reviewer + Security concurrently with the
+    /// unit-test gate (they re-run if retries change the code). Costs a
+    /// little more on retry-heavy builds, finishes meaningfully sooner.
+    @Published var overlapReview: Bool = false
     /// Optional snapshot-bytes cap sent with each build start.
     /// `nil` lets the backend keep its default (256 MiB).
     @Published var snapshotCapMB: Int?
@@ -81,6 +85,7 @@ final class Credentials: ObservableObject {
             costCapUSD = 5.0
             UserDefaults.standard.set(5.0, forKey: "cost.cap.usd")
         }
+        overlapReview = UserDefaults.standard.bool(forKey: "build.overlap.review")
         if UserDefaults.standard.object(forKey: "snapshot.cap.mb") != nil {
             let raw = UserDefaults.standard.integer(forKey: "snapshot.cap.mb")
             snapshotCapMB = raw > 0 ? raw : nil
@@ -155,6 +160,11 @@ final class Credentials: ObservableObject {
         if let data = try? JSONEncoder().encode(agentModels) {
             UserDefaults.standard.set(data, forKey: "agent.models")
         }
+    }
+
+    func setOverlapReview(_ on: Bool) {
+        overlapReview = on
+        UserDefaults.standard.set(on, forKey: "build.overlap.review")
     }
 
     func setCostCap(_ usd: Double?) {

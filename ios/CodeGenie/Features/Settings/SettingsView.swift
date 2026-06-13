@@ -37,6 +37,7 @@ struct SettingsView: View {
                     appleDevBlock
                     githubBlock
                     if userMode.isPower {
+                        maxSpeedBlock
                         costCapBlock
                         agentRoutingBlock
                         customAgentsBlock
@@ -149,6 +150,28 @@ struct SettingsView: View {
             icon: "chevron.left.forwardslash.chevron.right",
             tint: creds.hasGithub ? LiquidGlass.success : LiquidGlass.accentSecondary
         ) { showGitHub = true }
+    }
+
+    private var maxSpeedBlock: some View {
+        GlassCard(title: "Maximum speed", icon: "bolt.fill", tint: LiquidGlass.accent) {
+            Toggle(isOn: Binding(
+                get: { creds.overlapReview },
+                set: { on in
+                    creds.setOverlapReview(on)
+                    Haptics.selection()
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Overlap code review with testing")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text("Reviewer + Security run while tests are still going, instead of waiting. Builds finish sooner; if tests force code changes, the review re-runs (slightly more tokens).")
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                }
+            }
+            .tint(LiquidGlass.accent)
+        }
     }
 
     private var costCapBlock: some View {

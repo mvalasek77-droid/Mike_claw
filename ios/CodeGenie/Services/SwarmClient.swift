@@ -58,6 +58,7 @@ final class SwarmClient: ObservableObject {
         let overrides = credentials.agentModels
         if !overrides.isEmpty { body["model_overrides"] = overrides }
         if let cap = credentials.costCapUSD, cap > 0 { body["cost_cap_usd"] = cap }
+        if credentials.overlapReview { body["overlap_review"] = true }
         if let mb = credentials.snapshotCapMB, mb > 0 {
             body["max_snapshot_bytes"] = mb * 1024 * 1024
         }
