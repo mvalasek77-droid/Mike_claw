@@ -141,9 +141,11 @@ final class ModelCodableTests: XCTestCase {
         XCTAssertEqual(project.captionText(for: plain, language: "en-US"), "Hello")
         XCTAssertEqual(project.captionText(for: plain, language: "fr-FR"), "Bonjour")
 
-        // Per-slide override only affects its own language; base falls back.
+        // A base (English) per-slide override applies to the primary language,
+        // but a localized shared headline wins for that language — you don't
+        // want English text leaking into a French screenshot set.
         XCTAssertEqual(project.captionText(for: baseOverride, language: "en-US"), "Base only")
-        XCTAssertEqual(project.captionText(for: baseOverride, language: "fr-FR"), "Base only")
+        XCTAssertEqual(project.captionText(for: baseOverride, language: "fr-FR"), "Bonjour")
         XCTAssertEqual(project.captionText(for: frOverride, language: "fr-FR"), "Salut")
         XCTAssertEqual(project.captionText(for: frOverride, language: "en-US"), "Hello")
 
