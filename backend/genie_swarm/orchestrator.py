@@ -31,6 +31,7 @@ from .cost import BudgetExceeded
 from .llm import LLMClient
 from .memory import Memory
 from .models import BuildJob, JobState
+from .prompt_format import format_app_prompt, provider_for_model
 from .runtime import ConversationRuntime, RuntimeConfig
 from .session import Session
 from .streaming import EventBus
@@ -892,7 +893,16 @@ class SwarmOrchestrator:
         )
 
     def _architect_prompt(self, job: BuildJob) -> str:
+        # Plan from a clean, provider-tuned brief rather than the raw
+        # one-liner: structure the user's description for whichever model
+        # the Architect runs on (Claude → XML tags, GPT → markdown). The
+        # plain spec block follows so the deterministic fields (style,
+        # category, bundle id) are still explicit.
+        architect_model = self.config.model_overrides.get(
+            ARCHITECT.role.value, ARCHITECT.model)
+        brief = format_app_prompt(job.spec, provider_for_model(architect_model))
         return (
+            f"{brief}\n\n"
             f"{self._spec_block(job)}\n"
             "Plan the Xcode project. Write `docs/PLAN.md` and `docs/plan.json` "
             "to the workspace, then stop."

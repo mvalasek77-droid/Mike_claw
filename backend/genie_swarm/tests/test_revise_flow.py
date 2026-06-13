@@ -3,6 +3,9 @@
 and never touches the original workspace."""
 from __future__ import annotations
 
+import asyncio
+import dataclasses
+
 from pathlib import Path
 
 import pytest
@@ -108,3 +111,124 @@ async def test_revise_route_seeds_and_resumes(tmp_path: Path, recorded_llm):
         state.jobs.update(original_jobs)
         state.tasks.clear()
         state.tasks.update(original_tasks)
+
+
+# --------------------------------------------------------------------------- #
+# "Can the app be edited at the TestFlight stage and after?" — the gate +
+# the re-ship path. A build that has shipped to TestFlight lands in
+# `succeeded` (ship runs BEFORE the succeeded transition), and `succeeded`
+# is editable; only an actively-running job is refused.
+# --------------------------------------------------------------------------- #
+
+import os
+
+from genie_swarm.api import _to_ship_config
+from genie_swarm.models import JobState, ShipRequest
+from genie_swarm.orchestrator import ShipConfig
+import genie_swarm.testflight_status as ts
+from fastapi import HTTPException
+
+
+@pytest.mark.asyncio
+async def test_revise_gate_blocks_running_allows_finished(tmp_path: Path):
+    """A job still building/testing is refused (409); a finished job with
+    no saved workspace reports the actionable 404. Proves the editable
+    window is exactly 'after the build (incl. after TestFlight ship)'."""
+    original_jobs = dict(state.jobs)
+    original_config = state.config
+    state.config = SwarmConfig(workspace_root=tmp_path / "ws")
+    state.jobs.clear()
+    try:
+        for blocked in (JobState.queued, JobState.planning, JobState.building, JobState.testing):
+            job = BuildJob(spec=AppSpec(title="Busy", prompt="x"), state=blocked)
+            state.jobs[job.id] = job
+            with pytest.raises(HTTPException) as exc:
+                await revise_job(job.id, ReviseRequest(prompt="change it"))
+            assert exc.value.status_code == 409
+
+        # Finished (succeeded) is past the gate — it fails only later, on
+        # the missing-workspace check, with the actionable message.
+        done = BuildJob(spec=AppSpec(title="Done", prompt="x"), state=JobState.succeeded)
+        state.jobs[done.id] = done
+        with pytest.raises(HTTPException) as exc:
+            await revise_job(done.id, ReviseRequest(prompt="change it"))
+        assert exc.value.status_code == 404
+        assert "finished builds" in str(exc.value.detail)
+    finally:
+        state.config = original_config
+        state.jobs.clear()
+        state.jobs.update(original_jobs)
+
+
+@pytest.mark.asyncio
+async def test_revise_after_testflight_reships(tmp_path: Path, recorded_llm, monkeypatch):
+    """End-to-end at the orchestrator level: a shipped build's workspace
+    is revised (seeded, Architect skipped) and resume() with a ship
+    config RE-UPLOADS to TestFlight. Proves edits after TestFlight ship
+    again. Driven directly (not via the background task) for determinism.
+    """
+    bin_dir = tmp_path / "fakebin"
+    bin_dir.mkdir()
+    script = bin_dir / "xcrun"
+    script.write_text(
+        "#!/usr/bin/env bash\n"
+        "if [[ \"$2\" == \"--validate-app\" ]]; then echo 'No errors validating'; exit 0; fi\n"
+        "if [[ \"$2\" == \"--upload-app\" ]]; then echo 'Asset received id BUILD99'; exit 0; fi\n"
+        "exit 1\n"
+    )
+    script.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+
+    workspace = tmp_path / "ws"
+
+    recorded_llm.script = [
+        LLMResponse(text=f"agent {i} done.", tool_calls=[], stop_reason="end_turn")
+        for i in range(8)
+    ]
+    src = BuildJob(spec=AppSpec(title="Tracker", prompt="Build a tracker."))
+    bus = EventBus()
+    config = SwarmConfig(
+        workspace_root=workspace,
+        parallel_build=False, parallel_test=False,
+        skip_tests=False, max_retries=0, max_crash_recoveries=0,
+    )
+    src_session = await SwarmOrchestrator(llm=recorded_llm, bus=bus, config=config).execute(src)
+    assert src_session.job.state.value == "succeeded"
+
+    new_job = BuildJob(spec=src.spec.model_copy(
+        update={"prompt": src.spec.prompt + "\n--- REVISION ---\nAdd a weekly view."}))
+    revised = Session.open(new_job, workspace)
+    _seed_workspace(src_session.workspace, revised.workspace)
+    (revised.workspace / "Build.ipa").write_text("fresh binary")
+    revised.checkpoint("after-architect")
+    revised.save()
+
+    recorded_llm.script = [
+        LLMResponse(text=f"rev {i} done.", tool_calls=[], stop_reason="end_turn")
+        for i in range(7)
+    ]
+    ship_cfg = ShipConfig(
+        ipa_path="Build.ipa",
+        bundle_id="com.codegenie.tracker",
+        apple_id="dev@example.com",
+        app_specific_password="abcd-efgh-ijkl-mnop",
+        poll_after_upload=False,
+    )
+    ship_config = dataclasses.replace(config, ship=ship_cfg)
+
+    events: list[str] = []
+    stream = await bus.stream_for(new_job.id)
+
+    async def collect():
+        async for ev in stream.subscribe():
+            events.append(ev.type)
+            if ev.type == "job.state" and ev.payload.get("state") == "succeeded":
+                break
+
+    consumer = asyncio.create_task(collect())
+    await asyncio.sleep(0.01)
+    revised_session = await SwarmOrchestrator(llm=recorded_llm, bus=bus, config=ship_config).resume(new_job)
+    await asyncio.wait_for(consumer, timeout=5.0)
+
+    assert revised_session.job.state.value == "succeeded"
+    assert "testflight.upload" in events

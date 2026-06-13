@@ -903,6 +903,31 @@ async def archive_old_jobs(body: dict | None = None):
     }
 
 
+@router.post("/format-prompt")
+async def format_prompt(req: dict):
+    """Return the user's app description rendered as a provider-tuned
+    build brief, for both Claude and GPT shapes plus the one matching the
+    user's selected model. Deterministic — no LLM call, instant + free —
+    so the iOS app shows a live preview as the user types.
+
+    Body: { "spec": {title, prompt, ...}, "model_id"?: "..." }
+    """
+    from .prompt_format import CLAUDE, GPT, format_app_prompt, provider_for_model
+    raw_spec = (req or {}).get("spec") or {}
+    try:
+        spec = AppSpec(**raw_spec)
+    except Exception as exc:  # noqa: BLE001 — surface a clean 400 to the app
+        raise HTTPException(400, f"invalid spec: {exc}")
+    model_id = (req or {}).get("model_id") or ""
+    selected = provider_for_model(model_id) if model_id else CLAUDE
+    return {
+        "selected_provider": selected,
+        "anthropic": format_app_prompt(spec, CLAUDE),
+        "openai": format_app_prompt(spec, GPT),
+        "formatted": format_app_prompt(spec, selected),
+    }
+
+
 @router.get("/health")
 async def health():
     return {"ok": True, "active_jobs": len(state.tasks)}

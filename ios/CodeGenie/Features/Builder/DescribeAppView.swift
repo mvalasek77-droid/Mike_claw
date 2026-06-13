@@ -10,6 +10,12 @@ struct DescribeAppView: View {
     @State private var style: AppDescription.Style = .liquidGlass
     @State private var showCostConfirm: Bool = false
     @FocusState private var focused: Field?
+    @State private var showPromptPreview = false
+    @State private var previewText: String = ""
+    @State private var previewProvider: String = ""
+    @State private var previewLoading = false
+    @State private var previewError: String?
+    private let client = SwarmClient()
 
     private enum Field { case title, prompt }
 
@@ -56,6 +62,7 @@ struct DescribeAppView: View {
                     titleField
                     promptField
                     suggestionRow
+                    previewPromptRow
                     categoryPicker
                     stylePicker
                     submitRow
@@ -66,6 +73,105 @@ struct DescribeAppView: View {
             }
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
+        }
+    }
+
+    // MARK: Provider-tuned prompt preview
+
+    /// Button that previews how the rough description gets structured for
+    /// the selected AI (Claude → XML tags, ChatGPT → markdown). This is the
+    /// exact brief the build's Architect plans from, so the user sees — and
+    /// trusts — what the swarm actually receives.
+    private var previewPromptRow: some View {
+        Button {
+            Haptics.tap()
+            loadPreview()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "text.badge.checkmark")
+                Text("Preview the AI-ready prompt")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                Spacer()
+                if previewLoading { ProgressView().controlSize(.small) }
+                else { Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)) }
+            }
+            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+            .padding(14)
+            .background(GlassSurface(tier: .flat, corner: 14) { Color.clear })
+        }
+        .buttonStyle(.plain)
+        .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 || previewLoading)
+        .opacity(prompt.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 ? 0.5 : 1)
+        .accessibilityLabel("Preview the AI-ready prompt")
+        .sheet(isPresented: $showPromptPreview) {
+            promptPreviewSheet
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+    }
+
+    private var promptPreviewSheet: some View {
+        ZStack {
+            LiquidGlassBackground().ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Formatted for \(previewProvider)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text("Your description, restructured the way \(previewProvider) builds best. This is the exact brief CodeGenie hands the Architect.")
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    if let previewError {
+                        Label(previewError, systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.warning)
+                            .accessibilityLabel("Error: \(previewError)")
+                    } else {
+                        Text(previewText)
+                            .font(.system(size: 13, weight: .regular, design: .monospaced))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.9))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .background(GlassSurface(tier: .flat, corner: 14) { Color.clear })
+                    }
+                    Color.clear.frame(height: 30)
+                }
+                .padding(20)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func loadPreview() {
+        let clean = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard clean.count >= 3 else { return }
+        previewError = nil
+        previewLoading = true
+        let spec = AppSpec(
+            title: title.isEmpty ? inferredTitle(from: clean) : title,
+            prompt: clean,
+            category: category.rawValue,
+            style: style.rawValue
+        )
+        Task {
+            do {
+                let (text, provider) = try await client.formatPrompt(
+                    spec: spec, modelID: creds.preferredModelID)
+                await MainActor.run {
+                    previewText = text
+                    previewProvider = provider
+                    previewLoading = false
+                    showPromptPreview = true
+                }
+            } catch {
+                await MainActor.run {
+                    previewProvider = creds.preferredModelID.hasPrefix("gpt") ? "ChatGPT" : "Claude"
+                    previewError = "Couldn't reach the backend to format the prompt. Pair your Mac (Settings → Pair your Mac), then try again."
+                    previewLoading = false
+                    showPromptPreview = true
+                }
+            }
         }
     }
 

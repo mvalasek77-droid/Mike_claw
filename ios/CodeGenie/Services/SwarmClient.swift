@@ -42,6 +42,30 @@ final class SwarmClient: ObservableObject {
 
     // MARK: - REST
 
+    /// Live preview of the user's description rendered as a provider-tuned
+    /// build brief (Claude → XML structure, GPT → markdown). Deterministic
+    /// on the backend — no token cost — so it's safe to call as the user
+    /// types. Returns (formatted-for-selected-model, providerLabel).
+    func formatPrompt(spec: AppSpec, modelID: String) async throws -> (text: String, provider: String) {
+        let body: [String: Any] = [
+            "spec": [
+                "title": spec.title.isEmpty ? "Untitled" : spec.title,
+                "prompt": spec.prompt,
+                "category": spec.category,
+                "style": spec.style,
+                "target_ios": spec.targetIOS,
+                "features": spec.features,
+            ],
+            "model_id": modelID,
+        ]
+        let response = try await postJSON("/api/coding/swarm/format-prompt", body: body)
+        guard let text = response["formatted"] as? String else {
+            throw SwarmError.malformed("missing formatted prompt in response")
+        }
+        let provider = (response["selected_provider"] as? String) ?? "anthropic"
+        return (text, provider == "openai" ? "ChatGPT" : "Claude")
+    }
+
     func startBuild(spec: AppSpec) async throws -> String {
         var body: [String: Any] = [
             "spec": [
