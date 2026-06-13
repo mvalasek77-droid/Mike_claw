@@ -33,8 +33,7 @@ struct ScreenshotCanvas: View {
     var body: some View {
         let l = layout
         ZStack(alignment: .topLeading) {
-            Rectangle()
-                .fill(style.background.shapeStyle)
+            backgroundLayer
                 .frame(width: canvasSize.width, height: canvasSize.height)
 
             if let captionRect = l.captionRect, style.caption.placement != .none {
@@ -57,6 +56,23 @@ struct ScreenshotCanvas: View {
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
         .clipped()
+    }
+
+    // MARK: Background
+
+    @ViewBuilder
+    private var backgroundLayer: some View {
+        if style.background.kind == .image,
+           let file = style.background.imageFile,
+           let image = ImageStore.load(file) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: canvasSize.width, height: canvasSize.height)
+                .clipped()
+        } else {
+            Rectangle().fill(style.background.shapeStyle)
+        }
     }
 
     // MARK: Overlays
@@ -114,7 +130,7 @@ struct ScreenshotCanvas: View {
         ZStack(alignment: .topLeading) {
             if style.deviceFramed {
                 RoundedRectangle(cornerRadius: l.cornerRadius + l.bezelWidth, style: .continuous)
-                    .fill(Color.black)
+                    .fill(style.bezelTone.color)
                     .overlay(
                         RoundedRectangle(cornerRadius: l.cornerRadius + l.bezelWidth, style: .continuous)
                             .strokeBorder(

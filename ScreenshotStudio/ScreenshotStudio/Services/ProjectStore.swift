@@ -89,6 +89,10 @@ final class ProjectStore: ObservableObject {
             if let file = ImageStore.copy(slide.imageFile) { s.imageFile = file }
             return s
         }
+        // A photo backdrop is also a file — give the copy its own.
+        if let bgFile = copy.style.background.imageFile, let newBg = ImageStore.copy(bgFile) {
+            copy.style.background.imageFile = newBg
+        }
         projects.insert(copy, at: 0)
         projects.sort { $0.modifiedAt > $1.modifiedAt }
         persist()
@@ -106,6 +110,7 @@ final class ProjectStore: ObservableObject {
     func delete(_ project: ScreenshotProject) {
         // Clean up the project's source images so we don't leak disk.
         for slide in project.slides { ImageStore.delete(slide.imageFile) }
+        if let bgFile = project.style.background.imageFile { ImageStore.delete(bgFile) }
         projects.removeAll { $0.id == project.id }
         persist()
     }

@@ -35,7 +35,7 @@ struct RGBAColor: Codable, Hashable {
 
 /// The background painted behind the device / screenshot.
 struct BackgroundStyle: Identifiable, Codable, Hashable {
-    enum Kind: String, Codable, Hashable { case solid, gradient }
+    enum Kind: String, Codable, Hashable { case solid, gradient, image }
 
     let id: String
     var name: String
@@ -44,10 +44,15 @@ struct BackgroundStyle: Identifiable, Codable, Hashable {
     var colors: [RGBAColor]
     /// Gradient angle in degrees (0 = left→right, 90 = top→bottom).
     var angle: Double = 135
+    /// Backing image file name when `kind == .image` (drawn by the canvas).
+    var imageFile: String? = nil
 
     /// SwiftUI shape style ready to drop into `.background()` / `.fill()`.
+    /// For `.image` this is just a fallback fill; the canvas draws the photo.
     var shapeStyle: AnyShapeStyle {
         switch kind {
+        case .image:
+            return AnyShapeStyle(Color.black)
         case .solid:
             return AnyShapeStyle(colors.first?.color ?? Color.black)
         case .gradient:
@@ -61,8 +66,10 @@ struct BackgroundStyle: Identifiable, Codable, Hashable {
         }
     }
 
-    /// Average luminance — drives automatic caption contrast.
+    /// Average luminance — drives automatic caption contrast. Photos vary, so
+    /// we assume a darker backdrop (white caption) by default.
     var averageLuminance: Double {
+        if kind == .image { return 0.3 }
         guard !colors.isEmpty else { return 0 }
         return colors.map(\.luminance).reduce(0, +) / Double(colors.count)
     }
@@ -146,6 +153,26 @@ struct CaptionStyle: Codable, Hashable {
     }
 }
 
+/// Color of the device bezel surrounding the screenshot.
+enum BezelTone: String, Codable, CaseIterable, Identifiable, Hashable {
+    case black, graphite, white
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .black: return "Black"
+        case .graphite: return "Titanium"
+        case .white: return "White"
+        }
+    }
+    var color: Color {
+        switch self {
+        case .black: return Color(white: 0.04)
+        case .graphite: return Color(red: 0.34, green: 0.34, blue: 0.36)
+        case .white: return Color(white: 0.92)
+        }
+    }
+}
+
 /// The complete, persistable description of how a screenshot is composed.
 struct CanvasStyle: Codable, Hashable {
     var background: BackgroundStyle = .default
@@ -164,10 +191,12 @@ struct CanvasStyle: Codable, Hashable {
     var adjustments: ImageAdjustments = ImageAdjustments()
     /// Free-floating text annotations and stickers placed over the canvas.
     var overlays: [CanvasOverlay] = []
+    /// Color of the device bezel.
+    var bezelTone: BezelTone = .black
 
     enum CodingKeys: String, CodingKey {
         case background, caption, deviceFramed, marginFraction
-        case cornerFraction, shadow, statusBar, adjustments, overlays
+        case cornerFraction, shadow, statusBar, adjustments, overlays, bezelTone
     }
 }
 
@@ -198,5 +227,6 @@ extension CanvasStyle {
         statusBar = try c.decodeIfPresent(StatusBarStyle.self, forKey: .statusBar) ?? StatusBarStyle()
         adjustments = try c.decodeIfPresent(ImageAdjustments.self, forKey: .adjustments) ?? ImageAdjustments()
         overlays = try c.decodeIfPresent([CanvasOverlay].self, forKey: .overlays) ?? []
+        bezelTone = try c.decodeIfPresent(BezelTone.self, forKey: .bezelTone) ?? .black
     }
 }

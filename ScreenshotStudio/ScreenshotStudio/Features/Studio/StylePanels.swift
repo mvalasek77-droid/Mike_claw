@@ -23,6 +23,15 @@ struct LayoutPanel: View {
             SliderRow(label: "Margin", value: $project.style.marginFraction, range: 0...0.35)
             if project.style.deviceFramed {
                 SliderRow(label: "Corner radius", value: $project.style.cornerFraction, range: 0...0.12)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Bezel")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                    GlassSegmented(
+                        options: BezelTone.allCases.map { ($0, $0.label) },
+                        selection: $project.style.bezelTone
+                    )
+                }
             }
 
             Divider().overlay(LiquidGlass.hairline)
@@ -143,11 +152,15 @@ struct EnhancePanel: View {
 
 struct BackgroundPanel: View {
     @Binding var project: ScreenshotProject
+    @State private var showPhotoPicker = false
+
+    private var usesPhoto: Bool { project.style.background.kind == .image }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
+                    photoButton
                     ForEach(BackgroundStyle.presets) { preset in
                         let isSelected = preset.id == project.style.background.id
                         Button {
@@ -187,6 +200,53 @@ struct BackgroundPanel: View {
                           range: 0...360, format: { String(format: "%.0f°", $0) })
             }
         }
+        .sheet(isPresented: $showPhotoPicker) {
+            PhotoPicker(selectionLimit: 1) { images in
+                guard let image = images.first, let file = ImageStore.save(image) else { return }
+                Motion.run(Motion.snap) {
+                    project.style.background = BackgroundStyle(id: "photo", name: "Photo",
+                                                              kind: .image, colors: [], imageFile: file)
+                }
+                Haptics.success()
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    private var photoButton: some View {
+        Button {
+            Haptics.tap()
+            showPhotoPicker = true
+        } label: {
+            VStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(LiquidGlass.surface)
+                    .frame(width: 58, height: 84)
+                    .overlay {
+                        if usesPhoto, let file = project.style.background.imageFile, let img = ImageStore.load(file) {
+                            Image(uiImage: img).resizable().scaledToFill()
+                                .frame(width: 58, height: 84)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        } else {
+                            Image(systemName: "photo.badge.plus")
+                                .font(.system(size: 22, weight: .regular))
+                                .foregroundStyle(LiquidGlass.accent)
+                        }
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(usesPhoto ? AnyShapeStyle(LiquidGlass.auroraGradient) : AnyShapeStyle(LiquidGlass.hairline),
+                                          lineWidth: usesPhoto ? 3 : 1)
+                    )
+                    .shadow(color: .black.opacity(0.25), radius: 5, y: 3)
+                Text("Photo")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(usesPhoto ? 0.95 : 0.55))
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Photo background")
+        .accessibilityAddTraits(usesPhoto ? [.isButton, .isSelected] : .isButton)
     }
 }
 

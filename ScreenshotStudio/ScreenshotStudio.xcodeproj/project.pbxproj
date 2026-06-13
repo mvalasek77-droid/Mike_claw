@@ -40,6 +40,7 @@
 		2C07D6B020934A6C32B334AB = {isa = PBXBuildFile; fileRef = 020BA6822E1C1541F756CA50 /* ExportCoordinator.swift */; };
 		3022FD3EDEAA954BCCBBEE2C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Typography.swift"; sourceTree = "<group>"; };
 		31849949129CAE5B2D149D0E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnhanceAndStatusBarTests.swift"; sourceTree = "<group>"; };
+		3220FE49B6F483B38DCD471A = {isa = PBXBuildFile; fileRef = B20D68FC2523FFD0C8D7CBD5 /* SampleContent.swift */; };
 		323C3B257A357C9ED069C500 = {isa = PBXContainerItemProxy; containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */; proxyType = 1; remoteGlobalIDString = E3435DDA2687639586BF0B70; remoteInfo = ScreenshotStudio; };
 		337C9AE4E8784A35FB746EC4 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StatusBarOverlay.swift"; sourceTree = "<group>"; };
 		36D1D6D24AAA94A29A1EEEF5 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProjectThumbnail.swift"; sourceTree = "<group>"; };
@@ -142,6 +143,7 @@
 				00CA982B9C7BDFB8D32CE904,
 				C22DAA9C5CC0117430CF62E1,
 				DD6F8F70B25F8F0BFB6DCFEB,
+				3220FE49B6F483B38DCD471A,
 				69A13B14679CAC342B229BF2,
 				F2F646E7E00CF6745F4A62AE,
 				D0936631414C6991EA3A2473,
@@ -215,6 +217,7 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ScreenshotStudio.app/ScreenshotStudio";
 			}; name = Release; };
 		8166C5CAD2CE5C6784DDC0D4 = {isa = PBXGroup; children = (
+				B20D68FC2523FFD0C8D7CBD5 /* SampleContent.swift */,
 				4A55B257B173C1CD0201ED1E /* SplashView.swift */,
 				7A62FFE61C04AACC3AEA14EB /* StudioMark.swift */,
 			); path = "Branding"; sourceTree = "<group>"; };
@@ -282,6 +285,7 @@
 			); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
 		ADA4DB64A5950CE5448ABB5E = {isa = PBXBuildFile; fileRef = A2B186254828B2393E711CBA /* StatusBarStyle.swift */; };
 		AFF8D01F8CE5C3DAE97BBD83 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Haptics.swift"; sourceTree = "<group>"; };
+		B20D68FC2523FFD0C8D7CBD5 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SampleContent.swift"; sourceTree = "<group>"; };
 		B3BF56CAE70AA4A9F4CD6583 = {isa = PBXBuildFile; fileRef = BBB5EEF1157715D338F9DA7C /* StudioView.swift */; };
 		B468042524AFCD43FB23EB3C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProjectsView.swift"; sourceTree = "<group>"; };
 		B48F3C69A56CEE7058175782 = {isa = PBXBuildFile; fileRef = 479DD1C48EA954D788FDF32D /* LiquidGlass.swift */; };

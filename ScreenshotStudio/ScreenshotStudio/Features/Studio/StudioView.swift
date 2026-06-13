@@ -262,6 +262,10 @@ struct StudioView: View {
                         Button(role: .destructive) { delete(slide) } label: { Label("Delete", systemImage: "trash") }
                     }
                     .accessibilityLabel("Screenshot \(index + 1) of \(project.slides.count)")
+                    .draggable(slide.id.uuidString)
+                    .dropDestination(for: String.self) { items, _ in
+                        reorder(droppedID: items.first, onto: slide)
+                    }
                 }
 
                 Button {
@@ -407,6 +411,22 @@ struct StudioView: View {
             }
         }
         Haptics.warning()
+    }
+
+    /// Move a dragged slide so it lands at the dropped-on slide's position.
+    @discardableResult
+    private func reorder(droppedID raw: String?, onto target: Slide) -> Bool {
+        guard let raw, let draggedID = UUID(uuidString: raw),
+              let from = project.slides.firstIndex(where: { $0.id == draggedID }),
+              let to = project.slides.firstIndex(where: { $0.id == target.id }),
+              from != to else { return false }
+        Motion.run(Motion.snap) {
+            let moved = project.slides.remove(at: from)
+            project.slides.insert(moved, at: to)
+            selectedSlideID = moved.id
+        }
+        Haptics.selection()
+        return true
     }
 
     private func duplicate(_ slide: Slide) {

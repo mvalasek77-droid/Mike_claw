@@ -17,6 +17,7 @@ struct ScreenshotStudioApp: App {
 }
 
 struct RootView: View {
+    @EnvironmentObject private var store: ProjectStore
     @AppStorage("hasFinishedOnboarding") private var hasFinishedOnboarding = false
     @State private var splashDone = false
 
@@ -40,6 +41,7 @@ struct RootView: View {
                         insertion: .opacity.combined(with: .scale(scale: 1.02)),
                         removal: .opacity
                     ))
+                    .task { SampleContent.seedIfNeeded(into: store) }
             }
         }
         .motion(Motion.smooth, value: hasFinishedOnboarding)
