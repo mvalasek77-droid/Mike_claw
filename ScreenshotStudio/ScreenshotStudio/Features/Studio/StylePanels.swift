@@ -267,6 +267,31 @@ struct BackgroundPanel: View {
                         .labelsHidden()
                 }
                 Spacer(minLength: 0)
+                if project.style.background.colors.count > 2 {
+                    Button {
+                        Motion.run(Motion.snap) { project.style.background.colors.removeLast() }
+                        Haptics.selection()
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Remove last color")
+                }
+                if project.style.background.colors.count < 4 {
+                    Button {
+                        let last = project.style.background.colors.last ?? .white
+                        Motion.run(Motion.snap) { project.style.background.colors.append(last) }
+                        Haptics.selection()
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(LiquidGlass.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add a color")
+                }
             }
         }
     }
@@ -480,6 +505,14 @@ struct CaptionPanel: View {
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                     .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    copyBaseToAllLanguages()
+                } label: {
+                    Label("Copy base captions to all languages", systemImage: "doc.on.doc")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.accent)
+                }
+                .buttonStyle(.plain)
             }
         }
         .confirmationDialog(
@@ -577,6 +610,22 @@ struct CaptionPanel: View {
         guard !project.languages.contains(code) else { return }
         project.languages.append(code)
         project.activeLanguage = code
+        Haptics.success()
+    }
+
+    /// Seed every other language's captions from the primary language — a fast
+    /// starting point before translating.
+    private func copyBaseToAllLanguages() {
+        let base = project.style.caption.text
+        for lang in project.languages where lang != project.primaryLanguage {
+            project.style.caption.localized[lang] = base
+        }
+        for index in project.slides.indices {
+            guard let override = project.slides[index].captionOverride, !override.isEmpty else { continue }
+            for lang in project.languages where lang != project.primaryLanguage {
+                project.slides[index].localizedOverrides[lang] = override
+            }
+        }
         Haptics.success()
     }
 
