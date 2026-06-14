@@ -189,12 +189,15 @@ struct BackgroundPanel: View {
                     ForEach(BackgroundStyle.presets) { preset in
                         let isSelected = preset.id == project.style.background.id
                         Button {
+                            let old = project.style.background.imageFile
                             Motion.run(Motion.snap) {
                                 // Keep the user's custom angle when switching.
                                 var next = preset
                                 next.angle = project.style.background.angle
                                 project.style.background = next
                             }
+                            // Reclaim a photo backdrop we just switched away from.
+                            if let old, old != project.style.background.imageFile { ImageStore.delete(old) }
                             Haptics.selection()
                         } label: {
                             VStack(spacing: 6) {
@@ -244,10 +247,13 @@ struct BackgroundPanel: View {
         .sheet(isPresented: $showPhotoPicker) {
             PhotoPicker(selectionLimit: 1) { images in
                 guard let image = images.first, let file = ImageStore.save(image) else { return }
+                let old = project.style.background.imageFile
                 Motion.run(Motion.snap) {
                     project.style.background = BackgroundStyle(id: "photo", name: "Photo",
                                                               kind: .image, colors: [], imageFile: file)
                 }
+                // Reclaim the previous photo backdrop, if any.
+                if let old, old != file { ImageStore.delete(old) }
                 Haptics.success()
             }
             .ignoresSafeArea()

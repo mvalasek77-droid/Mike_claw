@@ -174,6 +174,39 @@ final class ModelCodableTests: XCTestCase {
         XCTAssertEqual(dup2.name, "Launch copy 2")
     }
 
+    @MainActor
+    func testOrphanCleanupRemovesOnlyOldUnreferencedFiles() throws {
+        let fm = FileManager.default
+        let dir = Workspace.imagesDirectory
+        let referenced = "test-ref-\(UUID().uuidString).png"
+        let orphanOld = "test-old-\(UUID().uuidString).png"
+        let orphanFresh = "test-fresh-\(UUID().uuidString).png"
+        let bytes = Data([0, 1, 2, 3])
+        for name in [referenced, orphanOld, orphanFresh] {
+            try bytes.write(to: dir.appendingPathComponent(name))
+        }
+        // Age the old orphan past the cleanup grace period.
+        try fm.setAttributes([.modificationDate: Date().addingTimeInterval(-600)],
+                             ofItemAtPath: dir.appendingPathComponent(orphanOld).path)
+
+        let store = ProjectStore(loadFromDisk: false)
+        var project = ScreenshotProject.newProject(name: "Ref")
+        project.slides = [Slide(imageFile: referenced)]
+        store.upsert(project)
+
+        let removed = store.cleanUpOrphanedImages()
+
+        XCTAssertTrue(fm.fileExists(atPath: dir.appendingPathComponent(referenced).path), "referenced file kept")
+        XCTAssertTrue(fm.fileExists(atPath: dir.appendingPathComponent(orphanFresh).path), "fresh orphan kept (grace period)")
+        XCTAssertFalse(fm.fileExists(atPath: dir.appendingPathComponent(orphanOld).path), "old orphan removed")
+        XCTAssertGreaterThanOrEqual(removed, 1)
+
+        // Cleanup anything this test left behind.
+        for name in [referenced, orphanFresh] {
+            try? fm.removeItem(at: dir.appendingPathComponent(name))
+        }
+    }
+
     func testRGBAColorHexInit() {
         let c = RGBAColor(hex: 0xFF8000)
         XCTAssertEqual(c.red, 1.0, accuracy: 0.001)

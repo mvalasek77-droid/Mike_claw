@@ -46,7 +46,7 @@ struct BackgroundStyle: Identifiable, Codable, Hashable {
     var angle: Double = 135
     /// Backing image file name when `kind == .image` (drawn by the canvas).
     var imageFile: String? = nil
-    /// Darkening scrim over a photo backdrop (0…0.8) — keeps captions legible.
+    /// Darkening scrim over a photo backdrop (0…0.85) — keeps captions legible.
     var imageDim: Double = 0
     /// Blur applied to a photo backdrop, as a fraction of canvas width (0…0.04).
     var imageBlur: Double = 0

@@ -83,10 +83,16 @@ final class ProjectStore: ObservableObject {
         copy.name = Self.duplicateName(for: project.name, existing: projects.map(\.name))
         copy.createdAt = Date()
         copy.modifiedAt = Date()
-        copy.slides = project.slides.map { slide in
+        copy.slides = project.slides.compactMap { slide in
+            // Drop a slide whose image can't be copied rather than let two sets
+            // share one backing file (deleting one would break the other).
+            guard let file = ImageStore.copy(slide.imageFile) else {
+                BugLog.warning("Duplicate", "Skipped a slide whose image couldn't be copied.")
+                return nil
+            }
             var s = slide
             s.id = UUID()
-            if let file = ImageStore.copy(slide.imageFile) { s.imageFile = file }
+            s.imageFile = file
             return s
         }
         // A photo backdrop is also a file — give the copy its own.
@@ -117,6 +123,10 @@ final class ProjectStore: ObservableObject {
 
     /// Delete image files no longer referenced by any set (e.g. left over from
     /// a crash mid-edit), and drop the thumbnail cache. Returns the count freed.
+    ///
+    /// Only files older than a short grace period are removed, so an image that
+    /// was just written by an in-progress edit (and not yet flushed to the
+    /// store) is never swept out from under the editor.
     @discardableResult
     func cleanUpOrphanedImages() -> Int {
         var referenced = Set<String>()
@@ -124,10 +134,15 @@ final class ProjectStore: ObservableObject {
             for slide in project.slides { referenced.insert(slide.imageFile) }
             if let bg = project.style.background.imageFile { referenced.insert(bg) }
         }
+        let cutoff = Date().addingTimeInterval(-300) // 5 minutes
         let urls = (try? Workspace.fileManager.contentsOfDirectory(
-            at: Workspace.imagesDirectory, includingPropertiesForKeys: nil)) ?? []
+            at: Workspace.imagesDirectory,
+            includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
         var removed = 0
         for url in urls where !referenced.contains(url.lastPathComponent) {
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate ?? .distantPast
+            guard modified < cutoff else { continue }
             ImageStore.delete(url.lastPathComponent)
             removed += 1
         }
