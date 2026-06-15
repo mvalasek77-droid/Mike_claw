@@ -3,6 +3,13 @@ import SwiftUI
 /// A practical, always-handy reference for what App Store Connect expects, so
 /// the user never has to leave the app to remember a spec or a step.
 struct ASCGuideView: View {
+    // Scaled with Dynamic Type — at the default text size these equal their base
+    // values, so the default look is unchanged; they grow when the user does.
+    @ScaledMetric(relativeTo: .body) private var s14: CGFloat = 14
+    @ScaledMetric(relativeTo: .subheadline) private var s13: CGFloat = 13
+    @ScaledMetric(relativeTo: .caption) private var s11: CGFloat = 11
+    @ScaledMetric(relativeTo: .subheadline) private var stepCircle: CGFloat = 24
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -17,15 +24,15 @@ struct ASCGuideView: View {
                                         .foregroundStyle(size.isRequired ? LiquidGlass.success : LiquidGlass.primaryText.opacity(0.35))
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(size.displayName)
-                                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                            .font(.system(size: s14, weight: .semibold, design: .rounded))
                                             .foregroundStyle(LiquidGlass.primaryText)
                                         Text(size.exampleDevices)
-                                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                                            .font(.system(size: s11, weight: .medium, design: .rounded))
                                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                                     }
                                     Spacer()
                                     Text(size.resolutionLabel(for: .portrait))
-                                        .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
+                                        .font(.system(size: s11, weight: .semibold, design: .rounded).monospacedDigit())
                                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                                 }
                             }
@@ -44,9 +51,9 @@ struct ASCGuideView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             ForEach(tips, id: \.self) { tip in
                                 HStack(alignment: .top, spacing: 8) {
-                                    Image(systemName: "sparkle").font(.system(size: 11)).foregroundStyle(LiquidGlass.accent).padding(.top, 3)
+                                    Image(systemName: "sparkle").font(.system(size: s11)).foregroundStyle(LiquidGlass.accent).padding(.top, 3)
                                     Text(tip)
-                                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                                        .font(.system(size: s13, weight: .regular, design: .rounded))
                                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                                 }
                             }
@@ -66,7 +73,7 @@ struct ASCGuideView: View {
 
     private var intro: some View {
         Text("Apple validates screenshots by exact pixel size. Screenshot Studio always renders at these resolutions, so uploads pass on the first try.")
-            .font(.system(size: 14, weight: .regular, design: .rounded))
+            .font(.system(size: s14, weight: .regular, design: .rounded))
             .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -74,12 +81,12 @@ struct ASCGuideView: View {
     private func stepRow(_ number: Int, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .font(.system(size: s13, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
-                .frame(width: 24, height: 24)
+                .frame(width: stepCircle, height: stepCircle)
                 .background(LiquidGlass.auroraGradient, in: Circle())
             Text(text)
-                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .font(.system(size: s14, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -106,6 +113,10 @@ struct ASCGuideView: View {
 
 /// The public feature roadmap, surfaced in-app so the product feels alive.
 struct RoadmapCard: View {
+    @ScaledMetric(relativeTo: .caption2) private var s10: CGFloat = 10
+    @ScaledMetric(relativeTo: .subheadline) private var s14: CGFloat = 14
+    @ScaledMetric(relativeTo: .footnote) private var s12: CGFloat = 12
+
     private let items: [(status: String, color: Color, title: String, detail: String)] = [
         ("Shipped", LiquidGlass.success, "Frames, backdrops & captions", "Pixel-exact export to every App Store Connect size."),
         ("Shipped", LiquidGlass.success, "Template gallery", "One-tap professional looks you can apply and tweak."),
@@ -122,16 +133,16 @@ struct RoadmapCard: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .top, spacing: 12) {
                         Text(item.status)
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .font(.system(size: s10, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(item.color.opacity(0.85), in: Capsule())
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.title)
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .font(.system(size: s14, weight: .semibold, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText)
                             Text(item.detail)
-                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                .font(.system(size: s12, weight: .regular, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
