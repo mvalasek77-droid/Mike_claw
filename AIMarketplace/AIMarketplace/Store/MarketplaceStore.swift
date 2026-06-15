@@ -780,6 +780,33 @@ final class MarketplaceStore: ObservableObject {
         isRegistered = true
     }
 
+    /// Guest entry — required by Apple Guideline 5.1.1(v): "Apps cannot
+    /// require user registration prior to allowing access to app content
+    /// and features that are not associated specifically to the user."
+    /// Wallet top-up via IAP and buying titles are device-bound — they
+    /// don't need an account. Browsing the marketplace clearly doesn't.
+    ///
+    /// A guest has `accountName.isEmpty` and `accountEmail.isEmpty`, which
+    /// is how creator-only screens (Publish, Get Paid) detect them and
+    /// prompt for sign-up at the moment they're actually needed. The
+    /// guest's wallet, library, and watchlist are still persisted per
+    /// device so they don't lose their purchases.
+    func enterAsGuest() {
+        loading = true
+        accountName = ""
+        accountEmail = ""
+        demoMode = false
+        loading = false
+        isRegistered = true
+    }
+
+    /// True iff this device is in guest mode — accepted into the app
+    /// without creating a publisher account. Buyer-side features work
+    /// fully; creator-side features prompt for sign-up.
+    var isGuest: Bool {
+        isRegistered && accountName.isEmpty && accountEmail.isEmpty && !demoMode
+    }
+
     /// Demo-mode Stripe completion. Marks payouts connected with a
     /// believable-shaped account id and skips every Worker call so the
     /// reviewer can verify the post-Stripe state without entering real

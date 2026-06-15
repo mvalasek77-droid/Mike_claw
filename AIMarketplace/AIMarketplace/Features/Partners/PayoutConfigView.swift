@@ -311,14 +311,21 @@ struct PayoutConfigView: View {
                     .foregroundStyle(Theme.inkFaint)
                     .multilineTextAlignment(.center)
             } else {
-                PrimaryButton(title: "Connect my bank",
-                              systemImage: "building.columns.fill",
+                PrimaryButton(title: store.isGuest ? "Sign up to connect a bank" : "Connect my bank",
+                              systemImage: store.isGuest ? "person.crop.circle.badge.plus" : "building.columns.fill",
                               tint: Theme.success,
                               enabled: !store.payoutBaseURL.isEmpty
                                     && !store.payoutSharedSecret.isEmpty) {
+                    // Guest gate: Stripe Connect needs a real name + email
+                    // for KYC; guests have neither. Drop them back to
+                    // RegisterView so they can sign up — wallet credits
+                    // and library carry over (signOut preserves them).
+                    if store.isGuest { store.signOut(); return }
                     store.connectPayout()
                 }
-                Text("Opens Stripe in your browser. Come back to the app when Stripe says you're done.")
+                Text(store.isGuest
+                     ? "You're browsing as a guest. To get paid we need a publisher name and email."
+                     : "Opens Stripe in your browser. Come back to the app when Stripe says you're done.")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
                     .multilineTextAlignment(.center)

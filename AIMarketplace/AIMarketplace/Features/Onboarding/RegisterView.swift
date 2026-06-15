@@ -89,6 +89,31 @@ struct RegisterView: View {
                         }
                     }
 
+                    // Apple Guideline 5.1.1(v): the app cannot require
+                    // registration just to access content / features
+                    // (browsing, IAP top-up, buying titles) that aren't
+                    // account-specific. Guest entry lets users in without
+                    // sharing personal info; Publish + Get Paid surface
+                    // a sign-up prompt at the moment they're actually
+                    // needed. The previous build was rejected for this
+                    // exact reason.
+                    Button {
+                        Haptics.selection()
+                        withAnimation { store.enterAsGuest() }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.crop.circle.dashed")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("Continue without an account")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundStyle(Theme.inkSoft)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Browse titles and buy credit without creating an account. You can sign up later if you want to publish your own work.")
+
                     benefitRow
                 }
                 .screenPadding()

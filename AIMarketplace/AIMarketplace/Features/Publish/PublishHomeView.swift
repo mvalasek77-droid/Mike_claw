@@ -7,6 +7,10 @@ struct PublishHomeView: View {
     @State private var showCreate = false
     @State private var createID = UUID()   // forces SubmitWorkView to reset each time
     @State private var showStripeGate = false
+    /// Triggered for guests (no publisher account) who tap "Register a
+    /// new title". The Publish flow requires identity so we can attribute
+    /// the work + pay them — guest browsers don't have either.
+    @State private var showSignUpGate = false
     /// One sheet binding — three stacked `.sheet` modifiers meant only the
     /// last (payout setup) presented, so tapping a bookshelf row and the
     /// Partner Program banner silently did nothing.
@@ -40,6 +44,14 @@ struct PublishHomeView: View {
 
                     PrimaryButton(title: "Register a new title", systemImage: "plus",
                                   tint: Theme.kdp) {
+                        // Guest gate: per Apple 5.1.1(v) we let users in
+                        // without an account, but publishing IS account-
+                        // specific (attribution + payouts), so prompt for
+                        // sign-up here at the moment they actually need it.
+                        if store.isGuest {
+                            showSignUpGate = true
+                            return
+                        }
                         // Stripe gate: a first-time publisher has to set up
                         // payouts BEFORE they can submit anything. Without
                         // this we'd accept work we have no way to pay them
@@ -80,6 +92,16 @@ struct PublishHomeView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Before you publish anything, connect a Stripe account so we have a way to send you your 85% share of every sale. Takes about 5 minutes. You only do this once.")
+        }
+        .alert("Create a publisher account", isPresented: $showSignUpGate) {
+            Button("Sign up") {
+                // Drop the guest flag so the next launch lands on RegisterView,
+                // where they can fill in a real name + email + accept terms.
+                store.signOut()
+            }
+            Button("Not now", role: .cancel) { }
+        } message: {
+            Text("You're browsing as a guest right now. To publish a title we need a publisher name and an email to attribute the work and route your sales. You can keep your wallet credit and library.")
         }
     }
 
