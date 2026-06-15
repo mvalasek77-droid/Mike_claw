@@ -57,8 +57,8 @@ def test_meter_snapshot_is_json_safe():
 
 
 def test_default_prices_cover_main_models():
-    for model in ("claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5",
-                  "gpt-5.5", "gpt-5", "gpt-5-mini"):
+    for model in ("claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-4-6",
+                  "claude-haiku-4-5", "gpt-5.5", "gpt-5", "gpt-5-mini"):
         assert model in DEFAULT_PRICES
 
 

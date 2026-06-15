@@ -35,7 +35,7 @@ enum AIProvider: String, CaseIterable, Identifiable, Codable {
 }
 
 struct AIModel: Identifiable, Hashable, Codable {
-    var id: String           // canonical model id (e.g. "claude-opus-4-7")
+    var id: String           // canonical model id (e.g. "claude-opus-4-8")
     var provider: AIProvider
     var displayName: String
     var tagline: String
@@ -73,7 +73,7 @@ enum ModelCatalogue {
         // — Anthropic —
         .init(
             id: "claude-fable-5", provider: .anthropic,
-            displayName: "Claude Fable 5",
+            displayName: "Claude Fable 5 (Currently unavailable)",
             tagline: "Anthropic's most capable model",
             inputUSDPerMTok: 10.0, outputUSDPerMTok: 50.0,
             contextWindow: 1_000_000,
@@ -81,8 +81,8 @@ enum ModelCatalogue {
             tier: .flagship
         ),
         .init(
-            id: "claude-opus-4-7", provider: .anthropic,
-            displayName: "Claude Opus 4.7",
+            id: "claude-opus-4-8", provider: .anthropic,
+            displayName: "Claude Opus 4.8",
             tagline: "Best Swift code, deepest reasoning",
             inputUSDPerMTok: 5.0, outputUSDPerMTok: 25.0,
             contextWindow: 1_000_000,

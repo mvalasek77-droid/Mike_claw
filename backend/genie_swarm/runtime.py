@@ -24,7 +24,7 @@ from .tools.base import ToolContext
 
 @dataclass
 class RuntimeConfig:
-    model: str = "claude-opus-4-7"
+    model: str = "claude-opus-4-8"
     max_steps: int = 32
     max_parallel_tool_calls: int = 4
     temperature: float = 0.2

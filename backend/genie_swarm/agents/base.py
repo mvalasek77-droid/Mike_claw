@@ -32,7 +32,7 @@ class AgentBlueprint:
     title: str           # human-friendly, e.g. "🏗️ Architect"
     prompt_file: str     # filename under prompts/, e.g. "architect.md"
     fallback_prompt: str # used if the file is missing
-    model: str = "claude-opus-4-7"
+    model: str = "claude-opus-4-8"
     temperature: float = 0.2
     tool_names: tuple[str, ...] = ()           # subset of registry; empty = all
     layer: str = "build"                       # "build" | "test"

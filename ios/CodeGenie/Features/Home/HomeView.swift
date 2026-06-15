@@ -13,7 +13,6 @@ struct HomeView: View {
     @State private var showAppleDev = false
     @State private var showGitHub = false
     @State private var xcodeAcknowledged = UserDefaults.standard.bool(forKey: "xcode.readiness.acknowledged")
-    @State private var showSampleApps = false
     @State private var showAppOfYearDNA = false
     @State private var showAutomationAudit = false
     @State private var showFirstBuildPrompt = false
@@ -54,12 +53,6 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showTutorial) {
             TutorialView(mode: .replay) { showTutorial = false }
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
-        }
-        .sheet(isPresented: $showSampleApps) {
-            SampleAppsView()
-                .environmentObject(session)
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
@@ -270,11 +263,11 @@ struct HomeView: View {
                         .foregroundStyle(LiquidGlass.primaryText)
                 }
                 Spacer()
-                Button { } label: {
-                    Image(systemName: "person.crop.circle")
+                Button { Haptics.selection(); showSettings = true } label: {
+                    Image(systemName: "gearshape.fill")
                         .font(.system(size: 22))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
-                        .accessibilityLabel("Account")
+                        .accessibilityLabel("Settings")
                 }
             }
             .padding(.horizontal, 4)
@@ -322,28 +315,22 @@ struct HomeView: View {
     @AppStorage("home.showAdvancedTiles") private var showAdvancedTiles: Bool = false
 
     private var quickGrid: some View {
-        VStack(spacing: 12) {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                QuickTile(title: "Try a sample",    subtitle: "Watch one build live",  icon: "sparkles",            tint: LiquidGlass.accent)          { showSampleApps = true }
-                QuickTile(title: "Watch the tour",  subtitle: "7-step tutorial",       icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
-                QuickTile(title: "Xcode steps",     subtitle: "Pocket guide",          icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
-                QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
-                if showAdvancedTiles || !session.recentJobs.isEmpty {
-                    QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
-                    QuickTile(title: "Award DNA",        subtitle: "App of Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
-                    QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
-                }
-            }
-            if !showAdvancedTiles && session.recentJobs.isEmpty {
-                Button {
-                    Haptics.selection()
+        // Always an even tile count so the grid lines up with no orphan
+        // card: 3 essentials + a "Show more" tile (4) when collapsed, and
+        // 3 essentials + 3 advanced (6) once expanded / after a build.
+        let showAdvanced = showAdvancedTiles || !session.recentJobs.isEmpty
+        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            QuickTile(title: "Watch the tour",  subtitle: "7-step tutorial",       icon: "play.rectangle.fill", tint: LiquidGlass.accentSecondary) { showTutorial = true }
+            QuickTile(title: "Xcode steps",     subtitle: "Pocket guide",          icon: "hammer.fill",         tint: LiquidGlass.warning)         { showXcodeGuide = true }
+            QuickTile(title: "Costs & keys",    subtitle: "Pick your provider",    icon: "creditcard.fill",     tint: LiquidGlass.success)         { showSettings = true }
+            if showAdvanced {
+                QuickTile(title: "BitDrop",         subtitle: "Play & set a high score", icon: "gamecontroller.fill", tint: LiquidGlass.accent)        { showGame = true }
+                QuickTile(title: "Award DNA",        subtitle: "App of Year gates",     icon: "trophy.fill",         tint: LiquidGlass.warning)         { showAppOfYearDNA = true }
+                QuickTile(title: "Automation",       subtitle: "Launch audit",          icon: "checklist.checked",   tint: LiquidGlass.accentSecondary) { showAutomationAudit = true }
+            } else {
+                QuickTile(title: "Show more",       subtitle: "Game, award DNA, audit",  icon: "ellipsis.circle.fill", tint: LiquidGlass.accent) {
                     withAnimation(LiquidGlass.motion) { showAdvancedTiles = true }
-                } label: {
-                    Label("Show more — game, award DNA, automation audit", systemImage: "chevron.down")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                 }
-                .accessibilityHint("Reveals advanced tiles. They also appear automatically after your first build.")
             }
         }
     }
