@@ -17,8 +17,10 @@ struct SettingsView: View {
     @State private var showAdmin = false
     @State private var showGitHub = false
     @State private var showXcodeReadiness = false
+    @State private var showPaywall = false
     @StateObject private var telemetry = Telemetry.shared
     @StateObject private var userMode = UserMode.shared
+    @StateObject private var pro = ProStore.shared
 
     var body: some View {
         ZStack {
@@ -103,6 +105,11 @@ struct SettingsView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(.ultraThinMaterial)
         }
+        .sheet(isPresented: $showPaywall) {
+            CodeGeniePaywallView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
         .onAppear {
             anthropicDraft = creds.anthropicKey
             openaiDraft    = creds.openaiKey
@@ -154,24 +161,63 @@ struct SettingsView: View {
 
     private var maxSpeedBlock: some View {
         GlassCard(title: "Maximum speed", icon: "bolt.fill", tint: LiquidGlass.accent) {
-            Toggle(isOn: Binding(
-                get: { creds.overlapReview },
-                set: { on in
-                    creds.setOverlapReview(on)
-                    Haptics.selection()
+            if pro.isPro {
+                Toggle(isOn: Binding(
+                    get: { creds.overlapReview },
+                    set: { on in
+                        creds.setOverlapReview(on)
+                        Haptics.selection()
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Overlap code review with testing")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("Reviewer + Security run while tests are still going, instead of waiting. Builds finish sooner; if tests force code changes, the review re-runs (slightly more tokens).")
+                            .font(.system(size: 11, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                    }
                 }
-            )) {
+                .tint(LiquidGlass.accent)
+            } else {
+                proLockedRow(
+                    title: "Overlap code review with testing",
+                    detail: "Reviewer + Security run in parallel with the test gate so builds finish sooner. Part of CodeGenie Pro."
+                )
+            }
+        }
+    }
+
+    /// A locked feature row that routes to the Pro paywall. Used in place
+    /// of a control the user can't operate until they subscribe.
+    private func proLockedRow(title: String, detail: String) -> some View {
+        Button { Haptics.selection(); showPaywall = true } label: {
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Overlap code review with testing")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText)
-                    Text("Reviewer + Security run while tests are still going, instead of waiting. Builds finish sooner; if tests force code changes, the review re-runs (slightly more tokens).")
+                    HStack(spacing: 8) {
+                        Text(title)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("PRO")
+                            .font(.system(size: 9, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(LiquidGlass.accent, in: Capsule())
+                    }
+                    Text(detail)
                         .font(.system(size: 11, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
                 }
+                Spacer()
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(LiquidGlass.accent.opacity(0.85))
             }
-            .tint(LiquidGlass.accent)
         }
+        .buttonStyle(.plain)
+        .accessibilityHint("Unlock with CodeGenie Pro")
     }
 
     private var costCapBlock: some View {
@@ -221,23 +267,25 @@ struct SettingsView: View {
     private var agentRoutingBlock: some View {
         navTile(
             title: "Route per agent",
-            subtitle: routingSubtitle,
+            subtitle: pro.isPro ? routingSubtitle : "Pro — send each agent to its best model.",
             icon: "arrow.triangle.branch",
-            tint: LiquidGlass.warning
-        ) { showAgentRouting = true }
+            tint: LiquidGlass.warning,
+            locked: !pro.isPro
+        ) { if pro.isPro { showAgentRouting = true } else { showPaywall = true } }
     }
 
     private var customAgentsBlock: some View {
         let count = creds.customAgents.filter(\.enabled).count
-        let subtitle = count == 0
-            ? "Add your own swarm member."
-            : "\(count) active custom agent\(count == 1 ? "" : "s")"
+        let subtitle = !pro.isPro
+            ? "Pro — add your own swarm member."
+            : (count == 0 ? "Add your own swarm member." : "\(count) active custom agent\(count == 1 ? "" : "s")")
         return navTile(
             title: "Custom agents",
             subtitle: subtitle,
             icon: "person.crop.circle.badge.plus",
-            tint: LiquidGlass.accentSecondary
-        ) { showCustomAgents = true }
+            tint: LiquidGlass.accentSecondary,
+            locked: !pro.isPro
+        ) { if pro.isPro { showCustomAgents = true } else { showPaywall = true } }
     }
 
     private var appleDevBlock: some View {
@@ -301,7 +349,7 @@ struct SettingsView: View {
         ) { showAdmin = true }
     }
 
-    private func navTile(title: String, subtitle: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
+    private func navTile(title: String, subtitle: String, icon: String, tint: Color, locked: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: { Haptics.selection(); action() }) {
             GlassSurface(tier: .raised, corner: 22) {
                 HStack(spacing: 14) {
@@ -312,15 +360,25 @@ struct SettingsView: View {
                         .background(Circle().fill(tint.opacity(0.18)))
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(LiquidGlass.primaryText)
+                        HStack(spacing: 8) {
+                            Text(title)
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .foregroundStyle(LiquidGlass.primaryText)
+                            if locked {
+                                Text("PRO")
+                                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.black)
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background(LiquidGlass.accent, in: Capsule())
+                            }
+                        }
                         Text(subtitle)
                             .font(.system(size: 12, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                    Image(systemName: locked ? "lock.fill" : "chevron.right")
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 }
                 .padding(16)
             }
@@ -328,7 +386,7 @@ struct SettingsView: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
-        .accessibilityHint(subtitle)
+        .accessibilityHint(locked ? "Unlock with CodeGenie Pro" : subtitle)
     }
 
     // MARK: Sections
@@ -351,15 +409,29 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The whole pricing model, in one honest card: free app, builds run
-    /// on the user's own key at provider cost, and future Pro features —
-    /// if any — arrive only as a StoreKit in-app purchase.
+    /// The pricing model, in one honest card: download free and build on
+    /// your own AI key at cost, with a CodeGenie Pro subscription for the
+    /// performance + power tier (sold through StoreKit).
     private var pricingCard: some View {
-        GlassCard(title: "How you pay (simple)", icon: "creditcard.fill", tint: LiquidGlass.accent) {
-            VStack(alignment: .leading, spacing: 8) {
-                pricingRow(label: "CodeGenie is free", value: "No subscription, no credits, no markup — the app itself costs nothing")
-                pricingRow(label: "Builds use your AI key", value: "Each build bills your Anthropic / OpenAI account directly, typically $0.20–$2 per build. You see the estimate before every build and a live meter during it")
-                pricingRow(label: "Hard spending cap", value: "Set a per-build dollar cap below — the build stops cleanly if it's ever reached")
+        GlassCard(title: pro.isPro ? "CodeGenie Pro — active" : "How CodeGenie is priced",
+                  icon: pro.isPro ? "checkmark.seal.fill" : "creditcard.fill",
+                  tint: pro.isPro ? LiquidGlass.success : LiquidGlass.accent) {
+            VStack(alignment: .leading, spacing: 10) {
+                pricingRow(label: "Builds use your AI key", value: "Each build bills your Anthropic / OpenAI account directly, typically $0.20–$2 per build. No markup. You see the estimate before every build and a live meter during it.")
+                pricingRow(label: "CodeGenie Pro · $9.99/mo or $79.99/yr", value: "Unlocks Maximum Speed parallel builds, per-agent model routing, and custom agents. Billed by Apple; cancel anytime.")
+                pricingRow(label: "Hard spending cap", value: "Set a per-build dollar cap below — the build stops cleanly if it's ever reached.")
+
+                if pro.isPro {
+                    Label("Pro is active on this Apple ID — every power feature is unlocked.", systemImage: "sparkles")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.success)
+                        .padding(.top, 2)
+                } else {
+                    PrimaryButton(title: "See CodeGenie Pro", systemImage: "wand.and.stars", style: .filled) {
+                        Haptics.selection(); showPaywall = true
+                    }
+                    .padding(.top, 2)
+                }
             }
         }
     }

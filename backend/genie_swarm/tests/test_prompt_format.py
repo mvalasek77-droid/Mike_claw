@@ -18,6 +18,7 @@ def _spec(**kw) -> AppSpec:
 
 def test_provider_mapping():
     assert provider_for_model("gpt-5") == GPT
+    assert provider_for_model("gpt-5.5") == GPT
     assert provider_for_model("gpt-5-mini") == GPT
     assert provider_for_model("o3-mini") == GPT
     assert provider_for_model("claude-opus-4-7") == CLAUDE

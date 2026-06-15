@@ -108,6 +108,17 @@ enum ModelCatalogue {
             tier: .fast
         ),
         // — OpenAI —
+        // NOTE: gpt-5.5 pricing is a placeholder pending OpenAI's published
+        // rate card — confirm before release. We mirror it in cost.py.
+        .init(
+            id: "gpt-5.5", provider: .openai,
+            displayName: "GPT-5.5",
+            tagline: "OpenAI's newest flagship — sharper reasoning",
+            inputUSDPerMTok: 12.5, outputUSDPerMTok: 50.0,
+            contextWindow: 400_000,
+            bestFor: "Hard builds, deep review, a strong second opinion to Claude",
+            tier: .flagship
+        ),
         .init(
             id: "gpt-5", provider: .openai,
             displayName: "GPT-5",

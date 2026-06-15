@@ -1,0 +1,93 @@
+{
+  "identifier" : "F1A2B3C4-0001-4000-8000-000000000001",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "0",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      { "current" : null, "enabled" : false, "name" : "Load Products" },
+      { "current" : null, "enabled" : false, "name" : "Purchase" },
+      { "current" : null, "enabled" : false, "name" : "Verification" },
+      { "current" : null, "enabled" : false, "name" : "App Store Sync" },
+      { "current" : null, "enabled" : false, "name" : "Subscription Status" },
+      { "current" : null, "enabled" : false, "name" : "App Transaction" },
+      { "current" : null, "enabled" : false, "name" : "Manage Subscriptions Sheet" },
+      { "current" : null, "enabled" : false, "name" : "Refund Request Sheet" },
+      { "current" : null, "enabled" : false, "name" : "Offer Code Redeem Sheet" }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "F1A2B3C4-0002-4000-8000-000000000001",
+      "localizations" : [
+
+      ],
+      "name" : "CodeGenie Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "F1A2B3C4-0003-4000-8000-000000000001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Maximum Speed parallel builds, per-agent routing, and custom agents.",
+              "displayName" : "CodeGenie Pro (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.codegenie.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "CodeGenie Pro Monthly",
+          "subscriptionGroupID" : "F1A2B3C4-0002-4000-8000-000000000001",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "79.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "F1A2B3C4-0004-4000-8000-000000000001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Maximum Speed parallel builds, per-agent routing, and custom agents. Best value.",
+              "displayName" : "CodeGenie Pro (Yearly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.codegenie.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "CodeGenie Pro Yearly",
+          "subscriptionGroupID" : "F1A2B3C4-0002-4000-8000-000000000001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

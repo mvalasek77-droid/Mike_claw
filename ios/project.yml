@@ -74,5 +74,6 @@ schemes:
         CodeGenie: all
     run:
       config: Debug
+      storeKitConfiguration: Products.storekit
     archive:
       config: Release

@@ -43,11 +43,13 @@ final class Credentials: ObservableObject {
     @Published private(set) var githubPAT: String = ""
     @Published var githubDefaultRepo: String = ""
 
-    /// One payment path, by design: the app is free and builds run on the
-    /// user's own provider key at cost. (Subscription routing and hosted
-    /// credits were removed — consumer-subscription routing violates the
-    /// AI providers' terms, and unbought "plans" were App Review 3.1.1
-    /// rejection bait. Future Pro features ship as a StoreKit IAP.)
+    /// AI compute is always BYOK: builds run on the user's own provider
+    /// key at cost, with no markup, and CodeGenie never resells provider
+    /// access. CodeGenie's own revenue is a StoreKit subscription
+    /// (CodeGenie Pro) that unlocks the performance + power tier — see
+    /// `ProStore`. (We deliberately avoid routing consumer subscriptions
+    /// through the AI providers, which violates their terms and was App
+    /// Review 3.1.1 rejection bait.)
     enum AuthMode: String, CaseIterable, Identifiable, Codable {
         case byok          // Bring your own API key
 

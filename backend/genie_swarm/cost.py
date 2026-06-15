@@ -27,6 +27,9 @@ DEFAULT_PRICES: dict[str, tuple[float, float]] = {
     "claude-sonnet-4-6":   (3.0,  15.0),
     "claude-haiku-4-5":    (1.0,  5.0),
     # OpenAI
+    # gpt-5.5 pricing is a placeholder pending OpenAI's published rate
+    # card — keep it in sync with the iOS ModelCatalogue.
+    "gpt-5.5":             (12.5, 50.0),
     "gpt-5":               (12.5, 50.0),
     "gpt-5-mini":          (0.25, 2.0),
 }
