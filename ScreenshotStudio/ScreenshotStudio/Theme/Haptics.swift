@@ -4,6 +4,8 @@ import CoreHaptics
 /// Adaptive haptics. We use Core Haptics where available (iPhone 8+), and
 /// degrade gracefully to UIKit feedback generators otherwise.
 enum Haptics {
+    static let reduceHapticsKey = "reduceHaptics"
+
     private static let engine: CHHapticEngine? = {
         guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return nil }
         return try? CHHapticEngine()
@@ -12,7 +14,7 @@ enum Haptics {
     /// Honours the in-app "Reduce haptics" preference. Read fresh each call so
     /// toggling the setting takes effect immediately.
     private static var isMuted: Bool {
-        UserDefaults.standard.bool(forKey: "reduceHaptics")
+        UserDefaults.standard.bool(forKey: Haptics.reduceHapticsKey)
     }
 
     /// Light tap, suitable for selection changes and incidental UI taps.

@@ -463,7 +463,7 @@ struct CaptionPanel: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(tooLong ? LiquidGlass.warning : LiquidGlass.primaryText.opacity(0.4))
             Text(tooLong
-                 ? "\(words) words — long captions truncate on small previews. Keep it punchy."
+                 ? "\(words) words — long captions may be truncated on small previews. Keep it punchy."
                  : "\(words) word\(words == 1 ? "" : "s")")
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundStyle(tooLong ? LiquidGlass.warning : LiquidGlass.primaryText.opacity(0.5))

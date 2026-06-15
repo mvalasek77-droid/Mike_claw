@@ -33,7 +33,7 @@ struct SettingsView: View {
                     GlassCard(title: "Feedback", icon: "hand.tap.fill") {
                         ToggleRow(label: "Reduce haptics", systemImage: "iphone.radiowaves.left.and.right",
                                   isOn: $appState.reduceHaptics)
-                        Text("Honors your system Reduce Motion setting automatically for all animations.")
+                        Text("Reduces haptic feedback throughout the app. Also honors your system Reduce Motion setting for animations.")
                             .font(.system(size: 12, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
                     }
@@ -86,7 +86,7 @@ struct SettingsView: View {
                                 Haptics.success()
                             } label: {
                                 settingsRow(icon: "trash", title: "Clear unused files",
-                                            subtitle: "Remove images no set references")
+                                            subtitle: "Remove images not referenced by any set")
                             }
                             .buttonStyle(.plain)
                         }

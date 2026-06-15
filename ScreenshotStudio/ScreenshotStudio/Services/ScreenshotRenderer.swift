@@ -131,6 +131,8 @@ enum ScreenshotRenderer {
                         let url = dir.appendingPathComponent("\(slot.id)-\(lang)-\(n).png")
                         if (try? data.write(to: url, options: .atomic)) != nil {
                             urls.append(url)
+                        } else {
+                            BugLog.warning("Export", "Failed to write screenshot to \(url.lastPathComponent)")
                         }
                     }
                     await Task.yield()

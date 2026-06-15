@@ -23,6 +23,7 @@ struct StudioView: View {
     @State private var frameBatch: FrameBatch?
     @State private var isExtractingVideo = false
     @State private var shareItem: ShareURLItem?
+    @State private var shareError: String?
     /// The project as it was opened, so closing without edits doesn't bump the
     /// modified date and silently reshuffle the gallery.
     @State private var original: ScreenshotProject
@@ -107,7 +108,7 @@ struct StudioView: View {
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                     }
                 }
-                .accessibilityLabel("Set name, \(project.name). Double tap to rename.")
+                .accessibilityLabel("Project name, \(project.name). Double tap to rename.")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -170,6 +171,14 @@ struct StudioView: View {
                 let trimmed = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !trimmed.isEmpty { project.name = trimmed }
             }
+        }
+        .alert("Share failed", isPresented: Binding(
+                    get: { shareError != nil },
+                    set: { if !$0 { shareError = nil } }
+                )) {
+            Button("OK") { shareError = nil }
+        } message: {
+            Text(shareError ?? "An unknown error occurred.")
         }
         // Persist edits, but debounce disk writes so dragging a slider doesn't
         // hammer the file system every frame. A final save fires on close.
@@ -446,11 +455,17 @@ struct StudioView: View {
             statusBarLayout: project.deviceSize.statusBarLayout
         ), let data = image.pngData() else {
             BugLog.warning("Share", "Couldn't render the slide for sharing.")
+            shareError = "Couldn't render the slide for sharing."
+            Haptics.error()
             return
         }
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ScreenshotStudio-\(UUID().uuidString).png")
-        guard (try? data.write(to: url, options: .atomic)) != nil else { return }
+        guard (try? data.write(to: url, options: .atomic)) != nil else {
+            shareError = "Couldn't save the image for sharing."
+            Haptics.error()
+            return
+        }
         shareItem = ShareURLItem(url: url)
         Haptics.tap()
     }

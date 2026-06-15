@@ -15,9 +15,9 @@ enum PhotoExporter {
         var errorDescription: String? {
             switch self {
             case .permissionDenied:
-                return "Screenshot Studio needs permission to save to Photos. Enable it in Settings › Privacy › Photos."
+                return "Screenshot Studio needs permission to save to Photos. Please enable it in Settings."
             case .nothingToSave:
-                return "Those slides couldn't be rendered into images. Please try again."
+                return "The slides couldn't be rendered into images. Please try again."
             case .writeFailed:
                 return "The export couldn't be saved. Please try again."
             }

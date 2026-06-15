@@ -87,7 +87,7 @@ final class ExportCoordinator: ObservableObject {
 
         guard !pngs.isEmpty else {
             BugLog.error("Export", "Rendering produced no images for \(slots.count) size(s) × \(langs.count) language(s).")
-            phase = .failed("Those slides couldn't be rendered. Please try again.")
+            phase = .failed("The slides couldn't be rendered. Please try again.")
             Haptics.error()
             return
         }

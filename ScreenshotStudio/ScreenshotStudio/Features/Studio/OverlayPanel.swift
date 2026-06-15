@@ -215,7 +215,13 @@ struct OverlayPanel: View {
 
     private func binding(for id: UUID) -> Binding<CanvasOverlay> {
         Binding(
-            get: { project.style.overlays.first(where: { $0.id == id }) ?? CanvasOverlay() },
+            get: {
+                if let overlay = project.style.overlays.first(where: { $0.id == id }) {
+                    return overlay
+                }
+                BugLog.warning("OverlayPanel", "Overlay binding requested for unknown id \(id)")
+                return CanvasOverlay()
+            },
             set: { newValue in
                 if let i = project.style.overlays.firstIndex(where: { $0.id == id }) {
                     project.style.overlays[i] = newValue

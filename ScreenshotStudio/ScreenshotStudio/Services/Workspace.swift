@@ -7,7 +7,9 @@ enum Workspace {
     static let fileManager = FileManager.default
 
     static var root: URL {
-        let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        guard let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            fatalError("Application Support directory not available")
+        }
         let dir = base.appendingPathComponent("ScreenshotStudio", isDirectory: true)
         ensure(dir)
         return dir
