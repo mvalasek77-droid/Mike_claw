@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Confirms the export plan, runs the render, and reports the result. The
 /// progress meter is driven by real per-image completion from
@@ -166,7 +167,15 @@ struct ExportSheet: View {
             PrimaryButton(title: "Done", systemImage: "checkmark") { dismiss() }
         case .failed:
             VStack(spacing: 10) {
-                PrimaryButton(title: "Try again", systemImage: "arrow.clockwise") {
+                if coordinator.needsPhotoAccess {
+                    PrimaryButton(title: "Open Settings", systemImage: "gearshape.fill") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                }
+                PrimaryButton(title: "Try again", systemImage: "arrow.clockwise",
+                              style: coordinator.needsPhotoAccess ? .glass : .filled) {
                     Task { await coordinator.export(project: project, sizes: sizes, languages: languages) }
                 }
                 Button("Close") { dismiss() }

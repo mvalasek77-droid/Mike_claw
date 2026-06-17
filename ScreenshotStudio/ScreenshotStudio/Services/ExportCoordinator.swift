@@ -14,6 +14,9 @@ final class ExportCoordinator: ObservableObject {
     }
 
     @Published private(set) var phase: Phase = .idle
+    /// True when the last failure was Photos permission being denied, so the UI
+    /// can offer a deep link to Settings.
+    @Published private(set) var needsPhotoAccess = false
 
     var isRunning: Bool {
         switch phase {
@@ -38,6 +41,7 @@ final class ExportCoordinator: ObservableObject {
     func export(project: ScreenshotProject,
                 sizes: [ASCDeviceSize],
                 languages: [String] = []) async {
+        needsPhotoAccess = false
         let slots = sizes.isEmpty ? [project.deviceSize] : sizes
         let langs = languages.isEmpty ? [project.activeLanguage] : languages
         let total = slots.count * langs.count * max(project.slides.count, 0)
@@ -99,6 +103,9 @@ final class ExportCoordinator: ObservableObject {
             phase = .finished(count: pngs.count)
             Haptics.success()
         } catch {
+            if let exportError = error as? PhotoExporter.ExportError, case .permissionDenied = exportError {
+                needsPhotoAccess = true
+            }
             BugLog.error("Export", "Saving to Photos failed: \(error.localizedDescription)")
             phase = .failed(error.localizedDescription)
             Haptics.error()
