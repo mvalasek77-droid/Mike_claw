@@ -4,12 +4,14 @@ import SwiftUI
 struct ScreenshotStudioApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var store = ProjectStore()
+    @StateObject private var purchases = Store()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(appState)
                 .environmentObject(store)
+                .environmentObject(purchases)
                 .preferredColorScheme(appState.colorScheme)
                 .tint(LiquidGlass.accent)
         }

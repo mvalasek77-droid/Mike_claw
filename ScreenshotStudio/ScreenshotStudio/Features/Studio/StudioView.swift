@@ -6,6 +6,7 @@ import SwiftUI
 /// "saving" — it just persists.
 struct StudioView: View {
     @EnvironmentObject private var store: ProjectStore
+    @EnvironmentObject private var purchases: Store
     @Environment(\.dismiss) private var dismiss
 
     @State private var project: ScreenshotProject
@@ -23,6 +24,7 @@ struct StudioView: View {
     @State private var frameBatch: FrameBatch?
     @State private var isExtractingVideo = false
     @State private var shareItem: ShareURLItem?
+    @State private var paywallFeature: ProFeature?
     @State private var shareError: String?
     /// The project as it was opened, so closing without edits doesn't bump the
     /// modified date and silently reshuffle the gallery.
@@ -125,7 +127,9 @@ struct StudioView: View {
         .safeAreaInset(edge: .bottom) { bottomBar }
         .confirmationDialog("Add to set", isPresented: $showImportOptions, titleVisibility: .visible) {
             Button("Photos") { showPhotoPicker = true }
-            Button("App Preview video") { showVideoPicker = true }
+            Button("App Preview video") {
+                if purchases.isPro { showVideoPicker = true } else { paywallFeature = .videoFrames }
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Import screenshots, or pull frames from an App Preview video.")
@@ -154,6 +158,9 @@ struct StudioView: View {
         }
         .sheet(item: $shareItem) { item in
             ShareSheet(items: [item.url])
+        }
+        .sheet(item: $paywallFeature) { feature in
+            PaywallView(highlight: feature)
         }
         .overlay {
             if isExtractingVideo { extractingOverlay }
@@ -395,9 +402,17 @@ struct StudioView: View {
 
     private func addImages(_ images: [UIImage]) {
         guard !images.isEmpty else { return }
+        // Free tier caps total screenshots per set; add what fits, then upsell.
+        let capacity = purchases.isPro ? images.count
+                                       : max(0, FreeTier.maxScreenshots - project.slides.count)
+        let toAdd = Array(images.prefix(capacity))
+        guard !toAdd.isEmpty else {
+            paywallFeature = .moreScreenshots
+            return
+        }
         var lastAddedID: UUID?
         Motion.run(Motion.snap) {
-            for image in images {
+            for image in toAdd {
                 guard let file = ImageStore.save(image) else { continue }
                 let px = CGSize(width: image.size.width * image.scale,
                                 height: image.size.height * image.scale)
@@ -410,6 +425,9 @@ struct StudioView: View {
             if let lastAddedID { selectedSlideID = lastAddedID }
         }
         Haptics.success()
+        if !purchases.isPro && images.count > toAdd.count {
+            paywallFeature = .moreScreenshots
+        }
     }
 
     private func delete(_ slide: Slide) {

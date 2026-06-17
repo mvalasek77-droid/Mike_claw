@@ -177,7 +177,9 @@ struct EnhancePanel: View {
 
 struct BackgroundPanel: View {
     @Binding var project: ScreenshotProject
+    @EnvironmentObject private var purchases: Store
     @State private var showPhotoPicker = false
+    @State private var paywallFeature: ProFeature?
 
     private var usesPhoto: Bool { project.style.background.kind == .image }
 
@@ -258,6 +260,7 @@ struct BackgroundPanel: View {
             }
             .ignoresSafeArea()
         }
+        .sheet(item: $paywallFeature) { PaywallView(highlight: $0) }
     }
 
     @ViewBuilder
@@ -321,7 +324,7 @@ struct BackgroundPanel: View {
     private var photoButton: some View {
         Button {
             Haptics.tap()
-            showPhotoPicker = true
+            if purchases.isPro { showPhotoPicker = true } else { paywallFeature = .photoBackdrop }
         } label: {
             VStack(spacing: 6) {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -363,7 +366,9 @@ struct CaptionPanel: View {
     /// caption override. `nil` when the set has no slides.
     var slideIndex: Int? = nil
 
+    @EnvironmentObject private var purchases: Store
     @State private var pendingRemoval: String?
+    @State private var paywallFeature: ProFeature?
 
     private var isPrimaryLanguage: Bool { project.activeLanguage == project.primaryLanguage }
 
@@ -491,7 +496,7 @@ struct CaptionPanel: View {
                     }
                     Menu {
                         ForEach(addableLanguages) { lang in
-                            Button(lang.name) { addLanguage(lang.code) }
+                            Button(lang.name) { requestAddLanguage(lang.code) }
                         }
                     } label: {
                         Label("Add", systemImage: "plus")
@@ -534,6 +539,7 @@ struct CaptionPanel: View {
         } message: {
             Text("This language has captions that will be deleted.")
         }
+        .sheet(item: $paywallFeature) { PaywallView(highlight: $0) }
     }
 
     private func languageChip(_ code: String) -> some View {
@@ -612,6 +618,11 @@ struct CaptionPanel: View {
         )
     }
 
+    private func requestAddLanguage(_ code: String) {
+        guard purchases.isPro else { paywallFeature = .localization; return }
+        addLanguage(code)
+    }
+
     private func addLanguage(_ code: String) {
         guard !project.languages.contains(code) else { return }
         project.languages.append(code)
@@ -665,6 +676,8 @@ struct CaptionPanel: View {
 
 struct DevicePanel: View {
     @Binding var project: ScreenshotProject
+    @EnvironmentObject private var purchases: Store
+    @State private var paywallFeature: ProFeature?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -676,6 +689,28 @@ struct DevicePanel: View {
             familySection("iPhone", symbol: "iphone", family: .iPhone)
             familySection("iPad", symbol: "ipad", family: .iPad)
         }
+        .sheet(item: $paywallFeature) { PaywallView(highlight: $0) }
+    }
+
+    /// Free tier is limited to the default primary size; everything else is Pro.
+    private func selectPrimary(_ size: ASCDeviceSize) {
+        if !purchases.isPro && size.id != ASCDeviceSize.default.id {
+            paywallFeature = .additionalSizes
+            return
+        }
+        Motion.run(Motion.snap) { project.deviceSizeID = size.id }
+        project.additionalSizeIDs.removeAll { $0 == size.id }
+        Haptics.selection()
+    }
+
+    private func toggleExtra(_ size: ASCDeviceSize) {
+        guard purchases.isPro else { paywallFeature = .additionalSizes; return }
+        if project.additionalSizeIDs.contains(size.id) {
+            project.additionalSizeIDs.removeAll { $0 == size.id }
+        } else {
+            project.additionalSizeIDs.append(size.id)
+        }
+        Haptics.selection()
     }
 
     @ViewBuilder
@@ -705,9 +740,7 @@ struct DevicePanel: View {
         // size; the trailing control toggles "also export this size".
         HStack(spacing: 12) {
             Button {
-                Motion.run(Motion.snap) { project.deviceSizeID = size.id }
-                project.additionalSizeIDs.removeAll { $0 == size.id }
-                Haptics.selection()
+                selectPrimary(size)
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: size.family.symbol)
@@ -746,9 +779,7 @@ struct DevicePanel: View {
                     .accessibilityHidden(true)
             } else {
                 Button {
-                    if isExtra { project.additionalSizeIDs.removeAll { $0 == size.id } }
-                    else { project.additionalSizeIDs.append(size.id) }
-                    Haptics.selection()
+                    toggleExtra(size)
                 } label: {
                     Image(systemName: isExtra ? "plus.circle.fill" : "plus.circle")
                         .foregroundStyle(isExtra ? LiquidGlass.success : LiquidGlass.primaryText.opacity(0.4))

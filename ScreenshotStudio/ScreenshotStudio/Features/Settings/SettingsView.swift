@@ -3,8 +3,10 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var store: ProjectStore
+    @EnvironmentObject private var purchases: Store
     @ObservedObject private var log = BugLog.shared
     @State private var showBugReport = false
+    @State private var showPaywall = false
     @State private var storageBytes: Int64 = 0
     @State private var cleanupNote: String?
 
@@ -19,6 +21,8 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     brandHeader
+
+                    proCard
 
                     GlassCard(title: "Appearance", icon: "circle.lefthalf.filled") {
                         GlassSegmented(
@@ -116,6 +120,55 @@ struct SettingsView: View {
             BugReportView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+        }
+    }
+
+    @ViewBuilder
+    private var proCard: some View {
+        if purchases.isPro {
+            GlassCard {
+                HStack(spacing: 14) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(LiquidGlass.success)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Screenshot Studio Pro")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("Thanks for your support — everything's unlocked.")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        } else {
+            Button { showPaywall = true } label: {
+                GlassSurface(tier: .deep, corner: 18) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(.white)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Upgrade to Pro")
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                            Text("Every size, language, overlay and backdrop")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+                    .padding(18)
+                }
+            }
+            .buttonStyle(.plain)
         }
     }
 

@@ -5,7 +5,9 @@ import SwiftUI
 /// result is pixel-identical at every export resolution.
 struct OverlayPanel: View {
     @Binding var project: ScreenshotProject
+    @EnvironmentObject private var purchases: Store
     @State private var selected: UUID?
+    @State private var paywallFeature: ProFeature?
 
     private var overlays: [CanvasOverlay] { project.style.overlays }
 
@@ -18,6 +20,7 @@ struct OverlayPanel: View {
                 editor(for: id)
             }
         }
+        .sheet(item: $paywallFeature) { PaywallView(highlight: $0) }
     }
 
     // MARK: Add controls
@@ -202,6 +205,7 @@ struct OverlayPanel: View {
     }
 
     private func add(_ overlay: CanvasOverlay) {
+        guard purchases.isPro else { paywallFeature = .overlays; return }
         project.style.overlays.append(overlay)
         selected = overlay.id
         Haptics.success()
