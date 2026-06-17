@@ -1,11 +1,13 @@
 import Photos
 import UIKit
 
-/// Saves rendered screenshots to the user's photo library. When the app has
-/// read access we collect them into a dedicated "Screenshot Studio" album so
-/// they're easy to find and AirDrop to a Mac for upload to App Store Connect;
-/// under strict add-only access (where albums can't be enumerated) we fall back
-/// to saving straight to the library so the export still succeeds.
+/// Saves rendered screenshots to the user's photo library, collecting them into
+/// a dedicated "Screenshot Studio" album so they're easy to find and AirDrop to
+/// a Mac for upload to App Store Connect. Creating/reusing that album needs
+/// read-write Photos access; if the album can't be made we still save straight
+/// to the library so the export succeeds. Every step is recorded to the
+/// on-device diagnostics log so a failed save can be diagnosed without a
+/// debugger.
 enum PhotoExporter {
     enum ExportError: LocalizedError {
         case permissionDenied
@@ -26,7 +28,7 @@ enum PhotoExporter {
 
     private static let albumName = "Screenshot Studio"
     /// Local identifier of the album we created, persisted so we can re-use it
-    /// across launches even under add-only access (where title search fails).
+    /// across launches.
     private static let albumIDKey = "ScreenshotStudio.albumLocalIdentifier"
 
     /// Save a batch of already-encoded PNGs. Throws a clear, catchable error on
@@ -34,14 +36,19 @@ enum PhotoExporter {
     /// (rather than `UIImage`) keeps peak memory bounded on large exports and
     /// sidesteps the `NSException` Photos raises for a CGImage-less image.
     static func save(_ pngs: [Data]) async throws {
-        guard !pngs.isEmpty else { throw ExportError.nothingToSave }
+        guard !pngs.isEmpty else {
+            BugLog.warning("Photos", "Save called with no images.")
+            throw ExportError.nothingToSave
+        }
 
         try await ensureAuthorized()
 
         // The dedicated album is a nicety, not a requirement: if we can't get
-        // one (e.g. strict add-only access can't enumerate collections), we
-        // still save the images straight to the library.
+        // one, we still save the images straight to the library.
         let album = await albumForAdding()
+        BugLog.info("Photos", album == nil
+                    ? "Saving \(pngs.count) image(s) to the library."
+                    : "Saving \(pngs.count) image(s) to the “\(albumName)” album.")
 
         do {
             try await PHPhotoLibrary.shared().performChanges {
@@ -55,23 +62,43 @@ enum PhotoExporter {
                     }
                 }
             }
+            BugLog.info("Photos", "Save committed successfully.")
         } catch {
+            BugLog.error("Photos", "Save failed: \(error.localizedDescription)")
             throw ExportError.writeFailed
         }
     }
 
     // MARK: - Authorization
 
-    private static func ensureAuthorized() async throws {
-        let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+    @discardableResult
+    private static func ensureAuthorized() async throws -> PHAuthorizationStatus {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         switch status {
         case .authorized, .limited:
-            return
+            BugLog.info("Photos", "Access already granted (\(label(status))).")
+            return status
         case .notDetermined:
-            let granted = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
-            guard granted == .authorized || granted == .limited else { throw ExportError.permissionDenied }
+            let granted = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+            BugLog.info("Photos", "Access prompt result: \(label(granted)).")
+            guard granted == .authorized || granted == .limited else {
+                throw ExportError.permissionDenied
+            }
+            return granted
         default:
+            BugLog.error("Photos", "Access denied (\(label(status))). Enable it in Settings.")
             throw ExportError.permissionDenied
+        }
+    }
+
+    private static func label(_ status: PHAuthorizationStatus) -> String {
+        switch status {
+        case .authorized: return "authorized"
+        case .limited: return "limited"
+        case .denied: return "denied"
+        case .restricted: return "restricted"
+        case .notDetermined: return "notDetermined"
+        @unknown default: return "unknown"
         }
     }
 
@@ -83,9 +110,13 @@ enum PhotoExporter {
         if let existing = storedAlbum() ?? albumByTitle() { return existing }
 
         var createdID: String?
-        try? await PHPhotoLibrary.shared().performChanges {
-            let request = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
-            createdID = request.placeholderForCreatedAssetCollection.localIdentifier
+        do {
+            try await PHPhotoLibrary.shared().performChanges {
+                let request = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                createdID = request.placeholderForCreatedAssetCollection.localIdentifier
+            }
+        } catch {
+            BugLog.warning("Photos", "Couldn't create the album (saving to library instead): \(error.localizedDescription)")
         }
         if let createdID {
             UserDefaults.standard.set(createdID, forKey: albumIDKey)

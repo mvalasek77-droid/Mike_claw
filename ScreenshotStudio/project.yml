@@ -31,6 +31,7 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true
         NSPhotoLibraryAddUsageDescription: Screenshot Studio saves your finished App Store screenshots to a dedicated album in Photos so you can upload them to App Store Connect.
+        NSPhotoLibraryUsageDescription: Screenshot Studio saves your finished App Store screenshots into a dedicated “Screenshot Studio” album in Photos so you can find and upload them to App Store Connect.
         UILaunchScreen:
           UIColorName: AccentColor
         UIStatusBarStyle: UIStatusBarStyleLightContent
