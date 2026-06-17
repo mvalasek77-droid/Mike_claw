@@ -17,8 +17,13 @@ import Foundation
 ///      `currentEntitlements` so a kill-before-finish never loses credit.
 ///   3. `onCredit` is wired by the app root, not by a transient sheet, so
 ///      transactions that land while no sheet is open still credit the wallet.
-///   4. `restorePurchases()` calls `AppStore.sync()` and re-drains, satisfying
-///      App Review 3.1.1.
+///   4. `restorePurchases()` is available internally (calls `AppStore.sync()`
+///      which prompts for the Apple ID password) but is NOT surfaced in any
+///      user-facing UI. Wallet credit packs are CONSUMABLES, which Apple
+///      does not "restore" via sync; the earlier Restore button was
+///      rejected under Guideline 3.1.1. Silent recovery for kill-before-
+///      finish runs via `drainPending()` on init + on every TopUpView open
+///      + on `Transaction.updates` — no password prompt required.
 @MainActor
 final class StoreKitService: ObservableObject {
     @Published private(set) var products: [Product] = []
@@ -136,8 +141,14 @@ final class StoreKitService: ObservableObject {
 
     enum PurchaseOutcome { case success, cancelled, pending, failed }
 
-    /// App Review 3.1.1: every IAP-selling app must expose Restore. Also
-    /// pulls down any unfinished transactions Apple has queued for this Apple ID.
+    /// Calls `AppStore.sync()` (prompts for Apple ID password) then
+    /// `drainPending()`. Used by admin / debug tools only; do NOT wire to
+    /// a user-facing button in a consumable-only app — Apple rejected the
+    /// previous build under Guideline 3.1.1 for that exact prompt.
+    /// User-facing recovery is the silent `drainPending()` path; this
+    /// method exists for the rare future case (operator debugging, or a
+    /// later non-consumable / subscription product) where the explicit
+    /// sync is appropriate.
     func restorePurchases() async {
         isRestoring = true
         defer { isRestoring = false }
@@ -175,7 +186,10 @@ final class StoreKitService: ObservableObject {
     /// Transaction.updates, but the refunded transaction DOES show up
     /// in Transaction.all with the revocation signals set — so this
     /// scan is the deterministic detection path for tests too.
-    private func drainPending() async {
+    /// Internal-access so views can trigger a silent drain (no Apple ID
+    /// password prompt) on appear — replaces the user-facing Restore
+    /// button that Apple correctly rejected for consumables.
+    func drainPending() async {
         #if DEBUG
         var unfinishedCount = 0, currentCount = 0, allCount = 0, allCheckedCount = 0
         #endif

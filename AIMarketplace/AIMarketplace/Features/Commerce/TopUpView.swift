@@ -48,7 +48,17 @@ struct TopUpView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
-                    restoreButton
+                    // No Restore button. Wallet-credit packs are CONSUMABLES,
+                    // which Apple does not "restore" via AppStore.sync() — the
+                    // earlier Restore button triggered Apple's password prompt
+                    // and got the app rejected under Guideline 3.1.1 (consumable
+                    // IAPs cannot be restored that way). Unfinished or pending
+                    // transactions are still drained silently on every app
+                    // launch + scenePhase change via StoreKitService.drainPending,
+                    // so any credit the buyer paid for and didn't receive lands
+                    // automatically without user action. App Review's Restore
+                    // affordance requirement applies to non-consumables and
+                    // subscriptions only, neither of which the app ships.
 
                     Text("Purchases are processed by Apple's App Store. On every sale Apple takes its App Store commission first; of the net, creators keep 85% and AI Marketplace keeps 15%. Prices outside the US are set by Apple's regional pricing — local price may differ from the USD equivalent shown.")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
@@ -61,7 +71,18 @@ struct TopUpView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .task { await storeKit.loadProducts() }
+        .task {
+            // Defensive silent drain on every Top Up open. Walks
+            // Transaction.unfinished / .currentEntitlements / .all so any
+            // credit the buyer paid for that didn't post (kill-before-
+            // finish, slow Ask-to-Buy approve, etc.) lands automatically.
+            // Critically: NOT restorePurchases() — that calls AppStore.sync()
+            // which prompts for the Apple ID password. Consumables can't
+            // be restored that way; Apple rejected the previous build for
+            // exactly that prompt under Guideline 3.1.1.
+            await storeKit.drainPending()
+            await storeKit.loadProducts()
+        }
     }
 
     private func packRow(_ product: Product) -> some View {
@@ -162,40 +183,6 @@ struct TopUpView: View {
                 .buttonStyle(.plain)
             }
         }
-    }
-
-    /// App Review 3.1.1 requires every IAP-selling app to expose a Restore
-    /// affordance. Consumable credit can't be "re-granted" once spent, but
-    /// pending or unfinished transactions can — and Apple wants this button
-    /// visible regardless.
-    private var restoreButton: some View {
-        Button {
-            Task {
-                statusMessage = nil
-                let before = store.walletBalance
-                await storeKit.restorePurchases()
-                let added = store.walletBalance - before
-                statusMessage = added > 0
-                    ? String(format: "Restored $%.2f in credit.", added)
-                    : "No pending purchases to restore."
-            }
-        } label: {
-            HStack(spacing: 8) {
-                if storeKit.isRestoring {
-                    ProgressView().tint(Theme.inkSoft)
-                } else {
-                    Image(systemName: "arrow.clockwise").font(.system(size: 12, weight: .semibold))
-                }
-                Text(storeKit.isRestoring ? "Restoring…" : "Restore previous purchases")
-                    .font(.system(size: 13, weight: .semibold))
-            }
-            .foregroundStyle(Theme.inkSoft)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.04)))
-        }
-        .buttonStyle(.plain)
-        .disabled(storeKit.isRestoring)
     }
 
     private var unavailable: some View {
