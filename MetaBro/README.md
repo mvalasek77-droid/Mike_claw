@@ -6,10 +6,11 @@ A premium social network for men that fuses **Facebook**'s social graph with
 
 > Product spec and full build prompt: [`../metabro_prompt.md`](../metabro_prompt.md)
 
-## Status — Phase 0 + Phase 1 (the loop) foundation
+## Status — Phase 0 + Phase 1 (the core loop)
 
-This scaffold establishes the senior-engineer foundation and a working,
-end-to-end **unified feed** slice:
+The senior-engineer foundation plus the end-to-end Reddit/Facebook core loop:
+**discover communities → open a post → read & vote on a threaded discussion →
+reply.**
 
 - ✅ **Liquid Glass design system** — tokens (color/spacing/radius/type/motion),
   glass surface modifier with Reduce-Transparency fallback, adaptive Core Haptics,
@@ -19,12 +20,16 @@ end-to-end **unified feed** slice:
 - ✅ **Networking** — `async/await` API client with exponential-backoff retry and
   typed `APIError`.
 - ✅ **Unified feed** — social + Bro-hood fusion, sort (Hot/New/Top),
-  pull-to-refresh, optimistic voting with rollback, and full
+  pull-to-refresh, optimistic voting with rollback, tap-to-open, and full
   loading / empty / error / offline states.
-- ✅ **Tests** — Swift Testing unit tests for the feed loop (load, empty, error,
-  optimistic vote, rollback) and design-system logic (score formatting, vote math).
-- ✅ **Accessibility** — Dynamic Type, VoiceOver labels/values, Reduce Motion and
-  Reduce Transparency fallbacks, honest non-blank placeholders for unbuilt tabs.
+- ✅ **Threaded comments (post detail)** — Reddit-style nested tree with
+  collapse/expand, OP highlight, per-comment optimistic voting, and an inline
+  reply composer. Tree-flattening is pure & unit-tested; the list is virtualized.
+- ✅ **Bro-hoods (communities)** — discover + optimistic join/leave with rollback.
+- ✅ **Tests** — Swift Testing units for the feed loop, comment tree + detail VM,
+  communities VM, and design-system logic.
+- ✅ **Accessibility** — Dynamic Type, VoiceOver labels/values/hints, Reduce Motion
+  and Reduce Transparency fallbacks, honest non-blank placeholders for unbuilt tabs.
 
 ## Project layout
 
@@ -36,8 +41,11 @@ MetaBro/
 │   ├── DI/              AppContainer (dependency injection)
 │   └── Networking/      APIClient, Endpoint, APIError
 ├── Models/              Codable domain models (no UI imports)
-├── Services/            FeedService protocol + MockFeedService
-├── Features/Feed/       View + ViewModel + PostCard (the working slice)
+├── Services/            Feed / Comment / Community protocols + Mock impls
+├── Features/
+│   ├── Feed/            Unified feed: View + ViewModel + PostCard
+│   ├── PostDetail/      Threaded comments + reply composer
+│   └── Communities/     Discover + join/leave Bro-hoods
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests
 ```

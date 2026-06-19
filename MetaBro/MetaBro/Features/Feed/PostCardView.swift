@@ -6,25 +6,33 @@ import SwiftUI
 struct PostCardView: View {
     let post: Post
     let onVote: (VoteValue) -> Void
+    /// Optional tap-to-open handler. When nil (e.g. on the detail screen itself)
+    /// the content region is inert.
+    var onOpen: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.md) {
-            header
-            if let title = post.title {
-                Text(title)
-                    .font(Tokens.Typography.headline)
+            // Tappable content region — opens the post. Vote/share controls in
+            // the footer keep their own actions and are not part of this target.
+            VStack(alignment: .leading, spacing: Tokens.Spacing.md) {
+                header
+                if let title = post.title {
+                    Text(title)
+                        .font(Tokens.Typography.headline)
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                }
+                Text(post.body)
+                    .font(Tokens.Typography.body)
                     .foregroundStyle(Tokens.Color.textPrimary)
+                    .lineLimit(6)
             }
-            Text(post.body)
-                .font(Tokens.Typography.body)
-                .foregroundStyle(Tokens.Color.textPrimary)
-                .lineLimit(6)
+            .contentShape(Rectangle())
+            .onTapGesture { onOpen?() }
 
             footer
         }
         .padding(Tokens.Spacing.lg)
         .liquidGlass()
-        .accessibilityElement(children: .combine)
     }
 
     private var header: some View {
@@ -68,9 +76,13 @@ struct PostCardView: View {
                 myVote: post.myVote.direction,
                 onVote: { onVote($0.value) }
             )
-            Label("\(post.commentCount)", systemImage: "bubble.right")
-                .font(Tokens.Typography.caption)
-                .foregroundStyle(Tokens.Color.textSecondary)
+            Button { onOpen?() } label: {
+                Label("\(post.commentCount)", systemImage: "bubble.right")
+                    .font(Tokens.Typography.caption)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Tokens.Color.textSecondary)
+            .accessibilityLabel("\(post.commentCount) comments. Open discussion.")
             Spacer()
             Image(systemName: "square.and.arrow.up")
                 .foregroundStyle(Tokens.Color.textSecondary)

@@ -1,19 +1,23 @@
 import SwiftUI
 
 /// The five-tab hybrid shell. Tab bar floats on Liquid Glass (system-provided).
-/// Phase 0 ships the Home feed live; the remaining tabs are scaffolded
-/// placeholders wired to the same design system, ready for later phases.
+/// Home feed and Bro-hoods ship live; remaining tabs are honest placeholders
+/// wired to the same design system, ready for later phases.
 struct RootView: View {
     let container: AppContainer
     @State private var selection: AppTab = .home
 
     var body: some View {
         TabView(selection: $selection) {
-            FeedView(service: container.feedService)
+            FeedView(container: container)
                 .tabItem { Label(AppTab.home.title, systemImage: AppTab.home.systemImage) }
                 .tag(AppTab.home)
 
-            ForEach([AppTab.communities, .create, .messages, .profile], id: \.self) { tab in
+            CommunitiesView(service: container.communityService)
+                .tabItem { Label(AppTab.communities.title, systemImage: AppTab.communities.systemImage) }
+                .tag(AppTab.communities)
+
+            ForEach([AppTab.create, .messages, .profile], id: \.self) { tab in
                 ComingSoonView(tab: tab)
                     .tabItem { Label(tab.title, systemImage: tab.systemImage) }
                     .tag(tab)

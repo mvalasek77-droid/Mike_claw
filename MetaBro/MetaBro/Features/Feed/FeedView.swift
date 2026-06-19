@@ -3,18 +3,24 @@ import SwiftUI
 /// The unified MetaBro feed: social posts and Bro-hood posts fused into one
 /// scroll, with a sort control and full loading / empty / error handling.
 struct FeedView: View {
+    private let container: AppContainer
     @State private var model: FeedViewModel
+    @State private var path: [Post] = []
 
-    init(service: FeedService) {
-        _model = State(initialValue: FeedViewModel(service: service))
+    init(container: AppContainer) {
+        self.container = container
+        _model = State(initialValue: FeedViewModel(service: container.feedService))
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             content
                 .navigationTitle("MetaBro")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) { sortMenu }
+                }
+                .navigationDestination(for: Post.self) { post in
+                    PostDetailView(post: post, service: container.commentService)
                 }
         }
         .task { await model.load() }
@@ -48,9 +54,11 @@ struct FeedView: View {
             ScrollView {
                 LazyVStack(spacing: Tokens.Spacing.lg) {
                     ForEach(posts) { post in
-                        PostCardView(post: post) { value in
-                            Task { await model.vote(on: post, value: value) }
-                        }
+                        PostCardView(
+                            post: post,
+                            onVote: { value in Task { await model.vote(on: post, value: value) } },
+                            onOpen: { path.append(post) }
+                        )
                     }
                 }
                 .padding(Tokens.Spacing.lg)

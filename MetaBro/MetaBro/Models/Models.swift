@@ -40,3 +40,24 @@ struct Post: Identifiable, Codable, Hashable, Sendable {
 enum VoteValue: Int, Codable, Sendable {
     case down = -1, none = 0, up = 1
 }
+
+/// A comment in a Reddit-style tree. Stored flat with a `parentID` so it
+/// serializes cleanly over the wire; the UI assembles the tree for display.
+struct Comment: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    let postID: UUID
+    let parentID: UUID?         // nil = top-level
+    var author: User
+    var body: String
+    var score: Int
+    var createdAt: Date
+    var myVote: VoteValue
+    var isOP: Bool              // author is the post's author — highlighted in UI
+}
+
+/// A comment plus its computed nesting depth, ready to render in a flat list.
+struct ThreadedComment: Identifiable, Hashable, Sendable {
+    let comment: Comment
+    let depth: Int
+    var id: UUID { comment.id }
+}
