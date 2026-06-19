@@ -71,16 +71,29 @@ Persistence is one JSON file per screenplay in the app's Documents directory
 
 ## AI security model
 
-The app **never embeds an Anthropic API key**. A client-side key is
-extractable from the binary and could be abused. Instead the app calls a thin
-proxy you host (`backend/proxy.py`), which holds the key server-side and calls
-the Claude Messages API. Set the proxy URL in **Settings → AI Backend**. Until
-it's set, the AI room runs in clearly-labelled demo mode so the UI is still
-explorable.
+No server required. The app **never embeds an Anthropic API key** in the
+binary. There are two ways to connect, chosen in **Settings → AI**:
 
-The reference proxy defaults to **Claude Opus 4.8** with adaptive thinking and
-an effort dial mapped from the app's "creativity" setting, and it handles the
-`refusal` stop reason gracefully.
+1. **On-device key (default, no server).** You paste *your own* Anthropic API
+   key. It is stored only in the iOS **Keychain** (`KeychainStore`) — encrypted,
+   device-scoped (`ThisDeviceOnly`, so it's excluded from iCloud Keychain and
+   encrypted backups), never written to UserDefaults, never logged, never
+   committed. The app then calls `https://api.anthropic.com/v1/messages`
+   directly over TLS with the standard `x-api-key` / `anthropic-version`
+   headers. It's your key, your usage, on your device.
+2. **My server (optional, advanced).** If you'd rather not have each user
+   supply a key — e.g. distributing to many non-technical users — point the app
+   at a proxy you host (`backend/proxy.py`) that holds the key server-side.
+
+Until either is set, the AI room runs in clearly-labelled demo mode so the UI
+is still explorable. The default model is **Claude Opus 4.8**; adaptive thinking
+and the effort dial (mapped from the "creativity" setting) are sent only for
+models that support them, and the `refusal` stop reason is handled gracefully.
+
+> BYOK note: because the key lives on the user's own device, the device owner
+> could in principle read their own key — that's expected and fine (it's
+> theirs). What matters is that the key is not shipped in the app, not shared
+> between users, and not stored in plaintext. The Keychain handles all three.
 
 ## Pricing
 

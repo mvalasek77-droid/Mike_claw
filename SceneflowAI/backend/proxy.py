@@ -1,10 +1,13 @@
 """
-Sceneflow AI proxy — reference implementation.
+Sceneflow AI proxy — OPTIONAL reference implementation.
 
-The iOS app never holds an Anthropic API key (a client-side key would be
-extractable from the app binary and abusable at your expense). Instead the app
-POSTs to this small server, which holds the key in its environment and calls
-the Claude Messages API.
+You do NOT need this to use the app. By default Sceneflow uses on-device
+bring-your-own-key (the user's Anthropic key in the iOS Keychain, calling the
+API directly). This proxy is only for the advanced case where you'd rather not
+have each user supply a key — e.g. distributing to many non-technical users.
+In that case the app POSTs to this server, which holds the key in its
+environment and calls the Claude Messages API. Select "My server" in
+Settings → AI and set the URL.
 
 Run locally:
 

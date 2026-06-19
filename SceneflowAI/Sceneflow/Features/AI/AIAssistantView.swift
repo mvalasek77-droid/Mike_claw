@@ -21,12 +21,12 @@ struct AIAssistantView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if !ai.configuration.isConfigured {
+                if !ai.isConfigured {
                     GlassCard(tier: .raised) {
                         HStack(spacing: 12) {
                             Image(systemName: "exclamationmark.bubble")
                                 .foregroundStyle(Palette.warning)
-                            Text("Running in demo mode. Connect your AI backend in Settings for live results.")
+                            Text("Running in demo mode. Add your Anthropic API key in Settings for live results.")
                                 .font(.caption)
                                 .foregroundStyle(Palette.secondaryText)
                         }

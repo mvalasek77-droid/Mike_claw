@@ -4,6 +4,17 @@ struct SettingsView: View {
     @EnvironmentObject private var ai: AIService
     @EnvironmentObject private var entitlements: Entitlements
     @State private var showPaywall = false
+    @State private var apiKeyDraft = ""
+
+    private var footerText: String {
+        let status = ai.isConfigured ? "Status: connected." : "Status: demo mode."
+        switch ai.configuration.mode {
+        case .onDeviceKey:
+            return "Your key is stored only in this device's Keychain — encrypted, never in the app bundle or backups, and sent directly to Anthropic over TLS. It's your key and your usage. \(status)"
+        case .proxy:
+            return "Calls a server you host that holds the key. See backend/proxy.py for a reference. \(status)"
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -31,10 +42,44 @@ struct SettingsView: View {
                 } header: { Text("Subscription") }
 
                 Section {
-                    TextField("https://your-proxy.example.com", text: $ai.configuration.baseURL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
+                    Picker("Connection", selection: $ai.configuration.mode) {
+                        ForEach(AIConfiguration.Mode.allCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+
+                    if ai.configuration.mode == .onDeviceKey {
+                        if ai.hasAPIKey {
+                            HStack {
+                                Label("API key stored", systemImage: "key.fill")
+                                    .foregroundStyle(Palette.success)
+                                Spacer()
+                                Button("Remove", role: .destructive) {
+                                    ai.clearAPIKey()
+                                    apiKeyDraft = ""
+                                }
+                            }
+                        } else {
+                            SecureField("sk-ant-…", text: $apiKeyDraft)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                            Button("Save key") {
+                                ai.setAPIKey(apiKeyDraft)
+                                apiKeyDraft = ""
+                                Haptics.success()
+                            }
+                            .disabled(apiKeyDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                            Link("Get an API key at console.anthropic.com",
+                                 destination: URL(string: "https://console.anthropic.com/settings/keys")!)
+                                .font(.caption)
+                        }
+                    } else {
+                        TextField("https://your-server.example.com", text: $ai.configuration.proxyURL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.URL)
+                    }
+
                     Picker("Model", selection: $ai.configuration.model) {
                         Text("Claude Opus 4.8").tag("claude-opus-4-8")
                         Text("Claude Sonnet 4.6").tag("claude-sonnet-4-6")
@@ -46,9 +91,9 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("AI Backend")
+                    Text("AI")
                 } footer: {
-                    Text("For security, your Anthropic API key lives on your own proxy server, never in the app. See backend/proxy.py in the project for a reference. \(ai.configuration.isConfigured ? "Status: connected." : "Status: demo mode.")")
+                    Text(footerText)
                 }
 
                 Section("Pricing") {
