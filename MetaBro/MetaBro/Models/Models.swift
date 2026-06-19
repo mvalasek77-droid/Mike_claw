@@ -61,3 +61,28 @@ struct ThreadedComment: Identifiable, Hashable, Sendable {
     let depth: Int
     var id: UUID { comment.id }
 }
+
+/// What the composer hands to the service when creating a post. `community`
+/// is nil for a social post, set for a Bro-hood post.
+struct PostDraft: Sendable {
+    var title: String?
+    var body: String
+    var community: Community?
+
+    var isValid: Bool {
+        !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+/// The current user's profile: identity + reputation split + memberships +
+/// authored posts. `broCred` is the combined karma shown on the profile.
+struct Profile: Identifiable, Sendable {
+    var user: User
+    var postKarma: Int
+    var commentKarma: Int
+    var joinedCommunities: [Community]
+    var posts: [Post]
+
+    var id: UUID { user.id }
+    var broCred: Int { postKarma + commentKarma }
+}

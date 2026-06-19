@@ -74,6 +74,8 @@ private struct FailingFeedService: FeedService {
         throw APIError.offline
     }
     func vote(postID: UUID, value: VoteValue) async throws {}
+    func createPost(_ draft: PostDraft) async throws -> Post { throw APIError.offline }
+    func posts(by userID: UUID) async throws -> [Post] { [] }
 }
 
 /// Loads fine, but every vote fails — exercises the rollback path.
@@ -84,4 +86,6 @@ private struct VoteFailingService: FeedService {
     func vote(postID: UUID, value: VoteValue) async throws {
         throw APIError.server(status: 500)
     }
+    func createPost(_ draft: PostDraft) async throws -> Post { throw APIError.server(status: 500) }
+    func posts(by userID: UUID) async throws -> [Post] { [] }
 }

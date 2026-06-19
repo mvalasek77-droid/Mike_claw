@@ -26,8 +26,15 @@ reply.**
   collapse/expand, OP highlight, per-comment optimistic voting, and an inline
   reply composer. Tree-flattening is pure & unit-tested; the list is virtualized.
 - ✅ **Bro-hoods (communities)** — discover + optimistic join/leave with rollback.
+- ✅ **Post composer** — create a post to a Bro-hood or your own feed (target
+  picker, optional title, validation, success state); appears live in the shared
+  feed.
+- ✅ **Search** — debounced, case-insensitive search across communities + posts,
+  hosted in the Bro-hoods tab via `.searchable`, tappable through to threads.
+- ✅ **Profile** — identity header, Bro Cred (post + comment karma) breakdown,
+  your joined Bro-hoods, and your authored posts (reflects new posts instantly).
 - ✅ **Tests** — Swift Testing units for the feed loop, comment tree + detail VM,
-  communities VM, and design-system logic.
+  communities VM, composer, profile, search, and design-system logic.
 - ✅ **Accessibility** — Dynamic Type, VoiceOver labels/values/hints, Reduce Motion
   and Reduce Transparency fallbacks, honest non-blank placeholders for unbuilt tabs.
 
@@ -41,11 +48,14 @@ MetaBro/
 │   ├── DI/              AppContainer (dependency injection)
 │   └── Networking/      APIClient, Endpoint, APIError
 ├── Models/              Codable domain models (no UI imports)
-├── Services/            Feed / Comment / Community protocols + Mock impls
+├── Services/            Feed / Comment / Community / Profile / Search protocols + Mocks
 ├── Features/
 │   ├── Feed/            Unified feed: View + ViewModel + PostCard
 │   ├── PostDetail/      Threaded comments + reply composer
-│   └── Communities/     Discover + join/leave Bro-hoods
+│   ├── Communities/     Discover + join/leave Bro-hoods (+ search)
+│   ├── Composer/        Create a post to a Bro-hood or your feed
+│   ├── Search/          Debounced community + post search
+│   └── Profile/         Identity + Bro Cred + your posts
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests
 ```

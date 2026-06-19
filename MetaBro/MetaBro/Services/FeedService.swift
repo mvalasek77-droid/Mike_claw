@@ -14,6 +14,10 @@ struct FeedPage: Sendable {
 protocol FeedService: Sendable {
     func feed(sort: FeedSort, cursor: String?) async throws -> FeedPage
     func vote(postID: UUID, value: VoteValue) async throws
+    /// Creates a post authored by the current user and returns it.
+    func createPost(_ draft: PostDraft) async throws -> Post
+    /// Posts authored by a given user (for profile screens).
+    func posts(by userID: UUID) async throws -> [Post]
 }
 
 /// Deterministic in-memory service used for previews, tests, and offline demo.
@@ -44,6 +48,29 @@ actor MockFeedService: FeedService {
         posts[idx].myVote = value
     }
 
+    func createPost(_ draft: PostDraft) async throws -> Post {
+        guard draft.isValid else { throw APIError.server(status: 422) }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        let post = Post(
+            id: UUID(),
+            author: Session.me,
+            community: draft.community,
+            title: draft.title?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+            body: draft.body.trimmingCharacters(in: .whitespacesAndNewlines),
+            imageURL: nil,
+            score: 1,
+            commentCount: 0,
+            createdAt: .now,
+            myVote: .up
+        )
+        posts.insert(post, at: 0)
+        return post
+    }
+
+    func posts(by userID: UUID) async throws -> [Post] {
+        posts.filter { $0.author.id == userID }.sorted { $0.createdAt > $1.createdAt }
+    }
+
     static func seed() -> [Post] {
         let bro = User(id: UUID(), handle: "@ironbro", displayName: "Marcus",
                        avatarURL: nil, broCred: 4_820)
@@ -60,6 +87,11 @@ actor MockFeedService: FeedService {
                  body: "Pickup basketball this Saturday at Riverside. Who's in?",
                  imageURL: nil, score: 42, commentCount: 12,
                  createdAt: .now.addingTimeInterval(-7_200), myVote: .up),
+            Post(id: UUID(), author: Session.me, community: fitness,
+                 title: "First 1000lb total — thanks for the form checks, bros",
+                 body: "Couldn't have done it without this Bro-hood. Onward.",
+                 imageURL: nil, score: 318, commentCount: 24,
+                 createdAt: .now.addingTimeInterval(-10_800), myVote: .none),
         ]
     }
 }

@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The five-tab hybrid shell. Tab bar floats on Liquid Glass (system-provided).
-/// Home feed and Bro-hoods ship live; remaining tabs are honest placeholders
-/// wired to the same design system, ready for later phases.
+/// Home, Bro-hoods (+search), Post composer, and Profile ship live; Messages is
+/// an honest placeholder for a later phase.
 struct RootView: View {
     let container: AppContainer
     @State private var selection: AppTab = .home
@@ -13,15 +13,22 @@ struct RootView: View {
                 .tabItem { Label(AppTab.home.title, systemImage: AppTab.home.systemImage) }
                 .tag(AppTab.home)
 
-            CommunitiesView(service: container.communityService)
+            CommunitiesView(container: container)
                 .tabItem { Label(AppTab.communities.title, systemImage: AppTab.communities.systemImage) }
                 .tag(AppTab.communities)
 
-            ForEach([AppTab.create, .messages, .profile], id: \.self) { tab in
-                ComingSoonView(tab: tab)
-                    .tabItem { Label(tab.title, systemImage: tab.systemImage) }
-                    .tag(tab)
-            }
+            ComposerView(feedService: container.feedService,
+                         communityService: container.communityService)
+                .tabItem { Label(AppTab.create.title, systemImage: AppTab.create.systemImage) }
+                .tag(AppTab.create)
+
+            ComingSoonView(tab: .messages)
+                .tabItem { Label(AppTab.messages.title, systemImage: AppTab.messages.systemImage) }
+                .tag(AppTab.messages)
+
+            ProfileView(container: container)
+                .tabItem { Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage) }
+                .tag(AppTab.profile)
         }
         .tint(Tokens.Color.accent)
     }

@@ -1,19 +1,36 @@
 import SwiftUI
 
-/// Discover Bro-hoods and join/leave them. Each row is a Liquid Glass card with
-/// a springy join toggle.
+/// Discover Bro-hoods and join/leave them, with search across communities and
+/// posts. Each row is a Liquid Glass card with a springy join toggle.
 struct CommunitiesView: View {
+    private let container: AppContainer
     @State private var model: CommunitiesViewModel
+    @State private var search: SearchViewModel
+    @State private var searchText = ""
+    @State private var path: [Post] = []
 
-    init(service: CommunityService) {
-        _model = State(initialValue: CommunitiesViewModel(service: service))
+    init(container: AppContainer) {
+        self.container = container
+        _model = State(initialValue: CommunitiesViewModel(service: container.communityService))
+        _search = State(initialValue: SearchViewModel(service: container.searchService))
     }
 
     var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle("Bro-hoods")
+        NavigationStack(path: $path) {
+            Group {
+                if searchText.isEmpty {
+                    content
+                } else {
+                    SearchResultsView(state: search.state) { path.append($0) }
+                }
+            }
+            .navigationTitle("Bro-hoods")
+            .navigationDestination(for: Post.self) { post in
+                PostDetailView(post: post, service: container.commentService)
+            }
         }
+        .searchable(text: $searchText, prompt: "Search Bro-hoods and posts")
+        .onChange(of: searchText) { _, text in search.query(text) }
         .task { await model.load() }
     }
 
