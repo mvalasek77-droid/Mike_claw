@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The five-tab hybrid shell. Tab bar floats on Liquid Glass (system-provided).
-/// Home, Bro-hoods (+search), Post composer, and Profile ship live; Messages is
-/// an honest placeholder for a later phase.
+/// All five tabs ship live: Home feed, Bro-hoods (+ search), Post composer,
+/// Messages, and Profile.
 struct RootView: View {
     let container: AppContainer
     @State private var selection: AppTab = .home
@@ -22,7 +22,7 @@ struct RootView: View {
                 .tabItem { Label(AppTab.create.title, systemImage: AppTab.create.systemImage) }
                 .tag(AppTab.create)
 
-            ComingSoonView(tab: .messages)
+            ConversationListView(service: container.messagingService)
                 .tabItem { Label(AppTab.messages.title, systemImage: AppTab.messages.systemImage) }
                 .tag(AppTab.messages)
 
@@ -31,22 +31,5 @@ struct RootView: View {
                 .tag(AppTab.profile)
         }
         .tint(Tokens.Color.accent)
-    }
-}
-
-/// Honest placeholder for not-yet-built tabs — still on-brand and accessible,
-/// never a blank screen.
-private struct ComingSoonView: View {
-    let tab: AppTab
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView {
-                Label(tab.title, systemImage: tab.systemImage)
-            } description: {
-                Text("Coming in a later phase. The bros are working on it.")
-            }
-            .navigationTitle(tab.title)
-        }
     }
 }

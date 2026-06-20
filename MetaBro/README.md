@@ -33,6 +33,9 @@ reply.**
   hosted in the Bro-hoods tab via `.searchable`, tappable through to threads.
 - ✅ **Profile** — identity header, Bro Cred (post + comment karma) breakdown,
   your joined Bro-hoods, and your authored posts (reflects new posts instantly).
+- ✅ **Messaging (DMs)** — 1:1 and group threads, optimistic send with
+  sending/sent/delivered/read receipts, a typing indicator, simulated replies,
+  unread badges, and auto-scroll. All five tabs are now live.
 - ✅ **Tests** — Swift Testing units for the feed loop, comment tree + detail VM,
   communities VM, composer, profile, search, and design-system logic.
 - ✅ **Accessibility** — Dynamic Type, VoiceOver labels/values/hints, Reduce Motion
@@ -55,6 +58,7 @@ MetaBro/
 │   ├── Communities/     Discover + join/leave Bro-hoods (+ search)
 │   ├── Composer/        Create a post to a Bro-hood or your feed
 │   ├── Search/          Debounced community + post search
+│   ├── Messages/        DM list + chat thread (receipts, typing)
 │   └── Profile/         Identity + Bro Cred + your posts
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests

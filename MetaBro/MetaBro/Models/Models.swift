@@ -86,3 +86,37 @@ struct Profile: Identifiable, Sendable {
     var id: UUID { user.id }
     var broCred: Int { postKarma + commentKarma }
 }
+
+// MARK: - Messaging
+
+/// Delivery state of an outgoing message (Facebook-style receipts).
+enum MessageStatus: Int, Codable, Sendable {
+    case sending, sent, delivered, read
+}
+
+struct Message: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    let conversationID: UUID
+    var sender: User
+    var text: String
+    var sentAt: Date
+    var status: MessageStatus
+
+    var isMine: Bool { sender.id == Session.me.id }
+}
+
+/// A DM thread. `participants` holds the *other* people (not you), so a 1:1
+/// shows their name and a group shows its title.
+struct Conversation: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var participants: [User]
+    var isGroup: Bool
+    var title: String?
+    var lastMessage: String
+    var lastActivity: Date
+    var unreadCount: Int
+
+    var displayTitle: String {
+        title ?? participants.first?.displayName ?? "Chat"
+    }
+}
