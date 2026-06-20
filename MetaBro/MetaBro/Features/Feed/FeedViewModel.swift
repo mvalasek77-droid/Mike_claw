@@ -95,6 +95,28 @@ final class FeedViewModel {
         }
     }
 
+    /// Optimistically gives an award to a post, rolled back on failure.
+    func giveAward(on post: Post, award: AwardKind) async {
+        guard case .loaded(var posts) = state,
+              let idx = posts.firstIndex(where: { $0.id == post.id }) else { return }
+
+        let previous = posts[idx]
+        posts[idx].awards[award, default: 0] += 1
+        state = .loaded(posts)
+        HapticsEngine.shared.play(.award)
+
+        do {
+            try await service.giveAward(postID: post.id, award: award)
+        } catch {
+            if case .loaded(var current) = state,
+               let i = current.firstIndex(where: { $0.id == post.id }) {
+                current[i] = previous
+                state = .loaded(current)
+            }
+            HapticsEngine.shared.play(.error)
+        }
+    }
+
     private static func message(for error: Error) -> String {
         switch error {
         case APIError.offline: "You're offline. We'll catch you up when you reconnect."

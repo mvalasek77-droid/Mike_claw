@@ -25,6 +25,11 @@ reply.**
   social posts use **Facebook-style reactions** (Respect/Strong/LOL/Like/Sad/
   Angry) with quick-tap, long-press picker, and a reaction summary. Both are
   optimistic with rollback.
+- ✅ **Stories** — a Facebook-style rail at the top of the feed with seen/unseen
+  rings and a full-screen viewer (segmented progress, 5s auto-advance, tap
+  zones, Reduce-Motion aware).
+- ✅ **Awards** — Reddit-style awards (Champ/Solid/Big Brain) you can give from
+  any post, shown as badges; optimistic with rollback.
 - ✅ **Threaded comments (post detail)** — Reddit-style nested tree with
   collapse/expand, OP highlight, per-comment optimistic voting, and an inline
   reply composer. Tree-flattening is pure & unit-tested; the list is virtualized.
@@ -62,6 +67,7 @@ MetaBro/
 │   ├── Composer/        Create a post to a Bro-hood or your feed
 │   ├── Search/          Debounced community + post search
 │   ├── Messages/        DM list + chat thread (receipts, typing)
+│   ├── Stories/         Story rail + full-screen viewer
 │   └── Profile/         Identity + Bro Cred + your posts
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests

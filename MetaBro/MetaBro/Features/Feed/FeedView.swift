@@ -5,11 +5,17 @@ import SwiftUI
 struct FeedView: View {
     private let container: AppContainer
     @State private var model: FeedViewModel
+    @State private var stories: StoriesViewModel
     @State private var path: [Post] = []
+    @State private var viewingStoryAt: StoryStart?
+
+    /// Identifiable wrapper so `fullScreenCover(item:)` can carry a start index.
+    private struct StoryStart: Identifiable { let value: Int; var id: Int { value } }
 
     init(container: AppContainer) {
         self.container = container
         _model = State(initialValue: FeedViewModel(service: container.feedService))
+        _stories = State(initialValue: StoriesViewModel(service: container.storyService))
     }
 
     var body: some View {
@@ -24,6 +30,15 @@ struct FeedView: View {
                 }
         }
         .task { await model.load() }
+        .task { await stories.load() }
+        .fullScreenCover(item: $viewingStoryAt) { start in
+            StoryViewerView(
+                stories: stories.stories,
+                index: start.value,
+                onSeen: { id in Task { await stories.markSeen(id) } },
+                onClose: { viewingStoryAt = nil }
+            )
+        }
     }
 
     @ViewBuilder
@@ -53,11 +68,17 @@ struct FeedView: View {
         case .loaded(let posts):
             ScrollView {
                 LazyVStack(spacing: Tokens.Spacing.lg) {
+                    if !stories.stories.isEmpty {
+                        StoriesStrip(stories: stories.stories) { index in
+                            viewingStoryAt = StoryStart(value: index)
+                        }
+                    }
                     ForEach(posts) { post in
                         PostCardView(
                             post: post,
                             onVote: { value in Task { await model.vote(on: post, value: value) } },
                             onReact: { reaction in Task { await model.react(on: post, reaction: reaction) } },
+                            onAward: { award in Task { await model.giveAward(on: post, award: award) } },
                             onOpen: { path.append(post) }
                         )
                     }

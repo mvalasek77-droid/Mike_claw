@@ -16,6 +16,8 @@ protocol FeedService: Sendable {
     func vote(postID: UUID, value: VoteValue) async throws
     /// Sets (or clears, when nil) the current user's reaction on a social post.
     func react(postID: UUID, reaction: ReactionKind?) async throws
+    /// Gives an award to a post (Reddit-style).
+    func giveAward(postID: UUID, award: AwardKind) async throws
     /// Creates a post authored by the current user and returns it.
     func createPost(_ draft: PostDraft) async throws -> Post
     /// Posts authored by a given user (for profile screens).
@@ -55,6 +57,11 @@ actor MockFeedService: FeedService {
         posts[idx].reactions.apply(reaction)
     }
 
+    func giveAward(postID: UUID, award: AwardKind) async throws {
+        guard let idx = posts.firstIndex(where: { $0.id == postID }) else { return }
+        posts[idx].awards[award, default: 0] += 1
+    }
+
     func createPost(_ draft: PostDraft) async throws -> Post {
         guard draft.isValid else { throw APIError.server(status: 422) }
         try await Task.sleep(nanoseconds: 200_000_000)
@@ -88,7 +95,8 @@ actor MockFeedService: FeedService {
                  title: "PSA: warm up your rotator cuffs, bros",
                  body: "Saved my bench after years of nagging pain. Here's the routine.",
                  imageURL: nil, score: 1_240, commentCount: 86,
-                 createdAt: .now.addingTimeInterval(-3_600), myVote: .none),
+                 createdAt: .now.addingTimeInterval(-3_600), myVote: .none,
+                 awards: [.champ: 1, .bigBrain: 2]),
             Post(id: UUID(), author: bro, community: nil,
                  title: nil,
                  body: "Pickup basketball this Saturday at Riverside. Who's in?",

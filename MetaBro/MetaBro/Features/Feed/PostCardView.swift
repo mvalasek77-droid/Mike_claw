@@ -9,6 +9,8 @@ struct PostCardView: View {
     /// Reaction handler for social posts. Defaults to a no-op so read-only
     /// surfaces (profile, search) can render cards without wiring reactions.
     var onReact: (ReactionKind?) -> Void = { _ in }
+    /// Award handler. Defaults to a no-op on read-only surfaces.
+    var onAward: (AwardKind) -> Void = { _ in }
     /// Optional tap-to-open handler. When nil (e.g. on the detail screen itself)
     /// the content region is inert.
     var onOpen: (() -> Void)? = nil
@@ -32,10 +34,35 @@ struct PostCardView: View {
             .contentShape(Rectangle())
             .onTapGesture { onOpen?() }
 
+            if post.awardCount > 0 { awardChips }
+
             footer
         }
         .padding(Tokens.Spacing.lg)
         .liquidGlass()
+    }
+
+    /// Reddit-style award badges, highest count first.
+    private var sortedAwardKinds: [AwardKind] {
+        post.awards.filter { $0.value > 0 }
+            .sorted { $0.value > $1.value }
+            .map { $0.key }
+    }
+
+    private var awardChips: some View {
+        HStack(spacing: Tokens.Spacing.sm) {
+            ForEach(sortedAwardKinds, id: \.self) { kind in
+                let count = post.awards[kind] ?? 0
+                HStack(spacing: 2) {
+                    Text(kind.emoji).font(.caption)
+                    Text("\(count)").font(.caption2).foregroundStyle(Tokens.Color.textSecondary)
+                }
+                .padding(.horizontal, Tokens.Spacing.sm)
+                .padding(.vertical, 4)
+                .liquidGlass(radius: Tokens.Radius.pill)
+                .accessibilityLabel("\(count) \(kind.label) award\(count == 1 ? "" : "s")")
+            }
+        }
     }
 
     private var header: some View {
@@ -94,10 +121,25 @@ struct PostCardView: View {
             .foregroundStyle(Tokens.Color.textSecondary)
             .accessibilityLabel("\(post.commentCount) comments. Open discussion.")
             Spacer()
+            awardMenu
             Image(systemName: "square.and.arrow.up")
                 .foregroundStyle(Tokens.Color.textSecondary)
                 .accessibilityLabel("Share")
         }
+    }
+
+    private var awardMenu: some View {
+        Menu {
+            ForEach(AwardKind.allCases, id: \.self) { kind in
+                Button { onAward(kind) } label: {
+                    Text("\(kind.emoji)  Give \(kind.label) · \(kind.cost)")
+                }
+            }
+        } label: {
+            Image(systemName: "rosette")
+                .foregroundStyle(Tokens.Color.textSecondary)
+        }
+        .accessibilityLabel("Give award")
     }
 
     private var initials: String {

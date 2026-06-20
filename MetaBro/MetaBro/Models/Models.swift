@@ -32,10 +32,44 @@ struct Post: Identifiable, Codable, Hashable, Sendable {
     var myVote: VoteValue
     /// Facebook-style reactions, used by social posts (community posts use votes).
     var reactions: ReactionSummary = .empty
+    /// Reddit-style awards given to this post, keyed by kind.
+    var awards: [AwardKind: Int] = [:]
 
     /// Distinguishes the two halves of the hybrid feed for the UI.
     var origin: Origin { community == nil ? .social : .community }
     enum Origin { case social, community }
+
+    var awardCount: Int { awards.values.reduce(0, +) }
+}
+
+/// Reddit-style awards. Cosmetic recognition bought with coins.
+enum AwardKind: String, Codable, CaseIterable, Hashable, Sendable {
+    case champ, solid, bigBrain
+
+    var emoji: String {
+        switch self {
+        case .champ: "🏆"
+        case .solid: "⭐️"
+        case .bigBrain: "🧠"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .champ: "Champ"
+        case .solid: "Solid"
+        case .bigBrain: "Big Brain"
+        }
+    }
+
+    /// Coin cost to give the award.
+    var cost: Int {
+        switch self {
+        case .champ: 300
+        case .solid: 100
+        case .bigBrain: 150
+        }
+    }
 }
 
 /// Wire-friendly vote value (the UI maps this to `VoteDirection`).
@@ -84,7 +118,7 @@ struct ReactionSummary: Codable, Hashable, Sendable {
     var top: [ReactionKind] {
         counts.filter { $0.value > 0 }
             .sorted { $0.value > $1.value }
-            .map(\.key)
+            .map { $0.key }
     }
 
     /// Apply a tap on `reaction`; tapping your current reaction clears it.
@@ -179,4 +213,17 @@ struct Conversation: Identifiable, Codable, Hashable, Sendable {
     var displayTitle: String {
         title ?? participants.first?.displayName ?? "Chat"
     }
+}
+
+// MARK: - Stories
+
+/// An ephemeral Facebook-style story. `accentIndex` seeds the UI gradient so the
+/// model stays free of SwiftUI types.
+struct Story: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var author: User
+    var caption: String
+    var createdAt: Date
+    var seen: Bool
+    var accentIndex: Int
 }

@@ -11,6 +11,7 @@ final class AppContainer {
     let profileService: ProfileService
     let searchService: SearchService
     let messagingService: MessagingService
+    let storyService: StoryService
 
     init(
         feedService: FeedService,
@@ -18,7 +19,8 @@ final class AppContainer {
         communityService: CommunityService,
         profileService: ProfileService,
         searchService: SearchService,
-        messagingService: MessagingService
+        messagingService: MessagingService,
+        storyService: StoryService
     ) {
         self.feedService = feedService
         self.commentService = commentService
@@ -26,6 +28,7 @@ final class AppContainer {
         self.profileService = profileService
         self.searchService = searchService
         self.messagingService = messagingService
+        self.storyService = storyService
     }
 
     /// Default wiring. Swap the mocks for live services once the backend is
@@ -41,7 +44,8 @@ final class AppContainer {
             communityService: communities,
             profileService: MockProfileService(feedService: feed, communityService: communities),
             searchService: MockSearchService(feedService: feed, communityService: communities),
-            messagingService: MockMessagingService()
+            messagingService: MockMessagingService(),
+            storyService: MockStoryService()
         )
     }
 }
