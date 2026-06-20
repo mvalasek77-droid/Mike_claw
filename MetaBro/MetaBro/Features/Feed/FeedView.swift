@@ -57,6 +57,7 @@ struct FeedView: View {
                         PostCardView(
                             post: post,
                             onVote: { value in Task { await model.vote(on: post, value: value) } },
+                            onReact: { reaction in Task { await model.react(on: post, reaction: reaction) } },
                             onOpen: { path.append(post) }
                         )
                     }

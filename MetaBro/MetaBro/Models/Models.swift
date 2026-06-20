@@ -30,6 +30,8 @@ struct Post: Identifiable, Codable, Hashable, Sendable {
     var commentCount: Int
     var createdAt: Date
     var myVote: VoteValue
+    /// Facebook-style reactions, used by social posts (community posts use votes).
+    var reactions: ReactionSummary = .empty
 
     /// Distinguishes the two halves of the hybrid feed for the UI.
     var origin: Origin { community == nil ? .social : .community }
@@ -39,6 +41,64 @@ struct Post: Identifiable, Codable, Hashable, Sendable {
 /// Wire-friendly vote value (the UI maps this to `VoteDirection`).
 enum VoteValue: Int, Codable, Sendable {
     case down = -1, none = 0, up = 1
+}
+
+/// The MetaBro reaction set — a pro-social spin on Facebook's reactions.
+/// `emoji`/`label` live on the model; the tint is a UI concern (see extensions).
+enum ReactionKind: String, Codable, CaseIterable, Hashable, Sendable {
+    case respect, strong, lol, like, sad, angry
+
+    var emoji: String {
+        switch self {
+        case .respect: "🤝"
+        case .strong: "💪"
+        case .lol: "😂"
+        case .like: "👍"
+        case .sad: "😢"
+        case .angry: "😤"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .respect: "Respect"
+        case .strong: "Strong"
+        case .lol: "LOL"
+        case .like: "Like"
+        case .sad: "Sad"
+        case .angry: "Angry"
+        }
+    }
+}
+
+/// Aggregated reactions for a post plus the current user's own reaction.
+struct ReactionSummary: Codable, Hashable, Sendable {
+    var counts: [ReactionKind: Int]
+    var mine: ReactionKind?
+
+    static let empty = ReactionSummary(counts: [:], mine: nil)
+
+    var total: Int { counts.values.reduce(0, +) }
+
+    /// The most-used reactions, highest first — for the summary row.
+    var top: [ReactionKind] {
+        counts.filter { $0.value > 0 }
+            .sorted { $0.value > $1.value }
+            .map(\.key)
+    }
+
+    /// Apply a tap on `reaction`; tapping your current reaction clears it.
+    /// Keeps counts and `mine` consistent. Pure — safe for optimistic updates.
+    mutating func apply(_ reaction: ReactionKind?) {
+        let target = (reaction == mine) ? nil : reaction
+        if let prev = mine, let c = counts[prev] {
+            counts[prev] = c > 1 ? c - 1 : nil
+        }
+        if let target {
+            counts[target, default: 0] += 1
+        }
+        mine = target
+    }
 }
 
 /// A comment in a Reddit-style tree. Stored flat with a `parentID` so it

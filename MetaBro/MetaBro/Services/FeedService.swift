@@ -14,6 +14,8 @@ struct FeedPage: Sendable {
 protocol FeedService: Sendable {
     func feed(sort: FeedSort, cursor: String?) async throws -> FeedPage
     func vote(postID: UUID, value: VoteValue) async throws
+    /// Sets (or clears, when nil) the current user's reaction on a social post.
+    func react(postID: UUID, reaction: ReactionKind?) async throws
     /// Creates a post authored by the current user and returns it.
     func createPost(_ draft: PostDraft) async throws -> Post
     /// Posts authored by a given user (for profile screens).
@@ -46,6 +48,11 @@ actor MockFeedService: FeedService {
         let old = posts[idx].myVote
         posts[idx].score += value.rawValue - old.rawValue
         posts[idx].myVote = value
+    }
+
+    func react(postID: UUID, reaction: ReactionKind?) async throws {
+        guard let idx = posts.firstIndex(where: { $0.id == postID }) else { return }
+        posts[idx].reactions.apply(reaction)
     }
 
     func createPost(_ draft: PostDraft) async throws -> Post {
@@ -86,7 +93,9 @@ actor MockFeedService: FeedService {
                  title: nil,
                  body: "Pickup basketball this Saturday at Riverside. Who's in?",
                  imageURL: nil, score: 42, commentCount: 12,
-                 createdAt: .now.addingTimeInterval(-7_200), myVote: .up),
+                 createdAt: .now.addingTimeInterval(-7_200), myVote: .up,
+                 reactions: ReactionSummary(
+                    counts: [.strong: 14, .respect: 9, .lol: 3], mine: nil)),
             Post(id: UUID(), author: Session.me, community: fitness,
                  title: "First 1000lb total — thanks for the form checks, bros",
                  body: "Couldn't have done it without this Bro-hood. Onward.",

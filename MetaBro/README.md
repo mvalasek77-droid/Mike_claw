@@ -20,8 +20,11 @@ reply.**
 - ✅ **Networking** — `async/await` API client with exponential-backoff retry and
   typed `APIError`.
 - ✅ **Unified feed** — social + Bro-hood fusion, sort (Hot/New/Top),
-  pull-to-refresh, optimistic voting with rollback, tap-to-open, and full
-  loading / empty / error / offline states.
+  pull-to-refresh, tap-to-open, and full loading / empty / error / offline states.
+- ✅ **Hybrid interactions** — Bro-hood (community) posts use **Reddit voting**;
+  social posts use **Facebook-style reactions** (Respect/Strong/LOL/Like/Sad/
+  Angry) with quick-tap, long-press picker, and a reaction summary. Both are
+  optimistic with rollback.
 - ✅ **Threaded comments (post detail)** — Reddit-style nested tree with
   collapse/expand, OP highlight, per-comment optimistic voting, and an inline
   reply composer. Tree-flattening is pure & unit-tested; the list is virtualized.

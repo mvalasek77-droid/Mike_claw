@@ -6,6 +6,9 @@ import SwiftUI
 struct PostCardView: View {
     let post: Post
     let onVote: (VoteValue) -> Void
+    /// Reaction handler for social posts. Defaults to a no-op so read-only
+    /// surfaces (profile, search) can render cards without wiring reactions.
+    var onReact: (ReactionKind?) -> Void = { _ in }
     /// Optional tap-to-open handler. When nil (e.g. on the detail screen itself)
     /// the content region is inert.
     var onOpen: (() -> Void)? = nil
@@ -71,11 +74,18 @@ struct PostCardView: View {
 
     private var footer: some View {
         HStack(spacing: Tokens.Spacing.lg) {
-            VoteControl(
-                score: post.score,
-                myVote: post.myVote.direction,
-                onVote: { onVote($0.value) }
-            )
+            // The hybrid: Bro-hood posts use Reddit voting, social posts use
+            // Facebook-style reactions.
+            switch post.origin {
+            case .community:
+                VoteControl(
+                    score: post.score,
+                    myVote: post.myVote.direction,
+                    onVote: { onVote($0.value) }
+                )
+            case .social:
+                ReactionControl(summary: post.reactions, onReact: onReact)
+            }
             Button { onOpen?() } label: {
                 Label("\(post.commentCount)", systemImage: "bubble.right")
                     .font(Tokens.Typography.caption)
