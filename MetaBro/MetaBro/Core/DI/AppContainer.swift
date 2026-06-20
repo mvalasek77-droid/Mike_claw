@@ -31,11 +31,39 @@ final class AppContainer {
         self.storyService = storyService
     }
 
-    /// Default wiring. Swap the mocks for live services once the backend is
-    /// reachable (gated behind a feature flag / build config). The feed and
+    /// Resolves the dependency graph from configuration: a live backend when
+    /// one is configured, in-memory mocks otherwise. Either way Profile and
+    /// Search compose from the chosen feed + community services, so they follow
+    /// the same source of truth automatically.
+    static func resolve(config: BackendConfig = BackendConfig()) -> AppContainer {
+        if let baseURL = config.resolvedBaseURL {
+            return live(baseURL: baseURL)
+        }
+        return mocks()
+    }
+
+    /// Backwards-compatible entry point used by the app.
+    static func live() -> AppContainer { resolve() }
+
+    private static func live(baseURL: URL) -> AppContainer {
+        let client = LiveAPIClient(baseURL: baseURL)
+        let feed = LiveFeedService(client: client)
+        let communities = LiveCommunityService(client: client)
+        return AppContainer(
+            feedService: feed,
+            commentService: LiveCommentService(client: client),
+            communityService: communities,
+            profileService: MockProfileService(feedService: feed, communityService: communities),
+            searchService: MockSearchService(feedService: feed, communityService: communities),
+            messagingService: LiveMessagingService(client: client),
+            storyService: LiveStoryService(client: client)
+        )
+    }
+
+    /// In-memory wiring for previews, tests, and offline demo. The feed and
     /// community services are shared instances so the composer, profile, and
     /// search all reflect the same evolving state.
-    static func live() -> AppContainer {
+    private static func mocks() -> AppContainer {
         let feed = MockFeedService()
         let communities = MockCommunityService()
         return AppContainer(

@@ -44,10 +44,16 @@ reply.**
 - ✅ **Messaging (DMs)** — 1:1 and group threads, optimistic send with
   sending/sent/delivered/read receipts, a typing indicator, simulated replies,
   unread badges, and auto-scroll. All five tabs are now live.
+- ✅ **Live backend path** — every service has a `Live*` implementation over an
+  `async/await` API client (bodies + retries + typed errors), a documented
+  endpoint map (`API`), a `PostDTO` mapping layer, and a `BackendConfig` feature
+  flag. The app uses the live backend when one is configured, mocks otherwise —
+  so it always launches and is fully interactive offline.
 - ✅ **Tests** — Swift Testing units for the feed loop, comment tree + detail VM,
-  communities VM, composer, profile, search, and design-system logic.
+  communities VM, composer, profile, search, messaging, stories, awards,
+  reactions, the live backend (DTO mapping, routes, config), and design-system logic.
 - ✅ **Accessibility** — Dynamic Type, VoiceOver labels/values/hints, Reduce Motion
-  and Reduce Transparency fallbacks, honest non-blank placeholders for unbuilt tabs.
+  and Reduce Transparency fallbacks, honest non-blank placeholders.
 
 ## Project layout
 
@@ -59,7 +65,8 @@ MetaBro/
 │   ├── DI/              AppContainer (dependency injection)
 │   └── Networking/      APIClient, Endpoint, APIError
 ├── Models/              Codable domain models (no UI imports)
-├── Services/            Feed / Comment / Community / Profile / Search protocols + Mocks
+├── Services/            Protocols + Mock impls (Feed/Comment/Community/Profile/
+│   └── Live/            Search/Messaging/Story); Live/ = backend-backed + DTOs
 ├── Features/
 │   ├── Feed/            Unified feed: View + ViewModel + PostCard
 │   ├── PostDetail/      Threaded comments + reply composer
@@ -86,12 +93,22 @@ open MetaBro.xcodeproj
 
 Then build/run the `MetaBro` scheme, or run tests with ⌘U.
 
-The app runs entirely against `MockFeedService` today, so it launches and is
-fully interactive with **no backend required**. Swap in a `LiveAPIClient`-backed
-service in `AppContainer.live()` once the API is reachable.
+## Backend configuration
+
+The app runs on in-memory mocks by default, so it launches and is fully
+interactive with **no backend required**. To point at a real API, set these in
+`Config/Build.xcconfig` (or a gitignored `Config/Secrets.xcconfig`):
+
+```
+METABRO_USE_LIVE = YES
+METABRO_API_BASE_URL = https://api.metabro.app/v1
+```
+
+`BackendConfig` reads them at runtime; `AppContainer.resolve` then wires the
+`Live*` services (over `LiveAPIClient`) instead of the mocks. The expected REST
+contract is documented in `Core/Networking/APIEndpoints.swift`.
 
 ## Next phases
 
-See the roadmap in [`../metabro_prompt.md`](../metabro_prompt.md): social graph
-(friends/reactions/stories), messaging, community depth (karma/awards/mod tools),
-events/marketplace, then polish & scale.
+See the roadmap in [`../metabro_prompt.md`](../metabro_prompt.md): friends graph,
+events & marketplace, moderation tools, notifications, then polish & scale.

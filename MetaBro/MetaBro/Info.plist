@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>MetaBro</string>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<!-- Backend configuration, substituted from Config/Build.xcconfig at build
+	     time and read at runtime by BackendConfig. Blank = run on mocks. -->
+	<key>METABRO_API_BASE_URL</key>
+	<string>$(METABRO_API_BASE_URL)</string>
+	<key>METABRO_USE_LIVE</key>
+	<string>$(METABRO_USE_LIVE)</string>
+</dict>
+</plist>

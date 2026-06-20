@@ -1,0 +1,18 @@
+// MetaBro build configuration.
+//
+// These values flow into Info.plist (see project.yml) and are read at runtime
+// by BackendConfig. Leave them blank to run entirely on in-memory mocks — the
+// app still launches and is fully interactive.
+//
+// To point at a real backend, set both:
+//   METABRO_USE_LIVE = YES
+//   METABRO_API_BASE_URL = https:/$()/api.metabro.app/v1
+// (The `$()` splits the `//` so xcconfig doesn't treat the URL as a comment.)
+//
+// For secrets or per-developer overrides, create Config/Secrets.xcconfig
+// (gitignored) and `#include` it below.
+
+METABRO_USE_LIVE = NO
+METABRO_API_BASE_URL =
+
+// #include "Secrets.xcconfig"
