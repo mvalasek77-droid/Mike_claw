@@ -14,7 +14,8 @@ struct FeedViewModelTests {
             Issue.record("expected .loaded, got \(model.state)")
             return
         }
-        #expect(posts.count == 2)
+        // Tie to the seed so adding sample posts doesn't break this test.
+        #expect(posts.count == MockFeedService.seed().count)
     }
 
     @Test func emptyServiceProducesEmptyState() async {
