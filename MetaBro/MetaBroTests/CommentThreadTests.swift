@@ -24,8 +24,12 @@ struct CommentThreadTests {
             comment(childB, parent: root, score: 9), // higher score sorts first
         ]
         let flat = CommentTree.flatten(comments)
-        #expect(flat.map(\.id) == [root, childB, childA])
-        #expect(flat.map(\.depth) == [0, 1, 1])
+        // `map` is rethrows; binding outside #expect avoids the macro treating
+        // the call as throwing.
+        let ids = flat.map(\.id)
+        let depths = flat.map(\.depth)
+        #expect(ids == [root, childB, childA])
+        #expect(depths == [0, 1, 1])
     }
 
     @Test func collapsingHidesDescendants() {
@@ -36,7 +40,8 @@ struct CommentThreadTests {
             comment(grandchild, parent: child),
         ]
         let flat = CommentTree.flatten(comments, collapsed: [root])
-        #expect(flat.map(\.id) == [root])   // child + grandchild hidden
+        let ids = flat.map(\.id)
+        #expect(ids == [root])   // child + grandchild hidden
     }
 
     @Test func loadPopulatesVisibleThread() async {

@@ -12,8 +12,10 @@ struct CommunitiesViewModelTests {
             Issue.record("expected .loaded, got \(model.state)"); return
         }
         #expect(!communities.isEmpty)
-        // Discover sorts by member count, descending.
-        #expect(communities == communities.sorted { $0.memberCount > $1.memberCount })
+        // Discover sorts by member count, descending. `sorted` is rethrows, so
+        // bind outside #expect to avoid the macro treating it as throwing.
+        let byMembers = communities.sorted { $0.memberCount > $1.memberCount }
+        #expect(communities == byMembers)
     }
 
     @Test func joiningTogglesMembershipAndCount() async {

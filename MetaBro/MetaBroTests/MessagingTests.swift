@@ -18,8 +18,9 @@ struct MessagingTests {
             Issue.record("expected .loaded, got \(model.state)"); return
         }
         #expect(convos.count == 2)
-        // Sorted by most recent activity.
-        #expect(convos == convos.sorted { $0.lastActivity > $1.lastActivity })
+        // Sorted by most recent activity. `sorted` is rethrows — bind first.
+        let byActivity = convos.sorted { $0.lastActivity > $1.lastActivity }
+        #expect(convos == byActivity)
     }
 
     @Test func chatLoadsHistory() async {
@@ -29,8 +30,9 @@ struct MessagingTests {
         await model.load()
         #expect(model.state == .loaded)
         #expect(model.messages.count == 3)
-        // History is chronological.
-        #expect(model.messages == model.messages.sorted { $0.sentAt < $1.sentAt })
+        // History is chronological. `sorted` is rethrows — bind first.
+        let chronological = model.messages.sorted { $0.sentAt < $1.sentAt }
+        #expect(model.messages == chronological)
     }
 
     @Test func sendAppendsMineThenAutoReply() async {

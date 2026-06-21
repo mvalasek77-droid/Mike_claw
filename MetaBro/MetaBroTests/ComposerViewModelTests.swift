@@ -23,7 +23,8 @@ struct ComposerViewModelTests {
         let model = make()
         await model.loadTargets()
         #expect(!model.targets.isEmpty)
-        #expect(model.targets.allSatisfy(\.isJoined))
+        let allJoined = model.targets.allSatisfy(\.isJoined)
+        #expect(allJoined)
     }
 
     @Test func successfulSubmitMovesToPostedAndAppearsInFeed() async {

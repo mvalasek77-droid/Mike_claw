@@ -20,10 +20,13 @@ struct ProfileAndSearchTests {
         }
         #expect(profile.user.id == Session.me.id)
         #expect(profile.broCred == profile.postKarma + profile.commentKarma)
-        // Seed includes one post authored by the current user.
-        #expect(profile.posts.allSatisfy { $0.author.id == Session.me.id })
+        // Seed includes one post authored by the current user. allSatisfy is
+        // rethrows — bind outside #expect.
+        let allMine = profile.posts.allSatisfy { $0.author.id == Session.me.id }
+        let allJoined = profile.joinedCommunities.allSatisfy(\.isJoined)
+        #expect(allMine)
         #expect(!profile.posts.isEmpty)
-        #expect(profile.joinedCommunities.allSatisfy(\.isJoined))
+        #expect(allJoined)
     }
 
     @Test func profileReflectsNewlyCreatedPost() async {
@@ -35,7 +38,8 @@ struct ProfileAndSearchTests {
         let model = ProfileViewModel(service: service)
         await model.load()
         guard case .loaded(let profile) = model.state else { Issue.record("not loaded"); return }
-        #expect(profile.posts.contains { $0.body == "Fresh post" })
+        let hasFresh = profile.posts.contains { $0.body == "Fresh post" }
+        #expect(hasFresh)
     }
 
     // MARK: Search
@@ -59,7 +63,8 @@ struct ProfileAndSearchTests {
         guard case .results(let results) = model.state else {
             Issue.record("expected .results, got \(model.state)"); return
         }
-        #expect(results.communities.contains { $0.name.localizedCaseInsensitiveContains("Iron") })
+        let hasIron = results.communities.contains { $0.name.localizedCaseInsensitiveContains("Iron") }
+        #expect(hasIron)
     }
 
     @Test func nonsenseQueryReturnsEmpty() async {
