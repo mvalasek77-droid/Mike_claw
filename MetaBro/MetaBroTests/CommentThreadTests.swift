@@ -8,10 +8,12 @@ struct CommentThreadTests {
 
     private let postID = UUID()
 
-    private func comment(_ id: UUID, parent: UUID?, score: Int = 0) -> Comment {
-        Comment(id: id, postID: postID, parentID: parent,
-                author: MockCommentService.defaultMe, body: "x",
-                score: score, createdAt: .now, myVote: .none, isOP: false)
+    // `Comment` is qualified because Swift Testing also exports a `Comment`
+    // type, which would otherwise be ambiguous under `import Testing`.
+    private func comment(_ id: UUID, parent: UUID?, score: Int = 0) -> MetaBro.Comment {
+        MetaBro.Comment(id: id, postID: postID, parentID: parent,
+                        author: MockCommentService.defaultMe, body: "x",
+                        score: score, createdAt: .now, myVote: .none, isOP: false)
     }
 
     @Test func flattenOrdersByDepthThenScore() {
