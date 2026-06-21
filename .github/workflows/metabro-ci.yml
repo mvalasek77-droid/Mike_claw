@@ -1,0 +1,94 @@
+name: MetaBro CI
+
+on:
+  push:
+    branches:
+      - main
+      - "claude/metabro-facebook-reddit-hybrid-it80pk"
+    paths:
+      - "MetaBro/**"
+      - ".github/workflows/metabro-ci.yml"
+  pull_request:
+    paths:
+      - "MetaBro/**"
+      - ".github/workflows/metabro-ci.yml"
+
+# Cancel superseded runs on the same ref to save runner minutes.
+concurrency:
+  group: metabro-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & Test (iOS Simulator)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: MetaBro
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest installed Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Using $latest"
+          sudo xcode-select -s "$latest/Contents/Developer"
+          xcodebuild -version
+
+      - name: Install tools
+        run: brew install xcodegen xcbeautify
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          # Newest available iPhone simulator on this runner.
+          name=$(xcrun simctl list devices available \
+            | grep -oE 'iPhone [0-9]+( Pro)?( Max)?' \
+            | sort -V | tail -1)
+          if [ -z "$name" ]; then echo "No iPhone simulator found"; exit 1; fi
+          echo "Using simulator: $name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Run tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project MetaBro.xcodeproj \
+            -scheme MetaBro \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }},OS=latest" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metabro-test-results
+          path: MetaBro/TestResults.xcresult
+          if-no-files-found: ignore
+
+  brace-audit:
+    name: Swift brace audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify every Swift file is brace-balanced
+        run: |
+          set -e
+          fail=0
+          for f in $(find MetaBro -name '*.swift'); do
+            open=$(grep -o '{' "$f" | wc -l)
+            close=$(grep -o '}' "$f" | wc -l)
+            if [ "$open" != "$close" ]; then
+              echo "MISMATCH $f: { = $open, } = $close"
+              fail=1
+            fi
+          done
+          if [ $fail -ne 0 ]; then exit 1; fi
+          echo "OK: $(find MetaBro -name '*.swift' | wc -l) Swift files balanced"
