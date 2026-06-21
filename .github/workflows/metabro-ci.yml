@@ -56,13 +56,25 @@ jobs:
       - name: Run tests
         run: |
           set -o pipefail
+          # Tee the full raw output so failures/crashes are recoverable even
+          # though xcbeautify only renders the happy-path build lines.
           xcodebuild test \
             -project MetaBro.xcodeproj \
             -scheme MetaBro \
             -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }},OS=latest" \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
-            | xcbeautify
+            2>&1 | tee xcodebuild.log | xcbeautify
+
+      - name: Surface failures
+        if: failure()
+        run: |
+          echo "::group::Failure / test-case lines"
+          grep -nE "error:|fatal error|Fatal|[Cc]rash|Assertion|XCTAssert|recordIssue|Test [Cc]ase|✘|✗|passed|failed|exited|Could not|dyld|Symbol not found" xcodebuild.log | tail -n 120 || true
+          echo "::endgroup::"
+          echo "::group::Tail of raw xcodebuild.log"
+          tail -n 150 xcodebuild.log || true
+          echo "::endgroup::"
 
       - name: Upload test results
         if: always()
