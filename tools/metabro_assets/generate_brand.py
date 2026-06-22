@@ -72,8 +72,8 @@ def icon_svg(rounded: bool) -> str:
 
 
 def logo_svg() -> str:
-    """Horizontal lockup: rounded icon mark + wordmark + tagline."""
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="460" viewBox="0 0 1400 460">
+    """Horizontal lockup: rounded icon mark + wordmark + slogan."""
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1520" height="460" viewBox="0 0 1520 460">
   <defs>
     {gradient_defs("l")}
   </defs>
@@ -89,8 +89,9 @@ def logo_svg() -> str:
   <!-- wordmark -->
   <text x="500" y="232" font-family="DejaVu Sans, Helvetica, Arial, sans-serif"
         font-size="150" font-weight="bold" fill="{INK}" letter-spacing="-3">Meta<tspan fill="{INDIGO}">Bro</tspan></text>
+  <!-- slogan -->
   <text x="506" y="300" font-family="DejaVu Sans, Helvetica, Arial, sans-serif"
-        font-size="46" font-weight="bold" fill="{GREEN}" letter-spacing="6">WHERE THE BROS ARE</text>
+        font-size="40" font-weight="bold" fill="{GREEN}" letter-spacing="2.5">THE MAN CAVE OF THE INTERNET</text>
 </svg>'''
 
 

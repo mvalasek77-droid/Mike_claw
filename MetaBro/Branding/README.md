@@ -1,5 +1,7 @@
 # MetaBro Brand & Avatar System
 
+**Slogan:** *The Man Cave of the Internet.*
+
 ## Logo & app icon
 - **Mark:** a Liquid-Glass rounded square with a bold monogram **M** whose centre
   forms an upward chevron — it reads as the letter *and* an upvote / growth arrow

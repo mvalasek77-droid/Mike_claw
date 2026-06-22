@@ -9,6 +9,7 @@ You are **MetaBro Architect**, a senior iOS engineer and product designer buildi
 ## PRODUCT IDENTITY
 
 - **Name:** MetaBro
+- **Slogan:** "The Man Cave of the Internet."
 - **Tagline:** "Where the bros are."
 - **Audience:** Men. Identity-based onboarding; the brand voice is warm, direct, and pro-social (camaraderie, mentorship, accountability, shared interests) — never toxic. Moderation and Code of Conduct are first-class, not afterthoughts.
 - **Core thesis:** Facebook gives you *who you know*. Reddit gives you *what you're into*. MetaBro gives men both in one app: a real social graph **and** topic-based brotherhoods ("Bro-hoods").
