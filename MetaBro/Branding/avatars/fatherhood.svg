@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1" gradientTransform="rotate(91 0.5 0.5)">
+      <stop offset="0" stop-color="#2EC4B6"/><stop offset="1" stop-color="#3A41C6"/>
+    </linearGradient>
+    <clipPath id="c"><rect width="512" height="512" rx="113"/></clipPath>
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="512" height="512" fill="url(#g)"/>
+    <circle cx="161" cy="146" r="126" fill="#FFFFFF" fill-opacity="0.27"/><circle cx="120" cy="274" r="121" fill="#FFFFFF" fill-opacity="0.12"/><circle cx="244" cy="315" r="152" fill="#FFFFFF" fill-opacity="0.27"/><circle cx="161" cy="130" r="75" fill="#FFFFFF" fill-opacity="0.10"/>
+    <ellipse cx="164" cy="123" rx="307" ry="215"
+             fill="#FFFFFF" fill-opacity="0.12"/>
+    <rect x="123" y="123" width="266" height="266" rx="82" fill="#FFFFFF" fill-opacity="0.16" stroke="#FFFFFF" stroke-opacity="0.35"/>
+    <text x="50%" y="50%" dy="53" text-anchor="middle"
+          font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-weight="bold"
+          font-size="153" fill="#FFFFFF">DM</text>
+  </g>
+</svg>
