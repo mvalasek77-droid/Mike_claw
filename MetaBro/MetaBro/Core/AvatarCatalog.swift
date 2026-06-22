@@ -7,7 +7,8 @@ import Foundation
 enum AvatarCatalog {
     /// Where the daily avatar PNGs are served from. Point this at a CDN in
     /// production; the repo's raw path is a sensible default for the demo.
-    static var base = URL(string:
+    /// `let` keeps it concurrency-safe under Swift 6 strict concurrency.
+    static let base = URL(string:
         "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/"
         + "claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/")!
 
