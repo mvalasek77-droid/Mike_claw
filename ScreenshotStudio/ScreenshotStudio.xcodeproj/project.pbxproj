@@ -158,6 +158,7 @@
 				4E4F004D38523464A9A3A552,
 				B735B0F9FD5957806E3BB681,
 				A1A646A39CDC14BECE68BEF5,
+				DA6B76800FC92BDBAE9F9436,
 				E38F0EECF1CB8BD9AB9FE8A8,
 				77FB986F9419AEAB0B6EDFE5,
 				0993AB4846F9D087106F4650,
@@ -262,6 +263,7 @@
 				07AAACDA62CC81777CD88A93 /* CanvasPreview.swift */,
 				93353C58A6A576992A322951 /* ExportSheet.swift */,
 				DED9119789070D951A89EC0A /* FrameChooserSheet.swift */,
+				B59CDADDD6A1B10B3EE3FC3E /* InteractiveCanvasPreview.swift */,
 				50A5D66C596B9A5F2F0B1B55 /* OverlayPanel.swift */,
 				BDB8ED0E5920B6DBE2B92509 /* ScreenshotCanvas.swift */,
 				337C9AE4E8784A35FB746EC4 /* StatusBarOverlay.swift */,
@@ -298,6 +300,7 @@
 		B3BF56CAE70AA4A9F4CD6583 = {isa = PBXBuildFile; fileRef = BBB5EEF1157715D338F9DA7C /* StudioView.swift */; };
 		B468042524AFCD43FB23EB3C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProjectsView.swift"; sourceTree = "<group>"; };
 		B48F3C69A56CEE7058175782 = {isa = PBXBuildFile; fileRef = 479DD1C48EA954D788FDF32D /* LiquidGlass.swift */; };
+		B59CDADDD6A1B10B3EE3FC3E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InteractiveCanvasPreview.swift"; sourceTree = "<group>"; };
 		B63D492B1D8B29FAEAAEBB72 = {isa = PBXBuildFile; fileRef = EB886E844652ABF004B83800 /* MainTabView.swift */; };
 		B682C07E0F017DC4194E589D = {isa = PBXBuildFile; fileRef = 71EEAD20256416E51AC43388 /* CanvasOverlay.swift */; };
 		B735B0F9FD5957806E3BB681 = {isa = PBXBuildFile; fileRef = 93353C58A6A576992A322951 /* ExportSheet.swift */; };
@@ -357,6 +360,7 @@
 				84B6C87CC097AACEB63FAD9F /* PrimaryButton.swift */,
 				C8B3F2B91D1F425414327A34 /* VideoPicker.swift */,
 			); path = "Components"; sourceTree = "<group>"; };
+		DA6B76800FC92BDBAE9F9436 = {isa = PBXBuildFile; fileRef = B59CDADDD6A1B10B3EE3FC3E /* InteractiveCanvasPreview.swift */; };
 		DBD1A808FE8C9E2D6AD4162A = {isa = PBXBuildFile; fileRef = 8CD0604108BDD0B32B31DA84 /* OnboardingView.swift */; };
 		DCFB30EAE59D6917CE906371 = {isa = XCBuildConfiguration; buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;

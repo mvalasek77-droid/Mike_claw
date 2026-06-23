@@ -64,3 +64,25 @@ jobs:
           name: TestResults
           path: ScreenshotStudio/TestResults.xcresult
           if-no-files-found: ignore
+
+      - name: Build app for download (iOS Simulator)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ScreenshotStudio.xcodeproj \
+            -scheme ScreenshotStudio \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+          APP=$(find build/Build/Products -name 'ScreenshotStudio.app' -type d | head -1)
+          echo "Built: $APP"
+          ditto -c -k --keepParent "$APP" ScreenshotStudio-Simulator.zip
+
+      - name: Upload simulator build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenshotStudio-Simulator-app
+          path: ScreenshotStudio/ScreenshotStudio-Simulator.zip
+          if-no-files-found: warn

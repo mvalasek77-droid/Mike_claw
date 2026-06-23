@@ -59,8 +59,6 @@ struct ASCGuideView: View {
                             }
                         }
                     }
-
-                    RoadmapCard()
                 }
                 .padding(20)
                 .padding(.bottom, 120)
@@ -109,46 +107,4 @@ struct ASCGuideView: View {
         "Match your backdrop to your app icon's palette for instant brand recognition.",
         "Landscape screenshots are great for games and iPad-first apps."
     ]
-}
-
-/// The public feature roadmap, surfaced in-app so the product feels alive.
-struct RoadmapCard: View {
-    @ScaledMetric(relativeTo: .caption2) private var s10: CGFloat = 10
-    @ScaledMetric(relativeTo: .subheadline) private var s14: CGFloat = 14
-    @ScaledMetric(relativeTo: .footnote) private var s12: CGFloat = 12
-
-    private let items: [(status: String, color: Color, title: String, detail: String)] = [
-        ("Shipped", LiquidGlass.success, "Frames, backdrops & captions", "Pixel-exact export to every App Store Connect size."),
-        ("Shipped", LiquidGlass.success, "Template gallery", "One-tap professional looks you can apply and tweak."),
-        ("Shipped", LiquidGlass.success, "Text & sticker overlays", "Drop annotations and badges anywhere on the canvas."),
-        ("Shipped", LiquidGlass.success, "Localized caption sets", "Manage every App Store language from one project."),
-        ("Shipped", LiquidGlass.success, "App Preview video frames", "Pull stills from a preview video straight into the studio."),
-        ("Next", LiquidGlass.accent, "Drag-to-place overlays", "Position annotations by dragging right on the canvas."),
-        ("Later", LiquidGlass.warning, "App Preview video export", "Render the full studio treatment over 15–30s previews.")
-    ]
-
-    var body: some View {
-        GlassCard(title: "Roadmap", icon: "map.fill", tint: LiquidGlass.accentSecondary) {
-            VStack(alignment: .leading, spacing: 14) {
-                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                    HStack(alignment: .top, spacing: 12) {
-                        Text(item.status)
-                            .font(.system(size: s10, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(item.color.opacity(0.85), in: Capsule())
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.title)
-                                .font(.system(size: s14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(LiquidGlass.primaryText)
-                            Text(item.detail)
-                                .font(.system(size: s12, weight: .regular, design: .rounded))
-                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                }
-            }
-        }
-    }
 }

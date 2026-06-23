@@ -233,13 +233,13 @@ struct StudioView: View {
     private var previewSection: some View {
         Group {
             if project.slides.isEmpty {
-                CanvasPreview(project: project, slide: nil)
+                InteractiveCanvasPreview(project: $project, slide: nil)
                     .padding(.horizontal, 44)
                     .padding(.vertical, 10)
             } else {
                 TabView(selection: $selectedSlideID) {
                     ForEach(project.slides) { slide in
-                        CanvasPreview(project: project, slide: slide)
+                        InteractiveCanvasPreview(project: $project, slide: slide)
                             .padding(.horizontal, 44)
                             .padding(.vertical, 10)
                             .tag(Optional(slide.id))
