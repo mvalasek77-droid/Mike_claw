@@ -8,6 +8,7 @@ struct ExportSheet: View {
     @EnvironmentObject private var entitlements: Entitlements
     @Environment(\.dismiss) private var dismiss
     @State private var showPaywall = false
+    @State private var showSceneNumbers = false
 
     private var safeName: String {
         let base = screenplay.title.isEmpty ? "Screenplay" : screenplay.title
@@ -38,6 +39,13 @@ struct ExportSheet: View {
                 } footer: {
                     if !entitlements.isPro {
                         Text("Final Draft and PDF export are Pro features.")
+                    }
+                }
+                if entitlements.isPro {
+                    Section {
+                        Toggle("Show scene numbers", isOn: $showSceneNumbers)
+                    } footer: {
+                        Text("Numbers scene headings in both margins, as in a shooting script.")
                     }
                 }
             }
@@ -96,11 +104,11 @@ struct ExportSheet: View {
     }
 
     private func fdxURL() -> URL? {
-        let text = FDXExporter.export(screenplay)
+        let text = FDXExporter.export(screenplay, showSceneNumbers: showSceneNumbers)
         return write(Data(text.utf8), ext: "fdx")
     }
 
     private func pdfURL() -> URL? {
-        write(PDFExporter.makePDF(for: screenplay), ext: "pdf")
+        write(PDFExporter.makePDF(for: screenplay, showSceneNumbers: showSceneNumbers), ext: "pdf")
     }
 }

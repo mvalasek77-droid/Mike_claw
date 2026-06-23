@@ -4,8 +4,9 @@ import Foundation
 /// format professional production needs, so round-tripping to Final Draft is
 /// table stakes for a "pro level" claim.
 enum FDXExporter {
-    static func export(_ screenplay: Screenplay) -> String {
+    static func export(_ screenplay: Screenplay, showSceneNumbers: Bool = false) -> String {
         var paragraphs = ""
+        var sceneNumber = 0
         for element in screenplay.elements {
             guard let fdxType = fdxType(for: element.type) else {
                 if element.type == .pageBreak {
@@ -14,11 +15,15 @@ enum FDXExporter {
                 continue
             }
             let text = escape(element.formattedText)
+            var attrs = ""
             if let color = element.revisionColor {
-                paragraphs += "    <Paragraph Type=\"\(fdxType)\" Revised=\"Yes\" RevisionColor=\"\(escape(color))\"><Text>\(text)</Text></Paragraph>\n"
-            } else {
-                paragraphs += "    <Paragraph Type=\"\(fdxType)\"><Text>\(text)</Text></Paragraph>\n"
+                attrs += " Revised=\"Yes\" RevisionColor=\"\(escape(color))\""
             }
+            if showSceneNumbers, element.type == .sceneHeading {
+                sceneNumber += 1
+                attrs += " Number=\"\(sceneNumber)\""
+            }
+            paragraphs += "    <Paragraph Type=\"\(fdxType)\"\(attrs)><Text>\(text)</Text></Paragraph>\n"
         }
 
         return """

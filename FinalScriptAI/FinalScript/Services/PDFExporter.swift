@@ -23,7 +23,7 @@ enum PDFExporter {
         }
     }
 
-    static func makePDF(for screenplay: Screenplay) -> Data {
+    static func makePDF(for screenplay: Screenplay, showSceneNumbers: Bool = false) -> Data {
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: pageSize))
         return renderer.pdfData { context in
             context.beginPage()
@@ -48,6 +48,7 @@ enum PDFExporter {
             }
 
             var currentCharacterName: String?
+            var sceneNumber = 0
 
             for element in screenplay.elements {
                 if element.type == .pageBreak {
@@ -82,6 +83,13 @@ enum PDFExporter {
 
                 y += leadingSpace(for: element.type)
                 let attrs = attributes(for: element.type)
+
+                if showSceneNumbers, element.type == .sceneHeading {
+                    sceneNumber += 1
+                    let label = "\(sceneNumber)"
+                    label.draw(at: CGPoint(x: 56, y: y), withAttributes: attrs)
+                    label.draw(at: CGPoint(x: pageSize.width - 66, y: y), withAttributes: attrs)
+                }
 
                 if element.type == .dialogue {
                     drawDialogue(wrapped, indent: indent, width: width, attrs: attrs,
