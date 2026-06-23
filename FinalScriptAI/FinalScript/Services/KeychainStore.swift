@@ -7,7 +7,7 @@ import Security
 /// iCloud Keychain and out of encrypted device backups. The key is never
 /// written to UserDefaults, never logged, and never committed.
 enum KeychainStore {
-    private static let service = "com.sceneflow.app.secrets"
+    private static let service = "com.finalscriptai.app.secrets"
 
     @discardableResult
     static func set(_ value: String, account: String) -> Bool {

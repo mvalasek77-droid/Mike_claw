@@ -1,7 +1,7 @@
 """
-Sceneflow AI proxy — OPTIONAL reference implementation.
+Final Script AI proxy — OPTIONAL reference implementation.
 
-You do NOT need this to use the app. By default Sceneflow uses on-device
+You do NOT need this to use the app. By default Final Script AI uses on-device
 bring-your-own-key (the user's Anthropic key in the iOS Keychain, calling the
 API directly). This proxy is only for the advanced case where you'd rather not
 have each user supply a key — e.g. distributing to many non-technical users.
@@ -29,7 +29,7 @@ import anthropic
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="Sceneflow AI Proxy")
+app = FastAPI(title="Final Script AI Proxy")
 
 # The SDK reads ANTHROPIC_API_KEY from the environment. Keep it server-side.
 client = anthropic.Anthropic()

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Sceneflow's design system — a focused, cinematic dark-first palette tuned
+/// Final Script AI's design system — a focused, cinematic dark-first palette tuned
 /// for long writing sessions. We lean on Apple's `.glassEffect()` (iOS 26+)
 /// where available and fall back to `.ultraThinMaterial` everywhere else so
 /// the product reads as one coherent family on iOS 17–25.

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The catalog of AI assists Sceneflow offers. Each case knows how to build
+/// The catalog of AI assists Final Script AI offers. Each case knows how to build
 /// the system prompt and the user prompt for its task from the surrounding
 /// screenplay context. Keeping prompt construction here (not scattered through
 /// the UI) means the writing behaviour is testable and consistent.

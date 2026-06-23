@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct SceneflowApp: App {
+struct FinalScriptApp: App {
     @StateObject private var store = ScreenplayStore()
     @StateObject private var ai = AIService()
     @StateObject private var entitlements = Entitlements()
@@ -55,7 +55,7 @@ struct SplashView: View {
                 .foregroundStyle(Palette.marqueeGradient)
                 .scaleEffect(appeared ? 1 : 0.7)
                 .opacity(appeared ? 1 : 0)
-            Text("Sceneflow")
+            Text("Final Script AI")
                 .font(.displayLarge)
                 .foregroundStyle(Palette.primaryText)
                 .opacity(appeared ? 1 : 0)

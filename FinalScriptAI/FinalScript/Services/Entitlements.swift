@@ -5,7 +5,7 @@ import Combine
 ///
 /// The product thesis: deliver Arc Studio Pro–class screenwriting *plus* AI for
 /// roughly a quarter of the price. Arc Studio Pro lists around $99/year; the
-/// reference tiers below land Sceneflow Pro at $24.99/year. Real billing is
+/// reference tiers below land Final Script AI Pro at $24.99/year. Real billing is
 /// wired through StoreKit 2 at ship time — this type models the entitlement and
 /// the upgrade surface so the UI is complete.
 struct PricingTier: Identifiable, Hashable {
@@ -20,10 +20,10 @@ struct PricingTier: Identifiable, Hashable {
 enum Pricing {
     /// Public comparison anchor. Arc Studio Pro ≈ $99/yr at time of writing.
     static let competitorAnnualUSD = 99.0
-    static let sceneflowAnnualUSD = 24.99
+    static let finalScriptAnnualUSD = 24.99
 
     static var savingsPercent: Int {
-        Int(((competitorAnnualUSD - sceneflowAnnualUSD) / competitorAnnualUSD * 100).rounded())
+        Int(((competitorAnnualUSD - finalScriptAnnualUSD) / competitorAnnualUSD * 100).rounded())
     }
 
     static let free = PricingTier(

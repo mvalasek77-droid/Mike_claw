@@ -1,4 +1,4 @@
-# Sceneflow
+# Final Script AI
 
 A pro-level iOS screenwriting app that matches what Arc Studio Pro does —
 industry-standard formatting, a beat board, structure templates, production
@@ -13,9 +13,9 @@ the ~$99/year that comparable pro screenwriting apps charge.
 
 ```bash
 brew install xcodegen          # once
-cd SceneflowAI
-xcodegen generate              # produces Sceneflow.xcodeproj
-open Sceneflow.xcodeproj        # build & run on an iOS 17 simulator/device
+cd FinalScriptAI
+xcodegen generate              # produces FinalScript.xcodeproj
+open FinalScript.xcodeproj      # build & run on an iOS 17 simulator/device
 ```
 
 No third-party Swift packages — everything is SwiftUI, Charts, PDFKit/UIKit.
@@ -55,7 +55,7 @@ Results can be copied or inserted straight into the script.
 ## Architecture
 
 ```
-Sceneflow/
+FinalScript/
   App/        app entry, root routing, tab bar
   Theme/      design system (palette, type, motion, haptics)
   Models/     Screenplay, Beat, StructureTemplate, Revision, CharacterProfile
@@ -97,7 +97,7 @@ models that support them, and the `refusal` stop reason is handled gracefully.
 
 ## Pricing
 
-| | Sceneflow Pro | Comparable pro apps |
+| | Final Script AI Pro | Comparable pro apps |
 |---|---|---|
 | Annual | **$24.99** | ~$99 |
 
@@ -112,4 +112,3 @@ StoreKit 2 at ship time; `Entitlements` models the gating today.
 - Add streaming to the AI proxy + app for token-by-token output.
 - Real-time collaboration (Arc Studio has it) would need a sync backend; the
   document model is already value-typed and Codable to support it.
-- Add an `AppIcon` 1024² asset before submission.

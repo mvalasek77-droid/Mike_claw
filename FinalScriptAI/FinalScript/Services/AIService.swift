@@ -232,7 +232,7 @@ final class AIService: ObservableObject {
             "\(tool.title)" with live AI.)
 
             This is placeholder text demonstrating where \(tool.title.lowercased()) \
-            output appears. Once your key is set, Sceneflow sends the relevant \
+            output appears. Once your key is set, Final Script AI sends the relevant \
             scene or script to Claude and shows a real result here.
             """
         }

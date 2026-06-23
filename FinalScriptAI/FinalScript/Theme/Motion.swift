@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Animation curves used across Sceneflow. Every curve collapses to a no-op
+/// Animation curves used across Final Script AI. Every curve collapses to a no-op
 /// when the user has "Reduce Motion" enabled, so transitions are
 /// one-source-of-truth and accessibility-correct.
 enum Motion {

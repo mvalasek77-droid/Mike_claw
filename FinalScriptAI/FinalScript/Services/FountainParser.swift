@@ -2,7 +2,7 @@ import Foundation
 
 /// Parser and serializer for [Fountain](https://fountain.io) — the plain-text
 /// markup that is the lingua franca for moving screenplays between apps.
-/// Supporting it means Sceneflow can import from and export to Final Draft,
+/// Supporting it means Final Script AI can import from and export to Final Draft,
 /// Highland, WriterDuet, Arc Studio and anything else that speaks Fountain.
 enum FountainParser {
 

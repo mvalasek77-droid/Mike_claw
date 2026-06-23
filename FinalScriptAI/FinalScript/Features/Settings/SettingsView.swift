@@ -21,7 +21,7 @@ struct SettingsView: View {
             Form {
                 Section {
                     if entitlements.isPro {
-                        Label("Sceneflow Pro — active", systemImage: "checkmark.seal.fill")
+                        Label("Final Script AI Pro — active", systemImage: "checkmark.seal.fill")
                             .foregroundStyle(Palette.success)
                     } else {
                         Button {
@@ -98,7 +98,7 @@ struct SettingsView: View {
 
                 Section("Pricing") {
                     HStack {
-                        Text("Sceneflow Pro")
+                        Text("Final Script AI Pro")
                         Spacer()
                         Text("\(Pricing.pro.priceText)/yr")
                             .foregroundStyle(Palette.secondaryText)

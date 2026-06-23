@@ -13,7 +13,7 @@ struct PaywallView: View {
                         .foregroundStyle(Palette.marqueeGradient)
                         .padding(.top, 12)
 
-                    Text("Sceneflow Pro")
+                    Text("Final Script AI Pro")
                         .font(.displayMedium)
                         .foregroundStyle(Palette.primaryText)
 
