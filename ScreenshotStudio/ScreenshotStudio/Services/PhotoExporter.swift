@@ -69,6 +69,27 @@ enum PhotoExporter {
         }
     }
 
+    /// Save a composited App Preview video file to Photos (same album logic).
+    static func saveVideo(_ url: URL) async throws {
+        try await ensureAuthorized()
+        let album = await albumForAdding()
+        do {
+            try await PHPhotoLibrary.shared().performChanges {
+                let request = PHAssetCreationRequest.forAsset()
+                request.addResource(with: .video, fileURL: url, options: nil)
+                if let album,
+                   let placeholder = request.placeholderForCreatedAsset,
+                   let albumChange = PHAssetCollectionChangeRequest(for: album) {
+                    albumChange.addAssets([placeholder] as NSArray)
+                }
+            }
+            BugLog.info("Photos", "Saved App Preview video.")
+        } catch {
+            BugLog.error("Photos", "Video save failed: \(error.localizedDescription)")
+            throw ExportError.writeFailed
+        }
+    }
+
     // MARK: - Authorization
 
     @discardableResult

@@ -25,6 +25,8 @@ struct StudioView: View {
     @State private var isExtractingVideo = false
     @State private var shareItem: ShareURLItem?
     @State private var paywallFeature: ProFeature?
+    @State private var videoIntent: VideoImportIntent = .frames
+    @State private var exportVideoItem: VideoExportItem?
     @State private var shareError: String?
     /// The project as it was opened, so closing without edits doesn't bump the
     /// modified date and silently reshuffle the gallery.
@@ -127,12 +129,15 @@ struct StudioView: View {
         .safeAreaInset(edge: .bottom) { bottomBar }
         .confirmationDialog("Add to set", isPresented: $showImportOptions, titleVisibility: .visible) {
             Button("Photos") { showPhotoPicker = true }
-            Button("App Preview video") {
-                if purchases.isPro { showVideoPicker = true } else { paywallFeature = .videoFrames }
+            Button("App Preview — add frames") {
+                if purchases.isPro { videoIntent = .frames; showVideoPicker = true } else { paywallFeature = .videoFrames }
+            }
+            Button("App Preview — styled video") {
+                if purchases.isPro { videoIntent = .export; showVideoPicker = true } else { paywallFeature = .videoFrames }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Import screenshots, or pull frames from an App Preview video.")
+            Text("Import screenshots, pull frames from a preview video, or export a styled App Preview video.")
         }
         .sheet(isPresented: $showPhotoPicker) {
             PhotoPicker { images in addImages(images) }
@@ -141,15 +146,25 @@ struct StudioView: View {
         .sheet(isPresented: $showVideoPicker) {
             VideoPicker { url in
                 guard let url else { return }
-                withAnimation(.easeInOut) { isExtractingVideo = true }
-                Task { @MainActor in
-                    let frames = await VideoFrameExtractor.frames(from: url)
-                    withAnimation(.easeInOut) { isExtractingVideo = false }
-                    frameBatch = FrameBatch(images: frames)
-                    try? FileManager.default.removeItem(at: url)
+                switch videoIntent {
+                case .frames:
+                    withAnimation(.easeInOut) { isExtractingVideo = true }
+                    Task { @MainActor in
+                        let frames = await VideoFrameExtractor.frames(from: url)
+                        withAnimation(.easeInOut) { isExtractingVideo = false }
+                        frameBatch = FrameBatch(images: frames)
+                        try? FileManager.default.removeItem(at: url)
+                    }
+                case .export:
+                    exportVideoItem = VideoExportItem(url: url)
                 }
             }
             .ignoresSafeArea()
+        }
+        .sheet(item: $exportVideoItem) { item in
+            VideoExportSheet(sourceURL: item.url, project: project)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(item: $frameBatch) { batch in
             FrameChooserSheet(frames: batch.images) { picked in addImages(picked) }
@@ -514,6 +529,15 @@ struct StudioView: View {
 
 /// Identifiable wrapper so a single shared file URL can drive `.sheet(item:)`.
 private struct ShareURLItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+/// Whether a picked video should become slide frames or a styled export.
+private enum VideoImportIntent { case frames, export }
+
+/// Identifiable wrapper so a picked video URL can drive the export sheet.
+private struct VideoExportItem: Identifiable {
     let id = UUID()
     let url: URL
 }
