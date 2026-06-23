@@ -61,11 +61,14 @@ struct ProfileView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Tokens.Spacing.sm) {
                     ForEach(communities) { c in
-                        Text(c.name)
-                            .font(Tokens.Typography.caption.weight(.semibold))
-                            .padding(.horizontal, Tokens.Spacing.md)
-                            .padding(.vertical, Tokens.Spacing.sm)
-                            .liquidGlass(radius: Tokens.Radius.pill)
+                        HStack(spacing: Tokens.Spacing.sm) {
+                            CommunityAvatar(community: c, size: 28)
+                            Text(c.name)
+                                .font(Tokens.Typography.caption.weight(.semibold))
+                        }
+                        .padding(.horizontal, Tokens.Spacing.md)
+                        .padding(.vertical, Tokens.Spacing.sm)
+                        .liquidGlass(radius: Tokens.Radius.pill)
                     }
                 }
             }
@@ -96,11 +99,7 @@ private struct ProfileHeader: View {
 
     var body: some View {
         VStack(spacing: Tokens.Spacing.md) {
-            Circle()
-                .fill(Tokens.Color.accent.opacity(0.25))
-                .frame(width: 84, height: 84)
-                .overlay(Text(String(profile.user.displayName.prefix(1)))
-                    .font(.largeTitle.bold()))
+            UserAvatar(user: profile.user, size: 84)
 
             VStack(spacing: 2) {
                 Text(profile.user.displayName).font(Tokens.Typography.title)

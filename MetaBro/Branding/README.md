@@ -37,7 +37,17 @@ gallery subtly regenerates **once per day**.
 
 ### Consuming in the app
 `AvatarCatalog` (in `MetaBro/Core`) maps a user handle / community slug to its
-published avatar URL. Feed those into SwiftUI `AsyncImage` in the post, profile,
-story, and chat surfaces (next step) — the cron refreshes the images daily, so
-the app picks up new art with no release. Point `AvatarCatalog.base` at a CDN in
-production.
+published avatar URL. The `UserAvatar` and `CommunityAvatar` SwiftUI components
+load these via `AsyncImage` (with a tinted-monogram fallback) and are wired into
+the **feed posts, profile, stories, and conversation list**. The cron refreshes
+the images daily, so the app picks up new art with no release. Point
+`AvatarCatalog.base` at a CDN in production.
+
+## Daily content feed
+`tools/metabro_assets/generate_content.py` generates a fresh, date-seeded feed of
+posts each day in the app's wire format (`FeedPageDTO` / `PostDTO`), with every
+author and Bro-hood carrying its daily avatar URL. Output:
+`content/feed-latest.json` (+ a dated copy). `LiveFeedService` can serve this
+directly — point the API base at the published `content/` path (or a CDN) and the
+feed updates daily with no release. The daily workflow regenerates avatars **and**
+content together.

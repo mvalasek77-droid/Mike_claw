@@ -1,8 +1,8 @@
-name: MetaBro Avatars (daily)
+name: MetaBro Daily Content
 
-# Regenerates every user + Bro-hood avatar each day. The generator seeds on the
-# current date, so the whole gallery subtly morphs daily. Commits the refreshed
-# PNGs back to the branch when they change.
+# Regenerates every user + Bro-hood avatar AND a fresh feed of posts each day.
+# Generators seed on the current date, so avatars morph and content rotates
+# automatically. Commits the refreshed assets back to the branch when they change.
 on:
   schedule:
     - cron: "0 6 * * *"   # 06:00 UTC daily
@@ -29,11 +29,12 @@ jobs:
       - name: Install renderer
         run: pip install cairosvg
 
-      - name: Regenerate avatars + previews
+      - name: Regenerate avatars, previews + content
         working-directory: tools/metabro_assets
         run: |
           python generate_avatars.py
           python generate_gallery.py
+          python generate_content.py
         # To use a real image model instead of the procedural backend, set repo
         # secrets and pass them through here, e.g.:
         #   env:
@@ -44,10 +45,11 @@ jobs:
         run: |
           git config user.name "metabro-bot"
           git config user.email "metabro-bot@users.noreply.github.com"
-          if [ -n "$(git status --porcelain MetaBro/Branding/avatars MetaBro/Branding/previews)" ]; then
-            git add MetaBro/Branding/avatars MetaBro/Branding/previews
-            git commit -m "chore(avatars): daily refresh ($(date -u +%Y-%m-%d))"
+          paths="MetaBro/Branding/avatars MetaBro/Branding/previews MetaBro/Branding/content"
+          if [ -n "$(git status --porcelain $paths)" ]; then
+            git add $paths
+            git commit -m "chore(content): daily refresh ($(date -u +%Y-%m-%d))"
             git push origin HEAD:${GITHUB_REF_NAME}
           else
-            echo "No avatar changes today."
+            echo "No content changes today."
           fi

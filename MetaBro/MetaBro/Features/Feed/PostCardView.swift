@@ -67,10 +67,15 @@ struct PostCardView: View {
 
     private var header: some View {
         HStack(spacing: Tokens.Spacing.sm) {
-            Circle()
-                .fill(Tokens.Color.accent.opacity(0.25))
-                .frame(width: 36, height: 36)
-                .overlay(Text(initials).font(.caption.bold()))
+            // Community posts lead with the Bro-hood icon, social posts with the
+            // author's avatar — both AI-generated and refreshed daily.
+            Group {
+                if let community = post.community {
+                    CommunityAvatar(community: community, size: 36)
+                } else {
+                    UserAvatar(user: post.author, size: 36)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 switch post.origin {
@@ -140,11 +145,6 @@ struct PostCardView: View {
                 .foregroundStyle(Tokens.Color.textSecondary)
         }
         .accessibilityLabel("Give award")
-    }
-
-    private var initials: String {
-        let source = post.origin == .community ? post.author.handle : post.author.displayName
-        return String(source.replacingOccurrences(of: "@", with: "").prefix(1)).uppercased()
     }
 }
 

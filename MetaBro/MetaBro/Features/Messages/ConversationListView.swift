@@ -91,12 +91,19 @@ private struct ConversationRow: View {
     }
 
     private var avatar: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: Tokens.Radius.sm, style: .continuous)
-                .fill(Tokens.Color.accent.opacity(0.25))
-                .frame(width: 48, height: 48)
-            Image(systemName: conversation.isGroup ? "person.3.fill" : "person.fill")
-                .foregroundStyle(Tokens.Color.accent)
+        Group {
+            // 1:1 chats show the other bro's avatar; groups keep a glyph.
+            if !conversation.isGroup, let other = conversation.participants.first {
+                UserAvatar(user: other, size: 48)
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: Tokens.Radius.sm, style: .continuous)
+                        .fill(Tokens.Color.accent.opacity(0.25))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: "person.3.fill")
+                        .foregroundStyle(Tokens.Color.accent)
+                }
+            }
         }
     }
 

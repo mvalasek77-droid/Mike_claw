@@ -61,12 +61,7 @@ struct StoriesStrip: View {
                     lineWidth: story.seen ? 2 : 3
                 )
                 .frame(width: 64, height: 64)
-                .overlay {
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .padding(5)
-                        .overlay(Text(initials(story.author)).font(.headline.bold()))
-                }
+                .overlay { UserAvatar(user: story.author, size: 54) }
             Text(story.author.displayName)
                 .font(.caption2)
                 .foregroundStyle(Tokens.Color.textSecondary)
@@ -74,9 +69,5 @@ struct StoriesStrip: View {
                 .frame(maxWidth: 64)
         }
         .accessibilityLabel("\(story.author.displayName)'s story\(story.seen ? ", seen" : "")")
-    }
-
-    private func initials(_ user: User) -> String {
-        String(user.displayName.prefix(1)).uppercased()
     }
 }
