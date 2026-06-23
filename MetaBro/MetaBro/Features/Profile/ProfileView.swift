@@ -45,6 +45,9 @@ struct ProfileView: View {
                         joinedStrip(profile.joinedCommunities)
                     }
                     postsSection(profile.posts)
+                    SloganView(showsMark: false)
+                        .padding(.top, Tokens.Spacing.xl)
+                        .frame(maxWidth: .infinity)
                 }
                 .padding(Tokens.Spacing.lg)
             }

@@ -45,8 +45,11 @@ struct FeedView: View {
     private var content: some View {
         switch model.state {
         case .loading:
-            ProgressView("Loading the bros…")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: Tokens.Spacing.lg) {
+                SloganView()
+                ProgressView()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
         case .empty:
             ContentUnavailableView(
