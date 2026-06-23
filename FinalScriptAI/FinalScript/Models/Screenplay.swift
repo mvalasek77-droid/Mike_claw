@@ -137,6 +137,13 @@ struct Screenplay: Identifiable, Codable, Hashable {
     var genre: String
     var createdAt: Date
     var modifiedAt: Date
+    /// Element IDs that started each page the last time pages were locked
+    /// (Final Draft's "Lock Pages"). `nil` means pages have never been
+    /// locked. Export uses this to keep locked pages numbered plainly and
+    /// letter-suffix ("12A") any pages inserted afterward, instead of
+    /// renumbering — the production convention a crew shooting from paper
+    /// depends on.
+    var lockedPageStarts: [UUID]?
 
     init(id: UUID = UUID(),
          title: String,
@@ -148,7 +155,8 @@ struct Screenplay: Identifiable, Codable, Hashable {
          logline: String = "",
          genre: String = "",
          createdAt: Date = .now,
-         modifiedAt: Date = .now) {
+         modifiedAt: Date = .now,
+         lockedPageStarts: [UUID]? = nil) {
         self.id = id
         self.title = title
         self.titlePage = titlePage
@@ -160,6 +168,7 @@ struct Screenplay: Identifiable, Codable, Hashable {
         self.genre = genre
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
+        self.lockedPageStarts = lockedPageStarts
     }
 
     /// All distinct character cue names, in first-appearance order. Powers the

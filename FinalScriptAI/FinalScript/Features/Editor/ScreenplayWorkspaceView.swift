@@ -15,6 +15,7 @@ struct ScreenplayWorkspaceView: View {
         case editor = "Script"
         case board = "Board"
         case outline = "Outline"
+        case doctor = "Doctor"
         case stats = "Stats"
         case revisions = "Revisions"
         var id: String { rawValue }
@@ -23,6 +24,7 @@ struct ScreenplayWorkspaceView: View {
             case .editor: return "doc.plaintext"
             case .board: return "rectangle.grid.2x2"
             case .outline: return "list.bullet.indent"
+            case .doctor: return "stethoscope"
             case .stats: return "chart.bar.xaxis"
             case .revisions: return "paintpalette"
             }
@@ -69,6 +71,7 @@ struct ScreenplayWorkspaceView: View {
             case .editor: ScreenplayEditorView(screenplay: binding)
             case .board: BeatBoardView(screenplay: binding)
             case .outline: OutlineView(screenplay: binding)
+            case .doctor: ScriptDoctorView(screenplay: binding.wrappedValue)
             case .stats: StatisticsView(screenplay: binding.wrappedValue)
             case .revisions: RevisionsView(screenplay: binding)
             }

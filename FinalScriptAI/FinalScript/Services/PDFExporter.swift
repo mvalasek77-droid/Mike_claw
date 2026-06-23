@@ -1,5 +1,11 @@
 import UIKit
 
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
+
 /// Renders a screenplay to a properly laid-out US-Letter PDF in 12pt Courier
 /// with industry-standard margins and per-element indentation. This is what a
 /// writer hands to readers and what the share sheet / Files export produces.
@@ -36,12 +42,36 @@ enum PDFExporter {
 
             // Script page numbers (top-right, "N.") start counting from body
             // page 1; that first page stays unnumbered, matching Final
-            // Draft's default — only page 2 onward shows a number.
-            var scriptPageNumber = 1
-            func beginContentPage() {
+            // Draft's default — only page 2 onward shows a number. If pages
+            // have been locked, a page that doesn't line up with the locked
+            // boundary it's replacing is a page *inserted since the lock*,
+            // and gets the prior locked number plus a letter ("12A") instead
+            // of renumbering everything after it — the real "Lock Pages"
+            // convention a crew shooting from paper depends on.
+            let locked = screenplay.lockedPageStarts ?? []
+            var lockedIdx = locked.isEmpty ? 0 : 1
+            var lastPlainNumber = 1
+            var letterCounter = 0
+
+            func pageLabel(for elementID: UUID) -> String {
+                if lockedIdx < locked.count, locked[lockedIdx] == elementID {
+                    lockedIdx += 1
+                    lastPlainNumber += 1
+                    letterCounter = 0
+                    return "\(lastPlainNumber)."
+                } else if lockedIdx < locked.count {
+                    letterCounter += 1
+                    let letter = Character(UnicodeScalar(64 + letterCounter) ?? "A")
+                    return "\(lastPlainNumber)\(letter)."
+                } else {
+                    lastPlainNumber += 1
+                    return "\(lastPlainNumber)."
+                }
+            }
+
+            func beginContentPage(startElementID: UUID) {
                 context.beginPage()
-                scriptPageNumber += 1
-                let label = "\(scriptPageNumber)."
+                let label = pageLabel(for: startElementID)
                 let labelWidth = CGFloat(label.count) * charWidth
                 label.draw(at: CGPoint(x: pageSize.width - 72 - labelWidth, y: 36),
                            withAttributes: attributes(for: .action))
@@ -50,9 +80,11 @@ enum PDFExporter {
             var currentCharacterName: String?
             var sceneNumber = 0
 
-            for element in screenplay.elements {
+            for i in screenplay.elements.indices {
+                let element = screenplay.elements[i]
                 if element.type == .pageBreak {
-                    beginContentPage()
+                    let next = screenplay.elements[safe: i + 1]?.id ?? element.id
+                    beginContentPage(startElementID: next)
                     y = topMargin
                     continue
                 }
@@ -73,11 +105,11 @@ enum PDFExporter {
                 if element.type == .character {
                     // Avoid orphaning a cue with no dialogue line beneath it.
                     if y + blockHeight + lineHeight > pageSize.height - bottomMargin {
-                        beginContentPage()
+                        beginContentPage(startElementID: element.id)
                         y = topMargin
                     }
                 } else if element.type != .dialogue, y + blockHeight > pageSize.height - bottomMargin {
-                    beginContentPage()
+                    beginContentPage(startElementID: element.id)
                     y = topMargin
                 }
 
@@ -93,7 +125,8 @@ enum PDFExporter {
 
                 if element.type == .dialogue {
                     drawDialogue(wrapped, indent: indent, width: width, attrs: attrs,
-                                 characterName: currentCharacterName, beginNewPage: beginContentPage, y: &y)
+                                 characterName: currentCharacterName, elementID: element.id,
+                                 beginNewPage: beginContentPage, y: &y)
                     continue
                 }
 
@@ -121,7 +154,7 @@ enum PDFExporter {
     /// off the bottom of the page or jump blindly to the next one.
     private static func drawDialogue(_ wrapped: [String], indent: CGFloat, width: CGFloat,
                                      attrs: [NSAttributedString.Key: Any], characterName: String?,
-                                     beginNewPage: () -> Void, y: inout CGFloat) {
+                                     elementID: UUID, beginNewPage: (UUID) -> Void, y: inout CGFloat) {
         let (characterIndent, _) = layout(for: .character)
         let dialogueAttrs = attributes(for: .dialogue)
         let characterAttrs = attributes(for: .character)
@@ -132,7 +165,7 @@ enum PDFExporter {
                 let moreWidth = CGFloat(more.count) * charWidth
                 more.draw(at: CGPoint(x: indent + (width - moreWidth) / 2, y: y), withAttributes: dialogueAttrs)
 
-                beginNewPage()
+                beginNewPage(elementID)
                 y = topMargin + lineHeight
                 if let name = characterName, !name.isEmpty {
                     "\(name) (CONT'D)".draw(at: CGPoint(x: characterIndent, y: y), withAttributes: characterAttrs)
@@ -142,6 +175,67 @@ enum PDFExporter {
             lineText.draw(at: CGPoint(x: indent, y: y), withAttributes: attrs)
             y += lineHeight
         }
+    }
+
+    // MARK: - Lock Pages
+
+    /// Computes the element ID that starts each body page at the current
+    /// pagination, for "Lock Pages": a snapshot `Screenplay.lockedPageStarts`
+    /// can be diffed against later to tell which pages are unchanged (keep
+    /// their plain number) vs. inserted since the lock (get letter suffixes)
+    /// — mirrors the same page-break decisions `makePDF` makes, without
+    /// drawing anything.
+    static func lockPageStarts(for screenplay: Screenplay) -> [UUID] {
+        var starts: [UUID] = []
+        var y = topMargin
+        var pageHasStarted = false
+
+        func newPage(_ id: UUID) {
+            starts.append(id)
+            y = topMargin
+        }
+
+        for i in screenplay.elements.indices {
+            let element = screenplay.elements[i]
+            if element.type == .pageBreak {
+                let next = screenplay.elements[safe: i + 1]?.id ?? element.id
+                newPage(next)
+                pageHasStarted = true
+                continue
+            }
+            if element.type == .section || element.type == .synopsis { continue }
+
+            let (_, width) = layout(for: element.type)
+            let charsPerLine = max(1, Int(width / charWidth))
+            let wrapped = wrap(element.formattedText, charsPerLine: charsPerLine)
+            let blockHeight = CGFloat(wrapped.count) * lineHeight + leadingSpace(for: element.type)
+
+            if !pageHasStarted {
+                starts.append(element.id)
+                pageHasStarted = true
+            } else if element.type == .character {
+                if y + blockHeight + lineHeight > pageSize.height - bottomMargin {
+                    newPage(element.id)
+                }
+            } else if element.type != .dialogue, y + blockHeight > pageSize.height - bottomMargin {
+                newPage(element.id)
+            }
+
+            y += leadingSpace(for: element.type)
+
+            if element.type == .dialogue {
+                for _ in wrapped {
+                    if y + lineHeight > pageSize.height - bottomMargin {
+                        newPage(element.id)
+                        y = topMargin + lineHeight
+                    }
+                    y += lineHeight
+                }
+                continue
+            }
+            y += CGFloat(wrapped.count) * lineHeight
+        }
+        return starts
     }
 
     private static func drawTitlePageIfNeeded(_ screenplay: Screenplay,

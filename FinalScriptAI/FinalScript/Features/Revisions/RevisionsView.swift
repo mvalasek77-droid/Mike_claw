@@ -33,6 +33,27 @@ struct RevisionsView: View {
                     startNextRevision()
                 }
 
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: isLocked ? "lock.fill" : "lock.open")
+                                .foregroundStyle(isLocked ? Palette.success : Palette.secondaryText)
+                            Text(isLocked ? "Pages locked" : "Pages unlocked")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Palette.primaryText)
+                        }
+                        Text(isLocked
+                             ? "New pages added since the lock are numbered with a letter (12A, 12B…) instead of renumbering the rest of the script — the production convention a crew shooting from paper depends on."
+                             : "Locking pages freezes today's page numbers. Anything you add afterward gets inserted as a lettered page instead of shifting every page after it.")
+                            .font(.caption)
+                            .foregroundStyle(Palette.secondaryText)
+                        Button(isLocked ? "Unlock pages" : "Lock pages") {
+                            isLocked ? unlockPages() : lockPages()
+                        }
+                        .font(.subheadline.weight(.semibold))
+                    }
+                }
+
                 if markedCount > 0 {
                     Button(role: .destructive) {
                         for i in screenplay.elements.indices {
@@ -80,10 +101,30 @@ struct RevisionsView: View {
         screenplay.elements.filter { $0.revisionColor != nil }.count
     }
 
+    private var isLocked: Bool {
+        screenplay.lockedPageStarts != nil
+    }
+
     private func startNextRevision() {
         let next = RevisionPalette.next(after: currentColor)
         let revision = Revision(name: "\(next) Revision", colorName: next)
         screenplay.revisions.append(revision)
         Haptics.success()
+    }
+
+    private func lockPages() {
+        screenplay.lockedPageStarts = PDFExporter.lockPageStarts(for: screenplay)
+        if let lastIndex = screenplay.revisions.indices.last {
+            screenplay.revisions[lastIndex].locked = true
+        }
+        Haptics.success()
+    }
+
+    private func unlockPages() {
+        screenplay.lockedPageStarts = nil
+        if let lastIndex = screenplay.revisions.indices.last {
+            screenplay.revisions[lastIndex].locked = false
+        }
+        Haptics.tap()
     }
 }
