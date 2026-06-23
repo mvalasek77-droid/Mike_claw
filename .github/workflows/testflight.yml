@@ -1,0 +1,114 @@
+name: TestFlight
+
+# Builds a signed Screenshot Studio archive and uploads it to TestFlight, so a
+# tester can install it on a real device. Runs ONLY when triggered manually
+# (workflow_dispatch), so it never interferes with the build/test CI.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   APPLE_TEAM_ID   – your 10-character Apple Developer Team ID
+#   ASC_KEY_ID      – App Store Connect API Key ID
+#   ASC_ISSUER_ID   – App Store Connect API Key Issuer ID
+#   ASC_KEY_P8      – the full contents of the AuthKey_XXXXXX.p8 file
+#
+# Prerequisites in App Store Connect:
+#   • An app record whose bundle ID matches PRODUCT_BUNDLE_IDENTIFIER
+#     (com.screenshotstudio.app — change it in project.yml if you use your own).
+#   • The API key role must be App Manager or Admin (to upload builds).
+on:
+  workflow_dispatch:
+    inputs:
+      whats_new:
+        description: "What to test (optional note)"
+        required: false
+
+jobs:
+  upload:
+    name: Archive & upload to TestFlight
+    runs-on: macos-14
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: ScreenshotStudio
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required secrets are set
+        run: |
+          missing=0
+          for v in APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
+            if [ -z "${!v}" ]; then echo "::error::Missing secret: $v"; missing=1; fi
+          done
+          [ "$missing" = "0" ] || { echo "Add the secrets listed in the workflow header, then re-run."; exit 1; }
+
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      - name: Regenerate project from sources
+        run: python3 Scripts/generate_xcodeproj.py
+
+      - name: Install App Store Connect API key
+        run: |
+          mkdir -p "$HOME/private_keys"
+          printf '%s\n' "$ASC_KEY_P8" > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Write export options
+        run: |
+          cat > ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Archive (automatic cloud signing)
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project ScreenshotStudio.xcodeproj \
+            -scheme ScreenshotStudio \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/ScreenshotStudio.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }}
+
+      - name: Export & upload to TestFlight
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath build/ScreenshotStudio.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Upload .ipa artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenshotStudio-ipa
+          path: ScreenshotStudio/build/export/*.ipa
+          if-no-files-found: ignore
+
+      - name: Clean up API key
+        if: always()
+        run: rm -f "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
