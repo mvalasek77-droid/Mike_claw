@@ -48,6 +48,7 @@ enum Pricing {
         cadence: "per year",
         blurb: "Pro features and unlimited AI — about a quarter of Arc Studio Pro.",
         highlights: [
+            "Live AI coach trained on the craft of the canon",
             "Unlimited AI co-writing & coverage",
             "Final Draft (.fdx) & PDF export",
             "Production revisions & locked pages",

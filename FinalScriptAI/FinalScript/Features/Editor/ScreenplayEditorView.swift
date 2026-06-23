@@ -8,8 +8,12 @@ import SwiftUI
 /// changes the current element's type and offers context-aware autocomplete.
 struct ScreenplayEditorView: View {
     @Binding var screenplay: Screenplay
+    @EnvironmentObject private var ai: AIService
+    @EnvironmentObject private var entitlements: Entitlements
     @FocusState private var focusedID: UUID?
     @State private var focusMode = false
+    @StateObject private var coach = LiveCoachController()
+    @State private var showPaywall = false
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -22,6 +26,7 @@ struct ScreenplayEditorView: View {
                             .focused($focusedID, equals: element.id)
                             .onChange(of: element.text) { _, newValue in
                                 handleTextChange(for: element.id, newValue: newValue)
+                                triggerCoach(for: element.id)
                             }
                             .contextMenu { rowMenu(for: element.id) }
                     }
@@ -52,10 +57,19 @@ struct ScreenplayEditorView: View {
                     )
                 }
             }
+            .safeAreaInset(edge: .top) {
+                if coach.enabled { liveCoachBanner }
+            }
+            .animation(.easeInOut(duration: 0.25), value: coach.enabled)
+            .animation(.easeInOut(duration: 0.25), value: coach.suggestions)
         }
         .overlay(alignment: .bottomTrailing) {
             if focusedID == nil { newSceneButton }
         }
+        .overlay(alignment: .bottomLeading) {
+            if focusedID == nil { liveCoachToggle }
+        }
+        .sheet(isPresented: $showPaywall) { PaywallView() }
     }
 
     // MARK: - Subviews
@@ -72,6 +86,106 @@ struct ScreenplayEditorView: View {
                 .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
         }
         .padding(20)
+    }
+
+    // MARK: - Live coach
+
+    private var liveCoachToggle: some View {
+        Button { toggleCoach() } label: {
+            Image(systemName: coach.enabled ? "wand.and.stars" : "wand.and.stars.inverse")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(coach.enabled ? .black : Palette.accent)
+                .frame(width: 44, height: 44)
+                .background {
+                    if coach.enabled {
+                        Circle().fill(Palette.marqueeGradient)
+                    } else {
+                        Circle().fill(Color.black.opacity(0.25))
+                            .overlay(Circle().stroke(Palette.accent.opacity(0.5), lineWidth: 1))
+                    }
+                }
+                .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
+        }
+        .padding(.leading, 20)
+        .padding(.bottom, 20)
+        .accessibilityLabel(coach.enabled ? "Turn off live coach" : "Turn on live coach")
+    }
+
+    @ViewBuilder
+    private var liveCoachBanner: some View {
+        GlassCard(tier: .raised, padding: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "wand.and.stars").foregroundStyle(Palette.accent)
+                    Text("LIVE COACH").font(.labelSmall).foregroundStyle(Palette.accent)
+                    Spacer()
+                    if coach.isThinking {
+                        ProgressView().scaleEffect(0.7)
+                    }
+                    Button { toggleCoach() } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.secondaryText)
+                    }
+                }
+
+                if coach.needsKey {
+                    Text("Add your Anthropic API key in Settings to get live notes.")
+                        .font(.caption).foregroundStyle(Palette.secondaryText)
+                } else if coach.suggestions.isEmpty {
+                    Text(coach.isThinking ? "Reading the scene…" : "Keep writing — notes appear as you go.")
+                        .font(.caption).foregroundStyle(Palette.secondaryText)
+                } else {
+                    ForEach(coach.suggestions) { suggestion in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: suggestion.lens.symbol)
+                                .font(.caption)
+                                .foregroundStyle(suggestion.lens.color)
+                                .frame(width: 16)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(suggestion.lens.title.uppercased())
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(suggestion.lens.color)
+                                Text(suggestion.text)
+                                    .font(.caption)
+                                    .foregroundStyle(Palette.primaryText)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private func toggleCoach() {
+        if coach.enabled {
+            coach.turnOff()
+        } else {
+            guard entitlements.isPro else { showPaywall = true; return }
+            coach.enabled = true
+            triggerCoach(for: focusedID ?? screenplay.elements.last?.id)
+        }
+        Haptics.tap()
+    }
+
+    /// Asks the coach to look at whatever scene the writer is currently in.
+    private func triggerCoach(for id: UUID?) {
+        guard coach.enabled, let id else { return }
+        coach.analyze(scene: currentScene(around: id), screenplay: screenplay,
+                      ai: ai, entitlements: entitlements)
+    }
+
+    /// The contiguous run of elements from the scene heading at or above `id`
+    /// down to (but not including) the next scene heading — the unit the coach
+    /// reasons about.
+    private func currentScene(around id: UUID) -> [ScreenplayElement] {
+        guard let idx = index(of: id) else { return [] }
+        var start = idx
+        while start > 0 && screenplay.elements[start].type != .sceneHeading { start -= 1 }
+        var end = idx + 1
+        while end < screenplay.elements.count && screenplay.elements[end].type != .sceneHeading { end += 1 }
+        return Array(screenplay.elements[start..<end])
     }
 
     @ViewBuilder

@@ -91,7 +91,12 @@ enum AITool: String, CaseIterable, Identifiable {
     }
 
     func systemPrompt(for screenplay: Screenplay) -> String {
-        var prompt = AITool.shared + "\n\n"
+        // Ground every tool on the canon-derived craft rubric so all assistance
+        // reasons from the same standard the great scripts set, with structural
+        // benchmarks resolved to this script's actual page count.
+        var prompt = AITool.shared + "\n\n" + CraftKnowledge.craftSystem + "\n\n"
+        let briefing = CraftKnowledge.structureBriefing(forPageCount: PaginationEngine.pageCount(screenplay.elements))
+        if !briefing.isEmpty { prompt += briefing + "\n\n" }
         if !screenplay.title.isEmpty { prompt += "Project: \(screenplay.title)\n" }
         if !screenplay.genre.isEmpty { prompt += "Genre: \(screenplay.genre)\n" }
         if !screenplay.logline.isEmpty { prompt += "Logline: \(screenplay.logline)\n" }

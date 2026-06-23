@@ -95,6 +95,49 @@ final class AIService: ObservableObject {
         }
     }
 
+    /// A lightweight, canon-grounded read of the scene the writer is actively
+    /// drafting, used by the live coach. Returns parsed notes across the five
+    /// craft lenses. Kept small (low token budget) because it fires repeatedly
+    /// as the writer pauses; throws rather than falling back to demo text so the
+    /// coach can simply stay quiet when there's no live result.
+    func liveCoach(scene: String, screenplay: Screenplay) async throws -> [LiveSuggestion] {
+        guard isConfigured else { throw AIError.notConfigured }
+
+        var system = CraftKnowledge.craftSystem + "\n\n" + """
+        You are looking over the writer's shoulder as they draft, giving terse \
+        live notes — not a full rewrite. Raise a lens only when there is a real, \
+        actionable observation; fewer strong notes beat filler.
+        """
+        let briefing = CraftKnowledge.structureBriefing(forPageCount: PaginationEngine.pageCount(screenplay.elements))
+        if !briefing.isEmpty { system += "\n\n" + briefing }
+
+        var header = ""
+        if !screenplay.genre.isEmpty { header += "Genre: \(screenplay.genre)\n" }
+        if !screenplay.logline.isEmpty { header += "Logline: \(screenplay.logline)\n" }
+
+        let user = """
+        \(header)Scene currently being drafted:
+
+        \(scene)
+
+        Give at most 4 notes to strengthen this scene as it stands. Each note \
+        must come from exactly ONE lens: STRUCTURE, CHARACTER, PACE, DIALOGUE, \
+        or TONE. One line each, 22 words or fewer, concrete and specific to \
+        these pages. No preamble, no closing remark. Output strictly one note \
+        per line in this format:
+        LENS: note
+        """
+
+        let raw: String
+        switch configuration.mode {
+        case .onDeviceKey:
+            raw = try await sendDirect(system: system, user: user, maxTokens: 500)
+        case .proxy:
+            raw = try await sendProxy(system: system, user: user, maxTokens: 500)
+        }
+        return LiveSuggestion.parse(raw)
+    }
+
     // MARK: - Direct (BYOK) call
 
     private func sendDirect(system: String, user: String, maxTokens: Int) async throws -> String {
