@@ -23,6 +23,8 @@ struct StudioView: View {
     @State private var showVideoPicker = false
     @State private var frameBatch: FrameBatch?
     @State private var isExtractingVideo = false
+    @State private var extractionTask: Task<Void, Never>?
+    @State private var videoDurationWarning: String?
     @State private var shareItem: ShareURLItem?
     @State private var paywallFeature: ProFeature?
     @State private var shareError: String?
@@ -110,7 +112,7 @@ struct StudioView: View {
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                     }
                 }
-                .accessibilityLabel("Project name, \(project.name). Double tap to rename.")
+                .accessibilityLabel("Set name, \(project.name). Double tap to rename.")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -142,17 +144,18 @@ struct StudioView: View {
             VideoPicker { url in
                 guard let url else { return }
                 withAnimation(.easeInOut) { isExtractingVideo = true }
-                Task { @MainActor in
-                    let frames = await VideoFrameExtractor.frames(from: url)
+                extractionTask = Task { @MainActor in
+                    let result = await VideoFrameExtractor.frames(from: url)
                     withAnimation(.easeInOut) { isExtractingVideo = false }
-                    frameBatch = FrameBatch(images: frames)
+                    videoDurationWarning = result.durationWarning
+                    frameBatch = FrameBatch(images: result.images)
                     try? FileManager.default.removeItem(at: url)
                 }
             }
             .ignoresSafeArea()
         }
         .sheet(item: $frameBatch) { batch in
-            FrameChooserSheet(frames: batch.images) { picked in addImages(picked) }
+            FrameChooserSheet(frames: batch.images, durationWarning: videoDurationWarning) { picked in addImages(picked) }
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -198,6 +201,7 @@ struct StudioView: View {
         }
         .onDisappear {
             saveTask?.cancel()
+            extractionTask?.cancel()
             // Only persist when something actually changed, so simply opening
             // and closing a set doesn't bump its date and reshuffle the gallery.
             if project != original { store.upsert(project) }

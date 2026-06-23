@@ -9,6 +9,7 @@ struct FrameBatch: Identifiable {
 /// Lets the user pick which extracted App Preview frames to turn into slides.
 struct FrameChooserSheet: View {
     let frames: [UIImage]
+    var durationWarning: String? = nil
     var onAdd: ([UIImage]) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -19,6 +20,19 @@ struct FrameChooserSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                if let durationWarning {
+                    HStack(spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(LiquidGlass.warning)
+                        Text(durationWarning)
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                    }
+                    .padding(12)
+                    .background(LiquidGlass.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                }
                 if frames.isEmpty {
                     ContentUnavailableView(
                         "No frames",

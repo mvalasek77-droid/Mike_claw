@@ -9,11 +9,46 @@ struct SettingsView: View {
     @State private var showPaywall = false
     @State private var storageBytes: Int64 = 0
     @State private var cleanupNote: String?
+    @State private var versionTaps = 0
+    @State private var bypassFeedback: String?
 
     private var appVersion: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(v) (\(b))"
+    }
+
+    /// Developer bypass: 5-tap the version label to unlock Pro on builds
+    /// signed by team UDM4W27W9V (Alpha Elite Holdings). Cannot be abused
+    /// on non-developer builds — the provisioning profile team ID is checked.
+    private static var provisioningTeamID: String? {
+        // Read the embedded provisioning profile's TeamIdentifier.
+        guard let path = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"),
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let string = String(data: data, encoding: .ascii) else { return nil }
+        // The plist is wrapped in binary markers; find TeamIdentifier.
+        guard let range = string.range(of: "<key>TeamIdentifier</key>") else { return nil }
+        let after = string[range.upperBound...]
+        guard let open = after.range(of: "<string>"),
+              let close = after.range(of: "</string>", range: open.upperBound..<after.endIndex) else { return nil }
+        return String(after[open.upperBound..<close.lowerBound])
+    }
+
+    private func handleVersionTap() {
+        versionTaps += 1
+        guard versionTaps >= 5 else { return }
+        versionTaps = 0
+        let team = Self.provisioningTeamID
+        guard team == "UDM4W27W9V" else {
+            bypassFeedback = "Bypass unavailable on this build."
+            Haptics.error()
+            return
+        }
+        Task { @MainActor in
+            await purchases.activateAdminBypass()
+            bypassFeedback = "Pro unlocked (developer bypass)."
+            Haptics.success()
+        }
     }
 
     var body: some View {
@@ -98,9 +133,23 @@ struct SettingsView: View {
 
                     GlassCard(title: "About", icon: "info.circle.fill") {
                         VStack(alignment: .leading, spacing: 10) {
-                            row("Version", appVersion)
+                            HStack {
+                                Text("Version")
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                                Spacer()
+                                Text(appVersion)
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.primaryText)
+                                    .onTapGesture { handleVersionTap() }
+                            }
                             row("Saved sets", "\(store.projects.count)")
                             Divider().overlay(LiquidGlass.hairline)
+                            if let bypassFeedback {
+                                Text(bypassFeedback)
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.success)
+                            }
                             Text("Screenshot Studio turns raw iPhone screenshots into App Store Connect–ready images, rendered at exactly the pixel sizes Apple requires.")
                                 .font(.system(size: 13, weight: .regular, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))

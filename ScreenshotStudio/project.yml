@@ -24,10 +24,10 @@ targets:
     info:
       path: ScreenshotStudio/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Screenshot Studio
+        CFBundleDisplayName: ASC Screenshot Creator
         CFBundleName: ScreenshotStudio
         CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "1"
+        CFBundleVersion: "3"
         ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true
         NSPhotoLibraryAddUsageDescription: Screenshot Studio saves your finished App Store screenshots to a dedicated album in Photos so you can upload them to App Store Connect.
@@ -45,7 +45,7 @@ targets:
         UIUserInterfaceStyle: Automatic
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.screenshotstudio.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.screenshotstudio
         PRODUCT_NAME: ScreenshotStudio
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -71,7 +71,7 @@ targets:
       - target: ScreenshotStudio
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.screenshotstudio.app.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.screenshotstudio.tests
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ScreenshotStudio.app/ScreenshotStudio"
         BUNDLE_LOADER: "$(TEST_HOST)"

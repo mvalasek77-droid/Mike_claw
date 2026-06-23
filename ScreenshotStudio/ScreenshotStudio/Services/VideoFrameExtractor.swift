@@ -7,7 +7,9 @@ import UIKit
 /// device resolutions, so a chosen frame drops straight into a slide.
 enum VideoFrameExtractor {
     /// Extract `count` evenly-spaced frames across the clip's duration.
-    static func frames(from url: URL, count: Int = 6) async -> [UIImage] {
+    /// ASC App Preview videos must be 15–45 seconds; clips outside that range
+    /// are flagged so the caller can warn the user.
+    static func frames(from url: URL, count: Int = 6) async -> (images: [UIImage], durationWarning: String?) {
         let asset = AVURLAsset(url: url)
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
@@ -22,7 +24,15 @@ enum VideoFrameExtractor {
         }
         guard seconds.isFinite, seconds > 0 else {
             BugLog.warning("Video", "Picked video has no readable duration.")
-            return []
+            return ([], "This video couldn't be read. Try a different clip.")
+        }
+
+        // ASC App Preview duration validation (15–45 seconds)
+        var durationWarning: String? = nil
+        if seconds < 15 {
+            durationWarning = "App Store previews should be 15–45 seconds. This clip is \(Int(seconds))s — some frames may look similar."
+        } else if seconds > 45 {
+            durationWarning = "App Store previews should be 15–45 seconds. This clip is \(Int(seconds))s — frames are sampled across the full length."
         }
 
         let n = max(count, 1)
@@ -39,6 +49,6 @@ enum VideoFrameExtractor {
         if images.isEmpty {
             BugLog.warning("Video", "Couldn't extract any frames from the picked video.")
         }
-        return images
+        return (images, durationWarning)
     }
 }

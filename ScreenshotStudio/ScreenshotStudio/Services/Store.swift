@@ -117,7 +117,27 @@ final class Store: ObservableObject {
                 entitled = true
             }
         }
-        isPro = entitled
+        if entitled {
+            isPro = true
+        } else if UserDefaults.standard.bool(forKey: "developerBypass") {
+            isPro = true
+        }
+    }
+
+    /// Developer-only bypass: unlocks Pro without a StoreKit purchase.
+    /// Gated to builds signed by team UDM4W27W9V — the caller (SettingsView)
+    /// checks the provisioning profile before calling this.
+    func activateAdminBypass() async {
+        UserDefaults.standard.set(true, forKey: "developerBypass")
+        BugLog.info("Store", "Developer bypass activated.")
+        isPro = true
+    }
+
+    /// Disable the developer bypass (tap the version label 5× again).
+    func disableAdminBypass() {
+        UserDefaults.standard.removeObject(forKey: "developerBypass")
+        BugLog.info("Store", "Developer bypass disabled.")
+        Task { await refreshEntitlements() }
     }
 
     private func observeTransactionUpdates() -> Task<Void, Never> {
