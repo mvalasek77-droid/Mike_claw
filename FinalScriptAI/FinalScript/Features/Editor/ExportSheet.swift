@@ -91,7 +91,7 @@ struct ExportSheet: View {
     }
 
     private func fountainURL() -> URL? {
-        let text = FountainParser.serialize(screenplay.elements)
+        let text = FountainParser.serializeDocument(titlePage: screenplay.titlePage, elements: screenplay.elements)
         return write(Data(text.utf8), ext: "fountain")
     }
 

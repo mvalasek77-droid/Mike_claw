@@ -15,9 +15,10 @@ Run locally:
     export ANTHROPIC_API_KEY=sk-ant-...
     uvicorn proxy:app --host 0.0.0.0 --port 8000
 
-Then set the app's AI Backend URL (Settings → AI Backend) to your server's
-public URL. In production, put this behind auth (per-user tokens), rate limit
-it, and enforce your own AI-usage entitlements before calling Claude.
+Then set the app's server URL (Settings → AI → Connection → My server) to
+your server's public URL. In production, put this behind auth (per-user
+tokens), rate limit it, and enforce your own AI-usage entitlements before
+calling Claude.
 """
 
 from __future__ import annotations

@@ -9,11 +9,24 @@ enum FountainParser {
     // MARK: - Parse
 
     static func parse(_ raw: String) -> [ScreenplayElement] {
+        parseDocument(raw).elements
+    }
+
+    /// Like `parse`, but also extracts a leading Fountain title-page block
+    /// ("Title:", "Author:", ... terminated by a blank line) when present.
+    static func parseDocument(_ raw: String) -> (titlePage: TitlePage?, elements: [ScreenplayElement]) {
         let normalized = raw.replacingOccurrences(of: "\r\n", with: "\n")
         let lines = normalized.components(separatedBy: "\n")
         var elements: [ScreenplayElement] = []
         var index = 0
         var previousWasBlank = true
+        var lastDialogueBlockRange: Range<Int>?
+
+        var titlePage: TitlePage?
+        if let (page, consumed) = extractTitlePage(lines) {
+            titlePage = page
+            index = consumed
+        }
 
         while index < lines.count {
             let line = lines[index]
@@ -55,23 +68,43 @@ enum FountainParser {
                 continue
             }
 
+            if isShot(trimmed) {
+                elements.append(ScreenplayElement(type: .shot, text: trimmed))
+                previousWasBlank = false
+                index += 1
+                continue
+            }
+
             // Character cue: uppercase, preceded by a blank line, and the next
             // non-empty line continues the block (dialogue / parenthetical).
+            // A trailing "^" marks this block as dual dialogue with the block
+            // immediately before it.
             if previousWasBlank, isCharacterCue(trimmed),
                nextLineStartsDialogue(lines, after: index) {
-                elements.append(ScreenplayElement(type: .character, text: trimmed))
+                var cueText = trimmed
+                let isDual = cueText.hasSuffix("^")
+                if isDual {
+                    cueText = String(cueText.dropLast()).trimmingCharacters(in: .whitespaces)
+                }
+                let blockStart = elements.count
+                elements.append(ScreenplayElement(type: .character, text: cueText, isDualDialogue: isDual))
                 index += 1
                 // Consume the dialogue block.
                 while index < lines.count {
                     let dialogueLine = lines[index].trimmingCharacters(in: .whitespaces)
                     if dialogueLine.isEmpty { break }
                     if dialogueLine.hasPrefix("(") && dialogueLine.hasSuffix(")") {
-                        elements.append(ScreenplayElement(type: .parenthetical, text: dialogueLine))
+                        elements.append(ScreenplayElement(type: .parenthetical, text: dialogueLine, isDualDialogue: isDual))
                     } else {
-                        elements.append(ScreenplayElement(type: .dialogue, text: dialogueLine))
+                        elements.append(ScreenplayElement(type: .dialogue, text: dialogueLine, isDualDialogue: isDual))
                     }
                     index += 1
                 }
+                let blockEnd = elements.count
+                if isDual, let previousRange = lastDialogueBlockRange {
+                    for i in previousRange { elements[i].isDualDialogue = true }
+                }
+                lastDialogueBlockRange = blockStart..<blockEnd
                 previousWasBlank = true
                 continue
             }
@@ -82,7 +115,40 @@ enum FountainParser {
             index += 1
         }
 
-        return elements
+        return (titlePage, elements)
+    }
+
+    /// Recognizes a leading "Key: value" title-page block (Fountain spec),
+    /// terminated by a blank line. Returns the parsed page and how many lines
+    /// it consumed, or `nil` if the document doesn't open with one.
+    private static func extractTitlePage(_ lines: [String]) -> (TitlePage, Int)? {
+        let knownKeys: Set<String> = ["title", "credit", "author", "authors",
+                                       "source", "draft date", "contact", "notes"]
+        var values: [String: String] = [:]
+        var index = 0
+        while index < lines.count {
+            let trimmed = lines[index].trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { break }
+            guard let colonIndex = trimmed.firstIndex(of: ":") else { break }
+            let key = trimmed[..<colonIndex].trimmingCharacters(in: .whitespaces).lowercased()
+            guard knownKeys.contains(key) else { break }
+            let value = trimmed[trimmed.index(after: colonIndex)...].trimmingCharacters(in: .whitespaces)
+            values[key] = value
+            index += 1
+        }
+        guard !values.isEmpty else { return nil }
+        if index < lines.count, lines[index].trimmingCharacters(in: .whitespaces).isEmpty {
+            index += 1
+        }
+        let page = TitlePage(
+            title: values["title"] ?? "",
+            credit: values["credit"] ?? "Written by",
+            author: values["author"] ?? values["authors"] ?? "",
+            source: values["source"] ?? "",
+            contact: values["contact"] ?? "",
+            draftDate: values["draft date"] ?? ""
+        )
+        return (page, index)
     }
 
     private static func forcedElement(from line: String) -> ScreenplayElement? {
@@ -116,8 +182,9 @@ enum FountainParser {
 
     private static func isSceneHeading(_ line: String) -> Bool {
         let upper = line.uppercased()
-        let prefixes = ["INT.", "EXT.", "INT ", "EXT ", "EST.", "INT./EXT.",
-                        "I/E.", "I/E ", "INT/EXT"]
+        let prefixes = ["INT.", "EXT.", "INT ", "EXT ", "EST.",
+                        "INT./EXT.", "EXT./INT.", "INT/EXT", "EXT/INT",
+                        "I/E.", "I/E "]
         return prefixes.contains { upper.hasPrefix($0) }
     }
 
@@ -125,6 +192,15 @@ enum FountainParser {
         let upper = line.uppercased()
         guard upper == line else { return false } // must be all caps
         return upper.hasSuffix("TO:") || upper == "CUT TO BLACK." || upper == "FADE OUT." || upper == "FADE IN:"
+    }
+
+    private static func isShot(_ line: String) -> Bool {
+        let upper = line.uppercased()
+        guard upper == line else { return false } // must be all caps
+        let prefixes = ["ANGLE ON", "CLOSE ON", "CLOSE-UP", "CLOSEUP",
+                        "EXTREME CLOSE-UP", "EXTREME CLOSE UP", "WIDE SHOT",
+                        "POV", "INSERT", "TIGHT ON", "TRACKING SHOT", "AERIAL SHOT"]
+        return prefixes.contains { upper.hasPrefix($0) }
     }
 
     private static func isCharacterCue(_ line: String) -> Bool {
@@ -179,5 +255,20 @@ enum FountainParser {
             previousType = element.type
         }
         return out
+    }
+
+    /// `serialize`, prefixed with a Fountain title-page block when the page
+    /// has any non-empty fields, so round-tripping through export/import
+    /// preserves title metadata.
+    static func serializeDocument(titlePage: TitlePage, elements: [ScreenplayElement]) -> String {
+        var lines: [String] = []
+        if !titlePage.title.isEmpty { lines.append("Title: \(titlePage.title)") }
+        if !titlePage.credit.isEmpty { lines.append("Credit: \(titlePage.credit)") }
+        if !titlePage.author.isEmpty { lines.append("Author: \(titlePage.author)") }
+        if !titlePage.source.isEmpty { lines.append("Source: \(titlePage.source)") }
+        if !titlePage.contact.isEmpty { lines.append("Contact: \(titlePage.contact)") }
+        if !titlePage.draftDate.isEmpty { lines.append("Draft date: \(titlePage.draftDate)") }
+        guard !lines.isEmpty else { return serialize(elements) }
+        return lines.joined(separator: "\n") + "\n\n" + serialize(elements)
     }
 }

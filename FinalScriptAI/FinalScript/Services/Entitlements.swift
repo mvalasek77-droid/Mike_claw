@@ -74,6 +74,18 @@ final class Entitlements: ObservableObject {
     init() {
         isPro = UserDefaults.standard.bool(forKey: "entitlement.pro")
         monthlyAIUsage = UserDefaults.standard.integer(forKey: "entitlement.aiUsage")
+        resetUsageIfNewMonth()
+    }
+
+    /// The free-tier AI cap is monthly; roll the counter over when the
+    /// calendar month changes instead of letting it accumulate forever.
+    private func resetUsageIfNewMonth() {
+        let calendar = Calendar.current
+        let currentKey = calendar.component(.year, from: .now) * 12 + calendar.component(.month, from: .now)
+        let storedKey = UserDefaults.standard.integer(forKey: "entitlement.aiUsageMonthKey")
+        guard storedKey != currentKey else { return }
+        UserDefaults.standard.set(currentKey, forKey: "entitlement.aiUsageMonthKey")
+        monthlyAIUsage = 0
     }
 
     var canUseAI: Bool {

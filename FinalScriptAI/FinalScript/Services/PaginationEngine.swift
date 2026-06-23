@@ -24,8 +24,7 @@ enum PaginationEngine {
     /// Blank lines that precede an element on the page.
     private static func leadingBlankLines(for type: ElementType) -> Double {
         switch type {
-        case .sceneHeading: return 2
-        case .action, .character, .transition, .shot: return 1
+        case .sceneHeading, .action, .character, .transition, .shot: return 1
         default: return 0
         }
     }
@@ -106,6 +105,7 @@ struct ScriptAnalytics {
             switch element.type {
             case .action, .shot:
                 actionWords += words(element.text)
+                currentSpeaker = nil
             case .character:
                 currentSpeaker = element.text
                     .uppercased()
@@ -123,6 +123,7 @@ struct ScriptAnalytics {
                 else if upper.hasPrefix("EXT") { exterior += 1 }
                 else if upper.contains("INT") { interior += 1 }
                 else if upper.contains("EXT") { exterior += 1 }
+                currentSpeaker = nil
             default:
                 break
             }

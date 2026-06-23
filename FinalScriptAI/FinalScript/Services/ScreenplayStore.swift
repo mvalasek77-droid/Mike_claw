@@ -22,7 +22,8 @@ final class ScreenplayStore: ObservableObject {
     }()
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         directory = docs.appendingPathComponent("Screenplays", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         load()
@@ -33,14 +34,18 @@ final class ScreenplayStore: ObservableObject {
     private func load() {
         let urls = (try? FileManager.default.contentsOfDirectory(at: directory,
                                                                  includingPropertiesForKeys: nil)) ?? []
+        let jsonURLs = urls.filter { $0.pathExtension == "json" }
         var loaded: [Screenplay] = []
-        for url in urls where url.pathExtension == "json" {
+        for url in jsonURLs {
             if let data = try? Data(contentsOf: url),
                let screenplay = try? decoder.decode(Screenplay.self, from: data) {
                 loaded.append(screenplay)
             }
         }
-        if loaded.isEmpty {
+        // Only seed sample scripts when the directory is genuinely empty — if
+        // files exist but failed to decode (corruption / schema change), leave
+        // them in place rather than masking them with starter content.
+        if loaded.isEmpty && jsonURLs.isEmpty {
             loaded = SampleData.starterLibrary()
             loaded.forEach { persist($0) }
         }
@@ -99,9 +104,14 @@ final class ScreenplayStore: ObservableObject {
 
     @discardableResult
     func importFountain(_ text: String, title: String) -> Screenplay {
+        let (titlePage, elements) = FountainParser.parseDocument(text)
         var new = Screenplay(title: title)
         new.titlePage.title = title
-        new.elements = FountainParser.parse(text)
+        new.elements = elements
+        if var titlePage {
+            if titlePage.title.isEmpty { titlePage.title = title }
+            new.titlePage = titlePage
+        }
         save(new)
         return new
     }

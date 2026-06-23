@@ -99,8 +99,7 @@ enum PDFExporter {
 
     private static func leadingSpace(for type: ElementType) -> CGFloat {
         switch type {
-        case .sceneHeading: return lineHeight * 2
-        case .action, .character, .transition, .shot: return lineHeight
+        case .sceneHeading, .action, .character, .transition, .shot: return lineHeight
         default: return 0
         }
     }
