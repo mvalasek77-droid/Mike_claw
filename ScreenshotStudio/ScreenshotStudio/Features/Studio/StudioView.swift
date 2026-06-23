@@ -504,6 +504,11 @@ struct StudioView: View {
     }
 
     private func duplicate(_ slide: Slide) {
+        // Duplicating a slide adds a screenshot — respect the free-tier cap.
+        guard purchases.isPro || project.slides.count < FreeTier.maxScreenshots else {
+            paywallFeature = .moreScreenshots
+            return
+        }
         guard let index = project.slides.firstIndex(where: { $0.id == slide.id }),
               let file = ImageStore.copy(slide.imageFile) else { return }
         var copy = slide
