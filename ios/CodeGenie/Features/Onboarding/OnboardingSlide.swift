@@ -29,10 +29,10 @@ extension OnboardingSlide {
         .init(
             chapter: "Step 1 of 7",
             title: "Meet your pocket Xcode",
-            body: "All you need is your iPhone. CodeGenie talks to a Mac with Xcode in the cloud, so you can ship apps without owning a laptop.",
+            body: "Use your iPhone to drive a Mac with Xcode on the same Wi-Fi. Start the Terminal runner once, then CodeGenie can build from your phone.",
             illustration: .macWithXcode,
             palette: [.indigo, .purple],
-            xcodeTip: "Need your own Mac? Open Xcode → Settings → Accounts and add your Apple ID. CodeGenie can also run remote."
+            xcodeTip: "On the Mac: install Xcode, sign in once, then run `swift run codegenie-terminal-runner` from the repo."
         ),
         .init(
             chapter: "Step 2 of 7",
@@ -77,7 +77,7 @@ extension OnboardingSlide {
         .init(
             chapter: "Step 7 of 7",
             title: "Simulator → device → App Store",
-            body: "Tap to test in the cloud simulator, then we walk you through App Store Connect step-by-step on your Mac's Safari.",
+            body: "Tap to test through your Mac's simulator, then CodeGenie walks you through App Store Connect step-by-step in Safari.",
             illustration: .simulatorToDevice,
             palette: [.green, .mint],
             xcodeTip: "Free Apple ID = re-sign every 7 days. $99/year Developer Program = 1-year + App Store. We'll prompt when needed."

@@ -89,15 +89,15 @@ private struct LaunchAutomationGroup: Identifiable {
             ]
         ),
         .init(
-            title: "Mac-assisted",
-            icon: "macbook.and.iphone",
+            title: "Terminal-assisted",
+            icon: "terminal.fill",
             tint: LiquidGlass.accent,
             rows: [
-                .init("Pair Mac", "iPhone can pair with the companion over local network.", .assisted),
-                .init("Open Xcode/Safari", "Companion has command hooks for Xcode projects and ASC pages.", .assisted),
-                .init("ASC auto-fill", "Companion can fill approved fields after the user is on App Store Connect.", .assisted),
+                .init("Pair Mac", "iPhone pairs with the Terminal runner over the local network.", .assisted),
+                .init("Open Xcode/Safari", "Terminal runner has command hooks for Xcode projects and ASC pages.", .assisted),
+                .init("ASC auto-fill", "Terminal runner can fill approved fields after the user is on App Store Connect.", .assisted),
                 .init("Archive/export", "Xcode signing and export can be driven by the Mac runner once the Apple account is signed in.", .assisted),
-                .init("Screenshots", "Companion can capture screens; scripted App Store-size walkthrough still needs final wiring.", .assisted)
+                .init("Screenshots", "Terminal runner can capture screens; scripted App Store-size walkthrough still needs final wiring.", .assisted)
             ]
         ),
         .init(
@@ -121,7 +121,7 @@ private struct LaunchAutomationRow: Identifiable {
         var label: String {
             switch self {
             case .automated: "Auto"
-            case .assisted: "Companion"
+            case .assisted: "Terminal"
             case .requiresUser: "Confirm"
             }
         }

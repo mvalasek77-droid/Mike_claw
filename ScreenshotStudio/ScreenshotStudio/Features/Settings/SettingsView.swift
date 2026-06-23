@@ -1,0 +1,230 @@
+import SwiftUI
+
+struct SettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var store: ProjectStore
+    @EnvironmentObject private var purchases: Store
+    @ObservedObject private var log = BugLog.shared
+    @State private var showBugReport = false
+    @State private var showPaywall = false
+    @State private var storageBytes: Int64 = 0
+    @State private var cleanupNote: String?
+
+    private var appVersion: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(v) (\(b))"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 18) {
+                    brandHeader
+
+                    proCard
+
+                    GlassCard(title: "Appearance", icon: "circle.lefthalf.filled") {
+                        GlassSegmented(
+                            options: AppState.Appearance.allCases.map { ($0, $0.label) },
+                            selection: Binding(
+                                get: { appState.appearance },
+                                set: { appState.appearance = $0 }
+                            )
+                        )
+                    }
+
+                    GlassCard(title: "Feedback", icon: "hand.tap.fill") {
+                        ToggleRow(label: "Reduce haptics", systemImage: "iphone.radiowaves.left.and.right",
+                                  isOn: $appState.reduceHaptics)
+                        Text("Reduces haptic feedback throughout the app. Also honors your system Reduce Motion setting for animations.")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    }
+
+                    GlassCard(title: "Help & feedback", icon: "questionmark.circle.fill") {
+                        VStack(spacing: 4) {
+                            Button { showBugReport = true } label: {
+                                settingsRow(icon: "ladybug.fill", title: "Report a bug",
+                                            subtitle: "Send us what went wrong")
+                            }
+                            .buttonStyle(.plain)
+
+                            Divider().overlay(.white.opacity(0.1))
+
+                            NavigationLink {
+                                DiagnosticsView()
+                            } label: {
+                                settingsRow(icon: log.hasFailures ? "exclamationmark.triangle.fill" : "checkmark.seal.fill",
+                                            title: "Diagnostics",
+                                            subtitle: log.hasFailures
+                                                ? "\(log.entries.count) events · some issues recorded"
+                                                : "Everything's running cleanly",
+                                            tint: log.hasFailures ? LiquidGlass.warning : LiquidGlass.success)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    GlassCard(title: "Privacy", icon: "lock.shield.fill", tint: LiquidGlass.success) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            privacyLine("Everything runs on-device.")
+                            privacyLine("Screenshots never leave your iPhone.")
+                            privacyLine("No accounts, no tracking, no analytics.")
+                        }
+                    }
+
+                    GlassCard(title: "Storage", icon: "internaldrive.fill") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            row("Screenshots on disk", ByteCountFormatter.string(fromByteCount: storageBytes, countStyle: .file))
+                            if let cleanupNote {
+                                Text(cleanupNote)
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundStyle(LiquidGlass.success)
+                            }
+                            Button {
+                                let freed = store.cleanUpOrphanedImages()
+                                storageBytes = Workspace.imagesDirectorySize()
+                                cleanupNote = freed == 0 ? "Nothing to clean — every file is in use."
+                                                         : "Removed \(freed) unused file\(freed == 1 ? "" : "s")."
+                                Haptics.success()
+                            } label: {
+                                settingsRow(icon: "trash", title: "Clear unused files",
+                                            subtitle: "Remove images not referenced by any set")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    GlassCard(title: "About", icon: "info.circle.fill") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            row("Version", appVersion)
+                            row("Saved sets", "\(store.projects.count)")
+                            Divider().overlay(LiquidGlass.hairline)
+                            Text("Screenshot Studio turns raw iPhone screenshots into App Store Connect–ready images, rendered at exactly the pixel sizes Apple requires.")
+                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .padding(20)
+                .padding(.bottom, 120)
+            }
+            .background(LiquidGlassBackground().ignoresSafeArea())
+            .task { storageBytes = Workspace.imagesDirectorySize() }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.large)
+        }
+        .sheet(isPresented: $showBugReport) {
+            BugReportView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+        }
+    }
+
+    @ViewBuilder
+    private var proCard: some View {
+        if purchases.isPro {
+            GlassCard {
+                HStack(spacing: 14) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(LiquidGlass.success)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Screenshot Studio Pro")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("Thanks for your support — everything's unlocked.")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        } else {
+            Button { showPaywall = true } label: {
+                GlassSurface(tier: .deep, corner: 18) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(.white)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Upgrade to Pro")
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                            Text("Every size, language, overlay and backdrop")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+                    .padding(18)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func settingsRow(icon: String, title: String, subtitle: String,
+                             tint: Color = LiquidGlass.accent) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 26)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.3))
+        }
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+    }
+
+    private var brandHeader: some View {
+        VStack(spacing: 12) {
+            StudioMark(size: 76)
+            StudioWordmark()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+    }
+
+    private func row(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+            Spacer()
+            Text(value)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText)
+        }
+    }
+
+    private func privacyLine(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 13))
+                .foregroundStyle(LiquidGlass.success)
+            Text(text)
+                .font(.system(size: 13, weight: .regular, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+        }
+    }
+}

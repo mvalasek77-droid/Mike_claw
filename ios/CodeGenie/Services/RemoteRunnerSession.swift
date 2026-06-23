@@ -78,12 +78,12 @@ final class RemoteRunnerSession: ObservableObject {
     func openInDesktopXcode() {
         Haptics.tap(intensity: 0.6, sharpness: 0.6)
         // Sends a "wake" signal to the user's paired Mac via the CodeGenie
-        // companion app, which `open`s the .xcodeproj on the desktop.
+        // Terminal runner, which `open`s the .xcodeproj on the desktop.
     }
 
     func handoffToAppStoreConnect() {
         Haptics.tap(intensity: 0.8, sharpness: 0.8)
         // Triggers the AppStoreConnectGuideView flow on the user's Mac via
-        // the same companion bridge — Safari opens, the guide overlays.
+        // the same Terminal bridge — Safari opens, the guide overlays.
     }
 }

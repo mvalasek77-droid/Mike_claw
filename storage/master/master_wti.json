@@ -1,0 +1,33 @@
+{
+  "ticker": "WTI",
+  "price": 91.36000061035156,
+  "direction": "SHORT",
+  "entry": 91.36,
+  "target": 86.34,
+  "stop": 92.38,
+  "grade": "A",
+  "win_rate": 0.98,
+  "rr": 4.92,
+  "rsi": 25.1,
+  "regime": "DOWN",
+  "1m_letter": "M",
+  "1w_letter": "NONE",
+  "1w_pct": 50,
+  "1d_letter": "W",
+  "1d_pct": 21.7,
+  "1h_letter": "M",
+  "1h_pct": 63.0,
+  "source": "macro_M",
+  "notes": [
+    "macro M $119.48\u2192$84.37",
+    "RSI25+freefall"
+  ],
+  "atr": 5.02,
+  "move_detectors": {
+    "spike": false,
+    "dip": false,
+    "momentum": null,
+    "macro": "MACRO_M_OVERRIDE"
+  },
+  "time": "2026-06-08T19:18:42.184256-04:00"
+}

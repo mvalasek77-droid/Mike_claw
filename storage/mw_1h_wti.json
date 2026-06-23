@@ -1,0 +1,40 @@
+{
+  "ticker": "WTI",
+  "price": 91.30999755859375,
+  "primary_action": "HOLD",
+  "primary_tf": "1h",
+  "atr": 3.8,
+  "entry": 91.30999755859375,
+  "target": 0,
+  "stop": 0,
+  "timeframes": {
+    "2h": {
+      "pattern": "W",
+      "pct": 28.2,
+      "action": "HOLD",
+      "floor": 89.68,
+      "ceil": 95.47
+    },
+    "1h": {
+      "pattern": "M",
+      "pct": 66.0,
+      "action": "HOLD",
+      "floor": 90.76,
+      "ceil": 92.38
+    },
+    "30m": {
+      "pattern": "W",
+      "pct": 68.7,
+      "action": "HOLD",
+      "floor": 90.76,
+      "ceil": 91.56
+    },
+    "5m": {
+      "pattern": "M",
+      "pct": 54.3,
+      "action": "HOLD",
+      "floor": 91.1,
+      "ceil": 91.56
+    }
+  }
+}

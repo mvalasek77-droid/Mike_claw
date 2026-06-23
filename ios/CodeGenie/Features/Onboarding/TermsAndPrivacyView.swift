@@ -86,7 +86,7 @@ struct TermsAndPrivacyView: View {
             VStack(alignment: .leading, spacing: 8) {
                 bullet("Your API keys, GitHub token, and Apple credentials stay in the iOS Keychain on this device. We never see them.")
                 bullet("Your app descriptions go to the AI provider you chose (Anthropic, OpenAI) so they can generate code. They have their own privacy policies — we don't store the prompts.")
-                bullet("Build logs and decisions are kept on the Mac companion you paired, not on our servers. You can delete them anytime from Settings → Admin.")
+                bullet("Build logs and decisions are kept on the Mac terminal runner you paired, not on our servers. You can delete them anytime from Settings → Admin.")
                 bullet("Telemetry (build success rate, average time) is on-device only — toggleable in Settings → Build telemetry.")
                 bullet("We don't sell data. We don't track you across apps. There are no third-party analytics SDKs.")
                 Link(destination: URL(string: "https://codegenie.app/privacy")!) {

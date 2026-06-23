@@ -1,22 +1,25 @@
 {
   "ticker": "RGTI",
-  "price": 20.933300018310547,
+  "price": 21.764999389648438,
   "direction": "SHORT",
-  "entry": 20.933300018310547,
-  "target": 15.3,
-  "stop": 21.02,
+  "entry": 21.764999389648438,
+  "target": 21.53,
+  "stop": 27.67,
   "grade": "D",
-  "win_rate": 0.05,
-  "pattern": "W",
-  "pattern_pct": 98.5,
-  "regime": "UP",
-  "source": "macro_W",
-  "rsi": 56.1,
-  "rr": 64.97,
+  "win_rate": 0.739,
+  "pattern": "M",
+  "pattern_pct": 96.2,
+  "regime": "DOWN",
+  "source": "2h",
+  "rsi": 60.1,
+  "rr": 0.04,
   "notes": [
-    "W completed (weak)",
+    "M-bounce DOWN\u26a0\ufe0f\u2192FLIP SHORT",
+    "spike-confirms",
     "mom-confirms",
-    "floor$15"
+    "RSI60-vs",
+    "conf+",
+    "R:R0.0!"
   ],
-  "time": "2026-06-05T12:10:32.000220-04:00"
+  "time": "2026-06-08T18:59:01.048443-04:00"
 }

@@ -35,7 +35,7 @@ STAIRCASE_DIR.mkdir(parents=True, exist_ok=True)
 
 TICKERS = {
     'RGTI': {'symbol': 'RGTI', 'up_thresh': 1.5, 'dn_ratio_max': 0.50, 'name': 'Rigetti'},
-    'WTI':  {'symbol': 'WTI',  'up_thresh': 1.5, 'dn_ratio_max': 0.50, 'name': 'W&T Offshore'},
+    'WTI':  {'symbol': 'CL=F', 'up_thresh': 1.5, 'dn_ratio_max': 0.50, 'name': 'WTI Crude Oil'},
     'QBTX': {'symbol': 'QBTX', 'up_thresh': 1.5, 'dn_ratio_max': 0.50, 'name': 'Quantum 2x'},
 }
 
@@ -80,8 +80,9 @@ def build_streaks(closes):
     return streaks
 
 
-def detect_staircase(closes, ticker_config):
-    """Detect bullish staircase: UP1 > threshold → small DN → UP2 forming."""
+def detect_staircase(closes, ticker_config, regime='UP', daily_chg_pct=0):
+    """Detect bullish staircase: UP1 > threshold → small DN → UP2 forming.
+    v2: Skip BUY staircases when daily trend is heavily negative (avoid bull traps)."""
     up_thresh = ticker_config.get('up_thresh', UP_THRESH)
     streaks = build_streaks(closes)
 
@@ -104,6 +105,10 @@ def detect_staircase(closes, ticker_config):
             continue
 
         # Staircase confirmed!
+        # FILTER: Skip bullish staircases when stock is crashing today
+        # (-5%+ daily = bull trap, -10%+ = definitely a trap)
+        if daily_chg_pct < -5 and u2['gain'] < abs(daily_chg_pct) * 0.3:
+            continue  # UP2 gain too small vs daily crash — trap
         # Check if UP2 is still forming (in progress) or completed
         up1_bars = u1['end_idx'] - u1['start_idx'] + 1
         dn_bars = dn1['end_idx'] - dn1['start_idx'] + 1
@@ -217,8 +222,20 @@ def run_staircase(ticker, send_alerts=True):
     closes = df['Close'].values.flatten().astype(float)
     price = float(closes[-1])
 
-    # Detect staircases
-    signals = detect_staircase(closes, config)
+    # Calculate daily change for crash filter
+    try:
+        daily_open = float(df['Open'].values.flatten()[0])
+    except Exception:
+        daily_open = float(closes[0])
+    daily_chg_pct = ((price - daily_open) / daily_open) * 100 if daily_open > 0 else 0
+
+    # Detect regime for filter
+    regime = 'UP'
+    if daily_chg_pct < -3:
+        regime = 'DOWN'
+
+    # Detect staircases (v2: pass regime + daily chg for crash filter)
+    signals = detect_staircase(closes, config, regime=regime, daily_chg_pct=daily_chg_pct)
 
     # Load last state (deduplicate)
     state_file = STAIRCASE_DIR / f"staircase_{ticker.lower()}.json"

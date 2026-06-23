@@ -4,7 +4,7 @@ import SwiftUI
 ///
 /// First-timers don't know what Xcode is, why they need a Mac, or what
 /// "command line tools" means. This screen says it once, plainly, and
-/// shows a live status pulled from the Mac companion if one is paired.
+/// shows a live status pulled from the Mac terminal runner if one is paired.
 struct XcodeReadinessView: View {
     @StateObject private var creds = Credentials.shared
     @Environment(\.dismiss) private var dismiss
@@ -42,7 +42,7 @@ struct XcodeReadinessView: View {
 
     private var statusCard: some View {
         // We treat "backend token in keychain" as the proxy for "Mac
-        // companion is paired". Live reachability is checked at the
+        // terminal runner is paired". Live reachability is checked at the
         // moment of build by SwarmClient; this screen is a primer, not
         // a probe.
         let paired = !creds.backendToken.isEmpty
@@ -72,7 +72,7 @@ struct XcodeReadinessView: View {
                 explainerRow(
                     icon: "macbook",
                     title: "Mac-only — that's an Apple rule",
-                    body: "Apple won't let any other operating system build iOS apps. CodeGenie hides this by running Xcode on your Mac in the background; you never have to open it."
+                    body: "Apple won't let any other operating system build iOS apps. CodeGenie handles this by sending build commands to your Mac through the Terminal runner."
                 )
                 explainerRow(
                     icon: "gift.fill",
@@ -120,7 +120,7 @@ struct XcodeReadinessView: View {
             VStack(alignment: .leading, spacing: 10) {
                 walkRow(num: 1, body: "Open Xcode once. Click Agree on the license — Apple won't let it build until you do.")
                 walkRow(num: 2, body: "Xcode → Settings → Accounts → tap **+** → sign in with the same Apple ID you use on your iPhone.")
-                walkRow(num: 3, body: "Quit Xcode. CodeGenie takes it from there — you never have to open it again.")
+                walkRow(num: 3, body: "Quit Xcode, then start the CodeGenie Terminal runner. CodeGenie will send build commands from your phone.")
                 Text("Skipping any of these steps causes a cryptic build error later. Doing them once saves the headache.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))

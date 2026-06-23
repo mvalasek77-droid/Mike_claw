@@ -1,0 +1,88 @@
+name: Screenshot Studio
+
+# Builds and unit-tests the Screenshot Studio iOS app on a macOS runner, so the
+# app's readiness is machine-verified rather than asserted. Runs whenever the
+# app (or this workflow) changes, on any branch and on pull requests.
+on:
+  push:
+    paths:
+      - 'ScreenshotStudio/**'
+      - '.github/workflows/screenshotstudio.yml'
+  pull_request:
+    paths:
+      - 'ScreenshotStudio/**'
+      - '.github/workflows/screenshotstudio.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: screenshotstudio-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build & test (iOS Simulator)
+    runs-on: macos-14
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ScreenshotStudio
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      - name: Regenerate project from sources
+        # Keeps the committed .xcodeproj honest with the source tree (and picks
+        # up any newly added files) using the repo's zero-dependency generator.
+        run: python3 Scripts/generate_xcodeproj.py
+
+      - name: Pick an available simulator
+        id: sim
+        run: |
+          NAME=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/{gsub(/^ +| +$/,"",$1); print $1; exit}')
+          if [ -z "$NAME" ]; then NAME="iPhone 15"; fi
+          echo "Using simulator: $NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build & test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ScreenshotStudio.xcodeproj \
+            -scheme ScreenshotStudio \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults
+          path: ScreenshotStudio/TestResults.xcresult
+          if-no-files-found: ignore
+
+      - name: Build app for download (iOS Simulator)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ScreenshotStudio.xcodeproj \
+            -scheme ScreenshotStudio \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+          APP=$(find build/Build/Products -name 'ScreenshotStudio.app' -type d | head -1)
+          echo "Built: $APP"
+          ditto -c -k --keepParent "$APP" ScreenshotStudio-Simulator.zip
+
+      - name: Upload simulator build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenshotStudio-Simulator-app
+          path: ScreenshotStudio/ScreenshotStudio-Simulator.zip
+          if-no-files-found: warn

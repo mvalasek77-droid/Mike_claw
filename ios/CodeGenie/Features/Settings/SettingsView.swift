@@ -453,7 +453,7 @@ struct SettingsView: View {
                     .padding(.vertical, 4)
                 }
 
-                Text("CodeGenie's Mac companion handles the OAuth handshake. We never see your password.")
+                Text("CodeGenie opens provider sign-in through your browser. We never see your password.")
                     .font(.system(size: 11, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
             }

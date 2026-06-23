@@ -1,14 +1,14 @@
 import Foundation
 import Network
 
-/// Talks to the CodeGenie Companion daemon running on the user's Mac.
+/// Talks to the CodeGenie terminal runner running on the user's Mac.
 ///
 /// Two phases:
 ///  1. **Discovery.** Listen for Bonjour services advertising
-///     `_codegenie-companion._tcp` on the local network and surface
+///     `_codegenie-runner._tcp` on the local network and surface
 ///     candidates to `discovered`. The user picks one.
 ///  2. **Connect.** Open a Network.framework TCP connection (line-
-///     delimited JSON, matching the daemon's wire format), send `auth`
+///     delimited JSON, matching the runner's wire format), send `auth`
 ///     with the paired token, then dispatch typed commands.
 ///
 /// We deliberately avoid `URLSessionWebSocketTask` because the Mac
@@ -42,7 +42,7 @@ final class CompanionBridge: ObservableObject {
         let params = NWParameters(tls: nil)
         params.includePeerToPeer = true
         let browser = NWBrowser(
-            for: .bonjour(type: "_codegenie-companion._tcp", domain: nil),
+            for: .bonjour(type: "_codegenie-runner._tcp", domain: nil),
             using: params
         )
         browser.browseResultsChangedHandler = { [weak self] results, _ in
@@ -77,7 +77,7 @@ final class CompanionBridge: ObservableObject {
 
     /// Connect via a paired URL of the shape
     /// `codegenie://pair?host=…&port=…&token=…`
-    /// (the daemon prints this on launch; the iOS UI shows a QR scanner).
+    /// (the terminal runner prints this on launch; the iOS UI shows a QR scanner).
     func connect(pairingURL: URL) async {
         guard let host = pairingURL.queryItem("host"),
               let portStr = pairingURL.queryItem("port"),

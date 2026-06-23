@@ -1,0 +1,40 @@
+{
+  "ticker": "RGTI",
+  "price": 21.764999389648438,
+  "primary_action": "SELL",
+  "primary_tf": "1h",
+  "atr": 2.78,
+  "entry": 21.764999389648438,
+  "target": 16.21,
+  "stop": 24.54,
+  "timeframes": {
+    "2h": {
+      "pattern": "W",
+      "pct": 0,
+      "action": "WAIT",
+      "floor": 22.95,
+      "ceil": 28.06
+    },
+    "1h": {
+      "pattern": "M",
+      "pct": 100,
+      "action": "SELL",
+      "floor": 23.77,
+      "ceil": 25.02
+    },
+    "30m": {
+      "pattern": "M",
+      "pct": 100,
+      "action": "SELL",
+      "floor": 21.93,
+      "ceil": 22.79
+    },
+    "5m": {
+      "pattern": "M",
+      "pct": 99.5,
+      "action": "SELL",
+      "floor": 21.76,
+      "ceil": 22.79
+    }
+  }
+}
