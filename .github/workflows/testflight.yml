@@ -17,6 +17,10 @@ name: TestFlight
 on:
   workflow_dispatch:
     inputs:
+      marketing_version:
+        description: "Marketing version (CFBundleShortVersionString), e.g. 1.0"
+        required: false
+        default: "1.0"
       whats_new:
         description: "What to test (optional note)"
         required: false
@@ -52,6 +56,20 @@ jobs:
       - name: Regenerate project from sources
         run: python3 Scripts/generate_xcodeproj.py
 
+      - name: Stamp version & build number
+        # Marketing version comes from the dispatch input; the build number is
+        # the run number (always increasing). `manageAppVersionAndBuildNumber`
+        # in ExportOptions additionally guarantees a unique build at upload.
+        run: |
+          MV="${{ github.event.inputs.marketing_version }}"
+          [ -z "$MV" ] && MV="1.0"
+          BN="${{ github.run_number }}"
+          PB=/usr/libexec/PlistBuddy
+          PLIST=Resources/Info.plist
+          $PB -c "Set :CFBundleShortVersionString $MV" "$PLIST" || $PB -c "Add :CFBundleShortVersionString string $MV" "$PLIST"
+          $PB -c "Set :CFBundleVersion $BN" "$PLIST" || $PB -c "Add :CFBundleVersion string $BN" "$PLIST"
+          echo "Version $MV ($BN)"
+
       - name: Install App Store Connect API key
         run: |
           mkdir -p "$HOME/private_keys"
@@ -86,8 +104,7 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic \
-            CURRENT_PROJECT_VERSION=${{ github.run_number }}
+            CODE_SIGN_STYLE=Automatic
 
       - name: Export & upload to TestFlight
         run: |
