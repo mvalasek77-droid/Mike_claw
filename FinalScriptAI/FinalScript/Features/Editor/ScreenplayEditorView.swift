@@ -92,10 +92,23 @@ struct ScreenplayEditorView: View {
         screenplay.elements.firstIndex { $0.id == id }
     }
 
+    /// The color of the in-progress revision pass, if one has been started
+    /// (Revisions tab). While a pass is active, edited/added elements get
+    /// stamped with this color so a crew shooting from paper can see what
+    /// changed — the actual point of tracking revisions at all.
+    private var activeRevisionColor: String? { screenplay.revisions.last?.colorName }
+
+    private func markRevised(at idx: Int) {
+        guard let color = activeRevisionColor, screenplay.elements.indices.contains(idx) else { return }
+        screenplay.elements[idx].revisionColor = color
+    }
+
     /// Detects a return key press (a newline in the text) and splits the
     /// element, creating a successor whose type follows the smart-return rule.
     private func handleTextChange(for id: UUID, newValue: String) {
-        guard newValue.contains("\n"), let idx = index(of: id) else { return }
+        guard let idx = index(of: id) else { return }
+        markRevised(at: idx)
+        guard newValue.contains("\n") else { return }
         let parts = newValue.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
         let before = String(parts.first ?? "")
         let after = parts.count > 1 ? String(parts[1]) : ""
@@ -105,6 +118,7 @@ struct ScreenplayEditorView: View {
 
         let newElement = ScreenplayElement(type: currentType.successorOnReturn, text: after)
         screenplay.elements.insert(newElement, at: idx + 1)
+        markRevised(at: idx + 1)
         focusedID = newElement.id
         Haptics.tap()
     }
@@ -112,6 +126,7 @@ struct ScreenplayEditorView: View {
     private func appendElement(type: ElementType = .action, text: String = "") {
         let new = ScreenplayElement(type: type, text: text)
         screenplay.elements.append(new)
+        markRevised(at: screenplay.elements.count - 1)
         focusedID = new.id
     }
 
@@ -120,6 +135,7 @@ struct ScreenplayEditorView: View {
         let successor = screenplay.elements[idx].type.successorOnReturn
         let new = ScreenplayElement(type: successor)
         screenplay.elements.insert(new, at: idx + 1)
+        markRevised(at: idx + 1)
         focusedID = new.id
         Haptics.tap()
     }
@@ -134,17 +150,20 @@ struct ScreenplayEditorView: View {
     private func changeType(at index: Int?, to type: ElementType) {
         guard let index else { return }
         screenplay.elements[index].type = type
+        markRevised(at: index)
         Haptics.selection()
     }
 
     private func cycleType(at index: Int) {
         let next = screenplay.elements[index].type.nextCyclingType
         screenplay.elements[index].type = next
+        markRevised(at: index)
         Haptics.selection()
     }
 
     private func applySuggestion(_ value: String, at index: Int) {
         screenplay.elements[index].text = value
+        markRevised(at: index)
         Haptics.selection()
     }
 

@@ -14,7 +14,11 @@ enum FDXExporter {
                 continue
             }
             let text = escape(element.formattedText)
-            paragraphs += "    <Paragraph Type=\"\(fdxType)\"><Text>\(text)</Text></Paragraph>\n"
+            if let color = element.revisionColor {
+                paragraphs += "    <Paragraph Type=\"\(fdxType)\" Revised=\"Yes\" RevisionColor=\"\(escape(color))\"><Text>\(text)</Text></Paragraph>\n"
+            } else {
+                paragraphs += "    <Paragraph Type=\"\(fdxType)\"><Text>\(text)</Text></Paragraph>\n"
+            }
         }
 
         return """
