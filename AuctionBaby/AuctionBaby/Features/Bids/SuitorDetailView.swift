@@ -39,7 +39,7 @@ struct SuitorDetailView: View {
                                 .foregroundStyle(Theme.gold)
                         }
                         Spacer()
-                        ArchetypeBadge(archetype: man.archetype)
+                        ArchetypeBadge(archetype: man.archetype, pending: man.showsPendingTrillionaire)
                     }
                     if bid.qualifiesForMasterpiece {
                         HStack(spacing: 8) {

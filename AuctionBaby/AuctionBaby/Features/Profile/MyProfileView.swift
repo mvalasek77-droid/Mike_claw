@@ -70,11 +70,12 @@ struct MyProfileView: View {
 
     private var manStats: some View {
         VStack(spacing: 16) {
+            if me.showsPendingTrillionaire { trillionaireProgress }
             GlassCard(title: "Auction Credit", icon: "creditcard.fill", tint: Theme.gold) {
                 HStack(spacing: 16) {
                     ScoreGauge(value: me.auctionCredit, range: 300...850, label: me.creditTier, tint: Theme.gold, size: 124)
                     VStack(alignment: .leading, spacing: 10) {
-                        ArchetypeBadge(archetype: me.archetype)
+                        ArchetypeBadge(archetype: me.archetype, pending: me.showsPendingTrillionaire)
                         DeadbeatTag(score: me.deadbeatScore)
                         StatPill(icon: "calendar", label: "dates", value: "\(me.datesCompleted)", tint: Theme.rose)
                         if me.copycatBids > 0 {
@@ -94,6 +95,32 @@ struct MyProfileView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// The three-gate checklist shown while a Trillionaire badge is unverified.
+    private var trillionaireProgress: some View {
+        GlassCard(title: "Verify your Trillionaire", icon: "hourglass", tint: Theme.warning) {
+            Text("Trillionaire is earned, not just bought. Clear all three:")
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+            VStack(alignment: .leading, spacing: 10) {
+                gate(done: true, "Bought the Trillionaire tier ($9,999)")
+                gate(done: false, "Bid & pay the full $9,999 on a date")
+                gate(done: false, "She confirms you paid in full")
+            }
+            Text("Then your badge flips to Trillionaire ✓ — and a paid, confirmed $9,999 date also mints her Masterpiece.")
+                .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+        }
+    }
+
+    private func gate(done: Bool, _ text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(done ? Theme.success : Theme.inkFaint)
+            Text(text).font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(done ? Theme.ink : Theme.inkSoft)
+            Spacer(minLength: 0)
         }
     }
 

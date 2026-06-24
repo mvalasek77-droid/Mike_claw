@@ -17,7 +17,8 @@ struct ArchetypeStoreView: View {
                     ForEach(Archetype.allCases) { tier in
                         ArchetypeRow(tier: tier,
                                      current: store.me.archetype == tier,
-                                     owned: store.me.archetype.rawValue >= tier.rawValue && tier != .none) {
+                                     owned: store.me.archetype.rawValue >= tier.rawValue && tier != .none,
+                                     pending: store.me.archetype == tier && store.me.showsPendingTrillionaire) {
                             confirming = tier
                         }
                     }
@@ -62,7 +63,7 @@ struct ArchetypeStoreView: View {
             }
             HStack(spacing: 8) {
                 Text("Current:").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
-                ArchetypeBadge(archetype: store.me.archetype, compact: true)
+                ArchetypeBadge(archetype: store.me.archetype, compact: true, pending: store.me.showsPendingTrillionaire)
             }
         }
         .motion(Motion.snap, value: store.wallet)
@@ -73,6 +74,7 @@ struct ArchetypeRow: View {
     let tier: Archetype
     let current: Bool
     let owned: Bool
+    var pending: Bool = false
     var onTap: () -> Void
 
     var body: some View {
@@ -104,9 +106,9 @@ struct ArchetypeRow: View {
                             .font(.system(size: 16, weight: .heavy, design: .rounded))
                             .foregroundStyle(tier.usesPrestigeStyle ? Theme.gold : Theme.ink)
                         if current {
-                            Text("ACTIVE").font(.system(size: 9, weight: .heavy, design: .rounded))
+                            Text(pending ? "PENDING" : "ACTIVE").font(.system(size: 9, weight: .heavy, design: .rounded))
                                 .foregroundStyle(.black).padding(.horizontal, 7).padding(.vertical, 3)
-                                .background(Capsule().fill(Theme.success))
+                                .background(Capsule().fill(pending ? Theme.warning : Theme.success))
                         }
                     }
                 }
@@ -114,7 +116,7 @@ struct ArchetypeRow: View {
             }
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerL)
-                    .strokeBorder(current ? Theme.success : .clear, lineWidth: 1.5)
+                    .strokeBorder(current ? (pending ? Theme.warning : Theme.success) : .clear, lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)

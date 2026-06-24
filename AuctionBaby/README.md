@@ -48,10 +48,19 @@ The price *is* the flex: the app exists to surface whether a man has money.
 > *bid* side (a symbolic, credit-denominated date offer), which is what mints a
 > woman's Masterpiece — not the badge price.
 
+### Trillionaire (earned, not bought)
+
+Trillionaire is the only *verified* tier — three gates, all required:
+
+1. Buy the badge (**$9,999** IAP) → status reads **"Pending"**
+2. Bid **and pay the full $9,999** on a real date
+3. **She confirms** he paid in full → badge flips to **Trillionaire ✓**
+
 ### Masterpiece
 
-The rarest object on the floor. A woman earns a **Masterpiece** rating *only* when
-a **Trillionaire** actually pays the full **$1,000,000** for a date with her.
+The rarest object on the floor. A woman earns a **Masterpiece** rating *only* on
+that same confirmed date — when a **Trillionaire** pays the full **$9,999** and
+she confirms it. So a Masterpiece inherits all three Trillionaire gates.
 
 ### Copycats
 

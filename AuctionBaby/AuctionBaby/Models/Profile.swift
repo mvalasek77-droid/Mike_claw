@@ -112,11 +112,18 @@ struct Profile: Identifiable, Codable, Hashable {
     // MARK: Man-specific
     var archetype: Archetype = .none
     var copycatBids: Int = 0              // bids placed on copycats — reputation hit
+    /// Trillionaire is *earned*, not just bought: true only after he pays the
+    /// full $9,999 on a date and the woman confirms it. Until then the badge
+    /// reads "Pending".
+    var trillionaireVerified: Bool = false
 }
 
 // MARK: - Derived "credit scores"
 
 extension Profile {
+
+    /// He bought Trillionaire but hasn't completed the confirmed $9,999 date yet.
+    var showsPendingTrillionaire: Bool { archetype == .trillionaire && !trillionaireVerified }
 
     // ----- Woman side -----
 

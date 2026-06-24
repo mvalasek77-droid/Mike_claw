@@ -1,13 +1,20 @@
 import SwiftUI
 import UIKit
 
-/// The pill that advertises a man's purchased ``Archetype``. Trillionaire gets
-/// the animated prestige shimmer; everyone else gets a flat tinted capsule.
+/// The pill that advertises a man's purchased ``Archetype``. A *verified*
+/// Trillionaire gets the animated prestige shimmer; a Trillionaire still
+/// awaiting his confirmed $9,999 date reads as muted "Pending"; everyone else
+/// gets a flat tinted capsule.
 struct ArchetypeBadge: View {
     let archetype: Archetype
     var compact: Bool = false
+    /// True when the man bought Trillionaire but hasn't been confirmed yet.
+    var pending: Bool = false
 
     @State private var shimmer = false
+
+    /// Prestige shimmer only for a *verified* Trillionaire.
+    private var showsPrestige: Bool { archetype.usesPrestigeStyle && !pending }
 
     var body: some View {
         if archetype == .none {
@@ -22,34 +29,43 @@ struct ArchetypeBadge: View {
             .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.6))
         } else {
             HStack(spacing: 5) {
-                Image(systemName: archetype.systemImage)
-                Text(archetype.title)
+                Image(systemName: pending && archetype.usesPrestigeStyle ? "hourglass" : archetype.systemImage)
+                Text(label)
+                if showsPrestige { Image(systemName: "checkmark.seal.fill").font(.system(size: compact ? 8 : 10)) }
             }
             .font(.system(size: compact ? 10 : 12, weight: .heavy, design: .rounded))
-            .foregroundStyle(archetype.usesPrestigeStyle ? .black : archetype.tint)
+            .foregroundStyle(showsPrestige ? .black : (pending && archetype.usesPrestigeStyle ? Theme.warning : archetype.tint))
             .padding(.horizontal, compact ? 8 : 11).padding(.vertical, compact ? 4 : 6)
             .background(
                 Group {
-                    if archetype.usesPrestigeStyle {
+                    if showsPrestige {
                         Capsule().fill(Theme.prestigeGradient)
                             .hueRotation(.degrees(shimmer ? 18 : -18))
+                    } else if pending && archetype.usesPrestigeStyle {
+                        Capsule().fill(Theme.warning.opacity(0.15))
                     } else {
                         Capsule().fill(archetype.tint.opacity(0.18))
                     }
                 }
             )
-            .overlay(Capsule().strokeBorder(archetype.tint.opacity(0.6), lineWidth: 0.8))
-            .shadow(color: archetype.tint.opacity(archetype.usesPrestigeStyle ? 0.6 : 0), radius: 8)
+            .overlay(Capsule().strokeBorder((pending && archetype.usesPrestigeStyle ? Theme.warning : archetype.tint).opacity(0.6),
+                                            lineWidth: 0.8))
+            .shadow(color: archetype.tint.opacity(showsPrestige ? 0.6 : 0), radius: 8)
             .onAppear {
-                guard archetype.usesPrestigeStyle, !UIAccessibility.isReduceMotionEnabled else { return }
+                guard showsPrestige, !UIAccessibility.isReduceMotionEnabled else { return }
                 withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) { shimmer = true }
             }
         }
     }
+
+    private var label: String {
+        if pending && archetype.usesPrestigeStyle { return compact ? "Pending" : "Trillionaire · Pending" }
+        return archetype.title
+    }
 }
 
 /// The rarest object on the floor: a woman's "Masterpiece" — only mintable by a
-/// Trillionaire who actually pays $1,000,000 for a date.
+/// Trillionaire who pays the full $9,999 on a date that she then confirms.
 struct MasterpieceBadge: View {
     var compact: Bool = false
     @State private var shimmer = false

@@ -27,7 +27,7 @@ final class AuctionStore: ObservableObject {
     var isRegistered: Bool { role != nil }
 
     private let store = UserDefaults.standard
-    private static let key = "auctionbaby.state.v2"
+    private static let key = "auctionbaby.state.v3"
 
     // MARK: - Lifecycle
 
@@ -105,8 +105,15 @@ final class AuctionStore: ObservableObject {
         }
         wallet -= archetype.price
         me.archetype = archetype
+        // Trillionaire is earned: buying only unlocks the *attempt*. Verification
+        // resets and must be re-won on a confirmed $9,999 date.
+        me.trillionaireVerified = false
         Haptics.success()
-        toastFlash(archetype == .none ? "Rating removed." : "You're now a \(archetype.title).")
+        if archetype == .trillionaire {
+            toastFlash("Trillionaire pending — pay $9,999 on a date and get confirmed to verify.")
+        } else {
+            toastFlash(archetype == .none ? "Rating removed." : "You're now a \(archetype.title).")
+        }
         save()
     }
 
@@ -163,15 +170,16 @@ final class AuctionStore: ObservableObject {
         let amount: Int
         if trillionaire {
             man.archetype = .trillionaire
+            man.trillionaireVerified = true   // an established, verified Trillionaire
             man.name = "Sterling Vaux"
             man.hue = 0.13
-            amount = 1_000_000
+            amount = Archetype.trillionaire.price   // $9,999 — the Masterpiece-minting bid
         } else {
             let floor = me.startingBid ?? 150
             amount = Int(Double(floor) * Double.random(in: 0.7...2.4))
         }
         let note = trillionaire
-            ? "I read the rules. One million for one evening. Mint your Masterpiece."
+            ? "I read the rules. The full $9,999 for one evening. Confirm it and mint your Masterpiece."
             : ["Saw your profile. Worth every cent.", "Dinner, my treat — name the place.",
                "I don't usually bid this high.", "Let me take you somewhere ridiculous."].randomElement()!
         let bid = Bid(man: man, woman: me, amount: amount, note: note)
@@ -221,14 +229,15 @@ final class AuctionStore: ObservableObject {
         for (t, v) in traits { traitDict[t.rawValue] = v }
         let review = DateReview(authorName: me.name, authorHue: me.hue, stars: stars, text: text,
                                 traits: traitDict, interestCategories: categories)
-        if let f = floor.firstIndex(where: { $0.id == bid.woman.id }) {
-            floor[f].reviews.insert(review, at: 0)
-            if bid.qualifiesForMasterpiece { floor[f].masterpiece = true }
-        }
-        matches[idx].manReviewedWoman = true
-
         // The woman's verdict on him → updates *his* deadbeat / credit score.
         let paid = actuallySpent >= bid.amount
+
+        if let f = floor.firstIndex(where: { $0.id == bid.woman.id }) {
+            floor[f].reviews.insert(review, at: 0)
+            // She only mints a Masterpiece if he actually paid the full $9,999.
+            if bid.qualifiesForMasterpiece && paid { floor[f].masterpiece = true }
+        }
+        matches[idx].manReviewedWoman = true
         me.reviews.insert(
             DateReview(authorName: bid.woman.name, authorHue: bid.woman.hue,
                        stars: paid ? Int.random(in: 4...5) : Int.random(in: 1...2),
@@ -236,6 +245,19 @@ final class AuctionStore: ObservableObject {
                                   : "Bid \(Money.compact(bid.amount)), paid \(Money.compact(actuallySpent)). Deadbeat.",
                        paidBid: paid, bidAmount: bid.amount, spentAmount: actuallySpent),
             at: 0)
+
+        // Trillionaire is earned here: he bought the badge, bid & paid the full
+        // $9,999, and the woman (sim) confirmed it. That's the third gate.
+        if me.archetype == .trillionaire && !me.trillionaireVerified
+            && bid.amount >= Archetype.trillionaire.price
+            && actuallySpent >= Archetype.trillionaire.price && paid {
+            me.trillionaireVerified = true
+            closeMatch(idx)
+            Haptics.success()
+            toastFlash("✦ TRILLIONAIRE VERIFIED — she confirmed your $9,999.")
+            save()
+            return
+        }
 
         closeMatch(idx)
         Haptics.success()
@@ -265,8 +287,10 @@ final class AuctionStore: ObservableObject {
         // Earnings were credited at acceptance in this demo, so nothing to add here.
         if bid.qualifiesForMasterpiece && paid {
             me.masterpiece = true
+            // Her confirmation is also what verifies his Trillionaire status on record.
+            matches[idx].bid.man.trillionaireVerified = true
             Haptics.success()
-            toastFlash("✦ MASTERPIECE minted. A Trillionaire paid in full.")
+            toastFlash("✦ MASTERPIECE minted. A verified Trillionaire paid in full.")
         } else {
             Haptics.commit()
             toastFlash(paid ? "Review posted. He paid in full."

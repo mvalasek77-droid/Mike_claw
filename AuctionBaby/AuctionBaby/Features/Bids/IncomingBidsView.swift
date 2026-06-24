@@ -101,7 +101,7 @@ struct BidRow: View {
                             Text(bid.status == .accepted ? bid.man.name : "Hidden bidder")
                                 .font(.system(size: 16, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
                         }
-                        ArchetypeBadge(archetype: bid.man.archetype, compact: true)
+                        ArchetypeBadge(archetype: bid.man.archetype, compact: true, pending: bid.man.showsPendingTrillionaire)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {

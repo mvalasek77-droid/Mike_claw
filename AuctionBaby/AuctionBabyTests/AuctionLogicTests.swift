@@ -99,21 +99,26 @@ final class AuctionLogicTests: XCTestCase {
 
     // MARK: Masterpiece rule
 
-    func testMasterpieceRequiresTrillionaireAndMillion() {
+    func testMasterpieceEligibilityRequiresTrillionaireAndFullSpend() {
         let woman = Profile(name: "W", age: 28, role: .woman, location: "", bio: "", hue: 0.9)
+        let full = Archetype.trillionaire.price   // $9,999
 
         var rich = Profile(name: "T", age: 40, role: .man, location: "", bio: "", hue: 0.1)
         rich.archetype = .trillionaire
-        let qualifying = Bid(man: rich, woman: woman, amount: 1_000_000)
-        XCTAssertTrue(qualifying.qualifiesForMasterpiece)
-
-        let tooLow = Bid(man: rich, woman: woman, amount: 999_999)
-        XCTAssertFalse(tooLow.qualifiesForMasterpiece)
+        XCTAssertTrue(Bid(man: rich, woman: woman, amount: full).qualifiesForMasterpiece)
+        XCTAssertFalse(Bid(man: rich, woman: woman, amount: full - 1).qualifiesForMasterpiece)
 
         var notRich = rich
         notRich.archetype = .ferrari
-        let wrongTier = Bid(man: notRich, woman: woman, amount: 1_000_000)
-        XCTAssertFalse(wrongTier.qualifiesForMasterpiece)
+        XCTAssertFalse(Bid(man: notRich, woman: woman, amount: full).qualifiesForMasterpiece)
+    }
+
+    func testBuyingTrillionaireStartsPending() {
+        var man = Profile(name: "T", age: 40, role: .man, location: "", bio: "", hue: 0.1)
+        man.archetype = .trillionaire
+        XCTAssertTrue(man.showsPendingTrillionaire)
+        man.trillionaireVerified = true
+        XCTAssertFalse(man.showsPendingTrillionaire)
     }
 
     // MARK: Store flows
@@ -163,7 +168,48 @@ final class AuctionLogicTests: XCTestCase {
         store.markDateDone(match)
         let dated = store.matches.first { $0.id == match.id }!
         store.completeAsWoman(dated, paid: true, stars: 5, text: "Perfect")
-        XCTAssertTrue(store.me.masterpiece, "a paid trillionaire date should mint a Masterpiece")
+        XCTAssertTrue(store.me.masterpiece, "a paid, confirmed trillionaire date should mint a Masterpiece")
+    }
+
+    @MainActor
+    func testUnconfirmedTrillionaireDateDoesNotMintMasterpiece() {
+        let store = freshStore()
+        store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
+                       hue: 0.9, startingBid: 200, prompts: [], interests: ["Art"])
+        store.summonBidder(trillionaire: true)
+        let bid = store.incomingBids.first { $0.qualifiesForMasterpiece }!
+        store.accept(bid)
+        let match = store.matches.first { $0.bid.id == bid.id }!
+        store.markDateDone(match)
+        let dated = store.matches.first { $0.id == match.id }!
+        // She does NOT confirm payment — no Masterpiece.
+        store.completeAsWoman(dated, paid: false, stars: 2, text: "All talk.")
+        XCTAssertFalse(store.me.masterpiece, "no confirmation means no Masterpiece")
+    }
+
+    @MainActor
+    func testTrillionaireVerifiesOnlyOnConfirmedFullDate() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 40, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        store.buyArchetype(.trillionaire)
+        XCTAssertEqual(store.me.archetype, .trillionaire)
+        XCTAssertFalse(store.me.trillionaireVerified, "buying alone leaves it pending")
+
+        let woman = store.floor.first { !$0.isCopycat }!
+        let full = Archetype.trillionaire.price
+
+        // Underpaying a $9,999 date must NOT verify.
+        let shortMatch = Match(bid: Bid(man: store.me, woman: woman, amount: full))
+        store.matches.insert(shortMatch, at: 0)
+        store.completeAsMan(shortMatch, stars: 5, traits: [:], categories: [], text: "", actuallySpent: full - 1)
+        XCTAssertFalse(store.me.trillionaireVerified, "paying short cannot verify")
+
+        // Paying the full $9,999 (sim-woman confirms) verifies.
+        let fullMatch = Match(bid: Bid(man: store.me, woman: woman, amount: full))
+        store.matches.insert(fullMatch, at: 0)
+        store.completeAsMan(fullMatch, stars: 5, traits: [:], categories: [], text: "", actuallySpent: full)
+        XCTAssertTrue(store.me.trillionaireVerified, "full, confirmed payment verifies Trillionaire")
     }
 
     @MainActor
@@ -208,7 +254,7 @@ final class AuctionLogicTests: XCTestCase {
 
     @MainActor
     private func freshStore() -> AuctionStore {
-        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v2")
+        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v3")
         let store = AuctionStore()
         store.resetAccount()
         return store
