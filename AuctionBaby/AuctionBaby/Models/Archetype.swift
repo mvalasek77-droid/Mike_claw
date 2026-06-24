@@ -20,7 +20,8 @@ enum Archetype: Int, Codable, CaseIterable, Identifiable, Comparable {
 
     var id: Int { rawValue }
 
-    /// USD price of the tier. `none` is free.
+    /// USD price of the tier. `none` is free. All tiers sit under Apple's
+    /// in-app purchase price ceiling (~$9,999.99) so each can be a real IAP.
     var price: Int {
         switch self {
         case .none: return 0
@@ -29,9 +30,9 @@ enum Archetype: Int, Codable, CaseIterable, Identifiable, Comparable {
         case .whyNot: return 20
         case .goodJob: return 100
         case .inheritance: return 1_000
-        case .influencer: return 10_000
-        case .ferrari: return 100_000
-        case .trillionaire: return 1_000_000
+        case .influencer: return 2_500
+        case .ferrari: return 5_000
+        case .trillionaire: return 9_999
         }
     }
 

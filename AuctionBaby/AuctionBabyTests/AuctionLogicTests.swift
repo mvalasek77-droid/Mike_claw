@@ -16,9 +16,20 @@ final class AuctionLogicTests: XCTestCase {
         XCTAssertEqual(Archetype.whyNot.price, 20)
         XCTAssertEqual(Archetype.goodJob.price, 100)
         XCTAssertEqual(Archetype.inheritance.price, 1_000)
-        XCTAssertEqual(Archetype.influencer.price, 10_000)
-        XCTAssertEqual(Archetype.ferrari.price, 100_000)
-        XCTAssertEqual(Archetype.trillionaire.price, 1_000_000)
+        XCTAssertEqual(Archetype.influencer.price, 2_500)
+        XCTAssertEqual(Archetype.ferrari.price, 5_000)
+        XCTAssertEqual(Archetype.trillionaire.price, 9_999)
+    }
+
+    /// Every tier must stay under Apple's in-app purchase price ceiling and the
+    /// ladder must be strictly ascending.
+    func testArchetypePricesAreIAPValidAndAscending() {
+        let tiers = Archetype.allCases
+        for tier in tiers {
+            XCTAssertLessThanOrEqual(tier.price, 9_999, "\(tier.title) exceeds the IAP cap")
+        }
+        let prices = tiers.map(\.price)
+        XCTAssertEqual(prices, prices.sorted(), "tiers must ascend in price")
     }
 
     func testOnlyTrillionaireUsesPrestigeStyle() {

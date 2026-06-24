@@ -39,9 +39,14 @@ The price *is* the flex: the app exists to surface whether a man has money.
 | $20 | Why Not Guy |
 | $100 | Got a Good Job |
 | $1,000 | Inheritance Money Guy |
-| $10,000 | Influencer |
-| $100,000 | I Drive a Ferrari |
-| $1,000,000 | **Trillionaire** |
+| $2,500 | Influencer |
+| $5,000 | I Drive a Ferrari |
+| $9,999 | **Trillionaire** |
+
+> Prices are kept under Apple's in-app purchase ceiling (~$9,999.99) so every
+> tier can be a real StoreKit purchase. The "$1,000,000" flex lives on the
+> *bid* side (a symbolic, credit-denominated date offer), which is what mints a
+> woman's Masterpiece — not the badge price.
 
 ### Masterpiece
 
