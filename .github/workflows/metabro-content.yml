@@ -1,12 +1,17 @@
-name: MetaBro Daily Content
+name: MetaBro Content Engine
 
-# Regenerates every user + Bro-hood avatar AND a fresh feed of posts each day.
-# Generators seed on the current date, so avatars morph and content rotates
-# automatically. Commits the refreshed assets back to the branch when they change.
+# Keeps the backend feed constantly fresh: regenerates every user + Bro-hood
+# avatar AND a fresh feed of posts on a rolling schedule. The content generator
+# seeds on the current hour slot, so every run yields a new feed. Commits the
+# refreshed assets back to the branch when they change.
+#
+# NOTE: GitHub only fires `schedule`/`workflow_dispatch` for workflows on the
+# repo's DEFAULT branch. Make this branch the default (or trigger manually) for
+# the cron to run.
 on:
   schedule:
-    - cron: "0 6 * * *"   # 06:00 UTC daily
-  workflow_dispatch:       # manual trigger
+    - cron: "0 */3 * * *"   # every 3 hours
+  workflow_dispatch:        # manual trigger
 
 concurrency:
   group: metabro-avatars
@@ -48,7 +53,7 @@ jobs:
           paths="MetaBro/Branding/avatars MetaBro/Branding/previews MetaBro/Branding/content"
           if [ -n "$(git status --porcelain $paths)" ]; then
             git add $paths
-            git commit -m "chore(content): daily refresh ($(date -u +%Y-%m-%d))"
+            git commit -m "chore(content): refresh ($(date -u +%Y-%m-%dT%H:%MZ))"
             git push origin HEAD:${GITHUB_REF_NAME}
           else
             echo "No content changes today."

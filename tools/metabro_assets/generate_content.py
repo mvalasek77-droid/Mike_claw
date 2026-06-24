@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""MetaBro daily AI content flow.
+"""MetaBro AI content flow.
 
-Generates a fresh feed of posts every day, seeded on the date so the content
-rotates automatically (run on the same cron as the avatars). Output matches the
-app's wire format (`FeedPageDTO` / `PostDTO`), with each author/community
-carrying its daily avatar URL — so `LiveFeedService` can serve it directly.
+Generates a fresh feed of posts, seeded on the current hour slot so the content
+rotates every time the cron runs (the workflow fires every few hours, keeping
+the backend feed constantly fresh). Output matches the app's wire format
+(`FeedPageDTO` / `PostDTO`), with each author/community carrying its avatar URL
+— so `LiveFeedService` can serve it directly.
 
-  python generate_content.py [--date YYYY-MM-DD] [--count 6]
+`feed-latest.json` is overwritten every run (the live feed). A per-day archive
+`feed-YYYY-MM-DD.json` is also written and overwritten through the day, so the
+repo doesn't accumulate one file per run.
+
+  python generate_content.py [--stamp SEED] [--date YYYY-MM-DD] [--count 6]
 """
 from __future__ import annotations
 import argparse
@@ -97,10 +102,10 @@ def _community_dto(c: dict) -> dict:
             "is_joined": True}
 
 
-def build(date: str, count: int) -> dict:
-    g = _stream(date)
+def build(seed: str, when: dt.datetime, count: int) -> dict:
+    g = _stream(seed)
     posts = []
-    now = dt.datetime.fromisoformat(date + "T12:00:00+00:00")
+    now = when
     for n in range(count):
         social = (next(g) % 3 == 0)
         author = USERS[next(g) % len(USERS)]
@@ -120,22 +125,31 @@ def build(date: str, count: int) -> dict:
             post = {"community": _community_dto(comm), "title": title, "body": bdy,
                     "score": 50 + next(g) % 1500, "reactions": [],
                     "my_reaction": None, "awards": awards}
-        post.update({"id": _det_uuid(f"{date}|post|{n}"), "author": _user_dto(author),
+        post.update({"id": _det_uuid(f"{seed}|post|{n}"), "author": _user_dto(author),
                      "image_url": None, "comment_count": next(g) % 120,
                      "created_at": created, "my_vote": 0})
         posts.append(post)
-    return {"generated_for": date, "posts": posts, "next_cursor": None}
+    return {"generated_for": seed, "posts": posts, "next_cursor": None}
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--date", default=dt.date.today().isoformat())
+    ap.add_argument("--stamp", default=None,
+                    help="seed override; defaults to the current UTC hour slot (YYYY-MM-DDTHH)")
+    ap.add_argument("--date", default=None,
+                    help="pin the archive day (YYYY-MM-DD); defaults to today UTC")
     ap.add_argument("--count", type=int, default=6)
     args = ap.parse_args()
+
+    when = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    # Seed on the hour slot so every cron run yields a fresh feed.
+    seed = args.stamp or when.strftime("%Y-%m-%dT%H")
+    day = args.date or when.date().isoformat()
+
     os.makedirs(OUT, exist_ok=True)
-    page = build(args.date, args.count)
+    page = build(seed, when, args.count)
     with open(os.path.join(OUT, "feed-latest.json"), "w") as f:
         json.dump(page, f, indent=2)
-    with open(os.path.join(OUT, f"feed-{args.date}.json"), "w") as f:
+    with open(os.path.join(OUT, f"feed-{day}.json"), "w") as f:
         json.dump(page, f, indent=2)
-    print(f"Generated {len(page['posts'])} posts for {args.date} -> {OUT}")
+    print(f"Generated {len(page['posts'])} posts (seed {seed}) -> {OUT}")
