@@ -44,8 +44,8 @@ struct AuctionFeedView: View {
                     .foregroundStyle(Theme.inkSoft)
                 Spacer()
                 HStack(spacing: 5) {
-                    Image(systemName: "creditcard.fill").font(.system(size: 11, weight: .bold))
-                    Text(Money.compact(store.wallet))
+                    Image(systemName: "hammer.fill").font(.system(size: 11, weight: .bold))
+                    Text(Tally.compact(store.wallet))
                         .font(.system(size: 13, weight: .heavy, design: .rounded))
                 }
                 .foregroundStyle(Theme.gold)

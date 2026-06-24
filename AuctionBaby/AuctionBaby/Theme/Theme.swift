@@ -147,3 +147,24 @@ enum Money {
         d == d.rounded() ? String(Int(d)) : String(format: "%.1f", d)
     }
 }
+
+/// Formats a count of Gavels (the in-app currency) — no dollar sign, since
+/// Gavels are not dollars. `1,000`, `14K`, `1.2M`.
+enum Tally {
+    static func compact(_ value: Int) -> String {
+        switch value {
+        case 1_000_000...: return "\(trim(Double(value) / 1_000_000))M"
+        case 100_000...:   return "\(value / 1_000)K"
+        case 10_000...:    return "\(trim(Double(value) / 1_000))K"
+        default:
+            let f = NumberFormatter()
+            f.numberStyle = .decimal
+            f.maximumFractionDigits = 0
+            return f.string(from: NSNumber(value: value)) ?? "\(value)"
+        }
+    }
+
+    private static func trim(_ d: Double) -> String {
+        d == d.rounded() ? String(Int(d)) : String(format: "%.1f", d)
+    }
+}

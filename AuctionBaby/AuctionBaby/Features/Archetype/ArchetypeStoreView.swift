@@ -5,6 +5,7 @@ import SwiftUI
 struct ArchetypeStoreView: View {
     @EnvironmentObject private var store: AuctionStore
     @State private var confirming: Archetype?
+    @State private var showStore = false
 
     var body: some View {
         NavigationStack {
@@ -12,7 +13,7 @@ struct ArchetypeStoreView: View {
                 VStack(spacing: 14) {
                     walletCard
                     SectionHeader(title: "Buy your rating",
-                                  subtitle: "The more you pay, the louder the flex.")
+                                  subtitle: "Spend Gavels. The bigger the tier, the louder the flex.")
                         .padding(.top, 4)
                     ForEach(Archetype.allCases) { tier in
                         ArchetypeRow(tier: tier,
@@ -28,12 +29,15 @@ struct ArchetypeStoreView: View {
             }
             .background(AppBackground())
             .navigationTitle("Status")
+            .sheet(isPresented: $showStore) {
+                GavelStoreView().presentationDetents([.large])
+            }
             .confirmationDialog(confirming.map { "Become a \($0.title)?" } ?? "",
                                 isPresented: Binding(get: { confirming != nil },
                                                      set: { if !$0 { confirming = nil } }),
                                 titleVisibility: .visible) {
                 if let tier = confirming {
-                    Button(tier == .none ? "Remove rating" : "Pay \(Money.full(tier.price))") {
+                    Button(tier == .none ? "Remove rating" : "Spend \(Tally.compact(tier.price)) Gavels") {
                         store.buyArchetype(tier); confirming = nil
                     }
                     Button("Cancel", role: .cancel) { confirming = nil }
@@ -48,13 +52,16 @@ struct ArchetypeStoreView: View {
         GlassCard(tint: Theme.gold) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Demo credits").font(.system(size: 11, weight: .bold, design: .rounded))
+                    Text("Your Gavels").font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.inkFaint)
-                    Text(Money.full(store.wallet)).font(.system(size: 26, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Theme.gold).contentTransition(.numericText())
+                    HStack(spacing: 6) {
+                        Image(systemName: "hammer.fill").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.gold)
+                        Text(Tally.compact(store.wallet)).font(.system(size: 26, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Theme.gold).contentTransition(.numericText())
+                    }
                 }
                 Spacer()
-                Button { store.addDemoCredits() } label: {
+                Button { showStore = true } label: {
                     Label("Top up", systemImage: "plus")
                         .font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(.black)
                         .padding(.horizontal, 14).padding(.vertical, 9)
@@ -102,9 +109,16 @@ struct ArchetypeRow: View {
                     }
                     Spacer(minLength: 6)
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text(tier == .none ? "Free" : Money.compact(tier.price))
-                            .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        if tier == .none {
+                            Text("Free").font(.system(size: 16, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Theme.ink)
+                        } else {
+                            HStack(spacing: 3) {
+                                Image(systemName: "hammer.fill").font(.system(size: 11, weight: .bold))
+                                Text(Tally.compact(tier.price)).font(.system(size: 16, weight: .heavy, design: .rounded))
+                            }
                             .foregroundStyle(tier.usesPrestigeStyle ? Theme.gold : Theme.ink)
+                        }
                         if current {
                             Text(pending ? "PENDING" : "ACTIVE").font(.system(size: 9, weight: .heavy, design: .rounded))
                                 .foregroundStyle(.black).padding(.horizontal, 7).padding(.vertical, 3)

@@ -3,13 +3,23 @@ import SwiftUI
 @main
 struct AuctionBabyApp: App {
     @StateObject private var store = AuctionStore()
+    // Owned at app root so a transaction delivered while no store sheet is open
+    // still credits Gavels — never re-create per-screen.
+    @StateObject private var storeKit = StoreKitService()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(store)
+                .environmentObject(storeKit)
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
+                .task {
+                    // Verified Gavel purchases credit the wallet; refunds claw back.
+                    storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
+                    storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
+                    await storeKit.loadProducts()
+                }
         }
     }
 }

@@ -10,6 +10,7 @@
 		1A0000000000000000000006 /* AuctionBaby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AuctionBaby.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A0000000000000000000007 /* AuctionBabyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AuctionBabyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A000000000000000000000C /* Build.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Build.xcconfig; sourceTree = "<group>"; };
+		1A000000000000000000001F /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -72,6 +73,7 @@
 				1A0000000000000000000008 /* AuctionBaby */,
 				1A0000000000000000000009 /* AuctionBabyTests */,
 				1A000000000000000000000B /* Config */,
+				1A000000000000000000001F /* Products.storekit */,
 				1A0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";

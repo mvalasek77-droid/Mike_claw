@@ -14,8 +14,8 @@ final class AuctionStore: ObservableObject {
     // MARK: Published state
     @Published var role: Role?
     @Published var me: Profile = AuctionStore.blankProfile(.man)
-    @Published var wallet: Int = 5_000_000      // demo "Auction Credits"
-    @Published var earnings: Int = 0            // woman side: bids actually paid out
+    @Published var wallet: Int = 750           // Gavels (in-app currency, real money via IAP)
+    @Published var earnings: Int = 0            // woman side: bids actually paid out (real-world $)
 
     @Published var floor: [Profile] = []        // women a bidder browses
     @Published var incomingBids: [Bid] = []     // woman's inbox
@@ -62,7 +62,7 @@ final class AuctionStore: ObservableObject {
     func resetAccount() {
         role = nil
         me = AuctionStore.blankProfile(.man)
-        wallet = 5_000_000
+        wallet = 750
         earnings = 0
         floor = []
         incomingBids = []
@@ -100,7 +100,7 @@ final class AuctionStore: ObservableObject {
         guard archetype != me.archetype else { return }
         guard wallet >= archetype.price else {
             Haptics.error()
-            toastFlash("Not enough credits for \(archetype.title).")
+            toastFlash("Need \(Tally.compact(archetype.price)) Gavels for \(archetype.title). Top up.")
             return
         }
         wallet -= archetype.price
@@ -117,12 +117,28 @@ final class AuctionStore: ObservableObject {
         save()
     }
 
-    /// Demo helper — top up play credits so every tier (incl. the $1M
-    /// Trillionaire) is reachable without real money.
-    func addDemoCredits(_ amount: Int = 1_000_000) {
+    /// Grant Gavels from a verified StoreKit consumable purchase. Wired to
+    /// `StoreKitService.onCredit` at app root.
+    func creditGavels(_ amount: Int) {
+        wallet += amount
+        Haptics.success()
+        toastFlash("Topped up \(Tally.compact(amount)) Gavels.")
+        save()
+    }
+
+    /// Claw Gavels back when Apple refunds a pack. Floors at zero.
+    func revokeGavels(_ amount: Int) {
+        wallet = max(0, wallet - amount)
+        toastFlash("Refund processed — \(Tally.compact(amount)) Gavels removed.")
+        save()
+    }
+
+    /// Demo-only top-up so the higher tiers are explorable without a sandbox
+    /// purchase. Clearly labelled as demo in the UI; never charges anything.
+    func addDemoGavels(_ amount: Int = 10_000) {
         wallet += amount
         Haptics.tap()
-        toastFlash("Added \(Money.compact(amount)) demo credits.")
+        toastFlash("Demo: added \(Tally.compact(amount)) Gavels (no charge).")
         save()
     }
 

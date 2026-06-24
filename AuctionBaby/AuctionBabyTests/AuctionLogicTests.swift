@@ -192,6 +192,7 @@ final class AuctionLogicTests: XCTestCase {
         let store = freshStore()
         store.register(role: .man, name: "Max", age: 40, location: "LA", bio: "",
                        hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        store.creditGavels(20_000)   // enough Gavels to afford the top tier
         store.buyArchetype(.trillionaire)
         XCTAssertEqual(store.me.archetype, .trillionaire)
         XCTAssertFalse(store.me.trillionaireVerified, "buying alone leaves it pending")

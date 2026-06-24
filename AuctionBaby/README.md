@@ -34,6 +34,21 @@ There is exactly **one** thing real money buys in the app, and one thing it does
   deadbeat score and Trillionaire verification. Because the app never custodies
   the date money, there's no escrow / money-transmitter burden on the bid side.
 
+### StoreKit
+
+Real money flows through **StoreKit 2** only (`Services/StoreKitService.swift`,
+`Products.storekit`):
+
+- **Gavels** — consumable currency packs ($4.99–$99.99). Verified purchases
+  credit the wallet; status archetypes are bought by spending Gavels. The grant
+  path is keyed by `transaction.id` (no double-credit) and refunds are clawed
+  back from `Transaction.updates` / `Transaction.all`.
+- **Auction Baby Pass** — auto-renewable subscriptions (Paddle / Reserve / Black
+  Card), tracked via `Transaction.currentEntitlements`.
+- The store UI (`Features/Store/GavelStoreView.swift`) includes the required
+  Restore action and auto-renew disclosure. The bundled `Products.storekit`
+  scheme config lets the whole flow run in the simulator.
+
 ### Credit scores
 
 - **Auction Credit** (men, 300–850): a credit-score analogue driven by archetype

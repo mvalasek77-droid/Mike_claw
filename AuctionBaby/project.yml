@@ -55,8 +55,10 @@ schemes:
         AuctionBabyTests: [test]
     run:
       config: Debug
+      storeKitConfiguration: Products.storekit
     test:
       config: Debug
+      storeKitConfiguration: Products.storekit
       targets:
         - AuctionBabyTests
     archive:

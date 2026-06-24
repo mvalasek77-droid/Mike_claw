@@ -1,0 +1,145 @@
+{
+  "identifier" : "AUCTIONBABY-STOREKIT",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "gavels-handful",
+      "localizations" : [
+        {
+          "description" : "1,000 Gavels to fund your status.",
+          "displayName" : "Handful of Gavels",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.gavels.handful",
+      "referenceName" : "Gavels Handful",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : false,
+      "internalID" : "gavels-stack",
+      "localizations" : [
+        {
+          "description" : "5,000 Gavels — better value.",
+          "displayName" : "Stack of Gavels",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.gavels.stack",
+      "referenceName" : "Gavels Stack",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "49.99",
+      "familyShareable" : false,
+      "internalID" : "gavels-chest",
+      "localizations" : [
+        {
+          "description" : "14,000 Gavels — reach the top tiers.",
+          "displayName" : "Chest of Gavels",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.gavels.chest",
+      "referenceName" : "Gavels Chest",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "99.99",
+      "familyShareable" : false,
+      "internalID" : "gavels-vault",
+      "localizations" : [
+        {
+          "description" : "30,000 Gavels — the whole vault.",
+          "displayName" : "Vault of Gavels",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.gavels.vault",
+      "referenceName" : "Gavels Vault",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_compatibilityTimeRate" : 1
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21490001",
+      "localizations" : [],
+      "name" : "Auction Baby Pass",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "19.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "sub-paddle",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited bids, see if you're the top bid, weekly Boost.",
+              "displayName" : "Paddle",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.valasek.auctionbaby.sub.paddle",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Paddle",
+          "subscriptionGroupID" : "21490001",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "39.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "sub-reserve",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Everything in Paddle, plus reserve-price reveal and auto-rebid.",
+              "displayName" : "Reserve",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.valasek.auctionbaby.sub.reserve",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Reserve",
+          "subscriptionGroupID" : "21490001",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "99.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "sub-blackcard",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Everything in Reserve, plus priority placement on every lot.",
+              "displayName" : "Black Card",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.valasek.auctionbaby.sub.blackcard",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Black Card",
+          "subscriptionGroupID" : "21490001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
