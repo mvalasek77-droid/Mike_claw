@@ -37,9 +37,10 @@ struct BugReportTests {
         let draft = BugReportDraft(summary: "Feed crashes on scroll", details: "Happens after 50 posts",
                                     severity: .crash, includeDiagnostics: true)
         try await service.submit(draft)
-        #expect(service.submitted.count == 1)
-        #expect(service.submitted.first?.summary == "Feed crashes on scroll")
-        #expect(service.submitted.first?.severity == .crash)
+        let submitted = await service.submitted
+        #expect(submitted.count == 1)
+        #expect(submitted.first?.summary == "Feed crashes on scroll")
+        #expect(submitted.first?.severity == .crash)
     }
 
     @Test func diagnosticsSnapshotIncludesAppAndDeviceInfo() async {

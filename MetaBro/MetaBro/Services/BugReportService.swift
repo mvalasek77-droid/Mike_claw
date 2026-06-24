@@ -38,22 +38,16 @@ extension BugReportService {
 
 /// Offline-friendly backend: keeps submitted reports in memory so the demo
 /// flow and tests can verify a submission happened without a server.
-final class MockBugReportService: BugReportService, @unchecked Sendable {
-    private let lock = NSLock()
+actor MockBugReportService: BugReportService {
     private var _submitted: [BugReportDraft] = []
 
-    var submitted: [BugReportDraft] {
-        lock.lock(); defer { lock.unlock() }
-        return _submitted
-    }
+    var submitted: [BugReportDraft] { _submitted }
 
     func diagnostics() async -> DeviceDiagnostics {
         await Self.currentDiagnostics()
     }
 
     func submit(_ draft: BugReportDraft) async throws {
-        lock.lock()
         _submitted.append(draft)
-        lock.unlock()
     }
 }
