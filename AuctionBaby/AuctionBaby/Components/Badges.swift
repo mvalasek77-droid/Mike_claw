@@ -109,12 +109,17 @@ struct DeadbeatTag: View {
     }
 }
 
-/// "Copycat" warning flag — an AI-generated lure profile.
+/// "Copycat" warning flag — an AI-generated lure profile. Gently pulses to read
+/// as "synthetic / live", and holds still under Reduce Motion.
 struct CopycatTag: View {
     var compact: Bool = false
+    @State private var pulse = false
+
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: "sparkles")
+                .opacity(pulse ? 1 : 0.55)
+                .scaleEffect(pulse ? 1.0 : 0.86)
             Text(compact ? "AI" : "Copycat · AI")
         }
         .font(.system(size: compact ? 10 : 12, weight: .heavy, design: .rounded))
@@ -122,6 +127,11 @@ struct CopycatTag: View {
         .padding(.horizontal, compact ? 7 : 10).padding(.vertical, compact ? 3 : 5)
         .background(Capsule().fill(Theme.copycat.opacity(0.9)))
         .overlay(Capsule().strokeBorder(.white.opacity(0.4), lineWidth: 0.6))
+        .shadow(color: Theme.copycat.opacity(pulse ? 0.6 : 0.2), radius: pulse ? 8 : 3)
+        .onAppear {
+            guard !UIAccessibility.isReduceMotionEnabled else { pulse = true; return }
+            withAnimation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true)) { pulse = true }
+        }
         .accessibilityLabel("Copycat, AI-generated profile")
     }
 }

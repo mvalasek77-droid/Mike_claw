@@ -27,7 +27,7 @@ final class AuctionStore: ObservableObject {
     var isRegistered: Bool { role != nil }
 
     private let store = UserDefaults.standard
-    private static let key = "auctionbaby.state.v1"
+    private static let key = "auctionbaby.state.v2"
 
     // MARK: - Lifecycle
 

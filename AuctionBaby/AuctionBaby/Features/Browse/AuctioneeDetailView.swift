@@ -12,7 +12,7 @@ struct AuctioneeDetailView: View {
             VStack(spacing: 16) {
                 ZStack(alignment: .bottomLeading) {
                     AvatarView(name: woman.name, hue: woman.hue, copycat: woman.isCopycat,
-                               corner: Theme.cornerXL)
+                               copycatStyle: woman.copycatStyle, corner: Theme.cornerXL)
                         .frame(height: 380)
                     LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
                         .frame(height: 380).allowsHitTesting(false)

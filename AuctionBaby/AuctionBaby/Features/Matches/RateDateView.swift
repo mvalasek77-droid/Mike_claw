@@ -34,7 +34,7 @@ struct RateDateView: View {
                 Capsule().fill(Theme.hairline).frame(width: 38, height: 5).padding(.top, 8)
 
                 VStack(spacing: 6) {
-                    AvatarCircle(name: other.name, hue: other.hue, size: 64, copycat: other.isCopycat)
+                    AvatarCircle(name: other.name, hue: other.hue, size: 64, copycat: other.isCopycat, copycatStyle: other.copycatStyle)
                     Text("How was your date with \(other.name)?")
                         .font(.system(size: 18, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.center)

@@ -63,7 +63,7 @@ enum SampleData {
                         Prompt(question: "My ideal date", answer: "You bid the most. That's the whole date."),
                     ],
                     interests: ["Yachts", "Bikinis", "Champagne"],
-                    isCopycat: true),
+                    isCopycat: true, copycatStyle: .poolside),
 
             Profile(name: "Noor Haddad", age: 26, role: .woman, location: "Capitol Hill, Seattle",
                     bio: "Climate engineer. I will fact-check your fun facts. Lovingly.",
@@ -91,7 +91,27 @@ enum SampleData {
                         Prompt(question: "Two truths and a lie", answer: "I'm real. I'm real. I'm real."),
                     ],
                     interests: ["Pool parties", "Designer bags"],
-                    isCopycat: true),
+                    isCopycat: true, copycatStyle: .glam),
+
+            // Yoga-styled copycat.
+            Profile(name: "Jade Divine", age: 24, role: .woman, location: "Tulum",
+                    bio: "Namaste 🧘‍♀️ flexible in every way ✨ (AI-generated) tip to unlock 💕",
+                    hue: 0.80,
+                    prompts: [
+                        Prompt(question: "My happy place", answer: "Sunrise flow, then your credit card."),
+                    ],
+                    interests: ["Yoga", "Wellness", "Retreats"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            // Beach-styled copycat.
+            Profile(name: "Amber Skye", age: 23, role: .woman, location: "Malibu",
+                    bio: "Golden hour, golden girl 🌅 (AI-generated) big bids get my number 📲",
+                    hue: 0.07,
+                    prompts: [
+                        Prompt(question: "Best first date", answer: "Whoever bids highest. Obviously."),
+                    ],
+                    interests: ["Surf", "Sunsets", "Rosé"],
+                    isCopycat: true, copycatStyle: .beach),
         ]
     }
 

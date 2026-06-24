@@ -70,7 +70,7 @@ struct FloorCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .topLeading) {
                     AvatarView(name: woman.name, hue: woman.hue, copycat: woman.isCopycat,
-                               corner: Theme.cornerXL)
+                               copycatStyle: woman.copycatStyle, corner: Theme.cornerXL)
                         .frame(height: 360)
 
                     if woman.isCopycat {

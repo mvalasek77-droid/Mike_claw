@@ -49,6 +49,45 @@ struct DateReview: Identifiable, Codable, Hashable {
     var spentAmount: Int? = nil
 }
 
+/// The "look" a copycat lure is styled around. Drives the synthetic portrait's
+/// palette and the swimwear/athleisure cue — conveyed through colour and a
+/// stylised silhouette, never photographic bodies, so the lure stays tasteful,
+/// obviously AI-generated, and App-Store-safe.
+enum CopycatStyle: String, Codable, CaseIterable, Hashable {
+    case poolside   // bikini · turquoise pool light
+    case beach      // bikini · warm sunset sand
+    case yoga       // yoga pants · lavender studio
+    case glam       // couture · magenta + gold
+
+    var caption: String {
+        switch self {
+        case .poolside: return "Bikini · Poolside"
+        case .beach: return "Bikini · Beach"
+        case .yoga: return "Yoga · Studio"
+        case .glam: return "Couture · Glam"
+        }
+    }
+
+    /// Gradient hue stops (0–1) for the iridescent backdrop.
+    var hues: [Double] {
+        switch self {
+        case .poolside: return [0.50, 0.46, 0.13]
+        case .beach: return [0.06, 0.02, 0.11]
+        case .yoga: return [0.74, 0.80, 0.92]
+        case .glam: return [0.90, 0.84, 0.95]
+        }
+    }
+
+    var accent: Color {
+        switch self {
+        case .poolside: return Color(hue: 0.50, saturation: 0.75, brightness: 0.95)
+        case .beach: return Color(hue: 0.06, saturation: 0.80, brightness: 0.98)
+        case .yoga: return Color(hue: 0.78, saturation: 0.55, brightness: 0.96)
+        case .glam: return Color(hue: 0.90, saturation: 0.70, brightness: 0.98)
+        }
+    }
+}
+
 /// A person on the floor. One struct for both sides; role-specific fields are
 /// simply unused on the other side. Snapshots of these travel inside bids and
 /// matches, so the type is a value type end-to-end.
@@ -67,6 +106,7 @@ struct Profile: Identifiable, Codable, Hashable {
     // MARK: Woman-specific
     var startingBid: Int? = nil           // optional floor
     var isCopycat: Bool = false           // AI-generated lure
+    var copycatStyle: CopycatStyle = .glam // how the lure portrait is styled
     var masterpiece: Bool = false         // minted by a Trillionaire's $1M date
 
     // MARK: Man-specific

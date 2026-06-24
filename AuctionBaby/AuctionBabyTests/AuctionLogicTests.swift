@@ -166,6 +166,23 @@ final class AuctionLogicTests: XCTestCase {
         XCTAssertEqual(store.me.copycatBids, before + 1)
     }
 
+    // MARK: Copycats
+
+    func testFloorHasDisclosedCopycatsWithStyles() {
+        let copycats = SampleData.floor().filter { $0.isCopycat }
+        XCTAssertGreaterThanOrEqual(copycats.count, 3, "the floor should seed several lures")
+        // Styling cues should span more than one look (bikini / yoga / etc.).
+        let styles = Set(copycats.map { $0.copycatStyle })
+        XCTAssertGreaterThan(styles.count, 1)
+        // Every Copycat caption must carry its disclosure-friendly styling label.
+        for c in copycats { XCTAssertFalse(c.copycatStyle.caption.isEmpty) }
+    }
+
+    func testCopycatStylePalettesAreDistinct() {
+        let hues = CopycatStyle.allCases.map { $0.hues }
+        XCTAssertEqual(hues.count, Set(hues.map { "\($0)" }).count, "each style needs its own palette")
+    }
+
     // MARK: Money formatting
 
     func testMoneyCompact() {
@@ -180,7 +197,7 @@ final class AuctionLogicTests: XCTestCase {
 
     @MainActor
     private func freshStore() -> AuctionStore {
-        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v1")
+        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v2")
         let store = AuctionStore()
         store.resetAccount()
         return store

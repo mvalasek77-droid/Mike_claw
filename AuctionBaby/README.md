@@ -53,6 +53,16 @@ a **Trillionaire** actually pays the full **$1,000,000** for a date with her.
 AI-generated "11/10" lure profiles. They're flagged everywhere (`Copycat · AI`),
 and bidding on one is disclosed publicly and **lowers the bidder's Auction Credit**.
 
+Each copycat renders as a **richly animated, deliberately *synthetic* portrait**
+(`CopycatPortrait`) — iridescent holographic backdrops, a drifting bloom, a
+sweeping holo-sheen, twinkling sparkles and a stylised fashion silhouette, with
+the AI disclosure **baked into the image**. There is no photography: the
+"bikini / poolside / beach / yoga" looks are carried by palette and silhouette
+(`CopycatStyle`), never by exposed bodies — so the bait is gorgeous and
+obviously generated, stays tasteful and App-Store-safe, and keeps the
+credit-tanking gameplay legible. All animation is `TimelineView`-driven and goes
+fully static under Reduce Motion.
+
 ---
 
 ## Architecture

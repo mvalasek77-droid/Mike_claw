@@ -43,7 +43,7 @@ struct MatchRow: View {
     var body: some View {
         GlassSurface(corner: Theme.cornerL) {
             HStack(spacing: 12) {
-                AvatarCircle(name: other.name, hue: other.hue, size: 56, copycat: other.isCopycat)
+                AvatarCircle(name: other.name, hue: other.hue, size: 56, copycat: other.isCopycat, copycatStyle: other.copycatStyle)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(other.name).font(.system(size: 16, weight: .heavy, design: .serif))

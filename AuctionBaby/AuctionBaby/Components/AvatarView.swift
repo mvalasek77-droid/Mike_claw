@@ -11,6 +11,7 @@ struct AvatarView: View {
     let hue: Double
     var locked: Bool = false
     var copycat: Bool = false
+    var copycatStyle: CopycatStyle = .glam
     var corner: CGFloat = Theme.cornerL
 
     private var initials: String {
@@ -24,6 +25,14 @@ struct AvatarView: View {
                                     saturation: 0.7, brightness: 0.45) }
 
     var body: some View {
+        if copycat && !locked {
+            CopycatPortrait(name: name, hue: hue, style: copycatStyle, corner: corner)
+        } else {
+            standardBody
+        }
+    }
+
+    private var standardBody: some View {
         ZStack {
             LinearGradient(colors: [base, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
 
@@ -81,9 +90,11 @@ struct AvatarCircle: View {
     var size: CGFloat = 44
     var locked: Bool = false
     var copycat: Bool = false
+    var copycatStyle: CopycatStyle = .glam
 
     var body: some View {
-        AvatarView(name: name, hue: hue, locked: locked, copycat: copycat, corner: size)
+        AvatarView(name: name, hue: hue, locked: locked, copycat: copycat,
+                   copycatStyle: copycatStyle, corner: size)
             .frame(width: size, height: size)
             .clipShape(Circle())
             .overlay(Circle().strokeBorder(.white.opacity(0.2), lineWidth: 1))
