@@ -1,0 +1,61 @@
+name: MetaBro Content Engine (trigger)
+
+# This repo's default branch hosts a different app, but GitHub only fires
+# schedule/workflow_dispatch for workflows on the DEFAULT branch. So this thin
+# trigger lives here and does nothing but drive the MetaBro content engine that
+# lives on the MetaBro branch: check it out, regenerate avatars + feed, and push
+# the refreshed assets back to that branch. Runs every 3 hours so the MetaBro
+# backend feed is constantly fresh.
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"   # every 3 hours
+  workflow_dispatch:        # manual trigger
+
+concurrency:
+  group: metabro-content
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  METABRO_BRANCH: claude/metabro-facebook-reddit-hybrid-it80pk
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the MetaBro branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.METABRO_BRANCH }}
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install renderer
+        run: pip install cairosvg
+
+      - name: Regenerate avatars, previews + content
+        working-directory: tools/metabro_assets
+        run: |
+          python generate_avatars.py
+          python generate_gallery.py
+          python generate_content.py
+
+      - name: Commit + push refreshed assets to the MetaBro branch
+        run: |
+          git config user.name "metabro-bot"
+          git config user.email "metabro-bot@users.noreply.github.com"
+          paths="MetaBro/Branding/avatars MetaBro/Branding/previews MetaBro/Branding/content"
+          if [ -n "$(git status --porcelain $paths)" ]; then
+            git add $paths
+            git commit -m "chore(content): refresh ($(date -u +%Y-%m-%dT%H:%MZ))"
+            git push origin HEAD:${METABRO_BRANCH}
+          else
+            echo "No content changes this run."
+          fi
