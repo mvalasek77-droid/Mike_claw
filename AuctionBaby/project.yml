@@ -1,0 +1,63 @@
+name: AuctionBaby
+
+options:
+  bundleIdPrefix: com.valasek
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEVELOPMENT_TEAM: "UDM4W27W9V"
+
+targets:
+  AuctionBaby:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    # Registered bundle IDs are lowercase on the Developer Portal.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.auctionbaby
+        INFOPLIST_FILE: AuctionBaby/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    configFiles:
+      Debug: Config/Build.xcconfig
+      Release: Config/Build.xcconfig
+    sources:
+      - path: AuctionBaby
+
+  AuctionBabyTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: AuctionBabyTests
+        excludes:
+          - "README.md"
+    dependencies:
+      - target: AuctionBaby
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.auctionbaby.tests
+
+schemes:
+  AuctionBaby:
+    build:
+      targets:
+        AuctionBaby: all
+        AuctionBabyTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - AuctionBabyTests
+    archive:
+      config: Release

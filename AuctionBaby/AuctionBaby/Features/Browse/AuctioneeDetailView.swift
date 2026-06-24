@@ -1,0 +1,153 @@
+import SwiftUI
+
+/// Full profile for a woman on the floor: her always-visible photo, prompts,
+/// interests, reviews, and her Showcase score — plus the bid CTA.
+struct AuctioneeDetailView: View {
+    let woman: Profile
+    var onBid: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                ZStack(alignment: .bottomLeading) {
+                    AvatarView(name: woman.name, hue: woman.hue, copycat: woman.isCopycat,
+                               corner: Theme.cornerXL)
+                        .frame(height: 380)
+                    LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
+                        .frame(height: 380).allowsHitTesting(false)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(woman.name).font(.system(size: 30, weight: .heavy, design: .serif))
+                            Text("\(woman.age)").font(.system(size: 22, design: .serif)).foregroundStyle(Theme.inkSoft)
+                            if woman.masterpiece { MasterpieceBadge(compact: true) }
+                        }
+                        .foregroundStyle(Theme.ink)
+                        Text(woman.location).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    }
+                    .padding(16)
+                    if woman.isCopycat { CopycatTag().padding(12).frame(maxWidth: .infinity, maxHeight: 380, alignment: .topLeading) }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerXL, style: .continuous))
+
+                if woman.isCopycat {
+                    GlassCard(tint: Theme.copycat) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.copycat)
+                            Text("This is an AI-generated Copycat. Bidding here is disclosed publicly and lowers your Auction Credit.")
+                                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+                        }
+                    }
+                }
+
+                if !woman.bio.isEmpty {
+                    GlassCard(title: "About", icon: "text.quote") {
+                        Text(woman.bio).font(.system(size: 15)).foregroundStyle(Theme.ink)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
+                ForEach(woman.prompts) { prompt in
+                    GlassSurface { PromptBubble(prompt: prompt).padding(4) }
+                }
+
+                if !woman.interests.isEmpty {
+                    GlassCard(title: "Interests", icon: "sparkles") {
+                        FlexLayout { ForEach(woman.interests, id: \.self) { Chip(text: $0, color: Theme.rose) } }
+                    }
+                }
+
+                ShowcaseScoreCard(woman: woman)
+
+                if !woman.reviews.isEmpty {
+                    GlassCard(title: "Date reviews", icon: "star.bubble.fill", tint: Theme.gold) {
+                        VStack(spacing: 12) {
+                            ForEach(woman.reviews) { ReviewRow(review: $0) }
+                        }
+                    }
+                }
+
+                Spacer(minLength: 90)
+            }
+            .screenPadding()
+            .padding(.top, 8)
+        }
+        .background(AppBackground())
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            PrimaryButton(title: woman.startingBid.map { "Bid · floor \(Money.compact($0))" } ?? "Place a bid",
+                          systemImage: "hand.raised.fill") {
+                onBid()
+            }
+            .screenPadding()
+            .padding(.bottom, 8)
+            .background(LinearGradient(colors: [.clear, Theme.bg], startPoint: .top, endPoint: .bottom))
+        }
+    }
+}
+
+/// Her Showcase score + per-trait breakdown.
+struct ShowcaseScoreCard: View {
+    let woman: Profile
+    var body: some View {
+        GlassCard(title: "Showcase score", icon: "rosette", tint: Theme.rose) {
+            HStack(alignment: .center, spacing: 16) {
+                ScoreGauge(value: woman.showcaseScore, range: 0...100, label: "Showcase",
+                           tint: Theme.rose, size: 116)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        StarRow(value: woman.overallStars)
+                        Text(woman.reviews.isEmpty ? "New" : String(format: "%.1f", woman.overallStars))
+                            .font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Text("Market value")
+                        .font(.system(size: 10, weight: .bold, design: .rounded)).foregroundStyle(Theme.inkFaint)
+                    Text(Money.compact(woman.marketValue))
+                        .font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
+                }
+                Spacer(minLength: 0)
+            }
+            if !woman.traitAverages.isEmpty {
+                VStack(spacing: 10) {
+                    ForEach(Trait.allCases) { trait in
+                        if let v = woman.traitAverages[trait] {
+                            StatBar(label: trait.rawValue, value: v, tint: Theme.rose)
+                        }
+                    }
+                }
+                .padding(.top, 6)
+            }
+        }
+    }
+}
+
+/// A single date review row, adapts to direction (trait review vs deadbeat verdict).
+struct ReviewRow: View {
+    let review: DateReview
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                AvatarCircle(name: review.authorName, hue: review.authorHue, size: 30)
+                Text(review.authorName).font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.ink)
+                Spacer()
+                if let paid = review.paidBid {
+                    DeadbeatTag(score: paid ? 100 : 10, compact: true)
+                } else {
+                    StarRow(value: Double(review.stars), size: 11)
+                }
+            }
+            Text(review.text).font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+            if !review.interestCategories.isEmpty {
+                FlexLayout(spacing: 6, lineSpacing: 6) {
+                    ForEach(review.interestCategories, id: \.self) {
+                        Chip(text: $0, systemImage: "tag.fill", color: Theme.gold)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.04)))
+    }
+}

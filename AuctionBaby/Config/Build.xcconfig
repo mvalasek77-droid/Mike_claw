@@ -1,0 +1,8 @@
+// Build.xcconfig — shared base config for Auction Baby.
+//
+// The app is fully local (no backend, no secrets, no IAP), so this file only
+// pins the deployment target and Swift version that project.yml also sets.
+// Kept as a config file so future per-environment settings have a home.
+
+IPHONEOS_DEPLOYMENT_TARGET = 17.0
+SWIFT_VERSION = 5.0
