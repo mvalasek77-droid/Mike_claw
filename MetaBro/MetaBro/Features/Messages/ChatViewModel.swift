@@ -31,6 +31,7 @@ final class ChatViewModel {
             state = .loaded
             try? await service.markRead(conversation.id)
         } catch {
+            BroLog.error(error, category: "messages")
             state = .error("Couldn't load this conversation.")
         }
     }
@@ -52,6 +53,7 @@ final class ChatViewModel {
             try await service.send(optimistic, to: conversation.id)
             updateStatus(of: optimistic.id, to: .sent)
         } catch {
+            BroLog.error(error, category: "messages")
             messages.removeAll { $0.id == optimistic.id }
             HapticsEngine.shared.play(.error)
             return

@@ -70,3 +70,27 @@ struct LiveStoryService: StoryService {
         try await client.send(API.seenStory(id: id))
     }
 }
+
+struct LiveBugReportService: BugReportService {
+    let client: APIClient
+
+    func diagnostics() async -> DeviceDiagnostics {
+        await Self.currentDiagnostics()
+    }
+
+    func submit(_ draft: BugReportDraft) async throws {
+        let diag = await diagnostics()
+        let req = BugReportRequest(
+            summary: draft.summary,
+            details: draft.details,
+            severity: draft.severity.rawValue,
+            appVersion: diag.appVersion,
+            buildNumber: diag.buildNumber,
+            osVersion: diag.osVersion,
+            deviceModel: diag.deviceModel,
+            locale: diag.locale,
+            logs: draft.includeDiagnostics ? diag.recentLogs : nil
+        )
+        try await client.send(API.bugReport(req))
+    }
+}

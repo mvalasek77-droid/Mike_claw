@@ -23,6 +23,7 @@ final class ConversationListViewModel {
             let convos = try await service.conversations()
             state = convos.isEmpty ? .empty : .loaded(convos)
         } catch {
+            BroLog.error(error, category: "messages")
             state = .error("Couldn't load messages. Pull to refresh.")
         }
     }

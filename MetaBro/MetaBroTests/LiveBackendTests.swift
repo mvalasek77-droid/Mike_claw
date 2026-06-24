@@ -120,5 +120,17 @@ struct LiveBackendTests {
         let container = AppContainer.resolve(config: BackendConfig(baseURL: url, useLive: true))
         #expect(container.feedService is LiveFeedService)
         #expect(container.messagingService is LiveMessagingService)
+        #expect(container.bugReportService is LiveBugReportService)
+    }
+
+    // MARK: Bug reports
+
+    @Test func bugReportSubmissionHitsExpectedEndpoint() async throws {
+        let client = FakeAPIClient()
+        let service = LiveBugReportService(client: client)
+        let draft = BugReportDraft(summary: "Crash on post", details: "Tapping vote crashes the app",
+                                    severity: .crash, includeDiagnostics: false)
+        try await service.submit(draft)
+        #expect(client.mutations == ["POST bug-reports"])
     }
 }

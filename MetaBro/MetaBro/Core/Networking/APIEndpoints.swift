@@ -62,6 +62,11 @@ enum API {
     static func seenStory(id: UUID) throws -> Endpoint {
         try .post("stories/\(id.uuidString)/seen")
     }
+
+    // MARK: Bug reports
+    static func bugReport(_ body: BugReportRequest) throws -> Endpoint {
+        try .post("bug-reports", body: body)
+    }
 }
 
 // MARK: - Request bodies
@@ -80,3 +85,14 @@ struct ReplyRequest: Encodable {
     var body: String
 }
 struct SendMessageRequest: Encodable { var id: UUID; var text: String }
+struct BugReportRequest: Encodable {
+    var summary: String
+    var details: String
+    var severity: String
+    var appVersion: String
+    var buildNumber: String
+    var osVersion: String
+    var deviceModel: String
+    var locale: String
+    var logs: String?
+}

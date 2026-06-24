@@ -21,6 +21,7 @@ final class ProfileViewModel {
         do {
             state = .loaded(try await service.myProfile())
         } catch {
+            BroLog.error(error, category: "profile")
             state = .error("Couldn't load your profile. Pull to refresh.")
         }
     }

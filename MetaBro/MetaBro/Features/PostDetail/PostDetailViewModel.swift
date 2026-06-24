@@ -36,6 +36,7 @@ final class PostDetailViewModel {
             comments = try await service.comments(for: post.id)
             state = comments.isEmpty ? .empty : .loaded
         } catch {
+            BroLog.error(error, category: "postDetail")
             state = .error(message(for: error))
         }
     }
@@ -57,6 +58,7 @@ final class PostDetailViewModel {
         do {
             try await service.vote(commentID: comment.id, value: value)
         } catch {
+            BroLog.error(error, category: "postDetail")
             if let i = comments.firstIndex(where: { $0.id == comment.id }) {
                 comments[i] = previous
             }
@@ -72,6 +74,7 @@ final class PostDetailViewModel {
             state = .loaded
             HapticsEngine.shared.play(.reaction)
         } catch {
+            BroLog.error(error, category: "postDetail")
             HapticsEngine.shared.play(.error)
         }
     }

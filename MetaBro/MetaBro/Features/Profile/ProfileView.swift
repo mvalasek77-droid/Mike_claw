@@ -6,6 +6,7 @@ struct ProfileView: View {
     private let container: AppContainer
     @State private var model: ProfileViewModel
     @State private var path: [Post] = []
+    @State private var showingBugReport = false
 
     init(container: AppContainer) {
         self.container = container
@@ -21,6 +22,9 @@ struct ProfileView: View {
                 }
         }
         .task { await model.load() }
+        .sheet(isPresented: $showingBugReport) {
+            BugReportView(service: container.bugReportService)
+        }
     }
 
     @ViewBuilder
@@ -45,6 +49,7 @@ struct ProfileView: View {
                         joinedStrip(profile.joinedCommunities)
                     }
                     postsSection(profile.posts)
+                    reportProblemRow
                     SloganView(showsMark: false)
                         .padding(.top, Tokens.Spacing.xl)
                         .frame(maxWidth: .infinity)
@@ -74,6 +79,21 @@ struct ProfileView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var reportProblemRow: some View {
+        Button { showingBugReport = true } label: {
+            HStack {
+                Label("Report a problem", systemImage: "exclamationmark.bubble")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Tokens.Color.textSecondary)
+            }
+            .padding(Tokens.Spacing.md)
+        }
+        .buttonStyle(.plain)
+        .liquidGlass()
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder

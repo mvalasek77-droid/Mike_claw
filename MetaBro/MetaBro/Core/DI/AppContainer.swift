@@ -12,6 +12,7 @@ final class AppContainer {
     let searchService: SearchService
     let messagingService: MessagingService
     let storyService: StoryService
+    let bugReportService: BugReportService
 
     init(
         feedService: FeedService,
@@ -20,7 +21,8 @@ final class AppContainer {
         profileService: ProfileService,
         searchService: SearchService,
         messagingService: MessagingService,
-        storyService: StoryService
+        storyService: StoryService,
+        bugReportService: BugReportService
     ) {
         self.feedService = feedService
         self.commentService = commentService
@@ -29,6 +31,7 @@ final class AppContainer {
         self.searchService = searchService
         self.messagingService = messagingService
         self.storyService = storyService
+        self.bugReportService = bugReportService
     }
 
     /// Resolves the dependency graph from configuration: a live backend when
@@ -56,7 +59,8 @@ final class AppContainer {
             profileService: MockProfileService(feedService: feed, communityService: communities),
             searchService: MockSearchService(feedService: feed, communityService: communities),
             messagingService: LiveMessagingService(client: client),
-            storyService: LiveStoryService(client: client)
+            storyService: LiveStoryService(client: client),
+            bugReportService: LiveBugReportService(client: client)
         )
     }
 
@@ -73,7 +77,8 @@ final class AppContainer {
             profileService: MockProfileService(feedService: feed, communityService: communities),
             searchService: MockSearchService(feedService: feed, communityService: communities),
             messagingService: MockMessagingService(),
-            storyService: MockStoryService()
+            storyService: MockStoryService(),
+            bugReportService: MockBugReportService()
         )
     }
 }

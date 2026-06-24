@@ -36,6 +36,7 @@ final class SearchViewModel {
                 if Task.isCancelled { return }
                 state = results.isEmpty ? .empty(trimmed) : .results(results)
             } catch {
+                BroLog.error(error, category: "search")
                 state = .error("Search failed. Try again.")
             }
         }

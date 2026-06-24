@@ -30,6 +30,7 @@ final class FeedViewModel {
             let page = try await service.feed(sort: sort, cursor: nil)
             state = page.posts.isEmpty ? .empty : .loaded(page.posts)
         } catch {
+            BroLog.error(error, category: "feed")
             state = .error(Self.message(for: error))
         }
     }
@@ -41,6 +42,7 @@ final class FeedViewModel {
             state = page.posts.isEmpty ? .empty : .loaded(page.posts)
             HapticsEngine.shared.play(.refreshDone)
         } catch {
+            BroLog.error(error, category: "feed")
             HapticsEngine.shared.play(.error)
             // Only surface an error screen if we have nothing to show.
             if case .loaded = state { return }
@@ -62,6 +64,7 @@ final class FeedViewModel {
         do {
             try await service.vote(postID: post.id, value: value)
         } catch {
+            BroLog.error(error, category: "feed")
             // Roll back to the pre-vote snapshot.
             if case .loaded(var current) = state,
                let i = current.firstIndex(where: { $0.id == post.id }) {
@@ -86,6 +89,7 @@ final class FeedViewModel {
         do {
             try await service.react(postID: post.id, reaction: reaction)
         } catch {
+            BroLog.error(error, category: "feed")
             if case .loaded(var current) = state,
                let i = current.firstIndex(where: { $0.id == post.id }) {
                 current[i] = previous
@@ -108,6 +112,7 @@ final class FeedViewModel {
         do {
             try await service.giveAward(postID: post.id, award: award)
         } catch {
+            BroLog.error(error, category: "feed")
             if case .loaded(var current) = state,
                let i = current.firstIndex(where: { $0.id == post.id }) {
                 current[i] = previous

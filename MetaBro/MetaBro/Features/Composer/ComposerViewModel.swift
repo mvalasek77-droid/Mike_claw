@@ -45,6 +45,7 @@ final class ComposerViewModel {
             phase = .posted
             HapticsEngine.shared.play(.award)
         } catch {
+            BroLog.error(error, category: "composer")
             phase = .failed("Couldn't post. Check your connection and try again.")
             HapticsEngine.shared.play(.error)
         }

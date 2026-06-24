@@ -25,6 +25,7 @@ final class CommunitiesViewModel {
             let communities = try await service.discover()
             state = communities.isEmpty ? .empty : .loaded(communities)
         } catch {
+            BroLog.error(error, category: "communities")
             state = .error("Couldn't load Bro-hoods. Pull to refresh.")
         }
     }
@@ -43,6 +44,7 @@ final class CommunitiesViewModel {
         do {
             try await service.setMembership(communityID: community.id, joined: joining)
         } catch {
+            BroLog.error(error, category: "communities")
             if case .loaded(var current) = state,
                let i = current.firstIndex(where: { $0.id == community.id }) {
                 current[i] = previous
