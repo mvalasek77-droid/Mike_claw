@@ -102,7 +102,7 @@ struct BidSheet: View {
                     dismiss()
                 }
 
-                Text("Bids are offers — nothing's charged until a date actually happens.")
+                Text("A bid is a letter of intent — no money moves in the app. You pay her in person; she confirms (or flags you) after the date.")
                     .font(.system(size: 11)).foregroundStyle(Theme.inkFaint).multilineTextAlignment(.center)
                 Spacer(minLength: 20)
             }

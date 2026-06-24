@@ -221,8 +221,10 @@ final class AuctionStore: ObservableObject {
         guard let idx = matches.firstIndex(where: { $0.id == match.id }) else { return }
         let bid = matches[idx].bid
 
-        // Charge the demo wallet for what he claims to have spent.
-        wallet = max(0, wallet - actuallySpent)
+        // NOTE: no in-app debit here. A bid is a letter of intent — the date
+        // money is settled in the real world, peer-to-peer. `actuallySpent` is
+        // only what he reports paying in person, which she confirms or disputes;
+        // it drives his deadbeat score and Trillionaire verification, nothing more.
 
         // His review of her — stored on the match and reflected on the floor.
         var traitDict: [String: Int] = [:]

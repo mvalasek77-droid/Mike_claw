@@ -19,6 +19,21 @@ hand-tuned material on iOS 17–25.
 | **The Lot** (woman) | always-visible profile | sets an optional starting bid, reads each bidder's stats, accepts when a bid is high enough, then sends the first invite |
 | **The Bidder** (man) | photo hidden until accepted | browses the floor, bids what a date is worth, buys a status archetype, builds reputation |
 
+## Money model (important)
+
+There is exactly **one** thing real money buys in the app, and one thing it does not:
+
+- **Status & subscriptions → real money (StoreKit).** Buying status archetypes
+  (paid in Gavels you top up) and any premium subscription are the *only* digital
+  purchases. Apple takes its cut; all prices sit under the IAP ceiling.
+- **A bid → a letter of intent. No money moves in the app.** A bid is a declared
+  commitment of what he'll spend on a date — not a charge. The **actual date
+  money is settled in the real world, peer-to-peer**, and the app never touches,
+  holds, or processes it.
+- **She confirms or declines after the date.** Her confirmation is what drives the
+  deadbeat score and Trillionaire verification. Because the app never custodies
+  the date money, there's no escrow / money-transmitter burden on the bid side.
+
 ### Credit scores
 
 - **Auction Credit** (men, 300–850): a credit-score analogue driven by archetype

@@ -67,8 +67,8 @@ struct RateDateView: View {
                         FlowChips(items: categoryPool, selected: $categories)
                     }
 
-                    GlassCard(title: "What you actually spent", icon: "creditcard.fill", tint: Theme.gold) {
-                        Text("You bid \(Money.full(match.bid.amount)). Be honest — she rates your reliability.")
+                    GlassCard(title: "What you paid her in person", icon: "creditcard.fill", tint: Theme.gold) {
+                        Text("You bid \(Money.full(match.bid.amount)). Log what you actually paid her in the real world — she confirms it. (No in-app charge.)")
                             .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
                         Text(Money.full(spent))
                             .font(.system(size: 30, weight: .heavy, design: .rounded))
