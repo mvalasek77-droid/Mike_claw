@@ -155,15 +155,14 @@ final class FightScene: SKScene {
         oppSkel = Self.makeRenderer(flow.opponentSpec)
         playerSkel.root.zPosition = 1; oppSkel.root.zPosition = 1
         addChild(playerSkel.root); addChild(oppSkel.root)
+        projectileLayer.zPosition = 2; addChild(projectileLayer)
     }
 
-    /// Use real sprite art if a `<id>_atlas` ships in the bundle; otherwise fall
-    /// back to the fully procedural (no-asset) renderer.
+    /// Build the fighter renderer. We ship no sprite atlases, so this always uses
+    /// the procedural renderer — probing `SKTextureAtlas(named:)` for a missing
+    /// atlas can CRASH on watchOS, which is what killed the fight scene.
     private static func makeRenderer(_ spec: CharacterSpec) -> FighterRenderer {
-        let atlas = SKTextureAtlas(named: "\(spec.id)_atlas")
-        if !atlas.textureNames.isEmpty { return SpriteFighter(spec: spec, atlas: atlas) }
-        return SkeletonRenderer(spec: spec)
-        projectileLayer.zPosition = 2; addChild(projectileLayer)
+        SkeletonRenderer(spec: spec)
     }
 
     private func buildHUD() {
