@@ -26,6 +26,11 @@ final class AuctionStore: ObservableObject {
 
     var isRegistered: Bool { role != nil }
 
+    /// Free bidders may keep this many *live* (pending) bids at once. A Pass
+    /// lifts the cap — the "unlimited bids" perk.
+    static let freeActiveBidLimit = 3
+    var activePendingBidCount: Int { outgoingBids.filter { $0.status == .pending }.count }
+
     private let store = UserDefaults.standard
     private static let key = "auctionbaby.state.v3"
 

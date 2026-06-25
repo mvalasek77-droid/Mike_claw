@@ -13,6 +13,9 @@ struct MainTabView: View {
                 AuctionFeedView()
                     .tabItem { Label("Floor", systemImage: "rectangle.stack.fill") }
                     .tag(0)
+                MyBidsView()
+                    .tabItem { Label("My Bids", systemImage: "hand.raised.fill") }
+                    .tag(4)
                 ArchetypeStoreView()
                     .tabItem { Label("Status", systemImage: "crown.fill") }
                     .tag(1)

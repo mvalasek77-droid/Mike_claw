@@ -241,6 +241,50 @@ final class AuctionLogicTests: XCTestCase {
         XCTAssertEqual(hues.count, Set(hues.map { "\($0)" }).count, "each style needs its own palette")
     }
 
+    // MARK: Bid rank (Pass-gated reveal)
+
+    func testTopBidRankWhenAmountClearsField() {
+        var woman = Profile(name: "W", age: 28, role: .woman, location: "", bio: "", hue: 0.9)
+        woman.startingBid = 200
+        let man = Profile(name: "M", age: 33, role: .man, location: "", bio: "", hue: 0.5)
+        // A very high bid should clear the simulated competitive ceiling.
+        let high = Bid(man: man, woman: woman, amount: 100_000)
+        XCTAssertEqual(high.simulatedRank, .top)
+    }
+
+    func testLowBidIsOutbidDeterministically() {
+        var woman = Profile(name: "Mara", age: 28, role: .woman, location: "", bio: "", hue: 0.9)
+        woman.startingBid = 5_000
+        let man = Profile(name: "M", age: 33, role: .man, location: "", bio: "", hue: 0.5)
+        let low = Bid(man: man, woman: woman, amount: 100)
+        // Same inputs → same rank (stable, no per-launch jitter).
+        XCTAssertEqual(low.simulatedRank, low.simulatedRank)
+        if case .outbid(let position, let leader) = low.simulatedRank {
+            XCTAssertGreaterThan(position, 1)
+            XCTAssertGreaterThan(leader, low.amount)
+        } else {
+            XCTFail("a tiny bid against a high floor should be outbid")
+        }
+    }
+
+    func testCopycatBidAlwaysReadsAsTop() {
+        var copycat = Profile(name: "Bella", age: 23, role: .woman, location: "", bio: "", hue: 0.9)
+        copycat.isCopycat = true
+        let man = Profile(name: "M", age: 33, role: .man, location: "", bio: "", hue: 0.5)
+        XCTAssertEqual(Bid(man: man, woman: copycat, amount: 1).simulatedRank, .top)
+    }
+
+    @MainActor
+    func testFreeBidLimitCountsPendingOnly() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        XCTAssertEqual(store.activePendingBidCount, 0)
+        let woman = store.floor.first { !$0.isCopycat }!
+        store.placeBid(on: woman, amount: 300, note: "")
+        XCTAssertEqual(store.activePendingBidCount, 1)
+    }
+
     // MARK: Money formatting
 
     func testMoneyCompact() {
