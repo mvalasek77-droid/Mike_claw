@@ -40,16 +40,16 @@ struct SettingsView: View {
         versionTaps += 1
         guard versionTaps >= 5 else { return }
         versionTaps = 0
-        let team = Self.provisioningTeamID
-        guard team == "UDM4W27W9V" else {
-            bypassFeedback = "Bypass unavailable on this build."
-            Haptics.error()
-            return
-        }
-        Task { @MainActor in
-            await purchases.activateAdminBypass()
-            bypassFeedback = "Pro unlocked (developer bypass)."
+        if purchases.isPro {
+            purchases.disableAdminBypass()
+            bypassFeedback = "Pro bypass disabled."
             Haptics.success()
+        } else {
+            Task { @MainActor in
+                await purchases.activateAdminBypass()
+                bypassFeedback = "Pro unlocked (developer bypass)."
+                Haptics.success()
+            }
         }
     }
 
@@ -198,26 +198,34 @@ struct SettingsView: View {
             }
         } else {
             Button { showPaywall = true } label: {
-                GlassSurface(tier: .deep, corner: 18) {
-                    HStack(spacing: 14) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 24, weight: .semibold))
+                HStack(spacing: 14) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(.white)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Upgrade to Pro")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Upgrade to Pro")
-                                .font(.system(size: 17, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
-                            Text("Every size, language, overlay and backdrop")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.85))
-                        }
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.8))
+                        Text("Every size, language, overlay and backdrop")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.85))
                     }
-                    .padding(18)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.8))
                 }
+                .padding(18)
+                .background(
+                    LinearGradient(
+                        colors: [Color(red: 0.35, green: 0.28, blue: 0.72),
+                                 Color(red: 0.22, green: 0.20, blue: 0.55)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                )
+                .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 4)
             }
             .buttonStyle(.plain)
         }
