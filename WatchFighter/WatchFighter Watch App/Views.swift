@@ -10,16 +10,17 @@ struct RootView: View {
     var body: some View {
         Group {
             switch flow.screen {
-            case .title:         TitleView(flow: flow)
-            case .menu:          MainMenuView(flow: flow)
-            case .select:        CharacterSelectView(flow: flow)
-            case .trainingSetup: TrainingSetupView(flow: flow)
-            case .versusLobby:   VersusLobbyView(flow: flow)
-            case .prologue:      PrologueView(flow: flow)
-            case .storyCard:     StoryCardView(flow: flow)
-            case .fight:         fightContent.id(flow.fightToken)
-            case .ending:        EndingView(flow: flow)
-            case .howTo:         HowToPlayView(flow: flow)
+            case .title:          TitleView(flow: flow)
+            case .menu:           MainMenuView(flow: flow)
+            case .select:         CharacterSelectView(flow: flow)
+            case .opponentSelect: OpponentSelectView(flow: flow)
+            case .trainingSetup:  TrainingSetupView(flow: flow)
+            case .versusLobby:    VersusLobbyView(flow: flow)
+            case .cutscene:       CutsceneView(flow: flow)
+            case .storyCard:      StoryCardView(flow: flow)
+            case .fight:          fightContent.id(flow.fightToken)
+            case .ending:         EndingView(flow: flow)
+            case .howTo:          HowToPlayView(flow: flow)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: flow.screen)
@@ -37,6 +38,11 @@ struct RootView: View {
             FightView(playerSpec: flow.playerSpec, opponentSpec: opp,
                       stage: StageLibrary.stage(id: opp.homeStageID),
                       mode: .training(flow.trainingOptions),
+                      onResult: { flow.matchEnded(winner: $0) }, onExit: { flow.exitFight() })
+        case .versusCPU:
+            FightView(playerSpec: flow.playerSpec, opponentSpec: flow.quickOpponent,
+                      stage: StageLibrary.stage(id: flow.quickOpponent.homeStageID),
+                      mode: .story(flow.cpuDifficulty),
                       onResult: { flow.matchEnded(winner: $0) }, onExit: { flow.exitFight() })
         case .versus:
             if let t = flow.versusTransport {
@@ -78,15 +84,16 @@ struct MainMenuView: View {
     @ObservedObject var flow: GameFlow
     @State private var music = SoundEngine.shared.musicEnabled
     @State private var blood = GameSettings.blood
-    @State private var turbo = GameSettings.turbo
+    @State private var speed = GameSettings.speed
     @State private var controls = GameSettings.controls
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
                 Text("MODE").font(.system(size: 10, weight: .bold)).foregroundStyle(.secondary)
-                menuButton("STORY", color: Color(red: 0.9, green: 0.1, blue: 0.4)) { flow.chooseMode(.story) }
+                menuButton("TOURNAMENT", color: Color(red: 0.9, green: 0.1, blue: 0.4)) { flow.chooseMode(.story) }
+                menuButton("VS (CPU)", color: .pink) { flow.chooseMode(.versusCPU) }
                 menuButton("TRAINING", color: .blue) { flow.chooseMode(.training) }
-                menuButton("VERSUS", color: .green) { flow.chooseMode(.versus) }
+                menuButton("VERSUS (online)", color: .green) { flow.chooseMode(.versus) }
                 menuButton("HOW TO PLAY", color: .gray) { flow.screen = .howTo }
                 menuButton("CONTROLS: \(controls.label)", color: .teal) {
                     controls = controls.next; GameSettings.controls = controls
@@ -100,8 +107,8 @@ struct MainMenuView: View {
                 menuButton(blood ? "BLOOD: ON" : "BLOOD: OFF", color: .red) {
                     blood.toggle(); GameSettings.blood = blood
                 }
-                menuButton(turbo ? "TURBO: ON ⚡" : "TURBO: OFF", color: .yellow) {
-                    turbo.toggle(); GameSettings.turbo = turbo
+                menuButton("SPEED: \(speed.label)", color: .yellow) {
+                    speed = speed.next; GameSettings.speed = speed
                 }
                 Text("Wins: \(flow.progression.totalWins)")
                     .font(.system(size: 8)).foregroundStyle(.secondary)
@@ -222,6 +229,79 @@ struct FaceView: View {
                 .offset(y: -size * 0.14)
         }
         .frame(width: size, height: size)
+    }
+}
+
+/// FF-style narrative cutscene: a speaker portrait + a text box, advanced one
+/// panel at a time, leading into the fight.
+struct CutsceneView: View {
+    @ObservedObject var flow: GameFlow
+    var body: some View {
+        let i = min(flow.cutsceneIndex, max(0, flow.cutscenePanels.count - 1))
+        let panel = flow.cutscenePanels.isEmpty
+            ? CutscenePanel(speakerID: nil, text: "")
+            : flow.cutscenePanels[i]
+        let speaker = panel.speakerID.map { CharacterSpec.byID($0) }
+        return ZStack {
+            LinearGradient(colors: [.black, Color(red: 0.10, green: 0.04, blue: 0.14)],
+                           startPoint: .top, endPoint: .bottom).ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        if let sp = speaker { FaceView(spec: sp, size: 28) }
+                        Text(speaker?.name ?? "THE ASCENDANT")
+                            .font(.system(size: 11, weight: .heavy))
+                            .foregroundStyle(speaker?.accentColor.color ?? Color(red: 1, green: 0.3, blue: 0.55))
+                        Spacer()
+                    }
+                    Text(panel.text)
+                        .font(.system(size: 11)).foregroundStyle(.white)
+                        .multilineTextAlignment(.leading)
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(.black.opacity(0.55)))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.22), lineWidth: 1))
+                    Button(action: { flow.advanceCutscene() }) {
+                        Text(flow.cutsceneIndex + 1 < flow.cutscenePanels.count ? "NEXT ▶" : "FIGHT!")
+                            .font(.system(size: 12, weight: .bold)).frame(maxWidth: .infinity)
+                    }
+                    .tint(Color(red: 0.9, green: 0.1, blue: 0.4))
+                    Text("\(flow.cutsceneIndex + 1) / \(flow.cutscenePanels.count)")
+                        .font(.system(size: 8)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(8)
+            }
+        }
+    }
+}
+
+/// VS (CPU) opponent picker — any fighter, bosses included.
+struct OpponentSelectView: View {
+    @ObservedObject var flow: GameFlow
+    private let cols = [GridItem(.flexible()), GridItem(.flexible())]
+    private var roster: [CharacterSpec] { CharacterSpec.selectable + [.onyx, .titus] }
+    var body: some View {
+        ScrollView {
+            Text("CHOOSE OPPONENT").font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.secondary).padding(.vertical, 4)
+            LazyVGrid(columns: cols, spacing: 8) {
+                ForEach(roster, id: \.id) { spec in
+                    Button(action: { flow.selectOpponent(spec) }) {
+                        VStack(spacing: 2) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(LinearGradient(colors: [spec.bodyColor.color, spec.bodyColor.color.opacity(0.4)],
+                                                         startPoint: .top, endPoint: .bottom))
+                                    .frame(height: 40)
+                                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(spec.accentColor.color, lineWidth: 2))
+                                FaceView(spec: spec, size: 32)
+                            }
+                            Text(spec.name).font(.system(size: 9, weight: .bold)).foregroundStyle(.white).lineLimit(1)
+                        }
+                    }.buttonStyle(.plain)
+                }
+            }.padding(.horizontal, 6)
+        }.background(Color.black.ignoresSafeArea())
     }
 }
 

@@ -13,18 +13,36 @@ enum GameSettings {
         didSet { UserDefaults.standard.set(blood, forKey: bloodKey) }
     }
 
-    private static let turboKey = "eternalcombat.turbo"
+    private static let turboKey = "eternalcombat.speed"
 
-    /// TURBO: arcade-speed fights. Off by default; the base speed is already a
-    /// touch quicker than 1:1 for a snappier feel. Purely a real-time pacing
-    /// multiplier on the local sim (engine tick logic is unchanged), so it never
-    /// affects determinism or the unit tests.
-    static var turbo: Bool = UserDefaults.standard.bool(forKey: turboKey) {
-        didSet { UserDefaults.standard.set(turbo, forKey: turboKey) }
+    /// Multi-step fight speed. Real-time pacing multiplier on the local sim only,
+    /// so it never affects determinism or the unit tests.
+    enum GameSpeed: String, CaseIterable {
+        case slow, normal, fast, turbo
+        var label: String {
+            switch self { case .slow: return "SLOW"; case .normal: return "NORMAL"
+                          case .fast: return "FAST"; case .turbo: return "TURBO ⚡" }
+        }
+        var multiplier: Double {
+            switch self { case .slow: return 0.85; case .normal: return 1.15
+                          case .fast: return 1.5; case .turbo: return 1.9 }
+        }
+        var next: GameSpeed {
+            let all = GameSpeed.allCases
+            return all[(all.firstIndex(of: self)! + 1) % all.count]
+        }
+    }
+
+    static var speed: GameSpeed = {
+        if let s = UserDefaults.standard.string(forKey: turboKey),
+           let v = GameSpeed(rawValue: s) { return v }
+        return .normal
+    }() {
+        didSet { UserDefaults.standard.set(speed.rawValue, forKey: turboKey) }
     }
 
     /// Real-time → simulation speed multiplier.
-    static var gameSpeed: Double { turbo ? 1.75 : 1.18 }
+    static var gameSpeed: Double { speed.multiplier }
 
     private static let padKey = "eternalcombat.controls"
 

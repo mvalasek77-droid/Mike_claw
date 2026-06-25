@@ -6,9 +6,10 @@ import SwiftUI
 /// so no explicit actor isolation is needed.
 final class GameFlow: ObservableObject {
     enum Screen: Equatable {
-        case title, menu, select, trainingSetup, versusLobby, prologue, storyCard, fight, ending, howTo
+        case title, menu, select, opponentSelect, trainingSetup, versusLobby,
+             cutscene, storyCard, fight, ending, howTo
     }
-    enum AppMode { case story, training, versus }
+    enum AppMode { case story, training, versus, versusCPU }
     enum CardKind { case preFight, postWin }
     enum EndKind { case victory, defeat }
 
@@ -36,13 +37,15 @@ final class GameFlow: ObservableObject {
 
     // MARK: Derived
 
-    var opponentSpec: CharacterSpec { story.currentOpponent }
+    /// When you've died and been dragged to the Pit, the next fight is the demon.
+    @Published var inHell = false
+    var opponentSpec: CharacterSpec { inHell ? .demon : story.currentOpponent }
     var stageSpec: StageSpec { StageLibrary.stage(id: opponentSpec.homeStageID) }
 
-    /// Player-chosen CPU difficulty (the final boss always gets boss-tier AI).
+    /// Player-chosen CPU difficulty (the boss & the Pit demon get boss-tier AI).
     @Published var cpuDifficulty: AIController.Difficulty = .normal
     var storyDifficulty: AIController.Difficulty {
-        opponentSpec.id == "titus" ? .boss : cpuDifficulty
+        (opponentSpec.id == "titus" || opponentSpec.id == "demon") ? .boss : cpuDifficulty
     }
 
     // MARK: Navigation
@@ -55,7 +58,7 @@ final class GameFlow: ObservableObject {
     func exitFight() {
         switch appMode {
         case .training: screen = .trainingSetup
-        case .story:    ResumeStore.clear(); screen = .menu   // abandon run
+        case .story:    inHell = false; ResumeStore.clear(); screen = .menu   // abandon run
         case .versus:
             versusTransport?.disconnect(); versusTransport = nil
             screen = .menu
@@ -71,14 +74,40 @@ final class GameFlow: ObservableObject {
         playerSpec = spec
         switch appMode {
         case .story:
+            inHell = false
             story = StoryMode(playerID: spec.id)
             cardKind = .preFight
-            screen = .prologue        // opening crawl, then the first fight
+            playCutscene(StoryScript.intro)     // FF-style opening, then floor 1
         case .training:
             screen = .trainingSetup
         case .versus:
             versusStatus = "Tap to search for an opponent"
             screen = .versusLobby
+        case .versusCPU:
+            screen = .opponentSelect            // now pick who to fight
+        }
+    }
+
+    // MARK: - VS (CPU) quick match
+
+    @Published var quickOpponent: CharacterSpec = .volt
+    func selectOpponent(_ spec: CharacterSpec) { quickOpponent = spec; beginFight() }
+
+    // MARK: - Cutscenes (FF-style narrative leading into fights)
+
+    enum CutsceneThen { case storyCard, fight }
+    @Published var cutscenePanels: [CutscenePanel] = []
+    @Published var cutsceneIndex = 0
+    private var cutsceneThen: CutsceneThen = .storyCard
+
+    private func playCutscene(_ panels: [CutscenePanel], then: CutsceneThen = .storyCard) {
+        cutscenePanels = panels; cutsceneIndex = 0; cutsceneThen = then; screen = .cutscene
+    }
+    func advanceCutscene() {
+        if cutsceneIndex + 1 < cutscenePanels.count { cutsceneIndex += 1; return }
+        switch cutsceneThen {
+        case .storyCard: cardKind = .preFight; screen = .storyCard
+        case .fight:     beginFight()          // e.g. into the Pit demon fight
         }
     }
 
@@ -129,13 +158,22 @@ final class GameFlow: ObservableObject {
     func matchEnded(winner: Side) {
         switch appMode {
         case .story:
-            if winner == .player {
+            if inHell {
+                // The Pit: win = claw back to the floor you fell from; lose = over.
+                inHell = false
+                if winner == .player { playCutscene(StoryScript.hellEscape, then: .storyCard) }
+                else { ResumeStore.clear(); endKind = .defeat; screen = .ending }
+            } else if winner == .player {
                 unlock(progression.recordWin())     // each floor cleared is a win
                 cardKind = .postWin; screen = .storyCard
-            } else { ResumeStore.clear(); endKind = .defeat; screen = .ending }
+            } else {
+                // First death on a floor -> dragged to Hell for a second chance.
+                inHell = true
+                playCutscene(StoryScript.hellEntry, then: .fight)
+            }
         case .training:
             screen = .trainingSetup            // back to the practice menu
-        case .versus:
+        case .versus, .versusCPU:
             if winner == .player { unlock(progression.recordWin()) }
             endKind = winner == .player ? .victory : .defeat
             versusTransport = nil
@@ -143,13 +181,20 @@ final class GameFlow: ObservableObject {
         }
     }
 
-    /// Continue after the player's post-win story card.
+    /// Continue after the player's post-win story card. Plays an act-break
+    /// cutscene before the host (Onyx) and the finale (Titus).
     func continueStory() {
         newlyUnlocked = []
-        if story.advance() {
-            ResumeStore.save(playerID: playerSpec.id, ladderIndex: story.ladderIndex)
-            cardKind = .preFight; screen = .storyCard
-        } else { ResumeStore.clear(); unlock(progression.clearStory()); endKind = .victory; screen = .ending }
+        guard story.advance() else {
+            ResumeStore.clear(); unlock(progression.clearStory()); endKind = .victory; screen = .ending
+            return
+        }
+        ResumeStore.save(playerID: playerSpec.id, ladderIndex: story.ladderIndex)
+        switch story.currentOpponent.id {
+        case "onyx":  playCutscene(StoryScript.beforeOnyx)
+        case "titus": playCutscene(StoryScript.beforeTitus)
+        default:      cardKind = .preFight; screen = .storyCard
+        }
     }
 
     private func unlock(_ ids: [String]) {

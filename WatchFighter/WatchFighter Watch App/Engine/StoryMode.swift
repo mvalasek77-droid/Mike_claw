@@ -37,8 +37,64 @@ struct StoryMode {
     }
 }
 
+/// One narrative panel for the FF-style cutscenes (a text box, optionally with a
+/// speaker whose portrait is drawn). `speakerID == nil` means the narrator.
+struct CutscenePanel: Equatable {
+    let speakerID: String?
+    let text: String
+}
+
 /// Original story copy for ETERNAL COMBAT: ASCENDANT.
 enum StoryScript {
+
+    /// FF-style opening cutscene — narrative + characters that leads to the first
+    /// fight of the tournament.
+    static let intro: [CutscenePanel] = [
+        CutscenePanel(speakerID: nil,
+                      text: "The hundred-year gate has opened. The tower THE ASCENDANT hums awake over the town it has fed on for a thousand years."),
+        CutscenePanel(speakerID: nil,
+                      text: "Champions go up. None come down. The townsfolk no longer mourn them — they sell tickets, and wait for the next fool to climb."),
+        CutscenePanel(speakerID: "volt",
+                      text: "Another climber? Cute. The first floor is mine, and I don't do slow."),
+        CutscenePanel(speakerID: nil,
+                      text: "Nine floors. Nine fighters who already gave everything to the tower. And a summit champion who has never heard the bell ring."),
+        CutscenePanel(speakerID: nil,
+                      text: "You tighten your wraps. If the tower wants champions… it can have a problem instead. The climb begins."),
+    ]
+
+    /// Act break before the host, Onyx.
+    static let beforeOnyx: [CutscenePanel] = [
+        CutscenePanel(speakerID: nil,
+                      text: "The stairs end at a throne of dead trophies. The host has been waiting a thousand years for someone worth standing up for."),
+        CutscenePanel(speakerID: "onyx",
+                      text: "I was a climber once. I won. The prize was THIS — guarding a door I never chose. Let me show you the cost of winning."),
+    ]
+
+    /// You died on a tournament floor — dragged down to the Pit.
+    static let hellEntry: [CutscenePanel] = [
+        CutscenePanel(speakerID: nil,
+                      text: "The floor goes out from under you. You fall past the tower, past the town, past the light — into heat."),
+        CutscenePanel(speakerID: "demon",
+                      text: "Another one the tower couldn't keep. Good. The furnace runs cold. Beat me and you may crawl back up. Fail, and you stoke it forever."),
+        CutscenePanel(speakerID: nil,
+                      text: "It hefts a red-hot pitchfork. There is no bell down here — only the fight, and the climb back."),
+    ]
+
+    /// You beat the demon — clawing back to the tournament.
+    static let hellEscape: [CutscenePanel] = [
+        CutscenePanel(speakerID: "demon",
+                      text: "…tch. Go. The stairs are yours again. But the tower never forgets a face it dropped."),
+        CutscenePanel(speakerID: nil,
+                      text: "You climb out of the smoke and back onto the floor you fell from. Second chances burn — use it."),
+    ]
+
+    /// Finale before Titus.
+    static let beforeTitus: [CutscenePanel] = [
+        CutscenePanel(speakerID: "onyx",
+                      text: "Onyx steps aside, lighter than stone has any right to be. 'The last door was never mine,' he says. 'Ring the bell. Set us all free.'"),
+        CutscenePanel(speakerID: nil,
+                      text: "Beyond the last door: a square of canvas, two gloves, and a champion who cannot be beaten by damage alone. Only the rite will ring his bell."),
+    ]
     static let prologue = """
     Every hundred years THE ASCENDANT opens. Climbers go up. None come back \
     down — not beaten, not victorious. Just… up. The tower keeps them.

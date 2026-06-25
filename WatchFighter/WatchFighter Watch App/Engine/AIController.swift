@@ -56,8 +56,19 @@ struct AIController {
             return .parry
         }
 
-        // Throw a loaded special when in range.
-        if me.meter >= CombatSystem.chargeToFire, inSpecialRange, roll(0.5) {
+        // CORNER ESCAPE: when pinned against its back wall with the player close,
+        // bail out with a reversal special, a jump-out, or a parry. Makes the CPU
+        // much harder to trap.
+        let backWall = me.facingRight ? CombatSystem.laneMin : CombatSystem.laneMax
+        let cornered = abs(me.position - backWall) < 46
+        if cornered, dist < me.spec.special.reach + 20 {
+            if me.meter >= CombatSystem.chargeToFire, roll(0.7) { cooldown = difficulty.reaction; return .special }
+            if roll(0.55) { cooldown = difficulty.reaction; return .jump }     // jump over the pressure
+            if roll(difficulty.parryChance + 0.2) { cooldown = difficulty.reaction; return .parry }
+        }
+
+        // Throw a loaded special when in range (more eager on higher difficulty).
+        if me.meter >= CombatSystem.chargeToFire, inSpecialRange, roll(0.45 + difficulty.aggression) {
             cooldown = difficulty.reaction
             return .special
         }

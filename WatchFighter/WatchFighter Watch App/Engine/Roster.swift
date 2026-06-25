@@ -107,6 +107,21 @@ extension CharacterSpec {
         bodyColor: RGBA(0.12, 0.12, 0.16), accentColor: RGBA(0.8, 0.1, 0.5)
     )
 
+    /// HELL boss — the demon you fight after dying in the tournament. Pitchfork +
+    /// fire. Beat it to claw back to the tower; lose and the run is over.
+    static let demon = CharacterSpec(
+        id: "demon",
+        name: "PITFIEND",
+        title: "Warden of the Pit",
+        bio: "It collects the fallen the tower spits down. Win and it must let you "
+           + "crawl back up; lose, and you stoke its furnace forever.",
+        maxHealth: 132, walkSpeed: 2.3,
+        special: Move.special(damage: 22, reach: 72, pushback: 24, startup: 6, launches: true),
+        exSpecial: Move.ex(from: Move.special(damage: 22, reach: 72, pushback: 24, startup: 6, launches: true)),
+        homeStageID: "hell",
+        bodyColor: RGBA(0.52, 0.08, 0.06), accentColor: RGBA(1.0, 0.55, 0.12)
+    )
+
     /// Swashbuckling duelist (original pirate archetype) — long cutlass reach,
     /// unpredictable drunken footwork. Not based on any real actor or character.
     static let corsair = CharacterSpec(
@@ -279,7 +294,7 @@ extension CharacterSpec {
         [volt, ember, frost, corsair, mirage, nova, bastion, onyx, titus]
 
     static func byID(_ id: String) -> CharacterSpec {
-        (selectable + [onyx, titus]).first { $0.id == id } ?? tetsu
+        (selectable + [onyx, titus, demon]).first { $0.id == id } ?? tetsu
     }
 
     /// A bit of personality: the winner's one-liner. All original, all silly.
@@ -331,6 +346,7 @@ extension CharacterSpec {
     /// Skin tone for the procedural human look (golems/cyborgs get fitting tones).
     var skin: RGBA {
         switch id {
+        case "demon":   return RGBA(0.55, 0.10, 0.08)   // crimson hide
         case "bastion": return RGBA(0.55, 0.50, 0.42)   // stone golem
         case "onyx":    return RGBA(0.22, 0.20, 0.24)    // obsidian
         case "titus":   return RGBA(0.42, 0.28, 0.20)
@@ -383,14 +399,20 @@ extension CharacterSpec {
     }
 
     /// Procedural identity (the SF2 "readable silhouette" idea, done originally).
-    var hasWeapon: Bool { id == "vesper" || id == "corsair" }
-    var weaponColor: RGBA { id == "vesper" ? RGBA(0.88, 0.90, 0.97) : RGBA(0.72, 0.62, 0.32) }
+    var hasWeapon: Bool { id == "vesper" || id == "corsair" || id == "demon" }
+    var weaponColor: RGBA {
+        switch id {
+        case "vesper": return RGBA(0.88, 0.90, 0.97)   // steel katana
+        case "demon":  return RGBA(0.85, 0.20, 0.10)   // red-hot pitchfork
+        default:       return RGBA(0.72, 0.62, 0.32)   // brass cutlass
+        }
+    }
     var bigGloves: Bool { id == "titus" }
 
     /// Body type for the procedural renderer's proportions.
     var build: Build {
         switch id {
-        case "bastion", "titus", "onyx": return .heavy      // broad bruisers
+        case "bastion", "titus", "onyx", "demon": return .heavy   // broad bruisers
         case "ember", "frost", "mirage", "vesper", "marina", "sable": return .lithe
         default: return .athletic
         }

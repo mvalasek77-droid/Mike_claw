@@ -158,10 +158,16 @@ final class FightScene: SKScene {
         projectileLayer.zPosition = 2; addChild(projectileLayer)
     }
 
-    /// Build the fighter renderer. We ship no sprite atlases, so this always uses
-    /// the procedural renderer — probing `SKTextureAtlas(named:)` for a missing
-    /// atlas can CRASH on watchOS, which is what killed the fight scene.
+    /// ── CHARACTER RENDERER SEAM ────────────────────────────────────────────
+    /// This is the ONE place the fighter visuals are chosen. Anything conforming
+    /// to `FighterRenderer` (see SkeletonRenderer.swift) drops in here with no
+    /// other changes — e.g. Codex's character renderer can be committed as its
+    /// own file and returned below; the rest of the game is untouched.
+    ///
+    /// We ship no sprite atlases, so we don't probe `SKTextureAtlas(named:)` (it
+    /// can CRASH on watchOS for a missing atlas — that was the fight-scene crash).
     private static func makeRenderer(_ spec: CharacterSpec) -> FighterRenderer {
+        // return CodexFighter(spec: spec)   // ← plug a new renderer in here
         SkeletonRenderer(spec: spec)
     }
 
