@@ -22,6 +22,9 @@ struct GameScreen: View {
     @State private var voiceText = ""
     @State private var voiceTimer: TimeInterval = 0
     @State private var lastSpokenBanner = ""
+    @State private var cutscenePanels: [CutscenePanel] = []
+    @State private var cutsceneIndex = 0
+    @State private var cutsceneToFight = false
     @State private var arcadeAudio = ArcadeAudio()
     @AppStorage("watchfighter.bestScore") private var bestScore = 0
     @AppStorage("watchfighter.unlockedRosterIndex") private var unlockedRosterIndex = 0
@@ -99,6 +102,12 @@ struct GameScreen: View {
 
                 if screenMode == .fighterCard {
                     fighterCardOverlay
+                }
+
+                if screenMode == .cutscene {
+                    CutsceneOverlay(panels: cutscenePanels, index: cutsceneIndex) {
+                        advanceCutscene()
+                    }
                 }
 
                 if screenMode == .pause {
@@ -903,9 +912,14 @@ struct GameScreen: View {
         }
 
         if activeMode == .tournament, !demoMode, engine.state.phase == .running, (engine.state.round != beforeRound || engine.state.chapter != beforeChapter) {
-            screenMode = .fighterCard
             lastFrameDate = nil
-            announce("NEXT FIGHT")
+            // FF act-break cutscene before the final-boss chapter; otherwise the card.
+            if engine.state.chapter != beforeChapter, engine.state.chapter == StoryChapter.allCases.last {
+                playCutscene(FFScript.beforeBoss, toFight: false)
+            } else {
+                screenMode = .fighterCard
+                announce("NEXT FIGHT")
+            }
             return
         }
 
@@ -957,18 +971,34 @@ struct GameScreen: View {
         playHaptic(.click)
     }
 
+    private func playCutscene(_ panels: [CutscenePanel], toFight: Bool) {
+        cutscenePanels = panels
+        cutsceneIndex = 0
+        cutsceneToFight = toFight
+        lastFrameDate = nil
+        screenMode = .cutscene
+    }
+
+    private func advanceCutscene() {
+        if cutsceneIndex + 1 < cutscenePanels.count {
+            cutsceneIndex += 1
+            playHaptic(.click)
+        } else if cutsceneToFight {
+            beginFight()
+        } else {
+            screenMode = .fighterCard
+            announce("READY")
+            playHaptic(.start)
+        }
+    }
+
     private func startTournament(skipCard: Bool) {
         activeMode = .tournament
         engine.reset()
         resetInputTracking()
-        screenMode = skipCard ? .fighting : .fighterCard
         arcadeAudio.startMusic()
-        if skipCard {
-            announce("FIGHT")
-        } else {
-            announce("READY")
-        }
         playHaptic(.start)
+        playCutscene(FFScript.intro, toFight: skipCard)   // FF intro, then the first fight
     }
 
     private func startVersus() {
@@ -1114,6 +1144,7 @@ private enum GameScreenMode {
     case fighterCard
     case fighting
     case pause
+    case cutscene
 }
 
 private enum FightMode {
@@ -1379,5 +1410,79 @@ private final class ArcadeMusic {
 private extension Comparable {
     func clamped(to range: ClosedRange<Self>) -> Self {
         min(max(self, range.lowerBound), range.upperBound)
+    }
+}
+
+// MARK: - FF-style story cutscenes (original content)
+
+/// One narrative text box. `speaker == nil` means the narrator.
+struct CutscenePanel: Equatable {
+    let speaker: String?
+    let text: String
+}
+
+/// Original story copy that bridges into the fights (no real people / no IP).
+enum FFScript {
+    static let intro: [CutscenePanel] = [
+        CutscenePanel(speaker: nil,
+                      text: "The hundred-year gate of THE ASCENDANT grinds open. Champions go up the tower. None come back down."),
+        CutscenePanel(speaker: nil,
+                      text: "The town below stopped mourning long ago. Now it sells tickets and waits for the next fool to climb."),
+        CutscenePanel(speaker: "NYRA",
+                      text: "Another climber? Cute. The first floor is mine — and I don't do slow."),
+        CutscenePanel(speaker: nil,
+                      text: "Fifteen floors. Fifteen fighters who already gave everything to the tower. You tighten your wraps and step in."),
+    ]
+
+    /// Act-break before the final boss arena.
+    static let beforeBoss: [CutscenePanel] = [
+        CutscenePanel(speaker: nil,
+                      text: "The last door is a square of canvas and two gloves. The air hums like a struck bell that never rang."),
+        CutscenePanel(speaker: "TITUS",
+                      text: "(He says nothing. He raises his fists. No bell has rung for him in a thousand years.)"),
+        CutscenePanel(speaker: nil,
+                      text: "Damage alone won't drop him. Land the MILLION SHOT — a SPECIAL on an 8+ combo — or join the wall."),
+    ]
+}
+
+/// Self-contained cutscene overlay — speaker, text box, and an advance button.
+struct CutsceneOverlay: View {
+    let panels: [CutscenePanel]
+    let index: Int
+    let onAdvance: () -> Void
+
+    var body: some View {
+        let panel = panels.isEmpty ? CutscenePanel(speaker: nil, text: "")
+                                   : panels[min(index, panels.count - 1)]
+        return ZStack {
+            LinearGradient(colors: [.black, Color(red: 0.12, green: 0.03, blue: 0.16)],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(panel.speaker ?? "THE ASCENDANT")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundStyle(Color(red: 1, green: 0.32, blue: 0.55))
+                    Text(panel.text)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(.black.opacity(0.55)))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.22), lineWidth: 1))
+                    Button(action: onAdvance) {
+                        Text(index + 1 < panels.count ? "NEXT \u{25B6}" : "FIGHT!")
+                            .font(.system(size: 12, weight: .bold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .tint(Color(red: 0.9, green: 0.1, blue: 0.4))
+                    Text("\(index + 1) / \(max(1, panels.count))")
+                        .font(.system(size: 8))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(8)
+            }
+        }
     }
 }
