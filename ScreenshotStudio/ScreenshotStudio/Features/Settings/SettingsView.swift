@@ -24,8 +24,10 @@ struct SettingsView: View {
     private static var provisioningTeamID: String? {
         // Read the embedded provisioning profile's TeamIdentifier.
         guard let path = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              let string = String(data: data, encoding: .ascii) else { return nil }
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
+        // mobileprovision files are CMS binary blobs — .ascii returns nil on non-ASCII
+        // bytes. Use .isoLatin1 which maps all 256 byte values losslessly.
+        guard let string = String(data: data, encoding: .isoLatin1) else { return nil }
         // The plist is wrapped in binary markers; find TeamIdentifier.
         guard let range = string.range(of: "<key>TeamIdentifier</key>") else { return nil }
         let after = string[range.upperBound...]

@@ -27,7 +27,7 @@ targets:
         CFBundleDisplayName: ASC Screenshot Creator
         CFBundleName: ScreenshotStudio
         CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "3"
+        CFBundleVersion: "4"
         ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true
         NSPhotoLibraryAddUsageDescription: Screenshot Studio saves your finished App Store screenshots to a dedicated album in Photos so you can upload them to App Store Connect.
