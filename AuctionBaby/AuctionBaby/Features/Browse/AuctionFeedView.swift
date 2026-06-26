@@ -43,6 +43,17 @@ struct AuctionFeedView: View {
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                 Spacer()
+                if store.isBoosted, let until = store.boostUntil {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bolt.fill").font(.system(size: 10, weight: .bold))
+                        Text(timerInterval: Date.now...until, countsDown: true)
+                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(Theme.rose)
+                    .padding(.horizontal, 9).padding(.vertical, 5)
+                    .background(Capsule().fill(Theme.rose.opacity(0.16)))
+                }
                 HStack(spacing: 5) {
                     Image(systemName: "hammer.fill").font(.system(size: 11, weight: .bold))
                     Text(Tally.compact(store.wallet))

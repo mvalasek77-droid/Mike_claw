@@ -27,6 +27,8 @@ struct Match: Identifiable, Codable, Hashable {
     var manReviewedWoman: Bool = false   // man left his review of her
     var womanReviewedMan: Bool = false   // woman left her review of him
     var spentAmount: Int? = nil          // what he actually paid, set at review
+    /// The other side has read your latest message (Black Card read receipts).
+    var seenByOther: Bool = false
 
     /// The counterpart, from the perspective of the logged-in `role`.
     func other(for role: Role) -> Profile { role == .woman ? bid.man : bid.woman }

@@ -5,6 +5,7 @@ import SwiftUI
 struct ChatView: View {
     let matchID: UUID
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var storeKit: StoreKitService
     @State private var draft = ""
     @State private var showReview = false
 
@@ -22,6 +23,7 @@ struct ChatView: View {
                                     MessageBubble(message: msg, otherName: match.other(for: store.role ?? .man).name)
                                         .id(msg.id)
                                 }
+                                readReceipt(match)
                                 Color.clear.frame(height: 1).id("bottom")
                             }
                             .screenPadding().padding(.top, 10)
@@ -44,6 +46,25 @@ struct ChatView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// Black Card read receipt under your latest message.
+    @ViewBuilder
+    private func readReceipt(_ match: Match) -> some View {
+        if storeKit.isSubscribed(to: .blackcard),
+           match.phase == .chatting,
+           match.messages.last?.fromMe == true {
+            HStack {
+                Spacer()
+                HStack(spacing: 4) {
+                    Image(systemName: match.seenByOther ? "checkmark.circle.fill" : "checkmark.circle")
+                    Text(match.seenByOther ? "Seen" : "Delivered")
+                }
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(match.seenByOther ? Theme.verify : Theme.inkFaint)
+            }
+            .padding(.trailing, 2)
+        }
     }
 
     private func bidBanner(_ match: Match) -> some View {

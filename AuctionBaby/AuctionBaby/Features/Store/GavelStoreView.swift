@@ -14,6 +14,7 @@ struct GavelStoreView: View {
                 VStack(spacing: 16) {
                     balance
                     gavelSection
+                    boostSection
                     passSection
                     footer
                     Spacer(minLength: 24)
@@ -86,6 +87,45 @@ struct GavelStoreView: View {
                 .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
             GhostButton(title: "Demo: +10,000 Gavels (no charge)", systemImage: "wand.and.stars") {
                 store.addDemoGavels()
+            }
+        }
+    }
+
+    // MARK: Boost
+
+    @ViewBuilder private var boostSection: some View {
+        VStack(spacing: 12) {
+            SectionHeader(title: "Spotlight Boost", subtitle: "30 minutes at the very top of the floor.")
+            GlassSurface(corner: Theme.cornerL, tint: Theme.rose) {
+                HStack(spacing: 14) {
+                    Image(systemName: "bolt.fill").font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.black).frame(width: 46, height: 46)
+                        .background(Circle().fill(Theme.roseGradient))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Spotlight Boost").font(.system(size: 16, weight: .heavy, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                        if store.isBoosted, let until = store.boostUntil {
+                            HStack(spacing: 4) {
+                                Text("Active ·").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.rose)
+                                Text(timerInterval: Date.now...until, countsDown: true)
+                                    .font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(Theme.rose)
+                            }
+                        } else {
+                            Text("Jump to the top of every feed for 30 minutes.")
+                                .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                        }
+                    }
+                    Spacer()
+                    if let boost = storeKit.boostProduct {
+                        Button { Task { await buy(boost) } } label: {
+                            Text(store.isBoosted ? "Extend" : boost.displayPrice)
+                                .font(.system(size: 15, weight: .heavy, design: .rounded)).foregroundStyle(.black)
+                                .padding(.horizontal, 16).padding(.vertical, 9)
+                                .background(Capsule().fill(Theme.roseGradient))
+                        }.buttonStyle(.plain)
+                    }
+                }
+                .padding(14)
             }
         }
     }

@@ -61,6 +61,21 @@
       "productID" : "com.valasek.auctionbaby.gavels.vault",
       "referenceName" : "Gavels Vault",
       "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "3.99",
+      "familyShareable" : false,
+      "internalID" : "boost-spotlight",
+      "localizations" : [
+        {
+          "description" : "30 minutes in the spotlight — top of the floor.",
+          "displayName" : "Spotlight Boost",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.boost.spotlight",
+      "referenceName" : "Spotlight Boost",
+      "type" : "Consumable"
     }
   ],
   "settings" : {

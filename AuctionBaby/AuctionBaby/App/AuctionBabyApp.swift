@@ -18,6 +18,7 @@ struct AuctionBabyApp: App {
                     // Verified Gavel purchases credit the wallet; refunds claw back.
                     storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
                     storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
+                    storeKit.onBoost = { [weak store] in store?.activateBoost() }
                     await storeKit.loadProducts()
                 }
         }

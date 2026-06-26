@@ -23,6 +23,7 @@ import Foundation
 @MainActor
 final class StoreKitService: ObservableObject {
     @Published private(set) var gavelPacks: [Product] = []
+    @Published private(set) var boostProduct: Product?
     @Published private(set) var subscriptions: [Product] = []
     @Published private(set) var entitledSubscriptionIDs: Set<String> = []
     @Published private(set) var isLoading = false
@@ -42,6 +43,10 @@ final class StoreKitService: ObservableObject {
     nonisolated static func gavels(for id: String) -> Int {
         gavelCatalog.first { $0.id == id }?.gavels ?? 0
     }
+
+    /// A consumable Spotlight Boost — 30 minutes at the top of the floor.
+    nonisolated static let boostProductID = "com.valasek.auctionbaby.boost.spotlight"
+    static let boostMinutes = 30
 
     /// Subscription tiers, low → high.
     enum PassTier: String, CaseIterable, Identifiable {
@@ -81,6 +86,8 @@ final class StoreKitService: ObservableObject {
     }
     /// Called when a previously-granted Gavel pack is refunded.
     var onRevoke: ((Int) -> Void)?
+    /// Called when a Spotlight Boost is purchased.
+    var onBoost: (() -> Void)?
 
     // MARK: Internals
 
@@ -104,8 +111,9 @@ final class StoreKitService: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let all = try await Product.products(for: Self.gavelIDs + Self.subscriptionIDs)
+            let all = try await Product.products(for: Self.gavelIDs + [Self.boostProductID] + Self.subscriptionIDs)
             gavelPacks = all.filter { Self.gavelIDs.contains($0.id) }.sorted { $0.price < $1.price }
+            boostProduct = all.first { $0.id == Self.boostProductID }
             subscriptions = all.filter { Self.subscriptionIDs.contains($0.id) }.sorted { $0.price < $1.price }
             await updateEntitlements()
         } catch {
@@ -206,6 +214,13 @@ final class StoreKitService: ObservableObject {
         // credit here (handled by updateEntitlements).
         guard transaction.productType == .consumable else { return true }
         guard !processed.contains(transaction.id) else { return true }
+        // Spotlight Boost: a consumable that grants time, not Gavels.
+        if transaction.productID == Self.boostProductID {
+            guard let onBoost else { return false }
+            onBoost()
+            markProcessed(transaction.id)
+            return true
+        }
         let gavels = Self.gavels(for: transaction.productID)
         guard gavels > 0 else { markProcessed(transaction.id); return true }
         // No wallet hook yet (init drains before the app root wires it). Leave

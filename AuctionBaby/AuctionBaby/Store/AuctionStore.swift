@@ -16,6 +16,7 @@ final class AuctionStore: ObservableObject {
     @Published var me: Profile = AuctionStore.blankProfile(.man)
     @Published var wallet: Int = 750           // Gavels (in-app currency, real money via IAP)
     @Published var earnings: Int = 0            // woman side: bids actually paid out (real-world $)
+    @Published var boostUntil: Date?           // active Spotlight Boost expiry, if any
 
     @Published var floor: [Profile] = []        // women a bidder browses
     @Published var incomingBids: [Bid] = []     // woman's inbox
@@ -141,6 +142,17 @@ final class AuctionStore: ObservableObject {
         save()
     }
 
+    /// Whether a Spotlight Boost is currently live.
+    var isBoosted: Bool { (boostUntil ?? .distantPast) > .now }
+
+    /// Activate a 30-minute Spotlight Boost (called from a verified purchase).
+    func activateBoost() {
+        boostUntil = Date().addingTimeInterval(Double(StoreKitService.boostMinutes) * 60)
+        Haptics.success()
+        toastFlash("⚡️ Spotlight Boost live — top of the floor for \(StoreKitService.boostMinutes) min.")
+        save()
+    }
+
     /// Demo-only top-up so the higher tiers are explorable without a sandbox
     /// purchase. Clearly labelled as demo in the UI; never charges anything.
     func addDemoGavels(_ amount: Int = 10_000) {
@@ -232,8 +244,21 @@ final class AuctionStore: ObservableObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         matches[idx].messages.append(ChatMessage(fromMe: true, text: trimmed))
+        matches[idx].seenByOther = false   // reset; they haven't read the new one yet
         save()
+        scheduleSeen(matchID: match.id)
         scheduleCounterpartReply(matchID: match.id)
+    }
+
+    /// The counterpart "reads" your message a beat before replying — drives the
+    /// Black Card read-receipt indicator.
+    private func scheduleSeen(matchID: UUID) {
+        after(Double.random(in: 0.6...1.1)) { [weak self] in
+            guard let self, let idx = self.matches.firstIndex(where: { $0.id == matchID }) else { return }
+            guard self.matches[idx].phase == .chatting else { return }
+            self.matches[idx].seenByOther = true
+            self.save()
+        }
     }
 
     func markDateDone(_ match: Match) {
@@ -372,7 +397,8 @@ final class AuctionStore: ObservableObject {
                 // Money + reputation both move the needle.
                 let ratio = Double(bid.amount) / Double(threshold)
                 let creditPull = Double(self.me.auctionCredit - 580) / 320.0
-                accepted = (ratio + creditPull + Double.random(in: -0.25...0.25)) >= 1.0
+                let boostPull = self.isBoosted ? 0.25 : 0   // Spotlight Boost lifts your odds
+                accepted = (ratio + creditPull + boostPull + Double.random(in: -0.25...0.25)) >= 1.0
             }
 
             bid.status = accepted ? .accepted : .declined
@@ -461,6 +487,7 @@ final class AuctionStore: ObservableObject {
         var me: Profile
         var wallet: Int
         var earnings: Int
+        var boostUntil: Date?
         var floor: [Profile]
         var incomingBids: [Bid]
         var outgoingBids: [Bid]
@@ -469,7 +496,7 @@ final class AuctionStore: ObservableObject {
 
     private func save() {
         let snap = Snapshot(role: role, me: me, wallet: wallet, earnings: earnings,
-                            floor: floor, incomingBids: incomingBids,
+                            boostUntil: boostUntil, floor: floor, incomingBids: incomingBids,
                             outgoingBids: outgoingBids, matches: matches)
         if let data = try? JSONEncoder().encode(snap) {
             store.set(data, forKey: Self.key)
@@ -483,6 +510,7 @@ final class AuctionStore: ObservableObject {
         me = snap.me
         wallet = snap.wallet
         earnings = snap.earnings
+        boostUntil = snap.boostUntil
         floor = snap.floor.isEmpty ? SampleData.floor() : snap.floor
         incomingBids = snap.incomingBids
         outgoingBids = snap.outgoingBids

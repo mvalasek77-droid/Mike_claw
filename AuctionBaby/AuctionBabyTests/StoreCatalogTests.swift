@@ -27,6 +27,24 @@ final class StoreCatalogTests: XCTestCase {
                                     "a single top pack should afford the Trillionaire tier")
     }
 
+    func testBoostProductIsDistinctFromGavels() {
+        XCTAssertFalse(StoreKitService.gavelIDs.contains(StoreKitService.boostProductID))
+        XCTAssertEqual(StoreKitService.gavels(for: StoreKitService.boostProductID), 0,
+                       "the Boost grants time, not Gavels")
+        XCTAssertGreaterThan(StoreKitService.boostMinutes, 0)
+    }
+
+    @MainActor
+    func testActivateBoostMakesItLive() {
+        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v4")
+        let store = AuctionStore()
+        store.resetAccount()
+        XCTAssertFalse(store.isBoosted)
+        store.activateBoost()
+        XCTAssertTrue(store.isBoosted)
+        XCTAssertNotNil(store.boostUntil)
+    }
+
     func testSubscriptionTiersAreDistinctAndComplete() {
         let tiers = StoreKitService.PassTier.allCases
         XCTAssertEqual(tiers.count, 3)
