@@ -7,10 +7,16 @@ on:
       - "claude/metabro-facebook-reddit-hybrid-it80pk"
     paths:
       - "MetaBro/**"
+      # Don't rebuild the iOS app for content-only refreshes (the content
+      # engine rewrites Branding/** every 3 hours). Those commits change no
+      # Swift, so the macOS build/test adds nothing but runner minutes and
+      # noisy `action_required` runs from the bot author.
+      - "!MetaBro/Branding/**"
       - ".github/workflows/metabro-ci.yml"
   pull_request:
     paths:
       - "MetaBro/**"
+      - "!MetaBro/Branding/**"
       - ".github/workflows/metabro-ci.yml"
 
 # Cancel superseded runs on the same ref to save runner minutes.
