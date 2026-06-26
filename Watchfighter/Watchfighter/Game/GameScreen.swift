@@ -865,6 +865,7 @@ struct GameScreen: View {
         let beforeRound = engine.state.round
         let beforeChapter = engine.state.chapter
         let beforePlayerWins = engine.state.playerWins
+        let beforeOpponentWins = engine.state.opponentWins
 
         let spacingTarget = (engine.state.opponent.x - 0.25 + CGFloat(sin(engine.state.elapsed * 1.6)) * 0.035).clamped(to: 0.16...0.52)
         let targetX = isPressing ? touchX : (demoMode ? spacingTarget : CGFloat(crownX))
@@ -913,9 +914,14 @@ struct GameScreen: View {
 
         if activeMode == .tournament, !demoMode, engine.state.phase == .running, (engine.state.round != beforeRound || engine.state.chapter != beforeChapter) {
             lastFrameDate = nil
-            // FF act-break cutscene before the final-boss chapter; otherwise the card.
-            if engine.state.chapter != beforeChapter, engine.state.chapter == StoryChapter.allCases.last {
-                playCutscene(FFScript.beforeBoss, toFight: false)
+            // FF story beats bridge into the next fight (good arcade cadence:
+            // only on a loss, the midpoint, and the final boss — not every fight).
+            if engine.state.opponentWins > beforeOpponentWins {
+                playCutscene(FFScript.pit, toFight: false)              // lost a floor -> the Pit, climb back
+            } else if engine.state.chapter == StoryChapter.allCases.last {
+                playCutscene(FFScript.beforeBoss, toFight: false)        // final boss
+            } else if engine.state.chapter == .blackoutBase {
+                playCutscene(FFScript.midpoint, toFight: false)          // midpoint
             } else {
                 screenMode = .fighterCard
                 announce("NEXT FIGHT")
@@ -1432,6 +1438,25 @@ enum FFScript {
                       text: "Another climber? Cute. The first floor is mine — and I don't do slow."),
         CutscenePanel(speaker: nil,
                       text: "Fifteen floors. Fifteen fighters who already gave everything to the tower. You tighten your wraps and step in."),
+    ]
+
+    /// Midpoint act-break (fires around the blackout-base floor).
+    static let midpoint: [CutscenePanel] = [
+        CutscenePanel(speaker: nil,
+                      text: "Halfway up. The fighters here didn't choose the tower — the tower chose them, and never let go."),
+        CutscenePanel(speaker: nil,
+                      text: "You've started to understand: winning isn't the prize up here. Escaping is. Keep climbing."),
+    ]
+
+    /// Fired when you LOSE a floor but the run isn't over — the Pit narrative
+    /// beat on the existing second-chance before you fight your way back up.
+    static let pit: [CutscenePanel] = [
+        CutscenePanel(speaker: nil,
+                      text: "The floor drops out. You fall past the tower, past the town, into heat and smoke."),
+        CutscenePanel(speaker: "THE PIT",
+                      text: "Another one the tower couldn't keep. Crawl back up if you can — but you don't get to fall twice."),
+        CutscenePanel(speaker: nil,
+                      text: "You drag yourself back onto the floor you lost. One life left. Make it burn."),
     ]
 
     /// Act-break before the final boss arena.
