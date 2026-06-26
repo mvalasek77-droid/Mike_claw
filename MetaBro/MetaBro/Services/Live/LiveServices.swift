@@ -4,6 +4,23 @@ import Foundation
 // Community, Message, Conversation, and Story models are already clean Codable
 // types, so these decode straight into the domain — no DTO layer required.
 
+struct LiveAuthService: AuthService {
+    let client: APIClient
+
+    func restoreSession() async -> User? {
+        try? await client.send(API.session, as: User.self)
+    }
+
+    func completeOnboarding(_ draft: OnboardingDraft) async throws -> User {
+        let req = OnboardRequest(handle: draft.handle, displayName: draft.displayName)
+        return try await client.send(API.onboard(req), as: User.self)
+    }
+
+    func signOut() async {
+        try? await client.send(API.signOut)
+    }
+}
+
 struct LiveCommentService: CommentService {
     let client: APIClient
 

@@ -19,6 +19,13 @@ reply.**
   dependency injection container, type-safe routing, Swift 6 strict concurrency.
 - ✅ **Networking** — `async/await` API client with exponential-backoff retry and
   typed `APIError`.
+- ✅ **Auth & onboarding** — a launch gate restores a persisted identity or runs a
+  three-step flow (welcome → claim a handle + display name → required Code of
+  Conduct agreement) before the rest of the app is built, so mock seed data and
+  "you are the author" checks always agree on who's signed in. `Session` is a
+  thread-safe (`Mutex`-backed), injectable singleton; `AuthService` has mock and
+  live implementations and never touches `Session` itself, keeping it race-free
+  under Swift Testing's parallel suites.
 - ✅ **Unified feed** — social + Bro-hood fusion, sort (Hot/New/Top),
   pull-to-refresh, tap-to-open, and full loading / empty / error / offline states.
 - ✅ **Hybrid interactions** — Bro-hood (community) posts use **Reddit voting**;

@@ -156,6 +156,23 @@ struct ThreadedComment: Identifiable, Hashable, Sendable {
     var id: UUID { comment.id }
 }
 
+/// What onboarding hands to `AuthService` to claim a handle and identity.
+/// `handle` is the raw value with no leading "@" — that's added when the
+/// `User` is created, matching how handles render everywhere else.
+struct OnboardingDraft: Sendable {
+    var handle: String
+    var displayName: String
+
+    /// Reddit-style handle rules: lowercase letters/digits/underscores,
+    /// starting with a letter, 3–20 characters.
+    var isValid: Bool {
+        let h = handle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nameOK = !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard h.count >= 3, h.count <= 20, nameOK else { return false }
+        return h.range(of: "^[a-z][a-z0-9_]*$", options: .regularExpression) != nil
+    }
+}
+
 /// What the composer hands to the service when creating a post. `community`
 /// is nil for a social post, set for a Bro-hood post.
 struct PostDraft: Sendable {

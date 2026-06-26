@@ -5,6 +5,7 @@ import SwiftUI
 /// Messages, and Profile.
 struct RootView: View {
     let container: AppContainer
+    let onSignOut: () -> Void
     @State private var selection: AppTab = .home
 
     var body: some View {
@@ -26,7 +27,7 @@ struct RootView: View {
                 .tabItem { Label(AppTab.messages.title, systemImage: AppTab.messages.systemImage) }
                 .tag(AppTab.messages)
 
-            ProfileView(container: container)
+            ProfileView(container: container, onSignOut: onSignOut)
                 .tabItem { Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage) }
                 .tag(AppTab.profile)
         }

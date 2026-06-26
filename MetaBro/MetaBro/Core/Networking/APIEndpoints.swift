@@ -5,6 +5,13 @@ import Foundation
 /// reviewable in one file and trivial to repoint.
 enum API {
 
+    // MARK: Auth
+    static let session = Endpoint.get("auth/session")
+    static func onboard(_ body: OnboardRequest) throws -> Endpoint {
+        try .post("auth/onboard", body: body)
+    }
+    static let signOut = Endpoint.delete("auth/session")
+
     // MARK: Feed & posts
     static func feed(sort: FeedSort, cursor: String?) -> Endpoint {
         var q = [URLQueryItem(name: "sort", value: sort.rawValue)]
@@ -71,6 +78,7 @@ enum API {
 
 // MARK: - Request bodies
 
+struct OnboardRequest: Encodable { var handle: String; var displayName: String }
 struct CreatePostRequest: Encodable {
     var title: String?
     var body: String

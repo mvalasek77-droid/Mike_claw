@@ -2,8 +2,6 @@ import SwiftUI
 
 @main
 struct MetaBroApp: App {
-    @State private var container = AppContainer.live()
-
     init() {
         CrashReporter.install()
         if let lastCrash = CrashReporter.lastCrash() {
@@ -14,7 +12,7 @@ struct MetaBroApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(container: container)
+            LaunchGateView()
                 .task { HapticsEngine.shared.prepare() }
         }
     }

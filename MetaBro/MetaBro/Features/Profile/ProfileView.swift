@@ -4,12 +4,14 @@ import SwiftUI
 /// joined Bro-hoods, and authored posts (tappable through to their threads).
 struct ProfileView: View {
     private let container: AppContainer
+    let onSignOut: () -> Void
     @State private var model: ProfileViewModel
     @State private var path: [Post] = []
     @State private var showingBugReport = false
 
-    init(container: AppContainer) {
+    init(container: AppContainer, onSignOut: @escaping () -> Void) {
         self.container = container
+        self.onSignOut = onSignOut
         _model = State(initialValue: ProfileViewModel(service: container.profileService))
     }
 
@@ -50,6 +52,7 @@ struct ProfileView: View {
                     }
                     postsSection(profile.posts)
                     reportProblemRow
+                    signOutRow
                     SloganView(showsMark: false)
                         .padding(.top, Tokens.Spacing.xl)
                         .frame(maxWidth: .infinity)
@@ -88,6 +91,25 @@ struct ProfileView: View {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .foregroundStyle(Tokens.Color.textSecondary)
+            }
+            .padding(Tokens.Spacing.md)
+        }
+        .buttonStyle(.plain)
+        .liquidGlass()
+        .frame(maxWidth: .infinity)
+    }
+
+    private var signOutRow: some View {
+        Button(role: .destructive) {
+            Task {
+                await container.authService.signOut()
+                Session.shared.signOut()
+                onSignOut()
+            }
+        } label: {
+            HStack {
+                Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                Spacer()
             }
             .padding(Tokens.Spacing.md)
         }

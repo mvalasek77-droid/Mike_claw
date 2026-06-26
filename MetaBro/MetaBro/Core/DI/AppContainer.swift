@@ -13,6 +13,7 @@ final class AppContainer {
     let messagingService: MessagingService
     let storyService: StoryService
     let bugReportService: BugReportService
+    let authService: AuthService
 
     init(
         feedService: FeedService,
@@ -22,7 +23,8 @@ final class AppContainer {
         searchService: SearchService,
         messagingService: MessagingService,
         storyService: StoryService,
-        bugReportService: BugReportService
+        bugReportService: BugReportService,
+        authService: AuthService
     ) {
         self.feedService = feedService
         self.commentService = commentService
@@ -32,12 +34,17 @@ final class AppContainer {
         self.messagingService = messagingService
         self.storyService = storyService
         self.bugReportService = bugReportService
+        self.authService = authService
     }
 
     /// Resolves the dependency graph from configuration: a live backend when
     /// one is configured, in-memory mocks otherwise. Either way Profile and
     /// Search compose from the chosen feed + community services, so they follow
     /// the same source of truth automatically.
+    ///
+    /// Call this only once an identity is established (after `makeAuthService()`
+    /// has restored or onboarded a session) — mock seed data (e.g. "your" demo
+    /// post) is authored by whoever `Session.me` is at the moment it's created.
     static func resolve(config: BackendConfig = BackendConfig()) -> AppContainer {
         if let baseURL = config.resolvedBaseURL {
             return live(baseURL: baseURL)
@@ -45,8 +52,15 @@ final class AppContainer {
         return mocks()
     }
 
-    /// Backwards-compatible entry point used by the app.
-    static func live() -> AppContainer { resolve() }
+    /// Builds just the auth service, so the launch flow can restore/establish
+    /// an identity *before* the rest of the graph (and its mock seed data) is
+    /// built from `resolve()`.
+    static func makeAuthService(config: BackendConfig = BackendConfig()) -> AuthService {
+        if let baseURL = config.resolvedBaseURL {
+            return LiveAuthService(client: LiveAPIClient(baseURL: baseURL))
+        }
+        return MockAuthService()
+    }
 
     private static func live(baseURL: URL) -> AppContainer {
         let client = LiveAPIClient(baseURL: baseURL)
@@ -60,7 +74,8 @@ final class AppContainer {
             searchService: MockSearchService(feedService: feed, communityService: communities),
             messagingService: LiveMessagingService(client: client),
             storyService: LiveStoryService(client: client),
-            bugReportService: LiveBugReportService(client: client)
+            bugReportService: LiveBugReportService(client: client),
+            authService: LiveAuthService(client: client)
         )
     }
 
@@ -78,7 +93,8 @@ final class AppContainer {
             searchService: MockSearchService(feedService: feed, communityService: communities),
             messagingService: MockMessagingService(),
             storyService: MockStoryService(),
-            bugReportService: MockBugReportService()
+            bugReportService: MockBugReportService(),
+            authService: MockAuthService()
         )
     }
 }
