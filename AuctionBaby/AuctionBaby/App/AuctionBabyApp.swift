@@ -54,7 +54,15 @@ struct RootView: View {
                 .zIndex(10)
                 .allowsHitTesting(false)
             }
+
+            // Full-screen "SOLD!" match celebration.
+            if let celebration = store.celebration {
+                MatchCelebrationView(celebration: celebration) { store.celebration = nil }
+                    .zIndex(20)
+                    .transition(.opacity)
+            }
         }
+        .motion(.easeInOut(duration: 0.3), value: store.celebration)
         .motion(.easeInOut(duration: 0.45), value: showSplash)
         .motion(.easeInOut(duration: 0.45), value: store.isRegistered)
         .motion(Motion.snap, value: store.toast)

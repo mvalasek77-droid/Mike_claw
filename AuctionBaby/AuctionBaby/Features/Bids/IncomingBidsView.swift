@@ -100,6 +100,7 @@ struct BidRow: View {
                         HStack(spacing: 6) {
                             Text(bid.status == .accepted ? bid.man.name : "Hidden bidder")
                                 .font(.system(size: 16, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
+                            if bid.man.verified { VerifiedBadge(size: 14) }
                         }
                         ArchetypeBadge(archetype: bid.man.archetype, compact: true, pending: bid.man.showsPendingTrillionaire)
                     }

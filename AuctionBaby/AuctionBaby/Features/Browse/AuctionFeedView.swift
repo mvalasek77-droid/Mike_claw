@@ -90,6 +90,7 @@ struct FloorCard: View {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(woman.name)
                                 .font(.system(size: 26, weight: .heavy, design: .serif))
+                            if woman.verified { VerifiedBadge(size: 18) }
                             Text("\(woman.age)")
                                 .font(.system(size: 20, weight: .medium, design: .serif))
                                 .foregroundStyle(Theme.inkSoft)

@@ -7,6 +7,7 @@ struct MyProfileView: View {
     @State private var editingBid = false
     @State private var bidText = ""
     @State private var showReset = false
+    @State private var showVerify = false
 
     private var me: Profile { store.me }
     private var isMan: Bool { store.role == .man }
@@ -16,6 +17,7 @@ struct MyProfileView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     headerCard
+                    if !me.verified { verifyCard }
                     if isMan { manStats } else { womanStats }
                     if !me.reviews.isEmpty {
                         GlassCard(title: isMan ? "What dates said about you" : "What bidders said",
@@ -32,6 +34,10 @@ struct MyProfileView: View {
             }
             .background(AppBackground())
             .navigationTitle("You")
+            .sheet(isPresented: $showVerify) {
+                VerificationSheet { store.verifyMe() }
+                    .presentationDetents([.medium])
+            }
             .alert("Reset account?", isPresented: $showReset) {
                 Button("Reset", role: .destructive) { store.resetAccount() }
                 Button("Cancel", role: .cancel) {}
@@ -49,6 +55,7 @@ struct MyProfileView: View {
                             HStack(spacing: 8) {
                                 Text(me.name.isEmpty ? "You" : me.name)
                                     .font(.system(size: 28, weight: .heavy, design: .serif))
+                                if me.verified { VerifiedBadge(size: 20) }
                                 Text("\(me.age)").font(.system(size: 20, design: .serif)).foregroundStyle(Theme.inkSoft)
                             }.foregroundStyle(Theme.ink)
                             HStack(spacing: 8) {
@@ -64,6 +71,29 @@ struct MyProfileView: View {
                 }
             }
         }
+    }
+
+    private var verifyCard: some View {
+        Button { showVerify = true } label: {
+            GlassSurface(corner: Theme.cornerL, tint: Theme.verify) {
+                HStack(spacing: 14) {
+                    Image(systemName: "checkmark.seal.fill").font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(.white).frame(width: 46, height: 46)
+                        .background(Circle().fill(Theme.verify))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Get verified").font(.system(size: 16, weight: .heavy, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                        Text("A blue check tells the floor you're a real person — verified profiles get accepted far more.")
+                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").foregroundStyle(Theme.inkFaint)
+                }
+                .padding(16)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: Man stats

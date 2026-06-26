@@ -25,6 +25,7 @@ enum SampleData {
                                             Trait.genuine.rawValue: 5],
                                    interestCategories: ["Art openings", "Wine bars"]),
                     ],
+                    verified: true,
                     startingBid: 250),
 
             Profile(name: "Priya Sethi", age: 29, role: .woman, location: "Lincoln Park, Chicago",
@@ -43,6 +44,7 @@ enum SampleData {
                                             Trait.genuine.rawValue: 5],
                                    interestCategories: ["Tasting menus"]),
                     ],
+                    verified: true,
                     startingBid: 300),
 
             Profile(name: "Sloane Carter", age: 31, role: .woman, location: "Venice, LA",
@@ -135,6 +137,7 @@ enum SampleData {
                                    text: "Gentleman. Talked about his boat a lot.",
                                    paidBid: true, bidAmount: 300, spentAmount: 300),
                     ],
+                    verified: true,
                     archetype: .goodJob),
 
             Profile(name: "Marcus Bell", age: 38, role: .man, location: "Buckhead, Atlanta",
@@ -172,6 +175,7 @@ enum SampleData {
                                    text: "Bid small, delivered big. Walked me home. Paid every cent.",
                                    paidBid: true, bidAmount: 120, spentAmount: 160),
                     ],
+                    verified: true,
                     archetype: .goodGuy),
         ]
     }

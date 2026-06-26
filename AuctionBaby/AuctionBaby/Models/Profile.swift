@@ -102,6 +102,9 @@ struct Profile: Identifiable, Codable, Hashable {
     var prompts: [Prompt] = []
     var interests: [String] = []
     var reviews: [DateReview] = []
+    /// Identity-verified (selfie match). Copycats can never be verified — it's
+    /// the strongest "this is a real human" signal in the app.
+    var verified: Bool = false
 
     // MARK: Woman-specific
     var startingBid: Int? = nil           // optional floor

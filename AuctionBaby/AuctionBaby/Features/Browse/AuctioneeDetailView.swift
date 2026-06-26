@@ -19,6 +19,7 @@ struct AuctioneeDetailView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
                             Text(woman.name).font(.system(size: 30, weight: .heavy, design: .serif))
+                            if woman.verified { VerifiedBadge(size: 20) }
                             Text("\(woman.age)").font(.system(size: 22, design: .serif)).foregroundStyle(Theme.inkSoft)
                             if woman.masterpiece { MasterpieceBadge(compact: true) }
                         }

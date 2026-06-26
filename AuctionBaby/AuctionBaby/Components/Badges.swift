@@ -125,6 +125,19 @@ struct DeadbeatTag: View {
     }
 }
 
+/// The identity-verified check seal. The premium trust signal — a verified
+/// human, never a copycat.
+struct VerifiedBadge: View {
+    var size: CGFloat = 15
+    var body: some View {
+        Image(systemName: "checkmark.seal.fill")
+            .font(.system(size: size, weight: .bold))
+            .foregroundStyle(Theme.verify)
+            .shadow(color: Theme.verify.opacity(0.5), radius: 3)
+            .accessibilityLabel("Verified")
+    }
+}
+
 /// "Copycat" warning flag — an AI-generated lure profile. Gently pulses to read
 /// as "synthetic / live", and holds still under Reduce Motion.
 struct CopycatTag: View {

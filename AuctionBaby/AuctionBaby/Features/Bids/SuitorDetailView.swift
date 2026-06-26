@@ -60,6 +60,9 @@ struct SuitorDetailView: View {
                         ScoreGauge(value: man.auctionCredit, range: 300...850, label: man.creditTier,
                                    tint: Theme.gold, size: 120)
                         VStack(alignment: .leading, spacing: 10) {
+                            if man.verified {
+                                StatPill(icon: "checkmark.seal.fill", label: "identity", value: "Verified", tint: Theme.verify)
+                            }
                             DeadbeatTag(score: man.deadbeatScore)
                             StatPill(icon: "calendar", label: "dates", value: "\(man.datesCompleted)", tint: Theme.rose)
                             if man.copycatBids > 0 {

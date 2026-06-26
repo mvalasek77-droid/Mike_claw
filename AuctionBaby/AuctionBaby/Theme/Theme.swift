@@ -20,6 +20,7 @@ enum Theme {
     static let success = Color(red: 0.30, green: 0.83, blue: 0.55)
     static let warning = Color(red: 1.00, green: 0.66, blue: 0.20)
     static let danger = Color(red: 0.97, green: 0.28, blue: 0.31)
+    static let verify = Color(red: 0.30, green: 0.74, blue: 0.98) // identity-verified blue
     static let copycat = Color(red: 0.60, green: 0.40, blue: 0.95) // synthetic / AI lure
 
     // Neutrals — warm gallery black so gold reads as lit, not cold.

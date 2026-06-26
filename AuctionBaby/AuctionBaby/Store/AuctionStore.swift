@@ -23,6 +23,9 @@ final class AuctionStore: ObservableObject {
     @Published var matches: [Match] = []
 
     @Published var toast: String?
+    /// Drives the full-screen "SOLD!" match celebration. Set when a bid is
+    /// accepted; cleared when the overlay is dismissed.
+    @Published var celebration: MatchCelebration?
 
     var isRegistered: Bool { role != nil }
 
@@ -32,7 +35,7 @@ final class AuctionStore: ObservableObject {
     var activePendingBidCount: Int { outgoingBids.filter { $0.status == .pending }.count }
 
     private let store = UserDefaults.standard
-    private static let key = "auctionbaby.state.v3"
+    private static let key = "auctionbaby.state.v4"
 
     // MARK: - Lifecycle
 
@@ -171,8 +174,19 @@ final class AuctionStore: ObservableObject {
         toastFlash(accepted.qualifiesForMasterpiece
                    ? "A Trillionaire's bid accepted — a Masterpiece is in reach."
                    : "Bid accepted. Invite sent to \(accepted.man.name).")
+        celebrate(with: accepted.man, amount: accepted.amount,
+                  copycat: accepted.onCopycat, masterpiece: accepted.qualifiesForMasterpiece)
         save()
         scheduleSuitorReply(matchID: match.id)
+    }
+
+    /// Run the simulated selfie-match verification for the logged-in user.
+    func verifyMe() {
+        guard !me.verified else { return }
+        me.verified = true
+        Haptics.success()
+        toastFlash("You're verified ✓ — bidders trust a real face.")
+        save()
     }
 
     func decline(_ bid: Bid) {
@@ -329,6 +343,17 @@ final class AuctionStore: ObservableObject {
             ChatMessage(fromMe: true, text: "Reviews are in. This lot is closed.", isSystem: true))
     }
 
+    // MARK: - Celebration
+
+    /// Fire the full-screen "SOLD!" moment for a freshly-made match.
+    private func celebrate(with other: Profile, amount: Int, copycat: Bool, masterpiece: Bool) {
+        celebration = MatchCelebration(
+            otherName: other.name, otherHue: other.hue, otherCopycat: copycat,
+            otherCopycatStyle: other.copycatStyle, otherVerified: other.verified,
+            meName: me.name.isEmpty ? "You" : me.name, meHue: me.hue,
+            amount: amount, masterpiece: masterpiece)
+    }
+
     // MARK: - Simulation
 
     /// A woman's automated decision on a bidder's offer.
@@ -362,6 +387,8 @@ final class AuctionStore: ObservableObject {
                 self.matches.insert(match, at: 0)
                 Haptics.success()
                 self.toastFlash("\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid!")
+                self.celebrate(with: bid.woman, amount: bid.amount,
+                               copycat: bid.onCopycat, masterpiece: bid.qualifiesForMasterpiece)
             } else {
                 Haptics.warning()
                 self.toastFlash("\(bid.woman.name) passed. Bid higher or build your reputation.")

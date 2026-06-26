@@ -48,6 +48,7 @@ struct MatchRow: View {
                     HStack(spacing: 6) {
                         Text(other.name).font(.system(size: 16, weight: .heavy, design: .serif))
                             .foregroundStyle(Theme.ink)
+                        if other.verified { VerifiedBadge(size: 13) }
                         if other.isCopycat { CopycatTag(compact: true) }
                     }
                     Text(match.messages.last?.text ?? "Say hello")

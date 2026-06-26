@@ -38,7 +38,7 @@ final class StoreCatalogTests: XCTestCase {
 
     @MainActor
     func testCreditAndRevokeMoveTheWallet() {
-        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v3")
+        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v4")
         let store = AuctionStore()
         store.resetAccount()
         let start = store.wallet

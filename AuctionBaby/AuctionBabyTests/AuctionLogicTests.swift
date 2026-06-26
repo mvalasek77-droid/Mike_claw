@@ -285,6 +285,36 @@ final class AuctionLogicTests: XCTestCase {
         XCTAssertEqual(store.activePendingBidCount, 1)
     }
 
+    // MARK: Verification & celebration
+
+    @MainActor
+    func testVerifyMeSetsVerified() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        XCTAssertFalse(store.me.verified)
+        store.verifyMe()
+        XCTAssertTrue(store.me.verified)
+    }
+
+    @MainActor
+    func testWomanAcceptingBidFiresCelebration() {
+        let store = freshStore()
+        store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
+                       hue: 0.9, startingBid: 200, prompts: [], interests: [])
+        XCTAssertNil(store.celebration)
+        let bid = store.incomingBids.first { $0.status == .pending }!
+        store.accept(bid)
+        XCTAssertNotNil(store.celebration, "accepting a bid should trigger the SOLD celebration")
+        XCTAssertEqual(store.celebration?.amount, bid.amount)
+    }
+
+    func testCopycatNeverVerifiedInSampleData() {
+        for copycat in SampleData.floor().filter({ $0.isCopycat }) {
+            XCTAssertFalse(copycat.verified, "copycats must never carry a verified check")
+        }
+    }
+
     // MARK: Money formatting
 
     func testMoneyCompact() {
@@ -299,7 +329,7 @@ final class AuctionLogicTests: XCTestCase {
 
     @MainActor
     private func freshStore() -> AuctionStore {
-        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v3")
+        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v4")
         let store = AuctionStore()
         store.resetAccount()
         return store
