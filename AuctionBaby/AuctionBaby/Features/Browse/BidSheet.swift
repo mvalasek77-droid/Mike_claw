@@ -11,6 +11,7 @@ struct BidSheet: View {
     @State private var amount: Int
     @State private var note: String = ""
     @State private var showStore = false
+    @State private var gild = false
 
     /// Free bidders are capped on live bids; a Pass lifts it.
     private var atFreeLimit: Bool {
@@ -103,6 +104,10 @@ struct BidSheet: View {
                         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                 }
 
+                if !woman.isCopycat {
+                    gildToggle
+                }
+
                 if atFreeLimit {
                     VStack(spacing: 8) {
                         Label("You've used all \(AuctionStore.freeActiveBidLimit) free live bids.",
@@ -112,9 +117,12 @@ struct BidSheet: View {
                                       gradient: Theme.roseGradient) { showStore = true }
                     }
                 } else {
-                    PrimaryButton(title: "Place \(Money.compact(amount)) bid", systemImage: "hand.raised.fill",
+                    PrimaryButton(title: gild ? "Send Gilded bid · \(Money.compact(amount))"
+                                              : "Place \(Money.compact(amount)) bid",
+                                  systemImage: gild ? "seal.fill" : "hand.raised.fill",
+                                  gradient: gild ? Theme.prestigeGradient : Theme.goldGradient,
                                   enabled: amount > 0) {
-                        store.placeBid(on: woman, amount: amount, note: note)
+                        store.placeBid(on: woman, amount: amount, note: note, gilded: gild)
                         dismiss()
                     }
                 }
@@ -127,6 +135,34 @@ struct BidSheet: View {
         }
         .background(AppBackground().opacity(0.4))
         .motion(Motion.snap, value: amount)
+        .motion(Motion.snap, value: gild)
         .sheet(isPresented: $showStore) { GavelStoreView().presentationDetents([.large]) }
+    }
+
+    private var gildToggle: some View {
+        Button { Haptics.selection(); gild.toggle() } label: {
+            HStack(spacing: 12) {
+                Image(systemName: gild ? "seal.fill" : "seal")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(gild ? AnyShapeStyle(Theme.prestigeGradient) : AnyShapeStyle(Theme.inkSoft))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Gild this bid").font(.system(size: 15, weight: .heavy, design: .serif))
+                        .foregroundStyle(Theme.ink)
+                    Text("Pin to the top of her inbox with a gold ribbon — she's far more likely to accept.")
+                        .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 6)
+                Text("\(Tally.compact(AuctionStore.gildedBidCost)) ⚖︎")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundStyle(gild ? Theme.gold : Theme.inkFaint)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: Theme.cornerM)
+                .fill(gild ? Theme.gold.opacity(0.12) : .white.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cornerM)
+                .strokeBorder(gild ? Theme.gold.opacity(0.6) : Theme.hairline, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 }

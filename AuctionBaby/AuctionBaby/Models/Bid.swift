@@ -17,6 +17,10 @@ struct Bid: Identifiable, Codable, Hashable {
     var note: String = ""
     var status: BidStatus = .pending
     var createdAt: Date = .now
+    /// A "Gilded" bid — the premium attention move (the Rose of Auction Baby).
+    /// Costs Gavels, pins to the top of her inbox with a gold ribbon, and
+    /// nudges her toward accepting.
+    var gilded: Bool = false
 
     /// Bidding on an AI copycat is always disclosed and counts against the man.
     var onCopycat: Bool { woman.isCopycat }

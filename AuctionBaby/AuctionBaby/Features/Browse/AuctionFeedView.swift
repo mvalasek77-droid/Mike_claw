@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The bidder's home: a Hinge-style vertical feed of women on the floor. Each
 /// card is a tappable lot; copycats are flagged in place.
@@ -7,14 +8,18 @@ struct AuctionFeedView: View {
     @State private var bidTarget: Profile?
     @State private var showFilters = false
 
-    private var lots: [Profile] { store.filteredFloor }
+    private var lots: [Profile] { store.filteredFloor.filter { $0.id != store.headliner?.id } }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 18) {
                     header
-                    if lots.isEmpty {
+                    if let star = store.headliner {
+                        NavigationLink(value: star) { HeadlinerBanner(woman: star) }
+                            .buttonStyle(.plain)
+                    }
+                    if lots.isEmpty && store.headliner == nil {
                         EmptyStateView(icon: "line.3.horizontal.decrease.circle",
                                        title: "No lots match",
                                        message: "Your filters are hiding everyone. Loosen them to see more of the floor.")
@@ -96,6 +101,57 @@ struct AuctionFeedView: View {
                 .foregroundStyle(Theme.inkFaint)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// The curated "Headliner of the Day" — a premium gold-framed hero above the
+/// floor (Auction Baby's answer to Hinge Standouts).
+struct HeadlinerBanner: View {
+    let woman: Profile
+    @State private var shimmer = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "star.fill").font(.system(size: 11, weight: .bold))
+                Text("HEADLINER OF THE DAY").font(.system(size: 11, weight: .heavy, design: .rounded)).tracking(1.5)
+                Spacer()
+            }
+            .foregroundStyle(.black)
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            .background(Theme.goldGradient)
+
+            ZStack(alignment: .bottomLeading) {
+                AvatarView(name: woman.name, hue: woman.hue, corner: 0)
+                    .frame(height: 240)
+                LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
+                    .frame(height: 240).allowsHitTesting(false)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(woman.name).font(.system(size: 26, weight: .heavy, design: .serif))
+                        if woman.verified { VerifiedBadge(size: 18) }
+                        if woman.masterpiece { MasterpieceBadge(compact: true) }
+                    }
+                    .foregroundStyle(Theme.ink)
+                    HStack(spacing: 8) {
+                        Chip(text: "Showcase \(woman.showcaseScore)", systemImage: "rosette", color: Theme.rose)
+                        Chip(text: Money.compact(woman.marketValue), systemImage: "dollarsign.circle.fill", color: Theme.gold)
+                    }
+                }
+                .padding(16)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerXL, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.cornerXL, style: .continuous)
+                .strokeBorder(Theme.goldGradient, lineWidth: 1.5)
+        )
+        .depth(Theme.cornerXL, strong: true)
+        .shadow(color: Theme.gold.opacity(shimmer ? 0.45 : 0.2), radius: shimmer ? 18 : 10)
+        .onAppear {
+            guard !UIAccessibility.isReduceMotionEnabled else { return }
+            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) { shimmer = true }
+        }
     }
 }
 

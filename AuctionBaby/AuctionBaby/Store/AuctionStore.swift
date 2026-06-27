@@ -35,11 +35,23 @@ final class AuctionStore: ObservableObject {
     /// Free bidders may keep this many *live* (pending) bids at once. A Pass
     /// lifts the cap — the "unlimited bids" perk.
     static let freeActiveBidLimit = 3
+    /// Gavel cost of gilding a bid (the premium "Rose" move).
+    static let gildedBidCost = 250
     var activePendingBidCount: Int { outgoingBids.filter { $0.status == .pending }.count }
 
     /// The floor after blocks + filters are applied — what the bidder actually sees.
     var filteredFloor: [Profile] {
         floor.filter { !blockedIDs.contains($0.id) && filters.matches($0) }
+    }
+
+    /// Curated "Headliner of the Day" — a real (non-copycat) lot, rotating daily
+    /// and favouring verified, high-Showcase profiles.
+    var headliner: Profile? {
+        let pool = filteredFloor.filter { !$0.isCopycat }
+            .sorted { ($0.verified ? 1 : 0, $0.showcaseScore) > ($1.verified ? 1 : 0, $1.showcaseScore) }
+        guard !pool.isEmpty else { return nil }
+        let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
+        return pool[day % pool.count]
     }
 
     /// Block and report a profile: removes them from the floor, the bid inbox,
@@ -108,9 +120,16 @@ final class AuctionStore: ObservableObject {
     /// Place a bid on a woman. Bids are offers — nothing is charged until a date
     /// actually happens — but bidding on an AI copycat is logged against the
     /// bidder's reputation immediately.
-    func placeBid(on woman: Profile, amount: Int, note: String) {
+    func placeBid(on woman: Profile, amount: Int, note: String, gilded: Bool = false) {
         guard role == .man else { return }
-        let bid = Bid(man: me, woman: woman, amount: amount, note: note)
+        // Gilding spends Gavels up front; fall back to a normal bid if short.
+        var gild = gilded
+        if gild {
+            if wallet >= Self.gildedBidCost { wallet -= Self.gildedBidCost }
+            else { gild = false; toastFlash("Not enough Gavels to gild — sent a standard bid.") }
+        }
+        var bid = Bid(man: me, woman: woman, amount: amount, note: note)
+        bid.gilded = gild
         outgoingBids.insert(bid, at: 0)
 
         if woman.isCopycat {
@@ -119,7 +138,8 @@ final class AuctionStore: ObservableObject {
             toastFlash("Heads up: that was a Copycat. −\(22) Auction Credit.")
         } else {
             Haptics.commit()
-            toastFlash("Bid placed: \(Money.compact(amount)) on \(woman.name).")
+            toastFlash(gild ? "✦ Gilded bid sent to \(woman.name) — top of her inbox."
+                            : "Bid placed: \(Money.compact(amount)) on \(woman.name).")
         }
         save()
         scheduleWomanDecision(bidID: bid.id)
@@ -421,7 +441,8 @@ final class AuctionStore: ObservableObject {
                 let ratio = Double(bid.amount) / Double(threshold)
                 let creditPull = Double(self.me.auctionCredit - 580) / 320.0
                 let boostPull = self.isBoosted ? 0.25 : 0   // Spotlight Boost lifts your odds
-                accepted = (ratio + creditPull + boostPull + Double.random(in: -0.25...0.25)) >= 1.0
+                let gildPull = bid.gilded ? 0.30 : 0        // a Gilded bid stands out
+                accepted = (ratio + creditPull + boostPull + gildPull + Double.random(in: -0.25...0.25)) >= 1.0
             }
 
             bid.status = accepted ? .accepted : .declined

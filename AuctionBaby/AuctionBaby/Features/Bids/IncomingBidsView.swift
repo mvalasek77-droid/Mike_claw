@@ -9,7 +9,7 @@ struct IncomingBidsView: View {
 
     private var pending: [Bid] {
         store.incomingBids.filter { $0.status == .pending }
-            .sorted { $0.amount > $1.amount }
+            .sorted { ($0.gilded ? 1 : 0, $0.amount) > ($1.gilded ? 1 : 0, $1.amount) }
     }
     private var resolved: [Bid] {
         store.incomingBids.filter { $0.status != .pending }
@@ -93,6 +93,16 @@ struct BidRow: View {
     var body: some View {
         GlassSurface(corner: Theme.cornerL) {
             VStack(spacing: 12) {
+                if bid.gilded {
+                    HStack(spacing: 5) {
+                        Image(systemName: "seal.fill").font(.system(size: 10, weight: .bold))
+                        Text("GILDED BID").font(.system(size: 10, weight: .heavy, design: .rounded)).tracking(1)
+                        Spacer()
+                    }
+                    .foregroundStyle(Theme.gold)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(Theme.gold.opacity(0.14)))
+                }
                 HStack(spacing: 12) {
                     AvatarCircle(name: bid.man.name, hue: bid.man.hue, size: 52,
                                  locked: bid.status != .accepted, copycat: false)
