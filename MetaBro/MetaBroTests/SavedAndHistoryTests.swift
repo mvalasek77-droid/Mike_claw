@@ -10,7 +10,7 @@ struct SavedServiceTests {
     @Test func savedPostsReflectsSetSaved() async throws {
         let feed = MockFeedService()
         let service = MockSavedService(feedService: feed)
-        let target = MockFeedService.seed()[0]
+        let target = try await feed.feed(sort: .new, cursor: nil).posts[0]
 
         try await service.setSaved(postID: target.id, saved: true)
         let saved = try await service.savedPosts()
@@ -24,7 +24,7 @@ struct SavedServiceTests {
     @Test func mostRecentlySavedComesFirst() async throws {
         let feed = MockFeedService()
         let service = MockSavedService(feedService: feed)
-        let posts = MockFeedService.seed()
+        let posts = try await feed.feed(sort: .new, cursor: nil).posts
 
         try await service.setSaved(postID: posts[0].id, saved: true)
         try await service.setSaved(postID: posts[1].id, saved: true)
@@ -100,7 +100,7 @@ struct SavedViewModelTests {
     @Test func unsaveRemovesPostFromList() async throws {
         let feed = MockFeedService()
         let service = MockSavedService(feedService: feed)
-        let target = MockFeedService.seed()[0]
+        let target = try await feed.feed(sort: .new, cursor: nil).posts[0]
         try await service.setSaved(postID: target.id, saved: true)
 
         let model = SavedViewModel(service: service)
