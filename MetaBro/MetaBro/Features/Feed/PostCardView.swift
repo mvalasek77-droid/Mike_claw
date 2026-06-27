@@ -11,6 +11,8 @@ struct PostCardView: View {
     var onReact: (ReactionKind?) -> Void = { _ in }
     /// Award handler. Defaults to a no-op on read-only surfaces.
     var onAward: (AwardKind) -> Void = { _ in }
+    /// Bookmark toggle. Defaults to a no-op on read-only surfaces.
+    var onSave: () -> Void = {}
     /// Optional tap-to-open handler. When nil (e.g. on the detail screen itself)
     /// the content region is inert.
     var onOpen: (() -> Void)? = nil
@@ -142,6 +144,7 @@ struct PostCardView: View {
             .accessibilityLabel("\(post.commentCount) comments. Open discussion.")
             Spacer()
             awardMenu
+            saveButton
             Image(systemName: "square.and.arrow.up")
                 .foregroundStyle(Tokens.Color.textSecondary)
                 .accessibilityLabel("Share")
@@ -151,6 +154,15 @@ struct PostCardView: View {
                            service: safetyService)
             }
         }
+    }
+
+    private var saveButton: some View {
+        Button(action: onSave) {
+            Image(systemName: post.isSaved ? "bookmark.fill" : "bookmark")
+                .foregroundStyle(post.isSaved ? Tokens.Color.accent : Tokens.Color.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(post.isSaved ? "Unsave post" : "Save post")
     }
 
     private var awardMenu: some View {

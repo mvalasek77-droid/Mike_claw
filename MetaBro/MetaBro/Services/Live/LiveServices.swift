@@ -213,6 +213,39 @@ struct LiveModerationService: ModerationService {
     }
 }
 
+struct LiveSavedService: SavedService {
+    let client: APIClient
+
+    func setSaved(postID: UUID, saved: Bool) async throws {
+        try await client.send(API.saved(postID: postID, saved: saved))
+    }
+
+    func savedPosts() async throws -> [Post] {
+        try await client.send(API.savedPosts, as: [PostDTO].self).map {
+            var post = $0.toDomain()
+            post.isSaved = true
+            return post
+        }
+    }
+}
+
+struct LiveHistoryService: HistoryService {
+    let client: APIClient
+
+    func recordView(postID: UUID) async throws {
+        try await client.send(API.recordView(postID: postID))
+    }
+
+    func viewedPostIDs() async throws -> [UUID] {
+        try await client.send(API.viewHistory, as: [HistoryEntryDTO].self).map(\.postID)
+    }
+}
+
+/// Wire shape for a view-history entry; only the post id matters client-side.
+struct HistoryEntryDTO: Decodable {
+    let postID: UUID
+}
+
 struct LivePushNotificationService: PushNotificationService {
     let client: APIClient
 

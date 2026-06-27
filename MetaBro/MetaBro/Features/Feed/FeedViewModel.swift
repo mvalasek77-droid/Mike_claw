@@ -17,18 +17,27 @@ final class FeedViewModel {
         didSet { guard sort != oldValue else { return }
             Task { await load() } }
     }
+    /// The first already-viewed post in the current list — the View renders a
+    /// "You're caught up" divider above it, mirroring a real social feed.
+    private(set) var caughtUpMarkerID: UUID?
 
     private let service: FeedService
+    private let savedService: SavedService
+    private let historyService: HistoryService
 
-    init(service: FeedService) {
+    init(service: FeedService, savedService: SavedService, historyService: HistoryService) {
         self.service = service
+        self.savedService = savedService
+        self.historyService = historyService
     }
 
     func load() async {
         state = .loading
         do {
             let page = try await service.feed(sort: sort, cursor: nil)
-            state = page.posts.isEmpty ? .empty : .loaded(Self.pinnedFirst(page.posts))
+            let posts = Self.pinnedFirst(page.posts)
+            caughtUpMarkerID = await firstViewedID(in: posts)
+            state = posts.isEmpty ? .empty : .loaded(posts)
         } catch {
             BroLog.error(error, category: "feed")
             state = .error(Self.message(for: error))
@@ -39,7 +48,9 @@ final class FeedViewModel {
         // Keep current content visible during pull-to-refresh; swap on success.
         do {
             let page = try await service.feed(sort: sort, cursor: nil)
-            state = page.posts.isEmpty ? .empty : .loaded(Self.pinnedFirst(page.posts))
+            let posts = Self.pinnedFirst(page.posts)
+            caughtUpMarkerID = await firstViewedID(in: posts)
+            state = posts.isEmpty ? .empty : .loaded(posts)
             HapticsEngine.shared.play(.refreshDone)
         } catch {
             BroLog.error(error, category: "feed")
@@ -48,6 +59,46 @@ final class FeedViewModel {
             if case .loaded = state { return }
             state = .error(Self.message(for: error))
         }
+    }
+
+    /// Records that the user opened `post`, for the Recently Viewed list and
+    /// future caught-up markers.
+    func markViewed(_ post: Post) async {
+        do {
+            try await historyService.recordView(postID: post.id)
+        } catch {
+            BroLog.error(error, category: "feed")
+        }
+    }
+
+    /// Optimistic bookmark toggle, rolled back on failure.
+    func toggleSave(_ post: Post) async {
+        guard case .loaded(var posts) = state,
+              let idx = posts.firstIndex(where: { $0.id == post.id }) else { return }
+
+        let previous = posts[idx]
+        let saving = !previous.isSaved
+        posts[idx].isSaved = saving
+        state = .loaded(posts)
+        HapticsEngine.shared.play(.selectionChanged)
+
+        do {
+            try await savedService.setSaved(postID: post.id, saved: saving)
+        } catch {
+            BroLog.error(error, category: "feed")
+            if case .loaded(var current) = state,
+               let i = current.firstIndex(where: { $0.id == post.id }) {
+                current[i] = previous
+                state = .loaded(current)
+            }
+            HapticsEngine.shared.play(.error)
+        }
+    }
+
+    private func firstViewedID(in posts: [Post]) async -> UUID? {
+        guard let viewed = try? await historyService.viewedPostIDs() else { return nil }
+        let viewedSet = Set(viewed)
+        return posts.first { viewedSet.contains($0.id) }?.id
     }
 
     /// Optimistic vote: update the UI immediately, reconcile with the server,

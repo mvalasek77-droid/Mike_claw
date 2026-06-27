@@ -8,7 +8,10 @@ import Foundation
 struct FeedViewModelTests {
 
     @Test func loadsPostsIntoLoadedState() async {
-        let model = FeedViewModel(service: MockFeedService())
+        let service = MockFeedService()
+        let model = FeedViewModel(service: service,
+                                  savedService: MockSavedService(feedService: service),
+                                  historyService: MockHistoryService())
         await model.load()
         guard case .loaded(let posts) = model.state else {
             Issue.record("expected .loaded, got \(model.state)")
@@ -19,13 +22,19 @@ struct FeedViewModelTests {
     }
 
     @Test func emptyServiceProducesEmptyState() async {
-        let model = FeedViewModel(service: MockFeedService(posts: []))
+        let service = MockFeedService(posts: [])
+        let model = FeedViewModel(service: service,
+                                  savedService: MockSavedService(feedService: service),
+                                  historyService: MockHistoryService())
         await model.load()
         #expect(model.state == .empty)
     }
 
     @Test func failingServiceProducesErrorState() async {
-        let model = FeedViewModel(service: FailingFeedService())
+        let service = FailingFeedService()
+        let model = FeedViewModel(service: service,
+                                  savedService: MockSavedService(feedService: service),
+                                  historyService: MockHistoryService())
         await model.load()
         guard case .error = model.state else {
             Issue.record("expected .error, got \(model.state)")
@@ -34,7 +43,10 @@ struct FeedViewModelTests {
     }
 
     @Test func upvoteIncrementsScoreOptimistically() async {
-        let model = FeedViewModel(service: MockFeedService())
+        let service = MockFeedService()
+        let model = FeedViewModel(service: service,
+                                  savedService: MockSavedService(feedService: service),
+                                  historyService: MockHistoryService())
         await model.load()
         guard case .loaded(let posts) = model.state, let first = posts.first else {
             Issue.record("no posts"); return
@@ -51,7 +63,10 @@ struct FeedViewModelTests {
     }
 
     @Test func failedVoteRollsBack() async {
-        let model = FeedViewModel(service: VoteFailingService())
+        let service = VoteFailingService()
+        let model = FeedViewModel(service: service,
+                                  savedService: MockSavedService(feedService: service),
+                                  historyService: MockHistoryService())
         await model.load()
         guard case .loaded(let posts) = model.state, let first = posts.first else {
             Issue.record("no posts"); return

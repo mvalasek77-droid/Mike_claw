@@ -117,7 +117,9 @@ struct FeedPinnedOrderingTests {
                              imageURL: nil, score: 1, commentCount: 0, createdAt: .now, myVote: .none)
 
         let service = OrderedFeedService(posts: [unpinned, pinned])
-        let model = FeedViewModel(service: service)
+        let model = FeedViewModel(service: service,
+                                  savedService: MockSavedService(feedService: service),
+                                  historyService: MockHistoryService())
         await model.load()
 
         guard case .loaded(let posts) = model.state else {

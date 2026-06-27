@@ -19,6 +19,8 @@ final class AppContainer {
     let pushNotificationService: PushNotificationService
     let safetyService: SafetyService
     let moderationService: ModerationService
+    let savedService: SavedService
+    let historyService: HistoryService
 
     init(
         feedService: FeedService,
@@ -34,7 +36,9 @@ final class AppContainer {
         notificationsService: NotificationsService,
         pushNotificationService: PushNotificationService,
         safetyService: SafetyService,
-        moderationService: ModerationService
+        moderationService: ModerationService,
+        savedService: SavedService,
+        historyService: HistoryService
     ) {
         self.feedService = feedService
         self.commentService = commentService
@@ -50,6 +54,8 @@ final class AppContainer {
         self.pushNotificationService = pushNotificationService
         self.safetyService = safetyService
         self.moderationService = moderationService
+        self.savedService = savedService
+        self.historyService = historyService
     }
 
     /// Resolves the dependency graph from configuration: a live backend when
@@ -95,7 +101,9 @@ final class AppContainer {
             notificationsService: LiveNotificationsService(client: client),
             pushNotificationService: LivePushNotificationService(client: client),
             safetyService: LiveSafetyService(client: client),
-            moderationService: LiveModerationService(client: client)
+            moderationService: LiveModerationService(client: client),
+            savedService: LiveSavedService(client: client),
+            historyService: LiveHistoryService(client: client)
         )
     }
 
@@ -119,7 +127,9 @@ final class AppContainer {
             notificationsService: MockNotificationsService(),
             pushNotificationService: MockPushNotificationService(),
             safetyService: MockSafetyService(),
-            moderationService: MockModerationService()
+            moderationService: MockModerationService(),
+            savedService: MockSavedService(feedService: feed),
+            historyService: MockHistoryService()
         )
     }
 }

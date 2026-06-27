@@ -148,6 +148,17 @@ enum API {
     static func banUser(_ body: BanRequest) throws -> Endpoint {
         try .post("moderation/bans", body: body)
     }
+
+    // MARK: Saved posts & view history
+    static func saved(postID: UUID, saved: Bool) throws -> Endpoint {
+        let path = "saved/\(postID.uuidString)"
+        return saved ? try .post(path) : .delete(path)
+    }
+    static let savedPosts = Endpoint.get("saved")
+    static func recordView(postID: UUID) throws -> Endpoint {
+        try .post("history/\(postID.uuidString)")
+    }
+    static let viewHistory = Endpoint.get("history")
 }
 
 // MARK: - Request bodies

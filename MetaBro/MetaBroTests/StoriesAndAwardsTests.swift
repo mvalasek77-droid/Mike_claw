@@ -37,7 +37,10 @@ struct StoriesAndAwardsTests {
     }
 
     @Test func feedGiveAwardIsOptimistic() async {
-        let model = FeedViewModel(service: MockFeedService())
+        let service = MockFeedService()
+        let model = FeedViewModel(service: service,
+                                  savedService: MockSavedService(feedService: service),
+                                  historyService: MockHistoryService())
         await model.load()
         guard case .loaded(let posts) = model.state, let target = posts.first else {
             Issue.record("no posts"); return

@@ -17,7 +17,9 @@ struct FeedView: View {
 
     init(container: AppContainer) {
         self.container = container
-        _model = State(initialValue: FeedViewModel(service: container.feedService))
+        _model = State(initialValue: FeedViewModel(service: container.feedService,
+                                                    savedService: container.savedService,
+                                                    historyService: container.historyService))
         _stories = State(initialValue: StoriesViewModel(service: container.storyService))
         _notifications = State(initialValue: NotificationsViewModel(service: container.notificationsService))
     }
@@ -113,12 +115,19 @@ struct FeedView: View {
                         }
                     }
                     ForEach(posts) { post in
+                        if post.id == model.caughtUpMarkerID {
+                            caughtUpDivider
+                        }
                         PostCardView(
                             post: post,
                             onVote: { value in Task { await model.vote(on: post, value: value) } },
                             onReact: { reaction in Task { await model.react(on: post, reaction: reaction) } },
                             onAward: { award in Task { await model.giveAward(on: post, award: award) } },
-                            onOpen: { path.append(post) },
+                            onSave: { Task { await model.toggleSave(post) } },
+                            onOpen: {
+                                path.append(post)
+                                Task { await model.markViewed(post) }
+                            },
                             safetyService: container.safetyService
                         )
                     }
@@ -127,6 +136,19 @@ struct FeedView: View {
             }
             .refreshable { await model.refresh() }
         }
+    }
+
+    /// Marks the boundary between new posts and ones already seen on a prior
+    /// visit, like Facebook's "You're All Caught Up" divider.
+    private var caughtUpDivider: some View {
+        HStack(spacing: Tokens.Spacing.sm) {
+            Rectangle().fill(Tokens.Color.separator).frame(height: 1)
+            Text("You're caught up").font(Tokens.Typography.caption)
+                .foregroundStyle(Tokens.Color.textSecondary)
+                .fixedSize()
+            Rectangle().fill(Tokens.Color.separator).frame(height: 1)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private var sortMenu: some View {

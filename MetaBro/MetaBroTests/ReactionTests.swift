@@ -36,7 +36,10 @@ struct ReactionTests {
     }
 
     @Test func feedReactIsOptimisticOnSocialPost() async {
-        let model = FeedViewModel(service: MockFeedService())
+        let service = MockFeedService()
+        let model = FeedViewModel(service: service,
+                                  savedService: MockSavedService(feedService: service),
+                                  historyService: MockHistoryService())
         await model.load()
         guard case .loaded(let posts) = model.state,
               let social = posts.first(where: { $0.origin == .social }) else {

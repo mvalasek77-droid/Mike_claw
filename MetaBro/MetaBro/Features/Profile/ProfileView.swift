@@ -8,6 +8,7 @@ struct ProfileView: View {
     @State private var model: ProfileViewModel
     @State private var path: [Post] = []
     @State private var showingBugReport = false
+    @State private var showingSaved = false
 
     init(container: AppContainer, onSignOut: @escaping () -> Void) {
         self.container = container
@@ -28,6 +29,9 @@ struct ProfileView: View {
         .task { await model.load() }
         .sheet(isPresented: $showingBugReport) {
             BugReportView(service: container.bugReportService)
+        }
+        .sheet(isPresented: $showingSaved) {
+            SavedView(container: container)
         }
     }
 
@@ -53,6 +57,7 @@ struct ProfileView: View {
                         joinedStrip(profile.joinedCommunities)
                     }
                     postsSection(profile.posts)
+                    savedPostsRow
                     reportProblemRow
                     signOutRow
                     SloganView(showsMark: false)
@@ -84,6 +89,21 @@ struct ProfileView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var savedPostsRow: some View {
+        Button { showingSaved = true } label: {
+            HStack {
+                Label("Saved posts", systemImage: "bookmark")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Tokens.Color.textSecondary)
+            }
+            .padding(Tokens.Spacing.md)
+        }
+        .buttonStyle(.plain)
+        .liquidGlass()
+        .frame(maxWidth: .infinity)
     }
 
     private var reportProblemRow: some View {

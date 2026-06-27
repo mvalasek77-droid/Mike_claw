@@ -97,6 +97,8 @@ struct Post: Identifiable, Codable, Hashable, Sendable {
     var isPinned: Bool = false
     /// Mod-locked — no new comments, existing ones stay visible.
     var isLocked: Bool = false
+    /// Bookmarked by the current user — surfaced in the Saved posts list.
+    var isSaved: Bool = false
 
     /// Distinguishes the two halves of the hybrid feed for the UI.
     var origin: Origin { community == nil ? .social : .community }

@@ -70,6 +70,11 @@ reply.**
   the top of the feed, locked threads disable the reply composer with an
   inline notice). Mature Bro-hoods (`Community.isMature`) gate joining behind
   a one-tap 18+ confirmation dialog.
+- ✅ **Saved posts & view history** — a bookmark toggle on every post (feed and
+  saved list) backed by a `SavedService`, surfaced as a "Saved posts" screen
+  from Profile; a `HistoryService` records every post you open and drives a
+  Facebook-style "You're caught up" divider in the feed at the boundary
+  between unseen and previously-seen posts.
 - ✅ **Live backend path** — every service has a `Live*` implementation over an
   `async/await` API client (bodies + retries + typed errors), a documented
   endpoint map (`API`), a `PostDTO` mapping layer, and a `BackendConfig` feature
@@ -77,7 +82,8 @@ reply.**
   so it always launches and is fully interactive offline.
 - ✅ **Tests** — Swift Testing units for the feed loop, comment tree + detail VM,
   communities VM, composer, profile, search, messaging, stories, awards,
-  reactions, the live backend (DTO mapping, routes, config), and design-system logic.
+  reactions, moderation, saved posts/view history, the live backend (DTO
+  mapping, routes, config), and design-system logic.
 - ✅ **Accessibility** — Dynamic Type, VoiceOver labels/values/hints, Reduce Motion
   and Reduce Transparency fallbacks, honest non-blank placeholders.
 
@@ -102,7 +108,7 @@ MetaBro/
 │   ├── Messages/        DM list + chat thread (receipts, typing)
 │   ├── Stories/         Story rail + full-screen viewer
 │   ├── Moderation/      Mod queue (approve/remove/ban)
-│   └── Profile/         Identity + Bro Cred + your posts
+│   └── Profile/         Identity + Bro Cred + your posts + saved posts
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests
 ```
