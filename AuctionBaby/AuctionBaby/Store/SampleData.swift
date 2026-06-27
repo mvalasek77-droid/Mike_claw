@@ -121,6 +121,24 @@ enum SampleData {
 
     static func suitors() -> [Profile] {
         [
+            // The first verified Trillionaire — founder's seat on the floor.
+            Profile(name: "Mike Valasek", age: 39, role: .man, location: "Founder · Auction Baby",
+                    bio: "Built the house. First man to verify the top tier — paid the full $9,999 and got confirmed. The original Trillionaire.",
+                    hue: 0.13,
+                    prompts: [
+                        Prompt(question: "Why I'm here", answer: "Someone had to go first. Set the floor, then clear it."),
+                        Prompt(question: "Green flag I bring", answer: "I pay exactly what I bid. Every time."),
+                    ],
+                    interests: ["Founding things", "Fine dining", "Big swings"],
+                    reviews: [
+                        DateReview(authorName: "Sloane", authorHue: 0.55, stars: 5,
+                                   text: "Bid the full $9,999 and paid it without blinking. Minted my Masterpiece.",
+                                   paidBid: true, bidAmount: 9_999, spentAmount: 9_999),
+                    ],
+                    verified: true,
+                    archetype: .trillionaire,
+                    trillionaireVerified: true),
+
             Profile(name: "Julian West", age: 34, role: .man, location: "Tribeca, NYC",
                     bio: "PE, two exits, terrible at golf. I keep reservations and promises.",
                     hue: 0.6,

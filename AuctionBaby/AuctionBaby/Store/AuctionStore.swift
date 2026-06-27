@@ -259,17 +259,15 @@ final class AuctionStore: ObservableObject {
         var man = pool.randomElement() ?? pool[0]
         let amount: Int
         if trillionaire {
-            man.archetype = .trillionaire
-            man.trillionaireVerified = true   // an established, verified Trillionaire
-            man.name = "Sterling Vaux"
-            man.hue = 0.13
+            // The first verified Trillionaire himself comes to bid.
+            man = pool.first { $0.archetype == .trillionaire } ?? pool[0]
             amount = Archetype.trillionaire.price   // $9,999 — the Masterpiece-minting bid
         } else {
             let floor = me.startingBid ?? 150
             amount = Int(Double(floor) * Double.random(in: 0.7...2.4))
         }
         let note = trillionaire
-            ? "I read the rules. The full $9,999 for one evening. Confirm it and mint your Masterpiece."
+            ? "I read the rules — I wrote them. The full $9,999 for one evening. Confirm it and mint your Masterpiece."
             : ["Saw your profile. Worth every cent.", "Dinner, my treat — name the place.",
                "I don't usually bid this high.", "Let me take you somewhere ridiculous."].randomElement()!
         let bid = Bid(man: man, woman: me, amount: amount, note: note)

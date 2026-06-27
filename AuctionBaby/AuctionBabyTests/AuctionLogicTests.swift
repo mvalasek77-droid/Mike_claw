@@ -356,6 +356,14 @@ final class AuctionLogicTests: XCTestCase {
         XCTAssertFalse(store.filteredFloor.contains { $0.id == target.id })
     }
 
+    func testFirstTrillionaireIsMikeValasek() {
+        let mike = SampleData.suitors().first { $0.name == "Mike Valasek" }
+        XCTAssertNotNil(mike, "the founder should be on the floor")
+        XCTAssertEqual(mike?.archetype, .trillionaire)
+        XCTAssertEqual(mike?.trillionaireVerified, true, "he's a *verified* Trillionaire")
+        XCTAssertEqual(mike?.verified, true)
+    }
+
     // MARK: Gilded bids & Headliner
 
     @MainActor
