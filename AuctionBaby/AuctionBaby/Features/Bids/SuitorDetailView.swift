@@ -7,6 +7,7 @@ struct SuitorDetailView: View {
     let bid: Bid
     @EnvironmentObject private var store: AuctionStore
     @Environment(\.dismiss) private var dismiss
+    @State private var showReport = false
 
     private var man: Profile { bid.man }
     private var accepted: Bool { bid.status == .accepted }
@@ -14,7 +15,21 @@ struct SuitorDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                Capsule().fill(Theme.hairline).frame(width: 38, height: 5).padding(.top, 8)
+                ZStack {
+                    Capsule().fill(Theme.hairline).frame(width: 38, height: 5)
+                    HStack {
+                        Spacer()
+                        Menu {
+                            Button(role: .destructive) { showReport = true } label: {
+                                Label("Report & Block", systemImage: "flag")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle").font(.system(size: 18))
+                                .foregroundStyle(Theme.inkSoft)
+                        }
+                    }
+                }
+                .padding(.top, 8)
 
                 AvatarView(name: man.name, hue: man.hue, locked: !accepted, corner: Theme.cornerXL)
                     .frame(height: 300)
@@ -100,6 +115,9 @@ struct SuitorDetailView: View {
             .screenPadding()
         }
         .background(AppBackground().opacity(0.5))
+        .sheet(isPresented: $showReport) {
+            ReportSheet(profile: man) { dismiss() }.presentationDetents([.medium, .large])
+        }
         .safeAreaInset(edge: .bottom) {
             if bid.status == .pending {
                 HStack(spacing: 12) {

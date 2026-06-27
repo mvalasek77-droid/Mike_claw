@@ -5,13 +5,21 @@ import SwiftUI
 struct AuctionFeedView: View {
     @EnvironmentObject private var store: AuctionStore
     @State private var bidTarget: Profile?
+    @State private var showFilters = false
+
+    private var lots: [Profile] { store.filteredFloor }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 18) {
                     header
-                    ForEach(store.floor) { woman in
+                    if lots.isEmpty {
+                        EmptyStateView(icon: "line.3.horizontal.decrease.circle",
+                                       title: "No lots match",
+                                       message: "Your filters are hiding everyone. Loosen them to see more of the floor.")
+                    }
+                    ForEach(lots) { woman in
                         NavigationLink(value: woman) {
                             FloorCard(woman: woman) { bidTarget = woman }
                         }
@@ -25,6 +33,23 @@ struct AuctionFeedView: View {
             .background(AppBackground())
             .navigationTitle("The Floor")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showFilters = true } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "line.3.horizontal.decrease.circle\(store.filters.activeCount > 0 ? ".fill" : "")")
+                                .font(.system(size: 17, weight: .semibold))
+                            if store.filters.activeCount > 0 {
+                                Text("\(store.filters.activeCount)")
+                                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.black).frame(width: 14, height: 14)
+                                    .background(Circle().fill(Theme.rose)).offset(x: 6, y: -6)
+                            }
+                        }
+                        .foregroundStyle(Theme.gold)
+                    }
+                }
+            }
             .navigationDestination(for: Profile.self) { woman in
                 AuctioneeDetailView(woman: woman) { bidTarget = woman }
             }
@@ -32,6 +57,9 @@ struct AuctionFeedView: View {
                 BidSheet(woman: woman)
                     .presentationDetents([.medium, .large])
                     .presentationBackground(.ultraThinMaterial)
+            }
+            .sheet(isPresented: $showFilters) {
+                FiltersView().presentationDetents([.large])
             }
         }
     }

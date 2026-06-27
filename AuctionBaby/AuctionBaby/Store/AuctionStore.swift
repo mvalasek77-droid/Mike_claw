@@ -24,6 +24,8 @@ final class AuctionStore: ObservableObject {
     @Published var matches: [Match] = []
 
     @Published var toast: String?
+    @Published var filters = FilterPreferences()
+    @Published var blockedIDs: Set<UUID> = []
     /// Drives the full-screen "SOLD!" match celebration. Set when a bid is
     /// accepted; cleared when the overlay is dismissed.
     @Published var celebration: MatchCelebration?
@@ -35,8 +37,26 @@ final class AuctionStore: ObservableObject {
     static let freeActiveBidLimit = 3
     var activePendingBidCount: Int { outgoingBids.filter { $0.status == .pending }.count }
 
+    /// The floor after blocks + filters are applied — what the bidder actually sees.
+    var filteredFloor: [Profile] {
+        floor.filter { !blockedIDs.contains($0.id) && filters.matches($0) }
+    }
+
+    /// Block and report a profile: removes them from the floor, the bid inbox,
+    /// outgoing bids and matches. Local + irreversible in this demo.
+    func blockAndReport(_ profile: Profile, reason: String) {
+        blockedIDs.insert(profile.id)
+        floor.removeAll { $0.id == profile.id }
+        incomingBids.removeAll { $0.man.id == profile.id }
+        outgoingBids.removeAll { $0.woman.id == profile.id }
+        matches.removeAll { $0.bid.man.id == profile.id || $0.bid.woman.id == profile.id }
+        Haptics.warning()
+        toastFlash("Reported \(profile.name) (\(reason)) and removed them.")
+        save()
+    }
+
     private let store = UserDefaults.standard
-    private static let key = "auctionbaby.state.v4"
+    private static let key = "auctionbaby.state.v5"
 
     // MARK: - Lifecycle
 
@@ -77,6 +97,9 @@ final class AuctionStore: ObservableObject {
         incomingBids = []
         outgoingBids = []
         matches = []
+        boostUntil = nil
+        filters = FilterPreferences()
+        blockedIDs = []
         store.removeObject(forKey: Self.key)
     }
 
@@ -492,12 +515,15 @@ final class AuctionStore: ObservableObject {
         var incomingBids: [Bid]
         var outgoingBids: [Bid]
         var matches: [Match]
+        var filters: FilterPreferences
+        var blockedIDs: [UUID]
     }
 
     private func save() {
         let snap = Snapshot(role: role, me: me, wallet: wallet, earnings: earnings,
                             boostUntil: boostUntil, floor: floor, incomingBids: incomingBids,
-                            outgoingBids: outgoingBids, matches: matches)
+                            outgoingBids: outgoingBids, matches: matches,
+                            filters: filters, blockedIDs: Array(blockedIDs))
         if let data = try? JSONEncoder().encode(snap) {
             store.set(data, forKey: Self.key)
         }
@@ -515,5 +541,7 @@ final class AuctionStore: ObservableObject {
         incomingBids = snap.incomingBids
         outgoingBids = snap.outgoingBids
         matches = snap.matches
+        filters = snap.filters
+        blockedIDs = Set(snap.blockedIDs)
     }
 }

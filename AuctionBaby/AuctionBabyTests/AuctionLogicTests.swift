@@ -315,6 +315,47 @@ final class AuctionLogicTests: XCTestCase {
         }
     }
 
+    // MARK: Filters & safety
+
+    func testVerifiedOnlyFilterExcludesUnverifiedAndCopycats() {
+        var f = FilterPreferences()
+        f.verifiedOnly = true
+        let verified = Profile(name: "V", age: 30, role: .woman, location: "", bio: "", hue: 0.5, verified: true)
+        var unverified = verified; unverified.verified = false
+        var copycat = verified; copycat.verified = false; copycat.isCopycat = true
+        XCTAssertTrue(f.matches(verified))
+        XCTAssertFalse(f.matches(unverified))
+        XCTAssertFalse(f.matches(copycat))
+    }
+
+    func testAgeFilterBounds() {
+        var f = FilterPreferences(); f.minAge = 25; f.maxAge = 30
+        let inRange = Profile(name: "A", age: 27, role: .woman, location: "", bio: "", hue: 0.5)
+        let tooYoung = Profile(name: "B", age: 22, role: .woman, location: "", bio: "", hue: 0.5)
+        XCTAssertTrue(f.matches(inRange))
+        XCTAssertFalse(f.matches(tooYoung))
+    }
+
+    func testActiveCountTracksNarrowing() {
+        var f = FilterPreferences()
+        XCTAssertEqual(f.activeCount, 0)
+        f.hideCopycats = true; f.verifiedOnly = true
+        XCTAssertEqual(f.activeCount, 2)
+    }
+
+    @MainActor
+    func testBlockRemovesFromFloorAndFiltered() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        let target = store.floor.first!
+        let before = store.floor.count
+        store.blockAndReport(target, reason: "Spam or scam")
+        XCTAssertEqual(store.floor.count, before - 1)
+        XCTAssertTrue(store.blockedIDs.contains(target.id))
+        XCTAssertFalse(store.filteredFloor.contains { $0.id == target.id })
+    }
+
     // MARK: Money formatting
 
     func testMoneyCompact() {

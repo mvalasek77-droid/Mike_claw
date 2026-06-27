@@ -8,6 +8,7 @@ struct MyProfileView: View {
     @State private var bidText = ""
     @State private var showReset = false
     @State private var showVerify = false
+    @State private var showSafety = false
 
     private var me: Profile { store.me }
     private var isMan: Bool { store.role == .man }
@@ -38,6 +39,7 @@ struct MyProfileView: View {
                 VerificationSheet { store.verifyMe() }
                     .presentationDetents([.medium])
             }
+            .sheet(isPresented: $showSafety) { SafetyCenterView() }
             .alert("Reset account?", isPresented: $showReset) {
                 Button("Reset", role: .destructive) { store.resetAccount() }
                 Button("Cancel", role: .cancel) {}
@@ -215,6 +217,17 @@ struct MyProfileView: View {
 
     private var settingsCard: some View {
         GlassCard(title: "Settings", icon: "gearshape.fill") {
+            Button { showSafety = true } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "shield.lefthalf.filled").foregroundStyle(Theme.verify)
+                    Text("Safety Center").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                }
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(.plain)
+            Divider().overlay(Theme.hairline)
             HStack {
                 Text("Reduce Motion / Dark Mode honoured system-wide")
                     .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)

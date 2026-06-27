@@ -6,8 +6,10 @@ struct ChatView: View {
     let matchID: UUID
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
+    @Environment(\.dismiss) private var dismiss
     @State private var draft = ""
     @State private var showReview = false
+    @State private var showReport = false
 
     private var match: Match? { store.matches.first(where: { $0.id == matchID }) }
 
@@ -46,6 +48,23 @@ struct ChatView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if match != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button(role: .destructive) { showReport = true } label: {
+                            Label("Report & Block", systemImage: "flag")
+                        }
+                    } label: { Image(systemName: "ellipsis.circle").foregroundStyle(Theme.inkSoft) }
+                }
+            }
+        }
+        .sheet(isPresented: $showReport) {
+            if let match {
+                ReportSheet(profile: match.other(for: store.role ?? .man)) { dismiss() }
+                    .presentationDetents([.medium, .large])
+            }
+        }
     }
 
     /// Black Card read receipt under your latest message.

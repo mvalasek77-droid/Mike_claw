@@ -6,6 +6,7 @@ struct AuctioneeDetailView: View {
     let woman: Profile
     var onBid: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var showReport = false
 
     var body: some View {
         ScrollView {
@@ -75,6 +76,18 @@ struct AuctioneeDetailView: View {
         }
         .background(AppBackground())
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button(role: .destructive) { showReport = true } label: {
+                        Label("Report & Block", systemImage: "flag")
+                    }
+                } label: { Image(systemName: "ellipsis.circle").foregroundStyle(Theme.inkSoft) }
+            }
+        }
+        .sheet(isPresented: $showReport) {
+            ReportSheet(profile: woman) { dismiss() }.presentationDetents([.medium, .large])
+        }
         .safeAreaInset(edge: .bottom) {
             PrimaryButton(title: woman.startingBid.map { "Bid · floor \(Money.compact($0))" } ?? "Place a bid",
                           systemImage: "hand.raised.fill") {
