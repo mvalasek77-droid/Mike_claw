@@ -51,6 +51,11 @@ reply.**
 - ✅ **Messaging (DMs)** — 1:1 and group threads, optimistic send with
   sending/sent/delivered/read receipts, a typing indicator, simulated replies,
   unread badges, and auto-scroll. All five tabs are now live.
+- ✅ **Friends ("Bros") & notifications** — incoming Bro requests, suggested
+  Bros, and a confirmed friend list, each optimistic with rollback; a bell icon
+  on the feed surfaces a granular, per-item-readable activity feed (friend
+  requests, reactions, votes, comments, awards) with a live unread badge and
+  mark-all-read.
 - ✅ **Live backend path** — every service has a `Live*` implementation over an
   `async/await` API client (bodies + retries + typed errors), a documented
   endpoint map (`API`), a `PostDTO` mapping layer, and a `BackendConfig` feature

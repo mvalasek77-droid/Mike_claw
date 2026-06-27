@@ -74,11 +74,38 @@ enum API {
     static func bugReport(_ body: BugReportRequest) throws -> Endpoint {
         try .post("bug-reports", body: body)
     }
+
+    // MARK: Friends
+    enum FriendRequestDirection: String { case incoming, outgoing }
+    static let friends = Endpoint.get("friends")
+    static func friendRequests(direction: FriendRequestDirection) -> Endpoint {
+        .get("friends/requests", query: [URLQueryItem(name: "direction", value: direction.rawValue)])
+    }
+    static let friendSuggestions = Endpoint.get("friends/suggestions")
+    static func sendFriendRequest(userID: UUID) throws -> Endpoint {
+        try .post("friends/requests/\(userID.uuidString)")
+    }
+    static func respondFriendRequest(userID: UUID, accept: Bool) throws -> Endpoint {
+        try .post("friends/requests/\(userID.uuidString)/respond", body: RespondFriendRequest(accept: accept))
+    }
+    static func unfriend(userID: UUID) -> Endpoint {
+        .delete("friends/\(userID.uuidString)")
+    }
+
+    // MARK: Notifications
+    static let notifications = Endpoint.get("notifications")
+    static func markNotificationRead(id: UUID) throws -> Endpoint {
+        try .post("notifications/\(id.uuidString)/read")
+    }
+    static func markAllNotificationsRead() throws -> Endpoint {
+        try .post("notifications/read-all")
+    }
 }
 
 // MARK: - Request bodies
 
 struct OnboardRequest: Encodable { var handle: String; var displayName: String }
+struct RespondFriendRequest: Encodable { var accept: Bool }
 struct CreatePostRequest: Encodable {
     var title: String?
     var body: String

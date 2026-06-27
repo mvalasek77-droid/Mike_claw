@@ -88,6 +88,58 @@ struct LiveStoryService: StoryService {
     }
 }
 
+struct LiveFriendsService: FriendsService {
+    let client: APIClient
+
+    func friends() async throws -> [User] {
+        try await client.send(API.friends, as: [User].self)
+    }
+
+    func incomingRequests() async throws -> [User] {
+        try await client.send(API.friendRequests(direction: .incoming), as: [User].self)
+    }
+
+    func outgoingRequests() async throws -> [User] {
+        try await client.send(API.friendRequests(direction: .outgoing), as: [User].self)
+    }
+
+    func suggestions() async throws -> [User] {
+        try await client.send(API.friendSuggestions, as: [User].self)
+    }
+
+    func sendRequest(to user: User) async throws {
+        try await client.send(API.sendFriendRequest(userID: user.id))
+    }
+
+    func acceptRequest(from user: User) async throws {
+        try await client.send(API.respondFriendRequest(userID: user.id, accept: true))
+    }
+
+    func declineRequest(from user: User) async throws {
+        try await client.send(API.respondFriendRequest(userID: user.id, accept: false))
+    }
+
+    func unfriend(_ user: User) async throws {
+        try await client.send(API.unfriend(userID: user.id))
+    }
+}
+
+struct LiveNotificationsService: NotificationsService {
+    let client: APIClient
+
+    func notifications() async throws -> [AppNotification] {
+        try await client.send(API.notifications, as: [AppNotification].self)
+    }
+
+    func markRead(_ id: UUID) async throws {
+        try await client.send(API.markNotificationRead(id: id))
+    }
+
+    func markAllRead() async throws {
+        try await client.send(API.markAllNotificationsRead())
+    }
+}
+
 struct LiveBugReportService: BugReportService {
     let client: APIClient
 

@@ -232,6 +232,38 @@ struct Conversation: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+// MARK: - Friends
+
+/// What triggered a notification, driving its icon and how a tap routes.
+enum NotificationKind: String, Codable, CaseIterable, Hashable, Sendable {
+    case friendRequest, friendAccepted, reaction, vote, comment, award, mention
+
+    var systemImage: String {
+        switch self {
+        case .friendRequest: "person.badge.plus"
+        case .friendAccepted: "person.2.fill"
+        case .reaction: "face.smiling"
+        case .vote: "arrow.up.circle.fill"
+        case .comment: "bubble.left.fill"
+        case .award: "trophy.fill"
+        case .mention: "at"
+        }
+    }
+}
+
+/// A single activity item in the notifications feed. `post` is the deep-link
+/// target when the notification is about a post/comment; nil for friend
+/// activity, which only concerns `actor`.
+struct AppNotification: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var kind: NotificationKind
+    var actor: User
+    var message: String
+    var post: Post?
+    var createdAt: Date
+    var isRead: Bool
+}
+
 // MARK: - Stories
 
 /// An ephemeral Facebook-style story. `accentIndex` seeds the UI gradient so the

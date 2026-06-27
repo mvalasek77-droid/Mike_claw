@@ -121,6 +121,8 @@ struct LiveBackendTests {
         #expect(container.feedService is LiveFeedService)
         #expect(container.messagingService is LiveMessagingService)
         #expect(container.bugReportService is LiveBugReportService)
+        #expect(container.friendsService is LiveFriendsService)
+        #expect(container.notificationsService is LiveNotificationsService)
     }
 
     // MARK: Bug reports
@@ -132,5 +134,35 @@ struct LiveBackendTests {
                                     severity: .crash, includeDiagnostics: false)
         try await service.submit(draft)
         #expect(client.mutations == ["POST bug-reports"])
+    }
+
+    // MARK: Friends & notifications
+
+    @Test func sendAcceptDeclineAndUnfriendHitExpectedEndpoints() async throws {
+        let client = FakeAPIClient()
+        let service = LiveFriendsService(client: client)
+        let user = User(id: UUID(), handle: "@bro", displayName: "Bro", avatarURL: nil, broCred: 0)
+        try await service.sendRequest(to: user)
+        try await service.acceptRequest(from: user)
+        try await service.declineRequest(from: user)
+        try await service.unfriend(user)
+        #expect(client.mutations == [
+            "POST friends/requests/\(user.id.uuidString)",
+            "POST friends/requests/\(user.id.uuidString)/respond",
+            "POST friends/requests/\(user.id.uuidString)/respond",
+            "DELETE friends/\(user.id.uuidString)",
+        ])
+    }
+
+    @Test func markNotificationReadAndMarkAllReadHitExpectedEndpoints() async throws {
+        let client = FakeAPIClient()
+        let service = LiveNotificationsService(client: client)
+        let id = UUID()
+        try await service.markRead(id)
+        try await service.markAllRead()
+        #expect(client.mutations == [
+            "POST notifications/\(id.uuidString)/read",
+            "POST notifications/read-all",
+        ])
     }
 }
