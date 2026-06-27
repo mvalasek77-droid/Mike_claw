@@ -16,7 +16,11 @@ struct OnboardingView: View {
     @State private var promptAnswers: [String] = ["", ""]
     @State private var selectedInterests: Set<String> = []
 
-    private let promptQuestions = ["The way to win me over is", "My simple pleasures"]
+    @State private var promptQuestions = ["The way to win me over is", "My simple pleasures"]
+    private let promptPool = ["The way to win me over is", "My simple pleasures",
+                              "I geek out on", "Together we could", "Dating me is like",
+                              "My most controversial opinion", "Green flags I look for",
+                              "Best travel story", "I'm weirdly good at", "My love language"]
     private let interestPool = ["Art", "Travel", "Food", "Fitness", "Music", "Startups",
                                 "Wine", "Film", "Reading", "Dogs", "Nightlife", "Design"]
 
@@ -143,7 +147,18 @@ struct OnboardingView: View {
                     field("Bio", text: $bio, placeholder: "One line that makes them lean in", axis: true)
                     ForEach(0..<promptQuestions.count, id: \.self) { i in
                         VStack(alignment: .leading, spacing: 6) {
-                            label(promptQuestions[i])
+                            Menu {
+                                ForEach(promptPool, id: \.self) { q in
+                                    Button(q) { promptQuestions[i] = q }
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    label(promptQuestions[i])
+                                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(Theme.gold)
+                                    Spacer()
+                                }
+                            }
                             TextField("", text: $promptAnswers[i], prompt: Text("Your answer").foregroundStyle(Theme.inkFaint), axis: .vertical)
                                 .textFieldStyle(.plain)
                                 .font(.system(size: 15, weight: .medium))
