@@ -26,6 +26,7 @@ struct GameScreen: View {
     @State private var cutsceneIndex = 0
     @State private var cutsceneToFight = false
     @State private var pitPending = false   // a loss happened; show the Pit beat at the next round start
+    @State private var seenChapters: Set<StoryChapter> = []   // per-floor beats play once
     @State private var arcadeAudio = ArcadeAudio()
     @AppStorage("watchfighter.bestScore") private var bestScore = 0
     @AppStorage("watchfighter.unlockedRosterIndex") private var unlockedRosterIndex = 0
@@ -927,9 +928,11 @@ struct GameScreen: View {
                 pitPending = false
                 playCutscene(FFScript.pit, toFight: false)              // lost a floor -> the Pit, climb back
             } else if engine.state.chapter == StoryChapter.allCases.last {
-                playCutscene(FFScript.beforeBoss, toFight: false)        // final boss
-            } else if engine.state.chapter == .blackoutBase {
-                playCutscene(FFScript.midpoint, toFight: false)          // midpoint
+                playCutscene(FFScript.beforeBoss, toFight: false)        // final boss, every time
+            } else if !seenChapters.contains(engine.state.chapter),
+                      let beat = FFScript.chapter(engine.state.chapter) {
+                seenChapters.insert(engine.state.chapter)               // floor beat, once
+                playCutscene(beat, toFight: false)
             } else {
                 screenMode = .fighterCard
                 announce("NEXT FIGHT")
@@ -1082,6 +1085,7 @@ struct GameScreen: View {
         nextDemoSpecial = 2.4
         lastSpokenBanner = ""
         pitPending = false
+        seenChapters.removeAll()
     }
 
     private func shiftRosterSelection(_ offset: Int) {
@@ -1477,6 +1481,30 @@ enum FFScript {
         CutscenePanel(speaker: nil,
                       text: "Damage alone won't drop him. Land the MILLION SHOT — a SPECIAL on an 8+ combo — or join the wall."),
     ]
+
+    /// A short beat the FIRST time you reach a floor (plays once, not on refights).
+    /// Boss (millionRoom) uses `beforeBoss`; floor 1 is covered by `intro`.
+    static func chapter(_ chapter: StoryChapter) -> [CutscenePanel]? {
+        let line: String?
+        switch chapter {
+        case .cinderGate, .millionRoom: line = nil
+        case .neonRooftop:    line = "Floor two. Neon bleeds across wet rooftops, and something fast is already grinning at you."
+        case .stormBridge:    line = "Wind screams across the bridge. The tower likes its champions off-balance."
+        case .pirateCove:     line = "Salt, rum, and a captain who laughs at the gate. The tide takes the high ground back, he says."
+        case .dragonAlley:    line = "A back-alley dojo of one. The dragon-fist here trains for an audience that never leaves."
+        case .sunPier:        line = "Sun, surf, and a rescue brawler who fights like the undertow — fast, and impossible to hold."
+        case .runwayTerminal: line = "Half the floor is catwalk, half is war. Strike a pose; the judges hit back."
+        case .blackoutBase:   line = "Halfway up. The lights die. The fighters here didn't choose the tower — it chose them."
+        case .launchFoundry:  line = "Sparks and steel. Whatever the tower is building up here, it needs champions for fuel."
+        case .goldRally:      line = "All chrome and bravado. The loudest fighter yet — and somehow still standing."
+        case .icePalace:      line = "The air bites. The ice regent doesn't rush; the cold does the work."
+        case .redCarpet:      line = "Flashbulbs and finishers. Up here, losing is a very public thing."
+        case .cageNight:      line = "No ropes, no exit. Just the cage, the crowd, and a crusher who never blinks."
+        case .obsidianThrone: line = "The throne room. The host is a former climber who won — and never got to leave."
+        }
+        guard let line else { return nil }
+        return [CutscenePanel(speaker: nil, text: line)]
+    }
 }
 
 /// Self-contained cutscene overlay — speaker, text box, and an advance button.
