@@ -46,7 +46,8 @@ struct CommentThreadTests {
 
     @Test func loadPopulatesVisibleThread() async {
         let model = PostDetailViewModel(post: MockFeedService.seed()[0],
-                                        service: MockCommentService())
+                                        service: MockCommentService(),
+                                        moderationService: MockModerationService())
         await model.load()
         #expect(model.state == .loaded)
         #expect(model.visible.count == 3)
@@ -54,7 +55,8 @@ struct CommentThreadTests {
 
     @Test func replyAppendsComment() async {
         let post = MockFeedService.seed()[0]
-        let model = PostDetailViewModel(post: post, service: MockCommentService())
+        let model = PostDetailViewModel(post: post, service: MockCommentService(),
+                                        moderationService: MockModerationService())
         await model.load()
         let before = model.visible.count
         await model.reply(to: nil, body: "Solid advice, bro.")
@@ -63,7 +65,8 @@ struct CommentThreadTests {
 
     @Test func commentVoteIsOptimistic() async {
         let post = MockFeedService.seed()[0]
-        let model = PostDetailViewModel(post: post, service: MockCommentService())
+        let model = PostDetailViewModel(post: post, service: MockCommentService(),
+                                        moderationService: MockModerationService())
         await model.load()
         guard let target = model.visible.first?.comment else { Issue.record("no comment"); return }
         let before = target.score
