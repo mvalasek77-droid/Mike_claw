@@ -1739,8 +1739,10 @@ async function alertNSF(
     `Account:  ${ctx.scope}`,
     `Stripe:   ${ctx.detail}`,
     ``,
-    `What to do: top up the platform Stripe balance (Stripe Dashboard →`,
-    `Balance → Add to balance, or wait for the auto-top-up cron), then the`,
+    `What to do: top up the platform Stripe balance manually (Stripe`,
+    `Dashboard → Balance → Add to balance). Automatic top-ups only run`,
+    `when a verified bank source is configured and Stripe's Top-ups API`,
+    `is available for this account's country/currency. Once funded, the`,
     `affected ${ctx.kind} will succeed on the next attempt. The amount has`,
     `NOT been paid out and is still owed — nothing was lost.`,
   ].join("\n");
@@ -1936,8 +1938,10 @@ interface Funding {
   currency: string;
   availableUSD: number;   // platform balance available right now
   bufferUSD: number;      // target float
-  topUpNeededUSD: number; // how much to add to restore the buffer (what the
-                          // auto-top-up cron will pull from your bank)
+  topUpNeededUSD: number; // how much to add to restore the buffer
+  autoTopUp: boolean;     // true when a verified TOPUP_SOURCE_ID is configured
+                          // AND the account/country supports the Top-ups API;
+                          // false → operator funds the float manually
   salesTodayCount: number;
   salesTodayUSD: number;  // creator earnings transferred out today (burn)
 }
@@ -1963,6 +1967,7 @@ async function platformFunding(env: Env): Promise<Funding> {
     availableUSD,
     bufferUSD: buffer,
     topUpNeededUSD: Math.max(0, buffer - availableUSD),
+    autoTopUp: !!env.TOPUP_SOURCE_ID,
     salesTodayCount,
     salesTodayUSD,
   };
@@ -1984,7 +1989,9 @@ async function bumpSalesCounter(env: Env, grossCents: number): Promise<void> {
 function fundingFooter(f: Funding): string {
   const C = f.currency.toUpperCase();
   const topUp = f.topUpNeededUSD > 0
-    ? `TOP UP NEEDED: ${C} ${f.topUpNeededUSD.toFixed(2)} — make sure your linked bank has it; the auto-top-up cron will pull it to restore the float.`
+    ? (f.autoTopUp
+        ? `TOP UP NEEDED: ${C} ${f.topUpNeededUSD.toFixed(2)} — make sure your linked bank has it; the auto-top-up cron will pull it to restore the float.`
+        : `TOP UP NEEDED: ${C} ${f.topUpNeededUSD.toFixed(2)} — add it manually in the Stripe Dashboard (Balance → Add to balance). Automatic top-ups are off because no verified bank source is configured, or Stripe's Top-ups API isn't available for this account's country/currency.`)
     : `Float is healthy — no top-up needed right now.`;
   return [
     ``,
@@ -2021,8 +2028,30 @@ async function notifySale(env: Env, sale: { amountUSD: number; title_id?: string
 async function maybeTopUp(env: Env): Promise<{ toppedUp: number; availableUSD: number }> {
   const buffer = Number(env.TOPUP_BUFFER_USD ?? DEFAULT_TOPUP_BUFFER_USD);
   const maxTopUp = Number(env.TOPUP_MAX_USD ?? DEFAULT_TOPUP_MAX_USD);
-  const balance = await stripeGet(`/balance`, env.STRIPE_SECRET_KEY);
   const cur = (env.PLATFORM_CURRENCY || "usd").toLowerCase();
+
+  // Auto-top-up is OPT-IN. Stripe's Top-ups API ("Add to balance" from a
+  // bank) is not available for every account / country / currency — e.g.
+  // Canadian accounts can't create programmatic top-ups at all, and Stripe
+  // rejects the call with a "can't process for this currency and country"
+  // error. Attempting it anyway on every cron run produced a recurring
+  // `topup.failed` ledger entry plus a false NSF alert (the bank didn't
+  // bounce — the feature simply doesn't exist for the account).
+  //
+  // So we only attempt a programmatic top-up when the operator has
+  // explicitly configured a verified bank source via TOPUP_SOURCE_ID,
+  // which is the signal that their account supports top-ups AND a source
+  // is ready. Without it we skip silently; the payout digest still tells
+  // the operator the float is low and to add funds manually in the Stripe
+  // Dashboard (which works in every country). Balance is still read so the
+  // caller / digest gets an accurate availableUSD.
+  if (!env.TOPUP_SOURCE_ID) {
+    const balance = await stripeGet(`/balance`, env.STRIPE_SECRET_KEY);
+    const platBal = balance.available?.find((b: any) => b.currency === cur);
+    return { toppedUp: 0, availableUSD: (platBal?.amount ?? 0) / 100 };
+  }
+
+  const balance = await stripeGet(`/balance`, env.STRIPE_SECRET_KEY);
   const platBal = balance.available?.find((b: any) => b.currency === cur);
   const availableUSD = (platBal?.amount ?? 0) / 100;
   if (availableUSD >= buffer) return { toppedUp: 0, availableUSD };
