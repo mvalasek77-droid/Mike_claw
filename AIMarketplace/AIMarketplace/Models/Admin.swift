@@ -22,7 +22,7 @@ enum Admin {
 
     /// HMAC-SHA256(salt, password), base64. Regenerate with any HMAC tool if
     /// the owner password rotates — the plaintext lives only with the owner.
-    private static let expectedHash = "WHqrpIN4i7Xfmi5gwpca1L1LIPYlGohZK60qD6EdCjg="
+    private static let expectedHash = "kGsVaoEMcakfdjHlHH6Ijx0ETMC9ZjQJSUE/Cq9hXe0="
 
     /// Derives a verification hash using SHA-256 with a fixed salt.
     /// This is NOT bcrypt — it's a simple HMAC-based commitment for a
