@@ -7,6 +7,7 @@ import Foundation
 struct ChatView: View {
     @State private var model: ChatViewModel
     @State private var draft = ""
+    @State private var isRecordingVoiceNote = false
     @FocusState private var inputFocused: Bool
 
     init(conversation: Conversation, service: MessagingService) {
@@ -20,6 +21,18 @@ struct ChatView: View {
         }
         .navigationTitle(model.conversation.displayTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 0) {
+                    Text(model.conversation.displayTitle).font(Tokens.Typography.headline)
+                    if model.partnerOnline {
+                        Text("Active now")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                    }
+                }
+            }
+        }
         .task { await model.load() }
     }
 
@@ -52,11 +65,14 @@ struct ChatView: View {
                 .padding(Tokens.Spacing.md)
                 .liquidGlass(radius: Tokens.Radius.lg)
 
-            Button(action: send) {
-                Image(systemName: "arrow.up.circle.fill").font(.title2)
+            if draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                VoiceNoteButton(isRecording: $isRecordingVoiceNote, onFinish: sendVoiceNote)
+            } else {
+                Button(action: send) {
+                    Image(systemName: "arrow.up.circle.fill").font(.title2)
+                }
+                .accessibilityLabel("Send message")
             }
-            .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .accessibilityLabel("Send message")
         }
         .padding(Tokens.Spacing.md)
         .background(.bar)
@@ -68,6 +84,10 @@ struct ChatView: View {
         let text = draft
         draft = ""
         Task { await model.send(text) }
+    }
+
+    private func sendVoiceNote(duration: TimeInterval) {
+        Task { await model.sendVoiceNote(duration: duration) }
     }
 
     private func scrollToEnd(_ proxy: ScrollViewProxy) {
@@ -93,9 +113,7 @@ private struct MessageBubble: View {
                     .foregroundStyle(Tokens.Color.textSecondary)
                     .padding(.horizontal, Tokens.Spacing.sm)
             }
-            Text(message.text)
-                .font(Tokens.Typography.body)
-                .foregroundStyle(message.isMine ? .white : Tokens.Color.textPrimary)
+            content
                 .padding(.horizontal, Tokens.Spacing.md)
                 .padding(.vertical, Tokens.Spacing.sm)
                 .background {
@@ -117,6 +135,60 @@ private struct MessageBubble: View {
         .frame(maxWidth: .infinity, alignment: message.isMine ? .trailing : .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(message.isMine ? "You" : message.sender.displayName): \(message.text)")
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if let duration = message.voiceNoteDuration {
+            HStack(spacing: Tokens.Spacing.sm) {
+                Image(systemName: "waveform")
+                Text(durationLabel(duration))
+                    .font(Tokens.Typography.body)
+            }
+            .foregroundStyle(message.isMine ? .white : Tokens.Color.textPrimary)
+        } else {
+            Text(message.text)
+                .font(Tokens.Typography.body)
+                .foregroundStyle(message.isMine ? .white : Tokens.Color.textPrimary)
+        }
+    }
+
+    private func durationLabel(_ duration: TimeInterval) -> String {
+        let seconds = Int(duration.rounded())
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+/// Press-and-hold to record a voice note; release to send. Tracks elapsed
+/// time so the sent message carries a real duration for the bubble to show.
+private struct VoiceNoteButton: View {
+    @Binding var isRecording: Bool
+    let onFinish: (TimeInterval) -> Void
+
+    @State private var startedAt: Date?
+
+    var body: some View {
+        Image(systemName: isRecording ? "mic.fill" : "mic")
+            .font(.title2)
+            .foregroundStyle(isRecording ? .red : Tokens.Color.accent)
+            .padding(Tokens.Spacing.sm)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard !isRecording else { return }
+                        isRecording = true
+                        startedAt = .now
+                        HapticsEngine.shared.play(.selectionChanged)
+                    }
+                    .onEnded { _ in
+                        isRecording = false
+                        guard let startedAt else { return }
+                        let duration = max(1, Date.now.timeIntervalSince(startedAt))
+                        self.startedAt = nil
+                        onFinish(duration)
+                    }
+            )
+            .accessibilityLabel("Hold to record a voice note")
     }
 }
 

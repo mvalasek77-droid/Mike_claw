@@ -64,7 +64,14 @@ private struct ConversationRow: View {
         HStack(spacing: Tokens.Spacing.md) {
             avatar
             VStack(alignment: .leading, spacing: 2) {
-                Text(conversation.displayTitle).font(Tokens.Typography.headline)
+                HStack(spacing: 4) {
+                    Text(conversation.displayTitle).font(Tokens.Typography.headline)
+                    if !conversation.isGroup && conversation.participants.first?.isOnline == true {
+                        Text("· Active now")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                    }
+                }
                 Text(conversation.lastMessage)
                     .font(Tokens.Typography.caption)
                     .foregroundStyle(Tokens.Color.textSecondary)
@@ -94,7 +101,7 @@ private struct ConversationRow: View {
         Group {
             // 1:1 chats show the other bro's avatar; groups keep a glyph.
             if !conversation.isGroup, let other = conversation.participants.first {
-                UserAvatar(user: other, size: 48)
+                UserAvatar(user: other, size: 48, showsPresence: true)
             } else {
                 ZStack {
                     RoundedRectangle(cornerRadius: Tokens.Radius.sm, style: .continuous)

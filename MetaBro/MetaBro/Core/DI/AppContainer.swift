@@ -16,6 +16,7 @@ final class AppContainer {
     let authService: AuthService
     let friendsService: FriendsService
     let notificationsService: NotificationsService
+    let pushNotificationService: PushNotificationService
 
     init(
         feedService: FeedService,
@@ -28,7 +29,8 @@ final class AppContainer {
         bugReportService: BugReportService,
         authService: AuthService,
         friendsService: FriendsService,
-        notificationsService: NotificationsService
+        notificationsService: NotificationsService,
+        pushNotificationService: PushNotificationService
     ) {
         self.feedService = feedService
         self.commentService = commentService
@@ -41,6 +43,7 @@ final class AppContainer {
         self.authService = authService
         self.friendsService = friendsService
         self.notificationsService = notificationsService
+        self.pushNotificationService = pushNotificationService
     }
 
     /// Resolves the dependency graph from configuration: a live backend when
@@ -83,7 +86,8 @@ final class AppContainer {
             bugReportService: LiveBugReportService(client: client),
             authService: LiveAuthService(client: client),
             friendsService: LiveFriendsService(client: client),
-            notificationsService: LiveNotificationsService(client: client)
+            notificationsService: LiveNotificationsService(client: client),
+            pushNotificationService: LivePushNotificationService(client: client)
         )
     }
 
@@ -104,7 +108,8 @@ final class AppContainer {
             bugReportService: MockBugReportService(),
             authService: MockAuthService(),
             friendsService: MockFriendsService(),
-            notificationsService: MockNotificationsService()
+            notificationsService: MockNotificationsService(),
+            pushNotificationService: MockPushNotificationService()
         )
     }
 }

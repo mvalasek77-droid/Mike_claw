@@ -24,6 +24,11 @@ final class ChatViewModel {
         self.service = service
     }
 
+    /// Only meaningful for 1:1 threads — groups don't show a single presence dot.
+    var partnerOnline: Bool {
+        !conversation.isGroup && conversation.participants.first?.isOnline == true
+    }
+
     func load() async {
         state = .loading
         do {
@@ -44,6 +49,28 @@ final class ChatViewModel {
         let optimistic = Message(
             id: UUID(), conversationID: conversation.id, sender: Session.me,
             text: trimmed, sentAt: .now, status: .sending
+        )
+        messages.append(optimistic)
+        state = .loaded
+        HapticsEngine.shared.play(.reaction)
+
+        do {
+            try await service.send(optimistic, to: conversation.id)
+            updateStatus(of: optimistic.id, to: .sent)
+        } catch {
+            BroLog.error(error, category: "messages")
+            messages.removeAll { $0.id == optimistic.id }
+            HapticsEngine.shared.play(.error)
+            return
+        }
+
+        await simulateReply()
+    }
+
+    func sendVoiceNote(duration: TimeInterval) async {
+        let optimistic = Message(
+            id: UUID(), conversationID: conversation.id, sender: Session.me,
+            text: "Voice note", sentAt: .now, status: .sending, voiceNoteDuration: duration
         )
         messages.append(optimistic)
         state = .loaded

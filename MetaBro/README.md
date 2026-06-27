@@ -51,6 +51,13 @@ reply.**
 - ✅ **Messaging (DMs)** — 1:1 and group threads, optimistic send with
   sending/sent/delivered/read receipts, a typing indicator, simulated replies,
   unread badges, and auto-scroll. All five tabs are now live.
+- ✅ **Presence & push** — online/last-active status on bros, surfaced as a
+  green dot on avatars and an "Active now" label in the conversation list and
+  chat header; a `PushNotificationService` (mock + live, backed by
+  `UNUserNotificationCenter` and a device-token endpoint) requests
+  authorization once an identity is established.
+- ✅ **Voice notes** — press-and-hold mic button in any chat records a duration
+  and sends a voice-note message, rendered as a waveform + duration bubble.
 - ✅ **Friends ("Bros") & notifications** — incoming Bro requests, suggested
   Bros, and a confirmed friend list, each optimistic with rollback; a bell icon
   on the feed surfaces a granular, per-item-readable activity feed (friend

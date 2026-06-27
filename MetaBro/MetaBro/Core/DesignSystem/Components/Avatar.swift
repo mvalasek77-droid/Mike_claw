@@ -6,6 +6,9 @@ import SwiftUI
 struct UserAvatar: View {
     let user: User
     var size: CGFloat = 40
+    /// Shows a green dot when the user is online — used in chat threads and
+    /// the conversation list where presence is meaningful.
+    var showsPresence: Bool = false
 
     private var url: URL { user.avatarURL ?? AvatarCatalog.user(handle: user.handle) }
 
@@ -19,6 +22,14 @@ struct UserAvatar: View {
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
+        .overlay(alignment: .bottomTrailing) {
+            if showsPresence && user.isOnline {
+                Circle()
+                    .fill(.green)
+                    .frame(width: size * 0.28, height: size * 0.28)
+                    .overlay(Circle().strokeBorder(.background, lineWidth: size * 0.05))
+            }
+        }
         .accessibilityHidden(true)
     }
 

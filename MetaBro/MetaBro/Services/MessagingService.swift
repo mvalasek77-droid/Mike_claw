@@ -71,11 +71,12 @@ actor MockMessagingService: MessagingService {
 
     private static func seed() -> (conversations: [Conversation], messages: [UUID: [Message]]) {
         let marcus = User(id: UUID(), handle: "@ironbro", displayName: "Marcus",
-                          avatarURL: nil, broCred: 4_820)
+                          avatarURL: nil, broCred: 4_820, isOnline: true)
         let dave = User(id: UUID(), handle: "@coachdave", displayName: "Dave",
-                        avatarURL: nil, broCred: 9_300)
+                        avatarURL: nil, broCred: 9_300, isOnline: false,
+                        lastActiveAt: .now.addingTimeInterval(-1_800))
         let sam = User(id: UUID(), handle: "@newbro", displayName: "Sam",
-                       avatarURL: nil, broCred: 40)
+                       avatarURL: nil, broCred: 40, isOnline: true)
 
         let dm = Conversation(
             id: UUID(), participants: [marcus], isGroup: false, title: nil,

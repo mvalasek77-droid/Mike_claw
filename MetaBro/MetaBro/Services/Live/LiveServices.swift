@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 
 // Backend-backed implementations of the remaining services. The Comment,
 // Community, Message, Conversation, and Story models are already clean Codable
@@ -62,7 +63,7 @@ struct LiveMessagingService: MessagingService {
     }
 
     func send(_ message: Message, to conversationID: UUID) async throws {
-        let req = SendMessageRequest(id: message.id, text: message.text)
+        let req = SendMessageRequest(id: message.id, text: message.text, voiceNoteDuration: message.voiceNoteDuration)
         try await client.send(API.sendMessage(conversationID: conversationID, req))
     }
 
@@ -137,6 +138,29 @@ struct LiveNotificationsService: NotificationsService {
 
     func markAllRead() async throws {
         try await client.send(API.markAllNotificationsRead())
+    }
+}
+
+struct LivePushNotificationService: PushNotificationService {
+    let client: APIClient
+
+    func requestAuthorization() async -> Bool {
+        do {
+            return try await UNUserNotificationCenter.current()
+                .requestAuthorization(options: [.alert, .badge, .sound])
+        } catch {
+            BroLog.error(error, category: "push")
+            return false
+        }
+    }
+
+    func isAuthorized() async -> Bool {
+        let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        return status == .authorized || status == .provisional
+    }
+
+    func registerDeviceToken(_ token: String) async throws {
+        try await client.send(API.registerDeviceToken(DeviceTokenRequest(token: token)))
     }
 }
 

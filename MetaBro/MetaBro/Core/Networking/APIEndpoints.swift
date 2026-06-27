@@ -100,6 +100,11 @@ enum API {
     static func markAllNotificationsRead() throws -> Endpoint {
         try .post("notifications/read-all")
     }
+
+    // MARK: Push
+    static func registerDeviceToken(_ body: DeviceTokenRequest) throws -> Endpoint {
+        try .post("push/device-tokens", body: body)
+    }
 }
 
 // MARK: - Request bodies
@@ -119,7 +124,8 @@ struct ReplyRequest: Encodable {
     var parentID: UUID?
     var body: String
 }
-struct SendMessageRequest: Encodable { var id: UUID; var text: String }
+struct SendMessageRequest: Encodable { var id: UUID; var text: String; var voiceNoteDuration: TimeInterval? }
+struct DeviceTokenRequest: Encodable { var token: String }
 struct BugReportRequest: Encodable {
     var summary: String
     var details: String

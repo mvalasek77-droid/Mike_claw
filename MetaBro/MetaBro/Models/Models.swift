@@ -8,6 +8,8 @@ struct User: Identifiable, Codable, Hashable, Sendable {
     var displayName: String     // social identity (optional real name)
     var avatarURL: URL?
     var broCred: Int            // combined post + comment karma
+    var isOnline: Bool = false
+    var lastActiveAt: Date? = nil
 }
 
 struct Community: Identifiable, Codable, Hashable, Sendable {
@@ -212,8 +214,10 @@ struct Message: Identifiable, Codable, Hashable, Sendable {
     var text: String
     var sentAt: Date
     var status: MessageStatus
+    var voiceNoteDuration: TimeInterval? = nil
 
     var isMine: Bool { sender.id == Session.me.id }
+    var isVoiceNote: Bool { voiceNoteDuration != nil }
 }
 
 /// A DM thread. `participants` holds the *other* people (not you), so a 1:1

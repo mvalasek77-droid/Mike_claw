@@ -100,6 +100,24 @@ struct LiveBackendTests {
         ])
     }
 
+    @Test func sendingAVoiceNoteHitsTheMessagesEndpoint() async throws {
+        let client = FakeAPIClient()
+        let service = LiveMessagingService(client: client)
+        let conversationID = UUID()
+        let sender = User(id: UUID(), handle: "@ironbro", displayName: "Marcus", avatarURL: nil, broCred: 4_820)
+        let voiceNote = Message(id: UUID(), conversationID: conversationID, sender: sender,
+                                 text: "Voice note", sentAt: .now, status: .sending, voiceNoteDuration: 8)
+        try await service.send(voiceNote, to: conversationID)
+        #expect(client.mutations == ["POST conversations/\(conversationID.uuidString)/messages"])
+    }
+
+    @Test func registeringADeviceTokenHitsExpectedEndpoint() async throws {
+        let client = FakeAPIClient()
+        let service = LivePushNotificationService(client: client)
+        try await service.registerDeviceToken("abc123")
+        #expect(client.mutations == ["POST push/device-tokens"])
+    }
+
     // MARK: Config
 
     @Test func liveModeRequiresFlagAndURL() {
@@ -123,6 +141,7 @@ struct LiveBackendTests {
         #expect(container.bugReportService is LiveBugReportService)
         #expect(container.friendsService is LiveFriendsService)
         #expect(container.notificationsService is LiveNotificationsService)
+        #expect(container.pushNotificationService is LivePushNotificationService)
     }
 
     // MARK: Bug reports

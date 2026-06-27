@@ -32,5 +32,6 @@ struct RootView: View {
                 .tag(AppTab.profile)
         }
         .tint(Tokens.Color.accent)
+        .task { await container.pushNotificationService.requestAuthorization() }
     }
 }
