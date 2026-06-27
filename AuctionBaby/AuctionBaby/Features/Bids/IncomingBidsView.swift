@@ -132,6 +132,15 @@ struct BidRow: View {
                     Spacer()
                 }
 
+                if let ref = bid.promptRef {
+                    HStack(spacing: 5) {
+                        Image(systemName: "quote.opening").font(.system(size: 9, weight: .bold))
+                        Text("Replying to: \(ref)").font(.system(size: 11, weight: .bold, design: .rounded)).lineLimit(1)
+                    }
+                    .foregroundStyle(Theme.rose)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 if !bid.note.isEmpty {
                     Text("“\(bid.note)”").font(.system(size: 13, weight: .medium)).italic()
                         .foregroundStyle(Theme.inkSoft).frame(maxWidth: .infinity, alignment: .leading)

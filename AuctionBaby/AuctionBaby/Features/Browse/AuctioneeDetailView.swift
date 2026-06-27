@@ -7,6 +7,7 @@ struct AuctioneeDetailView: View {
     var onBid: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
+    @State private var bidPrompt: Prompt?
 
     var body: some View {
         ScrollView {
@@ -50,7 +51,26 @@ struct AuctioneeDetailView: View {
                 }
 
                 ForEach(woman.prompts) { prompt in
-                    GlassSurface { PromptBubble(prompt: prompt).padding(4) }
+                    GlassSurface {
+                        VStack(alignment: .leading, spacing: 12) {
+                            PromptBubble(prompt: prompt)
+                            if !woman.isCopycat {
+                                Button { bidPrompt = prompt } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "hand.raised.fill")
+                                        Text("Bid on this answer")
+                                        Spacer()
+                                    }
+                                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(Theme.rose)
+                                    .padding(.horizontal, 12).padding(.vertical, 9)
+                                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.rose.opacity(0.14)))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(4)
+                    }
                 }
 
                 if !woman.interests.isEmpty {
@@ -87,6 +107,11 @@ struct AuctioneeDetailView: View {
         }
         .sheet(isPresented: $showReport) {
             ReportSheet(profile: woman) { dismiss() }.presentationDetents([.medium, .large])
+        }
+        .sheet(item: $bidPrompt) { prompt in
+            BidSheet(woman: woman, promptContext: prompt)
+                .presentationDetents([.medium, .large])
+                .presentationBackground(.ultraThinMaterial)
         }
         .safeAreaInset(edge: .bottom) {
             PrimaryButton(title: woman.startingBid.map { "Bid · floor \(Money.compact($0))" } ?? "Place a bid",

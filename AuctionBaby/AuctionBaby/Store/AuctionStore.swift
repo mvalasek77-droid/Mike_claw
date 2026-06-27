@@ -127,7 +127,8 @@ final class AuctionStore: ObservableObject {
     /// Place a bid on a woman. Bids are offers — nothing is charged until a date
     /// actually happens — but bidding on an AI copycat is logged against the
     /// bidder's reputation immediately.
-    func placeBid(on woman: Profile, amount: Int, note: String, gilded: Bool = false) {
+    func placeBid(on woman: Profile, amount: Int, note: String, gilded: Bool = false,
+                  promptRef: String? = nil) {
         guard role == .man else { return }
         // Gilding spends Gavels up front; fall back to a normal bid if short.
         var gild = gilded
@@ -137,6 +138,7 @@ final class AuctionStore: ObservableObject {
         }
         var bid = Bid(man: me, woman: woman, amount: amount, note: note)
         bid.gilded = gild
+        bid.promptRef = promptRef
         outgoingBids.insert(bid, at: 0)
 
         if woman.isCopycat {

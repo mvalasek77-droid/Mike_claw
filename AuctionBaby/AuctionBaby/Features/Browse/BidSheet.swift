@@ -4,6 +4,7 @@ import SwiftUI
 /// place it. Quick-add chips make six- and seven-figure bids painless.
 struct BidSheet: View {
     let woman: Profile
+    let promptContext: Prompt?
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
     @Environment(\.dismiss) private var dismiss
@@ -18,8 +19,9 @@ struct BidSheet: View {
         !storeKit.hasPass && store.activePendingBidCount >= AuctionStore.freeActiveBidLimit
     }
 
-    init(woman: Profile) {
+    init(woman: Profile, promptContext: Prompt? = nil) {
         self.woman = woman
+        self.promptContext = promptContext
         _amount = State(initialValue: woman.startingBid ?? 100)
     }
 
@@ -43,6 +45,21 @@ struct BidSheet: View {
                         }
                     }
                     Spacer()
+                }
+
+                if let prompt = promptContext {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("Bidding on her answer", systemImage: "quote.opening")
+                            .font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1)
+                            .foregroundStyle(Theme.rose)
+                        Text(prompt.question).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                        Text(prompt.answer).font(.system(size: 15, weight: .bold, design: .serif)).foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.rose.opacity(0.1)))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.rose.opacity(0.4), lineWidth: 0.8))
                 }
 
                 if woman.isCopycat {
@@ -122,7 +139,8 @@ struct BidSheet: View {
                                   systemImage: gild ? "seal.fill" : "hand.raised.fill",
                                   gradient: gild ? Theme.prestigeGradient : Theme.goldGradient,
                                   enabled: amount > 0) {
-                        store.placeBid(on: woman, amount: amount, note: note, gilded: gild)
+                        store.placeBid(on: woman, amount: amount, note: note, gilded: gild,
+                                       promptRef: promptContext?.question)
                         dismiss()
                     }
                 }

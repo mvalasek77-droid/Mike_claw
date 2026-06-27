@@ -21,6 +21,9 @@ struct Bid: Identifiable, Codable, Hashable {
     /// Costs Gavels, pins to the top of her inbox with a gold ribbon, and
     /// nudges her toward accepting.
     var gilded: Bool = false
+    /// If he bid in response to a specific prompt, the question he's replying to
+    /// (Hinge-style targeted interaction). Optional → backward-compatible decode.
+    var promptRef: String? = nil
 
     /// Bidding on an AI copycat is always disclosed and counts against the man.
     var onCopycat: Bool { woman.isCopycat }

@@ -411,6 +411,17 @@ final class AuctionLogicTests: XCTestCase {
     }
 
     @MainActor
+    func testPromptBidCarriesReference() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        let woman = store.floor.first { !$0.isCopycat && !$0.prompts.isEmpty }!
+        let q = woman.prompts[0].question
+        store.placeBid(on: woman, amount: 300, note: "Loved this", promptRef: q)
+        XCTAssertEqual(store.outgoingBids.first?.promptRef, q)
+    }
+
+    @MainActor
     func testHeadlinerIsRealAndOnFloor() {
         let store = freshStore()
         store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
