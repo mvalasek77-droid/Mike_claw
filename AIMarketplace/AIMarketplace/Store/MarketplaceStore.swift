@@ -2750,6 +2750,15 @@ final class MarketplaceStore: ObservableObject {
         }
     }
 
+    /// Admin-facing wrapper around `copyUploadedMedia`. Copies a picked
+    /// audio/video file into `Documents/published/<itemID>.<ext>` and returns
+    /// the basename for `MediaItem.localMediaFileName`, so an admin-added
+    /// title plays real bytes instead of falling through to the simulated
+    /// transport. nil if the source was missing or the copy failed.
+    func adminImportMedia(from source: URL?, itemID: UUID) -> String? {
+        copyUploadedMedia(from: source, itemID: itemID)
+    }
+
     func submission(withPublishedID id: UUID) -> Submission? {
         submissions.first { $0.publishedItemID == id }
     }
