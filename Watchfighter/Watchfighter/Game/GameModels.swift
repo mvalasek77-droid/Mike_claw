@@ -874,6 +874,7 @@ struct DuelFighter: Equatable {
     var guardMeter: CGFloat
     var action: FighterAction
     var actionTimer: TimeInterval
+    var actionDuration: TimeInterval = 0   // full length of current action, for smooth animation
     var hitStun: TimeInterval
     var combo: Int
     var facing: CGFloat
@@ -887,6 +888,7 @@ struct DuelFighter: Equatable {
         self.guardMeter = 1
         self.action = .idle
         self.actionTimer = 0
+        self.actionDuration = 0
         self.hitStun = 0
         self.combo = 0
         self.facing = facing

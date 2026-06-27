@@ -210,7 +210,7 @@ struct WatchfighterEngine {
         guard state.player.hitStun == 0 else { return }
 
         let target = input.targetX.clamped(to: 0.14...0.56)
-        let response = min(1, CGFloat(delta) * 13.5 * state.player.archetype.quickness)
+        let response = min(1, CGFloat(delta) * 17.5 * state.player.archetype.quickness)
         let previousX = state.player.x
         state.player.x += (target - state.player.x) * response
         state.player.x = min(state.player.x, state.opponent.x - 0.18).clamped(to: 0.14...0.56)
@@ -807,10 +807,14 @@ struct WatchfighterEngine {
         switch side {
         case .player:
             state.player.action = action
-            state.player.actionTimer = max(state.player.actionTimer, duration)
+            let t = max(state.player.actionTimer, duration)
+            state.player.actionTimer = t
+            state.player.actionDuration = max(0.001, t)
         case .opponent:
             state.opponent.action = action
-            state.opponent.actionTimer = max(state.opponent.actionTimer, duration)
+            let t = max(state.opponent.actionTimer, duration)
+            state.opponent.actionTimer = t
+            state.opponent.actionDuration = max(0.001, t)
         }
     }
 

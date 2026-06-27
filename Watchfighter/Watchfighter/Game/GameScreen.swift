@@ -25,6 +25,7 @@ struct GameScreen: View {
     @State private var cutscenePanels: [CutscenePanel] = []
     @State private var cutsceneIndex = 0
     @State private var cutsceneToFight = false
+    @State private var pitPending = false   // a loss happened; show the Pit beat at the next round start
     @State private var arcadeAudio = ArcadeAudio()
     @AppStorage("watchfighter.bestScore") private var bestScore = 0
     @AppStorage("watchfighter.unlockedRosterIndex") private var unlockedRosterIndex = 0
@@ -912,11 +913,18 @@ struct GameScreen: View {
             )
         }
 
+        // A loss registers now (round-resolve frame); the round actually restarts
+        // ~2.25s later after the pause, so remember it until then.
+        if activeMode == .tournament, engine.state.opponentWins > beforeOpponentWins {
+            pitPending = true
+        }
+
         if activeMode == .tournament, !demoMode, engine.state.phase == .running, (engine.state.round != beforeRound || engine.state.chapter != beforeChapter) {
             lastFrameDate = nil
             // FF story beats bridge into the next fight (good arcade cadence:
             // only on a loss, the midpoint, and the final boss — not every fight).
-            if engine.state.opponentWins > beforeOpponentWins {
+            if pitPending {
+                pitPending = false
                 playCutscene(FFScript.pit, toFight: false)              // lost a floor -> the Pit, climb back
             } else if engine.state.chapter == StoryChapter.allCases.last {
                 playCutscene(FFScript.beforeBoss, toFight: false)        // final boss
@@ -1073,6 +1081,7 @@ struct GameScreen: View {
         lastFrameDate = nil
         nextDemoSpecial = 2.4
         lastSpokenBanner = ""
+        pitPending = false
     }
 
     private func shiftRosterSelection(_ offset: Int) {

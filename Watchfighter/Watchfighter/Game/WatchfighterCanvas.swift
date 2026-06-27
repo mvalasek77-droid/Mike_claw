@@ -125,9 +125,12 @@ struct WatchfighterCanvas: View {
         let baseAnchor = point(x: fighter.x, y: fighter.y, size: size)
         let unit = min(size.width, size.height)
         let breathing = CGFloat(sin(date.timeIntervalSinceReferenceDate * 7.5 + Double(side == .player ? 0 : 1))) * unit * 0.004
-        let lunge = actionLunge(for: fighter.action) * fighter.facing * unit
-        let recoil = fighter.action == .hit ? -fighter.facing * unit * 0.018 : 0
-        let jumpLift = fighter.action == .jumpKick ? -unit * 0.115 : 0
+        // Smooth strike envelope: thrust out and pull back across the action
+        // (quick attack, eased recovery) instead of snapping to a pose.
+        let strike = actionStrike(for: fighter)
+        let lunge = actionLunge(for: fighter.action) * strike * fighter.facing * unit
+        let recoil = fighter.action == .hit ? -fighter.facing * unit * 0.026 * strike : 0
+        let jumpLift = fighter.action == .jumpKick ? -unit * 0.14 * strike : 0
         let crouchDrop = fighter.action == .crouch ? unit * 0.036 : 0
         let anchor = CGPoint(x: baseAnchor.x + lunge + recoil, y: baseAnchor.y + breathing + jumpLift + crouchDrop)
         let sprite = DigitizedSprite(
@@ -617,6 +620,26 @@ struct WatchfighterCanvas: View {
         }
     }
 
+    /// Smooth 0->1->0 envelope across an attack/hit: quick extension, eased
+    /// recovery (smoothstep), so strikes look fast but never snap.
+    private func actionStrike(for fighter: DuelFighter) -> CGFloat {
+        guard fighter.actionDuration > 0.0001 else { return 0 }
+        switch fighter.action {
+        case .jab, .kick, .jumpKick, .throwAttack, .projectile, .special, .hit:
+            let p = CGFloat(max(0, min(1, 1 - fighter.actionTimer / fighter.actionDuration)))
+            let extend: CGFloat = 0.34
+            if p <= extend {
+                let t = p / extend
+                return t * t * (3 - 2 * t)        // smoothstep up (quick)
+            } else {
+                let t = (p - extend) / (1 - extend)
+                return 1 - (t * t * (3 - 2 * t))  // smoothstep down (eased)
+            }
+        default:
+            return 0
+        }
+    }
+
     private func drawDigitizedSprite(
         in context: inout GraphicsContext,
         sprite: DigitizedSprite,
@@ -765,10 +788,11 @@ struct WatchfighterCanvas: View {
         let unit = min(size.width, size.height) * 0.078 * profile.scale * (fighter.action == .crouch ? 0.82 : 1)
         let time = CGFloat(date.timeIntervalSinceReferenceDate)
         let alpha = fighter.action == .defeated ? 0.70 : 1
-        let walk = fighter.action == .walk ? sin(time * 12) * 0.24 : 0
-        let punch = fighter.action == .jab ? 0.82 : (fighter.action == .special || fighter.action == .projectile || fighter.action == .throwAttack ? 1.12 : 0)
-        let kick = fighter.action == .kick || fighter.action == .jumpKick ? 1.0 : 0
-        let recoil = fighter.action == .hit ? -0.28 : 0
+        let strike = actionStrike(for: fighter)
+        let walk = fighter.action == .walk ? sin(time * 15) * 0.26 : 0   // quicker stride
+        let punch = (fighter.action == .jab ? 0.95 : (fighter.action == .special || fighter.action == .projectile || fighter.action == .throwAttack ? 1.18 : 0)) * strike
+        let kick = (fighter.action == .kick || fighter.action == .jumpKick ? 1.05 : 0) * strike
+        let recoil = fighter.action == .hit ? -0.30 * strike : 0
         let swagger = profile.glamour ? sin(time * 8) * 0.10 : 0
         let bulk = (profile.armWidth + profile.legWidth) * 0.50
         let shoulderSpread = 0.78 + bulk * 0.38
