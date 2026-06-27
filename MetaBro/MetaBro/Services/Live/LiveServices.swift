@@ -246,6 +246,25 @@ struct HistoryEntryDTO: Decodable {
     let postID: UUID
 }
 
+struct LiveEventService: EventService {
+    let client: APIClient
+
+    func events() async throws -> [Event] {
+        try await client.send(API.events, as: [Event].self)
+    }
+
+    func create(_ draft: EventDraft) async throws -> Event {
+        let req = CreateEventRequest(title: draft.title, details: draft.details,
+                                     communityID: draft.community?.id,
+                                     location: draft.location, startDate: draft.startDate)
+        return try await client.send(API.createEvent(req), as: Event.self)
+    }
+
+    func setRSVP(eventID: UUID, status: RSVPStatus) async throws {
+        try await client.send(API.rsvp(eventID: eventID, .init(status: status.rawValue)))
+    }
+}
+
 struct LivePushNotificationService: PushNotificationService {
     let client: APIClient
 

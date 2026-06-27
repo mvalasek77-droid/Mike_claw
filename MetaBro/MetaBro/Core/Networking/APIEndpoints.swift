@@ -159,6 +159,15 @@ enum API {
         try .post("history/\(postID.uuidString)")
     }
     static let viewHistory = Endpoint.get("history")
+
+    // MARK: Events
+    static let events = Endpoint.get("events")
+    static func createEvent(_ body: CreateEventRequest) throws -> Endpoint {
+        try .post("events", body: body)
+    }
+    static func rsvp(eventID: UUID, _ body: RSVPRequest) throws -> Endpoint {
+        try .post("events/\(eventID.uuidString)/rsvp", body: body)
+    }
 }
 
 // MARK: - Request bodies
@@ -187,6 +196,14 @@ struct ReportRequest: Encodable {
     var details: String?
 }
 struct BanRequest: Encodable { var userID: UUID; var communityID: UUID }
+struct CreateEventRequest: Encodable {
+    var title: String
+    var details: String
+    var communityID: UUID?
+    var location: String
+    var startDate: Date
+}
+struct RSVPRequest: Encodable { var status: String }
 struct BugReportRequest: Encodable {
     var summary: String
     var details: String

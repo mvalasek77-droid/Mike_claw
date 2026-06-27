@@ -41,5 +41,7 @@
 	<string>$(METABRO_API_BASE_URL)</string>
 	<key>METABRO_USE_LIVE</key>
 	<string>$(METABRO_USE_LIVE)</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>MetaBro can add Bro-hood events to your calendar so you don't miss them.</string>
 </dict>
 </plist>

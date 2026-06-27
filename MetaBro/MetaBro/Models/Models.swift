@@ -387,3 +387,78 @@ struct Story: Identifiable, Codable, Hashable, Sendable {
     var seen: Bool
     var accentIndex: Int
 }
+
+// MARK: - Events
+
+/// The current user's RSVP to an event. `none` renders as "Interested?" —
+/// any other value is a committed answer.
+enum RSVPStatus: String, Codable, CaseIterable, Hashable, Sendable {
+    case none, going, interested, notGoing
+
+    var label: String {
+        switch self {
+        case .none: "RSVP"
+        case .going: "Going"
+        case .interested: "Interested"
+        case .notGoing: "Not going"
+        }
+    }
+}
+
+/// A real-world meetup spun up by a Bro-hood (pickup games, watch parties,
+/// in-person hangs) — the bridge from interest graph to social graph.
+struct Event: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var title: String
+    var details: String
+    var community: Community?
+    var host: User
+    var location: String
+    var startDate: Date
+    var attendeeCount: Int
+    var myRSVP: RSVPStatus = .none
+
+    var isPast: Bool { startDate < .now }
+
+    init(id: UUID, title: String, details: String, community: Community?, host: User,
+         location: String, startDate: Date, attendeeCount: Int, myRSVP: RSVPStatus = .none) {
+        self.id = id
+        self.title = title
+        self.details = details
+        self.community = community
+        self.host = host
+        self.location = location
+        self.startDate = startDate
+        self.attendeeCount = attendeeCount
+        self.myRSVP = myRSVP
+    }
+
+    // See User.init(from:) — `myRSVP` postdates some payloads, so a missing key
+    // falls back to `.none` rather than failing to decode.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        details = try container.decode(String.self, forKey: .details)
+        community = try container.decodeIfPresent(Community.self, forKey: .community)
+        host = try container.decode(User.self, forKey: .host)
+        location = try container.decode(String.self, forKey: .location)
+        startDate = try container.decode(Date.self, forKey: .startDate)
+        attendeeCount = try container.decode(Int.self, forKey: .attendeeCount)
+        myRSVP = try container.decodeIfPresent(RSVPStatus.self, forKey: .myRSVP) ?? .none
+    }
+}
+
+/// What the create-event sheet hands to the service.
+struct EventDraft: Sendable {
+    var title: String
+    var details: String
+    var community: Community?
+    var location: String
+    var startDate: Date
+
+    var isValid: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}

@@ -9,6 +9,7 @@ struct CommunitiesView: View {
     @State private var searchText = ""
     @State private var path: [Post] = []
     @State private var isShowingModQueue = false
+    @State private var isShowingEvents = false
     @State private var pendingMatureCommunity: Community?
 
     init(container: AppContainer) {
@@ -34,6 +35,12 @@ struct CommunitiesView: View {
                                 moderationService: container.moderationService)
             }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { isShowingEvents = true } label: {
+                        Image(systemName: "calendar")
+                    }
+                    .accessibilityLabel("Events")
+                }
                 if isModerator {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { isShowingModQueue = true } label: {
@@ -52,6 +59,9 @@ struct CommunitiesView: View {
                             }
                         }
                 }
+            }
+            .sheet(isPresented: $isShowingEvents) {
+                EventsView(container: container)
             }
             .confirmationDialog(
                 "Mature content",

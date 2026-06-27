@@ -75,6 +75,11 @@ reply.**
   from Profile; a `HistoryService` records every post you open and drives a
   Facebook-style "You're caught up" divider in the feed at the boundary
   between unseen and previously-seen posts.
+- ✅ **Events** — real-world Bro-hood meetups (calendar icon in Bro-hoods):
+  create an event optionally hosted by one of your Bro-hoods, RSVP
+  (Going/Interested/Not going) with optimistic attendee-count updates and
+  rollback, upcoming-then-past ordering, and a one-tap "Add to calendar"
+  via `EventKit`.
 - ✅ **Live backend path** — every service has a `Live*` implementation over an
   `async/await` API client (bodies + retries + typed errors), a documented
   endpoint map (`API`), a `PostDTO` mapping layer, and a `BackendConfig` feature
@@ -108,6 +113,7 @@ MetaBro/
 │   ├── Messages/        DM list + chat thread (receipts, typing)
 │   ├── Stories/         Story rail + full-screen viewer
 │   ├── Moderation/      Mod queue (approve/remove/ban)
+│   ├── Events/          Create/RSVP real-world meetups + calendar export
 │   └── Profile/         Identity + Bro Cred + your posts + saved posts
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests
