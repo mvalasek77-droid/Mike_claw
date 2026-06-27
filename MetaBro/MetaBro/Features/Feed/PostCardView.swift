@@ -14,6 +14,9 @@ struct PostCardView: View {
     /// Optional tap-to-open handler. When nil (e.g. on the detail screen itself)
     /// the content region is inert.
     var onOpen: (() -> Void)? = nil
+    /// Safety service for the report/block/mute menu. Nil on previews/tests
+    /// that don't wire one up, in which case the menu is omitted.
+    var safetyService: SafetyService? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.md) {
@@ -94,6 +97,18 @@ struct PostCardView: View {
                 }
             }
             Spacer()
+            if post.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption2)
+                    .foregroundStyle(Tokens.Color.accent)
+                    .accessibilityLabel("Pinned by mods")
+            }
+            if post.isLocked {
+                Image(systemName: "lock.fill")
+                    .font(.caption2)
+                    .foregroundStyle(Tokens.Color.textSecondary)
+                    .accessibilityLabel("Locked")
+            }
             if post.origin == .community {
                 Text("Bro-hood")
                     .font(.caption2.weight(.bold))
@@ -130,6 +145,11 @@ struct PostCardView: View {
             Image(systemName: "square.and.arrow.up")
                 .foregroundStyle(Tokens.Color.textSecondary)
                 .accessibilityLabel("Share")
+            if let safetyService {
+                SafetyMenu(user: post.author, kind: .post, targetID: post.id,
+                           preview: post.title ?? post.body, community: post.community,
+                           service: safetyService)
+            }
         }
     }
 

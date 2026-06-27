@@ -29,6 +29,12 @@ final class ChatViewModel {
         !conversation.isGroup && conversation.participants.first?.isOnline == true
     }
 
+    /// The other person in a 1:1 thread — nil for groups, which have no single
+    /// safety target.
+    var partner: User? {
+        conversation.isGroup ? nil : conversation.participants.first
+    }
+
     func load() async {
         state = .loading
         do {

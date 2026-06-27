@@ -105,6 +105,49 @@ enum API {
     static func registerDeviceToken(_ body: DeviceTokenRequest) throws -> Endpoint {
         try .post("push/device-tokens", body: body)
     }
+
+    // MARK: Safety
+    static func report(_ body: ReportRequest) throws -> Endpoint {
+        try .post("reports", body: body)
+    }
+    static func block(userID: UUID) throws -> Endpoint {
+        try .post("safety/blocks/\(userID.uuidString)")
+    }
+    static func unblock(userID: UUID) -> Endpoint {
+        .delete("safety/blocks/\(userID.uuidString)")
+    }
+    static let blockedUsers = Endpoint.get("safety/blocks")
+    static func mute(userID: UUID) throws -> Endpoint {
+        try .post("safety/mutes/\(userID.uuidString)")
+    }
+    static func unmute(userID: UUID) -> Endpoint {
+        .delete("safety/mutes/\(userID.uuidString)")
+    }
+    static let mutedUsers = Endpoint.get("safety/mutes")
+
+    // MARK: Moderation
+    static let modQueue = Endpoint.get("moderation/queue")
+    static func approveReport(id: UUID) throws -> Endpoint {
+        try .post("moderation/reports/\(id.uuidString)/approve")
+    }
+    static func removeReport(id: UUID) throws -> Endpoint {
+        try .post("moderation/reports/\(id.uuidString)/remove")
+    }
+    static func pinPost(id: UUID) throws -> Endpoint {
+        try .post("posts/\(id.uuidString)/pin")
+    }
+    static func unpinPost(id: UUID) -> Endpoint {
+        .delete("posts/\(id.uuidString)/pin")
+    }
+    static func lockPost(id: UUID) throws -> Endpoint {
+        try .post("posts/\(id.uuidString)/lock")
+    }
+    static func unlockPost(id: UUID) -> Endpoint {
+        .delete("posts/\(id.uuidString)/lock")
+    }
+    static func banUser(_ body: BanRequest) throws -> Endpoint {
+        try .post("moderation/bans", body: body)
+    }
 }
 
 // MARK: - Request bodies
@@ -126,6 +169,13 @@ struct ReplyRequest: Encodable {
 }
 struct SendMessageRequest: Encodable { var id: UUID; var text: String; var voiceNoteDuration: TimeInterval? }
 struct DeviceTokenRequest: Encodable { var token: String }
+struct ReportRequest: Encodable {
+    var kind: String
+    var targetID: UUID
+    var reason: String
+    var details: String?
+}
+struct BanRequest: Encodable { var userID: UUID; var communityID: UUID }
 struct BugReportRequest: Encodable {
     var summary: String
     var details: String

@@ -32,7 +32,9 @@ struct FeedView: View {
                     ToolbarItem(placement: .topBarTrailing) { sortMenu }
                 }
                 .navigationDestination(for: Post.self) { post in
-                    PostDetailView(post: post, service: container.commentService)
+                    PostDetailView(post: post, service: container.commentService,
+                                    safetyService: container.safetyService,
+                                    moderationService: container.moderationService)
                 }
         }
         .task { await model.load() }
@@ -116,7 +118,8 @@ struct FeedView: View {
                             onVote: { value in Task { await model.vote(on: post, value: value) } },
                             onReact: { reaction in Task { await model.react(on: post, reaction: reaction) } },
                             onAward: { award in Task { await model.giveAward(on: post, award: award) } },
-                            onOpen: { path.append(post) }
+                            onOpen: { path.append(post) },
+                            safetyService: container.safetyService
                         )
                     }
                 }

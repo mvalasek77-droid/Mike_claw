@@ -20,7 +20,9 @@ struct ProfileView: View {
             content
                 .navigationTitle("You")
                 .navigationDestination(for: Post.self) { post in
-                    PostDetailView(post: post, service: container.commentService)
+                    PostDetailView(post: post, service: container.commentService,
+                                    safetyService: container.safetyService,
+                                    moderationService: container.moderationService)
                 }
         }
         .task { await model.load() }
@@ -128,7 +130,8 @@ struct ProfileView: View {
                                        description: Text("Head to the + tab to share something."))
             } else {
                 ForEach(posts) { post in
-                    PostCardView(post: post, onVote: { _ in }, onOpen: { path.append(post) })
+                    PostCardView(post: post, onVote: { _ in }, onOpen: { path.append(post) },
+                                 safetyService: container.safetyService)
                 }
             }
         }

@@ -8,6 +8,8 @@ struct CommunitiesView: View {
     @State private var search: SearchViewModel
     @State private var searchText = ""
     @State private var path: [Post] = []
+    @State private var isShowingModQueue = false
+    @State private var pendingMatureCommunity: Community?
 
     init(container: AppContainer) {
         self.container = container
@@ -21,17 +23,72 @@ struct CommunitiesView: View {
                 if searchText.isEmpty {
                     content
                 } else {
-                    SearchResultsView(state: search.state) { path.append($0) }
+                    SearchResultsView(state: search.state, onOpenPost: { path.append($0) },
+                                       safetyService: container.safetyService)
                 }
             }
             .navigationTitle("Bro-hoods")
             .navigationDestination(for: Post.self) { post in
-                PostDetailView(post: post, service: container.commentService)
+                PostDetailView(post: post, service: container.commentService,
+                                safetyService: container.safetyService,
+                                moderationService: container.moderationService)
+            }
+            .toolbar {
+                if isModerator {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { isShowingModQueue = true } label: {
+                            Image(systemName: "shield")
+                        }
+                        .accessibilityLabel("Mod queue")
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingModQueue) {
+                NavigationStack {
+                    ModQueueView(service: container.moderationService)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Done") { isShowingModQueue = false }
+                            }
+                        }
+                }
+            }
+            .confirmationDialog(
+                "Mature content",
+                isPresented: Binding(
+                    get: { pendingMatureCommunity != nil },
+                    set: { if !$0 { pendingMatureCommunity = nil } }
+                ),
+                presenting: pendingMatureCommunity
+            ) { community in
+                Button("I'm 18 or older — Join") {
+                    Task { await model.toggleMembership(community) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { community in
+                Text("\(community.name) contains mature content meant for adults.")
             }
         }
         .searchable(text: $searchText, prompt: "Search Bro-hoods and posts")
         .onChange(of: searchText) { _, text in search.query(text) }
         .task { await model.load() }
+    }
+
+    /// Gates the mod queue entry point — true when at least one loaded
+    /// Bro-hood lists the current user as a moderator.
+    private var isModerator: Bool {
+        guard case .loaded(let communities) = model.state else { return false }
+        return communities.contains { $0.isModerator }
+    }
+
+    /// Routes a join/leave tap — mature, not-yet-joined Bro-hoods get an age
+    /// confirmation first; leaving or joining a non-mature Bro-hood is immediate.
+    private func requestJoin(_ community: Community) {
+        if community.isMature && !community.isJoined {
+            pendingMatureCommunity = community
+        } else {
+            Task { await model.toggleMembership(community) }
+        }
     }
 
     @ViewBuilder
@@ -57,7 +114,7 @@ struct CommunitiesView: View {
                 LazyVStack(spacing: Tokens.Spacing.md) {
                     ForEach(communities) { community in
                         CommunityRow(community: community) {
-                            Task { await model.toggleMembership(community) }
+                            requestJoin(community)
                         }
                     }
                 }

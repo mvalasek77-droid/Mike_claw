@@ -28,7 +28,7 @@ final class FeedViewModel {
         state = .loading
         do {
             let page = try await service.feed(sort: sort, cursor: nil)
-            state = page.posts.isEmpty ? .empty : .loaded(page.posts)
+            state = page.posts.isEmpty ? .empty : .loaded(Self.pinnedFirst(page.posts))
         } catch {
             BroLog.error(error, category: "feed")
             state = .error(Self.message(for: error))
@@ -39,7 +39,7 @@ final class FeedViewModel {
         // Keep current content visible during pull-to-refresh; swap on success.
         do {
             let page = try await service.feed(sort: sort, cursor: nil)
-            state = page.posts.isEmpty ? .empty : .loaded(page.posts)
+            state = page.posts.isEmpty ? .empty : .loaded(Self.pinnedFirst(page.posts))
             HapticsEngine.shared.play(.refreshDone)
         } catch {
             BroLog.error(error, category: "feed")
@@ -120,6 +120,13 @@ final class FeedViewModel {
             }
             HapticsEngine.shared.play(.error)
         }
+    }
+
+    /// Mod-pinned posts float to the top of their Bro-hood, stable otherwise.
+    private static func pinnedFirst(_ posts: [Post]) -> [Post] {
+        let pinned = posts.filter(\.isPinned)
+        let rest = posts.filter { !$0.isPinned }
+        return pinned + rest
     }
 
     private static func message(for error: Error) -> String {

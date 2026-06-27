@@ -5,6 +5,7 @@ import SwiftUI
 struct SearchResultsView: View {
     let state: SearchViewModel.State
     let onOpenPost: (Post) -> Void
+    let safetyService: SafetyService
 
     var body: some View {
         switch state {
@@ -32,7 +33,8 @@ struct SearchResultsView: View {
                         section("Posts") {
                             ForEach(results.posts) { post in
                                 PostCardView(post: post, onVote: { _ in },
-                                             onOpen: { onOpenPost(post) })
+                                             onOpen: { onOpenPost(post) },
+                                             safetyService: safetyService)
                             }
                         }
                     }

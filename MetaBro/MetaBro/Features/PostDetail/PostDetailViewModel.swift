@@ -13,7 +13,7 @@ final class PostDetailViewModel {
         case error(String)
     }
 
-    let post: Post
+    private(set) var post: Post
     private(set) var state: State = .loading
     private(set) var comments: [Comment] = []
     private var collapsed: Set<UUID> = []
@@ -24,10 +24,43 @@ final class PostDetailViewModel {
     }
 
     private let service: CommentService
+    private let moderationService: ModerationService
 
-    init(post: Post, service: CommentService) {
+    init(post: Post, service: CommentService, moderationService: ModerationService) {
         self.post = post
         self.service = service
+        self.moderationService = moderationService
+    }
+
+    /// Mods can pin/lock their own Bro-hood's posts.
+    var canModerate: Bool { post.community?.isModerator == true }
+
+    func togglePin() async {
+        let wasPinned = post.isPinned
+        post.isPinned.toggle()
+        HapticsEngine.shared.play(.selectionChanged)
+        do {
+            if post.isPinned { try await moderationService.pin(postID: post.id) }
+            else { try await moderationService.unpin(postID: post.id) }
+        } catch {
+            BroLog.error(error, category: "moderation")
+            post.isPinned = wasPinned
+            HapticsEngine.shared.play(.error)
+        }
+    }
+
+    func toggleLock() async {
+        let wasLocked = post.isLocked
+        post.isLocked.toggle()
+        HapticsEngine.shared.play(.selectionChanged)
+        do {
+            if post.isLocked { try await moderationService.lock(postID: post.id) }
+            else { try await moderationService.unlock(postID: post.id) }
+        } catch {
+            BroLog.error(error, category: "moderation")
+            post.isLocked = wasLocked
+            HapticsEngine.shared.play(.error)
+        }
     }
 
     func load() async {

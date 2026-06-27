@@ -3,11 +3,13 @@ import SwiftUI
 /// The Messages tab: a list of DM threads (1:1 and group), each opening a chat.
 struct ConversationListView: View {
     private let service: MessagingService
+    let safetyService: SafetyService
     @State private var model: ConversationListViewModel
     @State private var path: [Conversation] = []
 
-    init(service: MessagingService) {
+    init(service: MessagingService, safetyService: SafetyService) {
         self.service = service
+        self.safetyService = safetyService
         _model = State(initialValue: ConversationListViewModel(service: service))
     }
 
@@ -16,7 +18,7 @@ struct ConversationListView: View {
             content
                 .navigationTitle("Messages")
                 .navigationDestination(for: Conversation.self) { convo in
-                    ChatView(conversation: convo, service: service)
+                    ChatView(conversation: convo, service: service, safetyService: safetyService)
                 }
         }
         .task { await model.load() }

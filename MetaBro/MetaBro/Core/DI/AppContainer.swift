@@ -17,6 +17,8 @@ final class AppContainer {
     let friendsService: FriendsService
     let notificationsService: NotificationsService
     let pushNotificationService: PushNotificationService
+    let safetyService: SafetyService
+    let moderationService: ModerationService
 
     init(
         feedService: FeedService,
@@ -30,7 +32,9 @@ final class AppContainer {
         authService: AuthService,
         friendsService: FriendsService,
         notificationsService: NotificationsService,
-        pushNotificationService: PushNotificationService
+        pushNotificationService: PushNotificationService,
+        safetyService: SafetyService,
+        moderationService: ModerationService
     ) {
         self.feedService = feedService
         self.commentService = commentService
@@ -44,6 +48,8 @@ final class AppContainer {
         self.friendsService = friendsService
         self.notificationsService = notificationsService
         self.pushNotificationService = pushNotificationService
+        self.safetyService = safetyService
+        self.moderationService = moderationService
     }
 
     /// Resolves the dependency graph from configuration: a live backend when
@@ -87,7 +93,9 @@ final class AppContainer {
             authService: LiveAuthService(client: client),
             friendsService: LiveFriendsService(client: client),
             notificationsService: LiveNotificationsService(client: client),
-            pushNotificationService: LivePushNotificationService(client: client)
+            pushNotificationService: LivePushNotificationService(client: client),
+            safetyService: LiveSafetyService(client: client),
+            moderationService: LiveModerationService(client: client)
         )
     }
 
@@ -109,7 +117,9 @@ final class AppContainer {
             authService: MockAuthService(),
             friendsService: MockFriendsService(),
             notificationsService: MockNotificationsService(),
-            pushNotificationService: MockPushNotificationService()
+            pushNotificationService: MockPushNotificationService(),
+            safetyService: MockSafetyService(),
+            moderationService: MockModerationService()
         )
     }
 }

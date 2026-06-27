@@ -23,7 +23,8 @@ struct RootView: View {
                 .tabItem { Label(AppTab.create.title, systemImage: AppTab.create.systemImage) }
                 .tag(AppTab.create)
 
-            ConversationListView(service: container.messagingService)
+            ConversationListView(service: container.messagingService,
+                                  safetyService: container.safetyService)
                 .tabItem { Label(AppTab.messages.title, systemImage: AppTab.messages.systemImage) }
                 .tag(AppTab.messages)
 

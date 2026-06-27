@@ -9,9 +9,11 @@ struct ChatView: View {
     @State private var draft = ""
     @State private var isRecordingVoiceNote = false
     @FocusState private var inputFocused: Bool
+    let safetyService: SafetyService
 
-    init(conversation: Conversation, service: MessagingService) {
+    init(conversation: Conversation, service: MessagingService, safetyService: SafetyService) {
         _model = State(initialValue: ChatViewModel(conversation: conversation, service: service))
+        self.safetyService = safetyService
     }
 
     var body: some View {
@@ -30,6 +32,12 @@ struct ChatView: View {
                             .font(.caption2)
                             .foregroundStyle(.green)
                     }
+                }
+            }
+            if let partner = model.partner {
+                ToolbarItem(placement: .topBarTrailing) {
+                    SafetyMenu(user: partner, kind: .message, targetID: model.conversation.id,
+                               preview: model.messages.last?.text ?? "", service: safetyService)
                 }
             }
         }

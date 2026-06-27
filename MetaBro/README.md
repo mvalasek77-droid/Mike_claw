@@ -63,6 +63,13 @@ reply.**
   on the feed surfaces a granular, per-item-readable activity feed (friend
   requests, reactions, votes, comments, awards) with a live unread badge and
   mark-all-read.
+- ✅ **Safety & moderation** — a `SafetyMenu` (report/block/mute) on every post,
+  comment, and 1:1 chat header; a mod-only **mod queue** (shield icon in
+  Bro-hoods) to approve, remove, or ban from a Bro-hood's pending reports; a
+  mod-only pin/lock toolbar on the post detail screen (pinned posts float to
+  the top of the feed, locked threads disable the reply composer with an
+  inline notice). Mature Bro-hoods (`Community.isMature`) gate joining behind
+  a one-tap 18+ confirmation dialog.
 - ✅ **Live backend path** — every service has a `Live*` implementation over an
   `async/await` API client (bodies + retries + typed errors), a documented
   endpoint map (`API`), a `PostDTO` mapping layer, and a `BackendConfig` feature
@@ -94,6 +101,7 @@ MetaBro/
 │   ├── Search/          Debounced community + post search
 │   ├── Messages/        DM list + chat thread (receipts, typing)
 │   ├── Stories/         Story rail + full-screen viewer
+│   ├── Moderation/      Mod queue (approve/remove/ban)
 │   └── Profile/         Identity + Bro Cred + your posts
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests

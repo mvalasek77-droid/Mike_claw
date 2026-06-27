@@ -10,6 +10,32 @@ struct User: Identifiable, Codable, Hashable, Sendable {
     var broCred: Int            // combined post + comment karma
     var isOnline: Bool = false
     var lastActiveAt: Date? = nil
+
+    init(id: UUID, handle: String, displayName: String, avatarURL: URL?, broCred: Int,
+         isOnline: Bool = false, lastActiveAt: Date? = nil) {
+        self.id = id
+        self.handle = handle
+        self.displayName = displayName
+        self.avatarURL = avatarURL
+        self.broCred = broCred
+        self.isOnline = isOnline
+        self.lastActiveAt = lastActiveAt
+    }
+
+    // Custom decoding so older/server payloads missing `isOnline`/`lastActiveAt`
+    // (added after launch) fall back to their defaults instead of failing to
+    // decode — synthesized Decodable doesn't apply property defaults to
+    // missing keys, only the synthesized memberwise initializer does.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        handle = try container.decode(String.self, forKey: .handle)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        avatarURL = try container.decodeIfPresent(URL.self, forKey: .avatarURL)
+        broCred = try container.decode(Int.self, forKey: .broCred)
+        isOnline = try container.decodeIfPresent(Bool.self, forKey: .isOnline) ?? false
+        lastActiveAt = try container.decodeIfPresent(Date.self, forKey: .lastActiveAt)
+    }
 }
 
 struct Community: Identifiable, Codable, Hashable, Sendable {
@@ -19,6 +45,37 @@ struct Community: Identifiable, Codable, Hashable, Sendable {
     var memberCount: Int
     var iconURL: URL?
     var isJoined: Bool
+    /// You moderate this Bro-hood — gates the mod queue and pin/lock/ban actions.
+    var isModerator: Bool = false
+    /// 18+ content (e.g. heavy training injuries, NSFW recovery talk) — gates
+    /// a one-time age confirmation before joining.
+    var isMature: Bool = false
+
+    init(id: UUID, name: String, slug: String, memberCount: Int, iconURL: URL?,
+         isJoined: Bool, isModerator: Bool = false, isMature: Bool = false) {
+        self.id = id
+        self.name = name
+        self.slug = slug
+        self.memberCount = memberCount
+        self.iconURL = iconURL
+        self.isJoined = isJoined
+        self.isModerator = isModerator
+        self.isMature = isMature
+    }
+
+    // See User.init(from:) — `isModerator`/`isMature` postdate some payloads, so missing
+    // keys fall back to the default rather than failing to decode.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        slug = try container.decode(String.self, forKey: .slug)
+        memberCount = try container.decode(Int.self, forKey: .memberCount)
+        iconURL = try container.decodeIfPresent(URL.self, forKey: .iconURL)
+        isJoined = try container.decode(Bool.self, forKey: .isJoined)
+        isModerator = try container.decodeIfPresent(Bool.self, forKey: .isModerator) ?? false
+        isMature = try container.decodeIfPresent(Bool.self, forKey: .isMature) ?? false
+    }
 }
 
 struct Post: Identifiable, Codable, Hashable, Sendable {
@@ -36,6 +93,10 @@ struct Post: Identifiable, Codable, Hashable, Sendable {
     var reactions: ReactionSummary = .empty
     /// Reddit-style awards given to this post, keyed by kind.
     var awards: [AwardKind: Int] = [:]
+    /// Mod-pinned to the top of its Bro-hood.
+    var isPinned: Bool = false
+    /// Mod-locked — no new comments, existing ones stay visible.
+    var isLocked: Bool = false
 
     /// Distinguishes the two halves of the hybrid feed for the UI.
     var origin: Origin { community == nil ? .social : .community }
@@ -234,6 +295,50 @@ struct Conversation: Identifiable, Codable, Hashable, Sendable {
     var displayTitle: String {
         title ?? participants.first?.displayName ?? "Chat"
     }
+}
+
+// MARK: - Safety & moderation
+
+/// What's being reported, blocked-from, or moderated. Drives routing in the
+/// mod queue and which detail screen a tap on a report opens.
+enum ReportedContentKind: String, Codable, Hashable, Sendable {
+    case post, comment, profile, message
+}
+
+/// Reason picked in the report sheet — mirrors the standard Reddit/Facebook set.
+enum ReportReason: String, Codable, CaseIterable, Hashable, Sendable {
+    case spam, harassment, hatefulContent, violence, misinformation, other
+
+    var label: String {
+        switch self {
+        case .spam: "Spam"
+        case .harassment: "Harassment or bullying"
+        case .hatefulContent: "Hateful content"
+        case .violence: "Violence or dangerous behavior"
+        case .misinformation: "Misinformation"
+        case .other: "Something else"
+        }
+    }
+}
+
+enum ReportStatus: String, Codable, Hashable, Sendable {
+    case pending, removed, approved
+}
+
+/// A user-filed report, triaged by community mods in the queue.
+struct Report: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var kind: ReportedContentKind
+    var targetID: UUID
+    /// Short snippet of the reported content/profile, shown in the queue
+    /// without needing to fetch the full post/comment/message.
+    var preview: String
+    var reportedUser: User
+    var community: Community?
+    var reason: ReportReason
+    var details: String?
+    var createdAt: Date
+    var status: ReportStatus
 }
 
 // MARK: - Friends

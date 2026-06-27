@@ -8,6 +8,7 @@ struct CommentRowView: View {
     let onVote: (VoteValue) -> Void
     let onToggleCollapse: () -> Void
     let onReply: () -> Void
+    let safetyService: SafetyService
 
     private var comment: Comment { item.comment }
     private var indent: CGFloat { CGFloat(item.depth) * Tokens.Spacing.lg }
@@ -80,6 +81,9 @@ struct CommentRowView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(Tokens.Color.textSecondary)
+            Spacer()
+            SafetyMenu(user: comment.author, kind: .comment, targetID: comment.id,
+                       preview: comment.body, service: safetyService)
         }
     }
 }

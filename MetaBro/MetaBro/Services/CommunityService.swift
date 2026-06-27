@@ -27,7 +27,7 @@ actor MockCommunityService: CommunityService {
     static func seed() -> [Community] {
         [
             Community(id: UUID(), name: "Iron Bro-hood", slug: "fitness",
-                      memberCount: 182_000, iconURL: nil, isJoined: true),
+                      memberCount: 182_000, iconURL: nil, isJoined: true, isModerator: true),
             Community(id: UUID(), name: "Grill Masters", slug: "bbq",
                       memberCount: 96_400, iconURL: nil, isJoined: false),
             Community(id: UUID(), name: "Garage Gearheads", slug: "cars",
@@ -36,6 +36,8 @@ actor MockCommunityService: CommunityService {
                       memberCount: 58_700, iconURL: nil, isJoined: true),
             Community(id: UUID(), name: "Stoic Bros", slug: "philosophy",
                       memberCount: 22_300, iconURL: nil, isJoined: false),
+            Community(id: UUID(), name: "Heavy Recovery", slug: "injuries",
+                      memberCount: 8_900, iconURL: nil, isJoined: false, isMature: true),
         ]
     }
 }

@@ -141,6 +141,78 @@ struct LiveNotificationsService: NotificationsService {
     }
 }
 
+struct LiveSafetyService: SafetyService {
+    let client: APIClient
+
+    func report(kind: ReportedContentKind, targetID: UUID, preview: String,
+                reportedUser: User, community: Community?,
+                reason: ReportReason, details: String?) async throws {
+        let req = ReportRequest(kind: kind.rawValue, targetID: targetID,
+                                 reason: reason.rawValue, details: details)
+        try await client.send(API.report(req))
+    }
+
+    func block(_ user: User) async throws {
+        try await client.send(API.block(userID: user.id))
+    }
+
+    func unblock(_ user: User) async throws {
+        try await client.send(API.unblock(userID: user.id))
+    }
+
+    func blockedUsers() async throws -> [User] {
+        try await client.send(API.blockedUsers, as: [User].self)
+    }
+
+    func mute(_ user: User) async throws {
+        try await client.send(API.mute(userID: user.id))
+    }
+
+    func unmute(_ user: User) async throws {
+        try await client.send(API.unmute(userID: user.id))
+    }
+
+    func mutedUsers() async throws -> [User] {
+        try await client.send(API.mutedUsers, as: [User].self)
+    }
+}
+
+struct LiveModerationService: ModerationService {
+    let client: APIClient
+
+    func queue() async throws -> [Report] {
+        try await client.send(API.modQueue, as: [Report].self)
+    }
+
+    func approve(_ report: Report) async throws {
+        try await client.send(API.approveReport(id: report.id))
+    }
+
+    func remove(_ report: Report) async throws {
+        try await client.send(API.removeReport(id: report.id))
+    }
+
+    func pin(postID: UUID) async throws {
+        try await client.send(API.pinPost(id: postID))
+    }
+
+    func unpin(postID: UUID) async throws {
+        try await client.send(API.unpinPost(id: postID))
+    }
+
+    func lock(postID: UUID) async throws {
+        try await client.send(API.lockPost(id: postID))
+    }
+
+    func unlock(postID: UUID) async throws {
+        try await client.send(API.unlockPost(id: postID))
+    }
+
+    func ban(_ user: User, from community: Community) async throws {
+        try await client.send(API.banUser(BanRequest(userID: user.id, communityID: community.id)))
+    }
+}
+
 struct LivePushNotificationService: PushNotificationService {
     let client: APIClient
 

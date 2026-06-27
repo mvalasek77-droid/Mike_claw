@@ -7,26 +7,63 @@ struct PostDetailView: View {
     @State private var replyText = ""
     @State private var replyingTo: Comment?
     @FocusState private var composerFocused: Bool
+    let safetyService: SafetyService
 
-    init(post: Post, service: CommentService) {
-        _model = State(initialValue: PostDetailViewModel(post: post, service: service))
+    init(post: Post, service: CommentService, safetyService: SafetyService,
+         moderationService: ModerationService) {
+        _model = State(initialValue: PostDetailViewModel(post: post, service: service,
+                                                          moderationService: moderationService))
+        self.safetyService = safetyService
     }
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: Tokens.Spacing.lg) {
-                    PostCardView(post: model.post) { _ in }
+                    PostCardView(post: model.post, onVote: { _ in }, safetyService: safetyService)
                     Divider().overlay(Tokens.Color.separator)
                     threadContent
                 }
                 .padding(Tokens.Spacing.lg)
             }
-            composer
+            if model.post.isLocked {
+                lockedNotice
+            } else {
+                composer
+            }
         }
         .navigationTitle("Discussion")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if model.canModerate {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button { Task { await model.togglePin() } } label: {
+                            Label(model.post.isPinned ? "Unpin" : "Pin", systemImage: "pin")
+                        }
+                        Button { Task { await model.toggleLock() } } label: {
+                            Label(model.post.isLocked ? "Unlock" : "Lock", systemImage: "lock")
+                        }
+                    } label: {
+                        Image(systemName: "shield")
+                    }
+                    .accessibilityLabel("Mod actions")
+                }
+            }
+        }
         .task { await model.load() }
+    }
+
+    private var lockedNotice: some View {
+        HStack(spacing: Tokens.Spacing.sm) {
+            Image(systemName: "lock.fill")
+            Text("This thread is locked. No new comments.")
+                .font(Tokens.Typography.caption)
+        }
+        .foregroundStyle(Tokens.Color.textSecondary)
+        .frame(maxWidth: .infinity)
+        .padding(Tokens.Spacing.md)
+        .background(.bar)
     }
 
     @ViewBuilder
@@ -57,7 +94,8 @@ struct PostDetailView: View {
                         onToggleCollapse: {
                             withAnimation(Tokens.Motion.snappy) { model.toggleCollapse(item.id) }
                         },
-                        onReply: { startReply(to: item.comment) }
+                        onReply: { startReply(to: item.comment) },
+                        safetyService: safetyService
                     )
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
