@@ -156,10 +156,46 @@ struct MyProfileView: View {
         }
     }
 
+    /// "What you're worth tonight" — the lot's live demand dashboard.
+    private var worthCard: some View {
+        GlassCard(title: "What you're worth tonight", icon: "chart.line.uptrend.xyaxis", tint: Theme.gold) {
+            HStack(spacing: 12) {
+                worthStat("On the table", Money.compact(store.totalOnTable), Theme.gold)
+                worthStat("Highest bid", store.highestLiveBid > 0 ? Money.compact(store.highestLiveBid) : "—", Theme.rose)
+            }
+            HStack(spacing: 12) {
+                worthStat("Live bidders", "\(store.liveBidCount)", Theme.verify)
+                worthStat("Accepted", "\(store.acceptedCount)", Theme.success)
+            }
+            if store.isBoosted, let until = store.boostUntil {
+                HStack(spacing: 6) {
+                    Image(systemName: "bolt.fill").font(.system(size: 11, weight: .bold))
+                    Text("Boosted · bidders incoming ·").font(.system(size: 12, weight: .semibold))
+                    Text(timerInterval: Date.now...until, countsDown: true)
+                        .font(.system(size: 12, weight: .heavy, design: .rounded)).monospacedDigit()
+                }
+                .foregroundStyle(Theme.rose)
+            }
+        }
+    }
+
+    private func worthStat(_ label: String, _ value: String, _ tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label.uppercased()).font(.system(size: 9, weight: .bold, design: .rounded)).tracking(1)
+                .foregroundStyle(Theme.inkFaint)
+            Text(value).font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(tint)
+                .minimumScaleFactor(0.6).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
+    }
+
     // MARK: Woman stats
 
     private var womanStats: some View {
         VStack(spacing: 16) {
+            worthCard
             GlassCard(title: "Showcase score", icon: "rosette", tint: Theme.rose) {
                 HStack(spacing: 16) {
                     ScoreGauge(value: me.showcaseScore, range: 0...100, label: "Showcase", tint: Theme.rose, size: 124)

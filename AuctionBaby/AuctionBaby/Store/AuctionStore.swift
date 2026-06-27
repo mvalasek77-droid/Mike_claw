@@ -39,6 +39,13 @@ final class AuctionStore: ObservableObject {
     static let gildedBidCost = 250
     var activePendingBidCount: Int { outgoingBids.filter { $0.status == .pending }.count }
 
+    // MARK: Woman-side insights ("what you're worth")
+    private var livePending: [Bid] { incomingBids.filter { $0.status == .pending } }
+    var liveBidCount: Int { livePending.count }
+    var highestLiveBid: Int { livePending.map(\.amount).max() ?? 0 }
+    var totalOnTable: Int { livePending.map(\.amount).reduce(0, +) }
+    var acceptedCount: Int { incomingBids.filter { $0.status == .accepted }.count }
+
     /// The floor after blocks + filters are applied — what the bidder actually sees.
     var filteredFloor: [Profile] {
         floor.filter { !blockedIDs.contains($0.id) && filters.matches($0) }
@@ -192,8 +199,31 @@ final class AuctionStore: ObservableObject {
     func activateBoost() {
         boostUntil = Date().addingTimeInterval(Double(StoreKitService.boostMinutes) * 60)
         Haptics.success()
-        toastFlash("⚡️ Spotlight Boost live — top of the floor for \(StoreKitService.boostMinutes) min.")
+        toastFlash(role == .woman
+                   ? "⚡️ Spotlight Boost live — bidders are flocking to your lot."
+                   : "⚡️ Spotlight Boost live — top of the floor for \(StoreKitService.boostMinutes) min.")
+        if role == .woman { startBoostSummons() }
         save()
+    }
+
+    private var boostLoopActive = false
+
+    /// While a woman is boosted, bidders keep arriving — the visible payoff of
+    /// the Spotlight on the lot side.
+    private func startBoostSummons() {
+        guard !boostLoopActive else { return }
+        boostLoopActive = true
+        scheduleNextBoostSummon()
+    }
+
+    private func scheduleNextBoostSummon() {
+        guard isBoosted, role == .woman else { boostLoopActive = false; return }
+        after(Double.random(in: 7...13)) { [weak self] in
+            guard let self else { return }
+            guard self.isBoosted, self.role == .woman else { self.boostLoopActive = false; return }
+            self.summonBidder()
+            self.scheduleNextBoostSummon()
+        }
     }
 
     /// Demo-only top-up so the higher tiers are explorable without a sandbox
@@ -562,5 +592,7 @@ final class AuctionStore: ObservableObject {
         matches = snap.matches
         filters = snap.filters
         blockedIDs = Set(snap.blockedIDs)
+        // Resume the boost-summon loop if a boost survived relaunch.
+        if isBoosted, role == .woman { startBoostSummons() }
     }
 }

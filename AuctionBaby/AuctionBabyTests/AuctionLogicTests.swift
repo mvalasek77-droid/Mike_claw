@@ -315,6 +315,24 @@ final class AuctionLogicTests: XCTestCase {
         }
     }
 
+    // MARK: Woman-side insights
+
+    @MainActor
+    func testWorthInsightsReflectInbox() {
+        let store = freshStore()
+        store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
+                       hue: 0.9, startingBid: 200, prompts: [], interests: [])
+        let pendingBefore = store.liveBidCount
+        XCTAssertGreaterThan(pendingBefore, 0)
+        XCTAssertEqual(store.totalOnTable, store.incomingBids.filter { $0.status == .pending }.map(\.amount).reduce(0, +))
+        XCTAssertEqual(store.highestLiveBid, store.incomingBids.filter { $0.status == .pending }.map(\.amount).max() ?? 0)
+        // Accepting moves a bid out of "live" and into accepted.
+        let bid = store.incomingBids.first { $0.status == .pending }!
+        store.accept(bid)
+        XCTAssertEqual(store.liveBidCount, pendingBefore - 1)
+        XCTAssertEqual(store.acceptedCount, 1)
+    }
+
     // MARK: Filters & safety
 
     func testVerifiedOnlyFilterExcludesUnverifiedAndCopycats() {
