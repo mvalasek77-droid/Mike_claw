@@ -173,6 +173,6 @@ struct MockNotificationsServiceTests {
         let service = MockNotificationsService()
         try await service.markAllRead()
         let after = try await service.notifications()
-        #expect(after.allSatisfy(\.isRead))
+        #expect(after.allSatisfy { $0.isRead })
     }
 }
