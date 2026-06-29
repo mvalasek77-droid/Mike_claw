@@ -498,3 +498,75 @@ struct GroupDraft: Sendable {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !members.isEmpty
     }
 }
+
+// MARK: - Marketplace (Bro-ket)
+
+enum ListingCategory: String, Codable, CaseIterable, Hashable, Sendable {
+    case gear, electronics, vehicles, homeAndGarden, sportsAndOutdoors, free, other
+
+    var label: String {
+        switch self {
+        case .gear: "Gear"
+        case .electronics: "Electronics"
+        case .vehicles: "Vehicles"
+        case .homeAndGarden: "Home & Garden"
+        case .sportsAndOutdoors: "Sports & Outdoors"
+        case .free: "Free"
+        case .other: "Other"
+        }
+    }
+}
+
+/// A buy/sell/trade listing in the Bro-ket. Contacting the seller sends an
+/// in-app message rather than exposing contact info directly.
+struct Listing: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var title: String
+    var description: String
+    var price: Double
+    var category: ListingCategory
+    var seller: User
+    var imageURL: URL?
+    var createdAt: Date
+    var isSold: Bool = false
+
+    init(id: UUID, title: String, description: String, price: Double, category: ListingCategory,
+         seller: User, imageURL: URL?, createdAt: Date, isSold: Bool = false) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.price = price
+        self.category = category
+        self.seller = seller
+        self.imageURL = imageURL
+        self.createdAt = createdAt
+        self.isSold = isSold
+    }
+
+    // See User.init(from:) — `isSold` postdates some payloads, so a missing
+    // key falls back to `false` rather than failing to decode.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        description = try container.decode(String.self, forKey: .description)
+        price = try container.decode(Double.self, forKey: .price)
+        category = try container.decode(ListingCategory.self, forKey: .category)
+        seller = try container.decode(User.self, forKey: .seller)
+        imageURL = try container.decodeIfPresent(URL.self, forKey: .imageURL)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        isSold = try container.decodeIfPresent(Bool.self, forKey: .isSold) ?? false
+    }
+}
+
+/// What the create-listing sheet hands to the service.
+struct ListingDraft: Sendable {
+    var title: String
+    var description: String
+    var price: Double
+    var category: ListingCategory
+
+    var isValid: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && price >= 0
+    }
+}

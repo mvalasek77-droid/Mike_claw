@@ -11,6 +11,7 @@ struct CommunitiesView: View {
     @State private var isShowingModQueue = false
     @State private var isShowingEvents = false
     @State private var isShowingGroups = false
+    @State private var isShowingMarketplace = false
     @State private var pendingMatureCommunity: Community?
 
     init(container: AppContainer) {
@@ -48,6 +49,12 @@ struct CommunitiesView: View {
                     }
                     .accessibilityLabel("Groups")
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { isShowingMarketplace = true } label: {
+                        Image(systemName: "cart")
+                    }
+                    .accessibilityLabel("Bro-ket marketplace")
+                }
                 if isModerator {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { isShowingModQueue = true } label: {
@@ -72,6 +79,9 @@ struct CommunitiesView: View {
             }
             .sheet(isPresented: $isShowingGroups) {
                 GroupsView(container: container)
+            }
+            .sheet(isPresented: $isShowingMarketplace) {
+                MarketplaceView(container: container)
             }
             .confirmationDialog(
                 "Mature content",

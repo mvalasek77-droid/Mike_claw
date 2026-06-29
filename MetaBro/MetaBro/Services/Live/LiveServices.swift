@@ -291,6 +291,28 @@ struct LiveGroupService: GroupService {
     }
 }
 
+struct LiveMarketplaceService: MarketplaceService {
+    let client: APIClient
+
+    func listings() async throws -> [Listing] {
+        try await client.send(API.listings, as: [Listing].self)
+    }
+
+    func create(_ draft: ListingDraft) async throws -> Listing {
+        let req = CreateListingRequest(title: draft.title, description: draft.description,
+                                       price: draft.price, category: draft.category.rawValue)
+        return try await client.send(API.createListing(req), as: Listing.self)
+    }
+
+    func setSold(listingID: UUID, sold: Bool) async throws {
+        try await client.send(API.setListingSold(listingID: listingID, sold: sold))
+    }
+
+    func contactSeller(listingID: UUID, message: String) async throws {
+        try await client.send(API.contactSeller(listingID: listingID, .init(message: message)))
+    }
+}
+
 struct LivePushNotificationService: PushNotificationService {
     let client: APIClient
 

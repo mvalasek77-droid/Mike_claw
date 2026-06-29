@@ -84,6 +84,10 @@ reply.**
   from public Bro-hoods: create a group from your confirmed friends, post to
   its own private feed, and like posts with optimistic rollback. Membership is
   by invite, not open discovery/join.
+- ✅ **Marketplace (Bro-ket)** — buy/sell/trade listings (cart icon in
+  Bro-hoods): post a listing with a category and price, browse with a
+  category filter, and message the seller in-app — no contact info is ever
+  exposed.
 - ✅ **Live backend path** — every service has a `Live*` implementation over an
   `async/await` API client (bodies + retries + typed errors), a documented
   endpoint map (`API`), a `PostDTO` mapping layer, and a `BackendConfig` feature
@@ -119,6 +123,7 @@ MetaBro/
 │   ├── Moderation/      Mod queue (approve/remove/ban)
 │   ├── Events/          Create/RSVP real-world meetups + calendar export
 │   ├── Groups/          Private friend groups + group feeds
+│   ├── Marketplace/     Bro-ket: buy/sell/trade listings + message seller
 │   └── Profile/         Identity + Bro Cred + your posts + saved posts
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests

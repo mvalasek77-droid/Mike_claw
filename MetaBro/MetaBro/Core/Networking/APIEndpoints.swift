@@ -184,6 +184,19 @@ enum API {
         let path = "groups/\(groupID.uuidString)/posts/\(postID.uuidString)/like"
         return liked ? try .post(path) : .delete(path)
     }
+
+    // MARK: Marketplace (Bro-ket)
+    static let listings = Endpoint.get("listings")
+    static func createListing(_ body: CreateListingRequest) throws -> Endpoint {
+        try .post("listings", body: body)
+    }
+    static func setListingSold(listingID: UUID, sold: Bool) throws -> Endpoint {
+        let path = "listings/\(listingID.uuidString)/sold"
+        return sold ? try .post(path) : .delete(path)
+    }
+    static func contactSeller(listingID: UUID, _ body: ContactSellerRequest) throws -> Endpoint {
+        try .post("listings/\(listingID.uuidString)/contact", body: body)
+    }
 }
 
 // MARK: - Request bodies
@@ -222,6 +235,8 @@ struct CreateEventRequest: Encodable {
 struct RSVPRequest: Encodable { var status: String }
 struct CreateGroupRequest: Encodable { var name: String; var description: String; var memberIDs: [UUID] }
 struct CreateGroupPostRequest: Encodable { var body: String }
+struct CreateListingRequest: Encodable { var title: String; var description: String; var price: Double; var category: String }
+struct ContactSellerRequest: Encodable { var message: String }
 struct BugReportRequest: Encodable {
     var summary: String
     var details: String
