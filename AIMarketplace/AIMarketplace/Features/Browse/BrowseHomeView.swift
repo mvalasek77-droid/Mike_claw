@@ -57,6 +57,11 @@ struct BrowseHomeView: View {
                     } else {
                         pendingProposalsRail
                         RankedRow(title: "Top 10 Today", items: store.topTen) { activeSheet = .detail($0) }
+                        // Fresh content high up so newly-added / just-published
+                        // titles are seen before they earn the purchases that
+                        // would float them into the Top 10.
+                        MediaRow(title: "Just Published", subtitle: "Fresh off the AI Editor",
+                                 items: store.newReleases) { activeSheet = .detail($0) }
                         MediaRow(title: "Trending Now", subtitle: "Climbing the charts",
                                  items: store.trending) { activeSheet = .detail($0) }
                         MediaRow(title: "Scout Picks",
@@ -66,8 +71,6 @@ struct BrowseHomeView: View {
                         MediaRow(title: "AI Editor Originals",
                                  subtitle: "Produced by the Editor to fill the catalogue",
                                  items: store.editorOriginals) { activeSheet = .detail($0) }
-                        MediaRow(title: "Just Published", subtitle: "Fresh off the AI Editor",
-                                 items: store.newReleases) { activeSheet = .detail($0) }
                         ForEach(rows) { type in
                             MediaRow(title: "AI \(type.plural)",
                                      items: store.items(of: type)) { activeSheet = .detail($0) }

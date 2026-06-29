@@ -1694,6 +1694,15 @@ final class MarketplaceStore: ObservableObject {
         item.isEditorOriginal && item.commercialScore < AIReviewResult.threshold
     }
 
+    /// A freshly-added title the buyer hasn't had a chance to discover yet —
+    /// added within the last 7 days and not yet bought by anyone. Drives the
+    /// "NEW" badge so admin-added / just-published titles are visible before
+    /// they accumulate the purchases that would land them in the Top 10.
+    func isNew(_ item: MediaItem) -> Bool {
+        guard item.purchases == 0, !isComingSoon(item) else { return false }
+        return item.addedAt.timeIntervalSinceNow > -7 * 24 * 60 * 60
+    }
+
     /// Scout's daily cycle. Composes PROPOSALS — never produces unilaterally.
     /// Each proposal carries the recipe, masters, budget (tokens + USD), and
     /// which provider it'd use; the admin reviews and authorizes in-app.
