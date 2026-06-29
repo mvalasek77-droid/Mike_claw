@@ -22,6 +22,7 @@ final class AppContainer {
     let savedService: SavedService
     let historyService: HistoryService
     let eventService: EventService
+    let groupService: GroupService
 
     init(
         feedService: FeedService,
@@ -40,7 +41,8 @@ final class AppContainer {
         moderationService: ModerationService,
         savedService: SavedService,
         historyService: HistoryService,
-        eventService: EventService
+        eventService: EventService,
+        groupService: GroupService
     ) {
         self.feedService = feedService
         self.commentService = commentService
@@ -59,6 +61,7 @@ final class AppContainer {
         self.savedService = savedService
         self.historyService = historyService
         self.eventService = eventService
+        self.groupService = groupService
     }
 
     /// Resolves the dependency graph from configuration: a live backend when
@@ -107,7 +110,8 @@ final class AppContainer {
             moderationService: LiveModerationService(client: client),
             savedService: LiveSavedService(client: client),
             historyService: LiveHistoryService(client: client),
-            eventService: LiveEventService(client: client)
+            eventService: LiveEventService(client: client),
+            groupService: LiveGroupService(client: client)
         )
     }
 
@@ -134,7 +138,8 @@ final class AppContainer {
             moderationService: MockModerationService(),
             savedService: MockSavedService(feedService: feed),
             historyService: MockHistoryService(),
-            eventService: MockEventService()
+            eventService: MockEventService(),
+            groupService: MockGroupService()
         )
     }
 }

@@ -265,6 +265,32 @@ struct LiveEventService: EventService {
     }
 }
 
+struct LiveGroupService: GroupService {
+    let client: APIClient
+
+    func myGroups() async throws -> [FriendGroup] {
+        try await client.send(API.groups, as: [FriendGroup].self)
+    }
+
+    func create(_ draft: GroupDraft) async throws -> FriendGroup {
+        let req = CreateGroupRequest(name: draft.name, description: draft.description,
+                                     memberIDs: draft.members.map(\.id))
+        return try await client.send(API.createGroup(req), as: FriendGroup.self)
+    }
+
+    func posts(in groupID: UUID) async throws -> [GroupPost] {
+        try await client.send(API.groupPosts(groupID: groupID), as: [GroupPost].self)
+    }
+
+    func createPost(in groupID: UUID, body: String) async throws -> GroupPost {
+        try await client.send(API.createGroupPost(groupID: groupID, .init(body: body)), as: GroupPost.self)
+    }
+
+    func setLiked(groupID: UUID, postID: UUID, liked: Bool) async throws {
+        try await client.send(API.likeGroupPost(groupID: groupID, postID: postID, liked: liked))
+    }
+}
+
 struct LivePushNotificationService: PushNotificationService {
     let client: APIClient
 

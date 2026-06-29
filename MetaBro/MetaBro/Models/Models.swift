@@ -462,3 +462,39 @@ struct EventDraft: Sendable {
         !location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
+
+// MARK: - Groups
+
+/// A private friend group, distinct from a public Bro-hood: membership is by
+/// invite from your confirmed friends, not open discovery/join.
+struct FriendGroup: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var name: String
+    var description: String
+    var members: [User]
+    var createdBy: User
+
+    var memberCount: Int { members.count }
+}
+
+/// A post inside a group's private feed — intentionally simpler than the
+/// Bro-hood/social `Post` (no votes/reactions/awards): a like and a body.
+struct GroupPost: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var author: User
+    var body: String
+    var createdAt: Date
+    var likeCount: Int
+    var likedByMe: Bool
+}
+
+/// What the create-group sheet hands to the service.
+struct GroupDraft: Sendable {
+    var name: String
+    var description: String
+    var members: [User]
+
+    var isValid: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !members.isEmpty
+    }
+}

@@ -10,6 +10,7 @@ struct CommunitiesView: View {
     @State private var path: [Post] = []
     @State private var isShowingModQueue = false
     @State private var isShowingEvents = false
+    @State private var isShowingGroups = false
     @State private var pendingMatureCommunity: Community?
 
     init(container: AppContainer) {
@@ -41,6 +42,12 @@ struct CommunitiesView: View {
                     }
                     .accessibilityLabel("Events")
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { isShowingGroups = true } label: {
+                        Image(systemName: "person.3.sequence")
+                    }
+                    .accessibilityLabel("Groups")
+                }
                 if isModerator {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { isShowingModQueue = true } label: {
@@ -62,6 +69,9 @@ struct CommunitiesView: View {
             }
             .sheet(isPresented: $isShowingEvents) {
                 EventsView(container: container)
+            }
+            .sheet(isPresented: $isShowingGroups) {
+                GroupsView(container: container)
             }
             .confirmationDialog(
                 "Mature content",

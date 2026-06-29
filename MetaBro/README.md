@@ -80,6 +80,10 @@ reply.**
   (Going/Interested/Not going) with optimistic attendee-count updates and
   rollback, upcoming-then-past ordering, and a one-tap "Add to calendar"
   via `EventKit`.
+- ✅ **Groups** — private friend circles (person-icon in Bro-hoods), distinct
+  from public Bro-hoods: create a group from your confirmed friends, post to
+  its own private feed, and like posts with optimistic rollback. Membership is
+  by invite, not open discovery/join.
 - ✅ **Live backend path** — every service has a `Live*` implementation over an
   `async/await` API client (bodies + retries + typed errors), a documented
   endpoint map (`API`), a `PostDTO` mapping layer, and a `BackendConfig` feature
@@ -114,6 +118,7 @@ MetaBro/
 │   ├── Stories/         Story rail + full-screen viewer
 │   ├── Moderation/      Mod queue (approve/remove/ban)
 │   ├── Events/          Create/RSVP real-world meetups + calendar export
+│   ├── Groups/          Private friend groups + group feeds
 │   └── Profile/         Identity + Bro Cred + your posts + saved posts
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests

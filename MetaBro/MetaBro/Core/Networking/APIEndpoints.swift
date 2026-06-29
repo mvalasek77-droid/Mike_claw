@@ -168,6 +168,22 @@ enum API {
     static func rsvp(eventID: UUID, _ body: RSVPRequest) throws -> Endpoint {
         try .post("events/\(eventID.uuidString)/rsvp", body: body)
     }
+
+    // MARK: Groups
+    static let groups = Endpoint.get("groups")
+    static func createGroup(_ body: CreateGroupRequest) throws -> Endpoint {
+        try .post("groups", body: body)
+    }
+    static func groupPosts(groupID: UUID) -> Endpoint {
+        .get("groups/\(groupID.uuidString)/posts")
+    }
+    static func createGroupPost(groupID: UUID, _ body: CreateGroupPostRequest) throws -> Endpoint {
+        try .post("groups/\(groupID.uuidString)/posts", body: body)
+    }
+    static func likeGroupPost(groupID: UUID, postID: UUID, liked: Bool) throws -> Endpoint {
+        let path = "groups/\(groupID.uuidString)/posts/\(postID.uuidString)/like"
+        return liked ? try .post(path) : .delete(path)
+    }
 }
 
 // MARK: - Request bodies
@@ -204,6 +220,8 @@ struct CreateEventRequest: Encodable {
     var startDate: Date
 }
 struct RSVPRequest: Encodable { var status: String }
+struct CreateGroupRequest: Encodable { var name: String; var description: String; var memberIDs: [UUID] }
+struct CreateGroupPostRequest: Encodable { var body: String }
 struct BugReportRequest: Encodable {
     var summary: String
     var details: String
