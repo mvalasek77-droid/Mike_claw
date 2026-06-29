@@ -22,6 +22,15 @@ struct MediaCard: View {
                     } else {
                         ScoreBadge(score: item.commercialScore, compact: true).padding(6)
                     }
+                    // NEW badge (top-leading so it never overlaps the score
+                    // badge top-trailing). Makes a freshly-added title pop
+                    // before it earns the purchases that float it up the charts.
+                    if store.isNew(item) {
+                        Text("NEW").font(.system(size: 8, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.black).padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(Capsule().fill(Theme.accent)).padding(6)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    }
                     if store.owns(item) {
                         ownedTag.padding(6).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                     }
