@@ -6,6 +6,7 @@ struct IncomingBidsView: View {
     @EnvironmentObject private var store: AuctionStore
     @State private var detail: Bid?
     @State private var showSummon = false
+    @State private var showActivity = false
 
     private var pending: [Bid] {
         store.incomingBids.filter { $0.status == .pending }
@@ -38,6 +39,9 @@ struct IncomingBidsView: View {
             .background(AppBackground())
             .navigationTitle("Your Bids")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    ActivityBell(isPresented: $showActivity)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button { store.summonBidder() } label: { Label("Summon a bidder", systemImage: "person.badge.plus") }
@@ -51,6 +55,7 @@ struct IncomingBidsView: View {
                 SuitorDetailView(bid: bid).presentationDetents([.large])
                     .presentationBackground(.ultraThinMaterial)
             }
+            .sheet(isPresented: $showActivity) { ActivityView() }
         }
     }
 

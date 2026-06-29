@@ -315,6 +315,29 @@ final class AuctionLogicTests: XCTestCase {
         }
     }
 
+    // MARK: Activity feed
+
+    @MainActor
+    func testAcceptingLogsActivity() {
+        let store = freshStore()
+        store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
+                       hue: 0.9, startingBid: 200, prompts: [], interests: [])
+        let countBefore = store.activity.count
+        let bid = store.incomingBids.first { $0.status == .pending }!
+        store.accept(bid)
+        XCTAssertGreaterThan(store.activity.count, countBefore)
+        XCTAssertEqual(store.activity.first?.kind, .bidAccepted)
+    }
+
+    @MainActor
+    func testActivityIsCappedAndNewestFirst() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        for _ in 0..<70 { store.verifyMe(); store.activateBoost() } // generate churn
+        XCTAssertLessThanOrEqual(store.activity.count, 60)
+    }
+
     // MARK: Woman-side insights
 
     @MainActor

@@ -26,6 +26,14 @@ final class AuctionStore: ObservableObject {
     @Published var toast: String?
     @Published var filters = FilterPreferences()
     @Published var blockedIDs: Set<UUID> = []
+    @Published var activity: [ActivityEvent] = []
+    var hasActivity: Bool { !activity.isEmpty }
+
+    /// Append an Activity-feed entry (capped, newest first).
+    private func log(_ kind: ActivityKind, _ text: String) {
+        activity.insert(ActivityEvent(kind: kind, text: text), at: 0)
+        if activity.count > 60 { activity.removeLast(activity.count - 60) }
+    }
     /// Drives the full-screen "SOLD!" match celebration. Set when a bid is
     /// accepted; cleared when the overlay is dismissed.
     @Published var celebration: MatchCelebration?
@@ -119,6 +127,7 @@ final class AuctionStore: ObservableObject {
         boostUntil = nil
         filters = FilterPreferences()
         blockedIDs = []
+        activity = []
         store.removeObject(forKey: Self.key)
     }
 
@@ -205,6 +214,7 @@ final class AuctionStore: ObservableObject {
                    ? "⚡️ Spotlight Boost live — bidders are flocking to your lot."
                    : "⚡️ Spotlight Boost live — top of the floor for \(StoreKitService.boostMinutes) min.")
         if role == .woman { startBoostSummons() }
+        log(.boost, "Spotlight Boost activated.")
         save()
     }
 
@@ -263,6 +273,7 @@ final class AuctionStore: ObservableObject {
                    : "Bid accepted. Invite sent to \(accepted.man.name).")
         celebrate(with: accepted.man, amount: accepted.amount,
                   copycat: accepted.onCopycat, masterpiece: accepted.qualifiesForMasterpiece)
+        log(.bidAccepted, "You accepted \(accepted.man.name)'s \(Money.compact(accepted.amount)) bid.")
         save()
         scheduleSuitorReply(matchID: match.id)
     }
@@ -273,6 +284,7 @@ final class AuctionStore: ObservableObject {
         me.verified = true
         Haptics.success()
         toastFlash("You're verified ✓ — bidders trust a real face.")
+        log(.verified, "You're now identity verified.")
         save()
     }
 
@@ -307,6 +319,7 @@ final class AuctionStore: ObservableObject {
         Haptics.commit()
         toastFlash(trillionaire ? "A Trillionaire just bid \(Money.compact(amount))."
                                 : "\(man.name) bid \(Money.compact(amount)).")
+        log(.bidReceived, "\(man.name) bid \(Money.compact(amount))\(trillionaire ? " — a Trillionaire!" : ".")")
         save()
     }
 
@@ -390,6 +403,7 @@ final class AuctionStore: ObservableObject {
             closeMatch(idx)
             Haptics.success()
             toastFlash("✦ TRILLIONAIRE VERIFIED — she confirmed your $9,999.")
+            log(.trillionaire, "You're a verified Trillionaire — \(bid.woman.name) confirmed your $9,999.")
             save()
             return
         }
@@ -398,6 +412,7 @@ final class AuctionStore: ObservableObject {
         Haptics.success()
         toastFlash(paid ? "Review posted. Your credit just went up."
                         : "Review posted. Paying short dented your credit.")
+        log(.reviewReceived, "\(bid.woman.name) reviewed your date.")
         save()
     }
 
@@ -426,10 +441,12 @@ final class AuctionStore: ObservableObject {
             matches[idx].bid.man.trillionaireVerified = true
             Haptics.success()
             toastFlash("✦ MASTERPIECE minted. A verified Trillionaire paid in full.")
+            log(.masterpiece, "✦ Masterpiece minted by \(bid.man.name).")
         } else {
             Haptics.commit()
             toastFlash(paid ? "Review posted. He paid in full."
                             : "Review posted. Flagged as a deadbeat.")
+            log(.reviewReceived, "\(bid.man.name) reviewed your date.")
         }
         closeMatch(idx)
         save()
@@ -489,9 +506,11 @@ final class AuctionStore: ObservableObject {
                 self.toastFlash("\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid!")
                 self.celebrate(with: bid.woman, amount: bid.amount,
                                copycat: bid.onCopycat, masterpiece: bid.qualifiesForMasterpiece)
+                self.log(.bidAccepted, "\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid.")
             } else {
                 Haptics.warning()
                 self.toastFlash("\(bid.woman.name) passed. Bid higher or build your reputation.")
+                self.log(.bidDeclined, "\(bid.woman.name) passed on your \(Money.compact(bid.amount)) bid.")
             }
             self.save()
         }
@@ -568,13 +587,14 @@ final class AuctionStore: ObservableObject {
         var matches: [Match]
         var filters: FilterPreferences
         var blockedIDs: [UUID]
+        var activity: [ActivityEvent]?
     }
 
     private func save() {
         let snap = Snapshot(role: role, me: me, wallet: wallet, earnings: earnings,
                             boostUntil: boostUntil, floor: floor, incomingBids: incomingBids,
                             outgoingBids: outgoingBids, matches: matches,
-                            filters: filters, blockedIDs: Array(blockedIDs))
+                            filters: filters, blockedIDs: Array(blockedIDs), activity: activity)
         if let data = try? JSONEncoder().encode(snap) {
             store.set(data, forKey: Self.key)
         }
@@ -594,6 +614,7 @@ final class AuctionStore: ObservableObject {
         matches = snap.matches
         filters = snap.filters
         blockedIDs = Set(snap.blockedIDs)
+        activity = snap.activity ?? []
         // Resume the boost-summon loop if a boost survived relaunch.
         if isBoosted, role == .woman { startBoostSummons() }
     }

@@ -7,6 +7,7 @@ struct AuctionFeedView: View {
     @EnvironmentObject private var store: AuctionStore
     @State private var bidTarget: Profile?
     @State private var showFilters = false
+    @State private var showActivity = false
 
     private var lots: [Profile] { store.filteredFloor.filter { $0.id != store.headliner?.id } }
 
@@ -39,6 +40,9 @@ struct AuctionFeedView: View {
             .navigationTitle("The Floor")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    ActivityBell(isPresented: $showActivity)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showFilters = true } label: {
                         ZStack(alignment: .topTrailing) {
@@ -66,6 +70,7 @@ struct AuctionFeedView: View {
             .sheet(isPresented: $showFilters) {
                 FiltersView().presentationDetents([.large])
             }
+            .sheet(isPresented: $showActivity) { ActivityView() }
         }
     }
 
