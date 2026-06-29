@@ -1522,9 +1522,29 @@ struct CutsceneOverlay: View {
                 .ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(panel.speaker ?? "THE ASCENDANT")
-                        .font(.system(size: 11, weight: .heavy))
-                        .foregroundStyle(Color(red: 1, green: 0.32, blue: 0.55))
+                    // FF-style speaker row: a portrait bust + nameplate for a
+                    // character; just a title for the narrator.
+                    HStack(spacing: 6) {
+                        if let speaker = panel.speaker {
+                            let tint = Self.speakerColor(speaker)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(LinearGradient(colors: [tint, tint.opacity(0.4)],
+                                                     startPoint: .top, endPoint: .bottom))
+                                .frame(width: 34, height: 34)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(.white.opacity(0.5), lineWidth: 1))
+                                .overlay(Text(String(speaker.prefix(1)))
+                                    .font(.system(size: 20, weight: .black, design: .rounded))
+                                    .foregroundStyle(.white))
+                            Text(speaker)
+                                .font(.system(size: 12, weight: .heavy))
+                                .foregroundStyle(tint)
+                        } else {
+                            Text("THE ASCENDANT")
+                                .font(.system(size: 11, weight: .heavy))
+                                .foregroundStyle(Color(red: 1, green: 0.32, blue: 0.55))
+                        }
+                        Spacer(minLength: 0)
+                    }
                     Text(panel.text)
                         .font(.system(size: 11))
                         .foregroundStyle(.white)
@@ -1545,6 +1565,16 @@ struct CutsceneOverlay: View {
                 }
                 .padding(8)
             }
+        }
+    }
+
+    /// A nameplate/portrait tint per speaker (warm gold for the unknown).
+    static func speakerColor(_ speaker: String) -> Color {
+        switch speaker.uppercased() {
+        case "NYRA":     return Color(red: 0.85, green: 0.20, blue: 0.45)
+        case "TITUS":    return Color(red: 0.85, green: 0.85, blue: 0.92)
+        case "THE PIT":  return Color(red: 0.95, green: 0.45, blue: 0.12)
+        default:         return Color(red: 0.95, green: 0.78, blue: 0.30)
         }
     }
 }
