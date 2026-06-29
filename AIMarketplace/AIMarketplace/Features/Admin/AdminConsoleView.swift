@@ -47,6 +47,7 @@ struct AdminConsoleView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     errorMonitorCard
+                    floatStatusCard
                     automationCard
                     filmProductionCard
                     moderationCard
@@ -70,6 +71,7 @@ struct AdminConsoleView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Lock") { store.lockAdmin(); dismiss() } }
             }
         }
+        .task { await store.refreshFloatStatus() }
         .sheet(item: $activeSheet) { which in
             switch which {
             case .edit(let item): AdminEditView(original: item)
@@ -417,6 +419,43 @@ struct AdminConsoleView: View {
     /// Quick access to the owed-creators queue. After an NSF or any other
     /// failed transfer the creator is owed but unpaid — this is where you
     /// fund them manually once the platform float is restored.
+    /// Live platform-float status. Green when the Stripe balance is at/above
+    /// the buffer; amber when a top-up is needed. For accounts where Stripe's
+    /// Top-ups API isn't available (e.g. Canada), it spells out that funding
+    /// is manual via the Stripe Dashboard rather than promising an auto-pull.
+    @ViewBuilder
+    private var floatStatusCard: some View {
+        if let f = store.floatStatus {
+            let C = f.currency.uppercased()
+            let tint: Color = f.needsTopUp ? Theme.warning : Theme.success
+            GlassCard(title: "Payout float", icon: f.needsTopUp ? "exclamationmark.triangle.fill" : "checkmark.seal.fill", tint: tint) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(String(format: "%@ %.2f", C, f.availableUSD))
+                            .font(.system(size: 24, weight: .heavy, design: .rounded)).foregroundStyle(Theme.ink)
+                        Text(String(format: "/ %@ %.2f buffer", C, f.bufferUSD))
+                            .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        Spacer()
+                    }
+                    if f.needsTopUp {
+                        Text(String(format: "Float low — add %@ %.2f to cover creator payouts.", C, f.topUpNeededUSD))
+                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.warning)
+                        Text(f.autoTopUp
+                             ? "Your configured bank source will auto-pull this on the next cron run."
+                             : "Add funds manually: Stripe Dashboard → Balance → Add to balance. Automatic top-ups are off because Stripe's Top-ups API isn't available for this account's country/currency.")
+                            .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    } else {
+                        Text("Float is healthy — creator transfers are covered.")
+                            .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Text(String(format: "Today: %d sale%@ · %@ %.2f paid to creators",
+                                f.salesTodayCount, f.salesTodayCount == 1 ? "" : "s", C, f.salesTodayUSD))
+                        .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+    }
+
     private var payoutsCard: some View {
         GlassCard(title: "Creator payouts", icon: "banknote.fill", tint: Theme.warning) {
             VStack(alignment: .leading, spacing: 8) {

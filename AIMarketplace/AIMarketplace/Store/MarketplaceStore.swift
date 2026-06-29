@@ -1157,6 +1157,40 @@ final class MarketplaceStore: ObservableObject {
         }
     }
 
+    /// Platform float snapshot from the Worker's GET /payouts/funding.
+    /// `autoTopUp` is false when Stripe Top-ups aren't configured / aren't
+    /// supported for the account's country (e.g. Canada) — in which case the
+    /// operator funds the float manually in the Stripe Dashboard.
+    struct FloatStatus: Codable, Hashable {
+        var currency: String
+        var availableUSD: Double
+        var bufferUSD: Double
+        var topUpNeededUSD: Double
+        var autoTopUp: Bool
+        var salesTodayCount: Int
+        var salesTodayUSD: Double
+
+        var needsTopUp: Bool { topUpNeededUSD > 0.005 }
+    }
+
+    /// Last-fetched platform float status, shown in the Admin console banner.
+    @Published var floatStatus: FloatStatus?
+
+    /// Operator-only: pull the live platform float status from the Worker so
+    /// the Admin console can show a "float low — add funds" banner. Silent on
+    /// failure (the banner just doesn't render).
+    func refreshFloatStatus() async {
+        guard isAdmin,
+              !payoutBaseURL.isEmpty, !payoutSharedSecret.isEmpty,
+              let url = URL(string: "\(payoutBaseURL)/payouts/funding") else { return }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(payoutSharedSecret)", forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let decoded = try? JSONDecoder().decode(FloatStatus.self, from: data) else { return }
+        floatStatus = decoded
+    }
+
     /// A creator currently owed an unpaid (failed/NSF) transfer. Mirrors the
     /// Worker's UnfundedEntry. Operator pays these manually once the float is up.
     struct UnfundedEntry: Identifiable, Codable, Hashable {
