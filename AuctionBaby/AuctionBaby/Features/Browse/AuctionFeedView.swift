@@ -84,7 +84,7 @@ struct AuctionFeedView: View {
                 if store.isBoosted, let until = store.boostUntil {
                     HStack(spacing: 4) {
                         Image(systemName: "bolt.fill").font(.system(size: 10, weight: .bold))
-                        Text(timerInterval: Date.now...until, countsDown: true)
+                        Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
                             .font(.system(size: 12, weight: .heavy, design: .rounded))
                             .monospacedDigit()
                     }

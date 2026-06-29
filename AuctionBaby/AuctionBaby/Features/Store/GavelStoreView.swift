@@ -107,7 +107,7 @@ struct GavelStoreView: View {
                         if store.isBoosted, let until = store.boostUntil {
                             HStack(spacing: 4) {
                                 Text("Active ·").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.rose)
-                                Text(timerInterval: Date.now...until, countsDown: true)
+                                Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
                                     .font(.system(size: 12, weight: .heavy, design: .rounded)).foregroundStyle(Theme.rose)
                             }
                         } else {

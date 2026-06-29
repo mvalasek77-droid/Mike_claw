@@ -171,7 +171,7 @@ struct MyProfileView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "bolt.fill").font(.system(size: 11, weight: .bold))
                     Text("Boosted · bidders incoming ·").font(.system(size: 12, weight: .semibold))
-                    Text(timerInterval: Date.now...until, countsDown: true)
+                    Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
                         .font(.system(size: 12, weight: .heavy, design: .rounded)).monospacedDigit()
                 }
                 .foregroundStyle(Theme.rose)
