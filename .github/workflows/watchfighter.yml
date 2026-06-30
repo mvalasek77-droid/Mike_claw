@@ -1,0 +1,72 @@
+name: Watchfighter CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "Watchfighter/**"
+      - ".github/workflows/watchfighter.yml"
+  pull_request:
+    paths:
+      - "Watchfighter/**"
+      - ".github/workflows/watchfighter.yml"
+  workflow_dispatch:
+
+jobs:
+  copy-audit:
+    name: Copy audit (grammar/spelling)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run copy auditor
+        working-directory: Watchfighter
+        run: python3 tools/copy_audit.py
+
+  watchos-tests:
+    name: watchOS unit tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: Watchfighter
+        run: xcodegen generate
+
+      - name: Pick an available watchOS simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          # Grab the UDID of the first available Apple Watch simulator.
+          UDID=$(xcrun simctl list devices available \
+            | grep "Apple Watch" \
+            | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{27}' \
+            | head -1)
+          if [ -z "${UDID}" ]; then
+            echo "No watchOS simulator available; listing for debugging:"
+            xcrun simctl list devices
+            exit 1
+          fi
+          echo "Using watch simulator UDID: ${UDID}"
+          echo "udid=${UDID}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run tests
+        working-directory: Watchfighter
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Watchfighter.xcodeproj \
+            -scheme Watchfighter \
+            -destination "platform=watchOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM="" \
+          | tee xcodebuild.log
