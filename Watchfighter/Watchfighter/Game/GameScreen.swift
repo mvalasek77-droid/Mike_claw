@@ -19,6 +19,7 @@ struct GameScreen: View {
     @State private var isPressing = false
     @State private var pendingDashStrike = false
     @State private var nextDemoSpecial: TimeInterval = 2.4
+    @State private var demoSceneClock: TimeInterval = 0   // dwell timer for auto-advancing demo cutscenes/cards
     @State private var voiceText = ""
     @State private var voiceTimer: TimeInterval = 0
     @State private var lastSpokenBanner = ""
@@ -33,6 +34,10 @@ struct GameScreen: View {
     @FocusState private var crownFocused: Bool
 
     private let demoMode = ProcessInfo.processInfo.environment["WATCHFIGHTER_DEMO"] == "1"
+    // When set alongside demo mode, the attract reel also plays the FF cutscenes
+    // (auto-advanced) instead of skipping straight between fights — used to
+    // capture cutscene frames for the storyboard screenshots.
+    private let demoCutscenes = ProcessInfo.processInfo.environment["WATCHFIGHTER_DEMO_CUTSCENES"] == "1"
     private let autoPlay = AutoPlayDriver()
     private let frameTimer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
@@ -837,6 +842,19 @@ struct GameScreen: View {
             let delta = max(0, date.timeIntervalSince(previousDate))
             lastFrameDate = date
             voiceTimer = max(0, voiceTimer - delta)
+            // Attract mode has no taps, so auto-advance through cutscenes and the
+            // fighter card on a dwell timer (this also keeps the intro from
+            // stalling the demo).
+            if demoMode {
+                demoSceneClock += delta
+                if screenMode == .cutscene, demoSceneClock >= 2.2 {
+                    demoSceneClock = 0
+                    advanceCutscene()
+                } else if screenMode == .fighterCard, demoSceneClock >= 1.6 {
+                    demoSceneClock = 0
+                    beginFight()
+                }
+            }
             return
         }
 
@@ -921,7 +939,7 @@ struct GameScreen: View {
             pitPending = true
         }
 
-        if activeMode == .tournament, !demoMode, engine.state.phase == .running, (engine.state.round != beforeRound || engine.state.chapter != beforeChapter) {
+        if activeMode == .tournament, (!demoMode || demoCutscenes), engine.state.phase == .running, (engine.state.round != beforeRound || engine.state.chapter != beforeChapter) {
             lastFrameDate = nil
             // FF story beats bridge into the next fight (good arcade cadence:
             // only on a loss, the midpoint, and the final boss — not every fight).
@@ -935,6 +953,7 @@ struct GameScreen: View {
                 seenChapters.insert(engine.state.chapter)               // floor beat, once
                 playCutscene(beat, toFight: false)
             } else {
+                demoSceneClock = 0
                 screenMode = .fighterCard
                 announce("NEXT FIGHT")
             }
@@ -994,6 +1013,7 @@ struct GameScreen: View {
         cutsceneIndex = 0
         cutsceneToFight = toFight
         lastFrameDate = nil
+        demoSceneClock = 0
         screenMode = .cutscene
     }
 
@@ -1004,6 +1024,7 @@ struct GameScreen: View {
         } else if cutsceneToFight {
             beginFight()
         } else {
+            demoSceneClock = 0
             screenMode = .fighterCard
             announce("READY")
             playHaptic(.start)
