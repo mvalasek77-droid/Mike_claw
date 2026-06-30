@@ -247,26 +247,27 @@ archetype — `quickness`, `combatStyle` spacing, and `meterBuildRate`. In
 share the same aggression model. So "each fighter more/less difficulty" is only
 true to the extent archetypes differ; it does **not** escalate up the tower.
 
-**Tests to add:**
-- ➕ `testOpponentIsAggressiveFloor` — over an N-second idle-player sim, the AI
-  lands ≥ K hits and spends < T% idle. Sets a *toughness floor* so a passive
-  player still gets punished ("attacks back hard").
-- ➕ `testDifficultyIsOrderedAcrossRoster` — run the identical scripted player
-  gauntlet (fixed seed) vs each rival; rank by damage-dealt-to-player. Assert the
-  ordering is **monotonic-ish along the ladder** (later floors ≥ earlier floors
-  within a tolerance) so difficulty visibly rises. **This will FAIL today** —
-  that's the signal to implement the ramp.
-- ➕ `testEachFighterHasDistinctDifficulty` — the per-fighter damage-dealt scores
-  are not all clustered; spread exceeds a threshold (proves "more or less
-  difficulty" per fighter, not a flat curve).
+**Implemented — the difficulty ramp (`opponentDifficulty`, `WatchfighterEngine`).**
+A per-floor multiplier rising 1.0 (floor 1 / Learn mode) → ~1.6 (top floors),
+keyed off `state.chapter.rawValue`. It feeds: the opponent's aggression
+(pressure floor), reaction speed (`opponentDecisionClock`), closing speed
+(movement `response`), attack frequency (`opponentAttackClock`), and outgoing
+damage (`rawDamage` on the opponent side). Floor 1 is mathematically neutral, so
+all pre-existing balance tests and the seeded RNG sequence are unchanged.
 
-**Recommended implementation (so the tests can pass):** add a per-chapter
-difficulty multiplier consumed in `updateOpponent` (scale the response constant
-and lower `opponentDecisionClock`, raise pressure floor) and in `performAttack`
-windups, keyed off `state.chapter`/floor index. Keep it data-only so balance is
-tunable after a device pass. Then the boss sits at the top of the curve (already
-near-impossible by the Million rule). **Do this as a follow-up change, then flip
-the two ordering tests from expected-FAIL to expected-PASS.**
+**Tests added (`BalanceAndCoverageTests`):**
+- ✅ `testDifficultyRampIsNeutralOnFloorOneAndRisesToTheTop` — ramp is 1.0 at
+  floor 1, > 1.4 at the boss.
+- ✅ `testHigherFloorsHitAPassivePlayerHarder` — same fighter deals more to a
+  passive player higher up the tower.
+- ✅ `testTheAIPunishesAPassivePlayerHardUpTheTower` — the *toughness floor*: a
+  do-nothing player loses real health ("attacks back hard").
+- ✅ `testEachFighterCarriesItsOwnDifficulty` — per-fighter damage output spans a
+  range and isn't flat across the roster ("more or less difficulty").
+
+Damage output is measured with a self-healing dummy so it captures the AI's
+*output rate*, not a capped kill. Balance constants (the 0.60 spread, pressure
+floor slope) are tunable after a device pass.
 
 ---
 

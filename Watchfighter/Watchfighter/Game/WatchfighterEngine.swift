@@ -206,6 +206,29 @@ struct WatchfighterEngine {
         playerAttackClock = 0
     }
 
+    /// Test hook: set the player's live combo to an exact value so the boss
+    /// invincibility rule (needs combo >= 8) can be probed at every threshold.
+    mutating func debugSetPlayerCombo(_ combo: Int) {
+        let value = max(0, combo)
+        state.player.combo = value
+        state.combo = value
+        state.comboClock = value > 0 ? 1.35 : 0
+        playerAttackClock = 0
+    }
+
+    /// Difficulty ramp: rivals get tougher as you climb the tower. Floor 1 sits
+    /// at 1.0 (so early fights and Learn mode stay fair) and the top floors
+    /// reach ~1.6 — faster reactions, relentless pressure, and harder hits. The
+    /// final boss is gated by its own Million-Shot rule, so this just makes its
+    /// pressure brutal rather than its damage.
+    var opponentDifficulty: CGFloat {
+        let floor = CGFloat(state.chapter.rawValue)            // 1...15
+        let top = CGFloat(StoryChapter.allCases.count)         // 15
+        guard top > 1 else { return 1.0 }
+        let t = ((floor - 1) / (top - 1)).clamped(to: 0...1)   // 0...1
+        return 1.0 + t * 0.60
+    }
+
     private mutating func updatePlayer(input: GameInput, delta: TimeInterval) {
         guard state.player.hitStun == 0 else { return }
 
@@ -243,10 +266,14 @@ struct WatchfighterEngine {
     private mutating func updateOpponent(delta: TimeInterval) {
         guard state.opponent.hitStun == 0 else { return }
 
+        let difficulty = opponentDifficulty
         opponentDecisionClock = max(0, opponentDecisionClock - delta)
         if opponentDecisionClock == 0 {
-            opponentPressure = CGFloat(Double.random(in: 0.48...1.0, using: &rng))
-            opponentDecisionClock = Double.random(in: 0.16...0.42, using: &rng)
+            // Higher floors keep their guard up less and pick fights more often:
+            // raise the aggression floor and shorten the reaction window.
+            let pressureFloor = min(0.92, 0.48 + (difficulty - 1.0) * 0.55)
+            opponentPressure = CGFloat(Double.random(in: Double(pressureFloor)...1.0, using: &rng))
+            opponentDecisionClock = Double.random(in: 0.16...0.42, using: &rng) / Double(difficulty)
         }
 
         let distance = abs(state.opponent.x - state.player.x)
@@ -300,7 +327,7 @@ struct WatchfighterEngine {
             setAction(state.player.action == .jumpKick ? .crouch : .blocking, for: .opponent, duration: 0.16)
         }
 
-        let response = min(1, CGFloat(delta) * (8.4 + opponentPressure * 5.6) * state.opponent.archetype.quickness)
+        let response = min(1, CGFloat(delta) * (8.4 + opponentPressure * 5.6) * state.opponent.archetype.quickness * difficulty)
         let previousX = state.opponent.x
         state.opponent.x += (target.clamped(to: 0.44...0.88) - state.opponent.x) * response
         state.opponent.x = max(state.opponent.x, state.player.x + 0.18).clamped(to: 0.44...0.88)
@@ -365,7 +392,9 @@ struct WatchfighterEngine {
         if side == .player {
             playerAttackClock = playerCooldown(for: action) * style.cooldownMultiplier(for: action)
         } else {
-            opponentAttackClock = opponentCooldown(for: action) * style.cooldownMultiplier(for: action)
+            // Tougher floors recover faster between strikes, so the AI keeps the
+            // pressure on instead of giving the player room to breathe.
+            opponentAttackClock = opponentCooldown(for: action) * style.cooldownMultiplier(for: action) / opponentDifficulty
         }
 
         if action == .special || action == .projectile {
@@ -386,6 +415,10 @@ struct WatchfighterEngine {
         let defenderGuarding = action != .throwAttack && (defender.action == .blocking || defender.action == .crouch) && defender.guardMeter > 0.22
         let millionCounter = side == .player && defender.archetype.isMillionBoss && action == .special && state.combo >= 8
         var rawDamage = Int((CGFloat(baseDamage) * attacker.archetype.power).rounded())
+        if side == .opponent {
+            // Rivals hit harder the higher you climb the tower.
+            rawDamage = max(1, Int((CGFloat(rawDamage) * opponentDifficulty).rounded()))
+        }
         if defender.archetype.isMillionBoss, side == .player {
             rawDamage = millionCounter ? max(rawDamage, defender.maxHealth) : max(1, Int((CGFloat(rawDamage) * 0.04).rounded()))
         }
