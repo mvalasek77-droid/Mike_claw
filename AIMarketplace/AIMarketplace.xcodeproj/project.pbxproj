@@ -32,6 +32,8 @@
 		3784F5D98A000120C350327B /* BackendConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A19012B1AB4D5207A577C68F /* BackendConfig.swift */; };
 		39BB33AA84E47E4624E64AD6 /* ErrorMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B29EE3E603CD81E065A0533 /* ErrorMonitor.swift */; };
 		3BB7F58C8A923F415C95B94D /* the-odyssey-protocol.txt in Resources */ = {isa = PBXBuildFile; fileRef = 11EA301ECD36DE4C172028AD /* the-odyssey-protocol.txt */; };
+		10AD104010401040104010A1 /* the-love-algorithm.txt in Resources */ = {isa = PBXBuildFile; fileRef = 10AD104010401040104010A2 /* the-love-algorithm.txt */; };
+		10AD104010401040104010A3 /* the-love-algorithm.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 10AD104010401040104010A4 /* the-love-algorithm.jpg */; };
 		3D8325608550CFC11611329E /* VideoProviderCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F49EE0EF4209FE9334742AD /* VideoProviderCatalog.swift */; };
 		3DC9B98DD8AAE620AAC4A7E2 /* ContentResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86C78A508D08CD72E2DFB916 /* ContentResolver.swift */; };
 		3E4E43FA2FDBD9F6CC4E45C3 /* the-echo-chambers.txt in Resources */ = {isa = PBXBuildFile; fileRef = EB0D9477979D88E13650A912 /* the-echo-chambers.txt */; };
@@ -145,6 +147,8 @@
 		0E76B93DFC9447E492BAFA5D /* WriteReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteReviewView.swift; sourceTree = "<group>"; };
 		109E593A168D23A7F39F585E /* Media.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Media.swift; sourceTree = "<group>"; };
 		11EA301ECD36DE4C172028AD /* the-odyssey-protocol.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "the-odyssey-protocol.txt"; sourceTree = "<group>"; };
+		10AD104010401040104010A2 /* the-love-algorithm.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "the-love-algorithm.txt"; sourceTree = "<group>"; };
+		10AD104010401040104010A4 /* the-love-algorithm.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "the-love-algorithm.jpg"; sourceTree = "<group>"; };
 		1463D337F5DE7810C8079E03 /* AdminPayoutsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminPayoutsView.swift; sourceTree = "<group>"; };
 		162FBAAF78226B71F2B0E54F /* AIMarketplaceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMarketplaceApp.swift; sourceTree = "<group>"; };
 		1AEFD5FBABC913A76F261166 /* StarRating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarRating.swift; sourceTree = "<group>"; };
@@ -524,6 +528,8 @@
 				EB0D9477979D88E13650A912 /* the-echo-chambers.txt */,
 				D47DCB2CF07BAFCA9A11CF57 /* the-odyssey-protocol.jpg */,
 				11EA301ECD36DE4C172028AD /* the-odyssey-protocol.txt */,
+				10AD104010401040104010A4 /* the-love-algorithm.jpg */,
+				10AD104010401040104010A2 /* the-love-algorithm.txt */,
 				B77DC34C4CDBA44859FCA380 /* the-secret-of-the-salvator-mundi.jpg */,
 				8818C0774159751EBA0E198C /* the-secret-of-the-salvator-mundi.txt */,
 			);
@@ -742,6 +748,8 @@
 				3E4E43FA2FDBD9F6CC4E45C3 /* the-echo-chambers.txt in Resources */,
 				C50232130CC448CF466D553E /* the-odyssey-protocol.jpg in Resources */,
 				3BB7F58C8A923F415C95B94D /* the-odyssey-protocol.txt in Resources */,
+				10AD104010401040104010A3 /* the-love-algorithm.jpg in Resources */,
+				10AD104010401040104010A1 /* the-love-algorithm.txt in Resources */,
 				0801594FC102F2F3D30204EB /* the-secret-of-the-salvator-mundi.jpg in Resources */,
 				2090ADE311423ABB9C4EFB05 /* the-secret-of-the-salvator-mundi.txt in Resources */,
 			);
