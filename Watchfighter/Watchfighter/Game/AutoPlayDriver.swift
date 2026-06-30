@@ -27,7 +27,8 @@ struct AutoPlayDriver {
     func input(for state: WatchfighterState) -> GameInput {
         let player = state.player
         let opponent = state.opponent
-        let target = (opponent.x - pocket).clamped(to: 0.14...0.52)
+        let rawTarget = opponent.x - pocket
+        let target = min(max(rawTarget, 0.14), 0.52)
 
         if style == .passive {
             return GameInput(targetX: target)
