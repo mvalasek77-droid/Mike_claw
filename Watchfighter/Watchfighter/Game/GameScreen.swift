@@ -1438,6 +1438,10 @@ private extension Comparable {
 struct CutscenePanel: Equatable {
     let speaker: String?
     let text: String
+    /// An optional "redacted" line rendered behind a heavy blur — used for the
+    /// boxer's secret defeat sequence so the player can see something is hidden
+    /// without it being legible.
+    var blurredHint: String? = nil
 }
 
 /// Original story copy that bridges into the fights (no real people / no IP).
@@ -1479,7 +1483,8 @@ enum FFScript {
         CutscenePanel(speaker: "TITUS",
                       text: "(He says nothing. He raises his fists. No bell has rung for him in a thousand years.)"),
         CutscenePanel(speaker: nil,
-                      text: "Damage alone won't drop him. Land the MILLION SHOT — a SPECIAL on an 8+ combo — or join the wall."),
+                      text: "TITUS CANNOT BE BEATEN BY DAMAGE. He falls to one secret sequence of controls — and only that.",
+                      blurredHint: "HOLD GUARD \u{2022} CROWN BACK \u{2022} CROWN FORWARD \u{2022} SPECIAL on an 8+ COMBO \u{2192} THE MILLION SHOT"),
     ]
 
     /// A short beat the FIRST time you reach a floor (plays once, not on refights).
@@ -1552,6 +1557,25 @@ struct CutsceneOverlay: View {
                         .padding(8)
                         .background(RoundedRectangle(cornerRadius: 8).fill(.black.opacity(0.55)))
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.22), lineWidth: 1))
+                    if let hint = panel.blurredHint {
+                        // The secret defeat sequence — shown but deliberately
+                        // blurred out so the player knows it exists, not what it is.
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("THE SECRET — REDACTED")
+                                .font(.system(size: 8, weight: .heavy))
+                                .foregroundStyle(Color(red: 1, green: 0.32, blue: 0.55))
+                            Text(hint)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .blur(radius: 5.5)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(.black.opacity(0.72)))
+                        .overlay(RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(red: 1, green: 0.32, blue: 0.55).opacity(0.5), lineWidth: 1))
+                    }
                     Button(action: onAdvance) {
                         Text(index + 1 < panels.count ? "NEXT \u{25B6}" : "FIGHT!")
                             .font(.system(size: 12, weight: .bold))

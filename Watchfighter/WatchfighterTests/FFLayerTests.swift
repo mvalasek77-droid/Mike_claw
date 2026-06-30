@@ -66,6 +66,16 @@ final class FFLayerTests: XCTestCase {
         }
     }
 
+    func testBossBeatHidesTheSecretSequenceBehindABlurredHint() {
+        // The boxer's defeat sequence must be present as a blurred (redacted)
+        // hint on the boss beat — visible-but-illegible in the UI.
+        let hinted = FFScript.beforeBoss.filter { $0.blurredHint != nil }
+        XCTAssertEqual(hinted.count, 1, "exactly one boss panel should carry the secret")
+        XCTAssertFalse(hinted.first?.blurredHint?.isEmpty ?? true)
+        // And the boss is explicitly stated to be unbeatable by damage alone.
+        XCTAssertTrue(FFScript.beforeBoss.contains { $0.text.uppercased().contains("CANNOT BE BEATEN") })
+    }
+
     // MARK: - The mechanic the Pit beat hooks onto
 
     func testFirstLossContinuesRunAndRefightsSameFloor() {

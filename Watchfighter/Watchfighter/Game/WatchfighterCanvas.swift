@@ -148,9 +148,31 @@ struct WatchfighterCanvas: View {
             drawGuard(in: &context, anchor: anchor, fighter: fighter, size: size)
         }
 
+        // FLIP: spin the whole fighter through a jump-kick. Acrobats do a full
+        // flip, heavies just a small arc — so the move reads each fighter's style.
+        let prog = fighter.actionDuration > 0.0001
+            ? CGFloat(1 - fighter.actionTimer / fighter.actionDuration) : 0
+        var flipTurns: CGFloat = 0
+        if fighter.action == .jumpKick {
+            switch fighter.archetype.combatStyle {
+            case .acrobat:                 flipTurns = 1.0
+            case .rushdown, .balanced:     flipTurns = 0.6
+            case .zoner:                   flipTurns = 0.5
+            case .bruiser, .titan, .grappler: flipTurns = 0.25
+            }
+        }
+        var bodyContext = context
+        if flipTurns != 0 {
+            let pivot = CGPoint(x: anchor.x,
+                                y: anchor.y - min(size.width, size.height) * fighter.archetype.heightFactor * 0.30)
+            bodyContext.translateBy(x: pivot.x, y: pivot.y)
+            bodyContext.rotate(by: .radians(Double(prog * flipTurns * 2 * .pi) * Double(fighter.facing)))
+            bodyContext.translateBy(x: -pivot.x, y: -pivot.y)
+        }
+
         if fighter.archetype.usesBitmapSprite {
             drawDigitizedSprite(
-                in: &context,
+                in: &bodyContext,
                 sprite: sprite,
                 anchor: anchor,
                 facing: fighter.facing,
@@ -159,7 +181,7 @@ struct WatchfighterCanvas: View {
                 defeated: fighter.action == .defeated
             )
         } else {
-            drawProceduralFighter(in: &context, fighter: fighter, anchor: anchor, size: size)
+            drawProceduralFighter(in: &bodyContext, fighter: fighter, anchor: anchor, size: size)
         }
 
         drawActionMotion(in: &context, anchor: anchor, fighter: fighter, size: size)
@@ -792,6 +814,18 @@ struct WatchfighterCanvas: View {
         let walk = fighter.action == .walk ? sin(time * 15) * 0.26 : 0   // quicker stride
         let punch = (fighter.action == .jab ? 0.95 : (fighter.action == .special || fighter.action == .projectile || fighter.action == .throwAttack ? 1.18 : 0)) * strike
         let kick = (fighter.action == .kick || fighter.action == .jumpKick ? 1.05 : 0) * strike
+        // Big, style-driven kicks: acrobats/rushdown throw the highest, longest
+        // legs; bruisers/titans plant heavier, shorter ones.
+        let kickReach: CGFloat = {
+            switch fighter.archetype.combatStyle {
+            case .acrobat:            return 1.34
+            case .rushdown:           return 1.20
+            case .zoner:              return 1.14
+            case .balanced:           return 1.08
+            case .bruiser, .titan:    return 0.96
+            case .grappler:           return 0.90
+            }
+        }()
         let recoil = fighter.action == .hit ? -0.30 * strike : 0
         let swagger = profile.glamour ? sin(time * 8) * 0.10 : 0
         let bulk = (profile.armWidth + profile.legWidth) * 0.50
@@ -885,13 +919,17 @@ struct WatchfighterCanvas: View {
 
         limb([pt(-0.40, 0.78), pt(-0.78 - walk, 1.58), pt(-1.05 - walk, 2.72)], color: pants, width: profile.legWidth)
         if kick > 0 {
-            limb([pt(0.38, 0.82), pt(1.20, 0.35), pt(2.18, 0.20)], color: pants, width: profile.legWidth)
+            // Thrust the leg out and up with the strike envelope so the kick
+            // chambers, snaps to full extension, then recovers.
+            let e = kick * kickReach
+            limb([pt(0.38, 0.82), pt(0.96 + 0.58 * e, 0.46 - 0.20 * e), pt(1.55 + 1.45 * e, 0.46 - 0.62 * e)], color: pants, width: profile.legWidth)
         } else {
             limb([pt(0.38, 0.82), pt(0.86 + walk, 1.58), pt(1.18 + walk, 2.68)], color: pants, width: profile.legWidth)
         }
         plate(-1.38 - walk, 2.54, bootWidth, bootHeight, color: profile.boot, corner: 0.10, shadow: 0.32, shine: 0.16)
         if kick > 0 {
-            plate(1.88, 0.04, bootWidth, bootHeight, color: profile.boot, corner: 0.10, shadow: 0.32, shine: 0.16)
+            let e = kick * kickReach
+            plate(1.30 + 1.45 * e, 0.20 - 0.62 * e, bootWidth, bootHeight, color: profile.boot, corner: 0.10, shadow: 0.32, shine: 0.16)
         } else {
             plate(0.78 + walk, 2.50, bootWidth, bootHeight, color: profile.boot, corner: 0.10, shadow: 0.32, shine: 0.16)
         }
