@@ -70,3 +70,88 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             DEVELOPMENT_TEAM="" \
           | tee xcodebuild.log
+
+      - name: Extract storyboard from the test log
+        if: always()
+        working-directory: Watchfighter
+        run: |
+          mkdir -p storyboard
+          awk '/STORYBOARD START/{f=1;next} /STORYBOARD END/{f=0} f' xcodebuild.log > storyboard/storyboard.md || true
+          echo "----- storyboard.md -----"
+          cat storyboard/storyboard.md || true
+
+      - name: Upload test log + storyboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watchfighter-storyboard
+          path: |
+            Watchfighter/storyboard/storyboard.md
+            Watchfighter/xcodebuild.log
+
+  demo-screenshots:
+    name: Demo screenshots (best-effort)
+    runs-on: macos-15
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: Watchfighter
+        run: xcodegen generate
+
+      - name: Build app for the simulator
+        working-directory: Watchfighter
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Watchfighter.xcodeproj \
+            -scheme Watchfighter \
+            -sdk watchsimulator \
+            -configuration Debug \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM="" \
+          | tee build.log
+
+      - name: Boot a watch simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available \
+            | grep "Apple Watch" \
+            | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{27}' \
+            | head -1)
+          echo "Booting ${UDID}"
+          echo "udid=${UDID}" >> "${GITHUB_OUTPUT}"
+          xcrun simctl bootstatus "${UDID}" -b
+
+      - name: Install and launch in attract/demo mode
+        working-directory: Watchfighter
+        run: |
+          set -euo pipefail
+          APP=$(find build/Build/Products -name 'Watchfighter.app' -type d | head -1)
+          echo "Installing ${APP}"
+          xcrun simctl install "${{ steps.sim.outputs.udid }}" "${APP}"
+          SIMCTL_CHILD_WATCHFIGHTER_DEMO=1 \
+            xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.valasek.watchfighter
+
+      - name: Capture screenshots of the self-playing game
+        run: |
+          set -euo pipefail
+          mkdir -p screenshots
+          for i in $(seq -w 1 12); do
+            sleep 4
+            xcrun simctl io "${{ steps.sim.outputs.udid }}" screenshot "screenshots/frame-${i}.png" || true
+          done
+          ls -la screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watchfighter-demo-screenshots
+          path: screenshots/

@@ -33,6 +33,7 @@ struct GameScreen: View {
     @FocusState private var crownFocused: Bool
 
     private let demoMode = ProcessInfo.processInfo.environment["WATCHFIGHTER_DEMO"] == "1"
+    private let autoPlay = AutoPlayDriver()
     private let frameTimer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -869,32 +870,32 @@ struct GameScreen: View {
         let beforePlayerWins = engine.state.playerWins
         let beforeOpponentWins = engine.state.opponentWins
 
-        let spacingTarget = (engine.state.opponent.x - 0.25 + CGFloat(sin(engine.state.elapsed * 1.6)) * 0.035).clamped(to: 0.16...0.52)
-        let targetX = isPressing ? touchX : (demoMode ? spacingTarget : CGFloat(crownX))
-        let demoSpecial = demoMode && engine.state.player.meter >= 1 && engine.state.elapsed >= nextDemoSpecial
+        let targetX = isPressing ? touchX : CGFloat(crownX)
         let chargedDash = pendingDashStrike && engine.state.player.meter >= 1
         let didDashStrike = pendingDashStrike
-        if demoSpecial {
-            nextDemoSpecial = engine.state.elapsed + 3.8
-        }
 
         let closeThreat = abs(engine.state.opponent.x - engine.state.player.x) < 0.31
         let wantsJumpKick = isPressing && touchY < 0.34
         let wantsCrouch = isPressing && touchY > 0.70
         let wantsThrow = isPressing && closeThreat && touchY >= 0.42 && touchY <= 0.60
-        engine.tick(
-            delta: delta,
-            input: GameInput(
+        // In attract/demo mode the AutoPlayDriver plays for us; otherwise build
+        // the input from the live controls (crown + touch).
+        let tickInput: GameInput
+        if demoMode, !isPressing {
+            tickInput = autoPlay.input(for: engine.state)
+        } else {
+            tickInput = GameInput(
                 targetX: targetX,
-                attacking: (isPressing && !wantsJumpKick && !wantsCrouch && !wantsThrow) || demoMode,
-                special: chargedDash || demoSpecial,
+                attacking: isPressing && !wantsJumpKick && !wantsCrouch && !wantsThrow,
+                special: chargedDash,
                 dashStrike: pendingDashStrike && !chargedDash,
                 jump: wantsJumpKick,
                 crouching: wantsCrouch,
                 throwing: wantsThrow,
                 blocking: !isPressing && !demoMode && closeThreat
             )
-        )
+        }
+        engine.tick(delta: delta, input: tickInput)
         pendingDashStrike = false
         voiceTimer = max(0, voiceTimer - delta)
         if engine.state.score > bestScore {
