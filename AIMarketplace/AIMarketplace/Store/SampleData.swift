@@ -25,6 +25,24 @@ enum SampleData {
                 mediaFileName: "the-odyssey-protocol"
             ),
             MediaItem(
+                id: UUID(uuidString: "10ad1040-1040-4040-8040-104010401040")!,
+                title: "The Love Algorithm",
+                creator: "Mike Valasek",
+                type: .novel,
+                genre: "Relationships",
+                synopsis: "A data-age field guide to love, power, and attraction. The Love Algorithm decodes the hidden dynamics of the modern relationship market — why we fall for the wrong people, how to read the signs before it breaks you, and how to understand your real value in the age of algorithms. Take the test. Read the signs. Know the truth.",
+                aiTools: ["GPT-4"],
+                commercialScore: 91,
+                price: 6.99,
+                releaseYear: 2026,
+                length: 248,
+                maturity: "17+",
+                purchases: 0,
+                trending: 68,
+                coverAssetName: "the-love-algorithm",
+                mediaFileName: "the-love-algorithm"
+            ),
+            MediaItem(
                 id: UUID(uuidString: "22222222-2222-4222-8222-222222222222")!,
                 title: "It's a Swifty World After All",
                 creator: "Mike Valasek",
