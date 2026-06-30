@@ -35,16 +35,18 @@ final class StoryboardFlowTests: XCTestCase {
             let rival = engine.state.opponent.archetype
             visited.insert(chapter)
 
-            // Live combat: let the bot fight for a beat so the scene has real
-            // action (strikes landing, a combo building).
+            // Live combat: let the bot fight for a beat on a THROWAWAY COPY of
+            // the engine (it's a value type) so the scene has real action without
+            // a bot loss derailing the deterministic full-clear walk below.
+            var sample = engine
             var landedStrike = false
             for _ in 0..<24 {
-                let comboBefore = engine.state.combo
-                engine.tick(delta: 1.0 / 12.0, input: bot.input(for: engine.state))
-                if engine.state.combo > comboBefore || !engine.state.strikes.isEmpty {
+                let comboBefore = sample.state.combo
+                sample.tick(delta: 1.0 / 12.0, input: bot.input(for: sample.state))
+                if sample.state.combo > comboBefore || !sample.state.strikes.isEmpty {
                     landedStrike = true
                 }
-                if engine.state.phase != .running { break }
+                if sample.state.phase != .running { break }
             }
             sawCombat = sawCombat || landedStrike
             scene("FLOOR \(chapter.rawValue): \(chapter.title)",
