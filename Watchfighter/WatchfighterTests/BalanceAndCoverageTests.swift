@@ -124,16 +124,17 @@ final class BalanceAndCoverageTests: XCTestCase {
         let lostChapter = engine.state.chapter
         XCTAssertEqual(lostChapter, .neonRooftop)
 
-        // Lose it — the run should continue (the Pit / second-chance loop) and
-        // refight the SAME floor, not end and not skip ahead.
+        // Lose it — the run should continue into the Pit/Hell second-chance
+        // (fight Abaddon) rather than ending or skipping ahead.
         engine.debugSetPlayer(x: 0.36, health: 0, guardMeter: 0)
         engine.debugSetOpponent(x: 0.56)
         engine.tick(delta: 0.01, input: GameInput(targetX: 0.36))
         advancePastRoundPause(&engine)
 
-        XCTAssertEqual(engine.state.opponentWins, 1)
+        XCTAssertTrue(engine.state.pitActive, "a fall must drop the player into the Pit")
+        XCTAssertEqual(engine.state.opponent.archetype, .abaddon, "the Pit fight is against the Hell demon")
         XCTAssertEqual(engine.state.phase, .running, "one loss must not end the run")
-        XCTAssertEqual(engine.state.chapter, lostChapter, "refight the floor you lost")
+        XCTAssertEqual(engine.state.chapter, lostChapter, "the Pit keeps the floor you fell on")
     }
 
     // MARK: - §7 The AI is tough, hits back hard, and scales per floor

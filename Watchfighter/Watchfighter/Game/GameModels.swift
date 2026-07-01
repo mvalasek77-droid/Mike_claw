@@ -39,6 +39,7 @@ enum StrikeKind: Equatable {
     case headPop
     case bodyBurst
     case armDrop
+    case vampireBite
 }
 
 enum CombatStyle: Equatable {
@@ -313,6 +314,12 @@ enum FighterArchetype: CaseIterable, Equatable {
     case cage
     case kairo
     case titan
+    /// Secret vampire — unlocked in VS mode only after a full tournament clear.
+    /// Not part of `versusRoster`/the ladder; GameScreen appends him once earned.
+    case dracula
+    /// The Hell demon met in the Pit after a ladder fall (`WatchfighterState.pitActive`).
+    /// Not part of `versusRoster`/the ladder; the engine spawns him directly.
+    case abaddon
 
     static var versusRoster: [FighterArchetype] {
         [
@@ -368,6 +375,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return "KAIRO"
         case .titan:
             return "TITUS"
+        case .dracula:
+            return "DRACULA"
+        case .abaddon:
+            return "ABADDON"
         }
     }
 
@@ -405,6 +416,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return "War King"
         case .titan:
             return "Iron Comet Boxer"
+        case .dracula:
+            return "The Undying Count"
+        case .abaddon:
+            return "The Pit's Own Fork"
         }
     }
 
@@ -418,7 +433,7 @@ enum FighterArchetype: CaseIterable, Equatable {
             return "DigitizedDrone"
         case .voss:
             return "DigitizedRaider"
-        case .mara, .lennox, .sunny, .nova, .specter, .cosmo, .brass, .volkov, .zara, .cage, .titan:
+        case .mara, .lennox, .sunny, .nova, .specter, .cosmo, .brass, .volkov, .zara, .cage, .titan, .dracula, .abaddon:
             return ""
         case .kairo:
             return "DigitizedWarlord"
@@ -463,6 +478,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return 428.0 / 640.0
         case .titan:
             return 0.66
+        case .dracula:
+            return 0.54
+        case .abaddon:
+            return 0.68
         }
     }
 
@@ -482,6 +501,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return 0.54
         case .titan:
             return 0.90
+        case .dracula:
+            return 0.52
+        case .abaddon:
+            return 0.74
         }
     }
 
@@ -528,6 +551,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return 122
         case .titan:
             return 360
+        case .dracula:
+            return 132
+        case .abaddon:
+            return 150
         }
     }
 
@@ -565,6 +592,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return 1.18
         case .titan:
             return 1.78
+        case .dracula:
+            return 1.24
+        case .abaddon:
+            return 1.42
         }
     }
 
@@ -598,6 +629,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return 0.82
         case .titan:
             return 0.88
+        case .dracula:
+            return 1.32
+        case .abaddon:
+            return 0.94
         default:
             return 1.0
         }
@@ -609,13 +644,13 @@ enum FighterArchetype: CaseIterable, Equatable {
             return .balanced
         case .nyra, .lennox, .specter:
             return .rushdown
-        case .nova, .voss:
+        case .nova, .voss, .dracula:
             return .acrobat
         case .cosmo, .rook:
             return .zoner
         case .cage, .volkov:
             return .grappler
-        case .brass, .kairo:
+        case .brass, .kairo, .abaddon:
             return .bruiser
         case .titan:
             return .titan
@@ -656,6 +691,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return "WAR KING"
         case .titan:
             return "MILLION SHOT"
+        case .dracula:
+            return "CRIMSON BITE"
+        case .abaddon:
+            return "BRIMSTONE FORK"
         }
     }
 
@@ -693,6 +732,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return "War Hammer"
         case .titan:
             return "Titus Peekaboom"
+        case .dracula:
+            return "Crimson Bite"
+        case .abaddon:
+            return "Brimstone Fork"
         }
     }
 
@@ -730,6 +773,10 @@ enum FighterArchetype: CaseIterable, Equatable {
             return "War hammer: heavy armored strikes with brutal guard pressure."
         case .titan:
             return "Titus is a giant original boxer. Only an 8-hit chain plus full-meter special can drop him."
+        case .dracula:
+            return "Erratic aerial vampire: floats out of range, then snaps in for a bite that turns its target."
+        case .abaddon:
+            return "Pit demon: hurls brimstone fire at range, then closes for a heavy pitchfork stab."
         }
     }
 
@@ -767,14 +814,18 @@ enum FighterArchetype: CaseIterable, Equatable {
             return "Kairo waits by the throne elevator, heavy as a siege engine."
         case .titan:
             return "Titus is not a legend or a lookalike. He is a three-story final boxer built to end runs."
+        case .dracula:
+            return "Dracula only wakes for a champion who already beat the tower once — and never for a fair fight."
+        case .abaddon:
+            return "Abaddon doesn't climb the tower. He waits in the Pit for whoever falls out of it."
         }
     }
 
     var finisherKind: StrikeKind {
         switch self {
-        case .nyra, .mara, .zara:
+        case .nyra, .mara, .zara, .dracula:
             return .headPop
-        case .rook, .cosmo, .brass, .kairo, .titan:
+        case .rook, .cosmo, .brass, .kairo, .titan, .abaddon:
             return .bodyBurst
         default:
             return .armDrop
@@ -823,6 +874,14 @@ enum FighterArchetype: CaseIterable, Equatable {
             return distance < 0.32 ? (pressure > 0.48 ? .kick : .jab) : nil
         case .titan:
             return distance < 0.40 ? (pressure > 0.52 ? .special : .jab) : nil
+        case .dracula:
+            // Erratic: darts in for the bite (throw) at close range, otherwise
+            // flourishes a jump kick to stay unpredictable and airborne.
+            return distance < 0.32 ? (pressure > 0.42 ? .throwAttack : .jumpKick) : nil
+        case .abaddon:
+            // Brimstone at range, pitchfork (kick/throw) once he closes in.
+            if distance < 0.62, pressure > 0.50 { return .projectile }
+            return distance < 0.30 ? .throwAttack : (distance < 0.40 ? .kick : nil)
         default:
             return distance < 0.30 ? .jab : nil
         }
@@ -830,6 +889,12 @@ enum FighterArchetype: CaseIterable, Equatable {
 
     var isMillionBoss: Bool {
         self == .titan
+    }
+
+    /// Dracula's bite marks the defender as a vampire on a successful, landed
+    /// throw — see `WatchfighterEngine.performAttack`.
+    var inflictsVampireBite: Bool {
+        self == .dracula
     }
 }
 
@@ -878,6 +943,9 @@ struct DuelFighter: Equatable {
     var hitStun: TimeInterval
     var combo: Int
     var facing: CGFloat
+    /// Set once bitten by Dracula: darker skin, bat wings, and an airborne
+    /// stance for the rest of the fight (WatchfighterCanvas renders the look).
+    var isVampire: Bool = false
 
     init(archetype: FighterArchetype, x: CGFloat, facing: CGFloat) {
         self.archetype = archetype
@@ -892,6 +960,7 @@ struct DuelFighter: Equatable {
         self.hitStun = 0
         self.combo = 0
         self.facing = facing
+        self.isVampire = false
     }
 }
 
@@ -926,4 +995,7 @@ struct WatchfighterState: Equatable {
     var strikes: [FighterStrike] = []
     var elapsed: TimeInterval = 0
     var winnerText = ""
+    /// Currently fighting Abaddon in the Pit after a ladder fall — see
+    /// `WatchfighterEngine.resolveRoundIfNeeded`/`startNextRound`.
+    var pitActive: Bool = false
 }

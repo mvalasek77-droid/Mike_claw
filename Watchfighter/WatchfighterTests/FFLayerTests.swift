@@ -89,9 +89,10 @@ final class FFLayerTests: XCTestCase {
         engine.tick(delta: 0.01, input: GameInput(targetX: 0.36))
         for _ in 0..<28 { engine.tick(delta: 1.0 / 12.0, input: GameInput(targetX: 0.30)) }
 
-        XCTAssertEqual(engine.state.opponentWins, 1)
+        XCTAssertTrue(engine.state.pitActive, "a fall must drop the player into the Pit")
+        XCTAssertEqual(engine.state.opponent.archetype, .abaddon, "the Pit fight is against the Hell demon")
         XCTAssertEqual(engine.state.phase, .running, "one loss should not end the run")
-        XCTAssertEqual(engine.state.chapter, chapterBefore, "refight the same floor")
+        XCTAssertEqual(engine.state.chapter, chapterBefore, "the Pit keeps the same floor")
         XCTAssertGreaterThan(engine.state.round, roundBefore)
     }
 }

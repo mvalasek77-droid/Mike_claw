@@ -270,19 +270,69 @@ final class WatchfighterEngineTests: XCTestCase {
         XCTAssertEqual(engine.state.bannerText, "MILLION SHOT")
     }
 
-    func testLossRetriesCurrentChapterAndSecondLossEndsRun() {
+    func testDraculaBiteTurnsAnUnguardedDefenderIntoAVampire() {
+        // Dracula's bite is a throwAttack from an archetype that inflicts the
+        // vampire bite; point-blank + unguarded so the throw is guaranteed to land.
+        var engine = WatchfighterEngine(seed: 61)
+        engine.debugSetPlayer(x: 0.40, guardMeter: 0)
+        engine.debugSetOpponent(x: 0.58, archetype: .dracula)
+
+        XCTAssertFalse(engine.state.player.isVampire)
+        engine.tick(delta: 0.01, input: GameInput(targetX: 0.40))   // let the AI throw
+        for _ in 0..<24 where !engine.state.player.isVampire {
+            engine.tick(delta: 1.0 / 12.0, input: GameInput(targetX: 0.40))
+        }
+
+        XCTAssertTrue(engine.state.player.isVampire, "a landed Dracula bite must turn the defender")
+        XCTAssertTrue(engine.state.strikes.contains { $0.kind == .vampireBite })
+    }
+
+    func testAbaddonIsABruiserNotTheMillionBoss() {
+        // Abaddon (the Hell demon) must never accidentally trip the Titus-only
+        // Million Shot invincibility rule — he's tough, but beatable normally.
+        XCTAssertFalse(FighterArchetype.abaddon.isMillionBoss)
+        XCTAssertEqual(FighterArchetype.abaddon.combatStyle, .bruiser)
+        XCTAssertEqual(FighterArchetype.abaddon.preferredAttack(distance: 0.40, pressure: 0.8, meter: 0), .projectile)
+        XCTAssertEqual(FighterArchetype.abaddon.preferredAttack(distance: 0.20, pressure: 0.2, meter: 0), .throwAttack)
+    }
+
+    func testFirstFallDropsPlayerIntoTheHellFightAgainstAbaddon() {
         var engine = WatchfighterEngine(seed: 37)
 
         finishRoundWithOpponentWin(&engine)
-        XCTAssertEqual(engine.state.opponentWins, 1)
+        XCTAssertTrue(engine.state.pitActive, "a ladder fall drops the player into the Pit")
+        XCTAssertEqual(engine.state.opponentWins, 0, "the fall is a redirect to Hell, not a counted strike")
 
         advancePastRoundPause(&engine)
         XCTAssertEqual(engine.state.phase, .running)
         XCTAssertEqual(engine.state.chapter, .cinderGate)
-        XCTAssertEqual(engine.state.opponent.archetype, .nyra)
+        XCTAssertEqual(engine.state.opponent.archetype, .abaddon, "the Pit fight is against the Hell demon")
+    }
 
-        finishRoundWithOpponentWin(&engine)
-        XCTAssertEqual(engine.state.opponentWins, 2)
+    func testWinningTheHellFightReturnsToTheSameFloorsRival() {
+        var engine = WatchfighterEngine(seed: 37)
+        finishRoundWithOpponentWin(&engine)   // fall -> Hell
+        advancePastRoundPause(&engine)
+        XCTAssertEqual(engine.state.opponent.archetype, .abaddon)
+
+        finishRoundWithPlayerWin(&engine)     // beat Abaddon
+        XCTAssertFalse(engine.state.pitActive)
+        XCTAssertEqual(engine.state.playerWins, 0, "beating Abaddon earns no ladder credit")
+
+        advancePastRoundPause(&engine)
+        XCTAssertEqual(engine.state.phase, .running)
+        XCTAssertEqual(engine.state.chapter, .cinderGate, "back to the floor you fell on")
+        XCTAssertEqual(engine.state.opponent.archetype, .nyra, "refighting the real floor 1 rival")
+    }
+
+    func testLosingTheHellFightEndsTheRun() {
+        var engine = WatchfighterEngine(seed: 37)
+        finishRoundWithOpponentWin(&engine)   // fall -> Hell
+        advancePastRoundPause(&engine)
+        XCTAssertEqual(engine.state.opponent.archetype, .abaddon)
+
+        finishRoundWithOpponentWin(&engine)   // lose to the demon
+        XCTAssertEqual(engine.state.opponentWins, 1)
         XCTAssertEqual(engine.state.phase, .gameOver)
         XCTAssertEqual(engine.state.winnerText, "DEFEAT")
     }

@@ -132,7 +132,13 @@ struct WatchfighterCanvas: View {
         let recoil = fighter.action == .hit ? -fighter.facing * unit * 0.026 * strike : 0
         let jumpLift = fighter.action == .jumpKick ? -unit * 0.14 * strike : 0
         let crouchDrop = fighter.action == .crouch ? unit * 0.036 : 0
-        let anchor = CGPoint(x: baseAnchor.x + lunge + recoil, y: baseAnchor.y + breathing + jumpLift + crouchDrop)
+        // Vampire fights take to the air: Dracula and whoever he's bitten hover
+        // well off the canvas floor, bobbing gently, for the rest of the round.
+        let isAirborneVampire = fighter.archetype == .dracula || fighter.isVampire
+        let hover = isAirborneVampire
+            ? -unit * 0.30 + CGFloat(sin(date.timeIntervalSinceReferenceDate * 2.4 + Double(side == .player ? 0 : 2))) * unit * 0.03
+            : 0
+        let anchor = CGPoint(x: baseAnchor.x + lunge + recoil, y: baseAnchor.y + breathing + jumpLift + crouchDrop + hover)
         let sprite = DigitizedSprite(
             imageName: fighter.archetype.imageName,
             aspectRatio: fighter.archetype.aspectRatio,
@@ -257,25 +263,27 @@ struct WatchfighterCanvas: View {
                 color = .watchfighterGold
             case .headPop, .bodyBurst, .armDrop:
                 color = .watchfighterRed
+            case .vampireBite:
+                color = Color(red: 0.62, green: 0.05, blue: 0.30)
             }
 
             if strike.kind == .blood {
-                let spray = max(2, radius * 0.26)
-                for index in 0..<5 {
-                    let offset = CGFloat(index - 2) * spray * 0.55
+                let spray = max(2, radius * 0.30)
+                for index in 0..<9 {
+                    let offset = CGFloat(index - 4) * spray * 0.50
                     let drop = CGRect(
                         x: center.x + offset - spray * 0.22,
-                        y: center.y + CGFloat(index % 2) * spray * 0.35 - spray * 0.22,
-                        width: spray * 0.44,
-                        height: spray * 0.32
+                        y: center.y + CGFloat(index % 3) * spray * 0.30 - spray * 0.22,
+                        width: spray * 0.46,
+                        height: spray * 0.34
                     )
-                    context.fill(Path(ellipseIn: drop), with: .color(Color.watchfighterRed.opacity(Double(1 - progress) * 0.75)))
+                    context.fill(Path(ellipseIn: drop), with: .color(Color.watchfighterRed.opacity(Double(1 - progress) * 0.80)))
                 }
                 continue
             }
 
             if strike.kind == .headPop || strike.kind == .bodyBurst || strike.kind == .armDrop {
-                drawFinisherEffect(in: &context, center: center, radius: radius, progress: progress, kind: strike.kind)
+                drawFinisherEffect(in: &context, center: center, radius: radius, progress: progress, kind: strike.kind, size: size)
                 continue
             }
 
@@ -338,6 +346,25 @@ struct WatchfighterCanvas: View {
         context.fill(Path(left), with: .linearGradient(Gradient(colors: [.black.opacity(0.36), .black.opacity(0)]), startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: left.maxX, y: 0)))
         context.fill(Path(right), with: .linearGradient(Gradient(colors: [.black.opacity(0), .black.opacity(0.36)]), startPoint: CGPoint(x: right.minX, y: 0), endPoint: CGPoint(x: size.width, y: 0)))
 
+        // Gore screen-flash: a red wash that slams in on any bloody hit and
+        // splashes hard across the whole screen on a finisher, easing back out.
+        let bloodyStrikeIntensity = state.strikes.reduce(0.0) { partial, strike in
+            guard strike.kind == .blood else { return partial }
+            let p = Double(strike.age / strike.lifetime).clamped(to: 0...1)
+            return max(partial, (1 - p) * 0.12)
+        }
+        let finisherFlash: Double
+        if state.finisherTimer > 0 {
+            let p = 1 - Double(state.finisherTimer / 1.55).clamped(to: 0...1)
+            finisherFlash = (1 - p) * 0.50   // slams in fast, eases back out
+        } else {
+            finisherFlash = 0
+        }
+        let flash = max(bloodyStrikeIntensity, finisherFlash)
+        if flash > 0.001 {
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color.watchfighterRed.opacity(flash)))
+        }
+
         if state.finisherTimer > 0 {
             context.draw(
                 Text(state.finisherText)
@@ -349,30 +376,63 @@ struct WatchfighterCanvas: View {
         }
     }
 
-    private func drawFinisherEffect(in context: inout GraphicsContext, center: CGPoint, radius: CGFloat, progress: CGFloat, kind: StrikeKind) {
+    private func drawFinisherEffect(in context: inout GraphicsContext, center: CGPoint, radius: CGFloat, progress: CGFloat, kind: StrikeKind, size: CGSize) {
         let fade = Double(1 - progress)
         let red = Color.watchfighterRed.opacity(fade * 0.82)
         let gold = Color.watchfighterGold.opacity(fade * 0.70)
-        let chunkCount = kind == .bodyBurst ? 12 : 7
+        let chunkCount = kind == .bodyBurst ? 16 : 10
+
+        // Blood-spray rays reaching out toward the screen edges — the gore
+        // beat that actually splashes the whole arena, not just the impact point.
+        let rayReach = max(size.width, size.height) * (0.25 + progress * 0.95)
+        for index in 0..<9 {
+            let angle = CGFloat(index) / 9 * .pi * 2 + progress * 0.6
+            var ray = Path()
+            ray.move(to: center)
+            ray.addLine(to: CGPoint(x: center.x + cos(angle) * rayReach, y: center.y + sin(angle) * rayReach * 0.7))
+            context.stroke(ray, with: .color(Color.watchfighterRed.opacity(fade * 0.30)), lineWidth: max(1, 3.2 * (1 - progress)))
+        }
 
         for index in 0..<chunkCount {
             let angle = CGFloat(index) / CGFloat(chunkCount) * .pi * 2 + progress * .pi
-            let distance = radius * (0.7 + progress * 3.6) * (index.isMultiple(of: 2) ? 1.0 : 0.66)
+            let distance = radius * (0.7 + progress * 4.4) * (index.isMultiple(of: 2) ? 1.0 : 0.66)
             let chunkCenter = CGPoint(x: center.x + cos(angle) * distance, y: center.y + sin(angle) * distance)
-            let size = max(3, radius * (kind == .armDrop ? 0.34 : 0.25))
-            let rect = CGRect(x: chunkCenter.x - size * 0.5, y: chunkCenter.y - size * 0.5, width: size, height: size * (kind == .armDrop ? 1.55 : 1.0))
-            context.fill(Path(roundedRect: rect, cornerRadius: size * 0.18), with: .color(index.isMultiple(of: 3) ? gold : red))
-            context.stroke(Path(roundedRect: rect, cornerRadius: size * 0.18), with: .color(.black.opacity(fade * 0.55)), lineWidth: 1)
+            let chunkSize = max(3, radius * (kind == .armDrop ? 0.36 : 0.27))
+            let rect = CGRect(x: chunkCenter.x - chunkSize * 0.5, y: chunkCenter.y - chunkSize * 0.5, width: chunkSize, height: chunkSize * (kind == .armDrop ? 1.55 : 1.0))
+            context.fill(Path(roundedRect: rect, cornerRadius: chunkSize * 0.18), with: .color(index.isMultiple(of: 3) ? gold : red))
+            context.stroke(Path(roundedRect: rect, cornerRadius: chunkSize * 0.18), with: .color(.black.opacity(fade * 0.55)), lineWidth: 1)
+            if index.isMultiple(of: 2) {
+                // A trailing droplet behind every other chunk for a messier spray.
+                let trail = CGPoint(x: chunkCenter.x - cos(angle) * chunkSize, y: chunkCenter.y - sin(angle) * chunkSize)
+                context.fill(Path(ellipseIn: CGRect(x: trail.x - chunkSize * 0.18, y: trail.y - chunkSize * 0.18, width: chunkSize * 0.36, height: chunkSize * 0.36)), with: .color(Color.watchfighterRed.opacity(fade * 0.6)))
+            }
         }
 
         if kind == .headPop {
-            let head = CGRect(x: center.x - radius * 0.46, y: center.y - radius * (1.15 + progress * 2.1), width: radius * 0.92, height: radius * 0.92)
+            let travel = radius * (1.15 + progress * 3.4)
+            let headSize = radius * 1.05
+            let head = CGRect(x: center.x - headSize * 0.5, y: center.y - travel - headSize * 0.5, width: headSize, height: headSize)
             context.fill(Path(ellipseIn: head), with: .color(Color.watchfighterGold.opacity(fade * 0.9)))
             context.stroke(Path(ellipseIn: head), with: .color(Color.watchfighterRed.opacity(fade * 0.85)), lineWidth: max(1, radius * 0.10))
+            // A rough face so it silhouettes as an actual severed head.
+            let eyeSize = headSize * 0.14
+            context.fill(Path(ellipseIn: CGRect(x: head.minX + headSize * 0.26, y: head.midY - eyeSize * 0.5, width: eyeSize, height: eyeSize)), with: .color(.black.opacity(fade * 0.7)))
+            context.fill(Path(ellipseIn: CGRect(x: head.maxX - headSize * 0.26 - eyeSize, y: head.midY - eyeSize * 0.5, width: eyeSize, height: eyeSize)), with: .color(.black.opacity(fade * 0.7)))
+            var streak = Path()
+            streak.move(to: center)
+            streak.addLine(to: CGPoint(x: head.midX, y: head.maxY))
+            context.stroke(streak, with: .color(Color.watchfighterRed.opacity(fade * 0.55)), lineWidth: max(2, radius * 0.16))
         } else if kind == .armDrop {
-            let arm = CGRect(x: center.x + radius * (0.45 + progress), y: center.y + radius * (0.45 + progress * 1.7), width: radius * 0.42, height: radius * 1.6)
-            context.fill(Path(roundedRect: arm, cornerRadius: radius * 0.18), with: .color(Color.watchfighterRed.opacity(fade * 0.82)))
-            context.fill(Path(ellipseIn: arm.offsetBy(dx: radius * 0.04, dy: radius * 1.34)), with: .color(Color.watchfighterGold.opacity(fade * 0.78)))
+            let travel = radius * (0.45 + progress * 2.2)
+            let upperArm = CGRect(x: center.x + radius * 0.30, y: center.y + travel * 0.4, width: radius * 0.40, height: radius * 0.95)
+            let forearm = CGRect(x: upperArm.midX - radius * 0.20, y: upperArm.maxY - radius * 0.10, width: radius * 0.40, height: radius * 0.95)
+            context.fill(Path(roundedRect: upperArm, cornerRadius: radius * 0.16), with: .color(Color.watchfighterRed.opacity(fade * 0.82)))
+            context.fill(Path(roundedRect: forearm, cornerRadius: radius * 0.16), with: .color(Color.watchfighterRed.opacity(fade * 0.78)))
+            context.fill(Path(ellipseIn: CGRect(x: forearm.midX - radius * 0.22, y: forearm.maxY - radius * 0.06, width: radius * 0.44, height: radius * 0.40)), with: .color(Color.watchfighterGold.opacity(fade * 0.78)))
+            var streak = Path()
+            streak.move(to: center)
+            streak.addLine(to: CGPoint(x: upperArm.midX, y: upperArm.minY))
+            context.stroke(streak, with: .color(Color.watchfighterRed.opacity(fade * 0.5)), lineWidth: max(2, radius * 0.14))
         } else {
             context.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(Color.watchfighterRed.opacity(fade * 0.28)))
             context.stroke(Path(ellipseIn: CGRect(x: center.x - radius * 1.4, y: center.y - radius * 1.4, width: radius * 2.8, height: radius * 2.8)), with: .color(Color.watchfighterGold.opacity(fade * 0.65)), lineWidth: max(2, radius * 0.15))
@@ -1064,11 +1124,63 @@ struct WatchfighterCanvas: View {
             fighterContext.stroke(Path(ellipseIn: rect(0.74 + punch, -0.86, 0.74, 0.64)), with: .color(Color.watchfighterGold), lineWidth: max(1.8, unit * 0.065))
             stripe(-0.58, -0.62, 1.16, 0.20, color: Color.watchfighterGold.opacity(0.50))
             stripe(-0.62, 0.54, 1.24, 0.18, color: Color.watchfighterRed.opacity(0.54))
+        case .dracula:
+            var cape = Path()
+            cape.move(to: pt(-0.70, -0.90))
+            cape.addCurve(to: pt(-1.60, 1.30), control1: pt(-1.60, -0.60), control2: pt(-2.00, 0.60))
+            cape.addLine(to: pt(-0.30, 1.00))
+            cape.closeSubpath()
+            fighterContext.fill(cape, with: .color(profile.upper.opacity(0.92)))
+            fighterContext.stroke(cape, with: .color(Color(red: 0.62, green: 0.05, blue: 0.30).opacity(0.7)), lineWidth: max(0.8, unit * 0.05))
+            stripe(-0.14, -1.72, 0.10, 0.10, color: .white.opacity(0.94))   // fangs
+            stripe(0.02, -1.72, 0.10, 0.10, color: .white.opacity(0.94))
+        case .abaddon:
+            var fork = Path()
+            fork.move(to: pt(1.60 + punch, -0.20))
+            fork.addLine(to: pt(2.55 + punch, -1.30))
+            fork.move(to: pt(1.85 + punch, -0.42))
+            fork.addLine(to: pt(2.75 + punch, -1.16))
+            fork.move(to: pt(2.10 + punch, -0.64))
+            fork.addLine(to: pt(2.95 + punch, -1.02))
+            fighterContext.stroke(fork, with: .color(.black.opacity(0.85)), lineWidth: max(1.6, unit * 0.09))
+            fighterContext.stroke(fork, with: .color(Color(red: 1.0, green: 0.42, blue: 0.10).opacity(0.85)), lineWidth: max(0.8, unit * 0.04))
+            fighterContext.fill(Path(ellipseIn: rect(-1.00, -1.00, 0.32, 0.30)), with: .color(Color(red: 1.0, green: 0.55, blue: 0.10).opacity(0.85)))
+            fighterContext.fill(Path(ellipseIn: rect(0.58, -1.02, 0.32, 0.30)), with: .color(Color(red: 1.0, green: 0.55, blue: 0.10).opacity(0.85)))
         default:
             break
         }
 
+        if fighter.archetype == .dracula || fighter.isVampire {
+            drawBatWings(in: &fighterContext, anchor: anchor, unit: unit, time: time, facing: fighter.facing)
+        }
+
         fighterContext.fill(Path(roundedRect: rect(-0.60, -1.10, 1.34, 0.14), cornerRadius: unit * 0.03), with: .color(.white.opacity(0.13)))
+    }
+
+    /// Bat wings for Dracula and anyone he's bitten — flap with a light sine
+    /// wobble so the "aerial vampire" pair reads as airborne, not just tinted.
+    private func drawBatWings(in context: inout GraphicsContext, anchor: CGPoint, unit: CGFloat, time: CGFloat, facing: CGFloat) {
+        let flap = (sin(time * 6) + 1) * 0.5   // 0...1
+        let span = unit * (1.55 + flap * 0.35)
+        let root = CGPoint(x: anchor.x, y: anchor.y - unit * 1.35)
+        for side: CGFloat in [-1, 1] {
+            var wing = Path()
+            wing.move(to: root)
+            wing.addCurve(
+                to: CGPoint(x: root.x + side * span, y: root.y + unit * 0.15),
+                control1: CGPoint(x: root.x + side * span * 0.35, y: root.y - unit * 0.55),
+                control2: CGPoint(x: root.x + side * span * 0.85, y: root.y - unit * 0.25)
+            )
+            wing.addCurve(
+                to: CGPoint(x: root.x + side * span * 0.45, y: root.y + unit * 0.55),
+                control1: CGPoint(x: root.x + side * span * 0.70, y: root.y + unit * 0.40),
+                control2: CGPoint(x: root.x + side * span * 0.55, y: root.y + unit * 0.50)
+            )
+            wing.closeSubpath()
+            context.fill(wing, with: .color(Color(red: 0.05, green: 0.01, blue: 0.02).opacity(0.88)))
+            context.stroke(wing, with: .color(Color(red: 0.62, green: 0.05, blue: 0.30).opacity(0.75)), lineWidth: max(0.8, unit * 0.045))
+        }
+        _ = facing
     }
 
     private func styleAccent(for archetype: FighterArchetype) -> Color {
@@ -1264,6 +1376,32 @@ private struct ProceduralFighterProfile {
                 scale: 1.86,
                 armWidth: 0.62,
                 legWidth: 0.64,
+                glamour: false
+            )
+        case .dracula:
+            self.init(
+                skin: Color(red: 0.80, green: 0.78, blue: 0.82),
+                upper: Color(red: 0.045, green: 0.010, blue: 0.020),
+                lower: Color(red: 0.020, green: 0.010, blue: 0.014),
+                accent: Color(red: 0.62, green: 0.05, blue: 0.30),
+                hair: Color(red: 0.02, green: 0.015, blue: 0.02),
+                boot: Color(red: 0.015, green: 0.010, blue: 0.014),
+                scale: 1.02,
+                armWidth: 0.24,
+                legWidth: 0.30,
+                glamour: true
+            )
+        case .abaddon:
+            self.init(
+                skin: Color(red: 0.42, green: 0.06, blue: 0.05),
+                upper: Color(red: 0.05, green: 0.02, blue: 0.02),
+                lower: Color(red: 0.05, green: 0.02, blue: 0.02),
+                accent: Color(red: 1.0, green: 0.42, blue: 0.10),
+                hair: Color(red: 0.03, green: 0.01, blue: 0.01),
+                boot: Color(red: 0.10, green: 0.03, blue: 0.02),
+                scale: 1.62,
+                armWidth: 0.46,
+                legWidth: 0.52,
                 glamour: false
             )
         default:

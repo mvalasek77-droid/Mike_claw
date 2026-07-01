@@ -19,8 +19,11 @@ private enum FightRuleSet: Equatable {
 
     var opponentWinsToEnd: Int {
         switch self {
+        // A ladder fall no longer counts as a strike — it drops the player into
+        // the Pit to fight Abaddon instead (WatchfighterEngine.resolveRoundIfNeeded).
+        // Losing THAT fight is the one true elimination.
         case .tournament:
-            return 2
+            return 1
         case .versus:
             return 1
         case .learn:
@@ -32,12 +35,13 @@ private enum FightRuleSet: Equatable {
         self == .tournament
     }
 
+    /// Fights run close to two minutes so a round has room to breathe.
     var roundTimer: TimeInterval {
         switch self {
         case .tournament:
-            return 60
+            return 120
         case .versus:
-            return 75
+            return 120
         case .learn:
             return 90
         }
@@ -233,7 +237,9 @@ struct WatchfighterEngine {
         guard state.player.hitStun == 0 else { return }
 
         let target = input.targetX.clamped(to: 0.14...0.56)
-        let response = min(1, CGFloat(delta) * 17.5 * state.player.archetype.quickness)
+        // More footwork: snappier tracking so both fighters cover ground and
+        // reposition instead of trading in place.
+        let response = min(1, CGFloat(delta) * 21.0 * state.player.archetype.quickness)
         let previousX = state.player.x
         state.player.x += (target - state.player.x) * response
         state.player.x = min(state.player.x, state.opponent.x - 0.18).clamped(to: 0.14...0.56)
@@ -327,7 +333,7 @@ struct WatchfighterEngine {
             setAction(state.player.action == .jumpKick ? .crouch : .blocking, for: .opponent, duration: 0.16)
         }
 
-        let response = min(1, CGFloat(delta) * (8.4 + opponentPressure * 5.6) * state.opponent.archetype.quickness * difficulty)
+        let response = min(1, CGFloat(delta) * (10.0 + opponentPressure * 6.4) * state.opponent.archetype.quickness * difficulty)
         let previousX = state.opponent.x
         state.opponent.x += (target.clamped(to: 0.44...0.88) - state.opponent.x) * response
         state.opponent.x = max(state.opponent.x, state.player.x + 0.18).clamped(to: 0.44...0.88)
@@ -452,6 +458,18 @@ struct WatchfighterEngine {
             if action == .throwAttack, !defenderGuarding {
                 state.player.x = max(0.14, state.player.x + state.opponent.facing * style.throwPush)
             }
+        }
+
+        if action == .throwAttack, !defenderGuarding, attacker.archetype.inflictsVampireBite {
+            // The bite lands: the victim turns for the rest of the fight — darker
+            // skin, bat wings, and an airborne stance (WatchfighterCanvas).
+            if side == .player {
+                state.opponent.isVampire = true
+            } else {
+                state.player.isVampire = true
+            }
+            addStrike(side: side, x: impactX, y: 0.45, kind: .vampireBite, lifetime: 0.55)
+            showBanner("VAMPIRE'S BITE", "\(defender.archetype.displayName) turns", duration: 1.1)
         }
 
         let strikeKind: StrikeKind
@@ -712,20 +730,41 @@ struct WatchfighterEngine {
         let loser = playerWon ? state.opponent : state.player
 
         if playerWon {
-            state.playerWins += 1
-            state.score += 500 + Int(state.roundTimer.rounded()) * 4
-            state.player.action = .victory
-            state.opponent.action = .defeated
-            if state.opponent.archetype.isMillionBoss {
-                showBanner("MILLION SHOT", "the impossible counter ends Titus", duration: 2.0)
+            if state.pitActive {
+                // Clawed free of Hell — resume the climb. No ladder credit or
+                // score bonus for beating Abaddon; the reward is your life back.
+                state.pitActive = false
+                state.player.action = .victory
+                state.opponent.action = .defeated
+                showBanner("ESCAPED HELL", "the climb continues", duration: 2.0)
             } else {
-                showBanner(winner.finisherTitle, "\(winner.displayName) ends round \(state.round)", duration: 2.0)
+                state.playerWins += 1
+                state.score += 500 + Int(state.roundTimer.rounded()) * 4
+                state.player.action = .victory
+                state.opponent.action = .defeated
+                if state.opponent.archetype.isMillionBoss {
+                    showBanner("MILLION SHOT", "the impossible counter ends Titus", duration: 2.0)
+                } else {
+                    showBanner(winner.finisherTitle, "\(winner.displayName) ends round \(state.round)", duration: 2.0)
+                }
             }
         } else {
-            state.opponentWins += 1
             state.player.action = .defeated
             state.opponent.action = .victory
-            showBanner(winner.finisherTitle, "\(state.opponent.archetype.displayName) takes round \(state.round)", duration: 2.0)
+            if state.pitActive {
+                // Lost to the demon — the run is over (checked below).
+                state.opponentWins += 1
+                state.pitActive = false
+                showBanner("CLAIMED BY HELL", "the demon keeps you", duration: 2.0)
+            } else if ruleSet.advancesLadder {
+                // First fall on the ladder: dragged to the Pit instead of a
+                // counted strike. startNextRound() spawns Abaddon next.
+                state.pitActive = true
+                showBanner("DRAGGED TO HELL", "fight your way back", duration: 2.0)
+            } else {
+                state.opponentWins += 1
+                showBanner(winner.finisherTitle, "\(state.opponent.archetype.displayName) takes round \(state.round)", duration: 2.0)
+            }
         }
 
         state.finisherText = winner.finisherTitle
@@ -755,8 +794,19 @@ struct WatchfighterEngine {
         state.comboClock = 0
         state.finisherText = ""
         state.finisherTimer = 0
+        // A Pit fall spawns Abaddon directly instead of the floor's rival; the
+        // chapter itself doesn't change (playerWins is untouched), so clearing
+        // the Pit refights the very floor you fell on.
+        let nextOpponent: FighterArchetype
+        if state.pitActive {
+            nextOpponent = .abaddon
+        } else if ruleSet.advancesLadder {
+            nextOpponent = opponent(for: state.chapter)
+        } else {
+            nextOpponent = previousOpponent
+        }
         state.player = DuelFighter(archetype: playerArchetype, x: 0.25, facing: 1)
-        state.opponent = DuelFighter(archetype: ruleSet.advancesLadder ? opponent(for: state.chapter) : previousOpponent, x: 0.75, facing: -1)
+        state.opponent = DuelFighter(archetype: nextOpponent, x: 0.75, facing: -1)
         if ruleSet == .learn {
             state.player.maxHealth = 150
             state.player.health = 150
@@ -769,7 +819,7 @@ struct WatchfighterEngine {
         opponentDecisionClock = 0
         opponentComboClock = 0
         opponentComboPlan.removeAll()
-        let bannerText = ruleSet == .learn ? "DRILL \(state.round)" : "ROUND \(state.round)"
+        let bannerText = state.pitActive ? "THE PIT" : (ruleSet == .learn ? "DRILL \(state.round)" : "ROUND \(state.round)")
         showBanner(bannerText, "\(state.opponent.archetype.displayName): \(state.opponent.archetype.techniqueName)", duration: 1.8)
     }
 
