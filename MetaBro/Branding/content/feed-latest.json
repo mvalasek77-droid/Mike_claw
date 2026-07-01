@@ -1,24 +1,28 @@
 {
-  "generated_for": "2026-07-01T02",
+  "generated_for": "2026-07-01T07",
   "posts": [
     {
       "community": null,
       "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 45,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 22,
       "reactions": [
         {
+          "kind": "respect",
+          "count": 27
+        },
+        {
           "kind": "strong",
-          "count": 42
+          "count": 24
         },
         {
           "kind": "like",
-          "count": 22
+          "count": 11
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "865d24ee-d222-5462-9283-d826d700a837",
+      "id": "c088b0ab-34d7-033d-3d57-20379690103b",
       "author": {
         "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
         "handle": "@ironbro",
@@ -27,8 +31,124 @@
         "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 108,
-      "created_at": "2026-06-30T23:10:02+00:00",
+      "comment_count": 59,
+      "created_at": "2026-07-01T05:51:32+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 17,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 37
+        },
+        {
+          "kind": "like",
+          "count": 6
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "b23010cb-4c59-f9fb-c401-9b5b712f4e82",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 79,
+      "created_at": "2026-07-01T02:47:32+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "The obstacle is the way",
+      "body": "Reframed a brutal week as training. Different game entirely.",
+      "score": 247,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "20017a0b-403e-1ff5-2328-912b6118133d",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 19,
+      "created_at": "2026-07-01T04:44:32+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "PSA: warm up your rotator cuffs, bros",
+      "body": "Saved my bench after years of nagging pain. Here's the routine.",
+      "score": 161,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "882bb3b3-35a7-980f-35e6-3565c7cd6521",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 36,
+      "created_at": "2026-07-01T02:29:32+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 75,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 40
+        },
+        {
+          "kind": "like",
+          "count": 35
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "9e849a06-7b0d-12d0-ffd2-6b3c8a76adbd",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 42,
+      "created_at": "2026-07-01T03:31:32+00:00",
       "my_vote": 0
     },
     {
@@ -40,13 +160,18 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
         "is_joined": true
       },
-      "title": "Finally finished the brake job",
-      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
-      "score": 85,
+      "title": "Manual or auto for a first project car?",
+      "body": "Want something I can wrench on cheaply. Thoughts?",
+      "score": 262,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "e0aaa4b5-447c-3b8f-b666-34183dc6533b",
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 2
+        }
+      ],
+      "id": "ce7364a8-8666-5641-a8fb-33fed77da4d3",
       "author": {
         "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
         "handle": "@newbro",
@@ -56,142 +181,7 @@
       },
       "image_url": null,
       "comment_count": 51,
-      "created_at": "2026-06-30T22:22:02+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 85,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 23
-        },
-        {
-          "kind": "respect",
-          "count": 25
-        },
-        {
-          "kind": "lol",
-          "count": 26
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "19b1f7ed-4efa-1f4e-9189-5bd1dc6d572f",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 69,
-      "created_at": "2026-06-30T23:04:02+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 82,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 9
-        },
-        {
-          "kind": "respect",
-          "count": 24
-        },
-        {
-          "kind": "lol",
-          "count": 15
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "d0d9d2c8-3ddf-6be0-0265-e68ef1a28701",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 27,
-      "created_at": "2026-06-30T23:39:02+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
-        "is_joined": true
-      },
-      "title": "Detailing Sunday",
-      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
-      "score": 288,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 1
-        }
-      ],
-      "id": "0f8407ca-b96c-381b-a159-4fdd453cb2ab",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 3,
-      "created_at": "2026-06-30T22:57:02+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 67,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 12
-        },
-        {
-          "kind": "respect",
-          "count": 5
-        },
-        {
-          "kind": "lol",
-          "count": 26
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "c3ff73d1-0b0d-37f6-da17-52190afcc8cb",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 109,
-      "created_at": "2026-06-30T22:55:02+00:00",
+      "created_at": "2026-07-01T01:50:32+00:00",
       "my_vote": 0
     }
   ],
