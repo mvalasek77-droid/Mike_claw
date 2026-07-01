@@ -573,6 +573,12 @@ struct WatchfighterEngine {
     }
 
     private func opponentCounterSequence(blocked: Bool, distance: CGFloat) -> [FighterAction] {
+        // Dracula counters with his signature bite: snap in from his hover and
+        // throw. Without this, acrobat spacing (0.32) parks him just outside
+        // his own bite window and the bite never comes out organically.
+        if state.opponent.archetype == .dracula {
+            return distance < 0.26 ? [.throwAttack, .jumpKick] : [.jumpKick, .throwAttack]
+        }
         switch state.opponent.archetype.combatStyle {
         case .rushdown:
             return blocked ? [.jab, .kick] : [.kick, .jab]

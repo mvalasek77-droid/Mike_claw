@@ -270,16 +270,18 @@ final class WatchfighterEngineTests: XCTestCase {
         XCTAssertEqual(engine.state.bannerText, "MILLION SHOT")
     }
 
-    func testDraculaBiteTurnsAnUnguardedDefenderIntoAVampire() {
+    func testDraculaBiteTurnsTheDefenderIntoAVampire() {
         // Dracula's bite is a throwAttack from an archetype that inflicts the
-        // vampire bite; point-blank + unguarded so the throw is guaranteed to land.
+        // vampire bite. Pin both fighters at point-blank before every tick so
+        // his float-away hover can't drift him out of bite range before his
+        // attack clock expires (throws ignore guard, so the bite must land).
         var engine = WatchfighterEngine(seed: 61)
-        engine.debugSetPlayer(x: 0.40, guardMeter: 0)
         engine.debugSetOpponent(x: 0.58, archetype: .dracula)
-
         XCTAssertFalse(engine.state.player.isVampire)
-        engine.tick(delta: 0.01, input: GameInput(targetX: 0.40))   // let the AI throw
-        for _ in 0..<24 where !engine.state.player.isVampire {
+
+        for _ in 0..<40 where !engine.state.player.isVampire {
+            engine.debugSetPlayer(x: 0.40)
+            engine.debugSetOpponent(x: 0.56)
             engine.tick(delta: 1.0 / 12.0, input: GameInput(targetX: 0.40))
         }
 

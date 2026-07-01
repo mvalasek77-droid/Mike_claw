@@ -52,13 +52,20 @@ final class StoryboardFlowTests: XCTestCase {
             scene("FLOOR \(chapter.rawValue): \(chapter.title)",
                   "vs \(rival.displayName) (\(rival.subtitle), \(rival.combatStyle)) · \(landedStrike ? "combat live" : "approach")")
 
-            // On floor 3, take a dive to exercise the Pit / Hell second-chance.
+            // On floor 3, take a dive to exercise the Pit / Hell second-chance:
+            // fall -> fight Abaddon in Hell -> win -> back to the same floor.
             if chapter == .stormBridge, !sawPit {
                 forceOpponentWin(&engine)
                 advancePastRoundPause(&engine)
                 sawPit = true
-                scene("THE PIT (HELL)", "lost the floor · \(firstLine(FFScript.pit)) · refighting \(engine.state.chapter.title)")
-                // We're now refighting the same floor; fall through and win it.
+                XCTAssertTrue(engine.state.pitActive, "a fall must drop into the Pit")
+                XCTAssertEqual(engine.state.opponent.archetype, .abaddon, "Hell is guarded by the demon")
+                scene("THE PIT (HELL)", "lost the floor · vs \(engine.state.opponent.archetype.displayName) (\(engine.state.opponent.archetype.subtitle))")
+                finishRoundWithPlayerWin(&engine)      // beat the demon
+                advancePastRoundPause(&engine)         // back on the floor you fell from
+                XCTAssertFalse(engine.state.pitActive)
+                scene("ESCAPED HELL", "back on \(engine.state.chapter.title) vs \(engine.state.opponent.archetype.displayName)")
+                // Fall through and win the refought floor for real.
             }
 
             if rival == .titan {
