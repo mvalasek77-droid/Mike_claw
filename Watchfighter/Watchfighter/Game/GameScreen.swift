@@ -37,6 +37,10 @@ struct GameScreen: View {
 
     // MARK: - Admin/test mode (pick any two fighters at any floor, plus instant
     // debug toggles) so every character and matchup can be checked quickly.
+    // Hidden from players: unlocked by long-pressing the title on the main
+    // menu, or WATCHFIGHTER_ADMIN=1 for test rigs.
+    private let adminEnvEnabled = ProcessInfo.processInfo.environment["WATCHFIGHTER_ADMIN"] == "1"
+    @State private var adminUnlocked = false
     @State private var isAdminSession = false
     @State private var adminPlayerIndex = 0
     @State private var adminOpponentIndex = 1
@@ -258,6 +262,12 @@ struct GameScreen: View {
                     .foregroundStyle(Color.watchfighterGold)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
+                    // Hidden admin unlock: hold the title to reveal (or hide)
+                    // the TEST and REPORT BUG entries.
+                    .onLongPressGesture(minimumDuration: 1.2) {
+                        adminUnlocked.toggle()
+                        playHaptic(adminUnlocked ? .success : .failure)
+                    }
 
                 Text("BEST \(bestScore)")
                     .font(.system(size: 10, weight: .black, design: .rounded))
@@ -289,23 +299,25 @@ struct GameScreen: View {
                 }
                 .buttonStyle(.bordered)
 
-                Button {
-                    openAdmin()
-                } label: {
-                    Label("TEST", systemImage: "wrench.and.screwdriver.fill")
-                        .font(.system(size: 9, weight: .heavy, design: .rounded))
-                }
-                .buttonStyle(.bordered)
-                .tint(.gray)
+                if adminUnlocked || adminEnvEnabled {
+                    Button {
+                        openAdmin()
+                    } label: {
+                        Label("TEST", systemImage: "wrench.and.screwdriver.fill")
+                            .font(.system(size: 9, weight: .heavy, design: .rounded))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
 
-                Button {
-                    showBugReportSheet = true
-                } label: {
-                    Label("REPORT BUG", systemImage: "ladybug.fill")
-                        .font(.system(size: 8, weight: .heavy, design: .rounded))
+                    Button {
+                        showBugReportSheet = true
+                    } label: {
+                        Label("REPORT BUG", systemImage: "ladybug.fill")
+                            .font(.system(size: 8, weight: .heavy, design: .rounded))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
                 }
-                .buttonStyle(.bordered)
-                .tint(.gray)
             }
             .padding(12)
             .background(.black.opacity(0.70), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
