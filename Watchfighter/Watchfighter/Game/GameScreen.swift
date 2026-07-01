@@ -748,8 +748,10 @@ struct GameScreen: View {
                     .foregroundStyle(.white.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
 
-                TextEditor(text: $bugReportText)
-                    .frame(height: 90)
+                // watchOS has no TextEditor; a multi-line TextField opens the
+                // system dictation/scribble input instead.
+                TextField("What happened?", text: $bugReportText, axis: .vertical)
+                    .lineLimit(3...6)
                     .font(.system(size: 9, design: .monospaced))
                     .padding(4)
                     .background(RoundedRectangle(cornerRadius: 6).fill(.black.opacity(0.4)))
