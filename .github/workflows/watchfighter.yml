@@ -1,8 +1,11 @@
 name: Watchfighter CI
 
+# Branch pushes are covered by the pull_request trigger (every claude/**
+# branch works through a PR), so push is main-only — otherwise each push to a
+# PR branch spawned two identical runs.
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
     paths:
       - "Watchfighter/**"
       - ".github/workflows/watchfighter.yml"
@@ -11,6 +14,11 @@ on:
       - "Watchfighter/**"
       - ".github/workflows/watchfighter.yml"
   workflow_dispatch:
+
+# Rapid pushes cancel the superseded in-flight run instead of queueing behind it.
+concurrency:
+  group: watchfighter-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   copy-audit:
