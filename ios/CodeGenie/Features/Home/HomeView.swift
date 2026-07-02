@@ -30,6 +30,7 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 22) {
                 hero
+                if let record = session.pendingResume { resumeCallout(record) }
                 primaryAction
                 experienceCompass
                 shipReadinessCard
@@ -158,6 +159,56 @@ struct HomeView: View {
             .presentationBackground(.ultraThinMaterial)
         }
         .task { await billing.refresh() }
+    }
+
+    /// Shown when a backend build was interrupted — app quit, screen
+    /// closed mid-run, or a failure the user hasn't dealt with yet.
+    /// One tap reattaches to the job's live stream; no new tokens spent.
+    private func resumeCallout(_ record: ResumeRecord) -> some View {
+        GlassSurface(tier: .raised, corner: 22) {
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.counterclockwise.circle.fill")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(LiquidGlass.accent)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(LiquidGlass.accent.opacity(0.18)))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Pick up where you left off")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text("\(record.description.title) was interrupted. Reopening won't restart it or cost anything extra.")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                VStack(spacing: 8) {
+                    Button {
+                        session.resumePendingBuild()
+                    } label: {
+                        Text("Resume")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            .background(LiquidGlass.auroraGradient.opacity(0.85), in: Capsule())
+                            .foregroundStyle(LiquidGlass.primaryText)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Resume \(record.description.title)")
+                    Button {
+                        Haptics.selection()
+                        session.clearResumeRecord()
+                    } label: {
+                        Text("Dismiss")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss resume callout")
+                }
+            }
+            .padding(14)
+        }
     }
 
     private func startBuildOrPromptSetup() {

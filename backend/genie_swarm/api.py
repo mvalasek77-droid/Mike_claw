@@ -353,7 +353,7 @@ async def continue_job(job_id: str):
 
 
 @router.post("/{job_id}/resume")
-async def resume_job(job_id: str):
+async def resume_job(job_id: str, body: dict | None = None):
     """Pick up an interrupted build from the latest checkpoint.
 
     Use cases:
@@ -362,15 +362,26 @@ async def resume_job(job_id: str):
       * The process restarted between agent runs.
 
     The orchestrator decides which stages to skip based on what was
-    checkpointed; the body is empty by design — the workspace and
-    saved session are the only inputs needed."""
+    checkpointed. Body is optional: `{"cost_cap_usd": 10.0}` applies a
+    one-run cap override (the "Lift cap × 2" flow) — without it the
+    resumed run keeps the server default, which is why the override
+    must travel with the resume request rather than the client
+    mutating its saved cap."""
     job = state.jobs.get(job_id)
     if not job:
         raise HTTPException(404, "unknown job")
     if job.state in {JobState.queued, JobState.planning, JobState.building, JobState.testing}:
         raise HTTPException(409, f"job is already running (state={job.state.value})")
 
-    orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=state.config)
+    cfg = dataclasses.replace(state.config, pause_gate=_pause_gate_for_state)
+    cap = (body or {}).get("cost_cap_usd")
+    if cap is not None:
+        try:
+            cfg = dataclasses.replace(cfg, cost_cap_usd=float(cap))
+        except (TypeError, ValueError):
+            raise HTTPException(400, "cost_cap_usd must be a number")
+
+    orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=cfg)
     state.tasks[job_id] = asyncio.create_task(orch.resume(job))
     return {"ok": True, "job_id": job_id}
 

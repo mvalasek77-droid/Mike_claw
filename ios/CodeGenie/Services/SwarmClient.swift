@@ -29,9 +29,13 @@ final class SwarmClient: ObservableObject {
     private let session: URLSession
     private var streamTask: Task<Void, Never>?
     private let credentials: Credentials
+    /// True once the stream delivered a terminal `done` event — tells
+    /// the reconnect loop the server closed the stream on purpose.
+    private var streamFinished = false
     private static let maxRetainedEvents = 1_500
     private static let streamBatchSize = 24
     private static let streamFlushInterval: TimeInterval = 1.0 / 30.0
+    private static let maxReconnectAttempts = 5
 
     init(credentials: Credentials? = nil, session: URLSession = .shared) {
         self.credentials = credentials ?? Credentials.shared
@@ -95,8 +99,13 @@ final class SwarmClient: ObservableObject {
 
     /// Pick up a cancelled or failed job from its latest checkpoint.
     /// Throws if the backend can't find the saved session.
-    func resume(jobID: String) async throws {
-        _ = try await postJSON("/api/coding/swarm/\(jobID)/resume", body: [:])
+    ///
+    /// `costCapUSD` applies a one-run cap override to the resumed job
+    /// (used by "Lift cap × 2") without touching the user's saved cap.
+    func resume(jobID: String, costCapUSD: Double? = nil) async throws {
+        var body: [String: Any] = [:]
+        if let costCapUSD { body["cost_cap_usd"] = costCapUSD }
+        _ = try await postJSON("/api/coding/swarm/\(jobID)/resume", body: body)
     }
 
     /// Soft-pause the orchestrator between agents.
@@ -330,23 +339,44 @@ final class SwarmClient: ObservableObject {
     /// Subscribe to a job's event stream. Calls `onEvent` for every parsed
     /// `SwarmEvent`. Emits structured updates into `events`/`stage` for
     /// SwiftUI bindings.
+    ///
+    /// Reconnects automatically with exponential backoff when the
+    /// connection drops mid-build (Wi-Fi blip, backgrounding). The
+    /// backend does not replay missed events, but `cost.update` and
+    /// `job.state` are cumulative so the UI recovers on the next tick.
+    /// Stops for good after a terminal `done` event or when
+    /// `maxReconnectAttempts` consecutive attempts fail.
     func openStream(jobID: String, onEvent: ((SwarmEvent) -> Void)? = nil) {
         streamTask?.cancel()
         self.jobID = jobID
         events.removeAll()
         isConnected = false
+        streamFinished = false
 
         streamTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await self.consumeStream(jobID: jobID, onEvent: onEvent)
-            } catch is CancellationError {
-                // expected on teardown
-            } catch {
-                await MainActor.run {
-                    self.lastError = "\(error)"
+            var attempt = 0
+            while true {
+                guard let self, !Task.isCancelled, !self.streamFinished else { return }
+                do {
+                    try await self.consumeStream(jobID: jobID, onEvent: onEvent)
+                    // Server closed the stream. Terminal event → done;
+                    // otherwise treat as a transient drop and reattach.
                     self.isConnected = false
+                    if self.streamFinished { return }
+                    attempt = 0
+                } catch is CancellationError {
+                    return // expected on teardown
+                } catch {
+                    attempt += 1
+                    self.isConnected = false
+                    if attempt >= Self.maxReconnectAttempts {
+                        self.lastError = "Lost the connection to the build stream. The build keeps running on the server — reopen this screen to reattach."
+                        return
+                    }
+                    self.lastError = "Connection dropped — reconnecting (try \(attempt) of \(Self.maxReconnectAttempts))…"
                 }
+                let delay = min(pow(2.0, Double(attempt)), 15)
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
         }
     }
@@ -444,6 +474,7 @@ final class SwarmClient: ObservableObject {
         events.append(contentsOf: newEvents)
 
         for event in newEvents {
+            if event.type == "done" { streamFinished = true }
             if event.type == "job.state",
                let s = event.payload["state"] as? String {
                 // Pause / resume are surfaced as job.state changes too —

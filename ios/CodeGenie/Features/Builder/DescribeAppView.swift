@@ -10,6 +10,7 @@ struct DescribeAppView: View {
     @State private var category: AppDescription.Category
     @State private var style: AppDescription.Style
     @State private var showCostConfirm: Bool = false
+    @State private var didSubmit: Bool = false
     @FocusState private var focused: Field?
 
     private enum Field { case title, prompt }
@@ -217,6 +218,7 @@ struct DescribeAppView: View {
         return VStack(spacing: 10) {
             PrimaryButton(title: "Build it", systemImage: "wand.and.stars", style: .filled) {
                 guard canSubmit else { Haptics.error(); return }
+                didSubmit = false
                 showCostConfirm = true
                 Haptics.selection()
             }
@@ -328,6 +330,10 @@ struct DescribeAppView: View {
     }
 
     private func submitConfirmedBuild() {
+        // A fast double-tap on "Confirm and build" fires twice before
+        // the sheet animates away — that would start two paid builds.
+        guard !didSubmit else { return }
+        didSubmit = true
         showCostConfirm = false
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)

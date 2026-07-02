@@ -79,6 +79,10 @@ struct BuildScreen: View {
         if demoSampleID != nil { return true }
         let creds = Credentials.shared
         guard !creds.backendURL.isEmpty else { return false }
+        // Reattaching to an already-running job costs nothing — never
+        // route it to the local simulator just because the user is out
+        // of hosted credits or a key check would fail for a NEW build.
+        if attachToBackendID != nil { return true }
         switch creds.authMode {
         case .byok:
             return creds.hasAnyKey
@@ -423,6 +427,12 @@ struct BuildScreen: View {
                                 Task {
                                     do {
                                         try await swarm.resume(jobID: jobID)
+                                        // Reattach: the old stream died with the
+                                        // failure, and the overlay only drops
+                                        // once stage leaves .failed.
+                                        swarm.openStream(jobID: jobID)
+                                        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = .planning }
+                                        appendLog(for: .planning)
                                         Haptics.success()
                                     } catch {
                                         shipBanner = "Resume failed: \(error)"
@@ -683,6 +693,11 @@ struct BuildScreen: View {
     private func runBuild() async {
         builderTask?.cancel()
         startedAt = .now
+        // "Try again" re-enters here with stage == .failed — reset so
+        // the failure overlay drops and the pipeline restarts visually.
+        if stage != .planning {
+            Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = .planning }
+        }
         Telemetry.shared.recordBuildStarted()
         if let demoSampleID {
             await runCannedDemo(sampleID: demoSampleID)
@@ -739,6 +754,10 @@ struct BuildScreen: View {
             } else {
                 id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
             }
+            // Persist the handle immediately: if the app dies or the
+            // user minimizes this screen, HomeView can offer "Pick up
+            // where you left off" and reattach without a new build.
+            session.registerBackendJob(id, for: initialJob)
             swarm.openStream(jobID: id)
         } catch {
             // Fall back to the local simulator so the user always sees progress.
@@ -754,10 +773,12 @@ struct BuildScreen: View {
             stage = newStage
         }
         appendLog(for: newStage)
-        if newStage == .readyForTest,
-           let jobID = swarm.jobID,
-           demoSampleID == nil {
-            startPerfectionIfNeeded(jobID: jobID)
+        if newStage == .readyForTest, demoSampleID == nil {
+            // Build went green — no interrupted build to resume anymore.
+            session.clearResumeRecord()
+            if let jobID = swarm.jobID {
+                startPerfectionIfNeeded(jobID: jobID)
+            }
         }
         if newStage == .readyForTest || newStage == .failed {
             Telemetry.shared.recordBuildFinished(
@@ -938,17 +959,16 @@ struct BuildScreen: View {
     }
 
     /// Wired to the "Lift cap × 2" callout that appears when the
-    /// backend halts the build via cost.cap_hit. We bump the cap
-    /// 2× (or +$5 minimum), persist it, then POST /resume so the
-    /// orchestrator picks up from the latest checkpoint.
+    /// backend halts the build via cost.cap_hit. Bumps the cap 2×
+    /// (or +$5 minimum) for THIS RUN ONLY — the user's saved cap in
+    /// Settings is untouched, so the next build starts protected again.
     private func liftCapAndResume() async {
         guard let jobID = swarm.jobID else { return }
-        let current = Credentials.shared.costCapUSD ?? costs.backendCapUSD ?? 5.0
+        let current = costs.backendCapUSD ?? Credentials.shared.costCapUSD ?? 5.0
         let newCap = max(current * 2.0, current + 5.0)
-        Credentials.shared.setCostCap(newCap)
         do {
-            try await swarm.resume(jobID: jobID)
-            shipBanner = String(format: "Cap lifted to $%.2f — resuming.", newCap)
+            try await swarm.resume(jobID: jobID, costCapUSD: newCap)
+            shipBanner = String(format: "Cap lifted to $%.2f for this build — resuming. Your saved cap is unchanged.", newCap)
             Haptics.success()
         } catch {
             shipBanner = "Resume failed: \(error)"
