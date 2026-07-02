@@ -86,8 +86,6 @@ struct BuildScreen: View {
         switch creds.authMode {
         case .byok:
             return creds.hasAnyKey
-        case .subscription:
-            return creds.hasCompanionPairing
         case .codegenie:
             return BillingStore.shared.canStartHostedBuild
         }

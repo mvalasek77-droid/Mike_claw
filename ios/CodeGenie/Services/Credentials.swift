@@ -39,16 +39,20 @@ final class Credentials: ObservableObject {
     @Published private(set) var githubPAT: String = ""
     @Published var githubDefaultRepo: String = ""
 
+    // NOTE: there used to be a third case, `subscription` (route
+    // builds through a paired Mac's signed-in Claude Pro / ChatGPT
+    // Plus session). Removed: driving another service's consumer
+    // subscription violates those providers' terms and App Review
+    // guidelines, so it could never ship. Legacy stored values are
+    // migrated to `.codegenie` in init.
     enum AuthMode: String, CaseIterable, Identifiable, Codable {
         case byok          // Bring your own API key
-        case subscription  // Use Claude Pro / ChatGPT Plus session
         case codegenie     // CodeGenie-hosted (we eat the cost on a quota)
 
         var id: String { rawValue }
         var label: String {
             switch self {
             case .byok:         "API key"
-            case .subscription: "Subscription"
             case .codegenie:    "CodeGenie hosted"
             }
         }
@@ -56,8 +60,6 @@ final class Credentials: ObservableObject {
             switch self {
             case .byok:
                 "Paste your own Anthropic / OpenAI key. It is sent only to the build runner you choose when a build starts, and is never stored there."
-            case .subscription:
-                "Use a paired Mac session for Claude Pro / Max or ChatGPT Plus / Pro. Requires the Mac companion."
             case .codegenie:
                 "Use hosted credits. 3 builds free each month, then Pro or Studio unlocks more hosted capacity."
             }
@@ -68,8 +70,16 @@ final class Credentials: ObservableObject {
         anthropicKey = read(.anthropic) ?? ""
         openaiKey    = read(.openai) ?? ""
         backendToken = readBackendToken() ?? ""
-        if let raw = UserDefaults.standard.string(forKey: "auth.mode"),
-           let mode = AuthMode(rawValue: raw) { authMode = mode }
+        if let raw = UserDefaults.standard.string(forKey: "auth.mode") {
+            if let mode = AuthMode(rawValue: raw) {
+                authMode = mode
+            } else if raw == "subscription" {
+                // Retired mode — move these users to hosted, the
+                // closest no-setup equivalent, and persist it.
+                authMode = .codegenie
+                UserDefaults.standard.set(AuthMode.codegenie.rawValue, forKey: "auth.mode")
+            }
+        }
         if let id = UserDefaults.standard.string(forKey: "model.preferred") {
             preferredModelID = id
         }

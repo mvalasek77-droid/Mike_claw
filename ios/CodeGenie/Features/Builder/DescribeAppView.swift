@@ -293,7 +293,6 @@ struct DescribeAppView: View {
     private var confirmTitle: String {
         switch creds.authMode {
         case .byok: "This build will cost about"
-        case .subscription: "This build will use"
         case .codegenie: "This build will use"
         }
     }
@@ -302,8 +301,6 @@ struct DescribeAppView: View {
         switch creds.authMode {
         case .byok:
             String(format: "$%.2f", estimatedCost)
-        case .subscription:
-            "Your paired Mac"
         case .codegenie:
             billing.activePlan == .free ? "1 hosted credit" : "\(billing.activePlan.label) hosting"
         }
@@ -313,8 +310,6 @@ struct DescribeAppView: View {
         switch creds.authMode {
         case .byok:
             return "Estimated with \(modelName). Final provider cost depends on complexity and token use."
-        case .subscription:
-            return "CodeGenie routes through your existing Claude or ChatGPT session on the Mac companion."
         case .codegenie:
             return billing.activePlan == .free
                 ? "\(billing.hostedStatusText). CodeGenie stops if the backend reports a launch blocker."
@@ -391,23 +386,6 @@ struct DescribeAppView: View {
                 title: "API key ready",
                 detail: "\(model.displayName) will run on your selected build runner. The key is sent for this build only and not stored by the runner.",
                 footer: "CodeGenie will generate the Xcode project, run tests, then report cost and status.",
-                tint: LiquidGlass.success
-            )
-        case .subscription:
-            guard creds.hasCompanionPairing else {
-                return BuildAccess(
-                    canBuild: false,
-                    title: "Pair your Mac first",
-                    detail: "Subscription routing needs the Mac companion so CodeGenie can use your signed-in Claude or ChatGPT session.",
-                    footer: "Open Settings -> Pair your Mac to unlock subscription builds.",
-                    tint: LiquidGlass.warning
-                )
-            }
-            return BuildAccess(
-                canBuild: true,
-                title: "Mac companion paired",
-                detail: "This build will route through your paired Mac session.",
-                footer: "CodeGenie will start the paired runner and stream progress back here.",
                 tint: LiquidGlass.success
             )
         case .codegenie:

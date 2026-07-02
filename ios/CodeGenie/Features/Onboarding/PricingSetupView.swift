@@ -5,14 +5,11 @@ import SwiftUI
 /// builds before they get into the app — pricing becomes a first-
 /// class decision instead of a thing buried in Settings.
 ///
-/// Three paths map to the three `Credentials.AuthMode` cases:
+/// Two paths map to the two `Credentials.AuthMode` cases:
 ///   • **CodeGenie hosted** — 3 builds free / month, then Pro at
 ///     $9.99 unlocks more. No setup. Default for first-timers.
 ///   • **Bring your own key** — paste Anthropic or OpenAI API key.
 ///     CodeGenie takes no cut. Cheapest at scale.
-///   • **Subscription pairing** — route through Claude Pro or
-///     ChatGPT Plus via the paired Mac. Zero per-token cost on top
-///     of an existing subscription.
 ///
 /// The screen persists the choice via `Credentials.setAuthMode(...)`
 /// and flips `@AppStorage("hasChosenPricing")` so RootView routes on.
@@ -48,7 +45,7 @@ struct PricingSetupView: View {
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText)
                 .accessibilityAddTraits(.isHeader)
-            Text("Three paths. None of them require a credit card right now — choose one, you can change it any time in Settings.")
+            Text("Two paths. Neither requires a credit card right now — choose one, you can change it any time in Settings.")
                 .font(.system(size: 14, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
                 .fixedSize(horizontal: false, vertical: true)
@@ -85,20 +82,6 @@ struct PricingSetupView: View {
                     "Cheapest at scale; needs ~10 sec of setup."
                 ],
                 ctaLabel: "Use my own API key"
-            )
-            planCard(
-                mode: .subscription,
-                title: "Use my subscription",
-                price: "No per-token cost",
-                upsell: "Routes through your existing Claude Pro or ChatGPT Plus.",
-                icon: "person.crop.circle.badge.checkmark",
-                tint: LiquidGlass.accentSecondary,
-                bullets: [
-                    "Pair a Mac running the CodeGenie Companion.",
-                    "Your phone reaches into the Mac's signed-in session.",
-                    "Best if you already pay Anthropic or OpenAI monthly."
-                ],
-                ctaLabel: "Use my subscription"
             )
         }
     }

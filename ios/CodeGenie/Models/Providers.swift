@@ -26,20 +26,6 @@ enum AIProvider: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    var subscriptionURL: URL {
-        switch self {
-        case .anthropic: URL(string: "https://claude.ai/")!
-        case .openai:    URL(string: "https://chatgpt.com/")!
-        }
-    }
-
-    var subscriptionName: String {
-        switch self {
-        case .anthropic: "Claude Pro / Max"
-        case .openai:    "ChatGPT Plus / Pro"
-        }
-    }
-
     var keyEnvVar: String {
         switch self {
         case .anthropic: "ANTHROPIC_API_KEY"

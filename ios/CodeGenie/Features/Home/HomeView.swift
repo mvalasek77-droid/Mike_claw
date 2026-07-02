@@ -377,8 +377,6 @@ struct HomeView: View {
         switch creds.authMode {
         case .byok:
             return creds.hasKey(for: model.provider)
-        case .subscription:
-            return creds.hasCompanionPairing
         case .codegenie:
             return billing.canStartHostedBuild
         }
@@ -399,8 +397,6 @@ struct HomeView: View {
             switch creds.authMode {
             case .byok:
                 detail = "\(model.displayName) needs a \(model.provider.displayName) API key."
-            case .subscription:
-                detail = "Subscription mode needs the paired Mac companion."
             case .codegenie:
                 detail = "Hosted builds need an active plan or a free credit."
             }
@@ -409,22 +405,12 @@ struct HomeView: View {
                 title: "Set up model access",
                 detail: detail,
                 icon: "key.fill",
-                action: creds.authMode == .subscription ? .pairMac : .settings
+                action: .settings
             )
         }
-        // A paired Mac is only a hard requirement for subscription
-        // routing (the Mac IS the runner). BYOK and hosted builds run
-        // without one — pairing comes later, for Xcode installs and
-        // App Store steps, and the shipping checklist covers that.
-        if creds.authMode == .subscription && !creds.hasCompanionPairing {
-            return HomeBuildGate(
-                canStart: false,
-                title: "Pair Mac first",
-                detail: "Subscription builds route through your Mac, so CodeGenie needs the companion paired.",
-                icon: "macbook.and.iphone",
-                action: .pairMac
-            )
-        }
+        // A paired Mac is never required to START a build — pairing
+        // comes later, for Xcode installs and App Store steps, and the
+        // shipping checklist covers that.
         let macNote = creds.hasCompanionPairing
             ? "and Mac pairing are ready."
             : "ready. Pair a Mac later for Xcode and App Store steps."
@@ -448,10 +434,6 @@ struct HomeView: View {
             routeTitle = "API key"
             routeDetail = model.flatMap { creds.hasKey(for: $0.provider) ? "\($0.provider.displayName) ready" : "Add \($0.provider.displayName) key" } ?? "Pick a model first"
             routeReady = modelRouteReady
-        case .subscription:
-            routeTitle = "Subscription"
-            routeDetail = creds.hasCompanionPairing ? "Paired Mac session ready" : "Pair Mac for Claude or ChatGPT"
-            routeReady = modelRouteReady
         case .codegenie:
             routeTitle = "Hosted plan"
             routeDetail = billing.hostedStatusText
@@ -471,10 +453,10 @@ struct HomeView: View {
                 icon: creds.authMode == .byok ? "key.fill" : "person.crop.circle.badge.checkmark"
             ),
             BuildStartCheck(
-                title: creds.authMode == .subscription ? "Mac paired" : "Mac paired (optional now)",
+                title: "Mac paired (optional now)",
                 detail: creds.hasCompanionPairing
                     ? "\(creds.companionHost):\(creds.companionPort)"
-                    : (creds.authMode == .subscription ? "Tap to pair" : "Needed later for Xcode & App Store"),
+                    : "Needed later for Xcode & App Store",
                 ready: creds.hasCompanionPairing,
                 icon: "macbook.and.iphone",
                 action: { showPairMac = true }
@@ -625,7 +607,6 @@ struct HomeView: View {
         let capActive = creds.costCapUSD != nil
         let modelReady: Bool = switch creds.authMode {
         case .byok: !creds.anthropicKey.isEmpty || !creds.openaiKey.isEmpty
-        case .subscription: creds.hasCompanionPairing
         case .codegenie: billing.canStartHostedBuild
         }
         let appleReady = creds.hasAppleDevCreds
