@@ -1,0 +1,303 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		CA000200000000000000000001 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000100000000000000000001 /* App.swift */; };
+		CA000400000000000000000001 /* ChainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000300000000000000000001 /* ChainView.swift */; };
+		CA000600000000000000000001 /* CoachEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000500000000000000000001 /* CoachEngine.swift */; };
+		CA000800000000000000000001 /* CoachHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000700000000000000000001 /* CoachHomeView.swift */; };
+		CA000A00000000000000000001 /* CoachSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000900000000000000000001 /* CoachSessionView.swift */; };
+		CA000C00000000000000000001 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000B00000000000000000001 /* Components.swift */; };
+		CA000E00000000000000000001 /* DraftReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000D00000000000000000001 /* DraftReviewView.swift */; };
+		CA001000000000000000000001 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000F00000000000000000001 /* LibraryView.swift */; };
+		CA001200000000000000000001 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA001100000000000000000001 /* Models.swift */; };
+		CA001400000000000000000001 /* SkillDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA001300000000000000000001 /* SkillDetailView.swift */; };
+		CA001600000000000000000001 /* SkillStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA001500000000000000000001 /* SkillStore.swift */; };
+		CA001800000000000000000001 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA001700000000000000000001 /* Theme.swift */; };
+		CA001A00000000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CA001900000000000000000001 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		CA000100000000000000000001 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		CA000300000000000000000001 /* ChainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChainView.swift; sourceTree = "<group>"; };
+		CA000500000000000000000001 /* CoachEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachEngine.swift; sourceTree = "<group>"; };
+		CA000700000000000000000001 /* CoachHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachHomeView.swift; sourceTree = "<group>"; };
+		CA000900000000000000000001 /* CoachSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachSessionView.swift; sourceTree = "<group>"; };
+		CA000B00000000000000000001 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		CA000D00000000000000000001 /* DraftReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftReviewView.swift; sourceTree = "<group>"; };
+		CA000F00000000000000000001 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		CA001100000000000000000001 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		CA001300000000000000000001 /* SkillDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillDetailView.swift; sourceTree = "<group>"; };
+		CA001500000000000000000001 /* SkillStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillStore.swift; sourceTree = "<group>"; };
+		CA001700000000000000000001 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		CA001900000000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CA001B00000000000000000001 /* ClaudePromptCoach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudePromptCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		CA002200000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		CA001C00000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				CA001D00000000000000000001 /* ClaudePromptCoach */,
+				CA001E00000000000000000001 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CA001D00000000000000000001 /* ClaudePromptCoach */ = {
+			isa = PBXGroup;
+			children = (
+				CA000100000000000000000001 /* App.swift */,
+				CA000300000000000000000001 /* ChainView.swift */,
+				CA000500000000000000000001 /* CoachEngine.swift */,
+				CA000700000000000000000001 /* CoachHomeView.swift */,
+				CA000900000000000000000001 /* CoachSessionView.swift */,
+				CA000B00000000000000000001 /* Components.swift */,
+				CA000D00000000000000000001 /* DraftReviewView.swift */,
+				CA000F00000000000000000001 /* LibraryView.swift */,
+				CA001100000000000000000001 /* Models.swift */,
+				CA001300000000000000000001 /* SkillDetailView.swift */,
+				CA001500000000000000000001 /* SkillStore.swift */,
+				CA001700000000000000000001 /* Theme.swift */,
+				CA001900000000000000000001 /* Assets.xcassets */,
+			);
+			path = ClaudePromptCoach;
+			sourceTree = "<group>";
+		};
+		CA001E00000000000000000001 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CA001B00000000000000000001 /* ClaudePromptCoach.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		CA001F00000000000000000001 /* ClaudePromptCoach */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CA002500000000000000000001 /* Build configuration list for PBXNativeTarget "ClaudePromptCoach" */;
+			buildPhases = (
+				CA002100000000000000000001 /* Sources */,
+				CA002200000000000000000001 /* Frameworks */,
+				CA002300000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ClaudePromptCoach;
+			productName = ClaudePromptCoach;
+			productReference = CA001B00000000000000000001 /* ClaudePromptCoach.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		CA002000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					CA001F00000000000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = CA002400000000000000000001 /* Build configuration list for PBXProject "ClaudePromptCoach" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = CA001C00000000000000000001;
+			productRefGroup = CA001E00000000000000000001 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CA001F00000000000000000001 /* ClaudePromptCoach */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CA002300000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CA001A00000000000000000001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CA002100000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CA000200000000000000000001 /* App.swift in Sources */,
+				CA000400000000000000000001 /* ChainView.swift in Sources */,
+				CA000600000000000000000001 /* CoachEngine.swift in Sources */,
+				CA000800000000000000000001 /* CoachHomeView.swift in Sources */,
+				CA000A00000000000000000001 /* CoachSessionView.swift in Sources */,
+				CA000C00000000000000000001 /* Components.swift in Sources */,
+				CA000E00000000000000000001 /* DraftReviewView.swift in Sources */,
+				CA001000000000000000000001 /* LibraryView.swift in Sources */,
+				CA001200000000000000000001 /* Models.swift in Sources */,
+				CA001400000000000000000001 /* SkillDetailView.swift in Sources */,
+				CA001600000000000000000001 /* SkillStore.swift in Sources */,
+				CA001800000000000000000001 /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		CA002600000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CA002700000000000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		CA002800000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codegenie.claudepromptcoach;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		CA002900000000000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.codegenie.claudepromptcoach;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		CA002400000000000000000001 /* Build configuration list for PBXProject "ClaudePromptCoach" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CA002600000000000000000001 /* Debug */,
+				CA002700000000000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CA002500000000000000000001 /* Build configuration list for PBXNativeTarget "ClaudePromptCoach" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CA002800000000000000000001 /* Debug */,
+				CA002900000000000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = CA002000000000000000000001 /* Project object */;
+}
