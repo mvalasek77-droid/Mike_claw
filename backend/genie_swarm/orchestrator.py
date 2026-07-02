@@ -495,6 +495,13 @@ class SwarmOrchestrator:
         except FileNotFoundError:
             raise RuntimeError("no saved session for this job — start a fresh build instead")
 
+        # Session.load deserialises its own BuildJob copy from disk.
+        # Rebind to the live instance the API layer holds in
+        # state.jobs, or every update_state below mutates a private
+        # copy and GET /status keeps reporting the stale pre-resume
+        # state (e.g. "cancelled") after the resumed run succeeds.
+        session.job = job
+
         last_label = session.checkpoints[-1].label if session.checkpoints else None
         await events.emit("job.state", state="resuming", from_checkpoint=last_label or "(none)")
 
