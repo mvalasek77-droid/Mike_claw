@@ -4,7 +4,7 @@ import SwiftUI
 /// (so nothing un-Codable is persisted).
 enum ActivityKind: String, Codable {
     case bidReceived, bidAccepted, bidDeclined, reviewReceived
-    case verified, trillionaire, masterpiece, boost
+    case verified, trillionaire, masterpiece, boost, rebid, daily
 
     var icon: String {
         switch self {
@@ -16,6 +16,8 @@ enum ActivityKind: String, Codable {
         case .trillionaire: return "crown.fill"
         case .masterpiece: return "rosette"
         case .boost: return "bolt.fill"
+        case .rebid: return "arrow.up.circle.fill"
+        case .daily: return "gift.fill"
         }
     }
 
@@ -28,6 +30,8 @@ enum ActivityKind: String, Codable {
         case .verified: return Theme.verify
         case .trillionaire, .masterpiece: return Theme.goldSoft
         case .boost: return Theme.rose
+        case .rebid: return Theme.gold
+        case .daily: return Theme.success
         }
     }
 }

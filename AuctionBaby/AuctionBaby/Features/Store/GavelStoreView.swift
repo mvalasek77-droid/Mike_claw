@@ -127,6 +127,12 @@ struct GavelStoreView: View {
                 }
                 .padding(14)
             }
+            if storeKit.hasPass && store.canClaimWeeklyBoost() {
+                GhostButton(title: "Claim your free weekly Boost (Pass perk)",
+                            systemImage: "gift.fill", tint: Theme.rose) {
+                    store.claimWeeklyBoost()
+                }
+            }
         }
     }
 

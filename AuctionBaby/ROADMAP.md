@@ -22,10 +22,18 @@ A living plan. Shipped items reflect what's in the branch today.
 **Premium & monetization (StoreKit 2)**
 - Gavels consumable currency → status archetypes
 - Auction Baby Pass (Paddle / Reserve / Black Card) with real gated perks:
-  rank reveal, unlimited bids, read receipts
-- Spotlight Boost (consumable) — works both sides
-- Gilded bids (the "Rose")
+  rank reveal, unlimited bids, read receipts, weekly Boost claim
+- Contextual paywall fired at four peak-intent moments (outbid rank, bid
+  cap, locked filters, "did she read it?") with a per-tier benefits matrix
+- Spotlight Boost (consumable) — works both sides (lot side pulls bidders in)
+- Gilded bids (the "Rose") · bid on a specific prompt
 - Headliner of the Day (curated standout)
+
+**Retention loops**
+- Outbid → one-tap rebid ("take the top")
+- Daily Gavel claim with growing streak (capped 7×)
+- Activity feed (bids, accepts, reviews, milestones) with toolbar bell
+- "SOLD!" celebration · "What you're worth tonight" dashboard
 
 **Trust & safety**
 - Safety Center, Report & Block, premium floor filters

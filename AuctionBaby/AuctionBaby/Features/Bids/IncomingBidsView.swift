@@ -21,6 +21,7 @@ struct IncomingBidsView: View {
             ScrollView {
                 LazyVStack(spacing: 14) {
                     header
+                    DailyClaimCard()
                     if pending.isEmpty && resolved.isEmpty {
                         EmptyStateView(icon: "hand.raised", title: "No bids yet",
                                        message: "Bidders are finding their nerve. Summon one to see how it works.")

@@ -36,7 +36,7 @@ final class StoreCatalogTests: XCTestCase {
 
     @MainActor
     func testActivateBoostMakesItLive() {
-        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v4")
+        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v5")
         let store = AuctionStore()
         store.resetAccount()
         XCTAssertFalse(store.isBoosted)
@@ -68,7 +68,7 @@ final class StoreCatalogTests: XCTestCase {
 
     @MainActor
     func testCreditAndRevokeMoveTheWallet() {
-        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v4")
+        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v5")
         let store = AuctionStore()
         store.resetAccount()
         let start = store.wallet

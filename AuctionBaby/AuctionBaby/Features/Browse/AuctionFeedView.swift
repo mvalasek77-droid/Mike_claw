@@ -16,6 +16,7 @@ struct AuctionFeedView: View {
             ScrollView {
                 LazyVStack(spacing: 18) {
                     header
+                    DailyClaimCard()
                     if let star = store.headliner {
                         NavigationLink(value: star) { HeadlinerBanner(woman: star) }
                             .buttonStyle(.plain)

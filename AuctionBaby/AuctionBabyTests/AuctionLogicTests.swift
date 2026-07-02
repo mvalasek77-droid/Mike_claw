@@ -469,7 +469,7 @@ final class AuctionLogicTests: XCTestCase {
 
     @MainActor
     private func freshStore() -> AuctionStore {
-        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v4")
+        UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v5")
         let store = AuctionStore()
         store.resetAccount()
         return store

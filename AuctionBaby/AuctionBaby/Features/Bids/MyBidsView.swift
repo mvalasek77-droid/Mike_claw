@@ -70,6 +70,7 @@ struct MyBidsView: View {
 }
 
 struct OutgoingBidRow: View {
+    @EnvironmentObject private var store: AuctionStore
     let bid: Bid
     var locked: Bool
     var onUnlock: () -> Void
@@ -118,9 +119,26 @@ struct OutgoingBidRow: View {
             case .top:
                 rankBanner(icon: "crown.fill", text: "You're the top bid", tint: Theme.success)
             case let .outbid(position, leader):
-                rankBanner(icon: "arrow.up.right",
-                           text: "Outbid · you're #\(position) — top bid \(Money.compact(leader))",
-                           tint: Theme.warning)
+                VStack(spacing: 8) {
+                    rankBanner(icon: "arrow.up.right",
+                               text: "Outbid · you're #\(position) — top bid \(Money.compact(leader))",
+                               tint: Theme.warning)
+                    // The addictive loop: one tap puts you back on top.
+                    Button {
+                        store.raiseBid(bid.id, to: leader)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.up.circle.fill")
+                            Text("Rebid \(Money.compact(leader)) — take the top")
+                            Spacer()
+                        }
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 12).padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.goldGradient))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }

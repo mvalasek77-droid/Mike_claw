@@ -17,6 +17,9 @@ final class AuctionStore: ObservableObject {
     @Published var wallet: Int = 750           // Gavels (in-app currency, real money via IAP)
     @Published var earnings: Int = 0            // woman side: bids actually paid out (real-world $)
     @Published var boostUntil: Date?           // active Spotlight Boost expiry, if any
+    @Published var dailyStreak: Int = 0        // consecutive days claimed
+    @Published var lastDailyClaim: Date?
+    @Published var lastWeeklyBoostClaim: Date? // Pass perk: one free Boost / week
 
     @Published var floor: [Profile] = []        // women a bidder browses
     @Published var incomingBids: [Bid] = []     // woman's inbox
@@ -128,6 +131,9 @@ final class AuctionStore: ObservableObject {
         filters = FilterPreferences()
         blockedIDs = []
         activity = []
+        dailyStreak = 0
+        lastDailyClaim = nil
+        lastWeeklyBoostClaim = nil
         store.removeObject(forKey: Self.key)
     }
 
@@ -138,7 +144,7 @@ final class AuctionStore: ObservableObject {
     /// bidder's reputation immediately.
     func placeBid(on woman: Profile, amount: Int, note: String, gilded: Bool = false,
                   promptRef: String? = nil) {
-        guard role == .man else { return }
+        guard role == .man, amount > 0 else { return }
         // Gilding spends Gavels up front; fall back to a normal bid if short.
         var gild = gilded
         if gild {
@@ -161,6 +167,20 @@ final class AuctionStore: ObservableObject {
         }
         save()
         scheduleWomanDecision(bidID: bid.id)
+    }
+
+    /// Raise a live bid — the one-tap answer to "you've been outbid". The raised
+    /// amount gets a fresh decision from the (simulated) woman.
+    func raiseBid(_ bidID: UUID, to newAmount: Int) {
+        guard let idx = outgoingBids.firstIndex(where: { $0.id == bidID }),
+              outgoingBids[idx].status == .pending,
+              newAmount > outgoingBids[idx].amount else { return }
+        outgoingBids[idx].amount = newAmount
+        Haptics.commit()
+        toastFlash("Raised to \(Money.compact(newAmount)) on \(outgoingBids[idx].woman.name).")
+        log(.rebid, "You raised your bid on \(outgoingBids[idx].woman.name) to \(Money.compact(newAmount)).")
+        save()
+        scheduleWomanDecision(bidID: bidID)
     }
 
     /// Buy (or upgrade to) a status archetype. The price is the point — it's how
@@ -238,6 +258,50 @@ final class AuctionStore: ObservableObject {
         }
     }
 
+    // MARK: - Daily streak & Pass perks
+
+    /// Base daily reward; multiplied by the streak (capped at 7×). The classic
+    /// come-back-tomorrow loop, paid in Gavels.
+    static let dailyGavelBase = 50
+
+    func canClaimDaily(now: Date = .now) -> Bool {
+        guard let last = lastDailyClaim else { return true }
+        return !Calendar.current.isDate(last, inSameDayAs: now)
+    }
+
+    /// Claim today's Gavels. Consecutive days grow the streak; a missed day
+    /// resets it. `now` is injectable so the streak math is unit-testable.
+    func claimDaily(now: Date = .now) {
+        guard canClaimDaily(now: now) else { return }
+        if let last = lastDailyClaim,
+           let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: last),
+           Calendar.current.isDate(nextDay, inSameDayAs: now) {
+            dailyStreak += 1
+        } else {
+            dailyStreak = 1
+        }
+        lastDailyClaim = now
+        let reward = Self.dailyGavelBase * min(dailyStreak, 7)
+        wallet += reward
+        Haptics.success()
+        toastFlash("Day \(dailyStreak) streak — +\(Tally.compact(reward)) Gavels.")
+        log(.daily, "Claimed your day-\(dailyStreak) streak: \(Tally.compact(reward)) Gavels.")
+        save()
+    }
+
+    func canClaimWeeklyBoost(now: Date = .now) -> Bool {
+        guard let last = lastWeeklyBoostClaim else { return true }
+        return now.timeIntervalSince(last) >= 7 * 24 * 3600
+    }
+
+    /// The Paddle perk made real: any Pass includes one free Boost per week.
+    /// The caller gates on subscription state (the store owns no StoreKit ref).
+    func claimWeeklyBoost(now: Date = .now) {
+        guard canClaimWeeklyBoost(now: now) else { return }
+        lastWeeklyBoostClaim = now
+        activateBoost()
+    }
+
     /// Demo-only top-up so the higher tiers are explorable without a sandbox
     /// purchase. Clearly labelled as demo in the UI; never charges anything.
     func addDemoGavels(_ amount: Int = 10_000) {
@@ -256,7 +320,8 @@ final class AuctionStore: ObservableObject {
     }
 
     func accept(_ bid: Bid) {
-        guard let idx = incomingBids.firstIndex(where: { $0.id == bid.id }) else { return }
+        guard let idx = incomingBids.firstIndex(where: { $0.id == bid.id }),
+              incomingBids[idx].status == .pending else { return }   // idempotent: no double-credit
         incomingBids[idx].status = .accepted
         let accepted = incomingBids[idx]
         earnings += accepted.amount
@@ -289,7 +354,8 @@ final class AuctionStore: ObservableObject {
     }
 
     func decline(_ bid: Bid) {
-        guard let idx = incomingBids.firstIndex(where: { $0.id == bid.id }) else { return }
+        guard let idx = incomingBids.firstIndex(where: { $0.id == bid.id }),
+              incomingBids[idx].status == .pending else { return }   // can't decline an accepted bid
         incomingBids[idx].status = .declined
         Haptics.tap()
         save()
@@ -364,7 +430,8 @@ final class AuctionStore: ObservableObject {
     /// deadbeat.
     func completeAsMan(_ match: Match, stars: Int, traits: [Trait: Int],
                        categories: [String], text: String, actuallySpent: Int) {
-        guard let idx = matches.firstIndex(where: { $0.id == match.id }) else { return }
+        guard let idx = matches.firstIndex(where: { $0.id == match.id }),
+              !matches[idx].manReviewedWoman else { return }   // one review per date
         let bid = matches[idx].bid
 
         // NOTE: no in-app debit here. A bid is a letter of intent — the date
@@ -419,7 +486,8 @@ final class AuctionStore: ObservableObject {
     /// Woman reviews the man after the date (the woman-user path). Records the
     /// deadbeat verdict; a paid Trillionaire mints her Masterpiece.
     func completeAsWoman(_ match: Match, paid: Bool, stars: Int, text: String) {
-        guard let idx = matches.firstIndex(where: { $0.id == match.id }) else { return }
+        guard let idx = matches.firstIndex(where: { $0.id == match.id }),
+              !matches[idx].womanReviewedMan else { return }   // one review per date
         let bid = matches[idx].bid
 
         // Her verdict on him (cosmetic — he isn't the user).
@@ -588,13 +656,18 @@ final class AuctionStore: ObservableObject {
         var filters: FilterPreferences
         var blockedIDs: [UUID]
         var activity: [ActivityEvent]?
+        var dailyStreak: Int?
+        var lastDailyClaim: Date?
+        var lastWeeklyBoostClaim: Date?
     }
 
     private func save() {
         let snap = Snapshot(role: role, me: me, wallet: wallet, earnings: earnings,
                             boostUntil: boostUntil, floor: floor, incomingBids: incomingBids,
                             outgoingBids: outgoingBids, matches: matches,
-                            filters: filters, blockedIDs: Array(blockedIDs), activity: activity)
+                            filters: filters, blockedIDs: Array(blockedIDs), activity: activity,
+                            dailyStreak: dailyStreak, lastDailyClaim: lastDailyClaim,
+                            lastWeeklyBoostClaim: lastWeeklyBoostClaim)
         if let data = try? JSONEncoder().encode(snap) {
             store.set(data, forKey: Self.key)
         }
@@ -615,6 +688,9 @@ final class AuctionStore: ObservableObject {
         filters = snap.filters
         blockedIDs = Set(snap.blockedIDs)
         activity = snap.activity ?? []
+        dailyStreak = snap.dailyStreak ?? 0
+        lastDailyClaim = snap.lastDailyClaim
+        lastWeeklyBoostClaim = snap.lastWeeklyBoostClaim
         // Resume the boost-summon loop if a boost survived relaunch.
         if isBoosted, role == .woman { startBoostSummons() }
     }
