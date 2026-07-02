@@ -239,6 +239,7 @@ async def ship_now(job_id: str, req: ShipRequest):
     if job.state not in {JobState.succeeded, JobState.testing, JobState.reviewing}:
         raise HTTPException(409, f"job is in state {job.state.value}; not shippable")
 
+    _materialise_asc_key(state.config.workspace_root / job_id, req)
     orch = SwarmOrchestrator(llm=state.llm, bus=state.bus, config=state.config)
     state.tasks[job_id] = asyncio.create_task(orch.ship_only(job, _to_ship_config(req)))
     return {"ok": True, "job_id": job_id}
@@ -255,6 +256,9 @@ async def release_readiness(job_id: str, req: ReleaseReadinessRequest | None = N
     job = state.jobs.get(job_id)
     if not job:
         raise HTTPException(404, "unknown job")
+    # Materialise the transient .p8 first so the readiness audit sees
+    # the same credential state the actual ship stage will.
+    _materialise_asc_key(state.config.workspace_root / job_id, req.ship if req else None)
     result = run_release_readiness(
         spec=job.spec,
         workspace=state.config.workspace_root / job_id,
@@ -372,6 +376,13 @@ async def resume_job(job_id: str, body: dict | None = None):
         raise HTTPException(404, "unknown job")
     if job.state in {JobState.queued, JobState.planning, JobState.building, JobState.testing}:
         raise HTTPException(409, f"job is already running (state={job.state.value})")
+    # The state gate above races with task startup (job.state only
+    # flips once the spawned coroutine runs), so a double-tap on
+    # Resume / Lift-cap could start two orchestrators on one
+    # workspace. The task handle is the authoritative check.
+    existing = state.tasks.get(job_id)
+    if existing and not existing.done():
+        raise HTTPException(409, "job already has an active run")
 
     cfg = dataclasses.replace(state.config, pause_gate=_pause_gate_for_state)
     cap = (body or {}).get("cost_cap_usd")
@@ -740,6 +751,31 @@ async def archive_old_jobs(body: dict | None = None):
 @router.get("/health")
 async def health():
     return {"ok": True, "active_jobs": len(state.tasks)}
+
+
+def _materialise_asc_key(workspace, ship: ShipRequest | None) -> None:
+    """Write the transient .p8 body the iOS client sent into the job
+    workspace at `asc_api_key_path` (0600) so the upload tooling can
+    read it. Only workspace-relative paths are honoured; the content
+    is never logged or persisted anywhere else."""
+    if not ship or not ship.asc_api_key_content or not ship.asc_api_key_path:
+        return
+    from pathlib import Path
+    raw = Path(ship.asc_api_key_path)
+    if raw.is_absolute():
+        return
+    target = workspace / raw
+    try:
+        workspace.mkdir(parents=True, exist_ok=True)
+        target.resolve().relative_to(Path(workspace).resolve())
+    except (OSError, ValueError):
+        return
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(ship.asc_api_key_content, encoding="utf-8")
+        target.chmod(0o600)
+    except OSError:
+        pass
 
 
 def _to_ship_config(req: ShipRequest) -> ShipConfig:

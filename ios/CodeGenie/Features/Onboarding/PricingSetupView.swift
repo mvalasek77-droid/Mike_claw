@@ -75,7 +75,7 @@ struct PricingSetupView: View {
             planCard(
                 mode: .byok,
                 title: "Bring your own key",
-                price: "≈ $0.20–$1.20 per build · no CodeGenie cut",
+                price: "≈ $0.25–$1.80 per build · no CodeGenie cut",
                 upsell: "Pay Anthropic or OpenAI directly.",
                 icon: "key.fill",
                 tint: LiquidGlass.success,
@@ -105,6 +105,7 @@ struct PricingSetupView: View {
 
     private var laterEscape: some View {
         Button {
+            guard pendingChoice == nil else { return }
             Haptics.selection()
             // Pick the safest default (free hosted) silently. The
             // user can revisit Settings any time; no decision is
@@ -189,6 +190,10 @@ struct PricingSetupView: View {
     }
 
     private func choose(_ mode: Credentials.AuthMode) {
+        // First tap wins — a second card tapped during the 250 ms
+        // selection beat must not overwrite the choice or re-fire
+        // the routing callback.
+        guard pendingChoice == nil else { return }
         pendingChoice = mode
         Haptics.success()
         creds.setAuthMode(mode)

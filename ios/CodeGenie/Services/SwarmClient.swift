@@ -97,6 +97,16 @@ final class SwarmClient: ObservableObject {
         _ = try await postJSON("/api/coding/swarm/\(jobID)/cancel", body: [:])
     }
 
+    /// One-shot job state ("queued", "building", "succeeded", "failed",
+    /// "cancelled", …). Used when reattaching: the SSE stream doesn't
+    /// replay history, so without this a finished job looks like it's
+    /// stuck at planning forever. Throws SwarmError.http with a 404
+    /// when the backend no longer knows the job (restart / archive).
+    func jobState(jobID: String) async throws -> String {
+        let r: [String: Any] = try await getJSON("/api/coding/swarm/\(jobID)/status")
+        return (r["state"] as? String) ?? "unknown"
+    }
+
     /// Pick up a cancelled or failed job from its latest checkpoint.
     /// Throws if the backend can't find the saved session.
     ///
@@ -437,7 +447,12 @@ final class SwarmClient: ObservableObject {
             }
             // We ignore "event:" / "id:" / "retry:" — the type lives inside the JSON.
         }
-        await flushIfNeeded(force: true)
+        // A cancelled stream must not flush leftovers: openStream may
+        // already be running a NEW job, and a stale buffered `done`
+        // would set streamFinished and kill the new stream's loop.
+        if !Task.isCancelled {
+            await flushIfNeeded(force: true)
+        }
     }
 
     /// Inject demo state for the first-run canned build. The same
@@ -779,6 +794,11 @@ struct ShipConfig: Hashable {
     var ascKeyID: String? = nil
     var ascIssuerID: String? = nil
     var ascKeyPath: String? = nil
+    /// Transient .p8 body from the Keychain. Sent only with ship /
+    /// release-readiness requests; the backend writes it into the job
+    /// workspace so the upload tooling can authenticate. Without it
+    /// the key never left the phone and upload always failed.
+    var ascKeyContent: String? = nil
     var pollAfterUpload: Bool = true
 
     var wireBody: [String: Any] {
@@ -792,6 +812,7 @@ struct ShipConfig: Hashable {
         if let v = ascKeyID { body["asc_api_key_id"] = v }
         if let v = ascIssuerID { body["asc_api_issuer_id"] = v }
         if let v = ascKeyPath { body["asc_api_key_path"] = v }
+        if let v = ascKeyContent, !v.isEmpty { body["asc_api_key_content"] = v }
         return body
     }
 
@@ -812,6 +833,7 @@ struct ShipConfig: Hashable {
             config.ascKeyID = credentials.ascKeyID
             config.ascIssuerID = credentials.ascIssuerID
             config.ascKeyPath = keyPath
+            config.ascKeyContent = credentials.ascP8PEM
         }
         if !credentials.appSpecificPassword.isEmpty {
             config.appSpecificPassword = credentials.appSpecificPassword

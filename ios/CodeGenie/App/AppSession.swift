@@ -110,9 +110,26 @@ final class AppSession: ObservableObject {
         _ = startBuild(from: description)
     }
 
+    /// The (job, backendID) to restore when the preview cover closes.
+    /// fullScreenCovers are mutually exclusive, so opening the preview
+    /// has to tear down BuildScreen — without this stash the user
+    /// could never get back to the success overlay's Submit button.
+    private var returnAfterPreview: (job: BuildJob, backendID: String?)?
+
     func openPreview(for job: BuildJob) {
+        if let running = currentJob {
+            returnAfterPreview = (running, currentJobBackendID ?? backendJobIDs[running.id] ?? pendingResume?.backendID)
+        }
         currentJob = nil
         pendingPreview = job
+    }
+
+    /// Called when the preview cover dismisses: reopen the build screen
+    /// attached to the same backend job so Submit is one tap away.
+    func returnToBuildAfterPreview() {
+        guard let stash = returnAfterPreview else { return }
+        returnAfterPreview = nil
+        openJob(stash.job, backendID: stash.backendID)
     }
 
     func openAppStoreConnect(for job: BuildJob) {

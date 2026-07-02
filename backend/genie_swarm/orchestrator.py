@@ -550,6 +550,20 @@ class SwarmOrchestrator:
             session.update_state(JobState.succeeded)
             await events.emit("job.state", state=session.job.state.value, resumed=True)
             await events.emit("done", success=True, resumed=True)
+        except asyncio.CancelledError:
+            # Without this branch a /cancel during a resumed run left
+            # the job stuck in `building` forever: no state update, no
+            # terminal event, and /resume 409s from then on.
+            session.update_state(JobState.cancelled)
+            await events.emit("job.state", state=session.job.state.value, resumed=True)
+            await events.emit("done", success=False, reason="cancelled", resumed=True)
+            raise
+        except BudgetExceeded as exc:
+            # Mirror execute(): a cap hit on a resumed run is a clean
+            # stop the user can lift again, not a crash.
+            session.update_state(JobState.cancelled, error=str(exc))
+            await events.emit("job.state", state="cancelled", reason="cost_cap", resumed=True)
+            await events.emit("done", success=False, reason="cost_cap", resumed=True)
         except Exception as exc:  # noqa: BLE001
             session.update_state(JobState.failed, error=str(exc))
             await events.emit("error", message=f"resume failed: {exc}")

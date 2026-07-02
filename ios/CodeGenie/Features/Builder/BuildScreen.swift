@@ -107,6 +107,9 @@ struct BuildScreen: View {
                 ScrollView {
                     VStack(spacing: 18) {
                         progressBlock
+                        if useRemote, let streamError = swarm.lastError {
+                            connectionBanner(streamError)
+                        }
                         stageList
                         if showGame { gameBlock }
                         if useRemote { transcriptBlock }
@@ -276,7 +279,6 @@ struct BuildScreen: View {
                 HStack(spacing: 8) {
                     StatPill(label: "ETA",   value: etaString,   icon: "timer")
                     StatPill(label: "Score", value: "\(game.score)", icon: "star.fill")
-                    StatPill(label: "Boost", value: "\(Int(game.buildBoost * 100))%", icon: "bolt.fill")
                     if useRemote {
                         CostBadge(tracker: costs)
                         RetryBadge(tracker: costs)
@@ -357,7 +359,7 @@ struct BuildScreen: View {
             VStack(spacing: 10) {
                 jargonTip("BitDrop is optional: play while the build runs, or ignore it and keep watching the log.", term: .bitdrop)
                 BitDropView(game: game)
-                Text("Clear rows of Swift symbols. Every row gives a 2% build-speed boost.")
+                Text("Clear rows of Swift symbols while your build runs. Just for fun — the build takes the same time either way.")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                     .multilineTextAlignment(.center)
@@ -369,6 +371,26 @@ struct BuildScreen: View {
         GlassCard(title: "Live transcript", icon: "waveform", tint: LiquidGlass.accent) {
             TranscriptView(client: swarm)
         }
+    }
+
+    /// Live surface for SwarmClient.lastError — reconnect progress and
+    /// the final "stream lost, build continues server-side" message
+    /// were previously written but never shown anywhere.
+    private func connectionBanner(_ message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: swarm.isConnected ? "wifi" : "wifi.exclamationmark")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(LiquidGlass.warning)
+                .accessibilityHidden(true)
+            Text(message)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(LiquidGlass.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+        .transition(.opacity)
     }
 
     private var costsNearingCap: Bool {
@@ -419,26 +441,19 @@ struct BuildScreen: View {
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
                         recentLogTail
-                        PrimaryButton(title: "Try again", systemImage: "arrow.clockwise", style: .filled) {
-                            Task { await runBuild() }
-                        }
                         if let jobID = swarm.jobID {
-                            PrimaryButton(title: "Resume from last checkpoint", systemImage: "clock.arrow.circlepath", style: .glass) {
-                                Task {
-                                    do {
-                                        try await swarm.resume(jobID: jobID)
-                                        // Reattach: the old stream died with the
-                                        // failure, and the overlay only drops
-                                        // once stage leaves .failed.
-                                        swarm.openStream(jobID: jobID)
-                                        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = .planning }
-                                        appendLog(for: .planning)
-                                        Haptics.success()
-                                    } catch {
-                                        shipBanner = "Resume failed: \(error)"
-                                        Haptics.error()
-                                    }
-                                }
+                            // Resume is free — it picks up from the last
+                            // checkpoint. Starting over is a brand-new
+                            // build and costs again, so it says so.
+                            PrimaryButton(title: "Resume from last checkpoint", systemImage: "clock.arrow.circlepath", style: .filled) {
+                                Task { await resumeFromCheckpoint(jobID: jobID) }
+                            }
+                            PrimaryButton(title: "Start over — new build (costs again)", systemImage: "arrow.clockwise", style: .glass) {
+                                Task { await startFreshBuild() }
+                            }
+                        } else {
+                            PrimaryButton(title: "Try again", systemImage: "arrow.clockwise", style: .filled) {
+                                Task { await runBuild() }
                             }
                         }
                         Button("Close") {
@@ -744,26 +759,82 @@ struct BuildScreen: View {
         uploadProgress.bind(to: swarm)
         CustomAgentLog.shared.bind(to: swarm)
         JobCostLog.shared.bind(to: swarm)
-        do {
+        if let backendID = attachToBackendID {
             // Attach to an existing backend job (forked / resumed)
             // instead of starting a new build. We don't burn tokens
             // when the user is just inspecting a job's live state.
-            let id: String
-            if let backendID = attachToBackendID {
-                id = backendID
-            } else {
-                id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+            // Ask for the job's current state first: SSE has no
+            // history, so a finished job would otherwise sit at
+            // "planning" forever.
+            do {
+                let state = try await swarm.jobState(jobID: backendID)
+                swarm.openStream(jobID: backendID)
+                switch state {
+                case "succeeded":
+                    mirrorSwarmStage(.readyForTest)
+                case "failed", "cancelled":
+                    push(.err, formattedTime(), "This build ended in state: \(state). You can resume it from the last checkpoint.")
+                    Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = .failed }
+                default:
+                    break // still running — the stream takes it from here
+                }
+            } catch {
+                // The backend no longer knows this job (restart or
+                // archive). Stop advertising it as resumable.
+                session.clearResumeRecord()
+                remoteFailed(reason: "this build is no longer on the server — it may have been archived or the server restarted. Start a new build when you're ready.")
             }
+            return
+        }
+        do {
+            let id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
             // Persist the handle immediately: if the app dies or the
             // user minimizes this screen, HomeView can offer "Pick up
             // where you left off" and reattach without a new build.
             session.registerBackendJob(id, for: initialJob)
             swarm.openStream(jobID: id)
         } catch {
-            // Fall back to the local simulator so the user always sees progress.
-            appendLog(for: .planning)
-            await runLocalFallback(reason: "\(error)")
+            remoteFailed(reason: "\(error)")
         }
+    }
+
+    /// Resume the failed job from its latest backend checkpoint —
+    /// free, and reattaches the (dead) stream so events flow again.
+    private func resumeFromCheckpoint(jobID: String) async {
+        do {
+            try await swarm.resume(jobID: jobID)
+            swarm.openStream(jobID: jobID)
+            Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = .planning }
+            appendLog(for: .planning)
+            Haptics.success()
+        } catch {
+            shipBanner = "Resume failed: \(error)"
+            Haptics.error()
+        }
+    }
+
+    /// Deliberately abandon the failed job and pay for a fresh build.
+    /// Used by the failure overlay's clearly-labeled secondary button.
+    private func startFreshBuild() async {
+        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = .planning }
+        startedAt = .now
+        do {
+            let id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+            session.registerBackendJob(id, for: initialJob)
+            swarm.openStream(jobID: id)
+            appendLog(for: .planning)
+        } catch {
+            remoteFailed(reason: "\(error)")
+        }
+    }
+
+    /// Honest terminal state for a remote build that couldn't start.
+    /// We used to silently run the local simulator here — which showed
+    /// a fake successful build of an app that was never generated.
+    private func remoteFailed(reason: String) {
+        push(.err, formattedTime(), "Couldn't run this build: \(reason)")
+        push(.info, formattedTime(), "Check Wi-Fi and the backend address in Settings, then try again. You were not charged for this attempt.")
+        Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = .failed }
     }
 
     private func mirrorSwarmStage(_ newStage: BuildJob.Stage) {
@@ -774,8 +845,9 @@ struct BuildScreen: View {
         }
         appendLog(for: newStage)
         if newStage == .readyForTest, demoSampleID == nil {
-            // Build went green — no interrupted build to resume anymore.
-            session.clearResumeRecord()
+            // Keep the resume record until the app is actually
+            // submitted: the user may leave for the preview (which
+            // closes this screen) and needs a way back to Submit.
             if let jobID = swarm.jobID {
                 startPerfectionIfNeeded(jobID: jobID)
             }
@@ -786,18 +858,6 @@ struct BuildScreen: View {
                 retries: costs.retryAttempts,
                 secondsElapsed: Date().timeIntervalSince(startedAt)
             )
-        }
-    }
-
-    private func runLocalFallback(reason: String) async {
-        push(.warn, formattedTime(), "remote build unavailable (\(reason)), simulating")
-        builderTask = Task {
-            await builder.start(initialJob) { newStage in
-                Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) {
-                    stage = newStage
-                }
-                appendLog(for: newStage)
-            }
         }
     }
 
@@ -843,6 +903,8 @@ struct BuildScreen: View {
                 return
             }
             try await swarm.ship(jobID: jobID, config: cfg)
+            // The journey is complete — nothing left to resume.
+            session.clearResumeRecord()
             shipBanner = "Submitted — watch the transcript for processing status."
             Haptics.success()
         } catch {
@@ -968,6 +1030,9 @@ struct BuildScreen: View {
         let newCap = max(current * 2.0, current + 5.0)
         do {
             try await swarm.resume(jobID: jobID, costCapUSD: newCap)
+            // The cap-hit ended the old stream with a `done` event —
+            // reattach or the resumed spend happens invisibly.
+            swarm.openStream(jobID: jobID)
             shipBanner = String(format: "Cap lifted to $%.2f for this build — resuming. Your saved cap is unchanged.", newCap)
             Haptics.success()
         } catch {

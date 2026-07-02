@@ -26,7 +26,11 @@ struct TermsAndPrivacyView: View {
                     .padding(.bottom, 8)
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
+                    // LazyVStack on purpose: in an eager VStack the
+                    // bottom sentinel's onAppear fires on first layout,
+                    // silently defeating the scroll-to-bottom gate.
+                    // Lazy defers it until the row actually scrolls in.
+                    LazyVStack(alignment: .leading, spacing: 16) {
                         termsCard
                         privacyCard
                         costsCard

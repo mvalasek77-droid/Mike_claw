@@ -50,6 +50,11 @@ class ShipRequest(BaseModel):
     asc_api_key_id: str | None = None
     asc_api_issuer_id: str | None = None
     asc_api_key_path: str | None = None
+    # Transient .p8 body from the iOS Keychain. The API layer writes
+    # it to `asc_api_key_path` inside the job workspace at ship time —
+    # without this the key never leaves the phone and the upload can't
+    # authenticate. Never persisted to sessions; repr off.
+    asc_api_key_content: str | None = Field(default=None, repr=False)
     poll_after_upload: bool = True
 
 

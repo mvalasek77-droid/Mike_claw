@@ -64,7 +64,7 @@ extension OnboardingSlide {
             body: "Tell CodeGenie what you want (\"a tide times app for surfers\") and it iterates until the UI is correct, the data flows, and the build is green.",
             illustration: .appBuilding,
             palette: [.orange, .pink],
-            xcodeTip: "While we build, play BitDrop — our take on Tetris with Swift symbols. Earn boosts that speed up the build."
+            xcodeTip: "While we build, play BitDrop — our take on Tetris with Swift symbols. A fun way to pass the wait."
         ),
         .init(
             chapter: "Step 6 of 7",
@@ -77,7 +77,7 @@ extension OnboardingSlide {
         .init(
             chapter: "Step 7 of 7",
             title: "Simulator → device → App Store",
-            body: "Tap to test in the cloud simulator, then we walk you through App Store Connect step-by-step on your Mac's Safari.",
+            body: "Watch a preview of your build running, then we walk you through App Store Connect step-by-step on your Mac's Safari.",
             illustration: .simulatorToDevice,
             palette: [.green, .mint],
             xcodeTip: "Free Apple ID = re-sign every 7 days. $99/year Developer Program = 1-year + App Store. We'll prompt when needed."

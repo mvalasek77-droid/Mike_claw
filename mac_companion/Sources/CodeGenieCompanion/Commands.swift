@@ -28,6 +28,9 @@ final class Commands {
 
         case "open_safari":
             guard let url = payload["url"] as? String else { throw CmdError.bad("url missing") }
+            // Same scheme allow-list as open_url — `open -a Safari`
+            // would otherwise happily take file:// and friends.
+            guard isAllowedURL(url) else { throw CmdError.bad("url scheme not allowed") }
             var args = ["/usr/bin/open", "-a", "Safari", url]
             if (payload["new_window"] as? Bool) == true { args.insert("-n", at: 1) }
             try await runApp(args)

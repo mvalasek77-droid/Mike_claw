@@ -28,7 +28,7 @@ extension ASCStep {
 
         .init(number: 2,
               title: "Create a new app record",
-              body: "Click '+' → New App. We pre-fill platform = iOS, default language, bundle ID (matches your Xcode target), SKU and primary category for you.",
+              body: "Click '+' → New App, then fill: platform = iOS, your app's name, default language, the bundle ID matching your Xcode target, and any unique SKU (your bundle ID works). Copy the draft below for the exact values.",
               action: .fillForm,
               safariRoute: "https://appstoreconnect.apple.com/apps"),
 
@@ -46,21 +46,21 @@ extension ASCStep {
 
         .init(number: 5,
               title: "Write the listing",
-              body: "We draft Name, Subtitle, Promotional Text, Description (≤4000 chars), and Keywords (≤100 chars) tuned for your category. Hit ⌘↩ to accept.",
+              body: "CodeGenie drafted your Name, Subtitle, Promotional Text, Description, and Keywords (shown in the Listing draft card above). Copy the draft and paste each field into App Store Connect.",
               action: .fillForm,
-              safariRoute: nil),
+              safariRoute: "https://appstoreconnect.apple.com/apps"),
 
         .init(number: 6,
               title: "Privacy & data collection",
-              body: "CodeGenie scans Info.plist, PrivacyInfo.xcprivacy, dependencies, and code for tracking/data-use clues, then drafts the privacy answers for your confirmation.",
+              body: "Answer Apple's privacy questions honestly. For a typical CodeGenie build with no analytics SDKs: 'Data not collected' — unless YOUR app's features collect anything (accounts, location, health). When in doubt, say what your app actually does.",
               action: .fillForm,
-              safariRoute: "https://appstoreconnect.apple.com/apps#privacy"),
+              safariRoute: "https://appstoreconnect.apple.com/apps"),
 
         .init(number: 7,
               title: "Pricing & availability",
-              body: "Default: free, all territories. Schedule a price tier or limit countries if you want.",
+              body: "In Pricing and Availability choose Free (or a price tier) and which countries. Free + all territories is the simplest first launch.",
               action: .fillForm,
-              safariRoute: nil),
+              safariRoute: "https://appstoreconnect.apple.com/apps"),
 
         .init(number: 8,
               title: "Validate and upload the build",
@@ -70,7 +70,7 @@ extension ASCStep {
 
         .init(number: 9,
               title: "Wait for processing",
-              body: "Apple takes 5–30 minutes to process the binary. We'll notify you on your phone when the build is selectable in the listing.",
+              body: "Apple takes 5–30 minutes to process the binary. Check back in App Store Connect → TestFlight; when the build appears there it's selectable in the listing.",
               action: .wait("Build processing — usually 5-30 minutes"),
               safariRoute: nil),
 
@@ -217,13 +217,16 @@ struct AppStoreConnectGuideView: View {
             Button {
                 Haptics.selection()
                 if let u = URL(string: url) { openURL(u) }
-                if markDoneOnOpen { markDone(step, advance: false) }
+                if markDoneOnOpen { markDone(step) }
             } label: {
                 Label("Open on this iPhone instead", systemImage: "safari")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlass.accent)
             }
             .buttonStyle(.plain)
+            if markDoneOnOpen {
+                markDoneLink(step, label: "Already did this — mark done")
+            }
         }
     }
 

@@ -105,7 +105,12 @@ struct HomeView: View {
             BuildScreen(job: job, attachToBackendID: session.currentJobBackendID)
                 .environmentObject(session)
         }
-        .fullScreenCover(item: $session.pendingPreview) { job in
+        .fullScreenCover(item: $session.pendingPreview, onDismiss: {
+            // Reopen the build screen on the same backend job so the
+            // user lands back on the success overlay's Submit button
+            // instead of being stranded on Home.
+            session.returnToBuildAfterPreview()
+        }) { job in
             // Replaces the old interactive RemoteBuildView path which
             // tried to reach a hosted runner that doesn't exist yet
             // (caused a hang on the device). AutomatedPreviewView is
@@ -177,7 +182,7 @@ struct HomeView: View {
                     Text("Pick up where you left off")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText)
-                    Text("\(record.description.title) was interrupted. Reopening won't restart it or cost anything extra.")
+                    Text("\(record.description.title) is still open on the build server. Reopening won't restart it or cost anything extra.")
                         .font(.system(size: 12, weight: .regular, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                         .fixedSize(horizontal: false, vertical: true)
@@ -407,19 +412,26 @@ struct HomeView: View {
                 action: creds.authMode == .subscription ? .pairMac : .settings
             )
         }
-        guard creds.hasCompanionPairing else {
+        // A paired Mac is only a hard requirement for subscription
+        // routing (the Mac IS the runner). BYOK and hosted builds run
+        // without one — pairing comes later, for Xcode installs and
+        // App Store steps, and the shipping checklist covers that.
+        if creds.authMode == .subscription && !creds.hasCompanionPairing {
             return HomeBuildGate(
                 canStart: false,
                 title: "Pair Mac first",
-                detail: "CodeGenie needs your Mac companion before it can build and run Xcode.",
+                detail: "Subscription builds route through your Mac, so CodeGenie needs the companion paired.",
                 icon: "macbook.and.iphone",
                 action: .pairMac
             )
         }
+        let macNote = creds.hasCompanionPairing
+            ? "and Mac pairing are ready."
+            : "ready. Pair a Mac later for Xcode and App Store steps."
         return HomeBuildGate(
             canStart: true,
             title: "Start a new build",
-            detail: "\(model.displayName), \(creds.authMode.label), and Mac pairing are ready.",
+            detail: "\(model.displayName), \(creds.authMode.label) \(macNote)",
             icon: "wand.and.stars",
             action: .build
         )
@@ -459,8 +471,10 @@ struct HomeView: View {
                 icon: creds.authMode == .byok ? "key.fill" : "person.crop.circle.badge.checkmark"
             ),
             BuildStartCheck(
-                title: "Mac paired",
-                detail: creds.hasCompanionPairing ? "\(creds.companionHost):\(creds.companionPort)" : "Tap to pair",
+                title: creds.authMode == .subscription ? "Mac paired" : "Mac paired (optional now)",
+                detail: creds.hasCompanionPairing
+                    ? "\(creds.companionHost):\(creds.companionPort)"
+                    : (creds.authMode == .subscription ? "Tap to pair" : "Needed later for Xcode & App Store"),
                 ready: creds.hasCompanionPairing,
                 icon: "macbook.and.iphone",
                 action: { showPairMac = true }
@@ -609,9 +623,11 @@ struct HomeView: View {
     private var checklistCard: some View {
         let macReady = creds.hasCompanionPairing
         let capActive = creds.costCapUSD != nil
-        let modelReady = (creds.authMode == .byok)
-            ? (!creds.anthropicKey.isEmpty || !creds.openaiKey.isEmpty)
-            : true
+        let modelReady: Bool = switch creds.authMode {
+        case .byok: !creds.anthropicKey.isEmpty || !creds.openaiKey.isEmpty
+        case .subscription: creds.hasCompanionPairing
+        case .codegenie: billing.canStartHostedBuild
+        }
         let appleReady = creds.hasAppleDevCreds
         let perfectionGreen = perfectionLastGreen
         let submissionReady = macReady && modelReady && appleReady && perfectionGreen
