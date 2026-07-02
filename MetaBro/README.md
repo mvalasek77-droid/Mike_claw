@@ -99,6 +99,21 @@ reply.**
   mapping, routes, config), and design-system logic.
 - ✅ **Accessibility** — Dynamic Type, VoiceOver labels/values/hints, Reduce Motion
   and Reduce Transparency fallbacks, honest non-blank placeholders.
+- ✅ **iPad adaptive layout** — `TabView` uses the iOS 18 `Tab` API with
+  `.sidebarAdaptable` so iPad renders a sidebar while iPhone keeps the bottom
+  tab bar; no size-class branching required.
+- ✅ **Feature flags** — `FeatureFlagService` protocol + `FeatureFlags.plist`
+  (bundled, gitignored-override-friendly) gates every Phase 5 surface and
+  future targets (Live Activities, Widgets). Flip a key in the plist for an
+  emergency kill-switch or TestFlight A/B test without a code change.
+- ✅ **Performance** — `URLCache.shared` sized to 50 MB memory / 200 MB disk at
+  launch so avatar and post images survive scroll and re-launch without extra
+  network hits; `SWIFT_EMIT_LOC_STRINGS` enabled for zero-overhead string
+  extraction.
+- ✅ **Localization scaffold** — `Localizable.xcstrings` (String Catalog) seeded
+  with key UI strings. All `Text("literal")` calls are already
+  `LocalizedStringKey`-backed; run "Product → Export Localizations" in Xcode to
+  auto-extract the rest into the catalog.
 
 ## Project layout
 
@@ -127,6 +142,7 @@ MetaBro/
 │   └── Profile/         Identity + Bro Cred + your posts + saved posts
 └── Navigation/          Type-safe AppRoute / AppTab
 MetaBroTests/            Swift Testing unit tests
+FeatureFlags.plist       Kill-switch + A/B flag defaults (swap per environment)
 ```
 
 ## Build

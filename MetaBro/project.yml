@@ -13,6 +13,10 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "26.0"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_LANGUAGE: en
+    # Instructs the Swift compiler to emit extraction markers so Xcode
+    # "Product → Export Localizations" can auto-populate the string catalog.
+    SWIFT_EMIT_LOC_STRINGS: YES
 
 targets:
   MetaBro:

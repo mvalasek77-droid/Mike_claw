@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Shipped features — disable here for emergency kill-switch -->
+	<key>marketplace</key>
+	<true/>
+	<key>groups</key>
+	<true/>
+	<key>events</key>
+	<true/>
+
+	<!-- Future targets: disabled until their Xcode targets ship -->
+	<key>liveActivity</key>
+	<false/>
+	<key>widgets</key>
+	<false/>
+
+	<!-- A/B: flip to true in the TestFlight plist to run the experiment -->
+	<key>algorithmFeedV2</key>
+	<false/>
+</dict>
+</plist>

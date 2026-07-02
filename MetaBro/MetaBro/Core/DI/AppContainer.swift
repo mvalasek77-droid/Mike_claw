@@ -24,6 +24,7 @@ final class AppContainer {
     let eventService: EventService
     let groupService: GroupService
     let marketplaceService: MarketplaceService
+    let featureFlagService: FeatureFlagService
 
     init(
         feedService: FeedService,
@@ -44,7 +45,8 @@ final class AppContainer {
         historyService: HistoryService,
         eventService: EventService,
         groupService: GroupService,
-        marketplaceService: MarketplaceService
+        marketplaceService: MarketplaceService,
+        featureFlagService: FeatureFlagService
     ) {
         self.feedService = feedService
         self.commentService = commentService
@@ -65,6 +67,7 @@ final class AppContainer {
         self.eventService = eventService
         self.groupService = groupService
         self.marketplaceService = marketplaceService
+        self.featureFlagService = featureFlagService
     }
 
     /// Resolves the dependency graph from configuration: a live backend when
@@ -115,7 +118,8 @@ final class AppContainer {
             historyService: LiveHistoryService(client: client),
             eventService: LiveEventService(client: client),
             groupService: LiveGroupService(client: client),
-            marketplaceService: LiveMarketplaceService(client: client)
+            marketplaceService: LiveMarketplaceService(client: client),
+            featureFlagService: LiveFeatureFlagService()
         )
     }
 
@@ -144,7 +148,8 @@ final class AppContainer {
             historyService: MockHistoryService(),
             eventService: MockEventService(),
             groupService: MockGroupService(),
-            marketplaceService: MockMarketplaceService()
+            marketplaceService: MockMarketplaceService(),
+            featureFlagService: MockFeatureFlagService()
         )
     }
 }

@@ -1,0 +1,193 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Bro-hoods" : {
+      "comment" : "Tab title for the communities/Bro-hoods tab",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bro-hoods"
+          }
+        }
+      }
+    },
+    "Home" : {
+      "comment" : "Tab title for the main feed",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home"
+          }
+        }
+      }
+    },
+    "Messages" : {
+      "comment" : "Tab title for direct messages",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages"
+          }
+        }
+      }
+    },
+    "Post" : {
+      "comment" : "Tab title for the post composer",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Post"
+          }
+        }
+      }
+    },
+    "You" : {
+      "comment" : "Tab title for the current user's profile",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You"
+          }
+        }
+      }
+    },
+    "Bro-ket" : {
+      "comment" : "Marketplace feature name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bro-ket"
+          }
+        }
+      }
+    },
+    "No Bro-hoods yet" : {
+      "comment" : "Empty-state headline on the communities screen",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Bro-hoods yet"
+          }
+        }
+      }
+    },
+    "Check back soon." : {
+      "comment" : "Empty-state body on the communities screen",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check back soon."
+          }
+        }
+      }
+    },
+    "Couldn't load" : {
+      "comment" : "Error-state headline used across multiple screens",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load"
+          }
+        }
+      }
+    },
+    "Try again" : {
+      "comment" : "Retry button label on error states",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "comment" : "Dismiss button on sheets",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "comment" : "Cancel action in sheets and dialogs",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "Going" : {
+      "comment" : "RSVP status label",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Going"
+          }
+        }
+      }
+    },
+    "Interested" : {
+      "comment" : "RSVP status label",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interested"
+          }
+        }
+      }
+    },
+    "Not going" : {
+      "comment" : "RSVP status label",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not going"
+          }
+        }
+      }
+    },
+    "Free" : {
+      "comment" : "Marketplace listing category and price label for zero-price items",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free"
+          }
+        }
+      }
+    },
+    "Sold" : {
+      "comment" : "Label on a sold marketplace listing",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sold"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
