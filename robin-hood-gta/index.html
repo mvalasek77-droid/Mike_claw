@@ -16,41 +16,45 @@
 </head>
 <body>
 <canvas id="c" width="256" height="240"></canvas>
-<p>ARROWS / WASD move &nbsp;·&nbsp; SPACE rob / poach / donate &nbsp;·&nbsp; M mute</p>
+<p>ARROWS / WASD move &nbsp;·&nbsp; SPACE interact &nbsp;·&nbsp; X shoot &nbsp;·&nbsp; C call Little John &nbsp;·&nbsp; M mute</p>
 <script>
 "use strict";
 // ============================================================ constants
-const TILE=16, MW=64, MH=52;              // map tiles
+const TILE=16, OW=64, OH=52;              // overworld tiles
 const HUD=24, MSG=16, PFH=240-HUD-MSG;    // playfield 200px tall
-const GRASS=0,TREE=1,WATER=2,ROAD=3,WALL=4,DOOR=5,FLOOR=6,BRIDGE=7,CHEST=8,CAMP=9;
-const SOLID=[false,true,true,false,true,true,false,false,true,false];
+const GRASS=0,TREE=1,WATER=2,ROAD=3,WALL=4,DOOR=5,FLOOR=6,BRIDGE=7,CHEST=8,
+      CAMP=9,ABBEYD=10,LOCKED=11,EXIT=12,VAULT=13;
+const SOLID=[false,true,true,false,true,true,false,false,true,false,
+             true,true,false,true];
 
 const cv=document.getElementById("c"), cx=cv.getContext("2d");
-cx.imageSmoothingEnabled=false;
+cx.imageSmoothingEnabled=false; cx.font="8px monospace";
 
-// ============================================================ rng + map
+// ============================================================ rng + maps
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;
   let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;
   return((t^t>>>14)>>>0)/4294967296;}}
-const map=new Uint8Array(MW*MH);
-const tAt=(x,y)=>(x<0||y<0||x>=MW||y>=MH)?TREE:map[y*MW+x];
-const tSet=(x,y,v)=>{if(x>=0&&y>=0&&x<MW&&y<MH)map[y*MW+x]=v;};
+let cur={m:null,w:0,h:0};                  // current map (overworld or abbey)
+const tAt=(x,y)=>(x<0||y<0||x>=cur.w||y>=cur.h)?TREE:cur.m[y*cur.w+x];
+const tSet=(x,y,v)=>{if(x>=0&&y>=0&&x<cur.w&&y<cur.h)cur.m[y*cur.w+x]=v;};
+let omap=null;                             // overworld tiles
 const doors=[];                            // hut doors (donate spots)
 let chest={tx:56,ty:5,loot:true,t:0};
 
 function buildMap(){
   const r=mulberry32(1187);
-  map.fill(GRASS);
-  for(let x=0;x<MW;x++){tSet(x,0,TREE);tSet(x,MH-1,TREE);}
-  for(let y=0;y<MH;y++){tSet(0,y,TREE);tSet(MW-1,y,TREE);}
+  omap=new Uint8Array(OW*OH);cur={m:omap,w:OW,h:OH};
+  omap.fill(GRASS);
+  for(let x=0;x<OW;x++){tSet(x,0,TREE);tSet(x,OH-1,TREE);}
+  for(let y=0;y<OH;y++){tSet(0,y,TREE);tSet(OW-1,y,TREE);}
   // Sherwood forest (west)
-  for(let y=1;y<MH-1;y++)for(let x=1;x<22;x++)if(r()<0.30)tSet(x,y,TREE);
+  for(let y=1;y<OH-1;y++)for(let x=1;x<22;x++)if(r()<0.30)tSet(x,y,TREE);
   // scattered southern trees
-  for(let y=34;y<MH-1;y++)for(let x=22;x<MW-1;x++)if(r()<0.08)tSet(x,y,TREE);
+  for(let y=34;y<OH-1;y++)for(let x=22;x<OW-1;x++)if(r()<0.08)tSet(x,y,TREE);
   // River Trent
-  for(let y=1;y<MH-1;y++){tSet(26,y,WATER);tSet(27,y,WATER);}
+  for(let y=1;y<OH-1;y++){tSet(26,y,WATER);tSet(27,y,WATER);}
   // King's Road (east-west)
-  for(let x=1;x<MW-1;x++)for(const y of[26,27])
+  for(let x=1;x<OW-1;x++)for(const y of[26,27])
     tSet(x,y,tAt(x,y)===WATER?BRIDGE:ROAD);
   // road to castle
   for(let y=13;y<26;y++){tSet(50,y,ROAD);tSet(51,y,ROAD);}
@@ -60,6 +64,10 @@ function buildMap(){
   for(let y=2;y<=12;y++){tSet(42,y,WALL);tSet(61,y,WALL);}
   tSet(50,12,ROAD);tSet(51,12,ROAD);       // gate
   tSet(chest.tx,chest.ty,CHEST);           // treasury
+  // St Mary's Abbey (enter through the arched door)
+  for(let y=5;y<=10;y++)for(let x=32;x<=40;x++)tSet(x,y,WALL);
+  tSet(36,10,ABBEYD);
+  for(let y=11;y<=13;y++)for(let x=34;x<=38;x++)tSet(x,y,GRASS);
   // outlaw camp clearing
   for(let y=28;y<=33;y++)for(let x=3;x<=10;x++)tSet(x,y,GRASS);
   tSet(6,31,CAMP);
@@ -69,6 +77,28 @@ function buildMap(){
     tSet(hx+1,hy+2,DOOR);
     doors.push({x:(hx+1)*TILE+8,y:(hy+3)*TILE-4});
   }
+}
+
+// -------- St Mary's Abbey interior (Zelda-style item-gated dungeon)
+const AW=24,AH=16;let amap=null;
+function buildAbbey(){
+  amap=new Uint8Array(AW*AH).fill(FLOOR);
+  const a=(x,y,v)=>{amap[y*AW+x]=v;};
+  for(let x=0;x<AW;x++){a(x,0,WALL);a(x,AH-1,WALL);}
+  for(let y=0;y<AH;y++){a(0,y,WALL);a(AW-1,y,WALL);}
+  // vault room (north-west), sealed by a locked door
+  for(let y=1;y<=7;y++)a(8,y,WALL);
+  for(let x=1;x<=8;x++)a(x,7,WALL);
+  a(8,4,LOCKED);
+  a(3,3,VAULT);
+  // key room (south-east)
+  for(let x=15;x<AW-1;x++)a(x,10,WALL);
+  for(let y=10;y<AH-1;y++)a(15,y,WALL);
+  a(15,12,FLOOR);                          // doorway
+  // pillars in the nave
+  a(11,4,WALL);a(13,8,WALL);a(18,4,WALL);
+  // way out
+  a(11,AH-1,EXIT);a(12,AH-1,EXIT);
 }
 
 // ============================================================ sprites
@@ -82,12 +112,15 @@ guard: ["..ssss..",".sRssRs.",".sSSSSs.",".sSKSKs.","sBBBBBBs","Y.BBBB.Y",
         "..BssB..","..K..K.."],
 hunter:["..KKKK..",".KKKKKK.",".KSSSSK.",".KSRSRK.","KKRKKRKK","..KKKK..",
         "..KRRK..","..K..K.."],
+john:  ["..NNNN..",".NNNNNN.",".NSSSSN.","NNSKSKNN","DGGGGGGD","D.GGGG.D",
+        "..GNNG..","..K..K.."],
 villagr:["..nnnn..",".nnnnnn.",".nSSSSn.",".nSKSKn.",".EEEEEE.","..EEEE..",
         "..ENNE..","..K..K.."],
 caravan:[".NNNNNN.","NnnnnnnN","NnYYYYnN","NnnnnnnN",".NNNNNN.","..D..D..",
         ".DDD.DDD","..D..D.."],
 deer:  ["N..NN..N",".N.NN.N.","..NNNN..","..nKnK..","..nnnn..",".Nnnnn..",
         "..N..N..","..N..N.."],
+key:   [".YY.....","Y..Y.YYY","Y..YYY.Y",".YY..Y.Y"],
 star:  ["...Y...","..YYY..","YYYYYYY",".YYYYY.","..YYY..",".YY.YY.",".......",],
 star0: ["...E...","..E.E..","E.....E",".E...E.","..E.E..",".E...E.",".......",],
 heart: [".RR.RR.","RRRRRRR","RRRRRRR",".RRRRR.","..RRR..","...R...",".......",],
@@ -101,7 +134,7 @@ function drawSpr(name,px,py,sc){
 }
 
 // ============================================================ tiles
-let animT=0;
+let animT=0,vaultLoot=true;
 function drawTile(t,tx,ty,px,py){
   const h=(tx*7+ty*13)%5,k=(tx*11+ty*17)%7;
   switch(t){
@@ -148,6 +181,24 @@ function drawTile(t,tx,ty,px,py){
     cx.fillStyle="#4a2c08";cx.fillRect(px+3,py+2,10,14);
     cx.fillStyle="#f8d800";cx.fillRect(px+10,py+9,2,2);
     break;
+  case ABBEYD:
+    cx.fillStyle="#787878";cx.fillRect(px,py,16,16);
+    cx.fillStyle="#4a2c08";
+    cx.fillRect(px+4,py+6,8,10);cx.fillRect(px+5,py+4,6,2);
+    cx.fillStyle="#f8d800";
+    cx.fillRect(px+7,py+0,2,4);cx.fillRect(px+6,py+1,4,1);
+    break;
+  case LOCKED:
+    cx.fillStyle="#787878";cx.fillRect(px,py,16,16);
+    cx.fillStyle="#4a2c08";cx.fillRect(px+3,py+2,10,14);
+    cx.fillStyle="#f8d800";cx.fillRect(px+6,py+7,4,4);
+    cx.fillStyle="#101010";cx.fillRect(px+7,py+8,2,2);
+    break;
+  case EXIT:
+    cx.fillStyle="#101010";cx.fillRect(px,py,16,16);
+    cx.fillStyle="#505050";
+    cx.fillRect(px+2,py+4,12,2);cx.fillRect(px+4,py+9,8,2);
+    break;
   case FLOOR:
     cx.fillStyle="#a08858";cx.fillRect(px,py,16,16);
     cx.fillStyle="#887040";cx.fillRect(px,py,16,1);cx.fillRect(px,py,1,16);
@@ -159,18 +210,28 @@ function drawTile(t,tx,ty,px,py){
       cx.fillRect(px+7,py+7,2,4);}
     else{cx.fillStyle="#4a2c08";cx.fillRect(px+2,py+6,12,8);}
     break;
+  case VAULT:
+    cx.fillStyle="#a08858";cx.fillRect(px,py,16,16);
+    if(vaultLoot){cx.fillStyle="#f8d800";cx.fillRect(px+1,py+3,14,12);
+      cx.fillStyle="#7c4a10";cx.fillRect(px+1,py+8,14,2);
+      cx.fillRect(px+7,py+3,2,12);}
+    else{cx.fillStyle="#4a2c08";cx.fillRect(px+1,py+5,14,10);}
+    break;
   }
 }
 
 // ============================================================ state
-let player={x:6*TILE,y:29*TILE,spd:66};
-let gold=0,bounty=0,fame=0,lastSeen=-99,flash=0,started=false,muted=false;
-let msg="Rob the rich. Feed the poor.",msgT=8,won=false,gameT=0;
+let player={x:6*TILE,y:29*TILE,dir:2,spd:66};
+let gold=0,bounty=0,fame=0,ammo=8,hasKey=false,lastSeen=-99,flash=0;
+let started=false,muted=false,won=false,gameT=0;
+let msg="Rob the rich. Feed the poor.",msgT=8;
 const DIRS=[[0,-1],[1,0],[0,1],[-1,0]];
-let guards=[],hunters=[],caravans=[],deers=[],villagers=[],hornT=0,spawnCd=0;
+let guards=[],hunters=[],caravans=[],deers=[],villagers=[],arrows=[],items=[];
+let hornT=0,spawnCd=0,inAbbey=false,saved=null,keyTaken=false;
+let john={recruited:false,active:false,x:0,y:0,t:0,cd:0};
 
 function mkGuard(tx,ty){return{x:tx*TILE,y:ty*TILE,dir:1+((tx+ty)%2)*2,
-  state:"patrol",seenT:-99,turnT:0};}
+  state:"patrol",seenT:-99,turnT:0,stun:0};}
 function initEnts(){
   guards=[mkGuard(34,26),mkGuard(44,27),mkGuard(50,17),mkGuard(46,7),
           mkGuard(55,9),mkGuard(30,27)];
@@ -181,8 +242,8 @@ function initEnts(){
 }
 function spawnDeer(){
   const r=Math.random;let tx,ty;
-  do{tx=2+Math.floor(r()*19);ty=2+Math.floor(r()*(MH-4));}
-  while(SOLID[tAt(tx,ty)]);
+  do{tx=2+Math.floor(r()*19);ty=2+Math.floor(r()*(OH-4));}
+  while(SOLID[omap[ty*OW+tx]]);
   return{x:tx*TILE,y:ty*TILE,dir:Math.floor(r()*4),turnT:0,alive:true,t:0};
 }
 
@@ -199,6 +260,7 @@ function move(e,dx,dy){
   return true;
 }
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const near=(px,py,r)=>Math.hypot(player.x+8-px,player.y+8-py)<r;
 
 // line of sight (trees & walls block)
 function los(ax,ay,bx,by){
@@ -206,11 +268,12 @@ function los(ax,ay,bx,by){
   for(let i=1;i<steps;i++){
     const t=i/steps,x=ax+(bx-ax)*t,y=ay+(by-ay)*t;
     const tl=tAt(Math.floor(x/TILE),Math.floor(y/TILE));
-    if(tl===TREE||tl===WALL||tl===DOOR)return false;
+    if(tl===TREE||tl===WALL||tl===DOOR||tl===LOCKED)return false;
   }
   return true;
 }
 function sees(g){
+  if(g.stun>0)return false;
   const f=DIRS[g.dir],dx=player.x-g.x,dy=player.y-g.y;
   const proj=dx*f[0]+dy*f[1];
   if(proj<-4||proj>96)return false;
@@ -220,15 +283,54 @@ function sees(g){
 }
 
 // ============================================================ heat & crime
+const hostile=()=>bounty>=1||inAbbey;       // abbey guards hate trespassers
 function addBounty(n){bounty=Math.min(5,bounty+n);}
 function say(t,s){msg=t;msgT=s||4;}
 function witnessed(){return guards.concat(hunters).some(sees);}
 function caught(){
+  if(inAbbey)exitAbbey();
   gold=Math.floor(gold/2);bounty=0;hunters=[];flash=1;
   player.x=6*TILE;player.y=29*TILE;
   say("CAUGHT! The Sheriff takes half your gold.",5);
 }
+
+// -------- abbey enter / exit
+function enterAbbey(){
+  saved={guards,hunters,caravans,deers,villagers};
+  inAbbey=true;cur={m:amap,w:AW,h:AH};
+  guards=[mkGuard(11,2),mkGuard(19,4),mkGuard(18,13)];
+  hunters=[];caravans=[];deers=[];villagers=[];arrows=[];
+  items=keyTaken?[]:[{x:19*TILE,y:12*TILE}];
+  john.active=false;
+  player.x=11*TILE+8;player.y=13*TILE;
+  say("St Mary's Abbey. The Prior's men dislike visitors.",5);
+}
+function exitAbbey(){
+  inAbbey=false;cur={m:omap,w:OW,h:OH};
+  guards=saved.guards;hunters=saved.hunters;caravans=saved.caravans;
+  deers=saved.deers;villagers=saved.villagers;arrows=[];items=[];
+  john.active=false;
+  player.x=36*TILE;player.y=11*TILE;
+}
+
 function interact(){
+  if(inAbbey){
+    if(near(8*TILE+8,4*TILE+8,26)){              // locked vault door
+      if(amap[4*AW+8]===LOCKED){
+        if(hasKey){amap[4*AW+8]=FLOOR;hasKey=false;
+          say("The Prior's key turns. The vault opens...",4);}
+        else say("Locked. The Prior keeps a key somewhere...",4);
+      }
+      return;}
+    if(near(3*TILE+8,3*TILE+8,26)){              // the tithe vault
+      if(vaultLoot){vaultLoot=false;gold+=200;fame=Math.min(10,fame+2);
+        addBounty(2);flash=0.5;horn();
+        say("THE TITHES! +200g — the people rejoice. Fame +2",6);}
+      return;}
+    say("Cold stone and chanting. The vault is north-west.",3);
+    return;
+  }
+  if(near(36*TILE+8,10*TILE+8,26)){enterAbbey();return;}
   if(chest.loot&&dist(player,{x:chest.tx*TILE,y:chest.ty*TILE})<26){
     chest.loot=false;chest.t=60;gold+=150;addBounty(3);flash=0.5;horn();
     say("THE TREASURY! +150 gold. Alarm raised!",5);return;}
@@ -241,6 +343,10 @@ function interact(){
     d.alive=false;d.t=20;const w=witnessed();gold+=12;
     addBounty(w?1:0.4);if(w)horn();
     say(w?"Royal deer poached — witnessed!":"Royal deer poached. +12g",4);return;}
+  if(near(6*TILE+8,31*TILE+8,26)){               // camp: fletch arrows
+    if(gold>=10){gold-=10;ammo+=5;say("Fletched 5 arrows ("+ammo+" total).",3);}
+    else say("Fletching 5 arrows costs 10 gold.",3);
+    return;}
   for(const dr of doors)if(dist(player,dr)<22){
     if(gold<10){say("The village needs 10 gold.",3);return;}
     gold-=10;fame=Math.min(10,fame+1);
@@ -248,7 +354,26 @@ function interact(){
     else if(fame>=10&&!won){won=true;say("THE UPRISING BEGINS! You did it, Robin.",8);}
     else say("You feed the village. Fame +1",3);
     return;}
-  say("Nothing here. Find caravans, deer, doors, the treasury.",3);
+  say("Nothing here. Caravans, deer, doors, the abbey, the treasury.",3);
+}
+
+// -------- bow
+function fire(){
+  if(ammo<=0){say("No arrows! Fletch more at the camp fire (10g).",3);return;}
+  ammo--;const f=DIRS[player.dir];
+  arrows.push({x:player.x+8,y:player.y+8,dx:f[0]*170,dy:f[1]*170,t:1.1});
+  if(AC&&!muted)blip(880,AC.currentTime,0.08,"square",0.05);
+}
+function knockout(g){g.stun=8;g.state="patrol";}
+function downHunter(h){hunters.splice(hunters.indexOf(h),1);spawnCd=6;}
+
+// -------- Little John
+function callJohn(){
+  if(!john.recruited){say("Little John joins the Merry Men at Fame 3.",3);return;}
+  if(john.active)return;
+  if(john.cd>0){say("Little John is resting ("+Math.ceil(john.cd)+"s).",2);return;}
+  john.active=true;john.t=8;john.cd=30;john.x=player.x;john.y=player.y;
+  say("The Horn of Sherwood! Little John charges!",3);horn();
 }
 
 // ============================================================ audio
@@ -282,9 +407,12 @@ addEventListener("keydown",e=>{
   if(!started){started=true;
     AC=new(window.AudioContext||window.webkitAudioContext)();
     nextNote=AC.currentTime+0.1;return;}
-  keys[e.key.toLowerCase()]=true;
+  const k=e.key.toLowerCase();
+  keys[k]=true;
   if(e.key===" ")interact();
-  if(e.key.toLowerCase()==="m"){muted=!muted;say(muted?"Muted":"Sound on",2);}
+  if(k==="x"||k==="z")fire();
+  if(k==="c")callJohn();
+  if(k==="m"){muted=!muted;say(muted?"Muted":"Sound on",2);}
 });
 addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
 
@@ -305,37 +433,89 @@ function update(dt){
   // player 8-dir
   let vx=(keys["arrowright"]||keys["d"]?1:0)-(keys["arrowleft"]||keys["a"]?1:0);
   let vy=(keys["arrowdown"]||keys["s"]?1:0)-(keys["arrowup"]||keys["w"]?1:0);
+  if(vx)player.dir=vx>0?1:3;
+  if(vy)player.dir=vy>0?2:0;
   if(vx&&vy){vx*=0.707;vy*=0.707;}
   move(player,vx*player.spd*dt,0);move(player,0,vy*player.spd*dt);
-
+  // dungeon exit / key pickup
+  if(inAbbey){
+    if(tAt(Math.floor((player.x+8)/TILE),Math.floor((player.y+9)/TILE))===EXIT)
+      exitAbbey();
+    for(let i=items.length-1;i>=0;i--)if(dist(items[i],player)<14){
+      items.splice(i,1);hasKey=true;keyTaken=true;
+      say("You found the Prior's key!",4);}
+  }
+  // arrows
+  for(let i=arrows.length-1;i>=0;i--){
+    const a=arrows[i];a.x+=a.dx*dt;a.y+=a.dy*dt;a.t-=dt;
+    let dead=a.t<=0||SOLID[tAt(Math.floor(a.x/TILE),Math.floor(a.y/TILE))];
+    if(!dead){
+      for(const g of guards)if(g.stun<=0&&Math.hypot(g.x+8-a.x,g.y+8-a.y)<10){
+        knockout(g);addBounty(0.5);
+        say("Guard knocked out by an arrow! (+bounty)",3);dead=true;break;}
+      if(!dead)for(const h of hunters)if(Math.hypot(h.x+8-a.x,h.y+8-a.y)<10){
+        downHunter(h);say("Bounty hunter downed!",3);dead=true;break;}
+      if(!dead)for(const d of deers)if(d.alive&&Math.hypot(d.x+8-a.x,d.y+8-a.y)<10){
+        d.alive=false;d.t=20;const w=witnessed();gold+=12;
+        addBounty(w?1:0.4);say("A clean shot. Venison +12g",3);dead=true;break;}
+    }
+    if(dead)arrows.splice(i,1);
+  }
   // guards
   let seen=false;
   for(const g of guards){
+    if(g.stun>0){g.stun-=dt;continue;}
     const s=sees(g);
     if(s){seen=true;lastSeen=gameT;
-      if(bounty>=1&&g.state!=="chase"){g.state="chase";horn();}
+      if(hostile()&&g.state!=="chase"){g.state="chase";horn();}
       g.seenT=gameT;}
     if(g.state==="chase"){
-      if(bounty<1||gameT-g.seenT>3)g.state="patrol";
+      if(!hostile()||gameT-g.seenT>3)g.state="patrol";
       else chase(g,52,dt);
     }else wander(g,26,dt);
-    if(bounty>=1&&dist(g,player)<11)caught();
+    if(hostile()&&dist(g,player)<11){caught();break;}
   }
   // hunters (per bounty star, always know where you are)
   spawnCd-=dt;
   const want=Math.min(4,Math.floor(bounty));
-  if(hunters.length<want&&spawnCd<=0){
-    hunters.push({x:50*TILE,y:13*TILE,dir:2});spawnCd=2;
+  if(!inAbbey&&hunters.length<want&&spawnCd<=0){
+    hunters.push({x:50*TILE,y:13*TILE,dir:2,hunter:true});spawnCd=2;
     say("A bounty hunter rides out from the castle!",3);}
   while(hunters.length>want)hunters.pop();
   for(const h of hunters){
     chase(h,56,dt);
     if(sees(h)){seen=true;lastSeen=gameT;}
-    if(dist(h,player)<11)caught();
+    if(dist(h,player)<11){caught();break;}
+  }
+  // Little John
+  if(!john.recruited&&fame>=3){john.recruited=true;
+    say("LITTLE JOHN joins the Merry Men! Press C to call him.",6);}
+  if(john.cd>0)john.cd-=dt;
+  if(john.active){
+    john.t-=dt;
+    if(john.t<=0){john.active=false;
+      say("Little John melts back into the trees.",3);}
+    else{
+      let tgt=null,best=180;
+      for(const g of guards)if(g.stun<=0){
+        const d2=dist(john,g);if(d2<best){best=d2;tgt=g;}}
+      for(const h of hunters){const d2=dist(john,h);if(d2<best){best=d2;tgt=h;}}
+      if(tgt){
+        const dx=tgt.x-john.x,dy=tgt.y-john.y,l=Math.hypot(dx,dy)||1;
+        move(john,dx/l*70*dt,0);move(john,0,dy/l*70*dt);
+        if(dist(john,tgt)<12){
+          if(tgt.hunter)downHunter(tgt);else knockout(tgt);
+          say("Little John: 'Down you go!'",2);}
+      }else{
+        if(dist(john,player)>24){
+          const dx=player.x-john.x,dy=player.y-john.y,l=Math.hypot(dx,dy)||1;
+          move(john,dx/l*60*dt,0);move(john,0,dy/l*60*dt);}
+      }
+    }
   }
   // heat decay (faster near village doors once famous)
   if(!seen&&bounty>0&&gameT-lastSeen>6){
-    const hide=fame>=5&&doors.some(d=>dist(player,d)<80);
+    const hide=!inAbbey&&fame>=5&&doors.some(d=>dist(player,d)<80);
     bounty=Math.max(0,bounty-dt*(hide?0.35:0.15));
   }
   // caravans shuttle the King's Road
@@ -348,8 +528,7 @@ function update(dt){
   for(const d of deers){
     if(!d.alive){d.t-=dt;if(d.t<=0)Object.assign(d,spawnDeer());continue;}
     wander(d,16,dt);
-    if(dist(d,player)<40&&Math.random()<dt*2){ // skittish: flee
-      d.dir=(d.x<player.x?3:1);}
+    if(dist(d,player)<40&&Math.random()<dt*2)d.dir=(d.x<player.x?3:1);
   }
   for(const v of villagers)wander(v,12,dt);
 
@@ -361,11 +540,12 @@ function update(dt){
 
 // ============================================================ render
 function camPos(){
-  const camX=Math.max(0,Math.min(MW*TILE-256,player.x+8-128));
-  const camY=Math.max(0,Math.min(MH*TILE-PFH,player.y+8-PFH/2));
-  return[Math.round(camX),Math.round(camY)];
+  const camX=Math.max(0,Math.min(cur.w*TILE-256,player.x+8-128));
+  const camY=Math.max(0,Math.min(cur.h*TILE-PFH,player.y+8-PFH/2));
+  return[Math.round(Math.max(0,camX)),Math.round(Math.max(0,camY))];
 }
 function cone(g,color){
+  if(g.stun>0)return;
   const f=DIRS[g.dir],cxp=g.x+8,cyp=g.y+8;
   const tx=cxp+f[0]*96,ty=cyp+f[1]*96;
   const px=f[1]*70,py=f[0]*70;
@@ -374,10 +554,14 @@ function cone(g,color){
   cx.lineTo(tx-px,ty-py);cx.lineTo(tx+px,ty+py);cx.closePath();cx.fill();
   cx.globalAlpha=1;
 }
+function drawGuard(g,spr){
+  if(g.stun>0){cx.globalAlpha=0.55;drawSpr(spr,g.x,g.y);cx.globalAlpha=1;
+    cx.fillStyle="#fcfcfc";cx.fillText("z",g.x+12,g.y+2);}
+  else drawSpr(spr,g.x,g.y);
+}
 function render(){
   const[camX,camY]=camPos();
   cx.fillStyle="#000";cx.fillRect(0,0,256,240);
-  // playfield clip
   cx.save();cx.beginPath();cx.rect(0,HUD,256,PFH);cx.clip();
   cx.translate(-camX,HUD-camY);
   const x0=Math.floor(camX/TILE),y0=Math.floor(camY/TILE);
@@ -386,28 +570,38 @@ function render(){
       drawTile(tAt(x,y),x,y,x*TILE,y*TILE);
   for(const g of guards)cone(g,g.state==="chase"?"#d82800":"#f8d800");
   for(const h of hunters)cone(h,"#d82800");
+  for(const it of items)drawSpr("key",it.x,it.y+((animT&8)?0:1));
   const ents=[];
   for(const c of caravans)ents.push({y:c.y,f:()=>{drawSpr("caravan",c.x,c.y);
     if(c.loot){cx.fillStyle="#f8d800";cx.fillRect(c.x+6,c.y-4,4,3);}}});
   for(const d of deers)if(d.alive)ents.push({y:d.y,f:()=>drawSpr("deer",d.x,d.y)});
   for(const v of villagers)ents.push({y:v.y,f:()=>drawSpr("villagr",v.x,v.y)});
-  for(const g of guards)ents.push({y:g.y,f:()=>drawSpr("guard",g.x,g.y)});
+  for(const g of guards)ents.push({y:g.y,f:()=>drawGuard(g,"guard")});
   for(const h of hunters)ents.push({y:h.y,f:()=>drawSpr("hunter",h.x,h.y)});
+  if(john.active)ents.push({y:john.y,f:()=>drawSpr("john",john.x,john.y)});
   ents.push({y:player.y,f:()=>drawSpr("player",player.x,player.y)});
   ents.sort((a,b)=>a.y-b.y);for(const e of ents)e.f();
+  cx.fillStyle="#c89858";
+  for(const a of arrows){
+    if(a.dx)cx.fillRect(Math.round(a.x)-3,Math.round(a.y)-1,6,2);
+    else cx.fillRect(Math.round(a.x)-1,Math.round(a.y)-3,2,6);
+  }
   cx.restore();
-  // flash
   if(flash>0){cx.fillStyle=`rgba(216,40,0,${Math.min(0.5,flash)})`;
     cx.fillRect(0,HUD,256,PFH);}
   // HUD
   cx.fillStyle="#101010";cx.fillRect(0,0,256,HUD);
-  cx.fillStyle="#fcfcfc";cx.font="8px monospace";
+  cx.fillStyle="#fcfcfc";
   cx.fillText("GOLD "+gold,6,10);
+  cx.fillText("ARROWS "+ammo,6,20);
   for(let i=0;i<5;i++)drawSpr(i<Math.round(bounty)?"star":"star0",70+i*9,3,1);
-  cx.fillText("BOUNTY",70,20);
+  cx.fillStyle="#fcfcfc";cx.fillText("BOUNTY",70,20);
   for(let i=0;i<10;i++)drawSpr(i<fame?"heart":"heart0",130+i*8,3,1);
-  cx.fillText("THE PEOPLE",130,20);
-  cx.fillStyle="#787878";cx.fillText(muted?"MUTE":"",224,10);
+  cx.fillStyle="#fcfcfc";cx.fillText("THE PEOPLE",130,20);
+  if(hasKey){cx.fillStyle="#f8d800";cx.fillText("KEY",228,10);}
+  if(john.recruited){cx.fillStyle="#58d854";
+    cx.fillText(john.active?"JOHN!":(john.cd>0?"J:"+Math.ceil(john.cd):"C:JOHN"),214,20);}
+  if(muted){cx.fillStyle="#787878";cx.fillText("MUTE",186,10);}
   // message strip
   cx.fillStyle="#101010";cx.fillRect(0,240-MSG,256,MSG);
   if(msgT>0){cx.fillStyle=won?"#f8d800":"#fcfcfc";
@@ -416,20 +610,21 @@ function render(){
   if(!started){
     cx.fillStyle="rgba(0,0,0,0.82)";cx.fillRect(0,0,256,240);
     cx.fillStyle="#58d854";cx.font="10px monospace";
-    cx.fillText("ROBIN HOOD",88,84);
+    cx.fillText("ROBIN HOOD",88,80);
     cx.fillStyle="#f8d800";
-    cx.fillText("GRAND THEFT EDITION",70,100);
+    cx.fillText("GRAND THEFT EDITION",70,96);
     cx.fillStyle="#fcfcfc";cx.font="8px monospace";
-    cx.fillText("Steal from the rich (SPACE).",50,136);
-    cx.fillText("Donate at hut doors. Dodge the",47,148);
-    cx.fillText("Sheriff's bounty hunters.",62,160);
+    cx.fillText("SPACE: rob caravans, poach deer,",40,128);
+    cx.fillText("donate at huts, raid the abbey.",44,140);
+    cx.fillText("X: shoot   C: call Little John",46,152);
+    cx.fillText("Dodge the Sheriff's bounty!",54,164);
     cx.fillStyle=(animT&16)?"#fcfcfc":"#787878";
-    cx.fillText("PRESS ANY KEY",78,192);
+    cx.fillText("PRESS ANY KEY",78,196);
   }
 }
 
 // ============================================================ main loop
-buildMap();initEnts();
+buildMap();buildAbbey();initEnts();
 let last=0;
 function frame(t){
   const dt=Math.min(0.05,(t-last)/1000)||0.016;last=t;

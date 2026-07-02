@@ -76,4 +76,16 @@ at 5, then relaxes as you cool off. Diegetic horn blasts when guards spot you.
 visible sight-cones, star-based bounty with hunters, donation-driven Fame with a Poverty
 Meter, and a WebAudio chiptune that speeds up with your heat. Open it in a browser and play.
 
-**Controls:** Arrows/WASD move · Space rob / poach / donate · M mute.
+It also includes a first pass at the three flagship systems:
+- **St Mary's Abbey** — a Zelda-style interior dungeon behind the arched door north of the
+  village: find the Prior's key in a guarded side room, unlock the vault, and return the
+  tithes to the people (+200g, +2 Fame, +2 bounty). Abbey guards attack trespassers on sight.
+- **Bow & arrow** — X fires in your facing direction; arrows knock guards out cold (a small
+  bounty for assault), down bounty hunters, and take deer at range. Fletch 5 arrows for 10g
+  at the camp fire.
+- **Little John** — joins the Merry Men at Fame 3. Press C to sound the Horn of Sherwood:
+  he charges the nearest guard or hunter, flattens them, and melts back into the trees
+  (30s cooldown).
+
+**Controls:** Arrows/WASD move · Space interact (rob / poach / donate / enter) ·
+X shoot · C call Little John · M mute.
