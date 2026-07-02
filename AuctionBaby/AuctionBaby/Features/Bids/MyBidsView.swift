@@ -33,7 +33,7 @@ struct MyBidsView: View {
             }
             .background(AppBackground())
             .navigationTitle("My Bids")
-            .sheet(isPresented: $showStore) { GavelStoreView().presentationDetents([.large]) }
+            .sheet(isPresented: $showStore) { PaywallView(trigger: .rankReveal) }
         }
     }
 

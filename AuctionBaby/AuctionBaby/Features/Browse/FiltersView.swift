@@ -38,7 +38,7 @@ struct FiltersView: View {
                     Button("Done") { dismiss() }.foregroundStyle(Theme.gold).fontWeight(.bold)
                 }
             }
-            .sheet(isPresented: $showStore) { GavelStoreView().presentationDetents([.large]) }
+            .sheet(isPresented: $showStore) { PaywallView(trigger: .filters) }
         }
     }
 

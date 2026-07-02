@@ -45,6 +45,18 @@ final class StoreCatalogTests: XCTestCase {
         XCTAssertNotNil(store.boostUntil)
     }
 
+    func testPaywallTriggersSuggestTheCheapestSolvingTier() {
+        XCTAssertEqual(PaywallTrigger.rankReveal.suggestedTier, .paddle)
+        XCTAssertEqual(PaywallTrigger.bidLimit.suggestedTier, .paddle)
+        XCTAssertEqual(PaywallTrigger.filters.suggestedTier, .reserve)
+        XCTAssertEqual(PaywallTrigger.readReceipts.suggestedTier, .blackcard)
+        // Every trigger has a non-empty hook line + icon.
+        for t: PaywallTrigger in [.rankReveal, .bidLimit, .filters, .readReceipts, .general] {
+            XCTAssertFalse(t.headline.isEmpty)
+            XCTAssertFalse(t.icon.isEmpty)
+        }
+    }
+
     func testSubscriptionTiersAreDistinctAndComplete() {
         let tiers = StoreKitService.PassTier.allCases
         XCTAssertEqual(tiers.count, 3)

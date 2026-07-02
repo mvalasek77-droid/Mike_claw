@@ -10,6 +10,7 @@ struct ChatView: View {
     @State private var draft = ""
     @State private var showReview = false
     @State private var showReport = false
+    @State private var showReceiptPaywall = false
 
     private var match: Match? { store.matches.first(where: { $0.id == matchID }) }
 
@@ -65,22 +66,34 @@ struct ChatView: View {
                     .presentationDetents([.medium, .large])
             }
         }
+        .sheet(isPresented: $showReceiptPaywall) { PaywallView(trigger: .readReceipts) }
     }
 
-    /// Black Card read receipt under your latest message.
+    /// Black Card read receipt under your latest message — or a one-tap teaser
+    /// for everyone else (a peak-intent paywall moment).
     @ViewBuilder
     private func readReceipt(_ match: Match) -> some View {
-        if storeKit.isSubscribed(to: .blackcard),
-           match.phase == .chatting,
-           match.messages.last?.fromMe == true {
+        if match.phase == .chatting, match.messages.last?.fromMe == true {
             HStack {
                 Spacer()
-                HStack(spacing: 4) {
-                    Image(systemName: match.seenByOther ? "checkmark.circle.fill" : "checkmark.circle")
-                    Text(match.seenByOther ? "Seen" : "Delivered")
+                if storeKit.isSubscribed(to: .blackcard) {
+                    HStack(spacing: 4) {
+                        Image(systemName: match.seenByOther ? "checkmark.circle.fill" : "checkmark.circle")
+                        Text(match.seenByOther ? "Seen" : "Delivered")
+                    }
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(match.seenByOther ? Theme.verify : Theme.inkFaint)
+                } else {
+                    Button { showReceiptPaywall = true } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "lock.fill")
+                            Text("Did she read it?")
+                        }
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.rose)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(match.seenByOther ? Theme.verify : Theme.inkFaint)
             }
             .padding(.trailing, 2)
         }

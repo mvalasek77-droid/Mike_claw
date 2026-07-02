@@ -154,7 +154,7 @@ struct BidSheet: View {
         .background(AppBackground().opacity(0.4))
         .motion(Motion.snap, value: amount)
         .motion(Motion.snap, value: gild)
-        .sheet(isPresented: $showStore) { GavelStoreView().presentationDetents([.large]) }
+        .sheet(isPresented: $showStore) { PaywallView(trigger: .bidLimit) }
     }
 
     private var gildToggle: some View {
