@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ASCStep: Identifiable, Hashable {
     let id = UUID()
@@ -84,9 +85,15 @@ extension ASCStep {
 struct AppStoreConnectGuideView: View {
     let job: BuildJob
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @State private var current: Int = 0
     @State private var completed: Set<UUID> = []
     @State private var metadata: AppStoreMetadata
+    @State private var showPairMac = false
+    @State private var banner: String?
+    @State private var macBusy = false
+    @StateObject private var creds = Credentials.shared
+    @StateObject private var bridge = CompanionBridge()
 
     init(job: BuildJob) {
         self.job = job
@@ -99,6 +106,15 @@ struct AppStoreConnectGuideView: View {
             VStack(spacing: 0) {
                 topBar
                 progressBar
+                if let banner {
+                    Text(banner)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.accent)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, 4)
+                        .transition(.opacity)
+                }
                 ScrollView {
                     VStack(spacing: 16) {
                         legendCard
@@ -108,9 +124,10 @@ struct AppStoreConnectGuideView: View {
                                 step: step,
                                 index: ASCStep.all.firstIndex(of: step) ?? 0,
                                 isCurrent: ASCStep.all.firstIndex(of: step) == current,
-                                isDone: completed.contains(step.id),
-                                onAction: { perform(step) }
-                            )
+                                isDone: completed.contains(step.id)
+                            ) {
+                                actionRow(for: step)
+                            }
                         }
                         Color.clear.frame(height: 24)
                     }
@@ -120,6 +137,136 @@ struct AppStoreConnectGuideView: View {
                 .scrollIndicators(.hidden)
             }
         }
+        .sheet(isPresented: $showPairMac) {
+            PairMacView()
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+    }
+
+    // MARK: Step actions — every button does what it says, or says
+    // plainly that the step is manual. No decorative automation.
+
+    @ViewBuilder
+    private func actionRow(for step: ASCStep) -> some View {
+        switch step.action {
+        case .openSafariOnMac(let url):
+            openPageActions(url: url, step: step)
+        case .fillForm:
+            VStack(spacing: 8) {
+                PrimaryButton(title: "Copy draft for this step", systemImage: "doc.on.doc.fill", style: .filled) {
+                    copyListingDraft()
+                }
+                if let route = step.safariRoute {
+                    openPageActions(url: route, step: step, markDoneOnOpen: false)
+                }
+                markDoneLink(step, label: "I've filled it in — mark done")
+            }
+        case .uploadAsset(let asset):
+            VStack(spacing: 8) {
+                Text(asset == "Build.ipa"
+                     ? "This upload runs from the build screen's Submit flow — it happens automatically once you tap Submit to App Store there."
+                     : "CodeGenie prepares \(asset) in your workspace download. Add it in App Store Connect, then mark this done.")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                markDoneLink(step, label: "Mark step done")
+            }
+        case .wait(let detail):
+            HStack(spacing: 10) {
+                ProgressView().tint(LiquidGlass.primaryText)
+                Text(detail).font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                Spacer()
+                Button("Mark done") { markDone(step) }
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.accent)
+            }
+        case .manual:
+            PrimaryButton(title: "I did this", systemImage: "checkmark.circle.fill", style: .glass) {
+                markDone(step)
+            }
+        }
+    }
+
+    /// Real "open this page" actions: drives the paired Mac's Safari
+    /// when a Companion is connected, offers pairing when not, and
+    /// always has an open-on-this-iPhone fallback so nobody is stuck.
+    @ViewBuilder
+    private func openPageActions(url: String, step: ASCStep, markDoneOnOpen: Bool = true) -> some View {
+        VStack(spacing: 8) {
+            if creds.hasCompanionPairing {
+                PrimaryButton(
+                    title: macBusy ? "Opening on your Mac…" : "Open on my Mac",
+                    systemImage: "macbook",
+                    style: .filled
+                ) {
+                    Task { await openOnMac(url, step: step, markDone: markDoneOnOpen) }
+                }
+                .disabled(macBusy)
+            } else {
+                PrimaryButton(title: "Pair a Mac to drive Safari", systemImage: "macbook.and.iphone", style: .filled) {
+                    Haptics.selection()
+                    showPairMac = true
+                }
+                Text("No Mac paired. You can pair one now, or do this step on this phone instead.")
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Button {
+                Haptics.selection()
+                if let u = URL(string: url) { openURL(u) }
+                if markDoneOnOpen { markDone(step, advance: false) }
+            } label: {
+                Label("Open on this iPhone instead", systemImage: "safari")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.accent)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func markDoneLink(_ step: ASCStep, label: String) -> some View {
+        Button {
+            markDone(step)
+        } label: {
+            Text(label)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(LiquidGlass.accent)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func openOnMac(_ url: String, step: ASCStep, markDone: Bool) async {
+        macBusy = true
+        defer { macBusy = false }
+        do {
+            if bridge.status != .connected {
+                guard await bridge.connectStoredPairing() else {
+                    throw BridgeError.notConnected
+                }
+            }
+            try await bridge.openSafari(url)
+            banner = "Opened in Safari on your Mac — finish the step there."
+            Haptics.success()
+            if markDone { self.markDone(step, advance: true) }
+        } catch {
+            banner = "Couldn't reach your Mac (\(error)). Check it's awake and on the same Wi-Fi, or use \"Open on this iPhone instead\"."
+            Haptics.error()
+        }
+    }
+
+    private func copyListingDraft() {
+        UIPasteboard.general.string = """
+        Name: \(metadata.name)
+        Subtitle: \(metadata.subtitle)
+        Promotional text: \(metadata.promotionalText)
+        Description: \(metadata.description)
+        Keywords: \(metadata.keywords.joined(separator: ","))
+        """
+        banner = "Listing draft copied — paste each field into App Store Connect."
+        Haptics.success()
     }
 
     private var topBar: some View {
@@ -214,10 +361,10 @@ struct AppStoreConnectGuideView: View {
         }
     }
 
-    private func perform(_ step: ASCStep) {
+    private func markDone(_ step: ASCStep, advance: Bool = true) {
         Haptics.success()
         completed.insert(step.id)
-        if let i = ASCStep.all.firstIndex(of: step), i + 1 < ASCStep.all.count {
+        if advance, let i = ASCStep.all.firstIndex(of: step), i + 1 < ASCStep.all.count {
             Motion.run(.spring(response: 0.4)) { current = i + 1 }
         }
     }
@@ -225,12 +372,12 @@ struct AppStoreConnectGuideView: View {
 
 // MARK: - Step card
 
-private struct ASCStepCard: View {
+private struct ASCStepCard<Actions: View>: View {
     let step: ASCStep
     let index: Int
     let isCurrent: Bool
     let isDone: Bool
-    let onAction: () -> Void
+    @ViewBuilder let actions: () -> Actions
 
     var body: some View {
         GlassSurface(tier: isCurrent ? .deep : .raised) {
@@ -258,7 +405,7 @@ private struct ASCStepCard: View {
                     .lineSpacing(3)
 
                 if isCurrent {
-                    actionRow
+                    actions()
                 }
             }
             .padding(16)
@@ -266,10 +413,15 @@ private struct ASCStepCard: View {
     }
 
     private var automationBadge: some View {
+        // Labels must match what the buttons actually do: the IPA
+        // upload is the only truly automated asset step (via Submit
+        // on the build screen); other uploads are hybrid at best.
         let (label, tint): (String, Color) = {
             switch step.action {
-            case .uploadAsset, .wait:
+            case .wait:
                 return ("Auto", LiquidGlass.success)
+            case .uploadAsset(let asset):
+                return asset == "Build.ipa" ? ("Auto", LiquidGlass.success) : ("Hybrid", LiquidGlass.accent)
             case .openSafariOnMac, .fillForm:
                 return ("Hybrid", LiquidGlass.accent)
             case .manual:
@@ -284,12 +436,12 @@ private struct ASCStepCard: View {
             .background(tint.opacity(0.18), in: Capsule())
             .overlay(Capsule().strokeBorder(tint.opacity(0.35), lineWidth: 0.5))
             .accessibilityLabel({
-                switch step.action {
-                case .uploadAsset, .wait:
+                switch label {
+                case "Auto":
                     return "Fully automated"
-                case .openSafariOnMac, .fillForm:
+                case "Hybrid":
                     return "Hybrid: CodeGenie assists, you confirm"
-                case .manual:
+                default:
                     return "You do this manually"
                 }
             }())
@@ -312,30 +464,6 @@ private struct ASCStepCard: View {
         .frame(width: 32, height: 32)
     }
 
-    @ViewBuilder
-    private var actionRow: some View {
-        switch step.action {
-        case .openSafariOnMac(let url):
-            PrimaryButton(title: "Open on my Mac", systemImage: "macbook", style: .filled) { onAction() }
-                .accessibilityHint("Opens \(url) in your Mac's Safari")
-        case .fillForm:
-            PrimaryButton(title: "Auto-fill this step", systemImage: "wand.and.stars", style: .filled) { onAction() }
-        case .uploadAsset(let asset):
-            PrimaryButton(title: "Upload \(asset)", systemImage: "icloud.and.arrow.up", style: .filled) { onAction() }
-        case .wait(let detail):
-            HStack(spacing: 10) {
-                ProgressView().tint(LiquidGlass.primaryText)
-                Text(detail).font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
-                Spacer()
-                Button("Mark done") { onAction() }
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(LiquidGlass.accent)
-            }
-        case .manual:
-            PrimaryButton(title: "I did this", systemImage: "checkmark.circle.fill", style: .glass) { onAction() }
-        }
-    }
 }
 
 extension AppStoreMetadata {
