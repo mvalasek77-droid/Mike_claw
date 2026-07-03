@@ -16,21 +16,24 @@ struct AuctionFeedView: View {
             ScrollView {
                 LazyVStack(spacing: 18) {
                     header
+                    LiveTicker()
                     DailyClaimCard()
                     if let star = store.headliner {
                         NavigationLink(value: star) { HeadlinerBanner(woman: star) }
                             .buttonStyle(.plain)
+                            .riseIn(0.05)
                     }
                     if lots.isEmpty && store.headliner == nil {
                         EmptyStateView(icon: "line.3.horizontal.decrease.circle",
                                        title: "No lots match",
                                        message: "Your filters are hiding everyone. Loosen them to see more of the floor.")
                     }
-                    ForEach(lots) { woman in
+                    ForEach(Array(lots.enumerated()), id: \.element.id) { i, woman in
                         NavigationLink(value: woman) {
                             FloorCard(woman: woman) { bidTarget = woman }
                         }
                         .buttonStyle(.plain)
+                        .riseIn(Double(min(i, 6)) * 0.06)
                     }
                     Spacer(minLength: 24)
                 }

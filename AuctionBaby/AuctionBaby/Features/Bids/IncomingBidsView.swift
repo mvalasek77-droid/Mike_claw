@@ -21,13 +21,15 @@ struct IncomingBidsView: View {
             ScrollView {
                 LazyVStack(spacing: 14) {
                     header
+                    LiveTicker()
                     DailyClaimCard()
                     if pending.isEmpty && resolved.isEmpty {
                         EmptyStateView(icon: "hand.raised", title: "No bids yet",
                                        message: "Bidders are finding their nerve. Summon one to see how it works.")
                     }
-                    ForEach(pending) { bid in
+                    ForEach(Array(pending.enumerated()), id: \.element.id) { i, bid in
                         Button { detail = bid } label: { BidRow(bid: bid) }.buttonStyle(.plain)
+                            .riseIn(Double(min(i, 6)) * 0.06)
                     }
                     if !resolved.isEmpty {
                         SectionHeader(title: "History").padding(.top, 8)

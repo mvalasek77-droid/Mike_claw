@@ -56,4 +56,23 @@ extension View {
             self.animation(animation, value: value)
         }
     }
+
+    /// Entrance: content rises and fades in on first appearance. Staggering
+    /// the `delay` per row gives lists a lively, orchestrated arrival.
+    func riseIn(_ delay: Double = 0) -> some View { modifier(RiseIn(delay: delay)) }
+}
+
+struct RiseIn: ViewModifier {
+    var delay: Double = 0
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 22)
+            .onAppear {
+                guard !shown else { return }
+                Motion.run(Motion.spring.delay(delay)) { shown = true }
+            }
+    }
 }
