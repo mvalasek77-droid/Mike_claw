@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 /// A Hinge-style prompt + answer shown on a profile.
 struct Prompt: Identifiable, Codable, Hashable {
@@ -129,6 +129,72 @@ struct Profile: Identifiable, Codable, Hashable {
 
 // MARK: - Derived "credit scores"
 
+/// The lot's honors ladder — auction-house artwork tiers a woman climbs with
+/// real activity on the floor. Every rung below Masterpiece is achievable
+/// through dates and reputation; **Masterpiece** alone requires a Trillionaire
+/// paying $1,000,000 for one evening, and cannot be climbed to.
+enum ArtTier: Int, Codable, CaseIterable, Comparable, Identifiable {
+    case freshCanvas = 0   // new to the floor
+    case sketch            // first reviewed date
+    case limitedPrint      // a small following
+    case galleryPiece      // established, verified
+    case collectorsItem    // sought after
+    case exhibitionStar    // the room turns
+    case masterpiece       // the $1,000,000 evening
+
+    var id: Int { rawValue }
+    static func < (l: ArtTier, r: ArtTier) -> Bool { l.rawValue < r.rawValue }
+
+    var title: String {
+        switch self {
+        case .freshCanvas: return "Fresh Canvas"
+        case .sketch: return "Sketch"
+        case .limitedPrint: return "Limited Print"
+        case .galleryPiece: return "Gallery Piece"
+        case .collectorsItem: return "Collector's Item"
+        case .exhibitionStar: return "Exhibition Star"
+        case .masterpiece: return "Masterpiece"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .freshCanvas: return "square.dashed"
+        case .sketch: return "pencil.line"
+        case .limitedPrint: return "doc.on.doc.fill"
+        case .galleryPiece: return "photo.artframe"
+        case .collectorsItem: return "seal.fill"
+        case .exhibitionStar: return "sparkles.rectangle.stack.fill"
+        case .masterpiece: return "rosette"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .freshCanvas: return Theme.inkFaint
+        case .sketch: return Theme.inkSoft
+        case .limitedPrint: return Theme.verify
+        case .galleryPiece: return Theme.success
+        case .collectorsItem: return Theme.rose
+        case .exhibitionStar: return Theme.gold
+        case .masterpiece: return Theme.goldSoft
+        }
+    }
+
+    /// What it takes — shown on the honors ladder.
+    var requirement: String {
+        switch self {
+        case .freshCanvas: return "Step onto the floor"
+        case .sketch: return "1 reviewed date"
+        case .limitedPrint: return "3 reviewed dates · credit 550+"
+        case .galleryPiece: return "6 reviewed dates · credit 680+ · verified"
+        case .collectorsItem: return "9 reviewed dates · credit 780+"
+        case .exhibitionStar: return "12 reviewed dates · credit 840+"
+        case .masterpiece: return "A Trillionaire pays $1,000,000 for one evening"
+        }
+    }
+}
+
 /// One line of a credit report: what moved the number, by how much, and the
 /// bureau's comment. Both sides' headline scores are computed *from* these, so
 /// the printed report always adds up.
@@ -226,7 +292,7 @@ extension Profile {
         if masterpiece {
             f.append(CreditFactor(
                 name: "Masterpiece", icon: "rosette", points: 50,
-                comment: "A verified Trillionaire paid $9,999 in full for one evening. Certified."))
+                comment: "A Trillionaire paid $1,000,000 in full for one evening. Certified."))
         }
         return f
     }
@@ -238,6 +304,26 @@ extension Profile {
     }
 
     var showcaseTier: String { Self.tierName(showcaseCredit) }
+
+    /// Where she sits on the honors ladder. Every rung below Masterpiece is
+    /// earned with dates + credit; Masterpiece is minted, never climbed to.
+    var artTier: ArtTier {
+        if masterpiece { return .masterpiece }
+        let n = reviews.count, c = showcaseCredit
+        if n >= 12 && c >= 840 { return .exhibitionStar }
+        if n >= 9 && c >= 780 { return .collectorsItem }
+        if n >= 6 && c >= 680 && verified { return .galleryPiece }
+        if n >= 3 && c >= 550 { return .limitedPrint }
+        if n >= 1 { return .sketch }
+        return .freshCanvas
+    }
+
+    /// The next rung, for the ladder card. `nil` at Exhibition Star — the only
+    /// thing above it can't be climbed to.
+    var nextArtTier: ArtTier? {
+        guard artTier < .exhibitionStar else { return nil }
+        return ArtTier(rawValue: artTier.rawValue + 1)
+    }
 
     /// "Find out what you're worth": her market value is the headline number a
     /// bidder would expect to clear — driven by reputation and any floor she set.

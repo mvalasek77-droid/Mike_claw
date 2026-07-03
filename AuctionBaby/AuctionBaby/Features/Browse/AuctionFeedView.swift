@@ -143,6 +143,7 @@ struct HeadlinerBanner: View {
                     }
                     .foregroundStyle(Theme.ink)
                     HStack(spacing: 8) {
+                        ArtTierBadge(tier: woman.artTier, compact: true)
                         Chip(text: "Showcase \(woman.showcaseCredit)", systemImage: "rosette", color: Theme.rose)
                         Chip(text: Money.compact(woman.marketValue), systemImage: "dollarsign.circle.fill", color: Theme.gold)
                     }
@@ -177,8 +178,8 @@ struct FloorCard: View {
                                copycatStyle: woman.copycatStyle, corner: Theme.cornerXL)
                         .frame(height: 360)
 
-                    if woman.masterpiece {
-                        VStack { Spacer(); HStack { Spacer(); MasterpieceBadge(compact: true) } }
+                    if woman.artTier > .freshCanvas {
+                        VStack { Spacer(); HStack { Spacer(); ArtTierBadge(tier: woman.artTier, compact: true) } }
                             .padding(12)
                     }
 

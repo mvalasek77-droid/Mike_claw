@@ -163,10 +163,12 @@ final class AuctionStore: ObservableObject {
         if woman.isCopycat {
             // The reveal: the moment you bid on a Copycat you're told, the hit
             // lands, and it's on your record. That's the game.
+            let before = me.auctionCredit
             me.copycatBids += 1
             Haptics.warning()
             celebrate(with: woman, amount: amount, copycat: true, masterpiece: false)
             log(.bidDeclined, "You bid on \(woman.name) — an AI Copycat. Your Auction Credit took the hit.")
+            creditPing(before: before)
         } else {
             Haptics.commit()
             toastFlash(gild ? "✦ Gilded bid sent to \(woman.name) — top of her inbox."
@@ -200,6 +202,7 @@ final class AuctionStore: ObservableObject {
             toastFlash("Need \(Tally.compact(archetype.price)) Gavels for \(archetype.title). Top up.")
             return
         }
+        let before = me.auctionCredit
         wallet -= archetype.price
         me.archetype = archetype
         // Trillionaire is earned: buying only unlocks the *attempt*. Verification
@@ -211,6 +214,7 @@ final class AuctionStore: ObservableObject {
         } else {
             toastFlash(archetype == .none ? "Rating removed." : "You're now a \(archetype.title).")
         }
+        creditPing(before: before)
         save()
     }
 
@@ -353,10 +357,12 @@ final class AuctionStore: ObservableObject {
     /// Run the simulated selfie-match verification for the logged-in user.
     func verifyMe() {
         guard !me.verified else { return }
+        let before = role == .woman ? me.showcaseCredit : me.auctionCredit
         me.verified = true
         Haptics.success()
         toastFlash("You're verified ✓ — bidders trust a real face.")
         log(.verified, "You're now identity verified.")
+        creditPing(before: before)
         save()
     }
 
@@ -378,13 +384,13 @@ final class AuctionStore: ObservableObject {
         if trillionaire {
             // The first verified Trillionaire himself comes to bid.
             man = pool.first { $0.archetype == .trillionaire } ?? pool[0]
-            amount = Archetype.trillionaire.price   // $9,999 — the Masterpiece-minting bid
+            amount = Bid.masterpieceBid   // $1,000,000 — the Masterpiece-minting bid
         } else {
             let floor = me.startingBid ?? 150
             amount = Int(Double(floor) * Double.random(in: 0.7...2.4))
         }
         let note = trillionaire
-            ? "I read the rules — I wrote them. The full $9,999 for one evening. Confirm it and mint your Masterpiece."
+            ? "I read the rules — I wrote them. One million dollars for one evening. Confirm it and mint your Masterpiece."
             : ["Saw your profile. Worth every cent.", "Dinner, my treat — name the place.",
                "I don't usually bid this high.", "Let me take you somewhere ridiculous."].randomElement()!
         let bid = Bid(man: man, woman: me, amount: amount, note: note)
@@ -441,6 +447,7 @@ final class AuctionStore: ObservableObject {
               !matches[idx].manReviewedWoman else { return }   // one review per date
         let bid = matches[idx].bid
 
+        let creditBefore = me.auctionCredit
         // NOTE: no in-app debit here. A bid is a letter of intent — the date
         // money is settled in the real world, peer-to-peer. `actuallySpent` is
         // only what he reports paying in person, which she confirms or disputes;
@@ -456,7 +463,7 @@ final class AuctionStore: ObservableObject {
 
         if let f = floor.firstIndex(where: { $0.id == bid.woman.id }) {
             floor[f].reviews.insert(review, at: 0)
-            // She only mints a Masterpiece if he actually paid the full $9,999.
+            // She only mints a Masterpiece if he actually paid the full $1,000,000.
             if bid.qualifiesForMasterpiece && paid { floor[f].masterpiece = true }
         }
         matches[idx].manReviewedWoman = true
@@ -487,6 +494,7 @@ final class AuctionStore: ObservableObject {
         toastFlash(paid ? "Review posted. Your credit just went up."
                         : "Review posted. Paying short dented your credit.")
         log(.reviewReceived, "\(bid.woman.name) reviewed your date.")
+        creditPing(before: creditBefore)
         save()
     }
 
@@ -500,6 +508,7 @@ final class AuctionStore: ObservableObject {
         // Her verdict on him (cosmetic — he isn't the user).
         matches[idx].womanReviewedMan = true
 
+        let showcaseBefore = me.showcaseCredit
         // His review of her → grows *her* Showcase score with simulated traits.
         var traits: [String: Int] = [:]
         for t in Trait.allCases { traits[t.rawValue] = Int.random(in: 4...5) }
@@ -523,6 +532,7 @@ final class AuctionStore: ObservableObject {
                             : "Review posted. Flagged as a deadbeat.")
             log(.reviewReceived, "\(bid.man.name) reviewed your date.")
         }
+        creditPing(before: showcaseBefore)
         closeMatch(idx)
         save()
     }
@@ -531,6 +541,17 @@ final class AuctionStore: ObservableObject {
         matches[idx].phase = .closed
         matches[idx].messages.append(
             ChatMessage(fromMe: true, text: "Reviews are in. This lot is closed.", isSystem: true))
+    }
+
+    /// Log a credit movement whenever a headline score shifts — the "your
+    /// number moved" ping that makes the bureau feel alive. Call with the
+    /// score captured before the mutation.
+    private func creditPing(before: Int) {
+        let after = role == .woman ? me.showcaseCredit : me.auctionCredit
+        guard after != before else { return }
+        let delta = after - before
+        let arrow = delta > 0 ? "▲" : "▼"
+        log(.credit, "\(role == .woman ? "Showcase" : "Auction") Credit \(arrow)\(abs(delta)) — now \(after).")
     }
 
     // MARK: - Celebration
@@ -587,10 +608,12 @@ final class AuctionStore: ObservableObject {
                 }
                 self.log(.bidAccepted, "\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid.")
             } else {
+                let before = self.me.auctionCredit
                 self.me.declinedBids += 1   // rejection is data — a light credit drag
                 Haptics.warning()
                 self.toastFlash("\(bid.woman.name) passed. Bid higher or build your reputation.")
                 self.log(.bidDeclined, "\(bid.woman.name) passed on your \(Money.compact(bid.amount)) bid.")
+                self.creditPing(before: before)
             }
             self.save()
         }

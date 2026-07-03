@@ -49,7 +49,7 @@ struct IncomingBidsView: View {
                     Menu {
                         Button { store.summonBidder() } label: { Label("Summon a bidder", systemImage: "person.badge.plus") }
                         Button { store.summonBidder(trillionaire: true) } label: {
-                            Label("Summon the Trillionaire ($9,999)", systemImage: "crown.fill")
+                            Label("Summon the Trillionaire ($1M bid)", systemImage: "crown.fill")
                         }
                     } label: { Image(systemName: "plus.circle.fill").foregroundStyle(Theme.gold) }
                 }

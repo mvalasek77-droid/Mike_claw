@@ -1,7 +1,29 @@
 import SwiftUI
 
+/// A number that rolls between values when animated — the classic odometer
+/// count-up, driven by SwiftUI's animatable machinery.
+struct CountUpText: View, Animatable {
+    var value: Double
+    var font: Font = .system(size: 32, weight: .heavy, design: .rounded)
+    var color: Color = Theme.ink
+
+    var animatableData: Double {
+        get { value }
+        set { value = newValue }
+    }
+
+    var body: some View {
+        Text("\(Int(value.rounded()))")
+            .font(font)
+            .foregroundStyle(color)
+            .monospacedDigit()
+    }
+}
+
 /// A 270° gauge used for the man's "Auction Credit" (a 300–900 credit-score
-/// analogue) and other headline scores. Animates its sweep on appear.
+/// analogue) and other headline scores. The sweep animates on appear AND the
+/// number rolls odometer-style whenever the score moves; a perfect 900 earns
+/// a small crown above the number.
 struct ScoreGauge: View {
     let value: Int
     let range: ClosedRange<Int>
@@ -16,6 +38,8 @@ struct ScoreGauge: View {
         guard span > 0 else { return 0 }
         return min(1, max(0, Double(value - range.lowerBound) / span))
     }
+
+    private var isPerfect: Bool { value >= range.upperBound && range.upperBound >= 900 }
 
     var body: some View {
         ZStack {
@@ -32,23 +56,30 @@ struct ScoreGauge: View {
                     style: .init(lineWidth: 12, lineCap: .round)
                 )
                 .rotationEffect(.degrees(135))
-                .shadow(color: tint.opacity(0.5), radius: 6)
+                .shadow(color: tint.opacity(isPerfect ? 0.8 : 0.5), radius: isPerfect ? 10 : 6)
 
             VStack(spacing: 2) {
-                Text("\(value)")
-                    .font(.system(size: size * 0.26, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Theme.ink)
-                    .contentTransition(.numericText())
+                if isPerfect {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: size * 0.10, weight: .bold))
+                        .foregroundStyle(Theme.goldGradient)
+                        .transition(.scale.combined(with: .opacity))
+                }
+                CountUpText(value: animated ? Double(value) : Double(range.lowerBound),
+                            font: .system(size: size * 0.26, weight: .heavy, design: .rounded),
+                            color: Theme.ink)
                 Text(label.uppercased())
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(1.5)
                     .foregroundStyle(Theme.inkSoft)
+                    .contentTransition(.opacity)
             }
         }
         .frame(width: size, height: size)
-        .onAppear { Motion.run(.easeOut(duration: 0.9)) { animated = true } }
+        .motion(.spring(response: 0.9, dampingFraction: 0.9), value: value)
+        .onAppear { Motion.run(.easeOut(duration: 1.1)) { animated = true } }
         .accessibilityElement()
-        .accessibilityLabel("\(label): \(value)")
+        .accessibilityLabel("\(label): \(value)\(isPerfect ? ", perfect score" : "")")
     }
 }
 

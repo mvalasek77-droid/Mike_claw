@@ -28,11 +28,13 @@ struct Bid: Identifiable, Codable, Hashable {
     /// Bidding on an AI copycat is always disclosed and counts against the man.
     var onCopycat: Bool { woman.isCopycat }
 
-    /// Only a Trillionaire paying the full $9,999 (the Trillionaire tier price)
-    /// on a date can mint a Masterpiece — and only once the woman confirms it.
-    /// This flag is the *eligibility*; the confirmation gate is applied at review.
+    /// The Masterpiece bar, per the house rules: a **Trillionaire** (the $9,999
+    /// badge) who bids **$1,000,000** on the date — real-world money, settled in
+    /// person, confirmed by her afterward. This flag is the *eligibility*; the
+    /// confirmation gate is applied at review. Vanishingly rare, by design.
+    static let masterpieceBid = 1_000_000
     var qualifiesForMasterpiece: Bool {
-        man.archetype == .trillionaire && amount >= Archetype.trillionaire.price
+        man.archetype == .trillionaire && amount >= Bid.masterpieceBid
     }
 }
 

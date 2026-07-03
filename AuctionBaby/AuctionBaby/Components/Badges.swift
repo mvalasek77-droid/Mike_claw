@@ -65,7 +65,7 @@ struct ArchetypeBadge: View {
 }
 
 /// The rarest object on the floor: a woman's "Masterpiece" — only mintable by a
-/// Trillionaire who pays the full $9,999 on a date that she then confirms.
+/// Trillionaire who pays the full $1,000,000 on a date that she then confirms.
 struct MasterpieceBadge: View {
     var compact: Bool = false
     @State private var shimmer = false
@@ -86,6 +86,30 @@ struct MasterpieceBadge: View {
             withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) { shimmer = true }
         }
         .accessibilityLabel("Masterpiece rating")
+    }
+}
+
+/// The lot's honors-ladder chip — her artwork tier, from Fresh Canvas up to
+/// Exhibition Star. (The Masterpiece keeps its own prestige badge.)
+struct ArtTierBadge: View {
+    let tier: ArtTier
+    var compact: Bool = false
+
+    var body: some View {
+        if tier == .masterpiece {
+            MasterpieceBadge(compact: compact)
+        } else {
+            HStack(spacing: 5) {
+                Image(systemName: tier.systemImage)
+                Text(tier.title)
+            }
+            .font(.system(size: compact ? 10 : 12, weight: .heavy, design: .serif))
+            .foregroundStyle(tier.tint)
+            .padding(.horizontal, compact ? 8 : 11).padding(.vertical, compact ? 4 : 6)
+            .background(Capsule().fill(tier.tint.opacity(0.15)))
+            .overlay(Capsule().strokeBorder(tier.tint.opacity(0.5), lineWidth: 0.7))
+            .accessibilityLabel("Honors tier: \(tier.title)")
+        }
     }
 }
 

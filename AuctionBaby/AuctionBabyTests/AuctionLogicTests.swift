@@ -154,6 +154,48 @@ final class AuctionLogicTests: XCTestCase {
         XCTAssertNotNil(w.showcaseFactors.first { $0.name == "Masterpiece" })
     }
 
+    // MARK: Honors ladder (art tiers)
+
+    func testArtTierClimbsWithDatesAndCredit() {
+        var w = Profile(name: "W", age: 28, role: .woman, location: "", bio: "", hue: 0.9)
+        XCTAssertEqual(w.artTier, .freshCanvas)
+
+        func fiveStarReview(_ i: Int) -> DateReview {
+            DateReview(authorName: "M\(i)", authorHue: 0, stars: 5, text: "",
+                       traits: Dictionary(uniqueKeysWithValues: Trait.allCases.map { ($0.rawValue, 5) }))
+        }
+        w.reviews = [fiveStarReview(0)]
+        XCTAssertEqual(w.artTier, .sketch)
+
+        w.reviews = (0..<3).map(fiveStarReview)
+        XCTAssertEqual(w.artTier, .limitedPrint)
+
+        // Gallery Piece needs verification — 6 dates alone won't do it.
+        w.reviews = (0..<6).map(fiveStarReview)
+        XCTAssertEqual(w.artTier, .limitedPrint)
+        w.verified = true
+        XCTAssertEqual(w.artTier, .galleryPiece)
+
+        w.reviews = (0..<12).map(fiveStarReview)
+        XCTAssertEqual(w.artTier, .exhibitionStar)
+        XCTAssertNil(w.nextArtTier, "nothing above Exhibition Star can be climbed to")
+
+        // Masterpiece overrides the ladder entirely.
+        w.masterpiece = true
+        XCTAssertEqual(w.artTier, .masterpiece)
+    }
+
+    func testMasterpieceRequiresMillionDollarBid() {
+        let woman = Profile(name: "W", age: 28, role: .woman, location: "", bio: "", hue: 0.9)
+        var rich = Profile(name: "T", age: 40, role: .man, location: "", bio: "", hue: 0.1)
+        rich.archetype = .trillionaire
+        XCTAssertTrue(Bid(man: rich, woman: woman, amount: 1_000_000).qualifiesForMasterpiece)
+        XCTAssertFalse(Bid(man: rich, woman: woman, amount: 999_999).qualifiesForMasterpiece,
+                       "$999,999 is not a Masterpiece — the bar is exactly one million")
+        XCTAssertFalse(Bid(man: rich, woman: woman, amount: 9_999).qualifiesForMasterpiece,
+                       "the $9,999 badge-price date verifies Trillionaire, but never mints a Masterpiece")
+    }
+
     // MARK: Showcase / market value
 
     func testShowcaseScoreFromTraitReviews() {
@@ -175,7 +217,7 @@ final class AuctionLogicTests: XCTestCase {
 
     func testMasterpieceEligibilityRequiresTrillionaireAndFullSpend() {
         let woman = Profile(name: "W", age: 28, role: .woman, location: "", bio: "", hue: 0.9)
-        let full = Archetype.trillionaire.price   // $9,999
+        let full = Bid.masterpieceBid   // $1,000,000
 
         var rich = Profile(name: "T", age: 40, role: .man, location: "", bio: "", hue: 0.1)
         rich.archetype = .trillionaire

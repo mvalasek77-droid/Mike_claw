@@ -71,7 +71,7 @@ struct BidSheet: View {
                         .foregroundStyle(Theme.goldGradient)
                         .contentTransition(.numericText())
                         .minimumScaleFactor(0.5).lineLimit(1)
-                    if amount >= Archetype.trillionaire.price && store.role == .man && store.me.archetype == .trillionaire {
+                    if amount >= Bid.masterpieceBid && store.role == .man && store.me.archetype == .trillionaire {
                         Label("Masterpiece-eligible — pay it & get confirmed", systemImage: "rosette")
                             .font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.rose)
                     }

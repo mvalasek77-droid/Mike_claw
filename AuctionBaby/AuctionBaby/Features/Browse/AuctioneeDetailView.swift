@@ -23,7 +23,10 @@ struct AuctioneeDetailView: View {
                             Text(woman.name).font(.system(size: 30, weight: .heavy, design: .serif))
                             if woman.verified { VerifiedBadge(size: 20) }
                             Text("\(woman.age)").font(.system(size: 22, design: .serif)).foregroundStyle(Theme.inkSoft)
-                            if woman.masterpiece { MasterpieceBadge(compact: true) }
+                        }
+                        .foregroundStyle(Theme.ink)
+                        HStack(spacing: 8) {
+                            ArtTierBadge(tier: woman.artTier, compact: true)
                         }
                         .foregroundStyle(Theme.ink)
                         Text(woman.location).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)

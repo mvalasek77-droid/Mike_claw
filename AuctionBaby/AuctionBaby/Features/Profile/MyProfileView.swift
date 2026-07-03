@@ -63,7 +63,8 @@ struct MyProfileView: View {
                             HStack(spacing: 8) {
                                 Chip(text: me.role.sideTitle, systemImage: me.role.systemImage,
                                      color: isMan ? Theme.gold : Theme.rose)
-                                if me.masterpiece { MasterpieceBadge(compact: true) }
+                                if !isMan { ArtTierBadge(tier: me.artTier, compact: true) }
+                                else if me.masterpiece { MasterpieceBadge(compact: true) }
                             }
                         }.padding(16)
                     }
@@ -141,7 +142,7 @@ struct MyProfileView: View {
                 gate(done: false, "Bid & pay the full $9,999 on a date")
                 gate(done: false, "She confirms you paid in full")
             }
-            Text("Then your badge flips to Trillionaire ✓ — and a paid, confirmed $9,999 date also mints her Masterpiece.")
+            Text("Then your badge flips to Trillionaire ✓. The Masterpiece is a different mountain: bid and pay $1,000,000 on a date, and she confirms it.")
                 .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
         }
     }
@@ -219,6 +220,8 @@ struct MyProfileView: View {
                 }
             }
 
+            honorsLadder
+
             CreditReportCard(title: "Your showcase report", factors: me.showcaseFactors, tint: Theme.rose)
 
             GlassCard(title: "Your floor", icon: "dollarsign.circle.fill", tint: Theme.gold) {
@@ -250,6 +253,37 @@ struct MyProfileView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /// The auction-house honors ladder: where she hangs today, and what the
+    /// next rung costs. Masterpiece is shown but never presented as climbable.
+    private var honorsLadder: some View {
+        GlassCard(title: "Honors ladder", icon: "photo.artframe", tint: Theme.gold) {
+            HStack {
+                ArtTierBadge(tier: me.artTier)
+                Spacer()
+                Text("\(me.reviews.count) reviewed date\(me.reviews.count == 1 ? "" : "s")")
+                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+            }
+            if let next = me.nextArtTier {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("NEXT: \(next.title.uppercased())")
+                        .font(.system(size: 10, weight: .heavy, design: .rounded)).tracking(1)
+                        .foregroundStyle(next.tint)
+                    Text(next.requirement)
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.05)))
+            } else if me.artTier == .exhibitionStar {
+                Text("Only one thing hangs higher — and it can't be climbed to. \(ArtTier.masterpiece.requirement).")
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+            } else if me.artTier == .masterpiece {
+                Text("The rarest object on any floor. There is nothing above this.")
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
             }
         }
     }
