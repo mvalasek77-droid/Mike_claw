@@ -80,6 +80,80 @@ final class AuctionLogicTests: XCTestCase {
         XCTAssertLessThan(flagged.auctionCredit, clean.auctionCredit)
     }
 
+    // MARK: Credit report (300–900)
+
+    /// The only road to 900: verified Trillionaire, flawless payment history,
+    /// deep track record, identity verified, zero copycat incidents.
+    func testPerfectManHitsNineHundred() {
+        var man = Profile(name: "Perfect", age: 40, role: .man, location: "", bio: "", hue: 0.1)
+        man.archetype = .trillionaire
+        man.trillionaireVerified = true
+        man.verified = true
+        man.reviews = (0..<15).map { i in
+            DateReview(authorName: "W\(i)", authorHue: 0, stars: 5, text: "", paidBid: true)
+        }
+        XCTAssertEqual(man.auctionCredit, 900)
+        XCTAssertEqual(man.creditTier, "Perfect")
+        // One copycat incident forfeits perfection.
+        man.copycatBids = 1
+        XCTAssertLessThan(man.auctionCredit, 900)
+    }
+
+    func testCreditFactorsSumToHeadline() {
+        var man = Profile(name: "M", age: 33, role: .man, location: "", bio: "", hue: 0.5)
+        man.archetype = .goodJob
+        man.verified = true
+        man.copycatBids = 1
+        man.declinedBids = 2
+        man.reviews = [DateReview(authorName: "A", authorHue: 0, stars: 4, text: "", paidBid: true),
+                       DateReview(authorName: "B", authorHue: 0, stars: 2, text: "", paidBid: false)]
+        let sum = man.creditFactors.reduce(0) { $0 + $1.points }
+        XCTAssertEqual(man.auctionCredit, min(900, max(300, 300 + sum)),
+                       "the printed report must be the score's receipt")
+        // Deduction lines carry negative points and comments.
+        XCTAssertEqual(man.creditFactors.first { $0.name == "Copycat incidents" }?.points, -40)
+        XCTAssertEqual(man.creditFactors.first { $0.name == "Passed bids" }?.points, -16)
+        for factor in man.creditFactors { XCTAssertFalse(factor.comment.isEmpty) }
+    }
+
+    func testDeadbeatHistoryDragsCredit() {
+        var payer = Profile(name: "P", age: 33, role: .man, location: "", bio: "", hue: 0.5)
+        payer.reviews = [DateReview(authorName: "A", authorHue: 0, stars: 5, text: "", paidBid: true)]
+        var deadbeat = payer
+        deadbeat.reviews = [DateReview(authorName: "A", authorHue: 0, stars: 1, text: "", paidBid: false)]
+        XCTAssertGreaterThan(payer.auctionCredit, deadbeat.auctionCredit)
+    }
+
+    func testWomanFunWeighsDouble() {
+        func woman(fun: Int, interesting: Int) -> Profile {
+            var w = Profile(name: "W", age: 28, role: .woman, location: "", bio: "", hue: 0.9)
+            w.reviews = [DateReview(authorName: "M", authorHue: 0, stars: 4, text: "",
+                                    traits: [Trait.fun.rawValue: fun,
+                                             Trait.interesting.rawValue: interesting,
+                                             Trait.social.rawValue: 3,
+                                             Trait.polite.rawValue: 3,
+                                             Trait.genuine.rawValue: 3])]
+            return w
+        }
+        // Same total trait points — but Fun carries hers further.
+        XCTAssertGreaterThan(woman(fun: 5, interesting: 3).showcaseCredit,
+                             woman(fun: 3, interesting: 5).showcaseCredit)
+    }
+
+    func testWomanShowcaseFactorsSumAndMasterpiece() {
+        var w = Profile(name: "W", age: 28, role: .woman, location: "", bio: "", hue: 0.9)
+        w.verified = true
+        w.masterpiece = true
+        w.reviews = (0..<12).map { i in
+            DateReview(authorName: "M\(i)", authorHue: 0, stars: 5, text: "",
+                       traits: Dictionary(uniqueKeysWithValues: Trait.allCases.map { ($0.rawValue, 5) }))
+        }
+        XCTAssertEqual(w.showcaseCredit, 900, "a flawless, verified Masterpiece maxes the scale")
+        let sum = w.showcaseFactors.reduce(0) { $0 + $1.points }
+        XCTAssertEqual(w.showcaseCredit, min(900, max(300, 300 + sum)))
+        XCTAssertNotNil(w.showcaseFactors.first { $0.name == "Masterpiece" })
+    }
+
     // MARK: Showcase / market value
 
     func testShowcaseScoreFromTraitReviews() {

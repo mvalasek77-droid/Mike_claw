@@ -120,6 +120,7 @@ struct Profile: Identifiable, Codable, Hashable {
     // MARK: Man-specific
     var archetype: Archetype = .none
     var copycatBids: Int = 0              // bids placed on copycats — reputation hit
+    var declinedBids: Int = 0             // bids women passed on — small credit drag
     /// Trillionaire is *earned*, not just bought: true only after he pays the
     /// full $9,999 on a date and the woman confirms it. Until then the badge
     /// reads "Pending".
@@ -127,6 +128,17 @@ struct Profile: Identifiable, Codable, Hashable {
 }
 
 // MARK: - Derived "credit scores"
+
+/// One line of a credit report: what moved the number, by how much, and the
+/// bureau's comment. Both sides' headline scores are computed *from* these, so
+/// the printed report always adds up.
+struct CreditFactor: Identifiable, Hashable {
+    var id: String { name }
+    let name: String
+    let icon: String
+    let points: Int
+    let comment: String
+}
 
 extension Profile {
 
@@ -165,6 +177,68 @@ extension Profile {
         return Int(score.rounded())
     }
 
+    /// Her "Showcase Credit" report: base 300, perfect 900 — the same bureau
+    /// scale as the men, but built on who she *is* on a date. Personality
+    /// carries the weight: Fun counts double, then the other four traits,
+    /// then consistency (review depth), star average, identity, and the
+    /// Masterpiece seal.
+    var showcaseFactors: [CreditFactor] {
+        var f: [CreditFactor] = []
+        let t = traitAverages
+        let fun = t[.fun] ?? 0
+
+        // 1. Personality — up to +300. Weighted: (2·Fun + the rest) / 6.
+        let weighted = (2 * fun + (t[.interesting] ?? 0) + (t[.social] ?? 0)
+                        + (t[.polite] ?? 0) + (t[.genuine] ?? 0)) / 6.0   // 0–5
+        let personality = t.isEmpty ? 180 : Int((weighted / 5.0 * 300).rounded())
+        f.append(CreditFactor(
+            name: "Personality", icon: "party.popper.fill", points: personality,
+            comment: t.isEmpty ? "Unrated — the floor prices her on presence alone, for now."
+                : fun >= 4.5 ? "The date everyone talks about after. Fun carries this report."
+                : weighted >= 4.0 ? "Warm, sharp, easy company — dates say the evening flew."
+                : weighted >= 3.0 ? "Good company; a little more spark would move this number."
+                : "Dates report a flat evening. Personality is the whole game here."))
+
+        // 2. Star average — up to +100.
+        let stars = Int((overallStars / 5.0 * 100).rounded())
+        f.append(CreditFactor(
+            name: "Date ratings", icon: "star.fill", points: stars,
+            comment: reviews.isEmpty ? "No rated dates yet."
+                : overallStars >= 4.5 ? String(format: "%.1f★ average — men leave better than they arrived.", overallStars)
+                : String(format: "%.1f★ average across %d date%@.", overallStars, reviews.count,
+                         reviews.count == 1 ? "" : "s")))
+
+        // 3. Consistency — up to +120 for a deep, recent review history.
+        let depth = min(reviews.count, 12) * 10
+        f.append(CreditFactor(
+            name: "Consistency", icon: "calendar", points: depth,
+            comment: reviews.isEmpty ? "The book on her is still open."
+                : reviews.count >= 8 ? "\(reviews.count) reviewed dates — the number is earned, not guessed."
+                : "\(reviews.count) reviewed date\(reviews.count == 1 ? "" : "s") on record."))
+
+        // 4. Identity — +30.
+        f.append(CreditFactor(
+            name: "Identity", icon: "checkmark.seal.fill", points: verified ? 30 : 0,
+            comment: verified ? "Selfie-verified — bidders bid harder on a real face."
+                             : "Unverified — the blue check raises every bid."))
+
+        // 5. Masterpiece — +50. The rarest line on any report.
+        if masterpiece {
+            f.append(CreditFactor(
+                name: "Masterpiece", icon: "rosette", points: 50,
+                comment: "A verified Trillionaire paid $9,999 in full for one evening. Certified."))
+        }
+        return f
+    }
+
+    /// Her headline Showcase Credit: 300 base + the factor sum, clamped 300–900.
+    var showcaseCredit: Int {
+        let sum = showcaseFactors.reduce(0) { $0 + $1.points }
+        return min(900, max(300, 300 + sum))
+    }
+
+    var showcaseTier: String { Self.tierName(showcaseCredit) }
+
     /// "Find out what you're worth": her market value is the headline number a
     /// bidder would expect to clear — driven by reputation and any floor she set.
     var marketValue: Int {
@@ -187,32 +261,82 @@ extension Profile {
 
     var datesCompleted: Int { reviews.count }
 
-    /// His headline "Auction Credit" — a 300–850 credit-score analogue. Money
-    /// (archetype tier) establishes the baseline; reliability (paying bids) and
-    /// repeat business raise it; bidding on AI copycats drags it down.
-    var auctionCredit: Int {
-        // Archetype tier sets the floor of creditworthiness.
-        let tierBoost = [300, 360, 400, 440, 540, 640, 720, 780, 820]
-        var score = Double(tierBoost[archetype.rawValue])
+    /// His "Auction Credit" report: base 300, perfect 900. Computed *from* the
+    /// factor list so the printed report always sums to the headline number,
+    /// like a real bureau statement. The only path to 900: verified
+    /// Trillionaire, flawless payment history, a deep track record, identity
+    /// verified — and never once baited by a Copycat.
+    var creditFactors: [CreditFactor] {
+        var f: [CreditFactor] = []
 
-        // Reliability swing: ±90 around the deadbeat score's midpoint.
-        score += (Double(deadbeatScore) - 50) / 50 * 90
+        // 1. Payment history — the biggest slice, like FICO. Up to +240.
+        let pay = Int((Double(deadbeatScore) * 2.4).rounded())
+        f.append(CreditFactor(
+            name: "Payment history", icon: "creditcard.fill", points: pay,
+            comment: reviews.compactMap(\.paidBid).isEmpty
+                ? "No dates on record yet — the floor extends the benefit of the doubt."
+                : deadbeatScore >= 95 ? "Pays what he bids, every time. The floor trusts this man."
+                : deadbeatScore >= 70 ? "Mostly good for it — one short check follows you around here."
+                : deadbeatScore >= 40 ? "Talks bigger than he pays. Women check the reviews first."
+                : "A pattern of unpaid bids. On this floor, that's the whole story."))
 
-        // Repeat business builds trust (capped).
-        score += Double(min(datesCompleted, 12)) * 4
+        // 2. Status — the archetype tier, up to +220 (+20 more once verified).
+        let tierPts = [0, 20, 30, 40, 80, 120, 150, 185, 220][archetype.rawValue]
+        let statusPts = tierPts + (archetype == .trillionaire && trillionaireVerified ? 20 : 0)
+        f.append(CreditFactor(
+            name: "Status", icon: archetype.systemImage, points: statusPts,
+            comment: archetype == .none ? "Unbadged. The floor has only his word."
+                : archetype == .trillionaire && trillionaireVerified
+                    ? "Verified Trillionaire — bid the full $9,999, paid it, confirmed."
+                : archetype == .trillionaire ? "Trillionaire pending — bought the badge, hasn't proven it on a date."
+                : "\(archetype.title) — paid for, worn openly."))
 
-        // Copycat bids are a public reputation hit.
-        score -= Double(copycatBids) * 22
+        // 3. Track record — up to +90 for repeat, completed dates.
+        let track = min(datesCompleted, 15) * 6
+        f.append(CreditFactor(
+            name: "Track record", icon: "calendar", points: track,
+            comment: datesCompleted == 0 ? "No completed dates yet."
+                : datesCompleted >= 10 ? "\(datesCompleted) dates completed — a regular, and it shows."
+                : "\(datesCompleted) date\(datesCompleted == 1 ? "" : "s") completed and reviewed."))
 
-        return Int(min(850, max(300, score)).rounded())
+        // 4. Identity — +30 for the blue check.
+        f.append(CreditFactor(
+            name: "Identity", icon: "checkmark.seal.fill", points: verified ? 30 : 0,
+            comment: verified ? "Selfie-verified. A real face behind the bids."
+                             : "Unverified — a blue check would lift every number here."))
+
+        // 5. Copycat incidents — −40 each. The floor never forgets.
+        if copycatBids > 0 {
+            f.append(CreditFactor(
+                name: "Copycat incidents", icon: "sparkles", points: -copycatBids * 40,
+                comment: copycatBids == 1 ? "Baited once by an AI Copycat. Everyone saw."
+                                          : "Baited \(copycatBids) times by AI Copycats. Study the floor."))
+        }
+
+        // 6. Passed bids — a light drag; rejection is data too.
+        if declinedBids > 0 {
+            f.append(CreditFactor(
+                name: "Passed bids", icon: "hand.thumbsdown", points: -min(declinedBids * 8, 60),
+                comment: "\(declinedBids) bid\(declinedBids == 1 ? "" : "s") declined — aim better or bid stronger."))
+        }
+        return f
     }
 
-    var creditTier: String {
-        switch auctionCredit {
-        case 800...: return "Exceptional"
-        case 740..<800: return "Very Good"
-        case 670..<740: return "Good"
-        case 580..<670: return "Fair"
+    /// His headline Auction Credit: 300 base + the factor sum, clamped 300–900.
+    var auctionCredit: Int {
+        let sum = creditFactors.reduce(0) { $0 + $1.points }
+        return min(900, max(300, 300 + sum))
+    }
+
+    var creditTier: String { Self.tierName(auctionCredit) }
+
+    static func tierName(_ score: Int) -> String {
+        switch score {
+        case 900...: return "Perfect"
+        case 820..<900: return "Exceptional"
+        case 740..<820: return "Very Good"
+        case 660..<740: return "Good"
+        case 560..<660: return "Fair"
         default: return "Poor"
         }
     }

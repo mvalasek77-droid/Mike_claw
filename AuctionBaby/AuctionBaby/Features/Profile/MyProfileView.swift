@@ -105,7 +105,7 @@ struct MyProfileView: View {
             if me.showsPendingTrillionaire { trillionaireProgress }
             GlassCard(title: "Auction Credit", icon: "creditcard.fill", tint: Theme.gold) {
                 HStack(spacing: 16) {
-                    ScoreGauge(value: me.auctionCredit, range: 300...850, label: me.creditTier, tint: Theme.gold, size: 124)
+                    ScoreGauge(value: me.auctionCredit, range: 300...900, label: me.creditTier, tint: Theme.gold, size: 124)
                     VStack(alignment: .leading, spacing: 10) {
                         ArchetypeBadge(archetype: me.archetype, pending: me.showsPendingTrillionaire)
                         DeadbeatTag(score: me.deadbeatScore)
@@ -127,6 +127,7 @@ struct MyProfileView: View {
                     }
                 }
             }
+            CreditReportCard(title: "Your credit report", factors: me.creditFactors)
         }
     }
 
@@ -198,7 +199,7 @@ struct MyProfileView: View {
             worthCard
             GlassCard(title: "Showcase score", icon: "rosette", tint: Theme.rose) {
                 HStack(spacing: 16) {
-                    ScoreGauge(value: me.showcaseScore, range: 0...100, label: "Showcase", tint: Theme.rose, size: 124)
+                    ScoreGauge(value: me.showcaseCredit, range: 300...900, label: me.showcaseTier, tint: Theme.rose, size: 124)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Market value").font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundStyle(Theme.inkFaint)
@@ -217,6 +218,8 @@ struct MyProfileView: View {
                     }.padding(.top, 4)
                 }
             }
+
+            CreditReportCard(title: "Your showcase report", factors: me.showcaseFactors, tint: Theme.rose)
 
             GlassCard(title: "Your floor", icon: "dollarsign.circle.fill", tint: Theme.gold) {
                 if editingBid {

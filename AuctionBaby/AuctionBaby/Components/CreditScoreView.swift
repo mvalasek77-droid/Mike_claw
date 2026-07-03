@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A 270° gauge used for the man's "Auction Credit" (a 300–850 credit-score
+/// A 270° gauge used for the man's "Auction Credit" (a 300–900 credit-score
 /// analogue) and other headline scores. Animates its sweep on appear.
 struct ScoreGauge: View {
     let value: Int

@@ -562,7 +562,7 @@ final class AuctionStore: ObservableObject {
                 let threshold = bid.woman.startingBid ?? max(100, bid.woman.marketValue / 2)
                 // Money + reputation both move the needle.
                 let ratio = Double(bid.amount) / Double(threshold)
-                let creditPull = Double(self.me.auctionCredit - 580) / 320.0
+                let creditPull = Double(self.me.auctionCredit - 600) / 300.0
                 let boostPull = self.isBoosted ? 0.25 : 0   // Spotlight Boost lifts your odds
                 let gildPull = bid.gilded ? 0.30 : 0        // a Gilded bid stands out
                 accepted = (ratio + creditPull + boostPull + gildPull + Double.random(in: -0.25...0.25)) >= 1.0
@@ -587,6 +587,7 @@ final class AuctionStore: ObservableObject {
                 }
                 self.log(.bidAccepted, "\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid.")
             } else {
+                self.me.declinedBids += 1   // rejection is data — a light credit drag
                 Haptics.warning()
                 self.toastFlash("\(bid.woman.name) passed. Bid higher or build your reputation.")
                 self.log(.bidDeclined, "\(bid.woman.name) passed on your \(Money.compact(bid.amount)) bid.")

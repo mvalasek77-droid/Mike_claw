@@ -72,7 +72,7 @@ struct SuitorDetailView: View {
                 // Credit dossier.
                 GlassCard(title: "Reputation", icon: "checkmark.shield.fill") {
                     HStack(spacing: 16) {
-                        ScoreGauge(value: man.auctionCredit, range: 300...850, label: man.creditTier,
+                        ScoreGauge(value: man.auctionCredit, range: 300...900, label: man.creditTier,
                                    tint: Theme.gold, size: 120)
                         VStack(alignment: .leading, spacing: 10) {
                             if man.verified {
@@ -87,6 +87,8 @@ struct SuitorDetailView: View {
                         Spacer(minLength: 0)
                     }
                 }
+
+                CreditReportCard(title: "Credit report", factors: man.creditFactors)
 
                 if accepted, !man.bio.isEmpty {
                     GlassCard(title: "About", icon: "text.quote") {

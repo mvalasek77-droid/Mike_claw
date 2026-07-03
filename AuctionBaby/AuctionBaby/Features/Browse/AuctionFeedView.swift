@@ -143,7 +143,7 @@ struct HeadlinerBanner: View {
                     }
                     .foregroundStyle(Theme.ink)
                     HStack(spacing: 8) {
-                        Chip(text: "Showcase \(woman.showcaseScore)", systemImage: "rosette", color: Theme.rose)
+                        Chip(text: "Showcase \(woman.showcaseCredit)", systemImage: "rosette", color: Theme.rose)
                         Chip(text: Money.compact(woman.marketValue), systemImage: "dollarsign.circle.fill", color: Theme.gold)
                     }
                 }

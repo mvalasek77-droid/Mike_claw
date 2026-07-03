@@ -68,6 +68,8 @@ struct AuctioneeDetailView: View {
 
                 ShowcaseScoreCard(woman: woman)
 
+                CreditReportCard(title: "Showcase report", factors: woman.showcaseFactors, tint: Theme.rose)
+
                 if !woman.reviews.isEmpty {
                     GlassCard(title: "Date reviews", icon: "star.bubble.fill", tint: Theme.gold) {
                         VStack(spacing: 12) {
@@ -118,7 +120,7 @@ struct ShowcaseScoreCard: View {
     var body: some View {
         GlassCard(title: "Showcase score", icon: "rosette", tint: Theme.rose) {
             HStack(alignment: .center, spacing: 16) {
-                ScoreGauge(value: woman.showcaseScore, range: 0...100, label: "Showcase",
+                ScoreGauge(value: woman.showcaseCredit, range: 300...900, label: woman.showcaseTier,
                            tint: Theme.rose, size: 116)
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
