@@ -50,7 +50,7 @@ struct MyProfileView: View {
     private var headerCard: some View {
         GlassSurface(corner: Theme.cornerXL) {
             VStack(spacing: 0) {
-                AvatarView(name: me.name, hue: me.hue, corner: Theme.cornerXL)
+                AvatarView(name: me.name, hue: me.hue, photoName: me.photoName, corner: Theme.cornerXL)
                     .frame(height: 260)
                     .overlay(alignment: .bottomLeading) {
                         VStack(alignment: .leading, spacing: 6) {

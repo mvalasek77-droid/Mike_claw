@@ -142,6 +142,18 @@ AuctionBaby/
 - **Accessibility first.** Honours Dark Mode and Reduce Motion system-wide; all
   scores, badges and bubbles carry accessibility labels.
 
+## Real photos
+
+Profiles carry a `photoName` (see `Store/SampleData.swift` — `photo-mara`,
+`photo-priya`, `photo-mike`, …). Add **licensed** images to
+`AuctionBaby/Resources/Assets.xcassets` under those names and they render
+everywhere automatically — feed cards, detail pages, chat, celebrations — with
+the generated portrait as the fallback when an asset is missing. Portrait-crop
+(~3:4) looks best. Copycat profiles with photos keep a small baked-in `AI`
+watermark: the imagery can look completely real, but the disclosure always
+travels with the picture (required for App Review and FTC compliance — fake
+undisclosed profiles are what got Match.com sued).
+
 ## Building
 
 ```bash

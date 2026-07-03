@@ -13,7 +13,7 @@ struct AuctioneeDetailView: View {
         ScrollView {
             VStack(spacing: 16) {
                 ZStack(alignment: .bottomLeading) {
-                    AvatarView(name: woman.name, hue: woman.hue, copycat: woman.isCopycat,
+                    AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName, copycat: woman.isCopycat,
                                copycatStyle: woman.copycatStyle, corner: Theme.cornerXL)
                         .frame(height: 380)
                     LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
@@ -29,7 +29,7 @@ struct AuctioneeDetailView: View {
                         Text(woman.location).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
                     }
                     .padding(16)
-                    if woman.isCopycat { CopycatTag().padding(12).frame(maxWidth: .infinity, maxHeight: 380, alignment: .topLeading) }
+                    if woman.isCopycat { CopycatTag(compact: true).padding(12).frame(maxWidth: .infinity, maxHeight: 380, alignment: .topLeading) }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: Theme.cornerXL, style: .continuous))
 

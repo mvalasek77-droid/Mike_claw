@@ -33,7 +33,7 @@ struct BidSheet: View {
                 Capsule().fill(Theme.hairline).frame(width: 38, height: 5).padding(.top, 8)
 
                 HStack(spacing: 12) {
-                    AvatarCircle(name: woman.name, hue: woman.hue, size: 48, copycat: woman.isCopycat, copycatStyle: woman.copycatStyle)
+                    AvatarCircle(name: woman.name, hue: woman.hue, photoName: woman.photoName, size: 48, copycat: woman.isCopycat, copycatStyle: woman.copycatStyle)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Bidding on \(woman.name)")
                             .font(.system(size: 16, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)

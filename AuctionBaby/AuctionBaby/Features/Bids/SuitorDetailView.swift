@@ -31,7 +31,7 @@ struct SuitorDetailView: View {
                 }
                 .padding(.top, 8)
 
-                AvatarView(name: man.name, hue: man.hue, locked: !accepted, corner: Theme.cornerXL)
+                AvatarView(name: man.name, hue: man.hue, photoName: man.photoName, locked: !accepted, corner: Theme.cornerXL)
                     .frame(height: 300)
                     .overlay(alignment: .bottomLeading) {
                         if accepted {

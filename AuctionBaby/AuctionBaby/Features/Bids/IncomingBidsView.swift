@@ -110,7 +110,7 @@ struct BidRow: View {
                     .background(Capsule().fill(Theme.gold.opacity(0.14)))
                 }
                 HStack(spacing: 12) {
-                    AvatarCircle(name: bid.man.name, hue: bid.man.hue, size: 52,
+                    AvatarCircle(name: bid.man.name, hue: bid.man.hue, photoName: bid.man.photoName, size: 52,
                                  locked: bid.status != .accepted, copycat: false)
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {

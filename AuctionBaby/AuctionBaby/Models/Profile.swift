@@ -99,6 +99,11 @@ struct Profile: Identifiable, Codable, Hashable {
     var location: String
     var bio: String
     var hue: Double                       // avatar gradient seed, 0–1
+    /// Asset-catalog image name for a real profile photo. When present (and the
+    /// asset exists), it renders everywhere instead of the generated portrait —
+    /// drop licensed photos into Resources/Assets.xcassets and reference them
+    /// here. Optional + defaulted, so old snapshots decode unchanged.
+    var photoName: String? = nil
     var prompts: [Prompt] = []
     var interests: [String] = []
     var reviews: [DateReview] = []

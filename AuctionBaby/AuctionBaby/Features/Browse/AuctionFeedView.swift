@@ -128,7 +128,7 @@ struct HeadlinerBanner: View {
             .background(Theme.goldGradient)
 
             ZStack(alignment: .bottomLeading) {
-                AvatarView(name: woman.name, hue: woman.hue, corner: 0)
+                AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName, corner: 0)
                     .frame(height: 240)
                 LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
                     .frame(height: 240).allowsHitTesting(false)
@@ -170,12 +170,12 @@ struct FloorCard: View {
         GlassSurface(corner: Theme.cornerXL) {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .topLeading) {
-                    AvatarView(name: woman.name, hue: woman.hue, copycat: woman.isCopycat,
+                    AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName, copycat: woman.isCopycat,
                                copycatStyle: woman.copycatStyle, corner: Theme.cornerXL)
                         .frame(height: 360)
 
                     if woman.isCopycat {
-                        CopycatTag().padding(12)
+                        CopycatTag(compact: true).padding(12)
                     }
                     if woman.masterpiece {
                         VStack { Spacer(); HStack { Spacer(); MasterpieceBadge(compact: true) } }

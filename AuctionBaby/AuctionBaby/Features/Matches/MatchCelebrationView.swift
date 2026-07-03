@@ -6,11 +6,13 @@ struct MatchCelebration: Identifiable, Equatable {
     let id = UUID()
     var otherName: String
     var otherHue: Double
+    var otherPhoto: String? = nil
     var otherCopycat: Bool
     var otherCopycatStyle: CopycatStyle
     var otherVerified: Bool
     var meName: String
     var meHue: Double
+    var mePhoto: String? = nil
     var amount: Int
     var masterpiece: Bool
 }
@@ -95,7 +97,8 @@ struct MatchCelebrationView: View {
 
     private var pairing: some View {
         HStack(spacing: -14) {
-            AvatarCircle(name: celebration.meName, hue: celebration.meHue, size: 72)
+            AvatarCircle(name: celebration.meName, hue: celebration.meHue,
+                         photoName: celebration.mePhoto, size: 72)
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: "checkmark.seal.fill").opacity(0) // keep layout parity
                 }
@@ -105,7 +108,8 @@ struct MatchCelebrationView: View {
             }
             .zIndex(1)
             .scaleEffect(appear ? 1 : 0)
-            AvatarCircle(name: celebration.otherName, hue: celebration.otherHue, size: 72,
+            AvatarCircle(name: celebration.otherName, hue: celebration.otherHue,
+                         photoName: celebration.otherPhoto, size: 72,
                          copycat: celebration.otherCopycat, copycatStyle: celebration.otherCopycatStyle)
                 .overlay(alignment: .bottomTrailing) {
                     if celebration.otherVerified { VerifiedBadge(size: 18).padding(2) }

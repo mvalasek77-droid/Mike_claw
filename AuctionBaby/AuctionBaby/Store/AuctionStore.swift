@@ -531,9 +531,10 @@ final class AuctionStore: ObservableObject {
     /// Fire the full-screen "SOLD!" moment for a freshly-made match.
     private func celebrate(with other: Profile, amount: Int, copycat: Bool, masterpiece: Bool) {
         celebration = MatchCelebration(
-            otherName: other.name, otherHue: other.hue, otherCopycat: copycat,
-            otherCopycatStyle: other.copycatStyle, otherVerified: other.verified,
-            meName: me.name.isEmpty ? "You" : me.name, meHue: me.hue,
+            otherName: other.name, otherHue: other.hue, otherPhoto: other.photoName,
+            otherCopycat: copycat, otherCopycatStyle: other.copycatStyle,
+            otherVerified: other.verified,
+            meName: me.name.isEmpty ? "You" : me.name, meHue: me.hue, mePhoto: me.photoName,
             amount: amount, masterpiece: masterpiece)
     }
 
@@ -566,8 +567,8 @@ final class AuctionStore: ObservableObject {
             if accepted {
                 var match = Match(bid: bid, phase: .chatting)
                 let opener = bid.onCopycat
-                    ? "OMG yes 😍 send a deposit to unlock my number 💸 (this is a Copycat — don't)"
-                    : "I accept. \(bid.woman.name) here — surprise me. 🍷"
+                    ? "Hey you 😊 so glad you bid. Quick thing — I ask for a small deposit before I give out my number. It just filters out the games, hope you get it 💕"
+                    : "Okay, you win. \(bid.woman.name) here — where are you taking me?"
                 match.messages = [ChatMessage(fromMe: false, text: opener)]
                 self.matches.insert(match, at: 0)
                 Haptics.success()
@@ -588,9 +589,9 @@ final class AuctionStore: ObservableObject {
         after(Double.random(in: 1.8...3.0)) { [weak self] in
             guard let self, let idx = self.matches.firstIndex(where: { $0.id == matchID }) else { return }
             let line = self.matches[idx].bid.onCopycat
-                ? "Just send the deposit 💸"
-                : ["Thursday? I know a place.", "You won't regret accepting.",
-                   "I already made a reservation.", "Wear something you can dance in."].randomElement()!
+                ? "Did you see my message about the deposit? It's a small thing, promise 😘"
+                : ["Thursday works for me — I know a place.", "Looking forward to this, honestly.",
+                   "I made us a reservation. Don't be late.", "Wear something you can dance in."].randomElement()!
             self.matches[idx].messages.append(ChatMessage(fromMe: false, text: line))
             self.save()
         }
@@ -602,9 +603,10 @@ final class AuctionStore: ObservableObject {
             guard self.matches[idx].phase == .chatting else { return }
             let copycat = self.matches[idx].bid.onCopycat
             let lines = copycat
-                ? ["💸💸", "deposit first 😘", "you there? send it"]
-                : ["Looking forward to it.", "Tell me your worst date story.",
-                   "I'm counting down.", "You're funnier than your profile."]
+                ? ["Once the deposit clears we can plan everything 💕", "You still there? The deposit only takes a minute.",
+                   "I don't meet anyone without it, it's a safety thing for me 😊"]
+                : ["Looking forward to it.", "Okay tell me your worst date story — I'll trade you mine.",
+                   "Counting down, not going to lie.", "You're funnier over text than your profile let on."]
             self.matches[idx].messages.append(ChatMessage(fromMe: false, text: lines.randomElement()!))
             self.save()
         }

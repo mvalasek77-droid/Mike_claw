@@ -79,7 +79,7 @@ struct OutgoingBidRow: View {
         GlassSurface(corner: Theme.cornerL) {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
-                    AvatarCircle(name: bid.woman.name, hue: bid.woman.hue, size: 48,
+                    AvatarCircle(name: bid.woman.name, hue: bid.woman.hue, photoName: bid.woman.photoName, size: 48,
                                  copycat: bid.woman.isCopycat, copycatStyle: bid.woman.copycatStyle)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {

@@ -1,14 +1,17 @@
 import SwiftUI
+import UIKit
 
-/// A procedurally-generated portrait. The app ships no real photos — every
-/// "photo" is a deterministic gradient + monogram derived from the profile's
-/// `hue` seed, so the concept reads clearly while staying tasteful and SFW.
+/// A profile portrait. When the profile carries a `photoName` that exists in
+/// the asset catalog, the real photo renders (drop licensed images into
+/// Resources/Assets.xcassets). Otherwise a deterministic gradient + monogram
+/// stands in, so the app works with zero bundled photography.
 ///
 /// Supports a `locked` state used on the bidder side: a woman sees a man's
 /// stats but his picture stays frosted until she accepts his bid.
 struct AvatarView: View {
     let name: String
     let hue: Double
+    var photoName: String? = nil
     var locked: Bool = false
     var copycat: Bool = false
     var copycatStyle: CopycatStyle = .glam
@@ -24,39 +27,74 @@ struct AvatarView: View {
     private var deep: Color { Color(hue: (hue + 0.08).truncatingRemainder(dividingBy: 1),
                                     saturation: 0.7, brightness: 0.45) }
 
+    /// The real photo, only if the asset actually exists in the bundle.
+    private var photo: UIImage? {
+        guard let photoName else { return nil }
+        return UIImage(named: photoName)
+    }
+
     var body: some View {
         if copycat && !locked {
-            CopycatPortrait(name: name, hue: hue, style: copycatStyle, corner: corner)
+            if photo != nil {
+                // Real (licensed) imagery for the lure — the quiet AI watermark
+                // stays baked into the picture so the disclosure travels with it.
+                standardBody.overlay(alignment: .bottomTrailing) { aiWatermark }
+            } else {
+                CopycatPortrait(name: name, hue: hue, style: copycatStyle, corner: corner)
+            }
         } else {
             standardBody
         }
     }
 
+    /// Minimal, always-present AI disclosure for photo-backed copycats.
+    private var aiWatermark: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "sparkles").font(.system(size: 8, weight: .black))
+            Text("AI").font(.system(size: 9, weight: .black, design: .rounded))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 6).padding(.vertical, 3)
+        .background(Capsule().fill(.black.opacity(0.45)))
+        .overlay(Capsule().strokeBorder(.white.opacity(0.35), lineWidth: 0.5))
+        .padding(6)
+        .allowsHitTesting(false)
+    }
+
     private var standardBody: some View {
         ZStack {
-            LinearGradient(colors: [base, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
+            if let photo, !locked {
+                // Real photo path — fills the frame, cropped from the center.
+                Color.clear
+                    .overlay(
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFill()
+                    )
+                    .clipped()
+                // Legibility scrim for text drawn over the photo by parents.
+                LinearGradient(colors: [.clear, .black.opacity(0.25)],
+                               startPoint: .center, endPoint: .bottom)
+            } else {
+                LinearGradient(colors: [base, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
 
-            // Soft studio highlight.
-            RadialGradient(colors: [.white.opacity(0.35), .clear],
-                           center: .init(x: 0.3, y: 0.22), startRadius: 0, endRadius: 180)
+                // Soft studio highlight.
+                RadialGradient(colors: [.white.opacity(0.35), .clear],
+                               center: .init(x: 0.3, y: 0.22), startRadius: 0, endRadius: 180)
 
-            if !locked {
-                Image(systemName: "person.fill")
-                    .resizable().scaledToFit()
-                    .foregroundStyle(.white.opacity(0.16))
-                    .padding(.top, 26)
-                    .scaleEffect(1.7)
-                    .offset(y: 18)
+                if !locked {
+                    Image(systemName: "person.fill")
+                        .resizable().scaledToFit()
+                        .foregroundStyle(.white.opacity(0.16))
+                        .padding(.top, 26)
+                        .scaleEffect(1.7)
+                        .offset(y: 18)
 
-                Text(initials)
-                    .font(.system(size: 34, weight: .heavy, design: .serif))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
-            }
-
-            if copycat {
-                LinearGradient(colors: [Theme.copycat.opacity(0.45), .clear],
-                               startPoint: .bottomLeading, endPoint: .topTrailing)
+                    Text(initials)
+                        .font(.system(size: 34, weight: .heavy, design: .serif))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
+                }
             }
 
             if locked {
@@ -87,13 +125,14 @@ struct AvatarView: View {
 struct AvatarCircle: View {
     let name: String
     let hue: Double
+    var photoName: String? = nil
     var size: CGFloat = 44
     var locked: Bool = false
     var copycat: Bool = false
     var copycatStyle: CopycatStyle = .glam
 
     var body: some View {
-        AvatarView(name: name, hue: hue, locked: locked, copycat: copycat,
+        AvatarView(name: name, hue: hue, photoName: photoName, locked: locked, copycat: copycat,
                    copycatStyle: copycatStyle, corner: size)
             .frame(width: size, height: size)
             .clipShape(Circle())
