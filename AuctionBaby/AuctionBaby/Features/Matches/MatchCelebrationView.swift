@@ -60,10 +60,15 @@ struct MatchCelebrationView: View {
                     .shadow(color: Theme.gold.opacity(0.5), radius: 16)
 
                 if celebration.otherCopycat {
-                    Text("That “match” was an AI Copycat. Your Auction Credit took the hit.")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
-                        .padding(.horizontal, 30)
+                    VStack(spacing: 8) {
+                        Text("\(celebration.otherName) is an AI Copycat.")
+                            .font(.system(size: 16, weight: .heavy, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                        Text("You just bid on a fake — it's on your record and your Auction Credit took the hit. No Gavels were spent. Study the floor closer next time.")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 26)
                 } else {
                     pairing
                     amountChip
@@ -110,7 +115,8 @@ struct MatchCelebrationView: View {
             .scaleEffect(appear ? 1 : 0)
             AvatarCircle(name: celebration.otherName, hue: celebration.otherHue,
                          photoName: celebration.otherPhoto, size: 72,
-                         copycat: celebration.otherCopycat, copycatStyle: celebration.otherCopycatStyle)
+                         copycat: celebration.otherCopycat, revealed: true,
+                         copycatStyle: celebration.otherCopycatStyle)
                 .overlay(alignment: .bottomTrailing) {
                     if celebration.otherVerified { VerifiedBadge(size: 18).padding(2) }
                 }

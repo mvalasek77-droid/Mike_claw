@@ -1,23 +1,24 @@
 import SwiftUI
 import UIKit
 
-/// A deliberately *synthetic* portrait for AI "Copycat" lure profiles. There is
-/// no photography here — it's an iridescent, holographic, fashion-illustration
-/// figure that reads as gorgeous-but-obviously-generated, with the AI
-/// disclosure baked right into the image. Styling cues (poolside / beach / yoga
-/// / glam) are carried by palette and a stylised silhouette, never by exposed
-/// bodies, so it stays tasteful and App-Store-safe while still being the
-/// eye-catching bait the game intends.
+/// The AI "Copycat" lure portrait: a full-figure glamour illustration — a
+/// fashion-croquis silhouette styled per ``CopycatStyle`` (bikini for poolside
+/// and beach, crop top + leggings for yoga, a bodycon dress for glam), with
+/// glossy synthetic skin-sheen, flowing hair, drifting bloom, a sweeping
+/// holo-shine and sparkles. Deliberately gorgeous and deliberately synthetic:
+/// the "AI · Copycat" disclosure is baked into the image, because bidding on
+/// one is a disclosed, score-dropping part of the game.
 ///
-/// Richly animated via `TimelineView` (drifting bloom, sweeping holo-sheen,
-/// twinkling sparkles, hue breathing) — and fully static under Reduce Motion.
+/// Everything is vector (no photography) at an editorial-illustration level of
+/// abstraction, so the lure reads 11/10 while staying App-Store-safe. All
+/// animation is `TimelineView`-driven and goes static under Reduce Motion.
 struct CopycatPortrait: View {
     let name: String
     var hue: Double = 0.92
     var style: CopycatStyle = .glam
     var corner: CGFloat = Theme.cornerL
     var showWatermark: Bool = true
-    var sparkleCount: Int = 7
+    var sparkleCount: Int = 8
 
     private var reduceMotion: Bool { UIAccessibility.isReduceMotionEnabled }
 
@@ -25,8 +26,8 @@ struct CopycatPortrait: View {
     private var sparkles: [Sparkle] {
         var rng = SeededRNG(seed: UInt64(abs(name.hashValue)) &+ 11)
         return (0..<sparkleCount).map { _ in
-            Sparkle(x: rng.unit(), y: rng.unit() * 0.82,
-                    size: 0.04 + rng.unit() * 0.07,
+            Sparkle(x: rng.unit(), y: rng.unit() * 0.85,
+                    size: 0.035 + rng.unit() * 0.06,
                     speed: 0.6 + rng.unit() * 1.8,
                     phase: rng.unit() * 6.28)
         }
@@ -40,8 +41,8 @@ struct CopycatPortrait: View {
                 ZStack {
                     backdrop(t: t)
                     bloom(t: t, size: geo.size)
-                    holoSheen(t: t, size: geo.size)
                     figure(size: geo.size)
+                    holoSheen(t: t, size: geo.size)
                     sparkleLayer(t: t, size: geo.size, base: s)
                     edgeVignette
                     if showWatermark { watermark }
@@ -61,7 +62,7 @@ struct CopycatPortrait: View {
         .accessibilityLabel("\(name), AI-generated Copycat profile, \(style.caption)")
     }
 
-    // MARK: Layers
+    // MARK: Backdrop layers
 
     private func backdrop(t: Double) -> some View {
         let breathe = reduceMotion ? 0 : sin(t * 0.5) * 26
@@ -83,57 +84,128 @@ struct CopycatPortrait: View {
 
     private func bloom(t: Double, size: CGSize) -> some View {
         let bx = 0.5 + (reduceMotion ? 0 : sin(t * 0.6) * 0.18)
-        let by = 0.26 + (reduceMotion ? 0 : cos(t * 0.45) * 0.10)
+        let by = 0.22 + (reduceMotion ? 0 : cos(t * 0.45) * 0.08)
         return RadialGradient(
-            colors: [.white.opacity(0.55), style.accent.opacity(0.18), .clear],
+            colors: [.white.opacity(0.5), style.accent.opacity(0.18), .clear],
             center: UnitPoint(x: bx, y: by),
             startRadius: 0, endRadius: max(size.width, size.height) * 0.7)
         .blendMode(.screen)
     }
 
     private func holoSheen(t: Double, size: CGSize) -> some View {
-        // A bright diagonal band that sweeps across the portrait on a loop.
         let period = 3.6
         let p = reduceMotion ? 0.35 : (t.truncatingRemainder(dividingBy: period) / period)
         let travel = size.width * 1.6
         return LinearGradient(
-            colors: [.clear, .white.opacity(0.0), .white.opacity(0.55), .white.opacity(0.0), .clear],
+            colors: [.clear, .white.opacity(0.0), .white.opacity(0.45), .white.opacity(0.0), .clear],
             startPoint: .top, endPoint: .bottom)
         .frame(width: size.width * 0.4, height: size.height * 2)
         .rotationEffect(.degrees(24))
         .offset(x: -travel * 0.5 + travel * p, y: 0)
         .blendMode(.plusLighter)
-        .opacity(0.8)
+        .opacity(0.7)
     }
 
+    // MARK: The figure
+
+    /// Full-figure glamour illustration: hair behind, glossy croquis silhouette,
+    /// style-specific outfit blocks masked to the body, rim light on top.
     private func figure(size: CGSize) -> some View {
-        let figW = size.width * 0.78
-        let figH = size.height * 0.92
+        let w = size.width, h = size.height
+
+        // Warm, luminous "synthetic glam" skin gradient.
+        let skin = LinearGradient(
+            colors: [Color(red: 1.00, green: 0.88, blue: 0.76),
+                     Color(red: 0.94, green: 0.72, blue: 0.58),
+                     Color(red: 0.62, green: 0.38, blue: 0.32)],
+            startPoint: .top, endPoint: .bottom)
+
+        let hairColor = LinearGradient(
+            colors: [style.accent.opacity(0.95), Color.black.opacity(0.55)],
+            startPoint: .top, endPoint: .bottom)
+
         return ZStack {
-            // Hair / aura behind the figure.
-            SirenHair()
-                .fill(LinearGradient(colors: [style.accent.opacity(0.9), Color.black.opacity(0.35)],
-                                     startPoint: .top, endPoint: .bottom))
-                .frame(width: figW * 1.18, height: figH)
-                .blur(radius: 1)
-            // The figure — head + shoulders, glossy gradient.
-            SirenFigure()
-                .fill(LinearGradient(
-                    colors: [Color.white.opacity(0.92), style.accent.opacity(0.85),
-                             Color.black.opacity(0.55)],
-                    startPoint: .top, endPoint: .bottom))
-                .frame(width: figW, height: figH)
+            // Flowing hair, behind the body, down past the waist.
+            LongHair()
+                .fill(hairColor)
+                .frame(width: w * 0.62, height: h * 0.62)
+                .position(x: w * 0.5, y: h * 0.34)
+                .blur(radius: 0.5)
+                .shadow(color: style.accent.opacity(0.4), radius: 10)
+
+            // Head — clean croquis oval, no facial detail (elegant, never uncanny).
+            Ellipse()
+                .fill(skin)
+                .frame(width: w * 0.155, height: h * 0.115)
+                .position(x: w * 0.5, y: h * 0.135)
+
+            // Body silhouette.
+            FemmeFigure()
+                .fill(skin)
+                .frame(width: w, height: h)
                 .overlay(
-                    SirenFigure()
-                        .stroke(LinearGradient(colors: [.white.opacity(0.85), .clear],
-                                               startPoint: .topLeading, endPoint: .bottom),
-                                lineWidth: 1.4)
-                        .frame(width: figW, height: figH)
+                    // Rim light down one side — the glossy studio finish.
+                    FemmeFigure()
+                        .fill(LinearGradient(colors: [.white.opacity(0.55), .clear],
+                                             startPoint: .topLeading, endPoint: .center))
+                        .frame(width: w, height: h)
+                        .blendMode(.plusLighter)
+                        .opacity(0.6)
                 )
-                .shadow(color: style.accent.opacity(0.5), radius: 14, y: 6)
+                .shadow(color: .black.opacity(0.25), radius: 8, y: 6)
+
+            // Outfit — colored blocks masked to the body so they always fit.
+            outfit(w: w, h: h)
+
+            // Soft center-line shading gives the silhouette dimension.
+            FemmeFigure()
+                .fill(RadialGradient(colors: [.clear, .black.opacity(0.18)],
+                                     center: .center, startRadius: w * 0.05, endRadius: w * 0.45))
+                .frame(width: w, height: h)
         }
-        .frame(width: size.width, height: size.height, alignment: .bottom)
     }
+
+    /// Style-specific outfit rendered as fabric-colored regions clipped to the
+    /// figure: bikini (poolside/beach), crop top + leggings (yoga), bodycon
+    /// dress (glam). Swimwear-level coverage everywhere.
+    @ViewBuilder
+    private func outfit(w: CGFloat, h: CGFloat) -> some View {
+        let fabric = LinearGradient(
+            colors: [style.accent, style.accent.opacity(0.75), Color.black.opacity(0.35)],
+            startPoint: .topLeading, endPoint: .bottomTrailing)
+
+        switch style {
+        case .poolside, .beach:
+            // Bikini: chest band + hip band, masked to the silhouette.
+            bodyBand(fabric, w: w, h: h, yCenter: 0.305, height: 0.055)
+            bodyBand(fabric, w: w, h: h, yCenter: 0.525, height: 0.05)
+        case .yoga:
+            // Crop top + high-waist leggings.
+            bodyBand(fabric, w: w, h: h, yCenter: 0.30, height: 0.075)
+            bodyBand(fabric, w: w, h: h, yCenter: 0.745, height: 0.50)   // waist-down
+        case .glam:
+            // Bodycon dress, shoulder to mid-thigh, with a subtle shine.
+            bodyBand(fabric, w: w, h: h, yCenter: 0.435, height: 0.36)
+            bodyBand(LinearGradient(colors: [.white.opacity(0.35), .clear],
+                                    startPoint: .leading, endPoint: .trailing),
+                     w: w, h: h, yCenter: 0.435, height: 0.36)
+        }
+    }
+
+    /// A horizontal fabric region clipped to the figure silhouette.
+    private func bodyBand(_ fill: some ShapeStyle, w: CGFloat, h: CGFloat,
+                          yCenter: CGFloat, height: CGFloat) -> some View {
+        FemmeFigure()
+            .fill(fill)
+            .frame(width: w, height: h)
+            .mask(
+                Rectangle()
+                    .frame(width: w, height: h * height)
+                    .position(x: w * 0.5, y: h * yCenter)
+            )
+    }
+
+    // MARK: Sparkle / vignette / watermark
 
     private func sparkleLayer(t: Double, size: CGSize, base: CGFloat) -> some View {
         ZStack {
@@ -143,7 +215,7 @@ struct CopycatPortrait: View {
                     .font(.system(size: base * sp.size, weight: .bold))
                     .foregroundStyle(.white)
                     .shadow(color: style.accent.opacity(0.9), radius: 6)
-                    .opacity(0.35 + tw * 0.65)
+                    .opacity(0.3 + tw * 0.7)
                     .scaleEffect(0.7 + tw * 0.5)
                     .position(x: sp.x * size.width, y: sp.y * size.height)
                     .blendMode(.plusLighter)
@@ -197,51 +269,67 @@ private struct SeededRNG {
     mutating func unit() -> Double { Double(next() % 10_000) / 10_000.0 }
 }
 
-// MARK: - Stylised figure shapes (abstract fashion silhouette — head & shoulders)
+// MARK: - Figure shapes (fashion-croquis abstraction)
 
-/// Elegant head-and-shoulders silhouette, bottom-anchored and centred.
-struct SirenFigure: Shape {
+/// A full-body standing silhouette — neck to ankles, hourglass through the
+/// torso, legs together, croquis proportions. Symmetric: the right side is
+/// defined and mirrored. All coordinates are fractions of the rect.
+struct FemmeFigure: Shape {
     func path(in rect: CGRect) -> Path {
         let w = rect.width, h = rect.height
         let cx = rect.midX
+        func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: cx + x * w, y: rect.minY + y * h)
+        }
+
         var p = Path()
-
-        // Head (oval).
-        let headCY = rect.minY + h * 0.30
-        let headRX = w * 0.16, headRY = h * 0.20
-        p.addEllipse(in: CGRect(x: cx - headRX, y: headCY - headRY,
-                                width: headRX * 2, height: headRY * 2))
-
-        // Neck + shoulders + bust as one flowing body.
-        var body = Path()
-        body.move(to: CGPoint(x: cx - w * 0.07, y: headCY + headRY * 0.7))      // neck left
-        body.addQuadCurve(to: CGPoint(x: cx - w * 0.40, y: rect.maxY),          // out to L shoulder
-                          control: CGPoint(x: cx - w * 0.26, y: headCY + h * 0.20))
-        body.addLine(to: CGPoint(x: cx + w * 0.40, y: rect.maxY))               // shoulder line
-        body.addQuadCurve(to: CGPoint(x: cx + w * 0.07, y: headCY + headRY * 0.7), // up to neck right
-                          control: CGPoint(x: cx + w * 0.26, y: headCY + h * 0.20))
-        body.closeSubpath()
-        p.addPath(body)
+        // Right side, top → bottom.
+        p.move(to: pt(0.000, 0.185))                                   // base of neck
+        p.addQuadCurve(to: pt(0.055, 0.205), control: pt(0.035, 0.185))
+        p.addQuadCurve(to: pt(0.150, 0.265), control: pt(0.135, 0.215))  // shoulder
+        p.addQuadCurve(to: pt(0.130, 0.335), control: pt(0.155, 0.305))  // upper arm line
+        p.addQuadCurve(to: pt(0.082, 0.425), control: pt(0.095, 0.385))  // waist
+        p.addQuadCurve(to: pt(0.170, 0.520), control: pt(0.165, 0.455))  // hip
+        p.addQuadCurve(to: pt(0.130, 0.640), control: pt(0.175, 0.585))  // outer thigh
+        p.addQuadCurve(to: pt(0.085, 0.760), control: pt(0.105, 0.705))  // knee
+        p.addQuadCurve(to: pt(0.088, 0.840), control: pt(0.100, 0.800))  // calf
+        p.addQuadCurve(to: pt(0.040, 0.980), control: pt(0.055, 0.930))  // ankle
+        // Across the bottom.
+        p.addLine(to: pt(-0.040, 0.980))
+        // Left side, bottom → top (mirror).
+        p.addQuadCurve(to: pt(-0.088, 0.840), control: pt(-0.055, 0.930))
+        p.addQuadCurve(to: pt(-0.085, 0.760), control: pt(-0.100, 0.800))
+        p.addQuadCurve(to: pt(-0.130, 0.640), control: pt(-0.105, 0.705))
+        p.addQuadCurve(to: pt(-0.170, 0.520), control: pt(-0.175, 0.585))
+        p.addQuadCurve(to: pt(-0.082, 0.425), control: pt(-0.165, 0.455))
+        p.addQuadCurve(to: pt(-0.130, 0.335), control: pt(-0.095, 0.385))
+        p.addQuadCurve(to: pt(-0.150, 0.265), control: pt(-0.155, 0.305))
+        p.addQuadCurve(to: pt(-0.055, 0.205), control: pt(-0.135, 0.215))
+        p.addQuadCurve(to: pt(0.000, 0.185), control: pt(-0.035, 0.185))
+        p.closeSubpath()
         return p
     }
 }
 
-/// Flowing hair / aura behind the figure.
-struct SirenHair: Shape {
+/// Long flowing hair, rendered behind the figure — crown to below the waist,
+/// with a soft outward sweep.
+struct LongHair: Shape {
     func path(in rect: CGRect) -> Path {
         let w = rect.width, h = rect.height
         let cx = rect.midX
+        func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: cx + x * w, y: rect.minY + y * h)
+        }
         var p = Path()
-        p.move(to: CGPoint(x: cx, y: rect.minY + h * 0.06))
-        p.addQuadCurve(to: CGPoint(x: cx - w * 0.46, y: rect.minY + h * 0.55),
-                       control: CGPoint(x: cx - w * 0.52, y: rect.minY + h * 0.10))
-        p.addQuadCurve(to: CGPoint(x: cx - w * 0.18, y: rect.maxY),
-                       control: CGPoint(x: cx - w * 0.50, y: rect.maxY - h * 0.10))
-        p.addLine(to: CGPoint(x: cx + w * 0.18, y: rect.maxY))
-        p.addQuadCurve(to: CGPoint(x: cx + w * 0.46, y: rect.minY + h * 0.55),
-                       control: CGPoint(x: cx + w * 0.50, y: rect.maxY - h * 0.10))
-        p.addQuadCurve(to: CGPoint(x: cx, y: rect.minY + h * 0.06),
-                       control: CGPoint(x: cx + w * 0.52, y: rect.minY + h * 0.10))
+        p.move(to: pt(0, 0.02))
+        p.addQuadCurve(to: pt(0.30, 0.28), control: pt(0.34, 0.04))
+        p.addQuadCurve(to: pt(0.38, 0.72), control: pt(0.30, 0.52))
+        p.addQuadCurve(to: pt(0.16, 0.98), control: pt(0.40, 0.94))
+        p.addQuadCurve(to: pt(0.00, 0.90), control: pt(0.06, 0.95))
+        p.addQuadCurve(to: pt(-0.16, 0.98), control: pt(-0.06, 0.95))
+        p.addQuadCurve(to: pt(-0.38, 0.72), control: pt(-0.40, 0.94))
+        p.addQuadCurve(to: pt(-0.30, 0.28), control: pt(-0.30, 0.52))
+        p.addQuadCurve(to: pt(0, 0.02), control: pt(-0.34, 0.04))
         p.closeSubpath()
         return p
     }

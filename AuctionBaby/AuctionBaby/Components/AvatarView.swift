@@ -14,6 +14,10 @@ struct AvatarView: View {
     var photoName: String? = nil
     var locked: Bool = false
     var copycat: Bool = false
+    /// Copycats are indistinguishable on the floor — the synthetic-glam
+    /// portrait and AI watermark only render in post-bid contexts (matches,
+    /// chat, the BAITED reveal), where the user has already been told.
+    var revealed: Bool = false
     var copycatStyle: CopycatStyle = .glam
     var corner: CGFloat = Theme.cornerL
 
@@ -34,15 +38,16 @@ struct AvatarView: View {
     }
 
     var body: some View {
-        if copycat && !locked {
+        if copycat && revealed && !locked {
             if photo != nil {
-                // Real (licensed) imagery for the lure — the quiet AI watermark
-                // stays baked into the picture so the disclosure travels with it.
+                // Post-reveal, photo-backed lure: real imagery, AI watermark on.
                 standardBody.overlay(alignment: .bottomTrailing) { aiWatermark }
             } else {
                 CopycatPortrait(name: name, hue: hue, style: copycatStyle, corner: corner)
             }
         } else {
+            // On the floor a copycat renders exactly like everyone else —
+            // spotting them is the game; the reveal comes the moment you bid.
             standardBody
         }
     }
@@ -117,7 +122,7 @@ struct AvatarView: View {
         )
         .accessibilityElement()
         .accessibilityLabel(locked ? "Hidden photo, unlocks when you accept the bid"
-                                   : "\(name)\(copycat ? ", AI-generated profile" : "")")
+                                   : "\(name)\(copycat && revealed ? ", AI-generated profile" : "")")
     }
 }
 
@@ -129,11 +134,12 @@ struct AvatarCircle: View {
     var size: CGFloat = 44
     var locked: Bool = false
     var copycat: Bool = false
+    var revealed: Bool = false
     var copycatStyle: CopycatStyle = .glam
 
     var body: some View {
         AvatarView(name: name, hue: hue, photoName: photoName, locked: locked, copycat: copycat,
-                   copycatStyle: copycatStyle, corner: size)
+                   revealed: revealed, copycatStyle: copycatStyle, corner: size)
             .frame(width: size, height: size)
             .clipShape(Circle())
             .overlay(Circle().strokeBorder(.white.opacity(0.2), lineWidth: 1))

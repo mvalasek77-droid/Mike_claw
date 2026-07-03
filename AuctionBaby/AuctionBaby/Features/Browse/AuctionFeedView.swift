@@ -174,9 +174,6 @@ struct FloorCard: View {
                                copycatStyle: woman.copycatStyle, corner: Theme.cornerXL)
                         .frame(height: 360)
 
-                    if woman.isCopycat {
-                        CopycatTag(compact: true).padding(12)
-                    }
                     if woman.masterpiece {
                         VStack { Spacer(); HStack { Spacer(); MasterpieceBadge(compact: true) } }
                             .padding(12)

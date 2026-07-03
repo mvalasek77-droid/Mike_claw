@@ -10,7 +10,7 @@ struct SafetyCenterView: View {
         ("video", "Meet in public, first time", "Pick a busy bar or restaurant. Tell a friend where you'll be."),
         ("creditcard", "Settle money your way", "A bid is a letter of intent — never wire money or send deposits before a date. Real bidders pay in person."),
         ("checkmark.seal.fill", "Look for the blue check", "Verified profiles have matched a live selfie to their photos. Copycats never can."),
-        ("sparkles", "Spot the Copycats", "AI lure profiles are labelled “Copycat · AI”. Bidding on them hurts your reputation — and they're not real people."),
+        ("sparkles", "Spot the Copycats", "AI lure profiles walk the floor unlabelled — spotting them is part of the game. Bid on one and you're told instantly, no Gavels are taken, and your Auction Credit pays for it. If a profile feels too perfect, it probably is."),
         ("flag", "Report anything off", "Use Report & Block on any profile or chat. Reported users are removed from your floor immediately."),
     ]
 

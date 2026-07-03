@@ -59,6 +59,18 @@ struct OnboardingView: View {
                 roleCard(.man, tint: Theme.gold,
                          caption: "Browse the floor. Bid what a date's worth. Build credit.")
             }
+            // House rules — the up-front disclosure that makes the Copycat
+            // game fair: fakes exist, you're told the instant you bid on one.
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "sparkles").font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Theme.copycat).padding(.top, 1)
+                Text("House rules: AI “Copycat” profiles walk the floor unlabelled. Bid on one and you're told instantly — it costs you reputation, never money. Spot the fakes.")
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
+            .padding(.top, 8)
+
             Spacer()
             Text("Demo only · play money · fictional profiles")
                 .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)

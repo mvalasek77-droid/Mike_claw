@@ -62,18 +62,6 @@ struct BidSheet: View {
                     .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.rose.opacity(0.4), lineWidth: 0.8))
                 }
 
-                if woman.isCopycat {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                        Text("Copycat — bidding lowers your Auction Credit.")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundStyle(Theme.copycat)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.copycat.opacity(0.12)))
-                }
-
                 // Big amount display.
                 VStack(spacing: 4) {
                     Text("Your bid").font(.system(size: 11, weight: .bold, design: .rounded))
@@ -121,9 +109,7 @@ struct BidSheet: View {
                         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                 }
 
-                if !woman.isCopycat {
-                    gildToggle
-                }
+                gildToggle
 
                 if atFreeLimit {
                     VStack(spacing: 8) {

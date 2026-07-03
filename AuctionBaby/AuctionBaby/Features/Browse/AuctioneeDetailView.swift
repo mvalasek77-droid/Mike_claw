@@ -29,19 +29,8 @@ struct AuctioneeDetailView: View {
                         Text(woman.location).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
                     }
                     .padding(16)
-                    if woman.isCopycat { CopycatTag(compact: true).padding(12).frame(maxWidth: .infinity, maxHeight: 380, alignment: .topLeading) }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: Theme.cornerXL, style: .continuous))
-
-                if woman.isCopycat {
-                    GlassCard(tint: Theme.copycat) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.copycat)
-                            Text("This is an AI-generated Copycat. Bidding here is disclosed publicly and lowers your Auction Credit.")
-                                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
-                        }
-                    }
-                }
 
                 if !woman.bio.isEmpty {
                     GlassCard(title: "About", icon: "text.quote") {
@@ -54,20 +43,18 @@ struct AuctioneeDetailView: View {
                     GlassSurface {
                         VStack(alignment: .leading, spacing: 12) {
                             PromptBubble(prompt: prompt)
-                            if !woman.isCopycat {
-                                Button { bidPrompt = prompt } label: {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "hand.raised.fill")
-                                        Text("Bid on this answer")
-                                        Spacer()
-                                    }
-                                    .font(.system(size: 13, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(Theme.rose)
-                                    .padding(.horizontal, 12).padding(.vertical, 9)
-                                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.rose.opacity(0.14)))
+                            Button { bidPrompt = prompt } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "hand.raised.fill")
+                                    Text("Bid on this answer")
+                                    Spacer()
                                 }
-                                .buttonStyle(.plain)
+                                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Theme.rose)
+                                .padding(.horizontal, 12).padding(.vertical, 9)
+                                .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.rose.opacity(0.14)))
                             }
+                            .buttonStyle(.plain)
                         }
                         .padding(4)
                     }

@@ -146,8 +146,12 @@ final class AuctionStore: ObservableObject {
                   promptRef: String? = nil) {
         guard role == .man, amount > 0 else { return }
         // Gilding spends Gavels up front; fall back to a normal bid if short.
+        // Real currency never flows toward an AI lure — a gild attempt on a
+        // copycat is silently uncharged (the reveal lands a second later).
         var gild = gilded
-        if gild {
+        if gild && woman.isCopycat {
+            gild = false
+        } else if gild {
             if wallet >= Self.gildedBidCost { wallet -= Self.gildedBidCost }
             else { gild = false; toastFlash("Not enough Gavels to gild — sent a standard bid.") }
         }
@@ -157,9 +161,12 @@ final class AuctionStore: ObservableObject {
         outgoingBids.insert(bid, at: 0)
 
         if woman.isCopycat {
+            // The reveal: the moment you bid on a Copycat you're told, the hit
+            // lands, and it's on your record. That's the game.
             me.copycatBids += 1
             Haptics.warning()
-            toastFlash("Heads up: that was a Copycat. −\(22) Auction Credit.")
+            celebrate(with: woman, amount: amount, copycat: true, masterpiece: false)
+            log(.bidDeclined, "You bid on \(woman.name) — an AI Copycat. Your Auction Credit took the hit.")
         } else {
             Haptics.commit()
             toastFlash(gild ? "✦ Gilded bid sent to \(woman.name) — top of her inbox."
@@ -573,8 +580,11 @@ final class AuctionStore: ObservableObject {
                 self.matches.insert(match, at: 0)
                 Haptics.success()
                 self.toastFlash("\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid!")
-                self.celebrate(with: bid.woman, amount: bid.amount,
-                               copycat: bid.onCopycat, masterpiece: bid.qualifiesForMasterpiece)
+                // Copycats were already revealed at bid time — no second reveal.
+                if !bid.onCopycat {
+                    self.celebrate(with: bid.woman, amount: bid.amount,
+                                   copycat: false, masterpiece: bid.qualifiesForMasterpiece)
+                }
                 self.log(.bidAccepted, "\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid.")
             } else {
                 Haptics.warning()
