@@ -65,6 +65,7 @@ final class ModelCodableTests: XCTestCase {
         project.style.caption.localized = ["fr-FR": "Bonjour", "ja": "こんにちは"]
         project.style.caption.design = .serif
         project.style.bezelTone = .white
+        project.style.fullBleed = true
         project.style.background.imageDim = 0.4
         project.style.overlays = [
             CanvasOverlay.text("NEW"),
@@ -88,6 +89,7 @@ final class ModelCodableTests: XCTestCase {
         XCTAssertEqual(decoded.style.caption.localized["fr-FR"], "Bonjour")
         XCTAssertEqual(decoded.style.caption.design, .serif)
         XCTAssertEqual(decoded.style.bezelTone, .white)
+        XCTAssertTrue(decoded.style.fullBleed)
         XCTAssertEqual(decoded.style.background.imageDim, 0.4, accuracy: 0.001)
         XCTAssertEqual(decoded.style.overlays.count, 2)
         XCTAssertEqual(decoded.style.overlays.first?.content, "NEW")

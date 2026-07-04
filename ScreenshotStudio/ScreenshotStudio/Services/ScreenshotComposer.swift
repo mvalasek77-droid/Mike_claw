@@ -76,6 +76,18 @@ enum ScreenshotComposer {
                        profile: FrameProfile = .iPhone) -> ComposedLayout {
         let canvasRect = CGRect(origin: .zero, size: canvas)
 
+        // Full-bleed: the screenshot fills the entire canvas — no frame, no
+        // backdrop, no caption. A "pure" export of the screenshot itself.
+        if style.fullBleed {
+            return ComposedLayout(canvasSize: canvas,
+                                  captionRect: nil,
+                                  deviceRect: canvasRect,
+                                  screenRect: canvasRect,
+                                  cornerRadius: 0,
+                                  bezelWidth: 0,
+                                  captionFontSize: 0)
+        }
+
         // --- Caption region ----------------------------------------------
         let captionFraction = clamp(style.caption.heightFraction, 0, 0.45)
         let showCaption = style.caption.placement != .none

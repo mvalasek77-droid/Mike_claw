@@ -9,8 +9,19 @@ struct StatusBarOverlay: View {
     let style: StatusBarStyle
     /// Width of the screen opening in pixels — every metric scales from this.
     let width: CGFloat
+    /// Opaque fill drawn behind the bar to cover the screenshot's own status
+    /// bar (sampled from the screenshot's top edge).
+    var fill: Color = .clear
+    /// Whether that fill is light (so glyphs go dark) — used for `.auto`.
+    var fillIsLight: Bool = false
 
-    private var glyph: Color { style.appearance.color }
+    private var glyph: Color {
+        switch style.appearance {
+        case .light: return .white
+        case .dark: return Color(white: 0.08)
+        case .auto: return fillIsLight ? Color(white: 0.08) : .white
+        }
+    }
     private var barHeight: CGFloat { width * (kind == .pad ? 0.045 : 0.125) }
     private var fontSize: CGFloat { width * (kind == .pad ? 0.022 : 0.045) }
     private var iconSize: CGFloat { width * (kind == .pad ? 0.024 : 0.05) }
@@ -33,6 +44,7 @@ struct StatusBarOverlay: View {
                 .frame(height: barHeight)
         }
         .frame(width: width, height: barHeight, alignment: .top)
+        .background(fill)
         .accessibilityHidden(true)
     }
 

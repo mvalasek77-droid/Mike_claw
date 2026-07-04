@@ -42,12 +42,22 @@ struct StatusBarStyle: Codable, Hashable {
     var showWiFi: Bool = true
 
     enum GlyphAppearance: String, Codable, CaseIterable, Identifiable, Hashable {
-        case light, dark
+        case auto, light, dark
         var id: String { rawValue }
         var label: String { rawValue.capitalized }
-        var color: Color { self == .light ? .white : Color(white: 0.08) }
+        /// Fixed glyph color for the manual cases; `.auto` is resolved against
+        /// the screenshot's top color by the overlay.
+        var color: Color {
+            switch self {
+            case .light: return .white
+            case .dark: return Color(white: 0.08)
+            case .auto: return .white
+            }
+        }
     }
-    var appearance: GlyphAppearance = .light
+    /// `.auto` contrasts against the screenshot's own top color so the bar reads
+    /// cleanly on any screenshot; default so new sets look right out of the box.
+    var appearance: GlyphAppearance = .auto
 }
 
 /// Lightweight, GPU-cheap image adjustments that "make screenshots pop". These

@@ -134,7 +134,7 @@ struct ScreenshotCanvas: View {
     @ViewBuilder
     private func device(in l: ComposedLayout) -> some View {
         ZStack(alignment: .topLeading) {
-            if style.deviceFramed {
+            if style.deviceFramed && !style.fullBleed {
                 RoundedRectangle(cornerRadius: l.cornerRadius + l.bezelWidth, style: .continuous)
                     .fill(style.bezelTone.color)
                     .overlay(
@@ -180,9 +180,12 @@ struct ScreenshotCanvas: View {
                 .frame(width: l.screenRect.width, height: l.screenRect.height))
                 .overlay(alignment: .top) {
                     if style.statusBar.enabled {
+                        let top = image.averageTopColor()
                         StatusBarOverlay(kind: statusBarLayout,
                                          style: style.statusBar,
-                                         width: l.screenRect.width)
+                                         width: l.screenRect.width,
+                                         fill: top.map { Color($0) } ?? .clear,
+                                         fillIsLight: top?.isLight ?? false)
                     }
                 }
         } else {
@@ -199,5 +202,33 @@ struct ScreenshotCanvas: View {
                 .foregroundStyle(.white.opacity(0.45))
             }
         }
+    }
+}
+
+private extension UIImage {
+    /// Average color of the top strip — used to cover a screenshot's own status
+    /// bar so the synthetic one reads cleanly, by downscaling the strip to 1px.
+    func averageTopColor(fraction: CGFloat = 0.06) -> UIColor? {
+        guard let cg = cgImage else { return nil }
+        let stripHeight = max(1, Int(CGFloat(cg.height) * fraction))
+        guard let top = cg.cropping(to: CGRect(x: 0, y: 0, width: cg.width, height: stripHeight)) else { return nil }
+        var pixel: [UInt8] = [0, 0, 0, 0]
+        let space = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8,
+                                  bytesPerRow: 4, space: space,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.interpolationQuality = .medium
+        ctx.draw(top, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        return UIColor(red: CGFloat(pixel[0]) / 255, green: CGFloat(pixel[1]) / 255,
+                       blue: CGFloat(pixel[2]) / 255, alpha: 1)
+    }
+}
+
+private extension UIColor {
+    /// Whether a light glyph (dark text) is needed for contrast.
+    var isLight: Bool {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        getRed(&r, green: &g, blue: &b, alpha: &a)
+        return (0.299 * r + 0.587 * g + 0.114 * b) > 0.6
     }
 }

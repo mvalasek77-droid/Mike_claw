@@ -254,10 +254,13 @@ struct CanvasStyle: Codable, Hashable {
     var overlays: [CanvasOverlay] = []
     /// Color of the device bezel.
     var bezelTone: BezelTone = .black
+    /// Full-bleed "pure screenshot" mode: the screenshot fills the whole canvas
+    /// with no device frame, backdrop or caption.
+    var fullBleed: Bool = false
 
     enum CodingKeys: String, CodingKey {
         case background, caption, deviceFramed, marginFraction
-        case cornerFraction, shadow, statusBar, adjustments, overlays, bezelTone
+        case cornerFraction, shadow, statusBar, adjustments, overlays, bezelTone, fullBleed
     }
 }
 
@@ -291,5 +294,6 @@ extension CanvasStyle {
         adjustments = try c.decodeIfPresent(ImageAdjustments.self, forKey: .adjustments) ?? ImageAdjustments()
         overlays = try c.decodeIfPresent([CanvasOverlay].self, forKey: .overlays) ?? []
         bezelTone = try c.decodeIfPresent(BezelTone.self, forKey: .bezelTone) ?? .black
+        fullBleed = try c.decodeIfPresent(Bool.self, forKey: .fullBleed) ?? false
     }
 }

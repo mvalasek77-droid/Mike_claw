@@ -17,20 +17,31 @@ struct LayoutPanel: View {
                 selection: $project.orientation
             )
 
-            ToggleRow(label: "Device frame", systemImage: "iphone", isOn: $project.style.deviceFramed)
-            ToggleRow(label: "Drop shadow", systemImage: "shadow", isOn: $project.style.shadow)
+            ToggleRow(label: "Full-bleed screenshot", systemImage: "rectangle.fill",
+                      isOn: $project.style.fullBleed)
+            if project.style.fullBleed {
+                Text("The screenshot fills the whole frame with no device, backdrop or caption — a clean, unframed export.")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
-            SliderRow(label: "Margin", value: $project.style.marginFraction, range: 0...0.35)
-            if project.style.deviceFramed {
-                SliderRow(label: "Corner radius", value: $project.style.cornerFraction, range: 0...0.12)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Bezel")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
-                    GlassSegmented(
-                        options: BezelTone.allCases.map { ($0, $0.label) },
-                        selection: $project.style.bezelTone
-                    )
+            if !project.style.fullBleed {
+                ToggleRow(label: "Device frame", systemImage: "iphone", isOn: $project.style.deviceFramed)
+                ToggleRow(label: "Drop shadow", systemImage: "shadow", isOn: $project.style.shadow)
+
+                SliderRow(label: "Margin", value: $project.style.marginFraction, range: 0...0.35)
+                if project.style.deviceFramed {
+                    SliderRow(label: "Corner radius", value: $project.style.cornerFraction, range: 0...0.12)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Bezel")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
+                        GlassSegmented(
+                            options: BezelTone.allCases.map { ($0, $0.label) },
+                            selection: $project.style.bezelTone
+                        )
+                    }
                 }
             }
 
