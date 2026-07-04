@@ -134,7 +134,7 @@ struct PaywallView: View {
                                 .background(LiquidGlass.auroraGradient, in: Capsule())
                         }
                     }
-                    Text(subtitle)
+                    Text(detailLine(for: product, fallback: subtitle))
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
                 }
@@ -156,6 +156,36 @@ struct PaywallView: View {
         .opacity(product == nil ? 0.5 : 1)
     }
 
+    // MARK: Subscription detail (length · per-unit · trial)
+
+    private func detailLine(for product: Product?, fallback: String) -> String {
+        guard let product, let sub = product.subscription else { return fallback }
+        var parts = ["\(product.displayPrice) \(lengthText(sub.subscriptionPeriod))"]
+        if let perUnit = perUnitText(product, period: sub.subscriptionPeriod) { parts.append(perUnit) }
+        if let offer = sub.introductoryOffer, offer.paymentMode == .freeTrial {
+            parts.append("free trial")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func lengthText(_ period: Product.SubscriptionPeriod) -> String {
+        switch period.unit {
+        case .day: return period.value == 7 ? "per week" : "per \(period.value) days"
+        case .week: return "per week"
+        case .month: return period.value == 1 ? "per month" : "per \(period.value) months"
+        case .year: return "per year"
+        @unknown default: return ""
+        }
+    }
+
+    private func perUnitText(_ product: Product, period: Product.SubscriptionPeriod) -> String? {
+        guard period.unit == .year else { return nil }
+        let monthly = product.price / Decimal(12)
+        return "≈ \(monthly.formatted(product.priceFormatStyle))/mo"
+    }
+
+    // MARK: Footer (restore + required legal links)
+
     private var footer: some View {
         VStack(spacing: 12) {
             Button {
@@ -167,7 +197,15 @@ struct PaywallView: View {
             }
             .disabled(store.isPurchasing)
 
-            Text("Plans renew automatically until cancelled. Cancel anytime in Settings. Lifetime is a one-time purchase.")
+            HStack(spacing: 6) {
+                Link("Terms of Use (EULA)", destination: Legal.termsOfUse)
+                Text("·").foregroundStyle(LiquidGlass.primaryText.opacity(0.4))
+                Link("Privacy Policy", destination: Legal.privacyPolicy)
+            }
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .tint(LiquidGlass.accent)
+
+            Text("Subscriptions are billed to your Apple ID and renew automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel in Settings. Lifetime is a one-time purchase.")
                 .font(.system(size: 11, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 .multilineTextAlignment(.center)

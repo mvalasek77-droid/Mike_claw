@@ -170,6 +170,7 @@
 				58C9941B0B612AF43E9C7739,
 				B682C07E0F017DC4194E589D,
 				11972E2DA17609AAC6DF117D,
+				E24D310E0917F94D36BD63F3,
 				891850B05472110F10933073,
 				ADA4DB64A5950CE5448ABB5E,
 				ABC1CFB97F366B4BEFF31B77,
@@ -348,6 +349,7 @@
 				E7F44870BA81CD986B3EA6E9 /* ASCLanguage.swift */,
 				71EEAD20256416E51AC43388 /* CanvasOverlay.swift */,
 				071C92D5DFCBD486B4B05484 /* CanvasStyle.swift */,
+				FFB279207606B3056D204E29 /* Legal.swift */,
 				85A0FEB1D702D520CB8B5D3F /* ScreenshotProject.swift */,
 				A2B186254828B2393E711CBA /* StatusBarStyle.swift */,
 				8865424E9985D0C3C6B06703 /* StyleTemplate.swift */,
@@ -406,6 +408,7 @@
 		DFDED23FA58339F9273F6C84 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ScreenshotStudioTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E167069CB01EF8A551310D55 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhotoExporter.swift"; sourceTree = "<group>"; };
 		E210C6898FF6E256B906195D = {isa = PBXBuildFile; fileRef = 8C248AF5BC18BF1BA06FF53A /* Controls.swift */; };
+		E24D310E0917F94D36BD63F3 = {isa = PBXBuildFile; fileRef = FFB279207606B3056D204E29 /* Legal.swift */; };
 		E3435DDA2687639586BF0B70 = {isa = PBXNativeTarget; buildConfigurationList = 5505F9AF814A7F0992DE2402 /* Build configuration list for PBXNativeTarget "ScreenshotStudio" */; buildPhases = (
 				67281B94473E6F647EB8E42B /* Sources */,
 				3BD34C48B5C5280A6979C3A1 /* Resources */,
@@ -433,6 +436,7 @@
 			); path = "Onboarding"; sourceTree = "<group>"; };
 		F8A1761D2E77306E90B35358 = {isa = PBXBuildFile; fileRef = 36D1D6D24AAA94A29A1EEEF5 /* ProjectThumbnail.swift */; };
 		FD1FCFA6DC18B684800E512A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Motion.swift"; sourceTree = "<group>"; };
+		FFB279207606B3056D204E29 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Legal.swift"; sourceTree = "<group>"; };
 	};
 	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
 }

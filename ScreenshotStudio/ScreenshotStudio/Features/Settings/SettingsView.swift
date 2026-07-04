@@ -101,6 +101,13 @@ struct SettingsView: View {
                             row("Version", appVersion)
                             row("Saved sets", "\(store.projects.count)")
                             Divider().overlay(LiquidGlass.hairline)
+                            HStack(spacing: 8) {
+                                Link("Terms of Use (EULA)", destination: Legal.termsOfUse)
+                                Text("·").foregroundStyle(LiquidGlass.primaryText.opacity(0.4))
+                                Link("Privacy Policy", destination: Legal.privacyPolicy)
+                            }
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .tint(LiquidGlass.accent)
                             Text("Screenshot Studio turns raw iPhone screenshots into App Store Connect–ready images, rendered at exactly the pixel sizes Apple requires.")
                                 .font(.system(size: 13, weight: .regular, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
