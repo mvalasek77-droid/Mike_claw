@@ -87,6 +87,51 @@ final class AuctionStore: ObservableObject {
         save()
     }
 
+    // MARK: - Admin (roster management)
+
+    /// Whether the admin console is available. Gated on the founder account so a
+    /// normal user never sees it; Mike Valasek (the founder seat) is the admin.
+    var isAdmin: Bool { me.name == "Mike Valasek" || me.name == "Admin" }
+
+    /// Everyone currently on the floor — the roster the admin console manages.
+    var adminRoster: [Profile] { floor }
+
+    /// Add a new lot to the floor from the admin console. Newest first so it's
+    /// visible immediately.
+    func adminAddUser(name: String, age: Int, location: String, bio: String,
+                      startingBid: Int?, verified: Bool, isCopycat: Bool,
+                      copycatStyle: CopycatStyle) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var profile = Profile(name: trimmed, age: max(18, age), role: .woman,
+                              location: location, bio: bio,
+                              hue: Double.random(in: 0...1))
+        profile.startingBid = startingBid
+        profile.verified = verified && !isCopycat   // copycats can never verify
+        profile.isCopycat = isCopycat
+        profile.copycatStyle = copycatStyle
+        floor.insert(profile, at: 0)
+        Haptics.success()
+        toastFlash("Added \(trimmed) to the floor.")
+        log(.admin, "Admin added \(trimmed) to the floor.")
+        save()
+    }
+
+    /// Remove a lot from the floor and scrub every bid, match and block that
+    /// referenced them, so nothing dangles after deletion.
+    func adminDeleteUser(_ id: UUID) {
+        guard let victim = floor.first(where: { $0.id == id }) else { return }
+        floor.removeAll { $0.id == id }
+        incomingBids.removeAll { $0.man.id == id || $0.woman.id == id }
+        outgoingBids.removeAll { $0.woman.id == id || $0.man.id == id }
+        matches.removeAll { $0.bid.man.id == id || $0.bid.woman.id == id }
+        blockedIDs.remove(id)
+        Haptics.warning()
+        toastFlash("Removed \(victim.name).")
+        log(.admin, "Admin removed \(victim.name) from the floor.")
+        save()
+    }
+
     private let store = UserDefaults.standard
     private static let key = "auctionbaby.state.v5"
 
@@ -500,11 +545,14 @@ final class AuctionStore: ObservableObject {
             if bid.qualifiesForMasterpiece && paid { floor[f].masterpiece = true }
         }
         matches[idx].manReviewedWoman = true
+        // Her written verdict is chosen to match his credit, so the comment and
+        // the number never contradict each other: paying short always reads bad,
+        // and among men who paid, the praise scales with his standing.
+        let verdict = ReviewCopy.manVerdict(paid: paid, credit: creditBefore,
+                                            bidAmount: bid.amount, spentAmount: actuallySpent)
         me.reviews.insert(
             DateReview(authorName: bid.woman.name, authorHue: bid.woman.hue,
-                       stars: paid ? Int.random(in: 4...5) : Int.random(in: 1...2),
-                       text: paid ? "Bid \(Money.compact(bid.amount)) and paid it. A gentleman."
-                                  : "Bid \(Money.compact(bid.amount)), paid \(Money.compact(actuallySpent)). Deadbeat.",
+                       stars: verdict.stars, text: verdict.text,
                        paidBid: paid, bidAmount: bid.amount, spentAmount: actuallySpent),
             at: 0)
 

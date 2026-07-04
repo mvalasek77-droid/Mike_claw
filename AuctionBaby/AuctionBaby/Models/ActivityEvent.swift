@@ -5,6 +5,7 @@ import SwiftUI
 enum ActivityKind: String, Codable {
     case bidReceived, bidAccepted, bidDeclined, reviewReceived
     case verified, trillionaire, masterpiece, boost, rebid, daily, credit, honors
+    case admin
 
     var icon: String {
         switch self {
@@ -20,6 +21,7 @@ enum ActivityKind: String, Codable {
         case .daily: return "gift.fill"
         case .credit: return "gauge.with.needle"
         case .honors: return "photo.artframe"
+        case .admin: return "person.2.badge.gearshape.fill"
         }
     }
 
@@ -36,6 +38,7 @@ enum ActivityKind: String, Codable {
         case .daily: return Theme.success
         case .credit: return Theme.verify
         case .honors: return Theme.gold
+        case .admin: return Theme.verify
         }
     }
 }

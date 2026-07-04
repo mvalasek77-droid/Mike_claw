@@ -437,6 +437,10 @@ extension Profile {
         return seen
     }
 
+    /// A one-line read on where he stands, used to keep his written reviews and
+    /// his credit number telling the same story.
+    var creditStanding: String { Self.tierName(auctionCredit) }
+
     /// Suggested opening lines, generated from this profile's own prompts and
     /// interests — tapped to fill (not auto-send) the composer on a cold match,
     /// so nobody has to open with a bare "hey".
@@ -453,5 +457,63 @@ extension Profile {
         }
         if lines.isEmpty { lines.append("So — where are we actually going?") }
         return Array(lines.prefix(3))
+    }
+}
+
+// MARK: - Review copy
+
+/// Generates woman→man review lines that always agree with his credit, so the
+/// written word on a bidder can never contradict his number: a short check is
+/// called out no matter what, and among men who *did* pay, the praise scales
+/// with standing — poor credit reads guarded, exceptional credit reads glowing.
+/// This is what keeps "bad credit → negative comments, and vice versa" true
+/// everywhere a review is minted.
+enum ReviewCopy {
+
+    /// The verdict a woman leaves on him after the date.
+    /// - Parameters:
+    ///   - paid: did he honor *this* bid in full?
+    ///   - credit: his Auction Credit coming into the date (his reputation).
+    static func manVerdict(paid: Bool, credit: Int,
+                           bidAmount: Int, spentAmount: Int) -> (stars: Int, text: String) {
+        guard paid else {
+            let lines = [
+                "Bid \(Money.compact(bidAmount)), paid \(Money.compact(spentAmount)). Deadbeat.",
+                "Talked a big number, came up short when the check landed. I covered the rest.",
+                "His bid was theater. The bill was mine.",
+                "Promised \(Money.compact(bidAmount)) and folded at the table. Ladies, read the reviews.",
+            ]
+            return (Int.random(in: 1...2), lines.randomElement()!)
+        }
+        switch credit {
+        case 820...:
+            let lines = [
+                "Bid \(Money.compact(bidAmount)) and paid it without being asked twice. A gentleman.",
+                "Exactly what his profile promised — paid in full, walked me out, texted the next day.",
+                "The number's real. Paid every cent and made the whole night easy.",
+            ]
+            return (5, lines.randomElement()!)
+        case 660..<820:
+            let lines = [
+                "Paid what he bid, no drama. Would say yes again.",
+                "Good for it — kept his word and kept me laughing.",
+                "Solid evening. Paid in full, no games.",
+            ]
+            return (Int.random(in: 4...5), lines.randomElement()!)
+        case 560..<660:
+            let lines = [
+                "Paid this time — the reviews had me nervous, but he came through.",
+                "Honored the bid. Still earning trust back, but it's a start.",
+                "Came correct tonight. Better than his record led me to expect.",
+            ]
+            return (Int.random(in: 3...4), lines.randomElement()!)
+        default:
+            let lines = [
+                "Paid, to his credit — though I checked the reviews twice before saying yes.",
+                "Honored it this once. The floor's still watching him, and so am I.",
+                "Surprised me by paying. His history said otherwise.",
+            ]
+            return (Int.random(in: 3...3), lines.randomElement()!)
+        }
     }
 }

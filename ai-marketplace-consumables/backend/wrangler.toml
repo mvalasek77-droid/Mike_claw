@@ -1,0 +1,40 @@
+name = "ai-marketplace-consumables"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Secrets (never committed) — set once with `wrangler secret put <NAME>`:
+#   STRIPE_SECRET_KEY      sk_live_… (or sk_test_… while testing)
+#   STRIPE_WEBHOOK_SECRET  whsec_… from the Checkout webhook endpoint you create
+#   APP_SHARED_SECRET      long random string; also pasted into the app client
+#
+# The publishable key is client-side only and never needed here — this Worker
+# creates Checkout Sessions server-side and redirects the user to Stripe's
+# hosted page, so no card data ever touches the app or this service.
+
+[vars]
+# Settlement currency for the credit packs. Lowercase ISO-4217, per Stripe.
+CURRENCY = "usd"
+# Success/cancel URLs the hosted Checkout returns to. The app can override
+# these per-request; these are the safe defaults.
+SUCCESS_URL = "https://aimarketplace.app/purchase/success"
+CANCEL_URL = "https://aimarketplace.app/purchase/cancel"
+
+# KV: user credit balances + processed-event set (webhook idempotency) +
+# consume-idempotency keys + a small purchase ledger.
+[[kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# ── STAGING (Stripe test mode / fake money) ──────────────────────────────────
+# Deploy: npx wrangler deploy --env staging
+[env.staging]
+name = "ai-marketplace-consumables-staging"
+
+[env.staging.vars]
+CURRENCY = "usd"
+SUCCESS_URL = "https://aimarketplace.app/purchase/success"
+CANCEL_URL = "https://aimarketplace.app/purchase/cancel"
+
+[[env.staging.kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_STAGING_KV_NAMESPACE_ID"

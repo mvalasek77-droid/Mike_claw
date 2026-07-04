@@ -1,0 +1,16 @@
+{
+  "name": "ai-marketplace-consumables",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Consumable credit purchases for the AI Marketplace, via Stripe Checkout.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^3.99.0"
+  }
+}

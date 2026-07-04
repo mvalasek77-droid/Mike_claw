@@ -100,8 +100,8 @@ struct OutgoingBidRow: View {
         GlassSurface(corner: Theme.cornerL) {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
-                    AvatarCircle(name: bid.woman.name, hue: bid.woman.hue, photoName: bid.woman.photoName, size: 48, revealed: true,
-                                 copycat: bid.woman.isCopycat, copycatStyle: bid.woman.copycatStyle)
+                    AvatarCircle(name: bid.woman.name, hue: bid.woman.hue, photoName: bid.woman.photoName, size: 48,
+                                 copycat: bid.woman.isCopycat, revealed: true, copycatStyle: bid.woman.copycatStyle)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Text(bid.woman.name).font(.system(size: 16, weight: .heavy, design: .serif))

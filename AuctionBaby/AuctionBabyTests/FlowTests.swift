@@ -71,6 +71,62 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(store.matches.first!.womanReviewedMan)
     }
 
+    // MARK: - Admin console
+
+    func testAdminAddsAndDeletesUsers() {
+        let store = freshStore()
+        registerMan(store)
+        let before = store.floor.count
+        store.adminAddUser(name: "Test Lot", age: 27, location: "Austin", bio: "Hi",
+                           startingBid: 300, verified: true, isCopycat: false, copycatStyle: .glam)
+        XCTAssertEqual(store.floor.count, before + 1)
+        let added = store.floor.first { $0.name == "Test Lot" }
+        XCTAssertNotNil(added)
+        XCTAssertEqual(added?.startingBid, 300)
+        XCTAssertTrue(added?.verified == true)
+
+        store.adminDeleteUser(added!.id)
+        XCTAssertEqual(store.floor.count, before, "delete removes the added lot")
+        XCTAssertNil(store.floor.first { $0.name == "Test Lot" })
+    }
+
+    /// A blank name is rejected, and a copycat can never be verified even if the
+    /// verified flag is passed in.
+    func testAdminAddRejectsBlankAndForcesCopycatUnverified() {
+        let store = freshStore()
+        registerMan(store)
+        let before = store.floor.count
+        store.adminAddUser(name: "   ", age: 25, location: "", bio: "",
+                           startingBid: nil, verified: true, isCopycat: false, copycatStyle: .glam)
+        XCTAssertEqual(store.floor.count, before, "a blank name adds nobody")
+
+        store.adminAddUser(name: "Lure", age: 23, location: "Miami", bio: "",
+                           startingBid: nil, verified: true, isCopycat: true, copycatStyle: .poolside)
+        let lure = store.floor.first { $0.name == "Lure" }
+        XCTAssertTrue(lure?.isCopycat == true)
+        XCTAssertFalse(lure?.verified == true, "copycats can never be verified")
+    }
+
+    func testAdminDeleteScrubsRelatedBids() {
+        let store = freshStore()
+        registerMan(store)
+        let woman = store.floor.first { !$0.isCopycat }!
+        store.placeBid(on: woman, amount: 300, note: "Hi")
+        XCTAssertEqual(store.outgoingBids.count, 1)
+        store.adminDeleteUser(woman.id)
+        XCTAssertTrue(store.outgoingBids.isEmpty, "deleting a lot clears bids that referenced her")
+    }
+
+    func testFounderIsAdmin() {
+        let store = freshStore()
+        store.register(role: .man, name: "Mike Valasek", age: 39, location: "", bio: "",
+                       hue: 0.1, startingBid: nil, prompts: [], interests: [])
+        XCTAssertTrue(store.isAdmin)
+        let store2 = freshStore()
+        registerMan(store2)
+        XCTAssertFalse(store2.isAdmin, "a normal user is not an admin")
+    }
+
     // MARK: - Idempotency & abuse
 
     func testDoubleAcceptCreditsEarningsOnce() {

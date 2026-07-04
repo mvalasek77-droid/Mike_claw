@@ -53,6 +53,11 @@ A living plan. Shipped items reflect what's in the branch today.
 
 **Trust & safety**
 - Safety Center, Report & Block, premium floor filters
+- Credit-correlated reviews: a bidder's written verdicts always agree with his
+  number — a short check always reads as a deadbeat, and among men who paid the
+  praise scales with standing (poor credit reads guarded, exceptional glows)
+- Founder admin console (add / remove lots on the floor, live + persisted),
+  gated to the founder account
 
 **Craft**
 - iOS 26 Liquid Glass (graceful iOS 17–25 fallback), adaptive haptics,
@@ -64,6 +69,11 @@ A living plan. Shipped items reflect what's in the branch today.
 - Real backend + accounts (guest vs verified tiers), cloud sync
 - Live presence + push notifications ("You've been outbid")
 - KYC-gated real-world date payments via a licensed processor (marketplace fee)
+- Consumable credit purchases via Stripe Checkout — scaffolded as a standalone
+  Cloudflare Worker (`ai-marketplace-consumables/`): catalog → hosted Checkout →
+  signed webhook → idempotent crediting → spend/ledger. (Digital consumables in
+  the iOS app itself stay on StoreKit per Apple's rules; Stripe is for web /
+  real-world surfaces.)
 - Photo upload + on-device safety/NSFW screening
 - Onboarding glow-up: multi-step, dealbreakers, voice prompts
 - Woman-side bidder filters & saved searches

@@ -116,6 +116,29 @@ final class AuctionLogicTests: XCTestCase {
         for factor in man.creditFactors { XCTAssertFalse(factor.comment.isEmpty) }
     }
 
+    // MARK: Review copy correlates with credit
+
+    /// An unpaid bid always reads as a deadbeat, whatever his credit, with a
+    /// low star count.
+    func testUnpaidVerdictIsAlwaysNegative() {
+        for credit in [320, 600, 900] {
+            let v = ReviewCopy.manVerdict(paid: false, credit: credit, bidAmount: 500, spentAmount: 0)
+            XCTAssertLessThanOrEqual(v.stars, 2, "a short check can never earn 3+ stars")
+            XCTAssertFalse(v.text.isEmpty)
+        }
+    }
+
+    /// Among men who paid, better credit yields strictly higher (or equal) top
+    /// praise — good credit → positive comments, and the inverse.
+    func testPaidVerdictScalesWithCredit() {
+        let poor = ReviewCopy.manVerdict(paid: true, credit: 400, bidAmount: 500, spentAmount: 500)
+        let strong = ReviewCopy.manVerdict(paid: true, credit: 860, bidAmount: 500, spentAmount: 500)
+        XCTAssertGreaterThanOrEqual(strong.stars, poor.stars)
+        XCTAssertEqual(strong.stars, 5, "exceptional credit + paid must read 5 stars")
+        XCTAssertFalse(poor.text.isEmpty)
+        XCTAssertFalse(strong.text.isEmpty)
+    }
+
     func testDeadbeatHistoryDragsCredit() {
         var payer = Profile(name: "P", age: 33, role: .man, location: "", bio: "", hue: 0.5)
         payer.reviews = [DateReview(authorName: "A", authorHue: 0, stars: 5, text: "", paidBid: true)]
