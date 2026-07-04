@@ -62,7 +62,7 @@ struct StudioWordmark: View {
             Text("Screenshot Studio")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .auroraStyle()
-            Text("App Store screenshots, done right")
+            Text("Store-ready screenshots, done right")
                 .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
         }

@@ -83,7 +83,7 @@ struct ProjectsView: View {
                 Text("Screenshot Studio")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .auroraStyle()
-                Text("App Store screenshots, done right")
+                Text("Store-ready screenshots, done right")
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
             }
