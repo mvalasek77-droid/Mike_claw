@@ -7,6 +7,8 @@ struct ChatMessage: Identifiable, Codable, Hashable {
     var date: Date = .now
     /// System lines (the invite, "date completed") render centered & muted.
     var isSystem: Bool = false
+    /// A double-tapped emoji reaction, iMessage-style. Nil = no reaction.
+    var reaction: String? = nil
 }
 
 /// What stage a match is in. The flow: accepted → chatting → date marked done →
@@ -29,7 +31,17 @@ struct Match: Identifiable, Codable, Hashable {
     var spentAmount: Int? = nil          // what he actually paid, set at review
     /// The other side has read your latest message (Black Card read receipts).
     var seenByOther: Bool = false
+    /// Bumble-style urgency: set when the match is created, cleared the moment
+    /// the current user sends their first reply. If it lapses with no reply,
+    /// the match goes cold.
+    var expiresAt: Date? = nil
 
     /// The counterpart, from the perspective of the logged-in `role`.
     func other(for role: Role) -> Profile { role == .woman ? bid.man : bid.woman }
+
+    /// True once the reply window has lapsed with no reply from the current user.
+    var isExpired: Bool {
+        guard phase == .chatting, let expiresAt else { return false }
+        return Date() > expiresAt
+    }
 }

@@ -6,9 +6,13 @@ struct MyBidsView: View {
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
     @State private var showStore = false
+    @State private var showRewindPaywall = false
 
     private var live: [Bid] { store.outgoingBids.filter { $0.status == .pending } }
     private var settled: [Bid] { store.outgoingBids.filter { $0.status != .pending } }
+    private var hasRewind: Bool {
+        storeKit.isSubscribed(to: .reserve) || storeKit.isSubscribed(to: .blackcard)
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,11 +25,23 @@ struct MyBidsView: View {
                     }
                     if !live.isEmpty {
                         SectionHeader(title: "Live bids").padding(.top, 4)
-                        ForEach(live) { OutgoingBidRow(bid: $0, locked: !storeKit.hasPass) { showStore = true } }
+                        ForEach(live) { bid in
+                            OutgoingBidRow(bid: bid, locked: !storeKit.hasPass,
+                                          canRewind: store.canRewindLastBid() && bid.id == store.outgoingBids.first?.id,
+                                          rewindUnlocked: hasRewind,
+                                          onUnlock: { showStore = true },
+                                          onRewind: { store.rewindLastBid() },
+                                          onRewindLocked: { showRewindPaywall = true })
+                        }
                     }
                     if !settled.isEmpty {
                         SectionHeader(title: "Settled").padding(.top, 8)
-                        ForEach(settled) { OutgoingBidRow(bid: $0, locked: !storeKit.hasPass) { showStore = true } }
+                        ForEach(settled) { bid in
+                            OutgoingBidRow(bid: bid, locked: !storeKit.hasPass,
+                                          canRewind: false, rewindUnlocked: hasRewind,
+                                          onUnlock: { showStore = true },
+                                          onRewind: {}, onRewindLocked: {})
+                        }
                     }
                     Spacer(minLength: 24)
                 }
@@ -34,6 +50,7 @@ struct MyBidsView: View {
             .background(AppBackground())
             .navigationTitle("My Bids")
             .sheet(isPresented: $showStore) { PaywallView(trigger: .rankReveal) }
+            .sheet(isPresented: $showRewindPaywall) { PaywallView(trigger: .rewind) }
         }
     }
 
@@ -73,7 +90,11 @@ struct OutgoingBidRow: View {
     @EnvironmentObject private var store: AuctionStore
     let bid: Bid
     var locked: Bool
+    var canRewind: Bool = false
+    var rewindUnlocked: Bool = false
     var onUnlock: () -> Void
+    var onRewind: () -> Void = {}
+    var onRewindLocked: () -> Void = {}
 
     var body: some View {
         GlassSurface(corner: Theme.cornerL) {
@@ -91,6 +112,21 @@ struct OutgoingBidRow: View {
                             .foregroundStyle(Theme.gold)
                     }
                     Spacer()
+                    if canRewind {
+                        Button {
+                            if rewindUnlocked { onRewind() } else { onRewindLocked() }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: rewindUnlocked ? "arrow.uturn.backward.circle.fill" : "lock.fill")
+                                Text("Rewind")
+                            }
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Theme.rose)
+                            .padding(.horizontal, 9).padding(.vertical, 5)
+                            .background(Capsule().fill(Theme.rose.opacity(0.14)))
+                        }
+                        .buttonStyle(.plain)
+                    }
                     statusBadge
                 }
                 if bid.status == .pending { rankReveal }

@@ -34,6 +34,22 @@ A living plan. Shipped items reflect what's in the branch today.
 - Daily Gavel claim with growing streak (capped 7×)
 - Activity feed (bids, accepts, reviews, milestones) with toolbar bell
 - "SOLD!" celebration · "What you're worth tonight" dashboard
+- 24-hour match-reply clock (Bumble-style urgency) with a live countdown;
+  cold matches lock the composer
+- Rewind your last bid (Reserve+ Pass perk)
+- Typing indicators + double-tap / long-press message reactions
+- Icebreaker suggestions generated from the other profile's own prompts
+  and interests, shown until the human sends their first real reply
+
+**Credit system**
+- Bureau-style Auction Credit / Showcase Credit (300–900, 900 = perfect),
+  factor-based with a written report (payment history, status, track
+  record, identity, copycat incidents, personality-weighted for women)
+- Honors ladder (Fresh Canvas → Exhibition Star) achievable through dates
+  and reputation; Masterpiece sits above it, minted only by a Trillionaire
+  paying $1,000,000 for one evening and confirmed by her — never climbed to
+- Animated odometer score count-ups, perfect-900 crown, "credit moved"
+  Activity pings, honors-ladder climb celebrations
 
 **Trust & safety**
 - Safety Center, Report & Block, premium floor filters

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The conversation after a bid is accepted, plus the date lifecycle controls:
 /// mark the date done, then leave a review.
@@ -22,16 +23,27 @@ struct ChatView: View {
                         ScrollView {
                             LazyVStack(spacing: 10) {
                                 bidBanner(match)
-                                ForEach(match.messages) { msg in
-                                    MessageBubble(message: msg, otherName: match.other(for: store.role ?? .man).name)
-                                        .id(msg.id)
+                                if let until = match.expiresAt, !match.isExpired {
+                                    expiryBanner(until: until)
+                                } else if match.isExpired {
+                                    expiredBanner
                                 }
+                                ForEach(match.messages) { msg in
+                                    MessageBubble(message: msg, otherName: match.other(for: store.role ?? .man).name) { emoji in
+                                        store.toggleReaction(emoji, on: msg.id, in: match)
+                                    }
+                                    .id(msg.id)
+                                }
+                                if store.typingMatchID == match.id { TypingBubble() }
                                 readReceipt(match)
                                 Color.clear.frame(height: 1).id("bottom")
                             }
                             .screenPadding().padding(.top, 10)
                         }
                         .onChange(of: match.messages.count) { _, _ in
+                            withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                        }
+                        .onChange(of: store.typingMatchID) { _, _ in
                             withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
                         }
                         .onAppear { proxy.scrollTo("bottom", anchor: .bottom) }
@@ -99,6 +111,63 @@ struct ChatView: View {
         }
     }
 
+    /// Bumble-style urgency: a live countdown while the reply window is open.
+    private func expiryBanner(until: Date) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "clock.fill").font(.system(size: 11, weight: .bold))
+            Text("Reply within")
+            Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
+                .monospacedDigit()
+            Text("or this goes cold")
+        }
+        .font(.system(size: 11, weight: .bold, design: .rounded))
+        .foregroundStyle(Theme.warning)
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .background(Capsule().fill(Theme.warning.opacity(0.14)))
+        .padding(.bottom, 4)
+    }
+
+    private var expiredBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "snowflake").font(.system(size: 12, weight: .bold))
+            Text("This match went cold — nobody replied in time.")
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(Theme.inkFaint)
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(Capsule().fill(.white.opacity(0.05)))
+        .padding(.bottom, 4)
+    }
+
+    /// Suggested opener chips, shown only while the conversation is still cold
+    /// (the human hasn't sent a real message yet). Tapping fills the draft.
+    @ViewBuilder
+    private func icebreakers(_ match: Match) -> some View {
+        if !match.messages.contains(where: { $0.fromMe && !$0.isSystem }) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("NEED AN OPENER?").font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
+                    .foregroundStyle(Theme.inkFaint)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(match.other(for: store.role ?? .man).icebreakers, id: \.self) { line in
+                            Button { draft = line } label: {
+                                Text(line)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Theme.ink)
+                                    .lineLimit(1)
+                                    .padding(.horizontal, 12).padding(.vertical, 8)
+                                    .background(Capsule().fill(.white.opacity(0.07)))
+                                    .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 0.6))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(.bottom, 2)
+        }
+    }
+
     private func bidBanner(_ match: Match) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "hand.raised.fill").font(.system(size: 11))
@@ -118,7 +187,16 @@ struct ChatView: View {
     private func composer(_ match: Match) -> some View {
         VStack(spacing: 10) {
             switch match.phase {
+            case .chatting where match.isExpired:
+                HStack(spacing: 8) {
+                    Image(systemName: "snowflake").font(.system(size: 13, weight: .bold))
+                    Text("This match has gone cold. No replies land here anymore.")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundStyle(Theme.inkFaint)
+                .frame(maxWidth: .infinity).padding(.vertical, 12)
             case .chatting:
+                icebreakers(match)
                 HStack(spacing: 10) {
                     TextField("", text: $draft,
                               prompt: Text("Message…").foregroundStyle(Theme.inkFaint), axis: .vertical)
@@ -164,6 +242,9 @@ struct ChatView: View {
 struct MessageBubble: View {
     let message: ChatMessage
     let otherName: String
+    var onReact: (String) -> Void = { _ in }
+
+    @State private var showReactionBar = false
 
     var body: some View {
         if message.isSystem {
@@ -172,20 +253,82 @@ struct MessageBubble: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
         } else {
-            HStack {
-                if message.fromMe { Spacer(minLength: 50) }
-                Text(message.text)
-                    .font(.system(size: 15))
-                    .foregroundStyle(message.fromMe ? .black : Theme.ink)
-                    .padding(.horizontal, 14).padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(message.fromMe ? AnyShapeStyle(Theme.goldGradient)
-                                                 : AnyShapeStyle(Color.white.opacity(0.08)))
-                    )
-                if !message.fromMe { Spacer(minLength: 50) }
+            VStack(alignment: message.fromMe ? .trailing : .leading, spacing: 2) {
+                HStack {
+                    if message.fromMe { Spacer(minLength: 50) }
+                    Text(message.text)
+                        .font(.system(size: 15))
+                        .foregroundStyle(message.fromMe ? .black : Theme.ink)
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(message.fromMe ? AnyShapeStyle(Theme.goldGradient)
+                                                     : AnyShapeStyle(Color.white.opacity(0.08)))
+                        )
+                        .overlay(alignment: message.fromMe ? .bottomLeading : .bottomTrailing) {
+                            if let reaction = message.reaction {
+                                Text(reaction).font(.system(size: 16))
+                                    .padding(4).background(Circle().fill(Theme.bg))
+                                    .overlay(Circle().strokeBorder(.white.opacity(0.15), lineWidth: 0.6))
+                                    .offset(x: message.fromMe ? -8 : 8, y: 8)
+                                    .transition(.scale.combined(with: .opacity))
+                            }
+                        }
+                        .onTapGesture(count: 2) {
+                            Haptics.selection()
+                            Motion.run(Motion.bouncy) { onReact("❤️") }
+                        }
+                        .onLongPressGesture {
+                            Haptics.tap()
+                            Motion.run(Motion.snap) { showReactionBar.toggle() }
+                        }
+                    if !message.fromMe { Spacer(minLength: 50) }
+                }
+                if showReactionBar { reactionBar }
             }
-            .accessibilityLabel("\(message.fromMe ? "You" : otherName): \(message.text)")
+            .accessibilityLabel("\(message.fromMe ? "You" : otherName): \(message.text)\(message.reaction.map { ", reacted \($0)" } ?? "")")
         }
+    }
+
+    private var reactionBar: some View {
+        HStack(spacing: 6) {
+            if message.fromMe { Spacer(minLength: 50) }
+            ForEach(["❤️", "😂", "😮", "👍", "🔥"], id: \.self) { emoji in
+                Button {
+                    Haptics.selection()
+                    Motion.run(Motion.bouncy) { onReact(emoji); showReactionBar = false }
+                } label: { Text(emoji).font(.system(size: 18)) }
+                    .buttonStyle(.plain)
+            }
+            if !message.fromMe { Spacer(minLength: 50) }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(Capsule().fill(.white.opacity(0.08)))
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+
+/// The animated "…typing" bubble shown while the sim is composing a reply.
+struct TypingBubble: View {
+    @State private var bounce = false
+    var body: some View {
+        HStack {
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle().fill(Theme.inkSoft).frame(width: 6, height: 6)
+                        .offset(y: bounce ? -3 : 0)
+                        .animation(.easeInOut(duration: 0.5).repeatForever().delay(Double(i) * 0.15),
+                                  value: bounce)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white.opacity(0.08)))
+            Spacer(minLength: 50)
+        }
+        .onAppear {
+            guard !UIAccessibility.isReduceMotionEnabled else { return }
+            bounce = true
+        }
+        .accessibilityLabel("Typing")
     }
 }

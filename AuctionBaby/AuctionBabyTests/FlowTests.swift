@@ -216,4 +216,110 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(reloaded.dailyStreak, 1)
         XCTAssertEqual(reloaded.activity.count, store.activity.count)
     }
+
+    // MARK: - Match expiry (Bumble-style urgency)
+
+    func testAcceptedMatchStartsWithA24HourClockAndCorrectSender() {
+        let store = freshStore()
+        registerWoman(store)
+        let bid = store.incomingBids.first { $0.status == .pending }!
+        store.accept(bid)
+        let match = store.matches.first!
+        XCTAssertNotNil(match.expiresAt)
+        XCTAssertFalse(match.isExpired)
+        // She's the current user accepting — her own invite must render as hers.
+        XCTAssertEqual(match.messages.first?.fromMe, true)
+        guard let until = match.expiresAt else { return XCTFail() }
+        XCTAssertGreaterThan(until.timeIntervalSinceNow, 23 * 3600)
+    }
+
+    func testExpiredMatchDetectedAfterWindowLapses() {
+        let store = freshStore()
+        registerWoman(store)
+        store.accept(store.incomingBids.first { $0.status == .pending }!)
+        let idx = store.matches.startIndex
+        store.matches[idx].expiresAt = Date().addingTimeInterval(-60)   // simulate a lapsed clock
+        XCTAssertTrue(store.matches[idx].isExpired)
+    }
+
+    func testSendingClearsTheExpiryClock() {
+        let store = freshStore()
+        registerWoman(store)
+        store.accept(store.incomingBids.first { $0.status == .pending }!)
+        var match = store.matches.first!
+        XCTAssertNotNil(match.expiresAt)
+        store.send("Looking forward to it!", in: match)
+        match = store.matches.first!
+        XCTAssertNil(match.expiresAt, "replying should stop the urgency clock")
+    }
+
+    func testExpiredMatchNeverShowsExpiredOncePhaseAdvances() {
+        var match = Match(bid: Bid(man: Profile(name: "M", age: 30, role: .man, location: "", bio: "", hue: 0.5),
+                                   woman: Profile(name: "W", age: 28, role: .woman, location: "", bio: "", hue: 0.9),
+                                   amount: 200))
+        match.expiresAt = Date().addingTimeInterval(-60)
+        XCTAssertTrue(match.isExpired)
+        match.phase = .dateDone
+        XCTAssertFalse(match.isExpired, "a match that progressed past chatting can't be 'cold'")
+    }
+
+    // MARK: - Message reactions
+
+    @MainActor
+    func testToggleReactionSetsAndTogglesOff() {
+        let store = freshStore()
+        registerWoman(store)
+        store.accept(store.incomingBids.first { $0.status == .pending }!)
+        let match = store.matches.first!
+        let messageID = match.messages.first!.id
+        store.toggleReaction("❤️", on: messageID, in: match)
+        XCTAssertEqual(store.matches.first?.messages.first?.reaction, "❤️")
+        store.toggleReaction("❤️", on: messageID, in: match)
+        XCTAssertNil(store.matches.first?.messages.first?.reaction, "tapping the same emoji again clears it")
+        store.toggleReaction("😂", on: messageID, in: match)
+        XCTAssertEqual(store.matches.first?.messages.first?.reaction, "😂", "a different emoji replaces the old one")
+    }
+
+    // MARK: - Rewind last bid (Reserve+ perk)
+
+    func testRewindRemovesOnlyTheLatestPendingBidAndRefundsGilding() {
+        let store = freshStore()
+        registerMan(store)
+        store.creditGavels(5_000)
+        let women = store.floor.filter { !$0.isCopycat }
+        store.placeBid(on: women[0], amount: 200, note: "")
+        XCTAssertTrue(store.canRewindLastBid(), "a fresh pending bid must be rewindable")
+        store.placeBid(on: women[1], amount: 300, note: "", gilded: true)
+        let walletBeforeRewind = store.wallet
+        XCTAssertTrue(store.canRewindLastBid())
+        store.rewindLastBid()
+        XCTAssertEqual(store.outgoingBids.count, 1, "only the most recent bid is recalled")
+        XCTAssertEqual(store.outgoingBids.first?.woman.id, women[0].id)
+        XCTAssertEqual(store.wallet, walletBeforeRewind + AuctionStore.gildedBidCost, "gilding cost is refunded")
+    }
+
+    func testCannotRewindASettledBid() {
+        let store = freshStore()
+        registerMan(store)
+        store.placeBid(on: store.floor.first { !$0.isCopycat }!, amount: 200, note: "")
+        store.outgoingBids[0].status = .accepted
+        XCTAssertFalse(store.canRewindLastBid())
+    }
+
+    // MARK: - Icebreakers
+
+    func testIcebreakersDeriveFromPromptsAndInterests() {
+        var p = Profile(name: "W", age: 28, role: .woman, location: "", bio: "", hue: 0.9)
+        p.prompts = [Prompt(question: "My simple pleasures", answer: "Sunday markets and cold brew")]
+        p.interests = ["Art"]
+        let lines = p.icebreakers
+        XCTAssertFalse(lines.isEmpty)
+        XCTAssertLessThanOrEqual(lines.count, 3)
+        XCTAssertTrue(lines.contains { $0.contains("Sunday markets and cold brew") })
+    }
+
+    func testIcebreakersNeverEmptyForABareProfile() {
+        let bare = Profile(name: "Bare", age: 30, role: .man, location: "", bio: "", hue: 0.5)
+        XCTAssertFalse(bare.icebreakers.isEmpty)
+    }
 }

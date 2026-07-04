@@ -9,6 +9,7 @@ enum PaywallTrigger {
     case bidLimit            // out of free live bids
     case filters             // tried a premium filter
     case readReceipts        // wanted Seen/Delivered
+    case rewind              // tried to undo a bid without Reserve+
     case general             // browsed in from the store
 
     var headline: String {
@@ -17,6 +18,7 @@ enum PaywallTrigger {
         case .bidLimit: return "Out of free bids.\nThe floor doesn't wait."
         case .filters: return "Cut the noise.\nBid only on your type."
         case .readReceipts: return "She read it.\nKnow the moment she does."
+        case .rewind: return "Bid too soon?\nTake it back."
         case .general: return "Win the bid\nyou can't see."
         }
     }
@@ -27,6 +29,7 @@ enum PaywallTrigger {
         case .bidLimit: return "hand.raised.slash.fill"
         case .filters: return "slider.horizontal.3"
         case .readReceipts: return "checkmark.message.fill"
+        case .rewind: return "arrow.uturn.backward.circle.fill"
         case .general: return "crown.fill"
         }
     }
@@ -36,7 +39,7 @@ enum PaywallTrigger {
     var suggestedTier: StoreKitService.PassTier {
         switch self {
         case .readReceipts: return .blackcard
-        case .filters: return .reserve
+        case .filters, .rewind: return .reserve
         default: return .paddle
         }
     }
@@ -66,6 +69,7 @@ struct PaywallView: View {
         ("Reveal her reserve price", .reserve),
         ("Auto-rebid to stay on top", .reserve),
         ("Advanced filters (verified-only, interests)", .reserve),
+        ("Rewind your last bid", .reserve),
         ("Read receipts — Seen / Delivered", .blackcard),
         ("Priority placement in every inbox", .blackcard),
     ]

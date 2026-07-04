@@ -40,6 +40,8 @@ final class AuctionStore: ObservableObject {
     /// Drives the full-screen "SOLD!" match celebration. Set when a bid is
     /// accepted; cleared when the overlay is dismissed.
     @Published var celebration: MatchCelebration?
+    /// Which match currently shows the "…typing" bubble, if any.
+    @Published var typingMatchID: UUID?
 
     var isRegistered: Bool { role != nil }
 
@@ -340,8 +342,9 @@ final class AuctionStore: ObservableObject {
         // The woman always sends the first invite (per the brief).
         var match = Match(bid: accepted, phase: .chatting)
         match.messages = [
-            ChatMessage(fromMe: false, text: "You're in. \(accepted.man.name) — let's set a date. 🍸", isSystem: false),
+            ChatMessage(fromMe: true, text: "You're in. \(accepted.man.name) — let's set a date. 🍸", isSystem: false),
         ]
+        match.expiresAt = Date().addingTimeInterval(24 * 3600)
         matches.insert(match, at: 0)
         Haptics.success()
         toastFlash(accepted.qualifiesForMasterpiece
@@ -410,9 +413,39 @@ final class AuctionStore: ObservableObject {
         guard !trimmed.isEmpty else { return }
         matches[idx].messages.append(ChatMessage(fromMe: true, text: trimmed))
         matches[idx].seenByOther = false   // reset; they haven't read the new one yet
+        matches[idx].expiresAt = nil       // she/he replied — the urgency clock stops
         save()
         scheduleSeen(matchID: match.id)
         scheduleCounterpartReply(matchID: match.id)
+    }
+
+    /// Double-tap a bubble to react (iMessage-style). Toggles off if it's
+    /// already that emoji, otherwise sets/replaces the reaction.
+    func toggleReaction(_ emoji: String, on messageID: UUID, in match: Match) {
+        guard let mIdx = matches.firstIndex(where: { $0.id == match.id }),
+              let msgIdx = matches[mIdx].messages.firstIndex(where: { $0.id == messageID }) else { return }
+        let current = matches[mIdx].messages[msgIdx].reaction
+        matches[mIdx].messages[msgIdx].reaction = (current == emoji) ? nil : emoji
+        Haptics.selection()
+        save()
+    }
+
+    /// Undo your most recent live bid — a Reserve+/Black Card Pass perk. Only
+    /// the single latest pending bid can be recalled, and only before she's
+    /// decided; her simulated decision task checks the array by id, so
+    /// removing it here makes any in-flight decision a silent no-op.
+    func canRewindLastBid() -> Bool {
+        guard let latest = outgoingBids.first else { return false }
+        return latest.status == .pending
+    }
+
+    func rewindLastBid() {
+        guard canRewindLastBid(), let latest = outgoingBids.first else { return }
+        if latest.gilded { wallet += Self.gildedBidCost }   // refund the Gavel spend
+        outgoingBids.removeFirst()
+        Haptics.tap()
+        toastFlash("Bid on \(latest.woman.name) recalled — \(Money.compact(latest.amount)) rewound.")
+        save()
     }
 
     /// The counterpart "reads" your message a beat before replying — drives the
@@ -605,6 +638,7 @@ final class AuctionStore: ObservableObject {
                     ? "Hey you 😊 so glad you bid. Quick thing — I ask for a small deposit before I give out my number. It just filters out the games, hope you get it 💕"
                     : "Okay, you win. \(bid.woman.name) here — where are you taking me?"
                 match.messages = [ChatMessage(fromMe: false, text: opener)]
+                match.expiresAt = Date().addingTimeInterval(24 * 3600)
                 self.matches.insert(match, at: 0)
                 Haptics.success()
                 self.toastFlash("\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid!")
@@ -627,20 +661,25 @@ final class AuctionStore: ObservableObject {
     }
 
     private func scheduleSuitorReply(matchID: UUID) {
+        typingMatchID = matchID
         after(Double.random(in: 1.8...3.0)) { [weak self] in
             guard let self, let idx = self.matches.firstIndex(where: { $0.id == matchID }) else { return }
+            if self.typingMatchID == matchID { self.typingMatchID = nil }
             let line = self.matches[idx].bid.onCopycat
                 ? "Did you see my message about the deposit? It's a small thing, promise 😘"
                 : ["Thursday works for me — I know a place.", "Looking forward to this, honestly.",
                    "I made us a reservation. Don't be late.", "Wear something you can dance in."].randomElement()!
             self.matches[idx].messages.append(ChatMessage(fromMe: false, text: line))
+            self.matches[idx].expiresAt = nil   // the conversation is alive — clock stops
             self.save()
         }
     }
 
     private func scheduleCounterpartReply(matchID: UUID) {
+        typingMatchID = matchID
         after(Double.random(in: 1.4...2.6)) { [weak self] in
             guard let self, let idx = self.matches.firstIndex(where: { $0.id == matchID }) else { return }
+            if self.typingMatchID == matchID { self.typingMatchID = nil }
             guard self.matches[idx].phase == .chatting else { return }
             let copycat = self.matches[idx].bid.onCopycat
             let lines = copycat
@@ -649,6 +688,7 @@ final class AuctionStore: ObservableObject {
                 : ["Looking forward to it.", "Okay tell me your worst date story — I'll trade you mine.",
                    "Counting down, not going to lie.", "You're funnier over text than your profile let on."]
             self.matches[idx].messages.append(ChatMessage(fromMe: false, text: lines.randomElement()!))
+            self.matches[idx].expiresAt = nil   // the conversation is alive — clock stops
             self.save()
         }
     }

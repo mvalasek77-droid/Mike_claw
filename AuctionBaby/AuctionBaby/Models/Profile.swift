@@ -436,4 +436,22 @@ extension Profile {
         }
         return seen
     }
+
+    /// Suggested opening lines, generated from this profile's own prompts and
+    /// interests — tapped to fill (not auto-send) the composer on a cold match,
+    /// so nobody has to open with a bare "hey".
+    var icebreakers: [String] {
+        var lines: [String] = []
+        if let p = prompts.first {
+            lines.append("Okay, \"\(p.answer)\" — I need the full story on that.")
+        }
+        if prompts.count > 1 {
+            lines.append("Your answer to \"\(prompts[1].question)\" got me. Tell me more?")
+        }
+        if let interest = interests.first {
+            lines.append("Saw you're into \(interest.lowercased()) — good, me too. Where do you go?")
+        }
+        if lines.isEmpty { lines.append("So — where are we actually going?") }
+        return Array(lines.prefix(3))
+    }
 }

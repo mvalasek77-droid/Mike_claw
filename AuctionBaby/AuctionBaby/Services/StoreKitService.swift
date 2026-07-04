@@ -63,7 +63,7 @@ final class StoreKitService: ObservableObject {
         var perks: [String] {
             switch self {
             case .paddle: return ["Unlimited bids", "See if you're the top bid", "1 Boost / week"]
-            case .reserve: return ["Everything in Paddle", "Reveal her reserve price", "Auto-rebid to stay on top"]
+            case .reserve: return ["Everything in Paddle", "Reveal her reserve price", "Auto-rebid to stay on top", "Rewind your last bid"]
             case .blackcard: return ["Everything in Reserve", "Priority placement on every lot", "Read receipts"]
             }
         }

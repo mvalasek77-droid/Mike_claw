@@ -58,18 +58,31 @@ struct MatchRow: View {
                 VStack(alignment: .trailing, spacing: 6) {
                     Text(Money.compact(match.bid.amount))
                         .font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
-                    PhaseTag(phase: match.phase)
+                    if let until = match.expiresAt, !match.isExpired {
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock.fill").font(.system(size: 8, weight: .bold))
+                            Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
+                                .monospacedDigit()
+                        }
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Theme.warning)
+                    } else {
+                        PhaseTag(phase: match.phase, expired: match.isExpired)
+                    }
                 }
             }
             .padding(14)
         }
+        .opacity(match.isExpired ? 0.55 : 1)
     }
 }
 
 struct PhaseTag: View {
     let phase: MatchPhase
+    var expired: Bool = false
     var body: some View {
         let (text, color): (String, Color) = {
+            if expired { return ("Cold", Theme.inkFaint) }
             switch phase {
             case .chatting: return ("Chatting", Theme.success)
             case .dateDone: return ("Review", Theme.warning)
