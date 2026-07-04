@@ -509,6 +509,7 @@ final class AuctionStore: ObservableObject {
         matches[idx].womanReviewedMan = true
 
         let showcaseBefore = me.showcaseCredit
+        let tierBefore = me.artTier
         // His review of her → grows *her* Showcase score with simulated traits.
         var traits: [String: Int] = [:]
         for t in Trait.allCases { traits[t.rawValue] = Int.random(in: 4...5) }
@@ -533,6 +534,12 @@ final class AuctionStore: ObservableObject {
             log(.reviewReceived, "\(bid.man.name) reviewed your date.")
         }
         creditPing(before: showcaseBefore)
+        // Ladder climb — the reward moment for the honors system.
+        if me.artTier > tierBefore && me.artTier != .masterpiece {
+            Haptics.success()
+            toastFlash("🖼 You've been rehung: you're now a \(me.artTier.title).")
+            log(.honors, "Climbed the honors ladder — now a \(me.artTier.title).")
+        }
         closeMatch(idx)
         save()
     }
