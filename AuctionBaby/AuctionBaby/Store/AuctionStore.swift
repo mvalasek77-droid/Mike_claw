@@ -251,13 +251,15 @@ final class AuctionStore: ObservableObject {
         outgoingBids.insert(bid, at: 0)
 
         if woman.isCopycat {
-            // The reveal: the moment you bid on a Copycat you're told, the hit
-            // lands, and it's on your record. That's the game.
             let before = me.auctionCredit
             me.copycatBids += 1
             Haptics.warning()
-            celebrate(with: woman, amount: amount, copycat: true, masterpiece: false)
-            log(.bidDeclined, "You bid on \(woman.name) — an AI Copycat. Your Auction Credit took the hit.")
+            celebrate(with: woman, amount: amount, copycat: true, masterpiece: woman.masterpiece)
+            if woman.masterpiece {
+                log(.bidDeclined, "You bid \(Money.compact(amount)) on \(woman.name) — the Masterpiece was never real. Your credit took the hit.")
+            } else {
+                log(.bidDeclined, "You bid on \(woman.name) — she was AI. Your Auction Credit took the hit.")
+            }
             creditPing(before: before)
         } else {
             Haptics.commit()

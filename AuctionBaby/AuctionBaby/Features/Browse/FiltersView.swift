@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Floor filters. Age range and "hide copycats" are free; verified-only and
-/// interest matching are a Pass perk — locked rows that open the store.
+/// Floor filters. Age range is free; verified-only and interest matching
+/// are a Pass perk — locked rows that open the store.
 struct FiltersView: View {
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
@@ -15,12 +15,6 @@ struct FiltersView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     ageCard
-                    GlassCard(title: "Show", icon: "eye.fill") {
-                        Toggle(isOn: f.hideCopycats.animation(Motion.snap)) {
-                            Label("Hide AI Copycats", systemImage: "sparkles")
-                                .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
-                        }.tint(Theme.gold)
-                    }
                     premiumCard
                     Spacer(minLength: 24)
                 }

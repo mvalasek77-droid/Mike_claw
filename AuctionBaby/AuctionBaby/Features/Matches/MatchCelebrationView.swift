@@ -61,12 +61,21 @@ struct MatchCelebrationView: View {
 
                 if celebration.otherCopycat {
                     VStack(spacing: 8) {
-                        Text("\(celebration.otherName) is an AI Copycat.")
-                            .font(.system(size: 16, weight: .heavy, design: .serif))
-                            .foregroundStyle(Theme.ink)
-                        Text("You just bid on a fake — it's on your record and your Auction Credit took the hit. No Gavels were spent. Study the floor closer next time.")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
+                        if celebration.masterpiece {
+                            Text("The Masterpiece was never real.")
+                                .font(.system(size: 16, weight: .heavy, design: .serif))
+                                .foregroundStyle(Theme.ink)
+                            Text("\(celebration.otherName) looked like perfection — because she was designed to. Your Auction Credit took the hit. The floor rewards judgment, not ambition.")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
+                        } else {
+                            Text("\(celebration.otherName) wasn't real.")
+                                .font(.system(size: 16, weight: .heavy, design: .serif))
+                                .foregroundStyle(Theme.ink)
+                            Text("She was AI — it's on your record and your Auction Credit took the hit. No Gavels were spent. Study the floor closer next time.")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
+                        }
                     }
                     .padding(.horizontal, 26)
                 } else {

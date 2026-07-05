@@ -101,12 +101,11 @@ struct OutgoingBidRow: View {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
                     AvatarCircle(name: bid.woman.name, hue: bid.woman.hue, photoName: bid.woman.photoName, size: 48,
-                                 copycat: bid.woman.isCopycat, revealed: true, copycatStyle: bid.woman.copycatStyle)
+                                 revealed: true)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Text(bid.woman.name).font(.system(size: 16, weight: .heavy, design: .serif))
                                 .foregroundStyle(Theme.ink)
-                            if bid.woman.isCopycat { CopycatTag(compact: true) }
                         }
                         Text(Money.compact(bid.amount)).font(.system(size: 13, weight: .heavy, design: .rounded))
                             .foregroundStyle(Theme.gold)

@@ -174,8 +174,8 @@ struct FloorCard: View {
         GlassSurface(corner: Theme.cornerXL) {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .topLeading) {
-                    AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName, copycat: woman.isCopycat,
-                               copycatStyle: woman.copycatStyle, corner: Theme.cornerXL)
+                    AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName,
+                               corner: Theme.cornerXL)
                         .frame(height: 360)
 
                     if woman.artTier > .freshCanvas {

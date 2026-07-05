@@ -43,13 +43,13 @@ struct MatchRow: View {
     var body: some View {
         GlassSurface(corner: Theme.cornerL) {
             HStack(spacing: 12) {
-                AvatarCircle(name: other.name, hue: other.hue, photoName: other.photoName, size: 56, copycat: other.isCopycat, revealed: true, copycatStyle: other.copycatStyle)
+                AvatarCircle(name: other.name, hue: other.hue, photoName: other.photoName, size: 56,
+                             revealed: true)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(other.name).font(.system(size: 16, weight: .heavy, design: .serif))
                             .foregroundStyle(Theme.ink)
                         if other.verified { VerifiedBadge(size: 13) }
-                        if other.isCopycat { CopycatTag(compact: true) }
                     }
                     Text(match.messages.last?.text ?? "Say hello")
                         .font(.system(size: 13)).foregroundStyle(Theme.inkSoft).lineLimit(1)

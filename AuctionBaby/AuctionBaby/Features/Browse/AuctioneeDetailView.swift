@@ -13,8 +13,8 @@ struct AuctioneeDetailView: View {
         ScrollView {
             VStack(spacing: 16) {
                 ZStack(alignment: .bottomLeading) {
-                    AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName, copycat: woman.isCopycat,
-                               copycatStyle: woman.copycatStyle, corner: Theme.cornerXL)
+                    AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName,
+                               corner: Theme.cornerXL)
                         .frame(height: 380)
                     LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
                         .frame(height: 380).allowsHitTesting(false)

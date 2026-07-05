@@ -10,6 +10,31 @@ enum SampleData {
 
     static func floor() -> [Profile] {
         [
+            // The Masterpiece — the only one. She looks real, reads real, and
+            // sits at the top of the floor with a $1M starting bid. She is AI;
+            // the bidder finds out only after he commits, and his credit takes
+            // the hit. The penalty for chasing perfection.
+            Profile(name: "Serena Voss", age: 28, role: .woman, location: "Upper East Side, New York",
+                    bio: "Private art dealer. I split the year between New York and wherever the collection takes me. I like quiet dinners, old buildings, and men who don't need to explain their watch.",
+                    hue: 0.85,
+                    photoName: "photo-serena",
+                    prompts: [
+                        Prompt(question: "The way to win me over is", answer: "Know what you want and don't apologize for it."),
+                        Prompt(question: "Together we could", answer: "Close a gallery and open the wine they keep behind the counter."),
+                    ],
+                    interests: ["Art", "Wine", "Travel", "Design", "Film"],
+                    reviews: [
+                        DateReview(authorName: "Alexander", authorHue: 0.15, stars: 5,
+                                   text: "The most captivating woman I've ever sat across from. She made three hours feel like thirty minutes.",
+                                   traits: [Trait.fun.rawValue: 5, Trait.interesting.rawValue: 5,
+                                            Trait.social.rawValue: 5, Trait.polite.rawValue: 5,
+                                            Trait.genuine.rawValue: 5],
+                                   interestCategories: ["Private galleries", "Fine dining"]),
+                    ],
+                    startingBid: 1_000_000,
+                    isCopycat: true, copycatStyle: .glam,
+                    masterpiece: true),
+
             Profile(name: "Mara Quinn", age: 27, role: .woman, location: "SoHo, New York",
                     bio: "Gallery curator. I spend my weekends at openings and my weeknights pretending I'll stop buying art books.",
                     hue: 0.92,
@@ -61,8 +86,6 @@ enum SampleData {
                     interests: ["Startups", "Fitness", "Food", "Design"],
                     startingBid: 500),
 
-            // Copycat — AI-generated. Content reads natural; the small AI chip
-            // on her card and profile carries the disclosure.
             Profile(name: "Bella Rose", age: 23, role: .woman, location: "Miami Beach",
                     bio: "Pool days, boat weekends, and a standing reservation at my favorite rooftop. Come keep up.",
                     hue: 0.95,
@@ -93,7 +116,6 @@ enum SampleData {
                     ],
                     interests: ["Food", "Music", "Art", "Dogs"]),
 
-            // Copycat — AI-generated (glam styling).
             Profile(name: "Crystal Lux", age: 24, role: .woman, location: "Las Vegas",
                     bio: "Cocktail dresses over casual, always. If you can't decide where to take me, I already know how the date ends.",
                     hue: 0.78,
@@ -104,7 +126,6 @@ enum SampleData {
                     interests: ["Nightlife", "Travel", "Design"],
                     isCopycat: true, copycatStyle: .glam),
 
-            // Copycat — AI-generated (yoga styling).
             Profile(name: "Jade Rivera", age: 25, role: .woman, location: "Tulum",
                     bio: "Yoga teacher splitting time between Tulum and wherever the next retreat is. Sunrise person, unapologetically.",
                     hue: 0.80,
@@ -115,7 +136,6 @@ enum SampleData {
                     interests: ["Fitness", "Travel", "Reading"],
                     isCopycat: true, copycatStyle: .yoga),
 
-            // Copycat — AI-generated (beach styling).
             Profile(name: "Amber Skye", age: 24, role: .woman, location: "Malibu",
                     bio: "Grew up on this coast and never left. Golden hour is a personality trait, I've accepted it.",
                     hue: 0.07,
@@ -124,6 +144,446 @@ enum SampleData {
                         Prompt(question: "Best first date", answer: "Tacos on the beach, then see where the night goes."),
                     ],
                     interests: ["Travel", "Fitness", "Music"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Tiana Brooks", age: 27, role: .woman, location: "Georgetown, DC",
+                    bio: "Brand strategist who accidentally became a weekend DJ. I own too many blazers and not enough patience for small talk.",
+                    hue: 0.18,
+                    photoName: "photo-tiana",
+                    prompts: [
+                        Prompt(question: "I'm looking for", answer: "Someone who knows what they want and orders first."),
+                    ],
+                    interests: ["Music", "Food", "Design", "Startups"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Lucia Reyes", age: 25, role: .woman, location: "Ibiza",
+                    bio: "Summers in Europe, winters wherever the sun is. I collect wine, sunsets, and men who can keep up.",
+                    hue: 0.02,
+                    photoName: "photo-lucia",
+                    prompts: [
+                        Prompt(question: "My ideal date", answer: "Somewhere with a view and a bottle we'll remember. You pick the place."),
+                    ],
+                    interests: ["Travel", "Wine", "Nightlife", "Art"],
+                    isCopycat: true, copycatStyle: .poolside),
+
+            Profile(name: "Elena Marsh", age: 26, role: .woman, location: "Pacific Palisades, LA",
+                    bio: "Interior designer. I notice things — the way a room is lit, where you sit, whether you hold the door. Details are the whole thing.",
+                    hue: 0.62,
+                    photoName: "photo-elena",
+                    prompts: [
+                        Prompt(question: "Green flags I look for", answer: "You read something this week. You have a plant that's still alive."),
+                    ],
+                    interests: ["Design", "Art", "Food", "Reading"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Sophie Hale", age: 28, role: .woman, location: "Nolita, New York",
+                    bio: "PR director. Half my wardrobe is black, the other half is statement coats. I leave parties early and restaurants late.",
+                    hue: 0.14,
+                    photoName: "photo-sophie",
+                    prompts: [
+                        Prompt(question: "Together we could", answer: "Split a cab uptown and argue about where to eat next."),
+                    ],
+                    interests: ["Food", "Film", "Design", "Wine"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Zara Collins", age: 24, role: .woman, location: "Harlem, New York",
+                    bio: "Freelance photographer. I shoot everything but will only eat at places I've already been twice. Creature of habit, endlessly curious.",
+                    hue: 0.35,
+                    photoName: "photo-zara",
+                    prompts: [
+                        Prompt(question: "My love language", answer: "Showing up. On time. With coffee. Every single time."),
+                    ],
+                    interests: ["Art", "Music", "Food", "Travel"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Anaya Mehta", age: 27, role: .woman, location: "West Village, New York",
+                    bio: "Product lead at a startup nobody's heard of yet. Weekend mornings are for the farmers market, not my phone.",
+                    hue: 0.58,
+                    photoName: "photo-anaya",
+                    prompts: [
+                        Prompt(question: "I geek out on", answer: "Skincare ingredients, behavioral economics, and making the perfect dal."),
+                    ],
+                    interests: ["Startups", "Food", "Fitness", "Reading"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Fiona Byrne", age: 26, role: .woman, location: "Savannah, Georgia",
+                    bio: "Garden designer. I grow things for a living and ruin book spines for fun. If you can't sit still for two hours over dinner, we won't work.",
+                    hue: 0.04,
+                    photoName: "photo-fiona",
+                    prompts: [
+                        Prompt(question: "My simple pleasures", answer: "A used bookstore, an iced coffee, and nowhere I have to be."),
+                    ],
+                    interests: ["Reading", "Food", "Art", "Dogs"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Camille Adler", age: 32, role: .woman, location: "Gold Coast, Chicago",
+                    bio: "Wine importer. I've been to more vineyards than restaurants but I still can't say no to a good tasting menu.",
+                    hue: 0.12,
+                    photoName: "photo-camille",
+                    prompts: [
+                        Prompt(question: "Unusual skills", answer: "I can blind-taste a Burgundy from a Bordeaux. And I parallel park on the first try."),
+                    ],
+                    interests: ["Wine", "Travel", "Food", "Film"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Mei Lin Chen", age: 25, role: .woman, location: "DUMBO, Brooklyn",
+                    bio: "Architect. I think in floor plans and talk in references nobody gets. Looking for someone who asks what I'm reading.",
+                    hue: 0.68,
+                    photoName: "photo-mei",
+                    prompts: [
+                        Prompt(question: "Dating me is like", answer: "A building with good bones — worth the renovation."),
+                    ],
+                    interests: ["Design", "Art", "Reading", "Film"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Nikki West", age: 29, role: .woman, location: "Newport Beach, CA",
+                    bio: "Charter broker. Weekdays I sell the boat, weekends I'm on it. If the plan doesn't involve water, I'm already bored.",
+                    hue: 0.54,
+                    photoName: "photo-nikki",
+                    prompts: [
+                        Prompt(question: "Best first date", answer: "Sunset sail. No agenda, no timeline, just the ocean and whatever we're drinking."),
+                    ],
+                    interests: ["Travel", "Fitness", "Nightlife", "Wine"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Brooke Taylor", age: 30, role: .woman, location: "Scottsdale, Arizona",
+                    bio: "Real estate. I flip houses and friendships — both need good foundation. Big energy, bigger laugh, zero tolerance for games.",
+                    hue: 0.10,
+                    photoName: "photo-brooke",
+                    prompts: [
+                        Prompt(question: "The way to win me over is", answer: "Pick the restaurant, pick me up, and don't check your phone once."),
+                    ],
+                    interests: ["Food", "Fitness", "Travel", "Dogs"],
+                    isCopycat: true, copycatStyle: .poolside),
+
+            Profile(name: "Harper Lane", age: 26, role: .woman, location: "Byron Bay, Australia",
+                    bio: "Surf instructor half the year, content creator the other half. I'll outswim you and outeat you — and smile the whole time.",
+                    hue: 0.05,
+                    photoName: "photo-harper",
+                    prompts: [
+                        Prompt(question: "My ideal date", answer: "Beach, tacos, sunset. In that order. Bonus if you can keep up in the water."),
+                    ],
+                    interests: ["Fitness", "Travel", "Food", "Music"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Dana Walsh", age: 33, role: .woman, location: "Tribeca, New York",
+                    bio: "Pilates studio owner. My mornings start at 5:30 and I wouldn't have it any other way. Looking for someone who matches the energy.",
+                    hue: 0.90,
+                    photoName: "photo-dana",
+                    prompts: [
+                        Prompt(question: "Green flags I look for", answer: "He has a morning routine that doesn't start with his phone."),
+                    ],
+                    interests: ["Fitness", "Food", "Design", "Travel"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Chloe Park", age: 28, role: .woman, location: "Charleston, South Carolina",
+                    bio: "Event planner. I turn empty rooms into something people remember. Outside of work I'm barefoot on a porch with a book.",
+                    hue: 0.22,
+                    photoName: "photo-chloe",
+                    prompts: [
+                        Prompt(question: "My simple pleasures", answer: "Sweet tea, a good porch, and a dog that greets me at the door."),
+                    ],
+                    interests: ["Design", "Food", "Reading", "Dogs"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Kendall Marsh", age: 27, role: .woman, location: "Laguna Beach, CA",
+                    bio: "Jewelry designer. I make things with my hands, collect sea glass, and take the long way everywhere. The beach is my office.",
+                    hue: 0.07,
+                    photoName: "photo-kendall",
+                    prompts: [
+                        Prompt(question: "Together we could", answer: "Drive down the coast with no plan and stop wherever looks good."),
+                    ],
+                    interests: ["Art", "Travel", "Design", "Fitness"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Riley Stone", age: 29, role: .woman, location: "Nantucket, Massachusetts",
+                    bio: "Cookbook author. I test recipes until midnight and wake up craving coffee and feedback. My kitchen is my favorite room.",
+                    hue: 0.16,
+                    photoName: "photo-riley",
+                    prompts: [
+                        Prompt(question: "I geek out on", answer: "Farmers markets, sourdough timers, and restaurants that don't have a website."),
+                    ],
+                    interests: ["Food", "Reading", "Travel", "Wine"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Lexi Monroe", age: 25, role: .woman, location: "Palm Beach, Florida",
+                    bio: "Luxury travel consultant. I book the trips everyone posts about, then take my own with no itinerary. Contradiction is my brand.",
+                    hue: 0.06,
+                    photoName: "photo-lexi",
+                    prompts: [
+                        Prompt(question: "Best travel story", answer: "Got bumped to first class in Rome, ended up at a stranger's vineyard for dinner. Said yes to everything that week."),
+                    ],
+                    interests: ["Travel", "Wine", "Food", "Nightlife"],
+                    isCopycat: true, copycatStyle: .poolside),
+
+            Profile(name: "Paige Nolan", age: 31, role: .woman, location: "Calabasas, CA",
+                    bio: "Wellness brand founder. I built my company poolside and I'm not apologizing for it. Work-life balance is just life.",
+                    hue: 0.82,
+                    photoName: "photo-paige",
+                    prompts: [
+                        Prompt(question: "Dating me is like", answer: "A five-star retreat — intentional, restorative, and you'll leave better than you came in."),
+                    ],
+                    interests: ["Fitness", "Startups", "Travel", "Design"],
+                    isCopycat: true, copycatStyle: .poolside),
+
+            Profile(name: "Sienna Clarke", age: 27, role: .woman, location: "Santa Barbara, CA",
+                    bio: "Botanical illustrator. I spend most of my time outside, most of my money on plants, and most of my energy on people who deserve it.",
+                    hue: 0.38,
+                    photoName: "photo-sienna",
+                    prompts: [
+                        Prompt(question: "My happy place", answer: "Any garden, anywhere. The wilder the better."),
+                    ],
+                    interests: ["Art", "Reading", "Dogs", "Food"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Hayley James", age: 30, role: .woman, location: "Savannah, Georgia",
+                    bio: "Restaurant owner. Sunday brunch is my religion and Saturday night is my confessional. I laugh loud and cook louder.",
+                    hue: 0.20,
+                    photoName: "photo-hayley",
+                    prompts: [
+                        Prompt(question: "The way to win me over is", answer: "Sit at the bar, order something interesting, and make me laugh before the food comes."),
+                    ],
+                    interests: ["Food", "Wine", "Music", "Travel"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Maya Santos", age: 26, role: .woman, location: "South Beach, Miami",
+                    bio: "Marine biologist who somehow ends up at the beach even on days off. Science by day, salsa by night. I contain multitudes.",
+                    hue: 0.48,
+                    photoName: "photo-maya",
+                    prompts: [
+                        Prompt(question: "I'm weirdly good at", answer: "Identifying fish, dancing in heels, and leaving the party at exactly the right time."),
+                    ],
+                    interests: ["Travel", "Fitness", "Music", "Nightlife"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Autumn Reed", age: 28, role: .woman, location: "Asheville, North Carolina",
+                    bio: "Trail runner and part-time park ranger. I named myself after a season and lived up to it — warm, colorful, and gone too fast.",
+                    hue: 0.09,
+                    photoName: "photo-autumn",
+                    prompts: [
+                        Prompt(question: "My ideal date", answer: "A trail at golden hour, then wherever the nearest firepit is. Bring layers."),
+                    ],
+                    interests: ["Fitness", "Travel", "Dogs", "Reading"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Cassidy Blake", age: 27, role: .woman, location: "Cabo San Lucas",
+                    bio: "Yacht broker. I sell the dream and live it on weekends. If you can't handle a little salt water, we're not going to work.",
+                    hue: 0.03,
+                    photoName: "photo-cassidy",
+                    prompts: [
+                        Prompt(question: "Together we could", answer: "Take the boat out, anchor somewhere nobody else is, and forget what day it is."),
+                    ],
+                    interests: ["Travel", "Nightlife", "Wine", "Fitness"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Nia Jordan", age: 29, role: .woman, location: "Arts District, Los Angeles",
+                    bio: "Muralist and fitness coach. I paint walls by day and teach spin by evening. My arms are stronger than my patience for flakes.",
+                    hue: 0.72,
+                    photoName: "photo-nia",
+                    prompts: [
+                        Prompt(question: "Green flags I look for", answer: "Shows up when he says he will. Knows what he wants for dinner. Has hobbies that aren't screens."),
+                    ],
+                    interests: ["Art", "Fitness", "Music", "Food"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Yuki Tanaka", age: 26, role: .woman, location: "Santa Monica, CA",
+                    bio: "Yoga instructor and breathwork facilitator. Sunrise on the pier is my temple. I move slow on purpose and it drives the right people crazy.",
+                    hue: 0.76,
+                    photoName: "photo-yuki",
+                    prompts: [
+                        Prompt(question: "My love language", answer: "Presence. Put the phone away and just be here with me."),
+                    ],
+                    interests: ["Fitness", "Travel", "Reading", "Music"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Charlotte Fox", age: 31, role: .woman, location: "Greenwich, Connecticut",
+                    bio: "Antiques dealer. I know what things are worth and I don't negotiate on the ones that matter. Weekends are for estate sales and old wine.",
+                    hue: 0.15,
+                    photoName: "photo-charlotte",
+                    prompts: [
+                        Prompt(question: "Unusual skills", answer: "I can date a piece of furniture from across the room and pick the best bottle on any list."),
+                    ],
+                    interests: ["Art", "Wine", "Design", "Film"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Jordan Obi", age: 27, role: .woman, location: "Joshua Tree, CA",
+                    bio: "Adventure photographer. I chase light for a living and silence for fun. The desert taught me patience — dates should too.",
+                    hue: 0.30,
+                    photoName: "photo-jordan",
+                    prompts: [
+                        Prompt(question: "Best travel story", answer: "Camped alone in the desert for a week shooting stars. Best photos I've ever taken. Worst cell service I've ever had."),
+                    ],
+                    interests: ["Art", "Travel", "Fitness", "Reading"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Lily Tran", age: 25, role: .woman, location: "Kitsilano, Vancouver",
+                    bio: "UX designer who walks everywhere. Cherry blossom season is my Super Bowl. I notice the details you think nobody sees.",
+                    hue: 0.88,
+                    photoName: "photo-lily",
+                    prompts: [
+                        Prompt(question: "I geek out on", answer: "Typography, city planning, and the way light changes between 5 and 6 PM."),
+                    ],
+                    interests: ["Design", "Food", "Art", "Music"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Hana Kim", age: 24, role: .woman, location: "Queen Anne, Seattle",
+                    bio: "Dance teacher and part-time barista. I know everyone's order and nobody's last name. My neighborhood is my whole world.",
+                    hue: 0.64,
+                    photoName: "photo-hana",
+                    prompts: [
+                        Prompt(question: "My simple pleasures", answer: "A matcha latte, a park bench, and watching dogs I don't own play fetch."),
+                    ],
+                    interests: ["Music", "Food", "Fitness", "Dogs"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Grace Ashford", age: 30, role: .woman, location: "Annapolis, Maryland",
+                    bio: "Sailing instructor. I grew up on the water and I still haven't found a reason to leave it. Low maintenance, high standards.",
+                    hue: 0.45,
+                    photoName: "photo-grace",
+                    prompts: [
+                        Prompt(question: "Dating me is like", answer: "A day on the bay — calm on the surface, more going on underneath than you'd expect."),
+                    ],
+                    interests: ["Travel", "Fitness", "Reading", "Dogs"],
+                    isCopycat: true, copycatStyle: .glam),
+
+            Profile(name: "Destiny Moore", age: 28, role: .woman, location: "Sedona, Arizona",
+                    bio: "Personal trainer and hiking guide. Golden hour is my office. I'll push you up the mountain and make you glad I did.",
+                    hue: 0.94,
+                    photoName: "photo-destiny",
+                    prompts: [
+                        Prompt(question: "My ideal date", answer: "Sunrise hike, then breakfast at the place only locals know. You carry the water, I'll pick the trail."),
+                    ],
+                    interests: ["Fitness", "Travel", "Food", "Music"],
+                    isCopycat: true, copycatStyle: .yoga),
+
+            Profile(name: "Stella Cruz", age: 27, role: .woman, location: "Sayulita, Mexico",
+                    bio: "Surf photographer. I chase golden hour the way some people chase promotions. Salt water runs through everything I do.",
+                    hue: 0.32,
+                    photoName: "photo-stella",
+                    prompts: [
+                        Prompt(question: "Together we could", answer: "Catch the last wave, rinse off, and eat tacos with sandy feet."),
+                    ],
+                    interests: ["Art", "Travel", "Fitness", "Music"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Britt Larson", age: 25, role: .woman, location: "Mission Beach, San Diego",
+                    bio: "Physical therapist who spends every lunch break at the beach. Life's too short for bad vibes and long commutes.",
+                    hue: 0.01,
+                    photoName: "photo-britt",
+                    prompts: [
+                        Prompt(question: "My happy place", answer: "A towel, a good playlist, and absolutely nowhere I need to be."),
+                    ],
+                    interests: ["Fitness", "Music", "Food", "Travel"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Nova Ray", age: 26, role: .woman, location: "Playa del Carmen, Mexico",
+                    bio: "Freediver and ocean conservationist. I hold my breath for a living and speak my mind for free. The sea is my therapist.",
+                    hue: 0.50,
+                    photoName: "photo-nova",
+                    prompts: [
+                        Prompt(question: "I'm weirdly good at", answer: "Holding my breath for four minutes, finding hidden beaches, and making friends in every country."),
+                    ],
+                    interests: ["Travel", "Fitness", "Art", "Reading"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Tessa Flynn", age: 28, role: .woman, location: "Maui, Hawaii",
+                    bio: "Dive instructor by morning, bartender by night. I live on island time and I'm not going back. If you need a plan, I'm not your girl.",
+                    hue: 0.87,
+                    photoName: "photo-tessa",
+                    prompts: [
+                        Prompt(question: "Best travel story", answer: "Moved to Maui for a month. That was three years ago."),
+                    ],
+                    interests: ["Travel", "Nightlife", "Fitness", "Music"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Wren Bishop", age: 26, role: .woman, location: "Montauk, New York",
+                    bio: "Photographer. Sunset is my golden hour and the beach is my studio. I shoot on film and live like it.",
+                    hue: 0.28,
+                    photoName: "photo-wren",
+                    prompts: [
+                        Prompt(question: "My simple pleasures", answer: "A cold drink, warm sand, and a conversation that doesn't need a phone."),
+                    ],
+                    interests: ["Art", "Travel", "Music", "Film"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Iris Calloway", age: 29, role: .woman, location: "Positano, Italy",
+                    bio: "Ceramicist splitting time between Italy and Brooklyn. Freckles are earned, not filtered. I make beautiful things and keep messy hours.",
+                    hue: 0.40,
+                    photoName: "photo-iris",
+                    prompts: [
+                        Prompt(question: "The way to win me over is", answer: "Remember what I said last time. That's it. That's the whole thing."),
+                    ],
+                    interests: ["Art", "Travel", "Wine", "Food"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Adriana Vega", age: 27, role: .woman, location: "Barcelona, Spain",
+                    bio: "Chef de partie at a Michelin kitchen. My days are loud and hot — I need my beach time quiet. Don't mistake calm for boring.",
+                    hue: 0.52,
+                    photoName: "photo-adriana",
+                    prompts: [
+                        Prompt(question: "I geek out on", answer: "Fermentation timelines, regional olive oils, and people who eat with their hands."),
+                    ],
+                    interests: ["Food", "Travel", "Wine", "Music"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Paloma Diaz", age: 25, role: .woman, location: "Tulum, Mexico",
+                    bio: "Jewelry designer. Everything I make starts with something I found on the beach. Leopard print is a neutral — fight me.",
+                    hue: 0.70,
+                    photoName: "photo-paloma",
+                    prompts: [
+                        Prompt(question: "Together we could", answer: "Get lost in a market, buy something we don't need, and eat street food until we can't move."),
+                    ],
+                    interests: ["Art", "Travel", "Design", "Food"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Suki Nakamura", age: 26, role: .woman, location: "Venice Beach, CA",
+                    bio: "Content strategist who clocks out at 5 and is on the sand by 5:15. Iced coffee is a personality trait and I've accepted it.",
+                    hue: 0.66,
+                    photoName: "photo-suki",
+                    prompts: [
+                        Prompt(question: "My ideal date", answer: "Golden hour at the beach, then ramen at the place with no sign. If you know, you know."),
+                    ],
+                    interests: ["Food", "Music", "Design", "Travel"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Kiana Reyes", age: 25, role: .woman, location: "North Shore, Oahu",
+                    bio: "Surf school owner. Born in the water, raised by the tide. I'll teach you to stand up on a board and sit down at a real table.",
+                    hue: 0.74,
+                    photoName: "photo-kiana",
+                    prompts: [
+                        Prompt(question: "My happy place", answer: "Any beach, any island, as long as I can hear the waves while I eat."),
+                    ],
+                    interests: ["Fitness", "Travel", "Food", "Music"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Simone Hart", age: 28, role: .woman, location: "Turks and Caicos",
+                    bio: "Former pro swimmer, current water-sports instructor. I've never met an ocean I didn't like or a man who could keep up in it.",
+                    hue: 0.34,
+                    photoName: "photo-simone",
+                    prompts: [
+                        Prompt(question: "I'm weirdly good at", answer: "Swimming in open water, reading people, and making fish tacos from scratch."),
+                    ],
+                    interests: ["Fitness", "Travel", "Food", "Nightlife"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Ava Sinclair", age: 27, role: .woman, location: "Martha's Vineyard, MA",
+                    bio: "Music journalist. I interview people for a living, so expect good questions and zero awkward silence. Beach days are non-negotiable.",
+                    hue: 0.56,
+                    photoName: "photo-ava",
+                    prompts: [
+                        Prompt(question: "Together we could", answer: "Skip the small talk — tell me the thing you never tell people on the first date."),
+                    ],
+                    interests: ["Music", "Travel", "Food", "Film"],
+                    isCopycat: true, copycatStyle: .beach),
+
+            Profile(name: "Kai Williams", age: 29, role: .woman, location: "Outer Banks, North Carolina",
+                    bio: "Fitness coach and beach volleyball captain. My laugh carries, my standards are higher, and I've never left a party early.",
+                    hue: 0.84,
+                    photoName: "photo-kai",
+                    prompts: [
+                        Prompt(question: "The way to win me over is", answer: "Show up with energy. Match mine. Don't try to dim it."),
+                    ],
+                    interests: ["Fitness", "Music", "Travel", "Nightlife"],
                     isCopycat: true, copycatStyle: .beach),
         ]
     }
