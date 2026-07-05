@@ -1,13 +1,28 @@
 import SwiftUI
 
-/// The founder-only admin console: add lots to the floor and remove anyone.
+/// The founder-only admin console: manage both rosters — lots (women) and
+/// bidders (men) — add, edit, or remove anyone, and edit the signed-in account.
 /// Reached from Settings → Admin console, gated on `store.isAdmin`. Everything
-/// it does routes through `AuctionStore` so state stays in one place and
-/// persists like the rest of the app.
+/// routes through `AuctionStore` so state stays in one place and persists.
 struct AdminView: View {
     @EnvironmentObject private var store: AuctionStore
     @Environment(\.dismiss) private var dismiss
-    @State private var showAdd = false
+
+    /// What the form sheet is currently doing, if anything.
+    private enum Sheet: Identifiable {
+        case addLot, addBidder
+        case edit(Profile)
+        case editMe
+        var id: String {
+            switch self {
+            case .addLot: return "addLot"
+            case .addBidder: return "addBidder"
+            case .editMe: return "editMe"
+            case .edit(let p): return "edit-\(p.id)"
+            }
+        }
+    }
+    @State private var sheet: Sheet?
     @State private var pendingDelete: Profile?
 
     var body: some View {
@@ -15,16 +30,18 @@ struct AdminView: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     headerCard
-                    if store.adminRoster.isEmpty {
-                        EmptyStateView(icon: "person.2.slash",
-                                       title: "No users on the floor",
-                                       message: "Add the first lot to populate the marketplace.")
-                    } else {
-                        SectionHeader(title: "Floor roster · \(store.adminRoster.count)")
-                        ForEach(store.adminRoster) { profile in
-                            AdminUserRow(profile: profile) { pendingDelete = profile }
-                        }
-                    }
+                    myAccountCard
+
+                    rosterSection(title: "Lots · \(store.adminRoster.count)",
+                                  empty: "No lots on the floor yet.",
+                                  people: store.adminRoster,
+                                  addLabel: "Add lot") { sheet = .addLot }
+
+                    rosterSection(title: "Bidders · \(store.adminBidders.count)",
+                                  empty: "No bidders in the pool yet.",
+                                  people: store.adminBidders,
+                                  addLabel: "Add bidder") { sheet = .addBidder }
+
                     Spacer(minLength: 24)
                 }
                 .screenPadding().padding(.top, 6)
@@ -36,13 +53,15 @@ struct AdminView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Done") { dismiss() }.foregroundStyle(Theme.gold)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showAdd = true } label: {
-                        Image(systemName: "plus.circle.fill").foregroundStyle(Theme.gold)
-                    }
+            }
+            .sheet(item: $sheet) { which in
+                switch which {
+                case .addLot:      ProfileFormSheet(role: .woman)
+                case .addBidder:   ProfileFormSheet(role: .man)
+                case .editMe:      ProfileFormSheet(role: store.me.role, existing: store.me, isCurrentUser: true)
+                case .edit(let p): ProfileFormSheet(role: p.role, existing: p)
                 }
             }
-            .sheet(isPresented: $showAdd) { AddUserSheet() }
             .alert("Remove user?", isPresented: .init(
                 get: { pendingDelete != nil },
                 set: { if !$0 { pendingDelete = nil } })) {
@@ -52,23 +71,72 @@ struct AdminView: View {
                 }
                 Button("Cancel", role: .cancel) { pendingDelete = nil }
             } message: {
-                Text("Removes \(pendingDelete?.name ?? "this user") from the floor and clears any bids or matches with them. This can't be undone.")
+                Text("Removes \(pendingDelete?.name ?? "this user") and clears any bids or matches with them. This can't be undone.")
             }
         }
     }
 
     private var headerCard: some View {
         GlassCard(title: "Founder tools", icon: "person.2.badge.gearshape.fill", tint: Theme.verify) {
-            Text("Add or remove lots on the floor. Changes go live immediately and persist across launches.")
+            Text("Add, edit or remove lots and bidders. Changes go live immediately and persist across launches.")
                 .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+
+    /// Quick edit of the signed-in account.
+    private var myAccountCard: some View {
+        Button { sheet = .editMe } label: {
+            GlassSurface(corner: Theme.cornerL) {
+                HStack(spacing: 12) {
+                    AvatarCircle(name: store.me.name, hue: store.me.hue,
+                                 photoName: store.me.photoName, size: 44, revealed: true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Your account").font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.inkFaint)
+                        Text(store.me.name.isEmpty ? "You" : store.me.name)
+                            .font(.system(size: 15, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
+                    }
+                    Spacer()
+                    Label("Edit", systemImage: "pencil").font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Theme.gold)
+                }
+                .padding(14)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func rosterSection(title: String, empty: String, people: [Profile],
+                               addLabel: String, add: @escaping () -> Void) -> some View {
+        HStack {
+            SectionHeader(title: title)
+            Spacer()
+            Button(action: add) {
+                Label(addLabel, systemImage: "plus.circle.fill")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.gold)
+            }
+        }
+        .padding(.top, 4)
+        if people.isEmpty {
+            Text(empty).font(.system(size: 13)).foregroundStyle(Theme.inkFaint)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            ForEach(people) { profile in
+                AdminUserRow(profile: profile,
+                             onEdit: { sheet = .edit(profile) },
+                             onDelete: { pendingDelete = profile })
+            }
+        }
+    }
 }
 
-/// One roster row with a delete affordance.
+/// One roster row with edit + delete affordances.
 struct AdminUserRow: View {
     let profile: Profile
+    var onEdit: () -> Void
     var onDelete: () -> Void
 
     var body: some View {
@@ -86,13 +154,24 @@ struct AdminUserRow: View {
                     }
                     Text("\(profile.age) · \(profile.location)")
                         .font(.system(size: 12)).foregroundStyle(Theme.inkSoft).lineLimit(1)
-                    if let bid = profile.startingBid {
+                    if profile.role == .man, profile.archetype != .none {
+                        Text(profile.archetype.title)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.gold)
+                    } else if let bid = profile.startingBid {
                         Text("Floor \(Money.compact(bid))")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundStyle(Theme.gold)
                     }
                 }
                 Spacer()
+                Button(action: onEdit) {
+                    Image(systemName: "pencil").font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.gold)
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(Theme.gold.opacity(0.14)))
+                }
+                .buttonStyle(.plain)
                 Button(action: onDelete) {
                     Image(systemName: "trash.fill").font(.system(size: 15, weight: .bold))
                         .foregroundStyle(Theme.danger)
@@ -106,10 +185,15 @@ struct AdminUserRow: View {
     }
 }
 
-/// The add-a-user form. Minimal by design — name is the only required field.
-struct AddUserSheet: View {
+/// One form that adds or edits a lot, a bidder, or the signed-in account. The
+/// role decides which fields show (archetype for men; floor + copycat for women).
+struct ProfileFormSheet: View {
     @EnvironmentObject private var store: AuctionStore
     @Environment(\.dismiss) private var dismiss
+
+    let role: Role
+    var existing: Profile? = nil       // nil = adding a new person
+    var isCurrentUser: Bool = false
 
     @State private var name = ""
     @State private var ageText = "25"
@@ -119,9 +203,18 @@ struct AddUserSheet: View {
     @State private var verified = false
     @State private var isCopycat = false
     @State private var copycatStyle: CopycatStyle = .glam
+    @State private var archetype: Archetype = .none
+    @State private var loaded = false
 
+    private var isEditing: Bool { existing != nil }
+    private var isMan: Bool { role == .man }
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    private var titleText: String {
+        if isCurrentUser { return "Edit your account" }
+        if isEditing { return "Edit \(isMan ? "bidder" : "lot")" }
+        return isMan ? "Add bidder" : "Add lot"
     }
 
     var body: some View {
@@ -133,44 +226,96 @@ struct AddUserSheet: View {
                     TextField("Location", text: $location)
                     TextField("Bio", text: $bio, axis: .vertical).lineLimit(2...4)
                 }
-                Section("Floor") {
-                    TextField("Starting bid (optional)", text: $bidText)
-                        .keyboardType(.numberPad)
-                }
-                Section {
-                    Toggle("Verified", isOn: $verified).disabled(isCopycat)
-                    Toggle("AI Copycat lure", isOn: $isCopycat)
-                    if isCopycat {
-                        Picker("Style", selection: $copycatStyle) {
-                            ForEach(CopycatStyle.allCases, id: \.self) { s in
-                                Text(s.caption).tag(s)
+
+                if isMan {
+                    Section("Status") {
+                        Picker("Archetype", selection: $archetype) {
+                            ForEach(Archetype.allCases) { a in
+                                Text(a.title).tag(a)
                             }
                         }
+                        Toggle("Verified", isOn: $verified)
                     }
-                } footer: {
-                    Text(isCopycat
-                         ? "Copycats can never be verified and cost a bidder credit when bid on."
-                         : "Verified lots earn more trust on the floor.")
+                } else {
+                    Section("Floor") {
+                        TextField("Starting bid (optional)", text: $bidText)
+                            .keyboardType(.numberPad)
+                    }
+                    Section {
+                        Toggle("Verified", isOn: $verified).disabled(isCopycat)
+                        Toggle("AI Copycat lure", isOn: $isCopycat)
+                        if isCopycat {
+                            Picker("Style", selection: $copycatStyle) {
+                                ForEach(CopycatStyle.allCases, id: \.self) { s in
+                                    Text(s.caption).tag(s)
+                                }
+                            }
+                        }
+                    } footer: {
+                        Text(isCopycat
+                             ? "Copycats can never be verified and cost a bidder credit when bid on."
+                             : "Verified lots earn more trust on the floor.")
+                    }
                 }
             }
-            .navigationTitle("Add user")
+            .navigationTitle(titleText)
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear(perform: loadIfNeeded)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add") {
-                        store.adminAddUser(
-                            name: name, age: Int(ageText) ?? 25, location: location,
-                            bio: bio, startingBid: bidText.isEmpty ? nil : Int(bidText),
-                            verified: verified, isCopycat: isCopycat, copycatStyle: copycatStyle)
-                        dismiss()
-                    }
-                    .fontWeight(.bold)
-                    .disabled(!canSave)
+                    Button(isEditing ? "Save" : "Add") { commit(); dismiss() }
+                        .fontWeight(.bold).disabled(!canSave)
                 }
             }
+        }
+    }
+
+    /// Seed the fields from the existing profile the first time the sheet shows.
+    private func loadIfNeeded() {
+        guard !loaded else { return }
+        loaded = true
+        guard let p = existing else { return }
+        name = p.name
+        ageText = String(p.age)
+        location = p.location
+        bio = p.bio
+        bidText = p.startingBid.map(String.init) ?? ""
+        verified = p.verified
+        isCopycat = p.isCopycat
+        copycatStyle = p.copycatStyle
+        archetype = p.archetype
+    }
+
+    private func commit() {
+        let age = Int(ageText) ?? 25
+        let bid = bidText.isEmpty ? nil : Int(bidText)
+
+        if var p = existing {
+            // Edit in place, preserving id, reviews and history.
+            p.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            p.age = max(18, age)
+            p.location = location
+            p.bio = bio
+            p.verified = verified
+            if isMan {
+                p.archetype = archetype
+                if archetype == .trillionaire && verified { p.trillionaireVerified = true }
+            } else {
+                p.startingBid = bid
+                p.isCopycat = isCopycat
+                p.copycatStyle = copycatStyle
+            }
+            store.adminUpdate(p)
+        } else if isMan {
+            store.adminAddBidder(name: name, age: age, location: location, bio: bio,
+                                 archetype: archetype, verified: verified)
+        } else {
+            store.adminAddUser(name: name, age: age, location: location, bio: bio,
+                               startingBid: bid, verified: verified,
+                               isCopycat: isCopycat, copycatStyle: copycatStyle)
         }
     }
 }

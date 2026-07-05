@@ -117,6 +117,60 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(store.outgoingBids.isEmpty, "deleting a lot clears bids that referenced her")
     }
 
+    func testAdminManagesBidderRoster() {
+        let store = freshStore()
+        registerWoman(store)   // woman side seeds the bidder pool
+        let before = store.adminBidders.count
+        XCTAssertGreaterThan(before, 0, "the bidder pool is seeded on register")
+        store.adminAddBidder(name: "Rex Vaughn", age: 44, location: "Aspen", bio: "Skis.",
+                             archetype: .ferrari, verified: true)
+        XCTAssertEqual(store.adminBidders.count, before + 1)
+        let rex = store.adminBidders.first { $0.name == "Rex Vaughn" }
+        XCTAssertEqual(rex?.archetype, .ferrari)
+        XCTAssertTrue(rex?.verified == true)
+
+        store.adminDeleteUser(rex!.id)
+        XCTAssertNil(store.adminBidders.first { $0.name == "Rex Vaughn" })
+    }
+
+    func testAdminEditPreservesIdentityAndReviews() {
+        let store = freshStore()
+        registerMan(store)
+        var lot = store.floor.first { !$0.isCopycat }!
+        let id = lot.id
+        let reviewCount = lot.reviews.count
+        lot.name = "Renamed Lot"
+        lot.startingBid = 777
+        store.adminUpdate(lot)
+        let after = store.floor.first { $0.id == id }
+        XCTAssertEqual(after?.name, "Renamed Lot")
+        XCTAssertEqual(after?.startingBid, 777)
+        XCTAssertEqual(after?.reviews.count, reviewCount, "editing keeps existing reviews")
+    }
+
+    func testAdminEditCanRetargetTheCurrentUser() {
+        let store = freshStore()
+        registerMan(store)
+        var me = store.me
+        me.name = "New Name"
+        me.archetype = .goodJob
+        store.adminUpdate(me)
+        XCTAssertEqual(store.me.name, "New Name")
+        XCTAssertEqual(store.me.archetype, .goodJob)
+    }
+
+    func testAdminUpdateForcesCopycatUnverified() {
+        let store = freshStore()
+        registerMan(store)
+        var lot = store.floor.first { !$0.isCopycat }!
+        lot.isCopycat = true
+        lot.verified = true
+        store.adminUpdate(lot)
+        let after = store.floor.first { $0.id == lot.id }
+        XCTAssertTrue(after?.isCopycat == true)
+        XCTAssertFalse(after?.verified == true, "a copycat can never stay verified")
+    }
+
     func testFounderIsAdmin() {
         let store = freshStore()
         store.register(role: .man, name: "Mike Valasek", age: 39, location: "", bio: "",

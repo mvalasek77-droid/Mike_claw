@@ -22,6 +22,7 @@ final class AuctionStore: ObservableObject {
     @Published var lastWeeklyBoostClaim: Date? // Pass perk: one free Boost / week
 
     @Published var floor: [Profile] = []        // women a bidder browses
+    @Published var bidders: [Profile] = []      // the pool of men (suitors) — seeds the inbox
     @Published var incomingBids: [Bid] = []     // woman's inbox
     @Published var outgoingBids: [Bid] = []     // man's placed bids
     @Published var matches: [Match] = []
@@ -93,8 +94,12 @@ final class AuctionStore: ObservableObject {
     /// normal user never sees it; Mike Valasek (the founder seat) is the admin.
     var isAdmin: Bool { me.name == "Mike Valasek" || me.name == "Admin" }
 
-    /// Everyone currently on the floor — the roster the admin console manages.
+    /// The lots (women) the admin console manages.
     var adminRoster: [Profile] { floor }
+
+    /// The bidders (men) the admin console manages — the pool that seeds the
+    /// inbox and summons.
+    var adminBidders: [Profile] { bidders }
 
     /// Add a new lot to the floor from the admin console. Newest first so it's
     /// visible immediately.
@@ -117,18 +122,54 @@ final class AuctionStore: ObservableObject {
         save()
     }
 
-    /// Remove a lot from the floor and scrub every bid, match and block that
-    /// referenced them, so nothing dangles after deletion.
+    /// Add a new bidder (man) to the pool from the admin console.
+    func adminAddBidder(name: String, age: Int, location: String, bio: String,
+                        archetype: Archetype, verified: Bool) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var profile = Profile(name: trimmed, age: max(18, age), role: .man,
+                              location: location, bio: bio,
+                              hue: Double.random(in: 0...1))
+        profile.verified = verified
+        profile.archetype = archetype
+        // A verified Trillionaire added by hand is treated as confirmed.
+        profile.trillionaireVerified = verified && archetype == .trillionaire
+        bidders.insert(profile, at: 0)
+        Haptics.success()
+        toastFlash("Added bidder \(trimmed).")
+        log(.admin, "Admin added bidder \(trimmed).")
+        save()
+    }
+
+    /// Remove a profile (lot or bidder) and scrub every bid, match and block
+    /// that referenced them, so nothing dangles after deletion.
     func adminDeleteUser(_ id: UUID) {
-        guard let victim = floor.first(where: { $0.id == id }) else { return }
+        let victim = floor.first(where: { $0.id == id })
+            ?? bidders.first(where: { $0.id == id })
+        guard let victim else { return }
         floor.removeAll { $0.id == id }
+        bidders.removeAll { $0.id == id }
         incomingBids.removeAll { $0.man.id == id || $0.woman.id == id }
         outgoingBids.removeAll { $0.woman.id == id || $0.man.id == id }
         matches.removeAll { $0.bid.man.id == id || $0.bid.woman.id == id }
         blockedIDs.remove(id)
         Haptics.warning()
         toastFlash("Removed \(victim.name).")
-        log(.admin, "Admin removed \(victim.name) from the floor.")
+        log(.admin, "Admin removed \(victim.name).")
+        save()
+    }
+
+    /// Save an edited profile back into whichever roster owns it (floor,
+    /// bidders, or the logged-in user). Copycats can never carry a blue check.
+    func adminUpdate(_ profile: Profile) {
+        var edited = profile
+        if edited.isCopycat { edited.verified = false }
+        if let i = floor.firstIndex(where: { $0.id == edited.id }) { floor[i] = edited }
+        else if let i = bidders.firstIndex(where: { $0.id == edited.id }) { bidders[i] = edited }
+        if me.id == edited.id { me = edited }
+        Haptics.success()
+        toastFlash("Updated \(edited.name).")
+        log(.admin, "Admin edited \(edited.name).")
         save()
     }
 
@@ -154,6 +195,7 @@ final class AuctionStore: ObservableObject {
         self.me = profile
         self.role = role
         self.floor = SampleData.floor()
+        self.bidders = SampleData.suitors()
 
         if role == .woman {
             // Seed a couple of incoming bids so the inbox isn't empty.
@@ -171,6 +213,7 @@ final class AuctionStore: ObservableObject {
         wallet = 750
         earnings = 0
         floor = []
+        bidders = []
         incomingBids = []
         outgoingBids = []
         matches = []
@@ -426,7 +469,7 @@ final class AuctionStore: ObservableObject {
     /// guarantees a $1M Masterpiece-eligible bid so that flow is reachable.
     func summonBidder(trillionaire: Bool = false) {
         guard role == .woman else { return }
-        let pool = SampleData.suitors()
+        let pool = bidders.isEmpty ? SampleData.suitors() : bidders
         var man = pool.randomElement() ?? pool[0]
         let amount: Int
         if trillionaire {
@@ -742,7 +785,8 @@ final class AuctionStore: ObservableObject {
     }
 
     private func seedIncomingBids() {
-        let suitors = SampleData.suitors()
+        let suitors = bidders.isEmpty ? SampleData.suitors() : bidders
+        guard suitors.count > 3 else { return }
         incomingBids = [
             Bid(man: suitors[0], woman: me, amount: max(300, (me.startingBid ?? 150) * 2),
                 note: "Saw your prompts. Dinner at Carbone? My treat."),
@@ -781,6 +825,7 @@ final class AuctionStore: ObservableObject {
         var earnings: Int
         var boostUntil: Date?
         var floor: [Profile]
+        var bidders: [Profile]?
         var incomingBids: [Bid]
         var outgoingBids: [Bid]
         var matches: [Match]
@@ -794,7 +839,8 @@ final class AuctionStore: ObservableObject {
 
     private func save() {
         let snap = Snapshot(role: role, me: me, wallet: wallet, earnings: earnings,
-                            boostUntil: boostUntil, floor: floor, incomingBids: incomingBids,
+                            boostUntil: boostUntil, floor: floor, bidders: bidders,
+                            incomingBids: incomingBids,
                             outgoingBids: outgoingBids, matches: matches,
                             filters: filters, blockedIDs: Array(blockedIDs), activity: activity,
                             dailyStreak: dailyStreak, lastDailyClaim: lastDailyClaim,
@@ -813,6 +859,9 @@ final class AuctionStore: ObservableObject {
         earnings = snap.earnings
         boostUntil = snap.boostUntil
         floor = snap.floor.isEmpty ? SampleData.floor() : snap.floor
+        // Old snapshots (pre-admin) have no bidders list — seed it so the
+        // roster and inbox summons still work.
+        bidders = (snap.bidders?.isEmpty ?? true) ? SampleData.suitors() : snap.bidders!
         incomingBids = snap.incomingBids
         outgoingBids = snap.outgoingBids
         matches = snap.matches
