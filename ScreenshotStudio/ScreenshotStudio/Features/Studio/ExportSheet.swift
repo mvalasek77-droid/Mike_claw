@@ -136,7 +136,7 @@ struct ExportSheet: View {
                 Text("\(count) screenshot\(count == 1 ? "" : "s") saved")
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
-                Text("Find them in the “Screenshot Studio” album in Photos, ready to upload to App Store Connect.")
+                Text("Find them in the “Shipshot” album in Photos, ready to upload to App Store Connect.")
                     .font(.system(size: 14, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
                     .multilineTextAlignment(.center)

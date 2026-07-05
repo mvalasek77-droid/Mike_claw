@@ -30,6 +30,6 @@ struct SplashView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Screenshot Studio")
+        .accessibilityLabel("Shipshot")
     }
 }

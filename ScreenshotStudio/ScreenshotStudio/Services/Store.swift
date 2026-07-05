@@ -1,6 +1,6 @@
 import StoreKit
 
-/// Product identifiers for Screenshot Studio Pro. These must match the products
+/// Product identifiers for Shipshot Pro. These must match the products
 /// configured in App Store Connect (and the bundled `.storekit` file used for
 /// local testing).
 enum ProductID {

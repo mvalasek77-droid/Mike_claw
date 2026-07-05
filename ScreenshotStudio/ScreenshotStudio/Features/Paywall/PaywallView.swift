@@ -54,7 +54,7 @@ struct PaywallView: View {
     private var header: some View {
         VStack(spacing: 10) {
             StudioMark(size: 64)
-            Text("Screenshot Studio Pro")
+            Text("Shipshot Pro")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .auroraStyle()
             Text(highlight.map { "\($0.title) is a Pro feature. \($0.blurb)" }

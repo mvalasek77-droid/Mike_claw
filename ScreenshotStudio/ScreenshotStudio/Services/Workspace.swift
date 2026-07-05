@@ -1,6 +1,6 @@
 import Foundation
 
-/// Centralises the on-disk locations Screenshot Studio writes to. Everything
+/// Centralises the on-disk locations Shipshot writes to. Everything
 /// lives under Application Support so it's backed up but hidden from the
 /// user's Files browser, and survives app updates.
 enum Workspace {

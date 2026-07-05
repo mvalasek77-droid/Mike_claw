@@ -108,7 +108,7 @@ struct SettingsView: View {
                             }
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .tint(LiquidGlass.accent)
-                            Text("Screenshot Studio turns raw iPhone screenshots into App Store Connect–ready images, rendered at exactly the pixel sizes Apple requires.")
+                            Text("Shipshot turns raw iPhone screenshots into App Store Connect–ready images, rendered at exactly the pixel sizes Apple requires.")
                                 .font(.system(size: 13, weight: .regular, design: .rounded))
                                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
                                 .fixedSize(horizontal: false, vertical: true)
@@ -142,7 +142,7 @@ struct SettingsView: View {
                         .font(.system(size: 26))
                         .foregroundStyle(LiquidGlass.success)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Screenshot Studio Pro")
+                        Text("Shipshot Pro")
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
                         Text("Thanks for your support — everything's unlocked.")

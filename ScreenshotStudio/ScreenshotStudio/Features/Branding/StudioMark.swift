@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Screenshot Studio glyph: a phone outline whose screen frames a crop
+/// The Shipshot glyph: a phone outline whose screen frames a crop
 /// reticle — "raw screenshot → framed, store-ready shot" in one mark. Drawn
 /// in pure SwiftUI so it stays crisp at every size and adapts to dark mode.
 struct StudioMark: View {
@@ -59,7 +59,7 @@ private struct CropReticle: Shape {
 struct StudioWordmark: View {
     var body: some View {
         VStack(spacing: 6) {
-            Text("Screenshot Studio")
+            Text("Shipshot")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .auroraStyle()
             Text("Store-ready screenshots, done right")

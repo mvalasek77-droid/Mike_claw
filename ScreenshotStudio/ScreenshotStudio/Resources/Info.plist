@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Screenshot Studio</string>
+	<string>Shipshot</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>ScreenshotStudio</string>
+	<string>Shipshot</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -25,9 +25,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Screenshot Studio saves your finished App Store screenshots to a dedicated album in Photos so you can upload them to App Store Connect.</string>
+	<string>Shipshot saves your finished store screenshots to a dedicated album in Photos so you can upload them to App Store Connect.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Screenshot Studio saves your finished App Store screenshots into a dedicated “Screenshot Studio” album in Photos so you can find and upload them to App Store Connect.</string>
+	<string>Shipshot saves your finished store screenshots into a dedicated “Shipshot” album in Photos so you can find and upload them to App Store Connect.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

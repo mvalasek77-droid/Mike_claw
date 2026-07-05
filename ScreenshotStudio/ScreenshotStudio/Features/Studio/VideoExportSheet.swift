@@ -74,7 +74,7 @@ struct VideoExportSheet: View {
                 case .done:
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 44)).foregroundStyle(LiquidGlass.success)
-                    label("Saved to your “Screenshot Studio” album in Photos.")
+                    label("Saved to your “Shipshot” album in Photos.")
                 case .failed(let message):
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 38)).foregroundStyle(LiquidGlass.warning)

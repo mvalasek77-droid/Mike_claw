@@ -80,7 +80,7 @@ struct ProjectsView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Screenshot Studio")
+                Text("Shipshot")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .auroraStyle()
                 Text("Store-ready screenshots, done right")

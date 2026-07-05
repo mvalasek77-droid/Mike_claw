@@ -2,7 +2,7 @@ import UIKit
 
 /// A lightweight, persistent diagnostics log.
 ///
-/// Screenshot Studio is on-device and privacy-first — there's no server to
+/// Shipshot is on-device and privacy-first — there's no server to
 /// phone home to — so when something fails we record it locally instead. This
 /// gives developers a "did anything fail?" trail and powers the user-facing
 /// **Report a bug** flow, which hands the recent log to the share sheet so the
@@ -117,7 +117,7 @@ final class BugLog: ObservableObject {
         let build = info?["CFBundleVersion"] as? String ?? "?"
         let device = UIDevice.current
         return """
-        App: Screenshot Studio \(version) (\(build))
+        App: Shipshot \(version) (\(build))
         Device: \(device.model) · iOS \(device.systemVersion)
         """
     }
@@ -133,7 +133,7 @@ final class BugLog: ObservableObject {
 
     /// Assemble the full text of a user bug report.
     func makeReport(userDescription: String, includeLog: Bool) -> String {
-        var parts: [String] = ["Screenshot Studio — Bug Report", "", BugLog.deviceSummary(), ""]
+        var parts: [String] = ["Shipshot — Bug Report", "", BugLog.deviceSummary(), ""]
         let trimmed = userDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         parts.append("What happened:")
         parts.append(trimmed.isEmpty ? "(no description provided)" : trimmed)

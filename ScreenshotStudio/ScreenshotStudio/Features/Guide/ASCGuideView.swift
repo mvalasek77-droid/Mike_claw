@@ -70,7 +70,7 @@ struct ASCGuideView: View {
     }
 
     private var intro: some View {
-        Text("Apple validates screenshots by exact pixel size. Screenshot Studio always renders at these resolutions, so uploads pass on the first try.")
+        Text("Apple validates screenshots by exact pixel size. Shipshot always renders at these resolutions, so uploads pass on the first try.")
             .font(.system(size: s14, weight: .regular, design: .rounded))
             .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
             .fixedSize(horizontal: false, vertical: true)
@@ -91,7 +91,7 @@ struct ASCGuideView: View {
     }
 
     private let steps = [
-        "Export your set here — every required size renders to the “Screenshot Studio” Photos album.",
+        "Export your set here — every required size renders to the “Shipshot” Photos album.",
         "AirDrop the album to your Mac, or open App Store Connect on the web.",
         "In App Store Connect, open your app → the version → Previews and Screenshots.",
         "Drag each size group into its matching slot. The 6.9\" set auto-fills smaller iPhone sizes.",

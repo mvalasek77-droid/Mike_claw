@@ -24,14 +24,14 @@ targets:
     info:
       path: ScreenshotStudio/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Screenshot Studio
-        CFBundleName: ScreenshotStudio
+        CFBundleDisplayName: Shipshot
+        CFBundleName: Shipshot
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true
-        NSPhotoLibraryAddUsageDescription: Screenshot Studio saves your finished App Store screenshots to a dedicated album in Photos so you can upload them to App Store Connect.
-        NSPhotoLibraryUsageDescription: Screenshot Studio saves your finished App Store screenshots into a dedicated “Screenshot Studio” album in Photos so you can find and upload them to App Store Connect.
+        NSPhotoLibraryAddUsageDescription: Shipshot saves your finished store screenshots to a dedicated album in Photos so you can upload them to App Store Connect.
+        NSPhotoLibraryUsageDescription: Shipshot saves your finished store screenshots into a dedicated “Shipshot” album in Photos so you can find and upload them to App Store Connect.
         UILaunchScreen:
           UIColorName: AccentColor
         UIStatusBarStyle: UIStatusBarStyleLightContent

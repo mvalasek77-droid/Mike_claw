@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Animation curves used across Screenshot Studio.
+/// Animation curves used across Shipshot.
 ///
 /// Every curve here passes through ``Motion.run(_:_:)`` (or the `.motion`
 /// view modifier) when used inside a view, which collapses to an

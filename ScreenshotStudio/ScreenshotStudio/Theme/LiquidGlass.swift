@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Screenshot Studio's Liquid Glass design system, tuned for iOS 26.
+/// Shipshot's Liquid Glass design system, tuned for iOS 26.
 ///
 /// Centralises the materials, gradients and motion curves used across the
 /// product so every screen reads as the same family. We lean on Apple's

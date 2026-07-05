@@ -2,7 +2,7 @@ import Photos
 import UIKit
 
 /// Saves rendered screenshots to the user's photo library, collecting them into
-/// a dedicated "Screenshot Studio" album so they're easy to find and AirDrop to
+/// a dedicated "Shipshot" album so they're easy to find and AirDrop to
 /// a Mac for upload to App Store Connect. Creating/reusing that album needs
 /// read-write Photos access; if the album can't be made we still save straight
 /// to the library so the export succeeds. Every step is recorded to the
@@ -17,7 +17,7 @@ enum PhotoExporter {
         var errorDescription: String? {
             switch self {
             case .permissionDenied:
-                return "Screenshot Studio needs permission to save to Photos. Please enable it in Settings."
+                return "Shipshot needs permission to save to Photos. Please enable it in Settings."
             case .nothingToSave:
                 return "The slides couldn't be rendered into images. Please try again."
             case .writeFailed:
@@ -26,7 +26,7 @@ enum PhotoExporter {
         }
     }
 
-    private static let albumName = "Screenshot Studio"
+    private static let albumName = "Shipshot"
     /// Local identifier of the album we created, persisted so we can re-use it
     /// across launches.
     private static let albumIDKey = "ScreenshotStudio.albumLocalIdentifier"
