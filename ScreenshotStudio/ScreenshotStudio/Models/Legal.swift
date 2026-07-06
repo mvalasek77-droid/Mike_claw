@@ -8,5 +8,5 @@ import Foundation
 /// in App Store Connect's Privacy Policy field.
 enum Legal {
     static let termsOfUse = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
-    static let privacyPolicy = URL(string: "https://screenshotstudio.app/privacy")!
+    static let privacyPolicy = URL(string: "https://mvalasek77-droid.github.io/screenshotstudio-privacy/")!
 }
