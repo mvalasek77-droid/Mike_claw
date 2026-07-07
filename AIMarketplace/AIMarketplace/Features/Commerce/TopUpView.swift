@@ -10,6 +10,7 @@ struct TopUpView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var purchasing: String?
     @State private var statusMessage: String?
+    @State private var legalDoc: LegalDoc?
 
     var body: some View {
         NavigationStack {
@@ -62,6 +63,13 @@ struct TopUpView: View {
 
                     Text("Purchases are processed by Apple's App Store. On every sale Apple takes its App Store commission first; of the net, creators keep 85% and AI Marketplace keeps 15%. Prices outside the US are set by Apple's regional pricing — local price may differ from the USD equivalent shown.")
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+
+                    HStack(spacing: 16) {
+                        Button("Terms of Use") { legalDoc = .terms }
+                        Button("Privacy Policy") { legalDoc = .privacy }
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
                 }
                 .padding(18)
                 .padding(.bottom, 30)
@@ -71,6 +79,7 @@ struct TopUpView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+        .sheet(item: $legalDoc) { LegalSheet(doc: $0) }
         .task {
             // Defensive silent drain on every Top Up open. Walks
             // Transaction.unfinished / .currentEntitlements / .all so any
