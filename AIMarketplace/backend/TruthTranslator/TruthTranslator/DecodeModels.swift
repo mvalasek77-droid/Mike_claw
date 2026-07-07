@@ -51,9 +51,9 @@ struct DecodeResult: Codable, Equatable {
     var flags: [String]
 
     static let placeholder = DecodeResult(
-        headline: "Paste the text. The group chat is waiting.",
-        translation: "No verdict yet. Drop the message and pick the tone.",
-        psychology: "The app checks whether the words match a real plan.",
+        headline: "Drop his text. Find out what he's really saying.",
+        translation: "No verdict yet. Paste what he said and hit Decode Him.",
+        psychology: "The app reveals what his words actually mean based on psychology and dating dynamics.",
         receipts: ["Low effort", "Mixed signals", "Actual clarity"],
         suggestedReplies: [
             "I like clear plans. What day and time works?",

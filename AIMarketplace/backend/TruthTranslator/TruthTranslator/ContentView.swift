@@ -3,12 +3,22 @@ import UIKit
 
 struct ContentView: View {
     @StateObject private var viewModel: DecodeViewModel
+    @StateObject private var subscriptionStore = SubscriptionStore()
     @State private var showingReleaseGateway: Bool
+    @State private var showingPaywall: Bool
+    private let releaseGatewayEnabled: Bool
+    @AppStorage("chaddropFreeDecodeCount") private var freeDecodeCount = 0
     @FocusState private var inputFocused: Bool
 
     init(launchArguments: [String] = ProcessInfo.processInfo.arguments) {
+        let releaseGatewayEnabled = launchArguments.contains("--chaddrop-show-release-gateway")
+        self.releaseGatewayEnabled = releaseGatewayEnabled
+        if launchArguments.contains("--chaddrop-reset-free-decodes") {
+            UserDefaults.standard.set(0, forKey: "chaddropFreeDecodeCount")
+        }
         _viewModel = StateObject(wrappedValue: DecodeViewModel(launchArguments: launchArguments))
-        _showingReleaseGateway = State(initialValue: launchArguments.contains("--chaddrop-show-release-gateway"))
+        _showingReleaseGateway = State(initialValue: releaseGatewayEnabled)
+        _showingPaywall = State(initialValue: launchArguments.contains("--chaddrop-show-paywall"))
     }
 
     var body: some View {
@@ -21,10 +31,12 @@ struct ContentView: View {
                     header
                     inputPanel
                     controls
+                    subscriptionStatus
                     actionRow
                     resultPanel
                     repliesPanel
                     footer
+                    legalLinks
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 22)
@@ -41,72 +53,135 @@ struct ContentView: View {
             ReleaseGatewayView()
                 .preferredColorScheme(.dark)
         }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView(store: subscriptionStore)
+                .preferredColorScheme(.dark)
+        }
+        .task {
+            await subscriptionStore.refreshPurchasedProducts()
+            await subscriptionStore.loadProducts()
+        }
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 12) {
-                Label("ChadDrop", systemImage: "quote.bubble.fill")
+                Label("ChadDrop", systemImage: "magnifyingglass")
                     .font(.system(size: 30, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
 
                 Spacer(minLength: 8)
 
                 Button {
-                    showingReleaseGateway = true
+                    showingPaywall = true
                 } label: {
-                    Image(systemName: "checklist.checked")
+                    Image(systemName: subscriptionStore.isSubscribed ? "checkmark.seal.fill" : "crown.fill")
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(IconButtonStyle(size: 44))
-                .accessibilityLabel("Open release gateway")
+                .accessibilityLabel("Open subscription options")
+
+                if releaseGatewayEnabled {
+                    Button {
+                        showingReleaseGateway = true
+                    } label: {
+                        Image(systemName: "checklist.checked")
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(IconButtonStyle(size: 44))
+                    .accessibilityLabel("Open release gateway")
+                }
             }
 
-            Text("Paste the text. Get the truth in group-chat English.")
+            Text("Drop his text. Find out what he's really saying. 💅")
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.76))
         }
     }
 
-    private var inputPanel: some View {
-        GlassPanel {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("The Text", systemImage: "text.bubble.fill")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Spacer()
-                    Button {
-                        if let pasted = UIPasteboard.general.string {
-                            viewModel.draft = pasted
-                            inputFocused = false
-                        }
-                    } label: {
-                        Label("Paste", systemImage: "doc.on.clipboard")
-                    }
-                    .buttonStyle(CompactButtonStyle())
-                }
-                .foregroundStyle(.white)
+    private var subscriptionStatus: some View {
+        HStack(spacing: 10) {
+            Image(systemName: subscriptionStore.isSubscribed ? "checkmark.seal.fill" : "sparkles")
+                .foregroundStyle(subscriptionStore.isSubscribed ? AppTheme.lime : AppTheme.blush)
 
-                TextEditor(text: $viewModel.draft)
-                    .focused($inputFocused)
-                    .scrollContentBackground(.hidden)
-                    .font(.system(size: 17, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white)
-                    .tint(AppTheme.hotPink)
-                    .frame(minHeight: 132)
-                    .padding(12)
-                    .background(AppTheme.panel.opacity(0.74), in: RoundedRectangle(cornerRadius: 16))
-                    .overlay(alignment: .topLeading) {
-                        if viewModel.draft.isEmpty {
-                            Text("Drop the suspicious masterpiece here...")
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.44))
-                                .padding(.horizontal, 18)
-                                .padding(.vertical, 20)
-                                .allowsHitTesting(false)
+            Text(subscriptionStore.isSubscribed ? "ChadDrop Pro active." : "\(remainingFreeDecodes) free decodes left.")
+                .font(.system(size: 12, weight: .black, design: .rounded))
+                .foregroundStyle(.white.opacity(0.72))
+
+            Spacer(minLength: 8)
+
+            if !subscriptionStore.isSubscribed {
+                Button {
+                    showingPaywall = true
+                } label: {
+                    Text("Go Pro")
+                }
+                .buttonStyle(CompactButtonStyle())
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.10)))
+    }
+
+    private var inputPanel: some View {
+        ZStack {
+            // Flower decorations around the text input
+            VStack {
+                HStack {
+                    FlowerDecor(size: 28, color: AppTheme.hotPink, rotation: -15)
+                    Spacer()
+                    FlowerDecor(size: 22, color: AppTheme.rose, rotation: 20)
+                }
+                Spacer()
+                HStack {
+                    FlowerDecor(size: 20, color: AppTheme.lavender, rotation: 30)
+                    Spacer()
+                    FlowerDecor(size: 26, color: AppTheme.blush, rotation: -10)
+                }
+            }
+            .padding(6)
+
+            GlassPanel {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top) {
+                        Text("Paste your text messages to find out what he's really saying")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Spacer(minLength: 8)
+                        Button {
+                            if let pasted = UIPasteboard.general.string {
+                                viewModel.draft = pasted
+                                inputFocused = false
+                            }
+                        } label: {
+                            Label("Paste", systemImage: "doc.on.clipboard")
                         }
+                        .buttonStyle(CompactButtonStyle())
                     }
-                    .accessibilityIdentifier("pasteTextInput")
+
+                    TextEditor(text: $viewModel.draft)
+                        .focused($inputFocused)
+                        .scrollContentBackground(.hidden)
+                        .font(.system(size: 17, weight: .regular, design: .rounded))
+                        .foregroundStyle(.white)
+                        .tint(AppTheme.hotPink)
+                        .frame(minHeight: 132)
+                        .padding(12)
+                        .background(AppTheme.panel.opacity(0.74), in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(alignment: .topLeading) {
+                            if viewModel.draft.isEmpty {
+                                Text("Paste what he said...")
+                                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.44))
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 20)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                        .accessibilityIdentifier("pasteTextInput")
+                }
             }
         }
     }
@@ -135,8 +210,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
                 Button {
-                    viewModel.decode()
-                    inputFocused = false
+                    startDecode()
                 } label: {
                     HStack(spacing: 10) {
                         if viewModel.isDecoding {
@@ -145,7 +219,7 @@ struct ContentView: View {
                         } else {
                             Image(systemName: "sparkles")
                         }
-                        Text(viewModel.isDecoding ? "Reading..." : "Decode")
+                        Text(viewModel.isDecoding ? "Reading..." : "Decode Him")
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -183,16 +257,16 @@ struct ContentView: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Text(viewModel.result.energy)
                             .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(AppTheme.lime)
+                            .foregroundStyle(AppTheme.blush)
                     }
                     Spacer(minLength: 10)
                     ScoreRing(score: viewModel.result.realityScore)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    ResultBlock(title: "The translation", icon: "captions.bubble.fill", text: viewModel.result.translation)
+                    ResultBlock(title: "What he really means", icon: "captions.bubble.fill", text: viewModel.result.translation)
                     if viewModel.result != .placeholder {
-                        ResultBlock(title: "The psychology", icon: "brain.head.profile", text: viewModel.result.psychology)
+                        ResultBlock(title: "The psychology behind it", icon: "brain.head.profile", text: viewModel.result.psychology)
                     }
                 }
 
@@ -200,7 +274,7 @@ struct ContentView: View {
                     FlowTags(values: viewModel.result.receipts, icon: "checkmark.seal.fill")
 
                     if !viewModel.result.flags.isEmpty {
-                        FlowTags(values: viewModel.result.flags, icon: "exclamationmark.triangle.fill", tint: AppTheme.orange)
+                        FlowTags(values: viewModel.result.flags, icon: "exclamationmark.triangle.fill", tint: AppTheme.lavender)
                     }
                 }
             }
@@ -210,7 +284,7 @@ struct ContentView: View {
 
     private var repliesPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Suggested replies")
+            Text("How to reply")
                 .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
 
@@ -221,10 +295,52 @@ struct ContentView: View {
     }
 
     private var footer: some View {
-        Text("Entertainment, not therapy or legal advice. If a message feels threatening, skip the roast and get support.")
+        Text("For entertainment, not therapy. If a message feels threatening, skip the app and get real support. 💗")
             .font(.system(size: 11, weight: .medium, design: .rounded))
             .foregroundStyle(.white.opacity(0.52))
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var legalLinks: some View {
+        HStack(spacing: 14) {
+            Link(destination: ChadDropLegalLinks.termsOfUse) {
+                Label("Terms of Use", systemImage: "doc.text.fill")
+            }
+            .accessibilityIdentifier("termsOfUseLink")
+
+            Link(destination: ChadDropLegalLinks.privacyPolicy) {
+                Label("Privacy Policy", systemImage: "lock.shield.fill")
+            }
+            .accessibilityIdentifier("privacyPolicyLink")
+        }
+        .font(.system(size: 12, weight: .bold, design: .rounded))
+        .foregroundStyle(.white.opacity(0.78))
+        .lineLimit(1)
+        .minimumScaleFactor(0.78)
+    }
+
+    private var remainingFreeDecodes: Int {
+        max(0, 3 - freeDecodeCount)
+    }
+
+    private func startDecode() {
+        inputFocused = false
+
+        let hasDraft = !viewModel.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard hasDraft else {
+            viewModel.decode()
+            return
+        }
+
+        guard subscriptionStore.isSubscribed || remainingFreeDecodes > 0 else {
+            showingPaywall = true
+            return
+        }
+
+        if !subscriptionStore.isSubscribed {
+            freeDecodeCount += 1
+        }
+        viewModel.decode()
     }
 }
 
@@ -294,7 +410,7 @@ final class DecodeViewModel: ObservableObject {
             energy: "Vague with a side of breadcrumbs",
             flags: ["No concrete plan", "Keeps access open"]
         )
-        statusMessage = "Demo screenshot loaded for App Store capture."
+        statusMessage = nil
     }
 }
 
@@ -307,7 +423,7 @@ private struct ResultBlock: View {
         VStack(alignment: .leading, spacing: 6) {
             Label(title, systemImage: icon)
                 .font(.system(size: 13, weight: .black, design: .rounded))
-                .foregroundStyle(AppTheme.sky)
+                .foregroundStyle(AppTheme.lavender)
             Text(text)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.84))
@@ -349,7 +465,7 @@ private struct ReplyRow: View {
 private struct FlowTags: View {
     let values: [String]
     var icon = "tag.fill"
-    var tint = AppTheme.lime
+    var tint = AppTheme.blush
 
     var body: some View {
         FlowLayout(spacing: 8) {
@@ -421,7 +537,7 @@ private struct ScoreRing: View {
             VStack(spacing: 0) {
                 Text("\(score)")
                     .font(.system(size: 21, weight: .black, design: .rounded))
-                Text("truth")
+                Text("reality")
                     .font(.system(size: 9, weight: .bold, design: .rounded))
             }
             .foregroundStyle(.white)
@@ -432,8 +548,8 @@ private struct ScoreRing: View {
 
     private var scoreColor: Color {
         switch score {
-        case 75...100: return AppTheme.lime
-        case 45..<75: return AppTheme.orange
+        case 75...100: return AppTheme.blush
+        case 45..<75: return AppTheme.peach
         default: return AppTheme.hotPink
         }
     }
@@ -442,7 +558,7 @@ private struct ScoreRing: View {
 struct AppBackground: View {
     var body: some View {
         LinearGradient(
-            colors: [Color(red: 0.05, green: 0.05, blue: 0.08), Color(red: 0.12, green: 0.08, blue: 0.14), Color(red: 0.03, green: 0.10, blue: 0.12)],
+            colors: [Color(red: 0.12, green: 0.04, blue: 0.10), Color(red: 0.18, green: 0.06, blue: 0.16), Color(red: 0.08, green: 0.05, blue: 0.14)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -450,16 +566,16 @@ struct AppBackground: View {
             GeometryReader { proxy in
                 Canvas { context, size in
                     let circles: [(CGPoint, CGFloat, Color)] = [
-                        (CGPoint(x: size.width * 0.16, y: size.height * 0.18), 170, AppTheme.hotPink.opacity(0.18)),
-                        (CGPoint(x: size.width * 0.82, y: size.height * 0.12), 150, AppTheme.sky.opacity(0.16)),
-                        (CGPoint(x: size.width * 0.78, y: size.height * 0.86), 210, AppTheme.lime.opacity(0.10))
+                        (CGPoint(x: size.width * 0.16, y: size.height * 0.18), 190, AppTheme.hotPink.opacity(0.22)),
+                        (CGPoint(x: size.width * 0.82, y: size.height * 0.12), 170, AppTheme.lavender.opacity(0.18)),
+                        (CGPoint(x: size.width * 0.50, y: size.height * 0.86), 220, AppTheme.rose.opacity(0.14))
                     ]
                     for circle in circles {
                         let rect = CGRect(x: circle.0.x - circle.1 / 2, y: circle.0.y - circle.1 / 2, width: circle.1, height: circle.1)
                         context.fill(Path(ellipseIn: rect), with: .color(circle.2))
                     }
                 }
-                .blur(radius: min(proxy.size.width, 500) * 0.05)
+                .blur(radius: min(proxy.size.width, 500) * 0.06)
             }
         }
     }
@@ -518,14 +634,41 @@ struct IconButtonStyle: ButtonStyle {
 }
 
 enum AppTheme {
-    static let panel = Color(red: 0.09, green: 0.09, blue: 0.13)
-    static let hotPink = Color(red: 1.0, green: 0.22, blue: 0.53)
-    static let orange = Color(red: 1.0, green: 0.58, blue: 0.22)
+    static let panel = Color(red: 0.18, green: 0.06, blue: 0.14)
+    static let hotPink = Color(red: 1.0, green: 0.28, blue: 0.56)
+    static let rose = Color(red: 0.96, green: 0.40, blue: 0.68)
+    static let blush = Color(red: 1.0, green: 0.62, blue: 0.78)
+    static let lavender = Color(red: 0.68, green: 0.48, blue: 0.94)
+    static let peach = Color(red: 1.0, green: 0.72, blue: 0.58)
     static let lime = Color(red: 0.62, green: 0.94, blue: 0.34)
-    static let sky = Color(red: 0.35, green: 0.78, blue: 1.0)
+    static let orange = Color(red: 1.0, green: 0.58, blue: 0.22)
     static let hotGradient = LinearGradient(
-        colors: [hotPink, orange],
+        colors: [hotPink, rose],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
+}
+
+private struct FlowerDecor: View {
+    var size: CGFloat = 24
+    var color: Color = .pink
+    var rotation: Double = 0
+
+    var body: some View {
+        ZStack {
+            // Five petals
+            ForEach(0..<5, id: \.self) { i in
+                Capsule()
+                    .fill(color.opacity(0.55))
+                    .frame(width: size * 0.45, height: size * 0.85)
+                    .offset(y: -size * 0.28)
+                    .rotationEffect(.degrees(Double(i) * 72))
+            }
+            // Center
+            Circle()
+                .fill(color.opacity(0.8))
+                .frame(width: size * 0.3, height: size * 0.3)
+        }
+        .rotationEffect(.degrees(rotation))
+    }
 }

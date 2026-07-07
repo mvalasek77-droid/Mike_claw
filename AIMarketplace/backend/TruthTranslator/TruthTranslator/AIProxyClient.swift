@@ -4,17 +4,42 @@ struct DecodeService {
     private let engine = DecodeEngine()
     private let proxy = AIProxyClient()
 
+    /// Confidence threshold: if the local engine's score is in this range, try Apple Foundation for a better read.
+    private let uncertainRange = 35...65
+
     func decode(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome {
+        // Tier 1: AI Proxy (if configured) — best quality, requires backend
         if proxy.isConfigured {
             do {
                 let result = try await proxy.decode(text: text, tone: tone, context: context)
                 return DecodeOutcome(result: result.normalized, usedFallback: false)
             } catch {
-                let result = engine.decode(text: text, tone: tone, context: context)
-                return DecodeOutcome(result: result, usedFallback: true)
+                // Proxy failed, continue to next tier
             }
         }
-        return DecodeOutcome(result: engine.decode(text: text, tone: tone, context: context), usedFallback: true)
+
+        // Tier 2: Local engine
+        let localResult = engine.decode(text: text, tone: tone, context: context)
+
+        // If the engine is confident (score outside uncertain range), use its result directly
+        if !uncertainRange.contains(localResult.realityScore) {
+            return DecodeOutcome(result: localResult, usedFallback: true)
+        }
+
+        // Tier 3: Apple Foundation model — for ambiguous texts the engine can't confidently decode
+        if #available(iOS 26.0, *) {
+            let foundationClient = AppleFoundationClient()
+            if foundationClient.isAvailable {
+                do {
+                    let foundationResult = try await foundationClient.decode(text: text, tone: tone, context: context)
+                    return DecodeOutcome(result: foundationResult.normalized, usedFallback: false)
+                } catch {
+                    // Foundation failed, use local engine result
+                }
+            }
+        }
+
+        return DecodeOutcome(result: localResult, usedFallback: true)
     }
 }
 

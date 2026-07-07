@@ -7,11 +7,11 @@ struct ReleaseGatewayView: View {
     private let appStoreValues: [(String, String, String)] = [
         ("Platform", "iOS", "Choose this when creating the app record."),
         ("Name", "ChadDrop", "Public App Store name if Apple says it is available."),
-        ("Bundle ID", "com.chaddrop.app", "Must match the Xcode app."),
+        ("Bundle ID", "com.valasek.chaddrop", "Must match the Xcode app."),
         ("SKU", "CHADDROP-IOS-1", "Private inventory code. Users do not see it."),
         ("Category", "Lifestyle", "Best App Store fit."),
-        ("Subtitle", "Decode confusing texts with humor.", "Short line shown under the app name."),
-        ("Keywords", "text,dating,relationships,advice,humor,ai,replies,messages", "Paste without spaces after commas.")
+        ("Subtitle", "Decode texts with humor.", "Short line shown under the app name."),
+        ("Keywords", "text,dating,relationships,advice,humor,chat,replies,messages", "Paste without spaces after commas.")
     ]
 
     private let commands: [(String, String)] = [
@@ -27,7 +27,7 @@ struct ReleaseGatewayView: View {
     private let placeholderValues: [(String, String, String)] = [
         ("Where", "App Store Connect -> Apps -> + -> New App", "This creates the placeholder record before upload."),
         ("Record status", "Prepare for Submission", "This is the normal status after the placeholder is created."),
-        ("Bundle ID", "com.chaddrop.app", "If missing, create it in Apple Developer or let Xcode automatic signing create it."),
+        ("Bundle ID", "com.valasek.chaddrop", "If missing, create it in Apple Developer or let Xcode automatic signing create it."),
         ("SKU", "CHADDROP-IOS-1", "Private code for Apple only."),
         ("User access", "Full Access", "Simplest option for a single-owner launch.")
     ]
@@ -48,6 +48,7 @@ struct ReleaseGatewayView: View {
                         signingGuide
                         xcodeCloudPanel
                         appStoreValuesPanel
+                        subscriptionsPanel
                         screenshotsPanel
                         iphoneCapturePanel
                         privacyPanel
@@ -119,7 +120,7 @@ struct ReleaseGatewayView: View {
             ReleaseStatusCard(
                 title: "Automated after you sign in",
                 icon: "wand.and.stars",
-                tint: AppTheme.sky,
+                tint: AppTheme.lavender,
                 text: "Xcode Cloud signed builds, TestFlight delivery, more screenshots, GitHub Pages support site, and AI proxy deployment after account prompts are approved."
             )
             ReleaseStatusCard(
@@ -138,7 +139,7 @@ struct ReleaseGatewayView: View {
                     .releaseBody()
 
                 ReleaseStepRow(number: "1", title: "Open App Store Connect", text: "Go to Apps, press the plus button, then choose New App.")
-                ReleaseStepRow(number: "2", title: "Fill the New App form", text: "Use iOS, ChadDrop, English (U.S.), com.chaddrop.app, and CHADDROP-IOS-1.")
+                ReleaseStepRow(number: "2", title: "Fill the New App form", text: "Use iOS, ChadDrop, English (U.S.), com.valasek.chaddrop, and CHADDROP-IOS-1.")
                 ReleaseStepRow(number: "3", title: "Create the record", text: "Apple should show the app as Prepare for Submission. That means the placeholder is ready.")
                 ReleaseStepRow(number: "4", title: "Hand back to CodeGenie", text: "After the placeholder exists, CodeGenie can build/upload once signing is configured.")
 
@@ -176,7 +177,7 @@ struct ReleaseGatewayView: View {
     private var signingGuide: some View {
         ReleasePanel(title: "Signing in plain English", icon: "signature") {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Signing is Apple proving ChadDrop came from your Apple Developer account. The app cannot be uploaded until Apple knows which team owns com.chaddrop.app.")
+                Text("Signing is Apple proving ChadDrop came from your Apple Developer account. The app cannot be uploaded until Apple knows which team owns com.valasek.chaddrop.")
                     .releaseBody()
 
                 ReleaseStepRow(number: "A", title: "Open Xcode Accounts", text: "Xcode -> Settings -> Accounts. Add your Apple ID and finish two-factor authentication.")
@@ -192,14 +193,14 @@ struct ReleaseGatewayView: View {
                 Text("Use this path when you want Apple to build and sign ChadDrop in App Store Connect instead of fighting local signing on this Mac. CodeGenie prepared the ci_scripts folder so cloud builds have clean setup checks.")
                     .releaseBody()
 
-                ReleaseStepRow(number: "1", title: "Create the app record", text: "App Store Connect needs ChadDrop first: iOS, com.chaddrop.app, SKU CHADDROP-IOS-1.")
+                ReleaseStepRow(number: "1", title: "Create the app record", text: "App Store Connect needs ChadDrop first: iOS, com.valasek.chaddrop, SKU CHADDROP-IOS-1.")
                 ReleaseStepRow(number: "2", title: "Open Xcode Cloud", text: "In Xcode, open the Report Navigator, choose Cloud, then Get Started. Grant Apple access to the GitHub repo when asked.")
                 ReleaseStepRow(number: "3", title: "Create workflow", text: "Use scheme TruthTranslator. Add Test on a recommended iPhone simulator and Archive for TestFlight internal testing.")
                 ReleaseStepRow(number: "4", title: "Watch the build", text: "The cloud build signs inside Apple after your account approvals. If it passes, the build appears in TestFlight.")
                 ReleaseStepRow(number: "5", title: "Submit later", text: "Use TestFlight first. Keep final App Review submission as a human confirmation.")
 
                 CopyValueRow(label: "Scheme", value: "TruthTranslator", note: "Use this in Xcode Cloud workflow actions.")
-                CopyValueRow(label: "Bundle ID", value: "com.chaddrop.app", note: "Must match the App Store Connect record.")
+                CopyValueRow(label: "Bundle ID", value: "com.valasek.chaddrop", note: "Must match the App Store Connect record.")
                 CopyValueRow(label: "CI scripts folder", value: "TruthTranslator/ci_scripts", note: "Apple runs these during Xcode Cloud builds.")
             }
         }
@@ -211,6 +212,30 @@ struct ReleaseGatewayView: View {
                 ForEach(appStoreValues, id: \.0) { row in
                     CopyValueRow(label: row.0, value: row.1, note: row.2)
                 }
+            }
+        }
+    }
+
+    private var subscriptionsPanel: some View {
+        ReleasePanel(title: "Subscriptions", icon: "crown.fill") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Prices are configured in App Store Connect. The app only needs product IDs that exactly match the subscription products Apple returns to StoreKit.")
+                    .releaseBody()
+
+                ReleaseStepRow(number: "1", title: "Create group", text: "In App Store Connect -> Subscriptions, create a group named ChadDrop Pro.")
+                ReleaseStepRow(number: "2", title: "Add weekly", text: "Create a one-week auto-renewable subscription using the product ID below.")
+                ReleaseStepRow(number: "3", title: "Add annual", text: "Create a one-year auto-renewable subscription and set the U.S. price to $29.99.")
+                ReleaseStepRow(number: "4", title: "Add metadata", text: "Add English display names and descriptions for both products. Missing metadata usually means these localization fields are blank.")
+                ReleaseStepRow(number: "5", title: "Submit with app", text: "For the first subscription review, attach both subscriptions to the app version before submitting.")
+
+                CopyValueRow(label: "Group display name", value: "ChadDrop Pro", note: "User-facing subscription group name.")
+                CopyValueRow(label: "Weekly product ID", value: "com.valasek.chaddrop.premium.weekly", note: "Use exactly this value in App Store Connect.")
+                CopyValueRow(label: "Weekly display name", value: "ChadDrop Pro Weekly", note: "Paste under English (U.S.) localization.")
+                CopyValueRow(label: "Weekly description", value: "Unlimited ChadDrop decodes and suggested replies for one week.", note: "Required subscription metadata.")
+                CopyValueRow(label: "Annual product ID", value: "com.valasek.chaddrop.premium.annual", note: "Use exactly this value in App Store Connect.")
+                CopyValueRow(label: "Annual display name", value: "ChadDrop Pro Annual", note: "Paste under English (U.S.) localization.")
+                CopyValueRow(label: "Annual description", value: "Unlimited ChadDrop decodes and suggested replies for one year.", note: "Required subscription metadata.")
+                CopyValueRow(label: "Annual price", value: "US$29.99", note: "Change from the old US$24.99 target in App Store Connect, not in Swift.")
             }
         }
     }
@@ -264,7 +289,7 @@ struct ReleaseGatewayView: View {
         ReleasePanel(title: "Privacy answers", icon: "lock.shield.fill") {
             VStack(alignment: .leading, spacing: 10) {
                 ReleaseChoiceRow(title: "Offline mode", badge: "Fastest", text: "Tracking: No. Data collection: None. Third-party advertising: No.", tint: AppTheme.lime)
-                ReleaseChoiceRow(title: "AI proxy mode", badge: "Optional", text: "Tracking: No. User Content is processed only for App Functionality. Do not log raw pasted messages.", tint: AppTheme.sky)
+                ReleaseChoiceRow(title: "AI proxy mode", badge: "Optional", text: "Tracking: No. User Content is processed only for App Functionality. Do not log raw pasted messages.", tint: AppTheme.lavender)
                 Text("Never put an OpenAI key inside the iPhone app. Keep it on the server proxy.")
                     .releaseBody()
             }
@@ -348,8 +373,8 @@ private struct ReleaseStepRow: View {
                 .font(.system(size: 14, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
                 .frame(width: 30, height: 30)
-                .background(AppTheme.sky.opacity(0.22), in: Circle())
-                .overlay(Circle().stroke(AppTheme.sky.opacity(0.32)))
+                .background(AppTheme.lavender.opacity(0.22), in: Circle())
+                .overlay(Circle().stroke(AppTheme.lavender.opacity(0.32)))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -431,7 +456,7 @@ private struct CopyValueRow: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(label)
                     .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundStyle(AppTheme.sky)
+                    .foregroundStyle(AppTheme.lavender)
                 Text(value)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
@@ -466,7 +491,7 @@ private struct ReleaseLinkRow: View {
         Link(destination: URL(string: url)!) {
             HStack(alignment: .center, spacing: 12) {
                 Image(systemName: "safari.fill")
-                    .foregroundStyle(AppTheme.sky)
+                    .foregroundStyle(AppTheme.lavender)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)

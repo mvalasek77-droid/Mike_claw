@@ -1,0 +1,18 @@
+Hello App Review,
+
+Thank you for the additional details. We have addressed the issues in this resubmission:
+
+1. Screenshots: We replaced the screenshots with fresh iOS screenshots captured from the app running on iPhone. The updated screenshots no longer include non-iOS status bar images or internal release/tooling screens.
+
+2. In-App Purchases: We completed the ChadDrop Pro auto-renewable subscription metadata, pricing, and review screenshots, and included the subscriptions with this app version. The products are:
+- ChadDrop Pro Weekly: com.valasek.chaddrop.premium.weekly
+- ChadDrop Pro Annual: com.valasek.chaddrop.premium.annual
+
+3. Demo API key: Please use this demo Anthropic API key to verify AI-backed functionality:
+
+[PASTE_DEMO_ANTHROPIC_API_KEY_HERE]
+
+No account login is required. To test, launch ChadDrop, paste a sample text message, choose a tone/context, and tap Decode. The ChadDrop Pro options are available from the crown button.
+
+Thanks,
+Mike Valasek

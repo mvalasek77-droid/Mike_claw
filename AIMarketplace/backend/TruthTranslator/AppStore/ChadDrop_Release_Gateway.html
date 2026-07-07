@@ -274,12 +274,12 @@ Scripts/create_app_icon.sh</code></pre>
       <h2>Signing, In Plain English</h2>
       <p>
         Signing is Apple proving that the app came from your Apple Developer account. The app cannot go to the App Store
-        until Apple knows which developer team owns <code>com.chaddrop.app</code>.
+        until Apple knows which developer team owns <code>com.valasek.chaddrop</code>.
       </p>
       <div class="flow" aria-label="Signing diagram">
         <div class="step"><b>You</b><span>Join Apple Developer Program and sign in.</span></div>
         <div class="step"><b>Xcode</b><span>Uses your team to create certificates and profiles.</span></div>
-        <div class="step"><b>ChadDrop</b><span>Bundle ID is <code>com.chaddrop.app</code>.</span></div>
+        <div class="step"><b>ChadDrop</b><span>Bundle ID is <code>com.valasek.chaddrop</code>.</span></div>
         <div class="step"><b>Archive</b><span>A signed release build is created.</span></div>
         <div class="step"><b>Apple</b><span>Accepts the build for TestFlight/App Review.</span></div>
       </div>
@@ -317,7 +317,7 @@ Scripts/create_app_icon.sh</code></pre>
         <summary>Exact setup for non-coders</summary>
         <ol>
           <li>Open <a href="https://appstoreconnect.apple.com/apps" target="_blank">App Store Connect</a>, go to <b>My Apps</b>, press <b>+</b>, then choose <b>New App</b>.</li>
-          <li>Use <b>iOS</b>, name <b>ChadDrop</b>, bundle ID <code>com.chaddrop.app</code>, and SKU <code>CHADDROP-IOS-1</code>.</li>
+          <li>Use <b>iOS</b>, name <b>ChadDrop</b>, bundle ID <code>com.valasek.chaddrop</code>, and SKU <code>CHADDROP-IOS-1</code>.</li>
           <li>Open <code>TruthTranslator/TruthTranslator.xcodeproj</code> in Xcode.</li>
           <li>Open the <b>Report Navigator</b>, choose the <b>Cloud</b> tab, then press <b>Get Started</b>.</li>
           <li>Grant App Store Connect access to the GitHub repo when Apple asks.</li>
@@ -343,7 +343,7 @@ Scripts/create_app_icon.sh</code></pre>
       <div class="flow" aria-label="App placeholder diagram">
         <div class="step"><b>Open Apps</b><span>Go to App Store Connect -> Apps.</span></div>
         <div class="step"><b>New App</b><span>Press plus, choose New App.</span></div>
-        <div class="step"><b>Use values</b><span>iOS, ChadDrop, English, com.chaddrop.app.</span></div>
+        <div class="step"><b>Use values</b><span>iOS, ChadDrop, English, com.valasek.chaddrop.</span></div>
         <div class="step"><b>Create</b><span>Status should become Prepare for Submission.</span></div>
         <div class="step"><b>Return</b><span>CodeGenie can continue once signing exists.</span></div>
       </div>
@@ -359,15 +359,41 @@ Scripts/create_app_icon.sh</code></pre>
           <tr><td>Platform</td><td>iOS</td><td>ChadDrop is an iPhone/iPad app.</td></tr>
           <tr><td>Name</td><td>ChadDrop</td><td>If Apple says unavailable, choose a close public name and keep the app display name ChadDrop.</td></tr>
           <tr><td>Primary language</td><td>English (U.S.)</td><td>Use your main store language.</td></tr>
-          <tr><td>Bundle ID</td><td><code>com.chaddrop.app</code></td><td>This must match the Xcode app.</td></tr>
+          <tr><td>Bundle ID</td><td><code>com.valasek.chaddrop</code></td><td>This must match the Xcode app.</td></tr>
           <tr><td>SKU</td><td><code>CHADDROP-IOS-1</code></td><td>This is your private inventory code. Users do not see it.</td></tr>
           <tr><td>Category</td><td>Lifestyle</td><td>Best match for the app.</td></tr>
-          <tr><td>Subtitle</td><td>Decode confusing texts with humor.</td><td>Copy from <code>AppStore/metadata.md</code>.</td></tr>
-          <tr><td>Keywords</td><td>text,dating,relationships,advice,humor,ai,replies,messages</td><td>No spaces after commas.</td></tr>
+          <tr><td>Subtitle</td><td>Decode texts with humor.</td><td>Copy from <code>AppStore/metadata.md</code>.</td></tr>
+          <tr><td>Keywords</td><td>text,dating,relationships,advice,humor,chat,replies,messages</td><td>No spaces after commas.</td></tr>
           <tr><td>Support URL</td><td>Your GitHub Pages support page</td><td>The gateway includes a script to create this site.</td></tr>
           <tr><td>Privacy Policy URL</td><td>Your GitHub Pages privacy page</td><td>Use this if AI proxy is enabled, and it is still useful for the offline app.</td></tr>
         </tbody>
       </table>
+    </section>
+
+    <section class="card">
+      <h2>Subscription Metadata</h2>
+      <p>
+        If a one-week or one-year subscription says Missing Metadata, add the English (U.S.) display name and description below.
+        Both products unlock the same ChadDrop Pro entitlement.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Use this</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Group display name</td><td>ChadDrop Pro</td><td>User-facing subscription group name.</td></tr>
+          <tr><td>Weekly product ID</td><td><code>com.valasek.chaddrop.premium.weekly</code></td><td>One-week auto-renewable subscription.</td></tr>
+          <tr><td>Weekly display name</td><td>ChadDrop Pro Weekly</td><td>English (U.S.) localization.</td></tr>
+          <tr><td>Weekly description</td><td>Unlimited ChadDrop decodes and suggested replies for one week.</td><td>Required subscription metadata.</td></tr>
+          <tr><td>Annual product ID</td><td><code>com.valasek.chaddrop.premium.annual</code></td><td>One-year auto-renewable subscription.</td></tr>
+          <tr><td>Annual display name</td><td>ChadDrop Pro Annual</td><td>English (U.S.) localization.</td></tr>
+          <tr><td>Yearly description</td><td>Unlimited ChadDrop decodes and suggested replies for one year.</td><td>Required subscription metadata.</td></tr>
+          <tr><td>Yearly price</td><td>US$29.99</td><td>Set in App Store Connect pricing.</td></tr>
+        </tbody>
+      </table>
+      <p class="small">
+        If App Store Connect still shows Missing Metadata after saving localization, add a paywall screenshot under subscription Review Information.
+      </p>
     </section>
 
     <section class="card">

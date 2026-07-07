@@ -23,9 +23,28 @@ DERIVED_DATA="${CHADDROP_SCREENSHOT_DERIVED_DATA:-/private/tmp/chaddrop_screensh
 SETTLE_SECONDS="${CHADDROP_SCREENSHOT_SETTLE_SECONDS:-6}"
 
 APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphonesimulator/TruthTranslator.app"
+STATUS_BAR_MASKER_SOURCE="$ROOT_DIR/Scripts/mask_ios_status_bar.swift"
+STATUS_BAR_MASKER_BIN="${CHADDROP_STATUS_BAR_MASKER_BIN:-/private/tmp/chaddrop_tools/mask_ios_status_bar}"
+SWIFT_MODULE_CACHE="${CHADDROP_SWIFT_MODULE_CACHE:-/private/tmp/chaddrop_swift_module_cache}"
 bundle_id_for_app() {
   local app_path="$1"
   /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$app_path/Info.plist" 2>/dev/null || true
+}
+
+mask_ios_status_bar() {
+  if [[ ! -f "$STATUS_BAR_MASKER_SOURCE" ]]; then
+    echo "Status bar masker is missing: $STATUS_BAR_MASKER_SOURCE"
+    exit 1
+  fi
+
+  mkdir -p "$(dirname "$STATUS_BAR_MASKER_BIN")" "$SWIFT_MODULE_CACHE"
+  if [[ ! -x "$STATUS_BAR_MASKER_BIN" || "$STATUS_BAR_MASKER_SOURCE" -nt "$STATUS_BAR_MASKER_BIN" ]]; then
+    SWIFT_MODULE_CACHE_PATH="$SWIFT_MODULE_CACHE" \
+      CLANG_MODULE_CACHE_PATH="$SWIFT_MODULE_CACHE" \
+      swiftc "$STATUS_BAR_MASKER_SOURCE" -o "$STATUS_BAR_MASKER_BIN"
+  fi
+
+  "$STATUS_BAR_MASKER_BIN" "$@"
 }
 
 if [[ "${CHADDROP_SKIP_SCREENSHOT_BUILD:-0}" != "1" ]]; then
@@ -44,7 +63,7 @@ else
   echo "Skipping screenshot build because CHADDROP_SKIP_SCREENSHOT_BUILD=1."
 fi
 
-if [[ -d "$APP_PATH" && "$(bundle_id_for_app "$APP_PATH")" != "com.chaddrop.app" ]]; then
+if [[ -d "$APP_PATH" && "$(bundle_id_for_app "$APP_PATH")" != "com.valasek.chaddrop" ]]; then
   echo "Ignoring incomplete simulator app at $APP_PATH."
   APP_PATH=""
 fi
@@ -59,43 +78,56 @@ if [[ -z "${APP_PATH:-}" || ! -d "$APP_PATH" ]]; then
   exit 1
 fi
 
-if [[ "$(bundle_id_for_app "$APP_PATH")" != "com.chaddrop.app" ]]; then
+if [[ "$(bundle_id_for_app "$APP_PATH")" != "com.valasek.chaddrop" ]]; then
   echo "Found a simulator app, but it is not ChadDrop."
-  echo "Expected bundle ID: com.chaddrop.app"
+  echo "Expected bundle ID: com.valasek.chaddrop"
   echo "Actual bundle ID: $(bundle_id_for_app "$APP_PATH")"
   exit 1
 fi
 
-xcrun simctl terminate "$DEVICE_ID" com.chaddrop.app >/dev/null 2>&1 || true
-xcrun simctl uninstall "$DEVICE_ID" com.chaddrop.app >/dev/null 2>&1 || true
+xcrun simctl terminate "$DEVICE_ID" com.valasek.chaddrop >/dev/null 2>&1 || true
+xcrun simctl uninstall "$DEVICE_ID" com.valasek.chaddrop >/dev/null 2>&1 || true
 xcrun simctl install "$DEVICE_ID" "$APP_PATH"
-xcrun simctl launch "$DEVICE_ID" com.chaddrop.app >/dev/null
+xcrun simctl launch "$DEVICE_ID" com.valasek.chaddrop >/dev/null
 sleep "$SETTLE_SECONDS"
 
 PUBLIC_DIR="$ROOT_DIR/AppStore/Screenshots/Public"
 INTERNAL_DIR="$ROOT_DIR/AppStore/Screenshots/InternalWalkthrough"
-mkdir -p "$PUBLIC_DIR" "$INTERNAL_DIR"
+IAP_DIR="$ROOT_DIR/AppStore/Screenshots/IAPReview"
+mkdir -p "$PUBLIC_DIR" "$INTERNAL_DIR" "$IAP_DIR"
 
 capture_public() {
   local name="$1"
   shift || true
-  xcrun simctl terminate "$DEVICE_ID" com.chaddrop.app >/dev/null 2>&1 || true
-  xcrun simctl launch "$DEVICE_ID" com.chaddrop.app "$@" >/dev/null
+  xcrun simctl terminate "$DEVICE_ID" com.valasek.chaddrop >/dev/null 2>&1 || true
+  xcrun simctl launch "$DEVICE_ID" com.valasek.chaddrop "$@" >/dev/null
   sleep "$SETTLE_SECONDS"
   xcrun simctl io "$DEVICE_ID" screenshot "$PUBLIC_DIR/$name.png"
+  mask_ios_status_bar "$PUBLIC_DIR/$name.png"
 }
 
 capture_internal() {
   local name="$1"
   shift || true
-  xcrun simctl terminate "$DEVICE_ID" com.chaddrop.app >/dev/null 2>&1 || true
-  xcrun simctl launch "$DEVICE_ID" com.chaddrop.app "$@" >/dev/null
+  xcrun simctl terminate "$DEVICE_ID" com.valasek.chaddrop >/dev/null 2>&1 || true
+  xcrun simctl launch "$DEVICE_ID" com.valasek.chaddrop "$@" >/dev/null
   sleep "$SETTLE_SECONDS"
   xcrun simctl io "$DEVICE_ID" screenshot "$INTERNAL_DIR/$name.png"
 }
 
+capture_iap_review() {
+  local name="$1"
+  shift || true
+  xcrun simctl terminate "$DEVICE_ID" com.valasek.chaddrop >/dev/null 2>&1 || true
+  xcrun simctl launch "$DEVICE_ID" com.valasek.chaddrop "$@" >/dev/null
+  sleep "$SETTLE_SECONDS"
+  xcrun simctl io "$DEVICE_ID" screenshot "$IAP_DIR/$name.png"
+  mask_ios_status_bar "$IAP_DIR/$name.png"
+}
+
 capture_public "01-home"
 capture_public "02-decoded-example" --chaddrop-demo-result
+capture_iap_review "chaddrop-pro-paywall" --chaddrop-show-paywall --chaddrop-review-paywall
 capture_internal "release-gateway-walkthrough" --chaddrop-show-release-gateway
 
 echo ""
@@ -110,9 +142,15 @@ for image in "$INTERNAL_DIR"/*.png; do
   sips -g pixelWidth -g pixelHeight "$image" | sed "s#^#$image #"
 done
 
+echo ""
+echo "IAP review screenshot:"
+for image in "$IAP_DIR"/*.png; do
+  sips -g pixelWidth -g pixelHeight "$image" | sed "s#^#$image #"
+done
+
 if [[ "${CHADDROP_OPEN_SCREENSHOT_FOLDER:-1}" == "1" ]]; then
   open "$ROOT_DIR/AppStore/Screenshots" >/dev/null 2>&1 || echo "Screenshots captured. Could not open the folder automatically."
 fi
 
 echo ""
-echo "Use Public screenshots for App Store Connect. The InternalWalkthrough image is only for guiding the release process."
+echo "Use Public screenshots for App Store Connect. Use IAPReview for subscription review information. The InternalWalkthrough image is only for guiding the release process."

@@ -4,6 +4,8 @@
 <dict>
 	<key>AI_PROXY_URL</key>
 	<string>$(AI_PROXY_URL)</string>
+	<key>CHADDROP_SUBSCRIPTION_PRODUCT_IDS</key>
+	<string>com.valasek.chaddrop.premium.weekly,com.valasek.chaddrop.premium.annual</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -21,7 +23,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

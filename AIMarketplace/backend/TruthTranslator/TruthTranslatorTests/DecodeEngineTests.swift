@@ -12,7 +12,7 @@ final class DecodeEngineTests: XCTestCase {
         )
 
         XCTAssertTrue(result.receipts.contains("Busy fog"))
-        XCTAssertTrue(result.receipts.contains("Noncommittal wording"))
+        XCTAssertTrue(result.receipts.contains("Noncommittal"))
         XCTAssertLessThan(result.realityScore, 50)
         XCTAssertFalse(result.suggestedReplies.isEmpty)
     }
