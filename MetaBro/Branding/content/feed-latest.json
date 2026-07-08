@@ -1,5 +1,5 @@
 {
-  "generated_for": "2026-07-08T05",
+  "generated_for": "2026-07-08T08",
   "posts": [
     {
       "community": {
@@ -10,136 +10,48 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Cutting without losing strength",
-      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
-      "score": 217,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "997a6c27-f4de-11c2-35b7-f2fe8e9052cd",
-      "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
-      },
-      "image_url": null,
-      "comment_count": 51,
-      "created_at": "2026-07-08T04:21:21+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Tips for a 5am toddler?",
-      "body": "He's up before the sun. How do you bros keep your sanity?",
-      "score": 191,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "d6330540-2c0b-fae4-6d82-95a3dcd98168",
-      "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
-      },
-      "image_url": null,
-      "comment_count": 67,
-      "created_at": "2026-07-08T03:04:21+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 62,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 41
-        },
-        {
-          "kind": "strong",
-          "count": 18
-        },
-        {
-          "kind": "like",
-          "count": 21
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "f4ce34be-73a2-b12a-b262-c1f270b37df3",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 93,
-      "created_at": "2026-07-08T01:41:21+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
-        "is_joined": true
-      },
-      "title": "Detailing Sunday",
-      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
-      "score": 78,
+      "title": "Mobility > maxing out",
+      "body": "Ten minutes of hips and shoulders before every session. Game changer.",
+      "score": 197,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 3
+          "count": 2
         }
       ],
-      "id": "3760bb8e-dd9a-c10a-7455-c951712b1be7",
+      "id": "ce56efaf-28cf-cd88-9a4f-e25abfc1b384",
       "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 31,
-      "created_at": "2026-07-08T02:28:21+00:00",
+      "comment_count": 15,
+      "created_at": "2026-07-08T06:34:43+00:00",
       "my_vote": 0
     },
     {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Tips for a 5am toddler?",
-      "body": "He's up before the sun. How do you bros keep your sanity?",
-      "score": 201,
-      "reactions": [],
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 13,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 3
+        },
+        {
+          "kind": "like",
+          "count": 6
+        }
+      ],
       "my_reaction": null,
       "awards": [],
-      "id": "42cce549-9e08-858e-50cf-959b3d07a453",
+      "id": "c5ad732b-e483-717d-10c0-5b60f6ef2e17",
       "author": {
         "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
         "handle": "@newbro",
@@ -148,8 +60,38 @@
         "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 0,
-      "created_at": "2026-07-08T03:09:21+00:00",
+      "comment_count": 116,
+      "created_at": "2026-07-08T05:46:43+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 36,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 35
+        },
+        {
+          "kind": "like",
+          "count": 9
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "10b265fe-cdaa-2839-824f-cbe92b50664a",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 105,
+      "created_at": "2026-07-08T02:47:43+00:00",
       "my_vote": 0
     },
     {
@@ -161,18 +103,18 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
         "is_joined": true
       },
-      "title": "Best cheap smoker under $300?",
-      "body": "Looking to upgrade from the kettle. What are you bros running?",
-      "score": 128,
+      "title": "Low and slow brisket \u2014 14 hours",
+      "body": "Wrapped at 165, pulled at 203. Bark was unreal. AMA.",
+      "score": 68,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 3
+          "count": 2
         }
       ],
-      "id": "7b9badf4-c3a9-1e98-f745-a1dca8606ef4",
+      "id": "083383c3-5f80-0544-fb94-204a1c13c379",
       "author": {
         "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
         "handle": "@coachdave",
@@ -181,8 +123,75 @@
         "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 87,
-      "created_at": "2026-07-07T23:28:21+00:00",
+      "comment_count": 69,
+      "created_at": "2026-07-08T06:08:43+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 25,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 28
+        },
+        {
+          "kind": "strong",
+          "count": 28
+        },
+        {
+          "kind": "like",
+          "count": 32
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "3040f109-8f00-e275-742c-453c88e82392",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 24,
+      "created_at": "2026-07-08T05:11:43+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "First steps today",
+      "body": "Caught it on video. Did not expect to tear up. Worth every sleepless night.",
+      "score": 52,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "c896421c-6190-1272-5cc3-3f23eb04a6e2",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 63,
+      "created_at": "2026-07-08T02:33:43+00:00",
       "my_vote": 0
     }
   ],
