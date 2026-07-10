@@ -4,6 +4,9 @@ import SwiftUI
 struct AuctionBabyApp: App {
     @StateObject private var store = AuctionStore()
     @StateObject private var storeKit = StoreKitService()
+    // Payout-Worker client — owned at app root so the admin console and any
+    // payout screens share one configuration.
+    @StateObject private var backend = BackendService()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -11,6 +14,7 @@ struct AuctionBabyApp: App {
             RootView()
                 .environmentObject(store)
                 .environmentObject(storeKit)
+                .environmentObject(backend)
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .task {

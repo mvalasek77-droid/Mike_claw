@@ -13,11 +13,13 @@ struct AdminView: View {
         case addLot, addBidder
         case edit(Profile)
         case editMe
+        case backend
         var id: String {
             switch self {
             case .addLot: return "addLot"
             case .addBidder: return "addBidder"
             case .editMe: return "editMe"
+            case .backend: return "backend"
             case .edit(let p): return "edit-\(p.id)"
             }
         }
@@ -31,6 +33,7 @@ struct AdminView: View {
                 LazyVStack(spacing: 12) {
                     headerCard
                     myAccountCard
+                    backendCard
 
                     rosterSection(title: "Lots · \(store.adminRoster.count)",
                                   empty: "No lots on the floor yet.",
@@ -59,6 +62,7 @@ struct AdminView: View {
                 case .addLot:      ProfileFormSheet(role: .woman)
                 case .addBidder:   ProfileFormSheet(role: .man)
                 case .editMe:      ProfileFormSheet(role: store.me.role, existing: store.me, isCurrentUser: true)
+                case .backend:     AdminBackendView()
                 case .edit(let p): ProfileFormSheet(role: p.role, existing: p)
                 }
             }
@@ -82,6 +86,33 @@ struct AdminView: View {
                 .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    /// Doorway into the money console: float funding, ledger, owed women,
+    /// moderation queue — everything the payout Worker exposes.
+    private var backendCard: some View {
+        Button { sheet = .backend } label: {
+            GlassSurface(corner: Theme.cornerL) {
+                HStack(spacing: 12) {
+                    Image(systemName: "banknote.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.success)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Theme.success.opacity(0.14)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Money & backend").font(.system(size: 15, weight: .heavy, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                        Text("Float, ledger, payouts, moderation queue")
+                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                }
+                .padding(14)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     /// Quick edit of the signed-in account.

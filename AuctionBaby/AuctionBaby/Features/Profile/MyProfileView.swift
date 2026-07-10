@@ -41,7 +41,7 @@ struct MyProfileView: View {
                     .presentationDetents([.medium])
             }
             .sheet(isPresented: $showSafety) { SafetyCenterView() }
-            .sheet(isPresented: $showAdmin) { AdminView() }
+            .sheet(isPresented: $showAdmin) { AdminGateView() }
             .alert("Reset account?", isPresented: $showReset) {
                 Button("Reset", role: .destructive) { store.resetAccount() }
                 Button("Cancel", role: .cancel) {}
