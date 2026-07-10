@@ -9,9 +9,8 @@ import CryptoKit
 /// Store install that would hand god mode (roster edits, Stripe-touching
 /// Worker calls) to whoever guesses the username first.
 ///
-/// The salt + hash are shared with the AI Marketplace admin gate on purpose:
-/// one owner, one password, both apps. Rotate by recomputing
-/// HMAC-SHA256(salt, newPassword) with any HMAC tool and replacing the hash.
+/// Rotate by recomputing HMAC-SHA256(salt, newPassword) with any HMAC tool
+/// and replacing the hash. The plaintext lives only with the owner.
 enum Admin {
 
     /// Validates admin credentials against the baked commitment.
@@ -27,13 +26,13 @@ enum Admin {
 
     /// HMAC-SHA256(salt, password), base64. The plaintext lives only with
     /// the owner.
-    private static let expectedHash = "WHqrpIN4i7Xfmi5gwpca1L1LIPYlGohZK60qD6EdCjg="
+    private static let expectedHash = "kjBlYSqIwngeaXkwhd716QifzOgqsP5ZibRZ2NaIPQk="
 
     /// Derives a verification hash using HMAC-SHA256 with a fixed salt.
     /// This is NOT bcrypt — it's a simple commitment for a local-only gate.
     /// Server-side auth would use a proper KDF.
     private static func hashPassword(_ password: String) -> String {
-        let salt = "AIMarketplace-Admin-2026"
+        let salt = "AuctionBaby-Admin-2026"
         let key = SymmetricKey(data: Data(salt.utf8))
         let hmac = HMAC<SHA256>.authenticationCode(for: Data(password.utf8), using: key)
         return Data(hmac).base64EncodedString()

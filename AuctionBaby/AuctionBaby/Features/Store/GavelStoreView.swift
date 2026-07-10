@@ -13,6 +13,7 @@ struct GavelStoreView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     balance
+                    if store.demoMode { demoSection }
                     gavelSection
                     boostSection
                     passSection
@@ -64,6 +65,45 @@ struct GavelStoreView: View {
             }
         }
         .motion(Motion.snap, value: store.wallet)
+    }
+
+    // MARK: Demo Mode (App Review)
+
+    /// Free counterparts of every paid product, shown only in Demo Mode so a
+    /// reviewer can exercise the full economy without a sandbox purchase. The
+    /// real IAP products stay visible below for the production-path check.
+    private var demoSection: some View {
+        GlassCard(title: "Demo Mode · everything free", icon: "testtube.2", tint: Theme.verify) {
+            VStack(spacing: 10) {
+                Text("For App Review. The real IAP products below remain live so the sandbox purchase path can be verified in the same session.")
+                    .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 8) {
+                    demoChip("+5,000 Gavels") { store.addDemoGavels(5_000) }
+                    demoChip("+30,000 Gavels") { store.addDemoGavels(30_000) }
+                }
+                HStack(spacing: 8) {
+                    demoChip("Free Boost") { store.activateBoost() }
+                    demoChip(storeKit.demoTier == nil ? "Free Black Card Pass" : "Pass active ✓") {
+                        storeKit.demoTier = .blackcard
+                        Haptics.success()
+                        store.toastFlash("Demo Black Card active — every Pass perk unlocked.")
+                    }
+                }
+            }
+        }
+    }
+
+    private func demoChip(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.verify)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(Capsule().fill(Theme.verify.opacity(0.14)))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: Gavels

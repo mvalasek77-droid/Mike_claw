@@ -106,6 +106,7 @@ final class StoreKitService: ObservableObject {
     init() {
         let raw = UserDefaults.standard.array(forKey: processedKey) as? [NSNumber] ?? []
         processed = Set(raw.map { $0.uint64Value })
+        demoTier = UserDefaults.standard.string(forKey: demoTierKey).flatMap(PassTier.init)
         updates = listenForTransactions()
         Task { await drainPending() }
     }
@@ -186,11 +187,23 @@ final class StoreKitService: ObservableObject {
 
     // MARK: Subscription state
 
-    func isSubscribed(to tier: PassTier) -> Bool { entitledSubscriptionIDs.contains(tier.productID) }
-    var hasPass: Bool { !entitledSubscriptionIDs.isEmpty }
+    /// Demo Mode Pass (App Review): a tier granted locally, no IAP. Set from
+    /// the paywall's demo button when `AuctionStore.demoMode` is active.
+    /// Persisted so the reviewer keeps their Pass across launches.
+    @Published var demoTier: PassTier? {
+        didSet { UserDefaults.standard.set(demoTier?.rawValue, forKey: demoTierKey) }
+    }
+    private let demoTierKey = "auctionbaby.storekit.demotier.v1"
+
+    func isSubscribed(to tier: PassTier) -> Bool {
+        entitledSubscriptionIDs.contains(tier.productID) || demoTier == tier
+    }
+    var hasPass: Bool { !entitledSubscriptionIDs.isEmpty || demoTier != nil }
     /// Highest active tier, if any.
     var activeTier: PassTier? {
-        PassTier.allCases.last { entitledSubscriptionIDs.contains($0.productID) }
+        PassTier.allCases.last {
+            entitledSubscriptionIDs.contains($0.productID) || demoTier == $0
+        }
     }
 
     private func updateEntitlements() async {

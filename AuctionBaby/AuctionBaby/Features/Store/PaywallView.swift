@@ -82,6 +82,7 @@ struct PaywallView: View {
                     tierPicker
                     benefitsMatrix
                     cta
+                    if store.demoMode { demoCTA }
                     footer
                     Spacer(minLength: 16)
                 }
@@ -227,6 +228,27 @@ struct PaywallView: View {
                         .multilineTextAlignment(.center)
                 }
             }
+        }
+    }
+
+    /// Demo Mode (App Review): activate the selected tier locally, no IAP.
+    /// The real subscribe button above stays live for the sandbox check.
+    @ViewBuilder private var demoCTA: some View {
+        if !storeKit.isSubscribed(to: selected) {
+            Button {
+                storeKit.demoTier = selected
+                Haptics.success()
+                store.toastFlash("Demo \(selected.title) active — no charge.")
+                dismiss()
+            } label: {
+                Label("Demo: activate \(selected.title) free", systemImage: "testtube.2")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.verify)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Capsule().fill(Theme.verify.opacity(0.14)))
+            }
+            .buttonStyle(.plain)
         }
     }
 

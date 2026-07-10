@@ -4,6 +4,7 @@ import SwiftUI
 /// Showcase score for lots — plus reviews and account settings.
 struct MyProfileView: View {
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var storeKit: StoreKitService
     @State private var editingBid = false
     @State private var bidText = ""
     @State private var showReset = false
@@ -43,7 +44,10 @@ struct MyProfileView: View {
             .sheet(isPresented: $showSafety) { SafetyCenterView() }
             .sheet(isPresented: $showAdmin) { AdminGateView() }
             .alert("Reset account?", isPresented: $showReset) {
-                Button("Reset", role: .destructive) { store.resetAccount() }
+                Button("Reset", role: .destructive) {
+                    storeKit.demoTier = nil   // demo Pass dies with the account
+                    store.resetAccount()
+                }
                 Button("Cancel", role: .cancel) {}
             } message: { Text("Clears your profile, bids, matches and reviews, and returns to onboarding.") }
         }
@@ -67,6 +71,10 @@ struct MyProfileView: View {
                                      color: isMan ? Theme.gold : Theme.rose)
                                 if !isMan { ArtTierBadge(tier: me.artTier, compact: true) }
                                 else if me.masterpiece { MasterpieceBadge(compact: true) }
+                                if store.demoMode {
+                                    Chip(text: "DEMO MODE · App Review",
+                                         systemImage: "testtube.2", color: Theme.verify)
+                                }
                             }
                         }.padding(16)
                     }

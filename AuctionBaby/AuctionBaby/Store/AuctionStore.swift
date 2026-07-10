@@ -25,6 +25,13 @@ final class AuctionStore: ObservableObject {
     /// can route refunds to the correct wallet. Generated once, persisted forever.
     @Published private(set) var appAccountToken: UUID = UUID()
 
+    /// Demo Mode for Apple App Review. Activated by registering with the name
+    /// "demo" (case-insensitive) — see DEMO_MODE.md. Free demo top-ups and a
+    /// free demo Pass appear in the store surfaces; everything else (bidding,
+    /// matches, copycat reveals, reviews) is identical to production. Persists
+    /// across launches; cleared by Reset account.
+    @Published private(set) var demoMode = false
+
     @Published var floor: [Profile] = []        // women a bidder browses
     @Published var bidders: [Profile] = []      // the pool of men (suitors) — seeds the inbox
     @Published var incomingBids: [Bid] = []     // woman's inbox
@@ -94,9 +101,10 @@ final class AuctionStore: ObservableObject {
 
     // MARK: - Admin (roster management)
 
-    /// Whether the admin console is available. Gated on the founder account so a
-    /// normal user never sees it; Mike Valasek (the founder seat) is the admin.
-    var isAdmin: Bool { me.name == "Mike Valasek" || me.name == "Admin" }
+    /// Whether the admin console *row* is visible. Founder name only — and
+    /// visibility is all this grants; entry requires the credential gate
+    /// (`AdminGateView` → `Admin.validate`).
+    var isAdmin: Bool { me.name == "Mike Valasek" }
 
     /// The lots (women) the admin console manages.
     var adminRoster: [Profile] { floor }
@@ -192,21 +200,31 @@ final class AuctionStore: ObservableObject {
 
     func register(role: Role, name: String, age: Int, location: String, bio: String,
                   hue: Double, startingBid: Int?, prompts: [Prompt], interests: [String]) {
-        var profile = Profile(name: name.isEmpty ? "You" : name, age: age, role: role,
-                              location: location, bio: bio, hue: hue,
-                              prompts: prompts, interests: interests)
+        // "demo" as the name is the App Review credential (see DEMO_MODE.md):
+        // it enables Demo Mode and swaps in the demo identity, so a reviewer
+        // needs no password, email, or real payment method.
+        let isDemo = name.trimmingCharacters(in: .whitespaces).lowercased() == "demo"
+        demoMode = isDemo
+        let displayName = isDemo ? "Demo Reviewer" : (name.isEmpty ? "You" : name)
+        var profile = Profile(name: displayName, age: age, role: role,
+                              location: isDemo && location.isEmpty ? "Cupertino" : location,
+                              bio: isDemo && bio.isEmpty ? "Here to see everything." : bio,
+                              hue: hue, prompts: prompts, interests: interests)
         if role == .woman { profile.startingBid = startingBid }
         self.me = profile
         self.role = role
         self.floor = SampleData.floor()
         self.bidders = SampleData.suitors()
+        if isDemo { wallet = 25_000 }   // enough to explore every archetype tier
 
         if role == .woman {
             // Seed a couple of incoming bids so the inbox isn't empty.
             seedIncomingBids()
         }
         Haptics.success()
-        toastFlash(role == .woman ? "Your lot is live on the floor." : "You're on the floor. Start bidding.")
+        toastFlash(isDemo ? "Demo Mode active — everything is free in the store."
+                          : (role == .woman ? "Your lot is live on the floor."
+                                            : "You're on the floor. Start bidding."))
         save()
     }
 
@@ -228,7 +246,9 @@ final class AuctionStore: ObservableObject {
         dailyStreak = 0
         lastDailyClaim = nil
         lastWeeklyBoostClaim = nil
+        demoMode = false
         store.removeObject(forKey: Self.key)
+        encryptedArchive.delete()
     }
 
     // MARK: - Bidder (man) actions
@@ -848,6 +868,7 @@ final class AuctionStore: ObservableObject {
         var lastDailyClaim: Date?
         var lastWeeklyBoostClaim: Date?
         var appAccountToken: UUID?
+        var demoMode: Bool?
     }
 
     private let encryptedArchive = EncryptedArchive(filename: "auctionbaby-state.aesgcm")
@@ -860,7 +881,7 @@ final class AuctionStore: ObservableObject {
                             filters: filters, blockedIDs: Array(blockedIDs), activity: activity,
                             dailyStreak: dailyStreak, lastDailyClaim: lastDailyClaim,
                             lastWeeklyBoostClaim: lastWeeklyBoostClaim,
-                            appAccountToken: appAccountToken)
+                            appAccountToken: appAccountToken, demoMode: demoMode)
         if let data = try? JSONEncoder().encode(snap) {
             store.set(data, forKey: Self.key)
         }
@@ -892,6 +913,7 @@ final class AuctionStore: ObservableObject {
         lastDailyClaim = snap.lastDailyClaim
         lastWeeklyBoostClaim = snap.lastWeeklyBoostClaim
         appAccountToken = snap.appAccountToken ?? appAccountToken
+        demoMode = snap.demoMode ?? false
         if isBoosted, role == .woman { startBoostSummons() }
     }
 }
