@@ -20,6 +20,8 @@ import Foundation
 ///      refund processed while the app was closed is still clawed back.
 ///   3. `onCredit` is wired once at app root (never in a transient sheet), so a
 ///      transaction that lands while no store sheet is open still credits.
+///   4. Every purchase carries an `appAccountToken` (a per-user UUID) so Apple's
+///      server notifications can route refunds to the correct wallet.
 @MainActor
 final class StoreKitService: ObservableObject {
     @Published private(set) var gavelPacks: [Product] = []
@@ -96,6 +98,11 @@ final class StoreKitService: ObservableObject {
     private let revokedKey = "auctionbaby.storekit.revoked.v1"
     private var processed: Set<UInt64>
 
+    #if DEBUG
+    var suspendListenerForTesting = false
+    var didProcessUpdateForTesting: ((Transaction) -> Void)?
+    #endif
+
     init() {
         let raw = UserDefaults.standard.array(forKey: processedKey) as? [NSNumber] ?? []
         processed = Set(raw.map { $0.uint64Value })
@@ -116,8 +123,12 @@ final class StoreKitService: ObservableObject {
             boostProduct = all.first { $0.id == Self.boostProductID }
             subscriptions = all.filter { Self.subscriptionIDs.contains($0.id) }.sorted { $0.price < $1.price }
             await updateEntitlements()
+            ErrorMonitor.shared.record(category: "StoreKit",
+                                       message: "Products loaded: \(all.count) items")
         } catch {
             errorMessage = error.localizedDescription
+            ErrorMonitor.shared.record(category: "StoreKit",
+                                       message: "Product load failed", error: error)
         }
     }
 
@@ -126,11 +137,15 @@ final class StoreKitService: ObservableObject {
     enum PurchaseOutcome { case success, cancelled, pending, failed }
 
     @discardableResult
-    func purchase(_ product: Product) async -> PurchaseOutcome {
+    func purchase(_ product: Product, appAccountToken: UUID? = nil) async -> PurchaseOutcome {
         isWorking = true
         defer { isWorking = false }
         do {
-            let result = try await product.purchase()
+            var options: Set<Product.PurchaseOption> = []
+            if let token = appAccountToken {
+                options.insert(.appAccountToken(token))
+            }
+            let result = try await product.purchase(options: options)
             switch result {
             case .success(let verification):
                 let transaction = try Self.checkVerified(verification)
@@ -138,16 +153,24 @@ final class StoreKitService: ObservableObject {
                 await checkRevocation(for: transaction)
                 await updateEntitlements()
                 if handled { await transaction.finish() }
+                ErrorMonitor.shared.record(category: "StoreKit",
+                                           message: "Purchase succeeded: \(product.id)")
                 return .success
             case .userCancelled:
+                ErrorMonitor.shared.record(category: "StoreKit",
+                                           message: "Purchase cancelled: \(product.id)")
                 return .cancelled
             case .pending:
+                ErrorMonitor.shared.record(category: "StoreKit",
+                                           message: "Purchase pending: \(product.id)")
                 return .pending
             @unknown default:
                 return .cancelled
             }
         } catch {
             errorMessage = error.localizedDescription
+            ErrorMonitor.shared.record(category: "StoreKit",
+                                       message: "Purchase failed: \(product.id)", error: error)
             return .failed
         }
     }
@@ -241,11 +264,13 @@ final class StoreKitService: ObservableObject {
         if transaction.productType == .consumable {
             let gavels = Self.gavels(for: transaction.productID)
             if gavels > 0 {
-                guard let onRevoke else { return } // retry on next drain once wired
+                guard let onRevoke else { return }
                 onRevoke(gavels)
+                ErrorMonitor.shared.record(category: "StoreKit",
+                                           message: "Refund clawback: \(gavels) Gavels",
+                                           detail: "txn \(transaction.id), product \(transaction.productID)")
             }
         }
-        // Subscriptions are reflected by updateEntitlements (revoked → dropped).
         revoked.insert(key)
         UserDefaults.standard.set(Array(revoked), forKey: revokedKey)
     }
@@ -259,11 +284,17 @@ final class StoreKitService: ObservableObject {
         Task.detached { [weak self] in
             for await update in Transaction.updates {
                 guard let self else { continue }
+                #if DEBUG
+                if await self.suspendListenerForTesting { continue }
+                #endif
                 guard let transaction = try? Self.checkVerified(update) else { continue }
                 let handled = await self.grant(for: transaction)
                 await self.checkRevocation(for: transaction)
                 await self.updateEntitlements()
                 if handled { await transaction.finish() }
+                #if DEBUG
+                await self.didProcessUpdateForTesting?(transaction)
+                #endif
             }
         }
     }
@@ -274,4 +305,27 @@ final class StoreKitService: ObservableObject {
         case .unverified(_, let error): throw error
         }
     }
+
+    // MARK: - Testing
+
+    #if DEBUG
+    func resetForTesting() {
+        processed.removeAll()
+        UserDefaults.standard.removeObject(forKey: processedKey)
+        UserDefaults.standard.removeObject(forKey: revokedKey)
+        entitledSubscriptionIDs = []
+    }
+
+    func drainPendingForTesting() async {
+        await drainPending()
+    }
+
+    func simulateRefundForTesting(productID: String) {
+        let gavels = Self.gavels(for: productID)
+        guard gavels > 0 else { return }
+        onRevoke?(gavels)
+        ErrorMonitor.shared.record(category: "StoreKit",
+                                   message: "[TEST] Simulated refund: \(gavels) Gavels")
+    }
+    #endif
 }

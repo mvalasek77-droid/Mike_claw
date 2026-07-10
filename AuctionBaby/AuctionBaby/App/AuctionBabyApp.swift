@@ -3,9 +3,8 @@ import SwiftUI
 @main
 struct AuctionBabyApp: App {
     @StateObject private var store = AuctionStore()
-    // Owned at app root so a transaction delivered while no store sheet is open
-    // still credits Gavels — never re-create per-screen.
     @StateObject private var storeKit = StoreKitService()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -15,11 +14,15 @@ struct AuctionBabyApp: App {
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .task {
-                    // Verified Gavel purchases credit the wallet; refunds claw back.
                     storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
                     storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
                     storeKit.onBoost = { [weak store] in store?.activateBoost() }
                     await storeKit.loadProducts()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active {
+                        Task { await store.refreshPendingRefunds(storeKit: storeKit) }
+                    }
                 }
         }
     }

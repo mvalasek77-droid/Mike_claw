@@ -21,6 +21,10 @@ final class AuctionStore: ObservableObject {
     @Published var lastDailyClaim: Date?
     @Published var lastWeeklyBoostClaim: Date? // Pass perk: one free Boost / week
 
+    /// Per-user UUID attached to every IAP purchase so Apple server notifications
+    /// can route refunds to the correct wallet. Generated once, persisted forever.
+    @Published private(set) var appAccountToken: UUID = UUID()
+
     @Published var floor: [Profile] = []        // women a bidder browses
     @Published var bidders: [Profile] = []      // the pool of men (suitors) — seeds the inbox
     @Published var incomingBids: [Bid] = []     // woman's inbox
@@ -324,6 +328,12 @@ final class AuctionStore: ObservableObject {
         wallet = max(0, wallet - amount)
         toastFlash("Refund processed — \(Tally.compact(amount)) Gavels removed.")
         save()
+    }
+
+    /// Poll for refunds that landed while the app was backgrounded. Called from
+    /// the app root's `.onChange(of: scenePhase)` when returning to foreground.
+    func refreshPendingRefunds(storeKit: StoreKitService) async {
+        await storeKit.drainPending()
     }
 
     /// Whether a Spotlight Boost is currently live.
@@ -837,7 +847,10 @@ final class AuctionStore: ObservableObject {
         var dailyStreak: Int?
         var lastDailyClaim: Date?
         var lastWeeklyBoostClaim: Date?
+        var appAccountToken: UUID?
     }
+
+    private let encryptedArchive = EncryptedArchive(filename: "auctionbaby-state.aesgcm")
 
     private func save() {
         let snap = Snapshot(role: role, me: me, wallet: wallet, earnings: earnings,
@@ -846,23 +859,28 @@ final class AuctionStore: ObservableObject {
                             outgoingBids: outgoingBids, matches: matches,
                             filters: filters, blockedIDs: Array(blockedIDs), activity: activity,
                             dailyStreak: dailyStreak, lastDailyClaim: lastDailyClaim,
-                            lastWeeklyBoostClaim: lastWeeklyBoostClaim)
+                            lastWeeklyBoostClaim: lastWeeklyBoostClaim,
+                            appAccountToken: appAccountToken)
         if let data = try? JSONEncoder().encode(snap) {
             store.set(data, forKey: Self.key)
         }
+        encryptedArchive.save(snap)
     }
 
     private func load() {
-        guard let data = store.data(forKey: Self.key),
-              let snap = try? JSONDecoder().decode(Snapshot.self, from: data) else { return }
+        // Try encrypted archive first (preferred), fall back to UserDefaults for
+        // backward compatibility with pre-encryption installs.
+        let snap: Snapshot? = encryptedArchive.load(Snapshot.self) ?? {
+            guard let data = store.data(forKey: Self.key) else { return nil }
+            return try? JSONDecoder().decode(Snapshot.self, from: data)
+        }()
+        guard let snap else { return }
         role = snap.role
         me = snap.me
         wallet = snap.wallet
         earnings = snap.earnings
         boostUntil = snap.boostUntil
         floor = snap.floor.isEmpty ? SampleData.floor() : snap.floor
-        // Old snapshots (pre-admin) have no bidders list — seed it so the
-        // roster and inbox summons still work.
         bidders = (snap.bidders?.isEmpty ?? true) ? SampleData.suitors() : snap.bidders!
         incomingBids = snap.incomingBids
         outgoingBids = snap.outgoingBids
@@ -873,7 +891,7 @@ final class AuctionStore: ObservableObject {
         dailyStreak = snap.dailyStreak ?? 0
         lastDailyClaim = snap.lastDailyClaim
         lastWeeklyBoostClaim = snap.lastWeeklyBoostClaim
-        // Resume the boost-summon loop if a boost survived relaunch.
+        appAccountToken = snap.appAccountToken ?? appAccountToken
         if isBoosted, role == .woman { startBoostSummons() }
     }
 }

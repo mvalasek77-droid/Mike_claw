@@ -172,7 +172,7 @@ struct GavelStoreView: View {
     }
 
     private func buy(_ product: Product) async {
-        let outcome = await storeKit.purchase(product)
+        let outcome = await storeKit.purchase(product, appAccountToken: store.appAccountToken)
         if outcome == .success { Haptics.success() }
         else if outcome == .failed { Haptics.error() }
     }

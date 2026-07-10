@@ -257,7 +257,7 @@ struct PaywallView: View {
     private func subscribe() {
         guard let product = subscriptionProduct else { return }
         Task {
-            let outcome = await storeKit.purchase(product)
+            let outcome = await storeKit.purchase(product, appAccountToken: store.appAccountToken)
             if outcome == .success {
                 Haptics.success()
                 store.toastFlash("Welcome to \(selected.title). The floor looks different from up here.")
