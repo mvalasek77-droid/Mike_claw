@@ -1,0 +1,66 @@
+name = "auctionbaby-payout"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Secrets (never committed) — set once with `wrangler secret put <NAME>`:
+#   STRIPE_SECRET_KEY        sk_live_… (or sk_test_… while testing)
+#   STRIPE_WEBHOOK_SECRET    whsec_… from the Stripe webhook endpoint you create
+#   STRIPE_PUBLISHABLE_KEY   pk_live_… (optional; served via
+#                            GET /stripe/publishable-key for any future
+#                            client-side Stripe.js / Elements flow)
+#   APP_SHARED_SECRET        long random string; also pasted into the app
+#   RESEND_API_KEY           (optional) enables operator emails (sale/NSF/digest)
+
+[vars]
+STRIPE_CONNECT_TYPE = "express"
+# Platform Stripe account is Canadian — settle transfers/payouts in CAD and
+# default new connected accounts to CA (the app can override country per woman).
+PLATFORM_CURRENCY = "cad"
+PLATFORM_COUNTRY = "CA"
+# Where ALL operator mail goes — routine payout digest AND critical NSF /
+# payout-failure alerts (ALERT_EMAIL defaults to this, so it's one inbox).
+OPERATOR_EMAIL = "mvalasek77@gmail.com"
+# ALERT_EMAIL = "mvalasek77@gmail.com"   # uncomment only to split alerts out
+# DIGEST_FROM_EMAIL = "payouts@yourdomain.com"   # set once your domain is verified
+TOPUP_BUFFER_USD = "100"
+# Hard cap per top-up; a refund storm can otherwise trigger a large bank pull.
+TOPUP_MAX_USD = "200"
+# Optional: ba_… of the bank source Stripe should pull from (required only if
+# your platform account has multiple verified Top-up sources).
+# TOPUP_SOURCE_ID = "ba_xxx"
+# The iOS app's bundle id — App Store Server Notifications for any other
+# bundle are rejected.
+APP_BUNDLE_ID = "com.valasek.auctionbaby"
+
+# KV: money ledger + refund queue (keyed by appAccountToken) + moderation
+# queue + rate-limit buckets + sales counters.
+#
+# Create the namespace once, then paste its id below:
+#   npx wrangler kv namespace create KV
+[[kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Cron: every 6 hours, fund the float then email the payout digest.
+[triggers]
+crons = ["0 */6 * * *"]
+
+# ── STAGING (Stripe test mode / fake money) ──────────────────────────────────
+# Deploy: npx wrangler deploy --env staging   •   Worker: auctionbaby-payout-staging
+# Set test secrets with `--env staging`. Independent KV + secrets from prod.
+#   npx wrangler kv namespace create KV --env staging
+[env.staging]
+name = "auctionbaby-payout-staging"
+
+[env.staging.vars]
+STRIPE_CONNECT_TYPE = "express"
+PLATFORM_CURRENCY = "cad"
+PLATFORM_COUNTRY = "CA"
+OPERATOR_EMAIL = "mvalasek77@gmail.com"
+TOPUP_BUFFER_USD = "100"
+TOPUP_MAX_USD = "200"
+APP_BUNDLE_ID = "com.valasek.auctionbaby"
+
+[[env.staging.kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_STAGING_KV_NAMESPACE_ID"
