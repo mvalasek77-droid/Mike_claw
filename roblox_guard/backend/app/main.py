@@ -43,6 +43,12 @@ class ChildResponse(BaseModel):
     roblox_user_id: int
     roblox_username: str
     display_name: str
+    last_poll_at: Optional[str] = None
+    last_poll_status: str = ""
+
+
+class FeedbackRequest(BaseModel):
+    verdict: str = Field(pattern="^(confirmed|dismissed)$")
 
 
 def create_app(settings: Optional[Settings] = None,
@@ -72,7 +78,11 @@ def create_app(settings: Optional[Settings] = None,
 
     @app.get("/health")
     async def health():
-        return {"status": "ok"}
+        return {"status": "ok", "threat_feed": monitor.feeds.status()}
+
+    @app.get("/threat-feed/status")
+    async def threat_feed_status():
+        return monitor.feeds.status()
 
     @app.post("/children", response_model=ChildResponse, status_code=201)
     async def link_child(req: LinkChildRequest):
@@ -102,7 +112,9 @@ def create_app(settings: Optional[Settings] = None,
     async def list_children():
         return [ChildResponse(id=c["id"], roblox_user_id=c["roblox_user_id"],
                               roblox_username=c["roblox_username"],
-                              display_name=c["display_name"])
+                              display_name=c["display_name"],
+                              last_poll_at=c.get("last_poll_at"),
+                              last_poll_status=c.get("last_poll_status") or "")
                 for c in db.list_children()]
 
     @app.delete("/children/{child_id}", status_code=204)
@@ -138,6 +150,18 @@ def create_app(settings: Optional[Settings] = None,
         if not db.acknowledge_alert(alert_id):
             raise HTTPException(status_code=404, detail="Unknown alert.")
         return {"acknowledged": True}
+
+    @app.post("/alerts/{alert_id}/feedback")
+    async def alert_feedback(alert_id: int, req: FeedbackRequest):
+        """Parent verdict on an alert; drives adaptive tuning.
+
+        'dismissed' x3 (with no confirms) mutes that signal type for that
+        child at info/watch level; any 'confirmed' switches the child to
+        heightened monitoring. Elevated alerts are never muted.
+        """
+        if not db.set_alert_feedback(alert_id, req.verdict):
+            raise HTTPException(status_code=404, detail="Unknown alert.")
+        return {"feedback": req.verdict}
 
     @app.get("/resources")
     async def resources():

@@ -87,6 +87,15 @@ struct APIClient {
         try await request("GET", "education")
     }
 
+    /// Parent verdict on an alert. Drives adaptive tuning: three "dismissed"
+    /// verdicts mute that signal type for that child (elevated alerts are
+    /// never muted); one "confirmed" switches to heightened monitoring.
+    func sendFeedback(alertId: Int, verdict: String) async throws {
+        struct FeedbackResponse: Decodable { let feedback: String }
+        let _: FeedbackResponse = try await request(
+            "POST", "alerts/\(alertId)/feedback", body: ["verdict": verdict])
+    }
+
     func evidence(childId: Int) async throws -> [EvidenceItem] {
         struct EvidenceResponse: Decodable { let evidence: [EvidenceItem] }
         let response: EvidenceResponse = try await request("GET", "children/\(childId)/evidence")

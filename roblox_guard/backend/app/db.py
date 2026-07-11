@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS children (
     -- Verifiable-parental-consent record: who attested, and when.
     consent_attested_by TEXT NOT NULL,
     consent_attested_at TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    last_poll_at TEXT,
+    last_poll_status TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS snapshots (
@@ -62,9 +64,17 @@ CREATE TABLE IF NOT EXISTS alerts (
     subject_user_id INTEGER,
     subject_username TEXT,
     observed_at TEXT NOT NULL,
-    acknowledged INTEGER NOT NULL DEFAULT 0
+    acknowledged INTEGER NOT NULL DEFAULT 0,
+    feedback TEXT NOT NULL DEFAULT ''   -- '' | 'confirmed' | 'dismissed'
 );
 """
+
+# Columns added after first release; applied to pre-existing databases.
+MIGRATIONS = [
+    "ALTER TABLE children ADD COLUMN last_poll_at TEXT",
+    "ALTER TABLE children ADD COLUMN last_poll_status TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE alerts ADD COLUMN feedback TEXT NOT NULL DEFAULT ''",
+]
 
 
 def utcnow() -> str:
@@ -76,6 +86,11 @@ class Database:
         self._path = path
         with self._connect() as conn:
             conn.executescript(SCHEMA)
+            for statement in MIGRATIONS:
+                try:
+                    conn.execute(statement)
+                except sqlite3.OperationalError:
+                    pass  # column already exists (fresh schema or migrated)
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
@@ -116,6 +131,13 @@ class Database:
     def list_children(self) -> list[dict]:
         with self._connect() as conn:
             return [dict(r) for r in conn.execute("SELECT * FROM children ORDER BY id")]
+
+    def update_child_poll_status(self, child_id: int, status: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE children SET last_poll_at = ?, last_poll_status = ? WHERE id = ?",
+                (utcnow(), status, child_id),
+            )
 
     def remove_child(self, child_id: int) -> None:
         """Full erasure — removes the child and all derived data (COPPA deletion right)."""
@@ -232,6 +254,38 @@ class Database:
         with self._connect() as conn:
             cur = conn.execute("UPDATE alerts SET acknowledged = 1 WHERE id = ?", (alert_id,))
             return cur.rowcount > 0
+
+    # -- parent feedback (adaptive tuning) -------------------------------------
+
+    def set_alert_feedback(self, alert_id: int, verdict: str) -> bool:
+        if verdict not in ("confirmed", "dismissed"):
+            raise ValueError("verdict must be 'confirmed' or 'dismissed'")
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE alerts SET feedback = ?, acknowledged = 1 WHERE id = ?",
+                (verdict, alert_id),
+            )
+            return cur.rowcount > 0
+
+    def feedback_counts(self, child_id: int, signal_type: str) -> tuple[int, int]:
+        """(confirmed, dismissed) counts for one signal type of one child."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT"
+                " SUM(CASE WHEN feedback = 'confirmed' THEN 1 ELSE 0 END) AS c,"
+                " SUM(CASE WHEN feedback = 'dismissed' THEN 1 ELSE 0 END) AS d"
+                " FROM alerts WHERE child_id = ? AND type = ?",
+                (child_id, signal_type),
+            ).fetchone()
+            return int(row["c"] or 0), int(row["d"] or 0)
+
+    def child_has_confirmed_alert(self, child_id: int) -> bool:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM alerts WHERE child_id = ? AND feedback = 'confirmed' LIMIT 1",
+                (child_id,),
+            ).fetchone()
+            return row is not None
 
     def recent_alert_exists(self, child_id: int, signal_type: str,
                             subject_user_id: Optional[int], since_iso: str) -> bool:

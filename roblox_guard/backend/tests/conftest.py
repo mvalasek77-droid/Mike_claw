@@ -7,6 +7,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pytest
 
 from app.roblox_client import RobloxPresence, RobloxProfile
+from app.threat_feed import FeedManager
+
+
+@pytest.fixture(scope="session")
+def seed_feed():
+    return FeedManager().feed
 
 
 def make_profile(user_id=1000, username="kid_friend", display_name="KidFriend",

@@ -12,7 +12,16 @@ from typing import Optional
 from .config import Settings
 from .db import Database
 from .roblox_client import RobloxClient
+from .threat_feed import FeedManager
 from . import signals as sig
+
+# Parent-feedback tuning: a signal type is muted for a child once the parent
+# has dismissed it this many times without ever confirming it. Elevated
+# alerts are never muted. A confirmed alert switches the child to heightened
+# monitoring (shorter dedupe window, so repeat behavior re-alerts sooner).
+DISMISSALS_TO_MUTE = 3
+DEDUPE_HOURS_NORMAL = 12
+DEDUPE_HOURS_HEIGHTENED = 2
 
 log = logging.getLogger("roblox_guard.monitor")
 
@@ -34,13 +43,21 @@ def load_watchlist(path: str) -> dict[int, dict]:
 
 class Monitor:
     def __init__(self, db: Database, client: RobloxClient, settings: Settings,
-                 vault=None):
+                 vault=None, feeds: Optional[FeedManager] = None):
         self.db = db
         self.client = client
         self.settings = settings
         self.vault = vault  # EvidenceVault; optional so tests can omit it
-        self.watchlist = load_watchlist(settings.watchlist_path)
+        self.feeds = feeds or FeedManager()
+        self.local_watchlist = load_watchlist(settings.watchlist_path)
         self._task: Optional[asyncio.Task] = None
+
+    @property
+    def watchlist(self) -> dict[int, dict]:
+        """Operator-local watchlist merged with the threat feed's (feed wins)."""
+        merged = dict(self.local_watchlist)
+        merged.update(self.feeds.feed.watchlist_by_place())
+        return merged
 
     # -- lifecycle -----------------------------------------------------------
 
@@ -66,11 +83,14 @@ class Monitor:
     # -- polling -------------------------------------------------------------
 
     async def poll_all(self) -> None:
+        await self.feeds.maybe_refresh()
         for child in self.db.list_children():
             try:
                 await self.poll_child(child["id"])
-            except Exception:
+            except Exception as error:
                 log.exception("polling child %s failed", child["id"])
+                self.db.update_child_poll_status(
+                    child["id"], f"error: {type(error).__name__}")
 
     async def poll_child(self, child_id: int, local_now: Optional[datetime] = None) -> list[dict]:
         """Take a snapshot for one child and store any resulting alerts.
@@ -102,6 +122,7 @@ class Monitor:
                 continue
             for s in sig.evaluate_new_friend(
                 friend,
+                self.feeds.feed,
                 established_years=self.settings.established_account_years,
                 mass_friender_threshold=self.settings.mass_friender_threshold,
             ):
@@ -129,16 +150,26 @@ class Monitor:
             local_now=local_now,
         ))
 
+        # Parent-feedback tuning: heightened mode after any confirmed alert;
+        # per-type muting after repeated dismissals (never for elevated).
+        heightened = self.db.child_has_confirmed_alert(child_id)
+        dedupe_hours = DEDUPE_HOURS_HEIGHTENED if heightened else DEDUPE_HOURS_NORMAL
+
         created: list[dict] = []
-        dedupe_since = (datetime.now(timezone.utc) - timedelta(hours=12)).isoformat()
+        dedupe_since = (datetime.now(timezone.utc) - timedelta(hours=dedupe_hours)).isoformat()
         for s in produced:
             sig.validate_wording(s)
+            if s.severity != sig.Severity.ELEVATED:
+                confirmed, dismissed = self.db.feedback_counts(child_id, s.type.value)
+                if dismissed >= DISMISSALS_TO_MUTE and confirmed == 0:
+                    continue
             if self.db.recent_alert_exists(child_id, s.type.value, s.subject_user_id, dedupe_since):
                 continue
             alert_id = self.db.add_alert(child_id, s)
             created.append({"id": alert_id, "type": s.type.value, "severity": s.severity.value,
                             "title": s.title})
             await self._capture_evidence(child_id, alert_id, s, presence)
+        self.db.update_child_poll_status(child_id, "ok")
         return created
 
     async def _capture_evidence(self, child_id: int, alert_id: int,

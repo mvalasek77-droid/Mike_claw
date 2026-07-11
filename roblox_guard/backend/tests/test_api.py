@@ -28,7 +28,8 @@ def link(client, username="my_kid", attest=True):
 
 def test_health(api):
     client, _ = api
-    assert client.get("/health").json() == {"status": "ok"}
+    body = client.get("/health").json()
+    assert body["status"] == "ok"
 
 
 def test_link_requires_attestation(api):
@@ -91,6 +92,44 @@ def test_education_endpoint(api):
     client, _ = api
     payload = client.get("/education").json()
     assert payload["dangers"] and payload["response_playbook"]
+
+
+def test_health_reports_threat_feed(api):
+    client, _ = api
+    body = client.get("/health").json()
+    assert body["threat_feed"]["version"] >= 1
+    assert client.get("/threat-feed/status").json()["pattern_count"] > 0
+
+
+def test_alert_feedback_endpoint(api):
+    client, fake = api
+    child_id = link(client).json()["id"]
+    fake.friends[1] = [make_profile(user_id=2, username="stranger",
+                                    description="discord: xx#1234")]
+    client.post(f"/children/{child_id}/refresh")
+    alerts = client.get(f"/children/{child_id}/alerts").json()["alerts"]
+    alert_id = alerts[0]["id"]
+
+    resp = client.post(f"/alerts/{alert_id}/feedback", json={"verdict": "confirmed"})
+    assert resp.status_code == 200
+
+    # feedback also acknowledges, so the alert leaves the open list
+    remaining = client.get(f"/children/{child_id}/alerts").json()["alerts"]
+    assert all(a["id"] != alert_id for a in remaining)
+
+    assert client.post(f"/alerts/{alert_id}/feedback",
+                       json={"verdict": "banana"}).status_code == 422
+    assert client.post("/alerts/99999/feedback",
+                       json={"verdict": "dismissed"}).status_code == 404
+
+
+def test_children_include_poll_health(api):
+    client, fake = api
+    child_id = link(client).json()["id"]
+    client.post(f"/children/{child_id}/refresh")
+    children = client.get("/children").json()
+    assert children[0]["last_poll_status"] == "ok"
+    assert children[0]["last_poll_at"]
 
 
 def test_evidence_upload_list_download(api):

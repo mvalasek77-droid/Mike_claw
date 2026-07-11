@@ -51,12 +51,35 @@ struct AlertDetailView: View {
             Section {
                 Button {
                     Task {
+                        try? await store.api.sendFeedback(alertId: alert.id, verdict: "confirmed")
+                        await store.loadAll()
+                        dismiss()
+                    }
+                } label: {
+                    Label("This was a real problem", systemImage: "exclamationmark.bubble")
+                        .foregroundStyle(.red)
+                }
+                Button {
+                    Task {
+                        try? await store.api.sendFeedback(alertId: alert.id, verdict: "dismissed")
+                        await store.loadAll()
+                        dismiss()
+                    }
+                } label: {
+                    Label("Not relevant for us", systemImage: "hand.thumbsdown")
+                }
+                Button {
+                    Task {
                         await store.acknowledge(alert, for: child)
                         dismiss()
                     }
                 } label: {
                     Label("Mark as handled", systemImage: "checkmark.circle")
                 }
+            } header: {
+                Text("Your verdict tunes future alerts")
+            } footer: {
+                Text("Confirming a real problem switches this child to heightened monitoring. Dismissing the same kind of alert three times mutes it — except top-severity alerts, which always come through.")
             }
         }
         .navigationTitle("Alert")

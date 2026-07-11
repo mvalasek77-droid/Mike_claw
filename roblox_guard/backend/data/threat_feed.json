@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "updated_at": "2026-07-11",
+  "_comment": [
+    "Bundled seed threat feed. Operators host an updated copy of this file",
+    "and set RG_FEED_URL; installs pick up new versions within the refresh",
+    "TTL (6h default) with no app release. Bump 'version' on every change —",
+    "feeds with a version <= the active one are ignored.",
+    "Patterns are matched against raw text AND a de-leeted normalization",
+    "(d1sc0rd -> discord), so simple obfuscation does not evade them.",
+    "grooming_phrases must stay factual/behavioral — they describe contact",
+    "patterns, never people."
+  ],
+  "off_platform_patterns": [
+    {"platform": "Discord",   "pattern": "discord(\\.gg|\\.com)?[\\s:/@#-]*[\\w.#]{2,}|(?<![a-z])d(is)?c(ord)?\\s*[:@-]\\s*\\S+"},
+    {"platform": "Snapchat",  "pattern": "snap(chat)?\\s*[:@-]?\\s*[\\w.]{2,}"},
+    {"platform": "Telegram",  "pattern": "t(ele)?gram\\s*[:@-]?\\s*[\\w.]{2,}|t\\.me/\\w+"},
+    {"platform": "Kik",       "pattern": "(?<![a-z])kik\\s*[:@-]?\\s*[\\w.]{2,}"},
+    {"platform": "WhatsApp",  "pattern": "whats?app\\s*[:@-]?\\s*\\+?[\\d\\s()-]{6,}"},
+    {"platform": "Instagram", "pattern": "(?<![a-z])(insta(gram)?|ig)\\s*[:@-]\\s*[\\w.]{2,}"},
+    {"platform": "Signal",    "pattern": "(?<![a-z])signal\\s*[:@-]\\s*\\+?[\\w\\d\\s()-]{4,}"},
+    {"platform": "phone number", "pattern": "(?<!\\d)\\+?\\d{3}[\\s.-]?\\d{3}[\\s.-]?\\d{4}(?!\\d)"}
+  ],
+  "grooming_phrases": [
+    "dms open",
+    "dm me",
+    "add me for a surprise",
+    "free robux dm",
+    "looking for a gf",
+    "looking for a bf",
+    "older guys only",
+    "dont tell your parents",
+    "don't tell your parents",
+    "our secret",
+    "send pics",
+    "trade pics"
+  ],
+  "thresholds": {
+    "established_account_years": 5,
+    "mass_friender_threshold": 700,
+    "rapid_friend_count": 5,
+    "rapid_friend_window_hours": 24
+  },
+  "watchlist": []
+}

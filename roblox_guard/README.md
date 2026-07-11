@@ -13,6 +13,51 @@ and grounds for App Store rejection) or lying. RobloxGuard works entirely from
 Roblox's **public, unauthenticated APIs** and never asks for the child's
 password.
 
+## How coverage works (the parent's-eye view)
+
+**Nothing is installed on the child's device.** The app runs on the
+*parent's* phone; the backend watches the child's *public* Roblox footprint,
+which requires no access to their device, account, or password. That means
+there's nothing for a child to find and delete, nothing that breaks on a new
+device, and no credential handling to fail App Review.
+
+Initiating coverage takes one minute:
+
+1. Parent installs RobloxGuard on **their own** phone and completes the
+   consent onboarding (attesting they are the parent/guardian).
+2. Parent enters the child's **public Roblox username** — nothing else.
+3. The backend takes a baseline snapshot immediately (surfacing any
+   already-risky contacts, e.g. friends with off-platform handles in bios),
+   then re-polls automatically every 15 minutes, around the clock.
+
+## Staying ahead of new threats (adaptive design)
+
+Three mechanisms keep detection current without app releases:
+
+1. **Versioned threat feed** (`app/threat_feed.py`, seed in
+   `data/threat_feed.json`): every pattern the detector matches — off-platform
+   apps, grooming phrases, thresholds, condo-game watchlist — lives in a feed
+   document. Set `RG_FEED_URL` and every install refreshes on a 6-hour TTL;
+   publishing a new feed version deploys new threat intel fleet-wide within
+   hours. Malformed or unreachable feeds never break detection: the last good
+   feed stays active and the bundled seed is the floor.
+2. **Obfuscation-resistant matching**: text is matched raw AND after folding
+   leetspeak substitutions ("d1sc0rd" → "discord", "sn@p" → "snap"). A match
+   that only appears after folding is called out in the alert as deliberate
+   filter evasion — the evasion itself is evidence of intent.
+3. **Parent feedback loop** (`POST /alerts/{id}/feedback`): "confirmed"
+   switches that child to heightened monitoring (repeat behavior re-alerts
+   after 2 hours instead of 12); three "dismissed" verdicts with no confirms
+   mute that signal type for that child — except elevated alerts, which are
+   never muted. The tuning rules are deliberately simple and documented, not
+   a black box.
+
+Robustness: Roblox API calls retry with exponential backoff on rate limits
+and server errors (honoring `Retry-After`); per-friend profile failures
+degrade to stubs instead of failing the snapshot; every child records
+`last_poll_at`/`last_poll_status` so silent monitoring failures are visible
+in the app rather than discovered too late.
+
 ## Architecture
 
 ```

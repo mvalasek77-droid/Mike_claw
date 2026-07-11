@@ -15,6 +15,7 @@ from enum import Enum
 from typing import Optional
 
 from .roblox_client import RobloxPresence, RobloxProfile
+from .threat_feed import ThreatFeed
 
 FORBIDDEN_LABELS = ("predator", "groomer", "map", "pedophile", "offender")
 
@@ -28,6 +29,7 @@ class Severity(str, Enum):
 class SignalType(str, Enum):
     NEW_FRIEND = "new_friend"
     OFF_PLATFORM_HANDLE = "off_platform_handle"
+    GROOMING_PHRASE = "grooming_phrase"
     ESTABLISHED_ACCOUNT_CONTACT = "established_account_contact"
     LARGE_NETWORK_CONTACT = "large_network_contact"
     RAPID_FRIENDING = "rapid_friending"
@@ -47,19 +49,6 @@ class Signal:
     observed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-# Patterns that indicate an account is advertising a way to move contact off
-# Roblox. Off-platform luring is the strongest observable grooming precursor,
-# so bios that publish handles for private-chat apps are always surfaced.
-_OFF_PLATFORM_PATTERNS: list[tuple[str, re.Pattern]] = [
-    ("Discord", re.compile(r"discord(\.gg|\.com)?[\s:/@#-]*[\w.#]{2,}|(?<![a-z])d(is)?c(ord)?\s*[:@-]\s*\S+", re.I)),
-    ("Snapchat", re.compile(r"snap(chat)?\s*[:@-]?\s*[\w.]{2,}", re.I)),
-    ("Telegram", re.compile(r"t(ele)?gram\s*[:@-]?\s*[\w.]{2,}|t\.me/\w+", re.I)),
-    ("Kik", re.compile(r"(?<![a-z])kik\s*[:@-]?\s*[\w.]{2,}", re.I)),
-    ("WhatsApp", re.compile(r"whats?app\s*[:@-]?\s*\+?[\d\s()-]{6,}", re.I)),
-    ("Instagram", re.compile(r"(?<![a-z])(insta(gram)?|ig)\s*[:@-]\s*[\w.]{2,}", re.I)),
-    ("phone number", re.compile(r"(?<!\d)\+?\d{3}[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)")),
-]
-
 _REPORT_GUIDANCE = (
     "If anything about this contact worries you, block and report the account "
     "through Roblox's in-app Report Abuse feature. If you believe your child is "
@@ -69,29 +58,32 @@ _REPORT_GUIDANCE = (
 )
 
 
-def detect_off_platform_handles(bio: str) -> list[str]:
-    """Return the platforms a bio advertises contact handles for."""
-    found = []
-    for platform, pattern in _OFF_PLATFORM_PATTERNS:
-        if pattern.search(bio or ""):
-            found.append(platform)
-    return found
-
-
 def _account_age_years(profile: RobloxProfile, now: datetime) -> float:
     return (now - profile.created).days / 365.25
 
 
 def evaluate_new_friend(
     friend: RobloxProfile,
+    feed: ThreatFeed,
     now: Optional[datetime] = None,
     established_years: float = 5.0,
     mass_friender_threshold: int = 700,
 ) -> list[Signal]:
-    """Signals for a single newly-added friend."""
+    """Signals for a single newly-added friend.
+
+    All text patterns come from the threat feed, so detection keeps up with
+    new platforms and slang without code changes. Bio, display name, and
+    username are all scanned — handles hide in display names too.
+    """
     now = now or datetime.now(timezone.utc)
     signals: list[Signal] = []
     age_years = _account_age_years(friend, now)
+
+    # Feed thresholds override caller defaults when present.
+    established_years = float(feed.thresholds.get(
+        "established_account_years", established_years))
+    mass_friender_threshold = int(feed.thresholds.get(
+        "mass_friender_threshold", mass_friender_threshold))
 
     facts = [
         f"Account created {friend.created.date().isoformat()} ({age_years:.1f} years ago).",
@@ -99,20 +91,51 @@ def evaluate_new_friend(
     if friend.friend_count is not None:
         facts.append(f"Has {friend.friend_count} friends on Roblox.")
 
-    platforms = detect_off_platform_handles(friend.description)
-    if platforms:
+    scanned_text = " \n ".join(
+        [friend.description or "", friend.display_name or "", friend.username or ""])
+
+    matches = feed.match_off_platform(scanned_text)
+    if matches:
+        platforms = [m["platform"] for m in matches]
+        handle_facts = facts + [
+            f"Profile includes contact details for: {', '.join(platforms)}.",
+            "Moving conversations to private apps removes Roblox's chat filters and moderation.",
+        ]
+        if any(m["obfuscated"] for m in matches):
+            obfuscated = [m["platform"] for m in matches if m["obfuscated"]]
+            handle_facts.append(
+                f"The {', '.join(obfuscated)} reference is written with character "
+                "substitutions (e.g. 'd1sc0rd') — a technique used to slip past "
+                "Roblox's text filters."
+            )
         signals.append(Signal(
             type=SignalType.OFF_PLATFORM_HANDLE,
             severity=Severity.ELEVATED,
             title=f"New friend's profile advertises contact outside Roblox ({', '.join(platforms)})",
-            facts=facts + [
-                f"Profile bio includes contact details for: {', '.join(platforms)}.",
-                "Moving conversations to private apps removes Roblox's chat filters and moderation.",
-            ],
+            facts=handle_facts,
             guidance=(
                 "Ask your child how they know this account and whether anyone has "
                 "asked them to chat on another app. Agree together that chats stay "
                 "on Roblox where filters apply. " + _REPORT_GUIDANCE
+            ),
+            subject_user_id=friend.user_id,
+            subject_username=friend.username,
+        ))
+
+    phrases = feed.match_grooming_phrases(scanned_text)
+    if phrases:
+        signals.append(Signal(
+            type=SignalType.GROOMING_PHRASE,
+            severity=Severity.ELEVATED,
+            title=f"New friend's profile contains high-risk contact phrases",
+            facts=facts + [
+                f"Profile text contains: {', '.join(repr(p) for p in phrases)}.",
+                "These phrases match patterns used to initiate private, secret, or "
+                "image-based contact with children.",
+            ],
+            guidance=(
+                "Ask your child directly whether this account has messaged them and "
+                "what about. Review the friendship together. " + _REPORT_GUIDANCE
             ),
             subject_user_id=friend.user_id,
             subject_username=friend.username,

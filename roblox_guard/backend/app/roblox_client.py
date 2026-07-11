@@ -73,17 +73,42 @@ class RobloxClient:
                 await asyncio.sleep(wait)
             self._last_request = time.monotonic()
 
+    async def _request(self, method: str, url: str, payload: Optional[dict] = None,
+                       attempts: int = 3) -> dict:
+        """Request with retry on rate limits (429), server errors, and
+        transport failures — exponential backoff, honoring Retry-After."""
+        last_error: Exception = RuntimeError("unreachable")
+        for attempt in range(attempts):
+            await self._throttle()
+            try:
+                if method == "GET":
+                    resp = await self._http.get(url)
+                else:
+                    resp = await self._http.post(url, json=payload)
+                if resp.status_code == 429 or resp.status_code >= 500:
+                    retry_after = float(resp.headers.get("Retry-After", 0) or 0)
+                    raise httpx.HTTPStatusError(
+                        f"retryable status {resp.status_code}",
+                        request=resp.request, response=resp)
+                resp.raise_for_status()
+                return resp.json()
+            except httpx.HTTPStatusError as error:
+                if error.response.status_code not in (429,) and error.response.status_code < 500:
+                    raise  # 4xx other than 429: not retryable
+                last_error = error
+                retry_after = float(error.response.headers.get("Retry-After", 0) or 0)
+            except httpx.TransportError as error:
+                last_error = error
+                retry_after = 0.0
+            if attempt < attempts - 1:
+                await asyncio.sleep(max(retry_after, 2 ** attempt))
+        raise last_error
+
     async def _get(self, url: str) -> dict:
-        await self._throttle()
-        resp = await self._http.get(url)
-        resp.raise_for_status()
-        return resp.json()
+        return await self._request("GET", url)
 
     async def _post(self, url: str, payload: dict) -> dict:
-        await self._throttle()
-        resp = await self._http.post(url, json=payload)
-        resp.raise_for_status()
-        return resp.json()
+        return await self._request("POST", url, payload)
 
     async def resolve_username(self, username: str) -> Optional[int]:
         """Return the userId for an exact username, or None if not found."""

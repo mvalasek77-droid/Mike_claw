@@ -108,6 +108,103 @@ def test_load_watchlist_missing_and_malformed(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_repeated_dismissals_mute_signal_type(env):
+    db, client, monitor, child_id = env
+    client.friends[1] = []
+    await monitor.poll_child(child_id, local_now=NOON)
+
+    # Three quiet-hours alerts, each dismissed by the parent.
+    late = NOON.replace(hour=23)
+    from app.monitor import DISMISSALS_TO_MUTE
+    for i in range(DISMISSALS_TO_MUTE):
+        client.presence[1] = RobloxPresence(user_id=1, presence_type=2)
+        created = await monitor.poll_child(child_id, local_now=late)
+        quiet = [a for a in created if a["type"] == "quiet_hours_activity"]
+        assert quiet, f"round {i}: quiet-hours alert should fire"
+        db.set_alert_feedback(quiet[0]["id"], "dismissed")
+        # age the alert out of the dedupe window
+        with db._connect() as conn:
+            conn.execute("UPDATE alerts SET observed_at = '2020-01-01T00:00:00+00:00'")
+
+    created = await monitor.poll_child(child_id, local_now=late)
+    assert not any(a["type"] == "quiet_hours_activity" for a in created), \
+        "muted after repeated dismissals"
+
+
+@pytest.mark.asyncio
+async def test_elevated_alerts_never_muted(env):
+    db, client, monitor, child_id = env
+    client.friends[1] = []
+    await monitor.poll_child(child_id, local_now=NOON)
+
+    # Simulate a parent who dismissed off_platform_handle alerts three times.
+    client.friends[1] = [make_profile(user_id=50, username="s1",
+                                      description="discord: a#1")]
+    created = await monitor.poll_child(child_id, local_now=NOON)
+    alert_id = next(a["id"] for a in created if a["type"] == "off_platform_handle")
+    for _ in range(3):
+        db.set_alert_feedback(alert_id, "dismissed")
+    with db._connect() as conn:
+        conn.execute("UPDATE alerts SET observed_at = '2020-01-01T00:00:00+00:00'")
+
+    client.friends[1] = client.friends[1] + [
+        make_profile(user_id=51, username="s2", description="discord: b#2")]
+    created = await monitor.poll_child(child_id, local_now=NOON)
+    assert any(a["type"] == "off_platform_handle" for a in created)
+
+
+@pytest.mark.asyncio
+async def test_confirmed_alert_enables_heightened_dedupe(env):
+    db, client, monitor, child_id = env
+    client.friends[1] = []
+    await monitor.poll_child(child_id, local_now=NOON)
+
+    late = NOON.replace(hour=23)
+    client.presence[1] = RobloxPresence(user_id=1, presence_type=2)
+    created = await monitor.poll_child(child_id, local_now=late)
+    quiet_id = next(a["id"] for a in created if a["type"] == "quiet_hours_activity")
+
+    # Within the normal 12h dedupe window the alert does not repeat.
+    assert not await monitor.poll_child(child_id, local_now=late)
+
+    # Parent confirms a real incident -> heightened mode (2h window).
+    db.set_alert_feedback(quiet_id, "confirmed")
+    with db._connect() as conn:
+        conn.execute("UPDATE alerts SET observed_at ="
+                     " strftime('%Y-%m-%dT%H:%M:%S', 'now', '-3 hours') || '+00:00'")
+    created = await monitor.poll_child(child_id, local_now=late)
+    assert any(a["type"] == "quiet_hours_activity" for a in created)
+
+
+@pytest.mark.asyncio
+async def test_feed_watchlist_merges_with_local(tmp_path, fake_client):
+    from app.threat_feed import FeedManager, _parse
+    settings = Settings(db_path=str(tmp_path / "w.db"),
+                        watchlist_path=str(tmp_path / "missing.json"))
+    db = Database(settings.db_path)
+    monitor = Monitor(db, fake_client, settings)
+    monitor.feeds.feed = _parse({
+        "version": 2, "updated_at": "now",
+        "watchlist": [{"place_id": 314, "name": "Feed Condo", "reason": "feed intel"}],
+    })
+    fake_client.add_user(make_profile(user_id=1, username="kid"))
+    child_id = db.add_child(1, "kid", "Kid", "Parent")
+    fake_client.presence[1] = RobloxPresence(user_id=1, presence_type=2, place_id=314)
+    created = await monitor.poll_child(child_id, local_now=NOON)
+    assert any(a["type"] == "flagged_experience" for a in created)
+
+
+@pytest.mark.asyncio
+async def test_poll_status_recorded(env):
+    db, client, monitor, child_id = env
+    client.friends[1] = []
+    await monitor.poll_child(child_id, local_now=NOON)
+    child = db.get_child(child_id)
+    assert child["last_poll_status"] == "ok"
+    assert child["last_poll_at"]
+
+
+@pytest.mark.asyncio
 async def test_unlink_erases_everything(env):
     db, client, monitor, child_id = env
     client.friends[1] = [make_profile(user_id=6, username="pal6",
