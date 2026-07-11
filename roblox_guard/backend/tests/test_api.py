@@ -92,6 +92,18 @@ def test_education_endpoint(api):
     client, _ = api
     payload = client.get("/education").json()
     assert payload["dangers"] and payload["response_playbook"]
+    assert payload["roblox_basics"] and payload["glossary"]
+
+
+def test_alerts_include_term_explainers(api):
+    client, fake = api
+    child_id = link(client).json()["id"]
+    fake.friends[1] = [make_profile(user_id=2, username="stranger",
+                                    description="discord: xx#1234")]
+    client.post(f"/children/{child_id}/refresh")
+    alerts = client.get(f"/children/{child_id}/alerts").json()["alerts"]
+    explainers = alerts[0]["explainers"]
+    assert any(e["term"] == "Discord" for e in explainers)
 
 
 def test_health_reports_threat_feed(api):

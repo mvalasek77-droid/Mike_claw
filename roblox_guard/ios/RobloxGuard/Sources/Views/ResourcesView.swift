@@ -13,6 +13,21 @@ struct ResourcesView: View {
                 }
                 Section {
                     NavigationLink {
+                        Roblox101View()
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Roblox 101")
+                                    .font(.subheadline.weight(.medium))
+                                Text("Never used Roblox? What it is, what Robux are, how strangers can reach your child — in plain words.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "graduationcap")
+                        }
+                    }
+                    NavigationLink {
                         KnowTheDangersView()
                     } label: {
                         Label {

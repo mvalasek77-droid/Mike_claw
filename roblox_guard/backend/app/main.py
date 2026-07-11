@@ -20,6 +20,7 @@ from .config import Settings, settings as default_settings
 from .db import Database
 from .education import education_payload
 from .evidence import EvidenceVault
+from .glossary import explain as glossary_explain
 from .monitor import Monitor
 from .report import build_report_html, build_report_markdown
 from .resources import RESOURCES
@@ -143,7 +144,13 @@ def create_app(settings: Optional[Settings] = None,
     async def list_alerts(child_id: int, include_acknowledged: bool = False):
         if not db.get_child(child_id):
             raise HTTPException(status_code=404, detail="Unknown child.")
-        return {"alerts": db.list_alerts(child_id, include_acknowledged)}
+        alerts = db.list_alerts(child_id, include_acknowledged)
+        # Attach plain-language definitions for every Roblox term an alert
+        # uses, so parents new to Roblox never hit unexplained jargon.
+        for alert in alerts:
+            alert["explainers"] = glossary_explain(
+                alert["title"], alert["guidance"], *alert["facts"])
+        return {"alerts": alerts}
 
     @app.post("/alerts/{alert_id}/acknowledge")
     async def acknowledge(alert_id: int):

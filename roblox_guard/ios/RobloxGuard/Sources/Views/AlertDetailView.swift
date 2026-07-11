@@ -33,6 +33,21 @@ struct AlertDetailView: View {
                     .font(.subheadline)
             }
 
+            if let explainers = alert.explainers, !explainers.isEmpty {
+                Section("What these words mean") {
+                    ForEach(explainers, id: \.term) { entry in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.term)
+                                .font(.subheadline.weight(.semibold))
+                            Text(entry.definition)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+
             Section("Take action") {
                 Link(destination: URL(string: "https://en.help.roblox.com/hc/en-us/articles/203312410")!) {
                     Label("Report to Roblox", systemImage: "flag")

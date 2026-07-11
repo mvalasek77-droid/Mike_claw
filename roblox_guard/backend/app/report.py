@@ -14,8 +14,23 @@ import html
 import os
 from datetime import datetime, timezone
 
-from . import education
+from . import education, glossary
 from .signals import Severity
+
+# One-paragraph primer so a reader who has never heard of Roblox — a
+# grandparent, an officer, a school counselor — can follow the report.
+ROBLOX_PRIMER = (
+    "For readers new to Roblox: Roblox is an online platform used heavily by "
+    "children, where millions of user-made games ('experiences') share one "
+    "social layer — any player can meet any other player inside a game, send "
+    "them a friend request, and chat with them. Accounts have public profile "
+    "pages (visible to anyone) showing a self-description ('bio'), a friend "
+    "list, and when the account was created. Roblox has its own virtual "
+    "currency (Robux) and filters children's chats, but private messages are "
+    "readable only by Roblox's own moderators — no outside tool can see them. "
+    "This report is therefore based on the public information above, plus "
+    "screenshots supplied by the parent."
+)
 
 DISCLAIMER = (
     "This report contains automated observations of publicly visible Roblox "
@@ -87,6 +102,8 @@ def build_report_markdown(child: dict, alerts: list[dict], evidence: list[dict])
         f"on {child['consent_attested_at'][:10]}")
     add("")
     add(f"> {DISCLAIMER}")
+    add("")
+    add(f"> {ROBLOX_PRIMER}")
     add("")
 
     add("## 1. Situation summary")
@@ -162,7 +179,20 @@ def build_report_markdown(child: dict, alerts: list[dict], evidence: list[dict])
                 f"`{e['sha256'][:16]}…` | {e['note'] or os.path.basename(e['path'])} |")
     add("")
 
-    add("## 6. Recommended next steps")
+    # Glossary of exactly the terms this report used, so nothing above
+    # requires prior Roblox knowledge.
+    term_sources = [_situation_summary(child, alerts)]
+    for a in alerts_sorted:
+        term_sources += [a["title"], a["guidance"], *a["facts"]]
+    terms = glossary.explain(*term_sources)
+    if terms:
+        add("## 6. Terms used in this report")
+        add("")
+        for entry in terms:
+            add(f"- **{entry['term']}** — {entry['definition']}")
+        add("")
+
+    add("## 7. Recommended next steps")
     add("")
     for i, step in enumerate(education.RESPONSE_PLAYBOOK, 1):
         add(f"{i}. {step}")

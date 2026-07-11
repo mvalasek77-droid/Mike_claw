@@ -26,6 +26,11 @@ enum AlertSeverity: String, Codable, CaseIterable {
     }
 }
 
+struct TermExplainer: Codable, Hashable {
+    let term: String
+    let definition: String
+}
+
 struct SafetyAlert: Identifiable, Codable, Hashable {
     let id: Int
     let type: String
@@ -36,9 +41,12 @@ struct SafetyAlert: Identifiable, Codable, Hashable {
     let subjectUsername: String?
     let observedAt: String
     let acknowledged: Bool
+    /// Plain-language definitions for every Roblox term this alert uses,
+    /// computed server-side so parents never hit unexplained jargon.
+    let explainers: [TermExplainer]?
 
     enum CodingKeys: String, CodingKey {
-        case id, type, severity, title, facts, guidance, acknowledged
+        case id, type, severity, title, facts, guidance, acknowledged, explainers
         case subjectUsername = "subject_username"
         case observedAt = "observed_at"
     }
@@ -81,14 +89,23 @@ struct DangerEntry: Identifiable, Codable, Hashable {
     let progression: [String]
 }
 
+struct BasicsEntry: Identifiable, Codable, Hashable {
+    let id: String
+    let question: String
+    let answer: String
+}
+
 struct EducationContent: Codable {
+    let robloxBasics: [BasicsEntry]
     let dangers: [DangerEntry]
     let behavioralSigns: [String]
     let immediateRedFlags: [String]
     let responsePlaybook: [String]
+    let glossary: [TermExplainer]
 
     enum CodingKeys: String, CodingKey {
-        case dangers
+        case dangers, glossary
+        case robloxBasics = "roblox_basics"
         case behavioralSigns = "behavioral_signs"
         case immediateRedFlags = "immediate_red_flags"
         case responsePlaybook = "response_playbook"

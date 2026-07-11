@@ -56,6 +56,10 @@ async def test_report_contains_all_sections(populated):
     # Disclaimers present
     assert "does not accuse" in md
     assert "never save, upload, or forward" in md
+    # Readers new to Roblox get a primer and a glossary of the terms used
+    assert "For readers new to Roblox" in md
+    assert "Terms used in this report" in md
+    assert "**Discord**" in md
 
 
 async def test_report_never_labels_individuals(populated):
