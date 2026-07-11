@@ -33,10 +33,12 @@ def load_watchlist(path: str) -> dict[int, dict]:
 
 
 class Monitor:
-    def __init__(self, db: Database, client: RobloxClient, settings: Settings):
+    def __init__(self, db: Database, client: RobloxClient, settings: Settings,
+                 vault=None):
         self.db = db
         self.client = client
         self.settings = settings
+        self.vault = vault  # EvidenceVault; optional so tests can omit it
         self.watchlist = load_watchlist(settings.watchlist_path)
         self._task: Optional[asyncio.Task] = None
 
@@ -136,4 +138,44 @@ class Monitor:
             alert_id = self.db.add_alert(child_id, s)
             created.append({"id": alert_id, "type": s.type.value, "severity": s.severity.value,
                             "title": s.title})
+            await self._capture_evidence(child_id, alert_id, s, presence)
         return created
+
+    async def _capture_evidence(self, child_id: int, alert_id: int,
+                                s: sig.Signal, presence) -> None:
+        """Preserve what we observed the moment an alert fires.
+
+        Every non-info alert gets a machine-readable data snapshot; alerts
+        about a specific account also get a screenshot of that account's
+        public profile page (bios get edited fast once someone feels watched).
+        Evidence failures never block the alert itself.
+        """
+        if self.vault is None or s.severity == sig.Severity.INFO:
+            return
+        try:
+            self.vault.record_data_snapshot(
+                child_id, alert_id,
+                payload={
+                    "alert_type": s.type.value,
+                    "severity": s.severity.value,
+                    "title": s.title,
+                    "facts": s.facts,
+                    "subject_user_id": s.subject_user_id,
+                    "subject_username": s.subject_username,
+                    "presence": {
+                        "presence_type": presence.presence_type,
+                        "place_id": presence.place_id,
+                        "last_location": presence.last_location,
+                    },
+                },
+                note=f"Observed data at the moment alert #{alert_id} fired",
+            )
+        except Exception:
+            log.exception("data snapshot failed for alert %s", alert_id)
+        if s.subject_user_id:
+            try:
+                await self.vault.capture_profile_screenshot(
+                    child_id, alert_id, s.subject_user_id, s.subject_username or "",
+                )
+            except Exception:
+                log.exception("profile screenshot failed for alert %s", alert_id)

@@ -7,18 +7,25 @@ expectations.
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from .config import Settings, settings as default_settings
 from .db import Database
+from .education import education_payload
+from .evidence import EvidenceVault
 from .monitor import Monitor
+from .report import build_report_html, build_report_markdown
 from .resources import RESOURCES
 from .roblox_client import RobloxClient
+
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 
 log = logging.getLogger("roblox_guard.api")
 
@@ -44,7 +51,10 @@ def create_app(settings: Optional[Settings] = None,
     settings = settings or default_settings
     db = Database(settings.db_path)
     roblox = client or RobloxClient(spacing_seconds=settings.request_spacing_seconds)
-    monitor = Monitor(db, roblox, settings)
+    evidence_dir = os.environ.get(
+        "RG_EVIDENCE_DIR", os.path.join(os.path.dirname(settings.db_path) or ".", "evidence"))
+    vault = EvidenceVault(db, evidence_dir)
+    monitor = Monitor(db, roblox, settings, vault=vault)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -99,6 +109,12 @@ def create_app(settings: Optional[Settings] = None,
     async def unlink_child(child_id: int):
         if not db.get_child(child_id):
             raise HTTPException(status_code=404, detail="Unknown child.")
+        # Full erasure includes evidence files on disk, not just DB rows.
+        for item in db.list_evidence(child_id):
+            try:
+                os.remove(item["path"])
+            except OSError:
+                pass
         db.remove_child(child_id)
 
     @app.post("/children/{child_id}/refresh")
@@ -126,6 +142,65 @@ def create_app(settings: Optional[Settings] = None,
     @app.get("/resources")
     async def resources():
         return {"resources": RESOURCES}
+
+    @app.get("/education")
+    async def education():
+        return education_payload()
+
+    # -- evidence ------------------------------------------------------------
+
+    @app.get("/children/{child_id}/evidence")
+    async def list_evidence(child_id: int):
+        if not db.get_child(child_id):
+            raise HTTPException(status_code=404, detail="Unknown child.")
+        items = db.list_evidence(child_id)
+        for item in items:
+            item["filename"] = os.path.basename(item.pop("path"))
+        return {"evidence": items}
+
+    @app.get("/evidence/{evidence_id}/file")
+    async def get_evidence_file(evidence_id: int):
+        item = db.get_evidence(evidence_id)
+        if not item or not os.path.exists(item["path"]):
+            raise HTTPException(status_code=404, detail="Unknown evidence.")
+        return FileResponse(item["path"], filename=os.path.basename(item["path"]))
+
+    @app.post("/children/{child_id}/evidence/upload", status_code=201)
+    async def upload_evidence(child_id: int, file: UploadFile = File(...),
+                              note: str = Form("")):
+        """Store a screenshot the parent took on the child's device.
+
+        The iOS upload screen shows the CSAM warning before this is called;
+        the server cannot inspect content, so the guardrail is procedural.
+        """
+        if not db.get_child(child_id):
+            raise HTTPException(status_code=404, detail="Unknown child.")
+        content = await file.read()
+        if len(content) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File too large (15 MB max).")
+        try:
+            evidence_id = vault.store_parent_upload(
+                child_id, file.filename or "upload.png", content, note=note)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        item = db.get_evidence(evidence_id)
+        return {"id": evidence_id, "sha256": item["sha256"],
+                "captured_at": item["captured_at"]}
+
+    # -- incident report -----------------------------------------------------
+
+    @app.get("/children/{child_id}/report")
+    async def incident_report(child_id: int, format: str = "html"):
+        child = db.get_child(child_id)
+        if not child:
+            raise HTTPException(status_code=404, detail="Unknown child.")
+        alerts = db.list_alerts(child_id, include_acknowledged=True)
+        evidence = db.list_evidence(child_id)
+        if format == "md":
+            return PlainTextResponse(
+                build_report_markdown(child, alerts, evidence),
+                media_type="text/markdown")
+        return HTMLResponse(build_report_html(child, alerts, evidence))
 
     return app
 

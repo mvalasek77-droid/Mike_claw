@@ -47,6 +47,33 @@ wording guardrail (`signals.validate_wording`, enforced at emit time and in
 tests) rejects any signal text that labels a person ("predator", "groomer",
 etc.) — that's both a defamation guardrail and an App Review requirement.
 
+### Evidence vault & incident reports
+
+When a watch-level or elevated alert fires, the backend automatically
+preserves what it saw:
+
+- **Data snapshot** — machine-readable JSON of the exact observation.
+- **Profile screenshot** — a headless-browser capture of the involved
+  account's *public* profile page (bios get edited fast once someone feels
+  watched). Uses Playwright; degrades gracefully if no browser is available.
+- **Parent uploads** — screenshots the parent takes on the child's device
+  (chats, profiles) imported through the app. The upload flow carries a
+  non-skippable legal warning: sexual imagery of a minor must never be saved
+  or uploaded, even as evidence — describe it to investigators instead.
+
+Every item is timestamped and SHA-256 fingerprinted at capture time so
+investigators can verify integrity. `GET /children/{id}/report` renders the
+full incident report (HTML or Markdown): plain-language situation summary,
+the danger patterns the observations match (from `app/education.py`), the
+alert timeline, at-home behavioral signs to check, the evidence inventory
+with hashes, and the reporting playbook (Roblox Report Abuse → NCMEC
+CyberTipline → police). Unlinking a child erases evidence files along with
+all database rows.
+
+The underlying research — the full danger catalog and how to recognize a
+targeted child — lives in [`docs/ROBLOX_DANGERS.md`](docs/ROBLOX_DANGERS.md)
+and is served to the app at `GET /education`.
+
 ### Running the backend
 
 ```bash

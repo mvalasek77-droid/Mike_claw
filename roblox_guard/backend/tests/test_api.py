@@ -85,3 +85,73 @@ def test_resources_listed(api):
     client, _ = api
     ids = {r["id"] for r in client.get("/resources").json()["resources"]}
     assert {"roblox_report_abuse", "cybertipline", "roblox_parental_controls"} <= ids
+
+
+def test_education_endpoint(api):
+    client, _ = api
+    payload = client.get("/education").json()
+    assert payload["dangers"] and payload["response_playbook"]
+
+
+def test_evidence_upload_list_download(api):
+    client, _ = api
+    child_id = link(client).json()["id"]
+
+    resp = client.post(
+        f"/children/{child_id}/evidence/upload",
+        files={"file": ("chat.png", b"\x89PNG fake image bytes", "image/png")},
+        data={"note": "chat screenshot from child's iPad"},
+    )
+    assert resp.status_code == 201
+    assert len(resp.json()["sha256"]) == 64
+
+    listed = client.get(f"/children/{child_id}/evidence").json()["evidence"]
+    assert listed[0]["kind"] == "parent_upload"
+    assert listed[0]["note"] == "chat screenshot from child's iPad"
+    assert "path" not in listed[0]  # server paths are not exposed
+
+    evidence_id = listed[0]["id"]
+    download = client.get(f"/evidence/{evidence_id}/file")
+    assert download.status_code == 200
+    assert download.content == b"\x89PNG fake image bytes"
+
+
+def test_evidence_upload_rejects_non_image(api):
+    client, _ = api
+    child_id = link(client).json()["id"]
+    resp = client.post(
+        f"/children/{child_id}/evidence/upload",
+        files={"file": ("notes.pdf", b"%PDF", "application/pdf")},
+    )
+    assert resp.status_code == 422
+
+
+def test_report_endpoint_html_and_md(api):
+    client, fake = api
+    child_id = link(client).json()["id"]
+    fake.friends[1] = [make_profile(user_id=2, username="stranger",
+                                    description="discord: xx#1234")]
+    client.post(f"/children/{child_id}/refresh")
+
+    html_resp = client.get(f"/children/{child_id}/report")
+    assert html_resp.status_code == 200
+    assert html_resp.headers["content-type"].startswith("text/html")
+    assert "@stranger" in html_resp.text
+
+    md_resp = client.get(f"/children/{child_id}/report?format=md")
+    assert md_resp.headers["content-type"].startswith("text/markdown")
+    assert "# RobloxGuard incident report" in md_resp.text
+    assert "report.cybertip.org" in md_resp.text
+
+
+def test_unlink_removes_evidence_files(api, tmp_path):
+    client, _ = api
+    child_id = link(client).json()["id"]
+    client.post(
+        f"/children/{child_id}/evidence/upload",
+        files={"file": ("chat.png", b"bytes", "image/png")},
+    )
+    listed = client.get(f"/children/{child_id}/evidence").json()["evidence"]
+    evidence_id = listed[0]["id"]
+    assert client.delete(f"/children/{child_id}").status_code == 204
+    assert client.get(f"/evidence/{evidence_id}/file").status_code == 404

@@ -11,6 +11,23 @@ struct ResourcesView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.red)
                 }
+                Section {
+                    NavigationLink {
+                        KnowTheDangersView()
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Know the Dangers")
+                                    .font(.subheadline.weight(.medium))
+                                Text("How targeting works, the warning signs, and the response playbook.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "book.closed")
+                        }
+                    }
+                }
                 Section("Reporting & guidance") {
                     ForEach(store.resources) { resource in
                         if let url = URL(string: resource.url) {

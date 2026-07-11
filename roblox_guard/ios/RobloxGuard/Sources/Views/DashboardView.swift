@@ -56,6 +56,12 @@ struct DashboardView: View {
                             }
                         }
                     }
+                    NavigationLink {
+                        EvidenceReportView(child: child)
+                    } label: {
+                        Label("Evidence & incident report", systemImage: "folder.badge.person.crop")
+                            .font(.subheadline)
+                    }
                 } header: {
                     HStack {
                         Text(child.displayName.isEmpty ? child.robloxUsername : child.displayName)

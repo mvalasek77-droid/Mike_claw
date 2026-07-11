@@ -82,4 +82,51 @@ struct APIClient {
         let response: ResourcesResponse = try await request("GET", "resources")
         return response.resources
     }
+
+    func education() async throws -> EducationContent {
+        try await request("GET", "education")
+    }
+
+    func evidence(childId: Int) async throws -> [EvidenceItem] {
+        struct EvidenceResponse: Decodable { let evidence: [EvidenceItem] }
+        let response: EvidenceResponse = try await request("GET", "children/\(childId)/evidence")
+        return response.evidence
+    }
+
+    /// URL the incident report is served from — openable in Safari, printable,
+    /// and shareable with investigators.
+    func reportURL(childId: Int, format: String = "html") -> URL {
+        baseURL.appendingPathComponent("children/\(childId)/report")
+            .appending(queryItems: [URLQueryItem(name: "format", value: format)])
+    }
+
+    func evidenceFileURL(evidenceId: Int) -> URL {
+        baseURL.appendingPathComponent("evidence/\(evidenceId)/file")
+    }
+
+    func uploadEvidence(childId: Int, imageData: Data, filename: String,
+                        note: String) async throws {
+        let boundary = "rg-\(UUID().uuidString)"
+        var req = URLRequest(url: baseURL.appendingPathComponent("children/\(childId)/evidence/upload"))
+        req.httpMethod = "POST"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        func field(_ string: String) { body.append(Data(string.utf8)) }
+        field("--\(boundary)\r\nContent-Disposition: form-data; name=\"note\"\r\n\r\n\(note)\r\n")
+        field("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n")
+        field("Content-Type: image/png\r\n\r\n")
+        body.append(imageData)
+        field("\r\n--\(boundary)--\r\n")
+        req.httpBody = body
+
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            if let detail = try? JSONDecoder().decode([String: String].self, from: data),
+               let message = detail["detail"] {
+                throw APIError(message: message)
+            }
+            throw APIError(message: "Upload failed")
+        }
+    }
 }

@@ -40,6 +40,17 @@ CREATE TABLE IF NOT EXISTS friend_first_seen (
     PRIMARY KEY (child_id, friend_user_id)
 );
 
+CREATE TABLE IF NOT EXISTS evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    alert_id INTEGER,
+    kind TEXT NOT NULL,                -- profile_screenshot | data_snapshot | parent_upload
+    path TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    captured_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS alerts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
@@ -159,6 +170,29 @@ class Database:
                 (child_id, since_iso),
             ).fetchone()
             return int(row["n"])
+
+    # -- evidence ------------------------------------------------------------
+
+    def add_evidence(self, child_id: int, alert_id: Optional[int], kind: str,
+                     path: str, sha256: str, note: str = "") -> int:
+        with self._connect() as conn:
+            cur = conn.execute(
+                "INSERT INTO evidence (child_id, alert_id, kind, path, sha256, note, captured_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (child_id, alert_id, kind, path, sha256, note, utcnow()),
+            )
+            return cur.lastrowid
+
+    def list_evidence(self, child_id: int) -> list[dict]:
+        with self._connect() as conn:
+            return [dict(r) for r in conn.execute(
+                "SELECT * FROM evidence WHERE child_id = ? ORDER BY id DESC", (child_id,)
+            )]
+
+    def get_evidence(self, evidence_id: int) -> Optional[dict]:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM evidence WHERE id = ?", (evidence_id,)).fetchone()
+            return dict(row) if row else None
 
     # -- alerts --------------------------------------------------------------
 
