@@ -1,0 +1,13 @@
+{
+  "_comment": [
+    "Curated experience watchlist. Each entry maps a Roblox placeId to a",
+    "neutral reason it is worth a parent's attention (e.g. social hangouts",
+    "with weak moderation, experiences repeatedly cited in safety reporting).",
+    "Ships empty by design: entries are editorial judgments the operator",
+    "must own and keep current. Keep reasons factual — describe the",
+    "experience, never accuse individuals.",
+    "Example entry:",
+    "  {\"place_id\": 123456, \"name\": \"Example Hangout\", \"reason\": \"unmoderated free-form voice chat lobby\"}"
+  ],
+  "experiences": []
+}

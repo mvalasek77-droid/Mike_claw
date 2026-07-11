@@ -1,0 +1,22 @@
+# Generate RobloxGuard.xcodeproj with XcodeGen: `xcodegen generate`
+name: RobloxGuard
+options:
+  bundleIdPrefix: com.mikeclaw
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  RobloxGuard:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    settings:
+      base:
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: RobloxGuard
+        # Parent-facing utility; NOT a Kids Category app (see README).
+        PRODUCT_BUNDLE_IDENTIFIER: com.mikeclaw.robloxguard
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "5.9"
+        # Local dev talks to http://localhost:8000; production must use HTTPS
+        # (no ATS exceptions shipped in release builds).
+        INFOPLIST_KEY_NSAppTransportSecurity_dev_note: remove-before-release
