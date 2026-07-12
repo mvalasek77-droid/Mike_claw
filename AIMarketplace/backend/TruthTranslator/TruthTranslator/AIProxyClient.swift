@@ -30,13 +30,23 @@ struct DecodeService {
     private func decodeWithUserKey(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome {
         if let apiKey = ChadDropKeychain.loadAPIKey() {
             do {
-                let result = try await OpenAIDirectClient(apiKey: apiKey).decode(text: text, tone: tone, context: context)
+                let result = try await Self.userKeyDecode(apiKey: apiKey, text: text, tone: tone, context: context)
                 return DecodeOutcome(result: result.normalized, usedFallback: false)
             } catch {
                 // Key call failed, continue to local engine
             }
         }
         return DecodeOutcome(result: engine.decode(text: text, tone: tone, context: context), usedFallback: true)
+    }
+
+    /// Routes a user-supplied key to the matching provider: Anthropic (sk-ant-) or OpenAI.
+    static func userKeyDecode(apiKey: String, text: String, tone: DecodeTone, context: DecodeContext) async throws -> DecodeResult {
+        switch UserAPIKeyKind.detect(apiKey) {
+        case .anthropic:
+            return try await AnthropicDirectClient(apiKey: apiKey).decode(text: text, tone: tone, context: context)
+        case .openAI:
+            return try await OpenAIDirectClient(apiKey: apiKey).decode(text: text, tone: tone, context: context)
+        }
     }
 
     private func decodeAuto(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome {
@@ -53,7 +63,7 @@ struct DecodeService {
         // Tier 2: User's own API key, if one is saved
         if let apiKey = ChadDropKeychain.loadAPIKey() {
             do {
-                let result = try await OpenAIDirectClient(apiKey: apiKey).decode(text: text, tone: tone, context: context)
+                let result = try await Self.userKeyDecode(apiKey: apiKey, text: text, tone: tone, context: context)
                 return DecodeOutcome(result: result.normalized, usedFallback: false)
             } catch {
                 // Key call failed, continue to next tier
