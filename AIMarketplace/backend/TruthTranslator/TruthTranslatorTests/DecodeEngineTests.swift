@@ -41,3 +41,39 @@ final class DecodeEngineTests: XCTestCase {
         XCTAssertLessThan(result.realityScore, 10)
     }
 }
+
+final class EngineSettingsTests: XCTestCase {
+    private let modeKey = "chaddropEngineMode"
+    private var savedMode: String?
+
+    override func setUp() {
+        super.setUp()
+        savedMode = UserDefaults.standard.string(forKey: modeKey)
+    }
+
+    override func tearDown() {
+        if let savedMode {
+            UserDefaults.standard.set(savedMode, forKey: modeKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: modeKey)
+        }
+        super.tearDown()
+    }
+
+    func testDefaultModeIsAuto() {
+        UserDefaults.standard.removeObject(forKey: modeKey)
+        XCTAssertEqual(EngineSettings.mode, .auto)
+    }
+
+    func testModeRoundTripsThroughStorage() {
+        for mode in DecodeEngineMode.allCases {
+            EngineSettings.mode = mode
+            XCTAssertEqual(EngineSettings.mode, mode)
+        }
+    }
+
+    func testCorruptStoredValueFallsBackToAuto() {
+        UserDefaults.standard.set("not-a-real-mode", forKey: modeKey)
+        XCTAssertEqual(EngineSettings.mode, .auto)
+    }
+}

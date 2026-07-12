@@ -6,6 +6,7 @@ struct ContentView: View {
     @StateObject private var subscriptionStore = SubscriptionStore()
     @State private var showingReleaseGateway: Bool
     @State private var showingPaywall: Bool
+    @State private var showingSettings = false
     @State private var legalDoc: ChadDropLegalDoc?
     private let releaseGatewayEnabled: Bool
     @AppStorage("chaddropFreeDecodeCount") private var freeDecodeCount = 0
@@ -62,6 +63,10 @@ struct ContentView: View {
             ChadDropLegalSheet(doc: doc)
                 .preferredColorScheme(.dark)
         }
+        .sheet(isPresented: $showingSettings) {
+            ChadDropSettingsView()
+                .preferredColorScheme(.dark)
+        }
         .task {
             await subscriptionStore.refreshPurchasedProducts()
             await subscriptionStore.loadProducts()
@@ -76,6 +81,16 @@ struct ContentView: View {
                     .foregroundStyle(.white)
 
                 Spacer(minLength: 8)
+
+                Button {
+                    showingSettings = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(IconButtonStyle(size: 44))
+                .accessibilityLabel("Open AI settings")
+                .accessibilityIdentifier("settingsButton")
 
                 Button {
                     showingPaywall = true
@@ -393,7 +408,7 @@ final class DecodeViewModel: ObservableObject {
         let outcome = await service.decode(text: text, tone: tone, context: context)
         result = outcome.result
         statusMessage = outcome.usedFallback
-            ? "Offline mode used. Connect an AI proxy for fresher reads."
+            ? "Built-in engine used. Open settings to use Apple Intelligence or your own API key."
             : "AI read complete. Standards remain undefeated."
         isDecoding = false
     }
