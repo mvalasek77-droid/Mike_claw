@@ -21,6 +21,7 @@ from .db import Database
 from .education import education_payload
 from .evidence import EvidenceVault
 from .glossary import explain as glossary_explain
+from .intel import IntelService
 from .monitor import Monitor
 from .report import build_report_html, build_report_markdown
 from .resources import RESOURCES
@@ -62,13 +63,16 @@ def create_app(settings: Optional[Settings] = None,
         "RG_EVIDENCE_DIR", os.path.join(os.path.dirname(settings.db_path) or ".", "evidence"))
     vault = EvidenceVault(db, evidence_dir)
     monitor = Monitor(db, roblox, settings, vault=vault)
+    intel = IntelService(db, monitor.feeds)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         if start_monitor:
             monitor.start()
+            intel.start()
         yield
         if start_monitor:
+            await intel.stop()
             await monitor.stop()
         await roblox.aclose()
 
@@ -149,7 +153,8 @@ def create_app(settings: Optional[Settings] = None,
         # uses, so parents new to Roblox never hit unexplained jargon.
         for alert in alerts:
             alert["explainers"] = glossary_explain(
-                alert["title"], alert["guidance"], *alert["facts"])
+                alert["title"], alert["guidance"], *alert["facts"],
+                feed=monitor.feeds.feed)
         return {"alerts": alerts}
 
     @app.post("/alerts/{alert_id}/acknowledge")
@@ -176,7 +181,24 @@ def create_app(settings: Optional[Settings] = None,
 
     @app.get("/education")
     async def education():
-        return education_payload()
+        return education_payload(monitor.feeds.feed)
+
+    # -- daily threat intelligence --------------------------------------------
+
+    @app.get("/intel/runs")
+    async def intel_runs():
+        return {"runs": db.list_intel_runs(),
+                "analyzer": intel.analyzer.name,
+                "auto_apply": intel.auto_apply,
+                "sources_configured": len(intel.sources)}
+
+    @app.post("/intel/run")
+    async def intel_run_now():
+        """Run the daily threat search immediately (also fires on schedule)."""
+        if not intel.sources:
+            raise HTTPException(status_code=409,
+                                detail="No intel sources configured (data/intel_sources.json).")
+        return await intel.run_once()
 
     # -- evidence ------------------------------------------------------------
 
@@ -229,9 +251,10 @@ def create_app(settings: Optional[Settings] = None,
         evidence = db.list_evidence(child_id)
         if format == "md":
             return PlainTextResponse(
-                build_report_markdown(child, alerts, evidence),
+                build_report_markdown(child, alerts, evidence, feed=monitor.feeds.feed),
                 media_type="text/markdown")
-        return HTMLResponse(build_report_html(child, alerts, evidence))
+        return HTMLResponse(build_report_html(child, alerts, evidence,
+                                              feed=monitor.feeds.feed))
 
     return app
 

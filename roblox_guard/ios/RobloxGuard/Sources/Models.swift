@@ -89,6 +89,37 @@ struct DangerEntry: Identifiable, Codable, Hashable {
     let progression: [String]
 }
 
+struct ProtectionStatus: Codable {
+    struct FeedStatus: Codable {
+        let version: Int
+        let updatedAt: String
+        let source: String
+
+        enum CodingKeys: String, CodingKey {
+            case version, source
+            case updatedAt = "updated_at"
+        }
+    }
+
+    struct IntelRun: Codable {
+        let ranAt: String
+        let findingsCount: Int
+        let applied: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case applied
+            case ranAt = "ran_at"
+            case findingsCount = "findings_count"
+        }
+    }
+
+    let feed: FeedStatus
+    let lastIntelRun: IntelRun?
+    let analyzer: String
+    let autoApply: Bool
+    let sourcesConfigured: Int
+}
+
 struct BasicsEntry: Identifiable, Codable, Hashable {
     let id: String
     let question: String

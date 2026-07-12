@@ -54,6 +54,12 @@ class ThreatFeed:
     thresholds: dict = field(default_factory=dict)
     # condo/experience watchlist entries, same schema as the local watchlist
     watchlist: list[dict] = field(default_factory=list)
+    # Content updates ride the same versioned feed, so parent-facing language
+    # stays current without app releases:
+    # glossary entries: {term, aliases: [...], definition} — add or override
+    glossary: list[dict] = field(default_factory=list)
+    # Roblox-101 entries: {id, question, answer} — add or override by id
+    roblox_basics: list[dict] = field(default_factory=list)
 
     _compiled: list[tuple[str, re.Pattern]] = field(default_factory=list, repr=False)
     _compiled_phrases: list[tuple[str, re.Pattern]] = field(default_factory=list, repr=False)
@@ -113,6 +119,8 @@ def _parse(data: dict) -> ThreatFeed:
         grooming_phrases=list(data.get("grooming_phrases", [])),
         thresholds=dict(data.get("thresholds", {})),
         watchlist=list(data.get("watchlist", [])),
+        glossary=list(data.get("glossary", [])),
+        roblox_basics=list(data.get("roblox_basics", [])),
     ).compile()
 
 
@@ -164,4 +172,6 @@ class FeedManager:
             "pattern_count": len(self.feed._compiled),
             "phrase_count": len(self.feed._compiled_phrases),
             "watchlist_count": len(self.feed.watchlist),
+            "glossary_override_count": len(self.feed.glossary),
+            "basics_override_count": len(self.feed.roblox_basics),
         }

@@ -83,7 +83,8 @@ def _situation_summary(child: dict, alerts: list[dict]) -> str:
     return " ".join(parts)
 
 
-def build_report_markdown(child: dict, alerts: list[dict], evidence: list[dict]) -> str:
+def build_report_markdown(child: dict, alerts: list[dict], evidence: list[dict],
+                          feed=None) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     signal_types = {a["type"] for a in alerts}
     dangers = education.dangers_for_signal_types(signal_types)
@@ -184,7 +185,7 @@ def build_report_markdown(child: dict, alerts: list[dict], evidence: list[dict])
     term_sources = [_situation_summary(child, alerts)]
     for a in alerts_sorted:
         term_sources += [a["title"], a["guidance"], *a["facts"]]
-    terms = glossary.explain(*term_sources)
+    terms = glossary.explain(*term_sources, feed=feed)
     if terms:
         add("## 6. Terms used in this report")
         add("")
@@ -207,13 +208,14 @@ def build_report_markdown(child: dict, alerts: list[dict], evidence: list[dict])
     return "\n".join(lines)
 
 
-def build_report_html(child: dict, alerts: list[dict], evidence: list[dict]) -> str:
+def build_report_html(child: dict, alerts: list[dict], evidence: list[dict],
+                      feed=None) -> str:
     """Print-friendly standalone HTML wrapper around the markdown content.
 
     Kept dependency-free: the markdown is rendered inside <pre-wrap> prose
     styling rather than pulling in a markdown library.
     """
-    md = build_report_markdown(child, alerts, evidence)
+    md = build_report_markdown(child, alerts, evidence, feed=feed)
     body = html.escape(md)
     return f"""<!doctype html>
 <html lang="en">

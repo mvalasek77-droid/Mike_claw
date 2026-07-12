@@ -1,0 +1,11 @@
+{
+  "_comment": [
+    "Sources the daily threat-intelligence run reads. Ships empty: pick",
+    "sources you trust editorially — child-safety org news feeds, platform",
+    "safety blogs, security advisories. Only 'rss' sources are supported.",
+    "Can also be provided via the RG_INTEL_SOURCES env var (JSON array).",
+    "Example:",
+    "  {\"type\": \"rss\", \"url\": \"https://example.org/child-safety/feed.xml\"}"
+  ],
+  "sources": []
+}

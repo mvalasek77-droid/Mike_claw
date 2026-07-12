@@ -53,6 +53,17 @@ CREATE TABLE IF NOT EXISTS evidence (
     captured_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS intel_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ran_at TEXT NOT NULL,
+    analyzer TEXT NOT NULL,
+    findings_count INTEGER NOT NULL,
+    proposal_counts TEXT NOT NULL,     -- JSON object of category -> count
+    summary TEXT NOT NULL DEFAULT '',
+    applied INTEGER NOT NULL DEFAULT 0,
+    proposal_path TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS alerts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
@@ -215,6 +226,40 @@ class Database:
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM evidence WHERE id = ?", (evidence_id,)).fetchone()
             return dict(row) if row else None
+
+    # -- intel runs ----------------------------------------------------------
+
+    def add_intel_run(self, analyzer: str, findings_count: int,
+                      proposal_counts: dict, summary: str, applied: bool,
+                      proposal_path: str) -> int:
+        with self._connect() as conn:
+            cur = conn.execute(
+                "INSERT INTO intel_runs (ran_at, analyzer, findings_count,"
+                " proposal_counts, summary, applied, proposal_path)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (utcnow(), analyzer, findings_count, json.dumps(proposal_counts),
+                 summary, int(applied), proposal_path),
+            )
+            return cur.lastrowid
+
+    def get_intel_run(self, run_id: int) -> Optional[dict]:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM intel_runs WHERE id = ?", (run_id,)).fetchone()
+        if not row:
+            return None
+        out = dict(row)
+        out["proposal_counts"] = json.loads(out["proposal_counts"])
+        out["applied"] = bool(out["applied"])
+        return out
+
+    def list_intel_runs(self, limit: int = 30) -> list[dict]:
+        with self._connect() as conn:
+            rows = [dict(r) for r in conn.execute(
+                "SELECT * FROM intel_runs ORDER BY id DESC LIMIT ?", (limit,))]
+        for row in rows:
+            row["proposal_counts"] = json.loads(row["proposal_counts"])
+            row["applied"] = bool(row["applied"])
+        return rows
 
     # -- alerts --------------------------------------------------------------
 

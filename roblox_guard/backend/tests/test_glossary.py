@@ -59,6 +59,52 @@ class TestCoverageOfSignalWording:
             assert entries, f"signal {signal.type} has no glossary coverage"
 
 
+class TestFeedContentMerge:
+    def _feed_with_content(self):
+        from app.threat_feed import _parse
+        return _parse({
+            "version": 2, "updated_at": "now",
+            "glossary": [
+                {"term": "ChatterBox", "aliases": ["chatterbox"],
+                 "definition": "A new chat app with no child-safety moderation."},
+                {"term": "Discord", "aliases": ["discord"],
+                 "definition": "UPDATED definition delivered by the feed."},
+            ],
+            "roblox_basics": [
+                {"id": "what_is_roblox", "question": "What is Roblox? (v2)",
+                 "answer": "Updated answer."},
+                {"id": "new_topic", "question": "What is ChatterBox?",
+                 "answer": "A new app to know about."},
+            ],
+        })
+
+    def test_feed_adds_and_overrides_glossary(self):
+        merged = glossary.merged_glossary(self._feed_with_content())
+        assert "ChatterBox" in merged
+        assert merged["Discord"]["definition"].startswith("UPDATED")
+        assert "Robux" in merged  # static entries survive
+
+    def test_explain_uses_feed_terms(self):
+        entries = glossary.explain("met them on chatterbox yesterday",
+                                   feed=self._feed_with_content())
+        assert any(e["term"] == "ChatterBox" for e in entries)
+
+    def test_feed_overrides_basics_by_id(self):
+        merged = {b["id"]: b for b in glossary.merged_basics(self._feed_with_content())}
+        assert merged["what_is_roblox"]["question"].endswith("(v2)")
+        assert "new_topic" in merged
+        assert "what_are_robux" in merged  # untouched entries survive
+
+    def test_education_payload_reflects_feed(self):
+        from app.education import education_payload
+        payload = education_payload(self._feed_with_content())
+        terms = {g["term"] for g in payload["glossary"]}
+        assert "ChatterBox" in terms
+
+    def test_no_feed_means_static_content(self):
+        assert glossary.merged_glossary(None) == glossary.GLOSSARY
+
+
 class TestBasics:
     def test_basics_answer_core_questions(self):
         questions = " ".join(b["question"].lower() for b in glossary.ROBLOX_BASICS)

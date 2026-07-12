@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var store: Store
     @State private var childToUnlink: Child?
+    @State private var protection: ProtectionStatus?
 
     var body: some View {
         NavigationStack {
@@ -28,6 +29,30 @@ struct SettingsView: View {
                     }
                 }
 
+                Section {
+                    if let protection {
+                        LabeledContent("Threat definitions",
+                                       value: "v\(protection.feed.version) · \(protection.feed.updatedAt)")
+                        LabeledContent("Updates from",
+                                       value: protection.feed.source == "seed"
+                                       ? "built-in" : protection.feed.source)
+                        if let run = protection.lastIntelRun {
+                            LabeledContent("Last threat search",
+                                           value: String(run.ranAt.prefix(10)))
+                        } else if protection.sourcesConfigured == 0 {
+                            Text("Daily threat search: not configured")
+                                .foregroundStyle(.secondary)
+                                .font(.footnote)
+                        }
+                    } else {
+                        Text("Loading…").foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Protection updates")
+                } footer: {
+                    Text("Detection rules, term definitions, and the experience watchlist refresh themselves — new threats roll out without app updates. A daily search of safety sources proposes additions automatically.")
+                }
+
                 Section("Privacy") {
                     Text("RobloxGuard stores only your child's Roblox username and the safety alerts derived from public account information. Unlinking an account permanently deletes everything associated with it. Nothing is shared with third parties.")
                         .font(.footnote)
@@ -35,6 +60,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .task { protection = try? await store.api.protectionStatus() }
             .confirmationDialog(
                 "Unlink this account? All stored alerts and history for it will be permanently deleted.",
                 isPresented: .init(get: { childToUnlink != nil },

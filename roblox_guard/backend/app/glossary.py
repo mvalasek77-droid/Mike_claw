@@ -198,7 +198,36 @@ GLOSSARY: dict[str, dict] = {
 }
 
 
-def explain(*texts: str) -> list[dict]:
+def merged_glossary(feed=None) -> dict[str, dict]:
+    """Static glossary merged with feed-delivered entries (feed wins).
+
+    The threat feed can add terms ("what is <new app>?") or reword existing
+    definitions fleet-wide without an app release.
+    """
+    merged = dict(GLOSSARY)
+    for entry in getattr(feed, "glossary", None) or []:
+        term = entry.get("term")
+        definition = entry.get("definition")
+        if not term or not definition:
+            continue
+        merged[term] = {
+            "aliases": list(entry.get("aliases") or [term.lower()]),
+            "definition": definition,
+        }
+    return merged
+
+
+def merged_basics(feed=None) -> list[dict]:
+    """Roblox-101 entries merged with feed overrides (matched by id)."""
+    merged = {entry["id"]: entry for entry in ROBLOX_BASICS}
+    for entry in getattr(feed, "roblox_basics", None) or []:
+        if entry.get("id") and entry.get("question") and entry.get("answer"):
+            merged[entry["id"]] = {"id": entry["id"], "question": entry["question"],
+                                   "answer": entry["answer"]}
+    return list(merged.values())
+
+
+def explain(*texts: str, feed=None) -> list[dict]:
     """Glossary entries for every term appearing in the given texts.
 
     Returns [{term, definition}] sorted by first appearance, so an alert or
@@ -206,7 +235,7 @@ def explain(*texts: str) -> list[dict]:
     """
     combined = " \n ".join(t or "" for t in texts).lower()
     found: list[tuple[int, dict]] = []
-    for term, entry in GLOSSARY.items():
+    for term, entry in merged_glossary(feed).items():
         positions = []
         for alias in entry["aliases"]:
             pattern = r"(?<!\w)" + re.escape(alias.lower()).replace(r"\ ", r"[\s-]") + r"(?!\w)"

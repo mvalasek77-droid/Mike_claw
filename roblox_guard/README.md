@@ -30,6 +30,34 @@ Initiating coverage takes one minute:
    already-risky contacts, e.g. friends with off-platform handles in bios),
    then re-polls automatically every 15 minutes, around the clock.
 
+## Daily threat search & automatic content updates
+
+Two automations keep the whole product current without app releases:
+
+1. **Daily threat intelligence** (`app/intel.py`): every 24 hours the backend
+   reads configured sources (`data/intel_sources.json` — RSS feeds from
+   child-safety orgs, platform-safety blogs), filters for Roblox-relevant
+   findings, and turns them into a *proposed* threat-feed update using the
+   Claude API (`claude-opus-4-8`, structured JSON output): newly abused chat
+   apps with detection regexes, new grooming phrases, newly reported condo
+   experiences, and new glossary terms. Safety valves: proposals are
+   **additive only**, every regex must compile, all text is wording-checked
+   (no person-labeling), hard per-run caps prevent a poisoned source from
+   flooding the feed, and auto-apply is **off by default**
+   (`RG_INTEL_AUTOAPPLY=1` to enable) — otherwise proposals land in
+   `data/proposals/` for operator review. Without an Anthropic API key
+   (`RG_ANTHROPIC_API_KEY`), a keyword fallback still collects and flags
+   findings for manual review. Trigger manually with `POST /intel/run`;
+   audit history at `GET /intel/runs`.
+2. **Terms update automatically**: the versioned threat feed now carries
+   content too — `glossary` entries (add or override any term definition)
+   and `roblox_basics` entries. Since alert explainers and reports resolve
+   terms through the active feed, publishing a feed update rewrites the
+   plain-language layer on every install within the refresh TTL.
+
+The app's Settings screen shows the active definitions version, where it
+came from (built-in / remote / intel), and the last daily search.
+
 ## Staying ahead of new threats (adaptive design)
 
 Three mechanisms keep detection current without app releases:

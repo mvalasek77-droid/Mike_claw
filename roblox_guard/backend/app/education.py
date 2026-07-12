@@ -156,16 +156,16 @@ RESPONSE_PLAYBOOK = [
 ]
 
 
-def education_payload() -> dict:
-    from .glossary import GLOSSARY, ROBLOX_BASICS
+def education_payload(feed=None) -> dict:
+    from .glossary import merged_basics, merged_glossary
     return {
-        "roblox_basics": ROBLOX_BASICS,
+        "roblox_basics": merged_basics(feed),
         "dangers": DANGER_CATALOG,
         "behavioral_signs": BEHAVIORAL_SIGNS,
         "immediate_red_flags": IMMEDIATE_RED_FLAGS,
         "response_playbook": RESPONSE_PLAYBOOK,
         "glossary": [{"term": t, "definition": e["definition"]}
-                     for t, e in GLOSSARY.items()],
+                     for t, e in merged_glossary(feed).items()],
     }
 
 

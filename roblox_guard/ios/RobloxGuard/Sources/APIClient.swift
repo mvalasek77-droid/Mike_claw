@@ -87,6 +87,27 @@ struct APIClient {
         try await request("GET", "education")
     }
 
+    func protectionStatus() async throws -> ProtectionStatus {
+        struct Health: Decodable {
+            let threat_feed: ProtectionStatus.FeedStatus
+        }
+        struct IntelStatus: Decodable {
+            let runs: [ProtectionStatus.IntelRun]
+            let analyzer: String
+            let auto_apply: Bool
+            let sources_configured: Int
+        }
+        let health: Health = try await request("GET", "health")
+        let intel: IntelStatus = try await request("GET", "intel/runs")
+        return ProtectionStatus(
+            feed: health.threat_feed,
+            lastIntelRun: intel.runs.first,
+            analyzer: intel.analyzer,
+            autoApply: intel.auto_apply,
+            sourcesConfigured: intel.sources_configured
+        )
+    }
+
     /// Parent verdict on an alert. Drives adaptive tuning: three "dismissed"
     /// verdicts mute that signal type for that child (elevated alerts are
     /// never muted); one "confirmed" switches to heightened monitoring.

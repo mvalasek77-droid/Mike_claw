@@ -113,6 +113,14 @@ def test_health_reports_threat_feed(api):
     assert client.get("/threat-feed/status").json()["pattern_count"] > 0
 
 
+def test_intel_endpoints(api):
+    client, _ = api
+    status = client.get("/intel/runs").json()
+    assert status["runs"] == [] and "analyzer" in status
+    # no sources configured in tests -> manual run is a 409, not a crash
+    assert client.post("/intel/run").status_code == 409
+
+
 def test_alert_feedback_endpoint(api):
     client, fake = api
     child_id = link(client).json()["id"]
