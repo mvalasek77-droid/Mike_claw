@@ -14,7 +14,7 @@ enum DecodeEngineMode: String, CaseIterable, Identifiable {
         switch self {
         case .auto: return "Auto"
         case .onDevice: return "On-Device Apple Intelligence"
-        case .apiKey: return "My OpenAI API Key"
+        case .apiKey: return "My API Key"
         }
     }
 
@@ -25,7 +25,7 @@ enum DecodeEngineMode: String, CaseIterable, Identifiable {
         case .onDevice:
             return "Uses Apple's on-device foundation model. Private and offline, requires iOS 26 with Apple Intelligence."
         case .apiKey:
-            return "Uses your own OpenAI API key for the highest quality reads. The key never leaves this device except to call OpenAI."
+            return "Uses your own Anthropic (Claude) or OpenAI API key for the highest quality reads. The key never leaves this device except to call your AI provider."
         }
     }
 
@@ -205,7 +205,7 @@ struct ChadDropSettingsView: View {
 
     private var apiKeyPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("OpenAI API Key")
+            Text("API Key")
                 .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
 
@@ -230,7 +230,7 @@ struct ChadDropSettingsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.10)))
             }
 
-            SecureField("sk-...", text: $apiKeyInput)
+            SecureField("sk-ant-... (Claude) or sk-... (OpenAI)", text: $apiKeyInput)
                 .textContentType(.password)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
@@ -262,7 +262,7 @@ struct ChadDropSettingsView: View {
             .buttonStyle(SettingsPrimaryButtonStyle())
             .accessibilityIdentifier("saveApiKeyButton")
 
-            Text("Your key is stored only in this device's Keychain and is used solely to call OpenAI when decoding. Get a key at platform.openai.com.")
+            Text("Claude keys (sk-ant-...) and OpenAI keys (sk-...) are both supported — ChadDrop detects which one you saved. Your key is stored only in this device's Keychain and is used solely to call your AI provider when decoding. Get a key at console.anthropic.com or platform.openai.com.")
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.52))
                 .fixedSize(horizontal: false, vertical: true)

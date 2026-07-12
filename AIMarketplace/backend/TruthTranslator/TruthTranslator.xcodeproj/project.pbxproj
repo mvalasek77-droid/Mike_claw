@@ -19,6 +19,7 @@
 		A0B3B04522B26B7AD60EA3B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24A694B5EE1EFB8DE1C86F8E /* Assets.xcassets */; };
 		B8A1F2D3E4C5A6B7D9E0F1A2 /* LegalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6A7B8C9D0E1F2A3B4 /* LegalView.swift */; };
 		B9C2E3F4A5D6B7C8E0F1A2B3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A7B8C9D0E1F2A3B4C5 /* SettingsView.swift */; };
+		BBC4E5F6A7D8B9CAE2F3A4B5 /* AnthropicDirectClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E7F8A9BACBD2E3F4A5B6C7 /* AnthropicDirectClient.swift */; };
 		BAC3E4F5A6D7B8C9E1F2A3B4 /* OpenAIDirectClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6F7A8B9CAD1E2F3A4B5C6 /* OpenAIDirectClient.swift */; };
 		CED2F1C32F3F1E03C09E7988 /* AIProxyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40786EE5C662F482B177129 /* AIProxyClient.swift */; };
 		CF00FF954A99B06481C8CC3C /* AppleFoundationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27D03CDD95469402C09AF03 /* AppleFoundationClient.swift */; };
@@ -61,6 +62,7 @@
 		C3D4E5F6A7B8C9D0E1F2A3B4 /* LegalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalView.swift; sourceTree = "<group>"; };
 		D4E5F6A7B8C9D0E1F2A3B4C5 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		D5E6F7A8B9CAD1E2F3A4B5C6 /* OpenAIDirectClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIDirectClient.swift; sourceTree = "<group>"; };
+		D6E7F8A9BACBD2E3F4A5B6C7 /* AnthropicDirectClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicDirectClient.swift; sourceTree = "<group>"; };
 		A2F5B3B6EFC80FC0F0A4DBFB /* ReleaseGatewayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseGatewayView.swift; sourceTree = "<group>"; };
 		C27D03CDD95469402C09AF03 /* AppleFoundationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationClient.swift; sourceTree = "<group>"; };
 		CCC32FB8967BB173138E0E17 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -103,6 +105,7 @@
 			children = (
 				E40786EE5C662F482B177129 /* AIProxyClient.swift */,
 				C27D03CDD95469402C09AF03 /* AppleFoundationClient.swift */,
+				D6E7F8A9BACBD2E3F4A5B6C7 /* AnthropicDirectClient.swift */,
 				027B0037B87F4E1329E1D80E /* ChadDropLegalLinks.swift */,
 				D9935D8EB8B566576CC339E7 /* ContentView.swift */,
 				A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */,
@@ -282,6 +285,7 @@
 			files = (
 				CED2F1C32F3F1E03C09E7988 /* AIProxyClient.swift in Sources */,
 				CF00FF954A99B06481C8CC3C /* AppleFoundationClient.swift in Sources */,
+				BBC4E5F6A7D8B9CAE2F3A4B5 /* AnthropicDirectClient.swift in Sources */,
 				29FA21B170A282AE5E9B2A38 /* ChadDropLegalLinks.swift in Sources */,
 				1979147A0DB535C8D05F80AC /* ContentView.swift in Sources */,
 				9BEA61620E71BC72AFF09CB7 /* DecodeEngine.swift in Sources */,

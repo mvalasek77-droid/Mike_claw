@@ -77,3 +77,30 @@ final class EngineSettingsTests: XCTestCase {
         XCTAssertEqual(EngineSettings.mode, .auto)
     }
 }
+
+final class UserAPIKeyRoutingTests: XCTestCase {
+    func testAnthropicKeysRouteToAnthropic() {
+        XCTAssertEqual(UserAPIKeyKind.detect("sk-ant-api03-abc123"), .anthropic)
+    }
+
+    func testOpenAIKeysRouteToOpenAI() {
+        XCTAssertEqual(UserAPIKeyKind.detect("sk-proj-abc123"), .openAI)
+        XCTAssertEqual(UserAPIKeyKind.detect("sk-abc123"), .openAI)
+    }
+
+    func testDecodePromptParserAcceptsPlainAndFencedJSON() throws {
+        let json = """
+        {"headline": "h", "translation": "t", "psychology": "p", "receipts": ["r"], "suggestedReplies": ["a", "b", "c"], "realityScore": 45, "energy": "e", "flags": ["f"]}
+        """
+        let plain = try ChadDropDecodePrompt.parse(json)
+        XCTAssertEqual(plain.realityScore, 45)
+
+        let fenced = try ChadDropDecodePrompt.parse("```json\n" + json + "\n```")
+        XCTAssertEqual(fenced.headline, "h")
+        XCTAssertEqual(fenced.suggestedReplies.count, 3)
+    }
+
+    func testDecodePromptParserRejectsGarbage() {
+        XCTAssertThrowsError(try ChadDropDecodePrompt.parse("not json at all"))
+    }
+}
