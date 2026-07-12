@@ -17,6 +17,7 @@
 		9BEA61620E71BC72AFF09CB7 /* DecodeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */; };
 		9E897C25C4B38A66C8B4C3E9 /* TruthTranslatorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED4657DDA4D84219960F9FB /* TruthTranslatorUITests.swift */; };
 		A0B3B04522B26B7AD60EA3B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24A694B5EE1EFB8DE1C86F8E /* Assets.xcassets */; };
+		B8A1F2D3E4C5A6B7D9E0F1A2 /* LegalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6A7B8C9D0E1F2A3B4 /* LegalView.swift */; };
 		CED2F1C32F3F1E03C09E7988 /* AIProxyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40786EE5C662F482B177129 /* AIProxyClient.swift */; };
 		CF00FF954A99B06481C8CC3C /* AppleFoundationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27D03CDD95469402C09AF03 /* AppleFoundationClient.swift */; };
 		D1E3CFC64485CBBE8CF4CD2E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A714BFA8042C5C406DF53D9 /* PrivacyInfo.xcprivacy */; };
@@ -55,6 +56,7 @@
 		73AB3749DA60F30F98D8F7C7 /* SubscriptionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionStore.swift; sourceTree = "<group>"; };
 		8A714BFA8042C5C406DF53D9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecodeEngine.swift; sourceTree = "<group>"; };
+		C3D4E5F6A7B8C9D0E1F2A3B4 /* LegalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalView.swift; sourceTree = "<group>"; };
 		A2F5B3B6EFC80FC0F0A4DBFB /* ReleaseGatewayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseGatewayView.swift; sourceTree = "<group>"; };
 		C27D03CDD95469402C09AF03 /* AppleFoundationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationClient.swift; sourceTree = "<group>"; };
 		CCC32FB8967BB173138E0E17 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -101,6 +103,7 @@
 				D9935D8EB8B566576CC339E7 /* ContentView.swift */,
 				A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */,
 				4A02B4B6FD63D06B493CD0D7 /* DecodeModels.swift */,
+				C3D4E5F6A7B8C9D0E1F2A3B4 /* LegalView.swift */,
 				652E8D7F97E85599F9D79CD0 /* PaywallView.swift */,
 				A2F5B3B6EFC80FC0F0A4DBFB /* ReleaseGatewayView.swift */,
 				73AB3749DA60F30F98D8F7C7 /* SubscriptionStore.swift */,
@@ -277,6 +280,7 @@
 				1979147A0DB535C8D05F80AC /* ContentView.swift in Sources */,
 				9BEA61620E71BC72AFF09CB7 /* DecodeEngine.swift in Sources */,
 				176378C4D7F18EBBC88E7992 /* DecodeModels.swift in Sources */,
+				B8A1F2D3E4C5A6B7D9E0F1A2 /* LegalView.swift in Sources */,
 				7CC6C8039DA2238CDF25D90C /* PaywallView.swift in Sources */,
 				6C5FCDFA434D9FDA8109FD96 /* ReleaseGatewayView.swift in Sources */,
 				26E4655420683C53C037B8DF /* SubscriptionStore.swift in Sources */,

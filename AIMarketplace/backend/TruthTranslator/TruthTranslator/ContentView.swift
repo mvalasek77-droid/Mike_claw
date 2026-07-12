@@ -6,6 +6,7 @@ struct ContentView: View {
     @StateObject private var subscriptionStore = SubscriptionStore()
     @State private var showingReleaseGateway: Bool
     @State private var showingPaywall: Bool
+    @State private var legalDoc: ChadDropLegalDoc?
     private let releaseGatewayEnabled: Bool
     @AppStorage("chaddropFreeDecodeCount") private var freeDecodeCount = 0
     @FocusState private var inputFocused: Bool
@@ -55,6 +56,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingPaywall) {
             PaywallView(store: subscriptionStore)
+                .preferredColorScheme(.dark)
+        }
+        .sheet(item: $legalDoc) { doc in
+            ChadDropLegalSheet(doc: doc)
                 .preferredColorScheme(.dark)
         }
         .task {
@@ -295,7 +300,7 @@ struct ContentView: View {
     }
 
     private var footer: some View {
-        Text("For entertainment, not therapy. If a message feels threatening, skip the app and get real support. 💗")
+        Text("For entertainment, not therapy. If a message feels threatening, skip the app and get real support.")
             .font(.system(size: 11, weight: .medium, design: .rounded))
             .foregroundStyle(.white.opacity(0.52))
             .fixedSize(horizontal: false, vertical: true)
@@ -303,16 +308,17 @@ struct ContentView: View {
 
     private var legalLinks: some View {
         HStack(spacing: 14) {
-            Link(destination: ChadDropLegalLinks.termsOfUse) {
+            Button { legalDoc = .terms } label: {
                 Label("Terms of Use", systemImage: "doc.text.fill")
             }
             .accessibilityIdentifier("termsOfUseLink")
 
-            Link(destination: ChadDropLegalLinks.privacyPolicy) {
+            Button { legalDoc = .privacy } label: {
                 Label("Privacy Policy", systemImage: "lock.shield.fill")
             }
             .accessibilityIdentifier("privacyPolicyLink")
         }
+        .buttonStyle(.plain)
         .font(.system(size: 12, weight: .bold, design: .rounded))
         .foregroundStyle(.white.opacity(0.78))
         .lineLimit(1)
