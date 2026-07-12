@@ -1,0 +1,14 @@
+Hello App Review,
+
+Thank you for the review.
+
+For Guideline 2.3.10, we replaced the App Store screenshots with iPhone screenshots that do not include non-iOS status bar images. We also checked "View All Sizes in Media Manager" and replaced stale screenshot sizes.
+
+For Guideline 3.1.2(c), build 1.0.0 (11) adds functional legal links inside the app:
+
+- Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+- Privacy Policy: https://mvalasek77-droid.github.io/chaddrop-support/privacy.html
+
+These links are available from the main ChadDrop screen footer and in the ChadDrop Pro purchase flow. A screen recording is attached showing the links in the app and tapping them.
+
+Thank you.
