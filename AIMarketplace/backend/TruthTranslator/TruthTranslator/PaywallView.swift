@@ -4,6 +4,7 @@ import SwiftUI
 struct PaywallView: View {
     @ObservedObject var store: SubscriptionStore
     @Environment(\.dismiss) private var dismiss
+    @State private var legalDoc: ChadDropLegalDoc?
     private let reviewScreenshotMode: Bool
 
     init(store: SubscriptionStore, launchArguments: [String] = ProcessInfo.processInfo.arguments) {
@@ -39,6 +40,9 @@ struct PaywallView: View {
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                 }
             }
+        }
+        .sheet(item: $legalDoc) { doc in
+            ChadDropLegalSheet(doc: doc)
         }
         .task {
             if !reviewScreenshotMode {
@@ -173,16 +177,17 @@ struct PaywallView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 14) {
-                    Link(destination: ChadDropLegalLinks.termsOfUse) {
+                    Button { legalDoc = .terms } label: {
                         Label("Terms of Use", systemImage: "doc.text.fill")
                     }
                     .accessibilityIdentifier("termsOfUseLink")
 
-                    Link(destination: ChadDropLegalLinks.privacyPolicy) {
+                    Button { legalDoc = .privacy } label: {
                         Label("Privacy Policy", systemImage: "lock.shield.fill")
                     }
                     .accessibilityIdentifier("privacyPolicyLink")
                 }
+                .buttonStyle(.plain)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.72))
                 .lineLimit(1)
