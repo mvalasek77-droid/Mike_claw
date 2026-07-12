@@ -59,9 +59,24 @@ final class Store: ObservableObject {
     func refresh(_ child: Child) async {
         do {
             try await api.refresh(childId: child.id)
-            alertsByChild[child.id] = try await api.alerts(childId: child.id)
+            let previous = Set((alertsByChild[child.id] ?? []).map(\.id))
+            let updated = try await api.alerts(childId: child.id)
+            alertsByChild[child.id] = updated
+            // Haptic feedback scaled to the most serious NEW alert.
+            let fresh = updated.filter { !previous.contains($0.id) }
+            if let worst = fresh.max(by: { severityRank($0.severity) < severityRank($1.severity) }) {
+                Haptics.alert(worst.severity)
+            }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func severityRank(_ severity: AlertSeverity) -> Int {
+        switch severity {
+        case .info: return 0
+        case .watch: return 1
+        case .elevated: return 2
         }
     }
 

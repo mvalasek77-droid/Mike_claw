@@ -196,13 +196,24 @@ class Database:
         return new_ids
 
     def friends_first_seen_since(self, child_id: int, since_iso: str) -> int:
+        """New friends within the window, excluding the baseline scan.
+
+        Friends recorded when monitoring started aren't 'added in the last N
+        hours' — the child had them before we were watching — so anything
+        first seen at (or before) the first snapshot is excluded.
+        """
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT COUNT(*) AS n FROM friend_first_seen"
+            first = conn.execute(
+                "SELECT friend_ids FROM snapshots WHERE child_id = ?"
+                " ORDER BY id ASC LIMIT 1", (child_id,),
+            ).fetchone()
+            baseline_ids = set(json.loads(first["friend_ids"])) if first else set()
+            rows = conn.execute(
+                "SELECT friend_user_id FROM friend_first_seen"
                 " WHERE child_id = ? AND first_seen_at >= ?",
                 (child_id, since_iso),
-            ).fetchone()
-            return int(row["n"])
+            ).fetchall()
+            return sum(1 for r in rows if r["friend_user_id"] not in baseline_ids)
 
     # -- evidence ------------------------------------------------------------
 

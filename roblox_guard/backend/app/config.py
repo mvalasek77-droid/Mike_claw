@@ -50,6 +50,10 @@ class Settings:
         os.path.join(os.path.dirname(__file__), "..", "data", "experience_watchlist.json"),
     )
 
+    # Bearer token the iOS app must send on every request. Empty disables
+    # auth (local development only) — production MUST set RG_API_TOKEN.
+    api_token: str = os.environ.get("RG_API_TOKEN", "")
+
     extra: dict = field(default_factory=dict)
 
 

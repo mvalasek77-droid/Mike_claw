@@ -11,8 +11,10 @@ import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
+import hmac
+
 import httpx
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -76,7 +78,21 @@ def create_app(settings: Optional[Settings] = None,
             await monitor.stop()
         await roblox.aclose()
 
-    app = FastAPI(title="RobloxGuard", version="0.1.0", lifespan=lifespan)
+    async def require_auth(request: Request):
+        """Bearer-token auth for every endpoint except /health.
+
+        Enabled whenever RG_API_TOKEN is set; the health probe stays open for
+        load balancers. Comparison is constant-time.
+        """
+        if not settings.api_token or request.url.path == "/health":
+            return
+        header = request.headers.get("Authorization", "")
+        expected = f"Bearer {settings.api_token}"
+        if not hmac.compare_digest(header.encode(), expected.encode()):
+            raise HTTPException(status_code=401, detail="Missing or invalid API token.")
+
+    app = FastAPI(title="RobloxGuard", version="0.1.0", lifespan=lifespan,
+                  dependencies=[Depends(require_auth)])
     app.state.db = db
     app.state.monitor = monitor
     app.state.roblox = roblox

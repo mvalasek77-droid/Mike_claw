@@ -86,6 +86,7 @@ struct AlertDetailView: View {
                 Button {
                     Task {
                         await store.acknowledge(alert, for: child)
+                        Haptics.success()
                         dismiss()
                     }
                 } label: {

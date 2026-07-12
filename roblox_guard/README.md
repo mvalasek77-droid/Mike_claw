@@ -171,6 +171,25 @@ open RobloxGuard.xcodeproj
 
 Point `APIClient.baseURL` at your deployed backend (HTTPS in release).
 
+## Production readiness
+
+What's verified here and what still needs real-device work before launch:
+
+**Verified in CI (119 tests):** full parent journey end-to-end (link →
+baseline → threat → alert → evidence → report → feedback → erasure), hostile
+input (unicode, null bytes, script injection — HTML reports escape it),
+oversized uploads rejected, unknown-ID and validation paths, API auth
+(bearer token, constant-time compare, /health open for probes), performance
+budgets (250-friend snapshot < 5s through the whole pipeline, no-change
+re-poll < 2s), rapid-friending baseline bug fixed (was firing a false alert
+on every second poll after linking — caught by the perf test).
+
+**Requires a Mac/device before launch (cannot run on this CI host):** Xcode
+build + XCUITest flows, VoiceOver walkthrough, Dynamic Type at largest
+sizes, live roblox.com API smoke test, TestFlight beta. Deployment needs:
+HTTPS termination, `RG_API_TOKEN` set, Postgres for multi-instance,
+APNs for alert pushes (see docs/ROADMAP.md — this is the v0.2 blocker).
+
 ## App Store compliance design
 
 | Guideline | How RobloxGuard complies |

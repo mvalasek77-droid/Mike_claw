@@ -5,9 +5,20 @@ import Foundation
 /// password field anywhere in this app by design.
 struct APIClient {
     var baseURL: URL
+    /// Bearer token matching the backend's RG_API_TOKEN. In production this
+    /// is provisioned at build time; empty only for local development.
+    var apiToken: String
 
-    init(baseURL: URL = URL(string: "http://localhost:8000")!) {
+    init(baseURL: URL = URL(string: "http://localhost:8000")!,
+         apiToken: String = "") {
         self.baseURL = baseURL
+        self.apiToken = apiToken
+    }
+
+    private func authorize(_ request: inout URLRequest) {
+        if !apiToken.isEmpty {
+            request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        }
     }
 
     struct APIError: LocalizedError {
@@ -19,6 +30,7 @@ struct APIClient {
                                        body: [String: Any]? = nil) async throws -> T {
         var req = URLRequest(url: baseURL.appendingPathComponent(path))
         req.httpMethod = method
+        authorize(&req)
         if let body {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -54,6 +66,7 @@ struct APIClient {
         struct Empty: Decodable {}
         var req = URLRequest(url: baseURL.appendingPathComponent("children/\(id)"))
         req.httpMethod = "DELETE"
+        authorize(&req)
         let (_, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, http.statusCode == 204 else {
             throw APIError(message: "Could not unlink account")
@@ -139,6 +152,7 @@ struct APIClient {
         let boundary = "rg-\(UUID().uuidString)"
         var req = URLRequest(url: baseURL.appendingPathComponent("children/\(childId)/evidence/upload"))
         req.httpMethod = "POST"
+        authorize(&req)
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         var body = Data()

@@ -76,6 +76,7 @@ struct DashboardView: View {
                 }
             }
         }
+        .animation(.snappy(duration: 0.3), value: store.alertsByChild)
         .navigationDestination(for: AlertRoute.self) { route in
             AlertDetailView(child: route.child, alert: route.alert)
         }
@@ -92,31 +93,23 @@ struct AlertRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            severityIcon
+            Image(systemName: Theme.severityIcon(alert.severity))
+                .foregroundStyle(Theme.severityColor(alert.severity))
+                .symbolEffect(.pulse, options: .repeat(2),
+                              isActive: alert.severity == .elevated)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(alert.title)
                     .font(.subheadline.weight(.medium))
                     .lineLimit(2)
                 Text(alert.severity.label)
                     .font(.caption)
-                    .foregroundStyle(severityColor)
+                    .foregroundStyle(Theme.severityColor(alert.severity))
             }
         }
-    }
-
-    private var severityColor: Color {
-        switch alert.severity {
-        case .info: return .secondary
-        case .watch: return .orange
-        case .elevated: return .red
-        }
-    }
-
-    private var severityIcon: some View {
-        Image(systemName: alert.severity == .elevated
-              ? "exclamationmark.shield.fill"
-              : alert.severity == .watch ? "eye.fill" : "info.circle")
-        .foregroundStyle(severityColor)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(alert.severity.label) alert: \(alert.title)")
+        .accessibilityHint("Opens details, evidence, and what to do next")
     }
 }
 
