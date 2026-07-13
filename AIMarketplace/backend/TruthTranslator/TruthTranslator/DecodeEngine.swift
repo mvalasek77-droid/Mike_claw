@@ -141,20 +141,23 @@ struct DecodeEngine {
 
     private func psychology(for signals: [Signal], context: DecodeContext) -> String {
         if signals.contains(.actualPlan) {
-            return "Specificity lowers anxiety because it moves the interaction from fantasy to behavior. Behavior is the receipt."
+            return "Specificity is a secure-attachment tell: it moves the interaction from fantasy to behavior, and behavior is the only receipt that counts. In Gottman's terms, a concrete plan is a clear bid for connection."
         }
         if signals.contains(.convenience) {
-            return "Convenience bids test your boundaries. A clear standard separates genuine interest from someone shopping for the easiest yes."
+            return "A convenience bid is effort-minimizing access-seeking — the 'u up' school of breadcrumbing. It tests your boundary instead of investing in you. A clear standard separates genuine interest from someone shopping for the easiest yes."
         }
         if signals.contains(.limitedIntent) {
-            return "Ambivalent people often confess early, then hope charm makes you forget the confession. Do not promote potential over pattern."
+            return "This is avoidant honesty: ambivalent people confess the ceiling early, then hope charm makes you forget the confession. The CBT move is to believe the evidence over the story you want. Don't promote potential over pattern."
+        }
+        if signals.contains(.noncommittal) {
+            return "A 'maybe' keeps the door cracked so the sender feels polite while risking nothing. Your nervous system fills that gap with hope — name it as the non-answer it is and let follow-through, not words, decide."
         }
         if signals.contains(.busyFog) {
             return context == .work
-                ? "Work ambiguity often protects the sender from ownership. Ask for the deadline, owner, and next action."
-                : "Busyness is real. Repeated vagueness is also real. The pattern matters more than the excuse."
+                ? "Vagueness here protects the sender from ownership. Ask for the deadline, owner, and next action so the fog has to commit to a shape."
+                : "Busyness is real; repeated vagueness is also real. Intermittent low-effort contact is classic breadcrumbing — the pattern matters more than any single excuse."
         }
-        return "Your nervous system wants certainty, but the text only earned a small interpretation. Ask for clarity once, then watch the follow-through."
+        return "Your nervous system wants certainty, but the text only earned a small interpretation. Ask one clean question once, then watch the follow-through — behavior over vibes."
     }
 
     private func replies(for signals: [Signal], tone: DecodeTone, context: DecodeContext) -> [String] {

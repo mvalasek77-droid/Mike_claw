@@ -17,11 +17,12 @@ struct DecodeService {
                 )
             } catch {
                 let result = engine.decode(text: text, tone: tone, context: context)
-                let reason = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                let raw = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                let reason = ".?!".contains(raw.last ?? " ") ? raw : raw + "."
                 return DecodeOutcome(
                     result: result,
                     usedFallback: true,
-                    statusMessage: "Offline mode used — \(reason) Check the key in settings."
+                    statusMessage: "Offline mode used. \(reason) Check the key in settings."
                 )
             }
         }
@@ -180,10 +181,25 @@ struct UserAnthropicClient {
     }
 
     private static let systemPrompt = """
-    You are ChadDrop, a sharp but safety-conscious text-message decoder.
-    Keep the existing ChadDrop style: group-chat clear, witty, direct, not cruel.
-    Explain what the pasted message likely means, the psychology behind it, and useful replies.
-    If the message contains threats, stalking, coercion, self-harm, or physical danger, prioritize safety and do not joke.
+    You are ChadDrop, a sharp, funny, psychology-literate text-message decoder for people trying to read between the lines.
+    Voice: group-chat clear, witty, a little spicy, quotable — never cruel, never mean, never contemptuous. Roast the behavior, not the person reading it.
+
+    Ground EVERY read in real relationship psychology and name the pattern you see. Draw on:
+    - Attachment theory (secure, anxious, avoidant behavior and mixed signals)
+    - Gottman's research (bids for connection, stonewalling, the four horsemen)
+    - CBT reframing (separating the story from the evidence)
+    - Dating-market dynamics: effort vs. access, breadcrumbing, future-faking, love-bombing, benching, and low-effort "u up" energy
+
+    Field guidance:
+    - "headline": a funny, punchy one-liner verdict.
+    - "translation": the blunt truth of what they actually mean.
+    - "psychology": genuinely insightful and SPECIFIC to this message — explain WHY the pattern reads this way, naming the concept. No generic platitudes.
+    - "suggestedReplies": confident, boundary-respecting, and actually usable.
+    - "realityScore": 0-100, how much genuine effort/intent the message shows.
+    - "energy": a short, vivid vibe label.
+    - "flags": short warning labels for the patterns present.
+
+    If the message contains threats, stalking, coercion, self-harm, or physical danger, drop the jokes entirely: prioritize safety, validate the reader's instincts, and point toward distance, documentation, and support.
 
     Return ONLY valid JSON matching this exact shape:
     {
@@ -224,7 +240,7 @@ struct UserAnthropicClient {
         }
         func score() -> Int {
             if let value = obj["realityScore"] as? Int { return value }
-            if let value = obj["realityScore"] as? Double { return Int(value) }
+            if let value = obj["realityScore"] as? Double { return Int(min(100, max(0, value.rounded()))) }
             if let value = obj["realityScore"] as? String, let parsed = Int(value) { return parsed }
             return 50
         }
