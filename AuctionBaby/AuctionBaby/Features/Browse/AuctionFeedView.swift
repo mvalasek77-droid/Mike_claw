@@ -8,6 +8,7 @@ struct AuctionFeedView: View {
     @State private var bidTarget: Profile?
     @State private var showFilters = false
     @State private var showActivity = false
+    @State private var showLotOfDay = false
 
     private var lots: [Profile] { store.filteredFloor.filter { $0.id != store.headliner?.id } }
 
@@ -75,6 +76,21 @@ struct AuctionFeedView: View {
                 FiltersView().presentationDetents([.large])
             }
             .sheet(isPresented: $showActivity) { ActivityView() }
+            .sheet(isPresented: $showLotOfDay) {
+                if let lot = store.headliner {
+                    LotOfTheDayIntroSheet(woman: lot) { profile in
+                        showLotOfDay = false
+                        if let profile { bidTarget = profile }
+                    }
+                    .presentationDetents([.large])
+                }
+            }
+            .onAppear {
+                if store.shouldShowLotOfDayIntro {
+                    showLotOfDay = true
+                    store.markLotOfDaySeen()
+                }
+            }
         }
     }
 
@@ -122,8 +138,8 @@ struct HeadlinerBanner: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
-                Image(systemName: "star.fill").font(.system(size: 11, weight: .bold))
-                Text("HEADLINER OF THE DAY").font(.system(size: 11, weight: .heavy, design: .rounded)).tracking(1.5)
+                Image(systemName: "hammer.fill").font(.system(size: 11, weight: .bold))
+                Text("LOT OF THE DAY").font(.system(size: 11, weight: .heavy, design: .rounded)).tracking(1.5)
                 Spacer()
             }
             .foregroundStyle(.black)
@@ -165,6 +181,130 @@ struct HeadlinerBanner: View {
     }
 }
 
+/// The once-a-day full-screen showcase of the Lot of the Day. Fires on the
+/// first feed open of the calendar day and never again that day. Tapping
+/// "Place a bid" dismisses and opens the BidSheet; anything else dismisses
+/// silently.
+struct LotOfTheDayIntroSheet: View {
+    let woman: Profile
+    var onDismiss: (Profile?) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var appear = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                HStack {
+                    Spacer()
+                    Button { onDismiss(nil); dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Theme.inkSoft)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(.white.opacity(0.08)))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 8)
+
+                VStack(spacing: 4) {
+                    Label("TONIGHT'S LOT", systemImage: "hammer.fill")
+                        .font(.system(size: 12, weight: .heavy, design: .rounded)).tracking(2)
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 14).padding(.vertical, 7)
+                        .background(Capsule().fill(Theme.goldGradient))
+                    Text("Curated for tonight only")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+
+                ZStack(alignment: .bottomLeading) {
+                    AvatarView(name: woman.name, hue: woman.hue,
+                               photoName: woman.photoName, photoData: woman.photoData,
+                               corner: Theme.cornerXL)
+                        .frame(height: 380)
+                    LinearGradient(colors: [.clear, .black.opacity(0.85)],
+                                   startPoint: .center, endPoint: .bottom)
+                        .frame(height: 380).allowsHitTesting(false)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Text(woman.name)
+                                .font(.system(size: 32, weight: .heavy, design: .serif))
+                            if woman.verified { VerifiedBadge(size: 20) }
+                            Text("\(woman.age)")
+                                .font(.system(size: 22, weight: .medium, design: .serif))
+                                .foregroundStyle(Theme.inkSoft)
+                        }
+                        .foregroundStyle(Theme.ink)
+                        HStack(spacing: 8) {
+                            ArtTierBadge(tier: woman.artTier, compact: true)
+                            Chip(text: "Showcase \(woman.showcaseCredit)",
+                                 systemImage: "rosette", color: Theme.rose)
+                        }
+                        Text(woman.location)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Theme.inkSoft)
+                    }
+                    .padding(20)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerXL, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.cornerXL, style: .continuous)
+                        .strokeBorder(Theme.goldGradient, lineWidth: 1.5)
+                )
+                .scaleEffect(appear ? 1 : 0.94)
+                .opacity(appear ? 1 : 0)
+
+                if let prompt = woman.prompts.first {
+                    PromptBubble(prompt: prompt).opacity(appear ? 1 : 0)
+                }
+
+                PrimaryButton(title: "Place a bid on \(woman.name)",
+                              systemImage: "hand.raised.fill",
+                              gradient: Theme.goldGradient) {
+                    onDismiss(woman); dismiss()
+                }
+                .opacity(appear ? 1 : 0)
+
+                Button {
+                    onDismiss(nil); dismiss()
+                } label: {
+                    Text("Browse the floor instead")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.inkSoft)
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 24)
+            }
+            .screenPadding()
+        }
+        .background(AppBackground())
+        .onAppear {
+            Motion.run(.spring(response: 0.55, dampingFraction: 0.75)) { appear = true }
+        }
+    }
+}
+
+/// A pulsing green dot for the "On the Floor Now" live signal.
+struct LivePulseDot: View {
+    @State private var pulse = false
+    var body: some View {
+        Circle().fill(Theme.success)
+            .frame(width: 8, height: 8)
+            .overlay(
+                Circle().stroke(Theme.success.opacity(pulse ? 0.0 : 0.6),
+                                lineWidth: pulse ? 4 : 1)
+            )
+            .onAppear {
+                guard !UIAccessibility.isReduceMotionEnabled else { return }
+                withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                    pulse = true
+                }
+            }
+            .accessibilityHidden(true)
+    }
+}
+
 /// One lot in the feed.
 struct FloorCard: View {
     let woman: Profile
@@ -177,6 +317,20 @@ struct FloorCard: View {
                     AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName,
                                corner: Theme.cornerXL)
                         .frame(height: 360)
+
+                    if woman.isOnTheFloorNow {
+                        HStack(spacing: 5) {
+                            LivePulseDot()
+                            Text("ON THE FLOOR")
+                                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                .tracking(1)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 9).padding(.vertical, 4)
+                        .background(Capsule().fill(.black.opacity(0.55)))
+                        .overlay(Capsule().strokeBorder(Theme.success.opacity(0.55), lineWidth: 0.6))
+                        .padding(12)
+                    }
 
                     if woman.artTier > .freshCanvas {
                         VStack { Spacer(); HStack { Spacer(); ArtTierBadge(tier: woman.artTier, compact: true) } }

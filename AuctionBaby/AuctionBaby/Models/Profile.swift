@@ -489,6 +489,20 @@ extension Profile {
     /// his credit number telling the same story.
     var creditStanding: String { Self.tierName(auctionCredit) }
 
+    /// "On the Floor Now" — a deterministic hour-of-day rotation that flips
+    /// a subset of profiles to "live" so the feed carries the same live-
+    /// presence energy Bumble/Tinder use as their #1 DAU lever. About 30% of
+    /// non-copycat profiles read as active in any given hour; copycats stay
+    /// dark (they're the bait, not the party). Deterministic on (id, hour)
+    /// so the signal doesn't flicker while the user scrolls.
+    var isOnTheFloorNow: Bool {
+        guard !isCopycat else { return false }
+        let hour = Calendar.current.component(.hour, from: Date())
+        let idBytes = withUnsafeBytes(of: id.uuid) { Array($0) }
+        let seed = Int(idBytes[0]) &+ Int(idBytes[1]) &* 7 &+ hour &* 13
+        return seed % 10 < 3   // ~30% active
+    }
+
     /// True when at least one lifestyle field is set; the detail card uses
     /// this to hide the whole section on profiles that never answered.
     var hasAnyLifestyle: Bool {

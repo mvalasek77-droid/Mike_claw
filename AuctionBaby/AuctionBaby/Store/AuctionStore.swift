@@ -20,6 +20,9 @@ final class AuctionStore: ObservableObject {
     @Published var dailyStreak: Int = 0        // consecutive days claimed
     @Published var lastDailyClaim: Date?
     @Published var lastWeeklyBoostClaim: Date? // Pass perk: one free Boost / week
+    /// Day-key of the last Lot-of-the-Day intro sheet the user saw. Set to
+    /// `Calendar.startOfDay` so a new day flips it clean.
+    @Published var lastLotOfDaySeen: Date?
 
     /// Per-user UUID attached to every IAP purchase so Apple server notifications
     /// can route refunds to the correct wallet. Generated once, persisted forever.
@@ -85,14 +88,30 @@ final class AuctionStore: ObservableObject {
         floor.filter { !blockedIDs.contains($0.id) && filters.matches($0) }
     }
 
-    /// Curated "Headliner of the Day" — a real (non-copycat) lot, rotating daily
-    /// and favouring verified, high-Showcase profiles.
+    /// "Lot of the Day" — a real (non-copycat) lot, rotating daily and
+    /// favouring verified, high-Showcase profiles. Rendered as the pinned
+    /// gold-framed hero above the floor and as the once-a-day full-screen
+    /// intro (`shouldShowLotOfDayIntro`).
     var headliner: Profile? {
         let pool = filteredFloor.filter { !$0.isCopycat }
             .sorted { ($0.verified ? 1 : 0, $0.showcaseScore) > ($1.verified ? 1 : 0, $1.showcaseScore) }
         guard !pool.isEmpty else { return nil }
         let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
         return pool[day % pool.count]
+    }
+
+    /// True the first time the user opens the app on a new calendar day.
+    /// The feed presents the full-screen "Tonight's Lot" moment; dismissing
+    /// it stamps `lastLotOfDaySeen`, so it never re-fires the same day.
+    var shouldShowLotOfDayIntro: Bool {
+        guard role == .man, headliner != nil else { return false }
+        guard let last = lastLotOfDaySeen else { return true }
+        return !Calendar.current.isDate(last, inSameDayAs: Date())
+    }
+
+    func markLotOfDaySeen() {
+        lastLotOfDaySeen = Calendar.current.startOfDay(for: Date())
+        save()
     }
 
     /// Block and report a profile: removes them from the floor, the bid inbox,
@@ -1056,6 +1075,7 @@ final class AuctionStore: ObservableObject {
         var lastWeeklyBoostClaim: Date?
         var appAccountToken: UUID?
         var demoMode: Bool?
+        var lastLotOfDaySeen: Date?
     }
 
     private let encryptedArchive = EncryptedArchive(filename: "auctionbaby-state.aesgcm")
@@ -1068,7 +1088,8 @@ final class AuctionStore: ObservableObject {
                             filters: filters, blockedIDs: Array(blockedIDs), activity: activity,
                             dailyStreak: dailyStreak, lastDailyClaim: lastDailyClaim,
                             lastWeeklyBoostClaim: lastWeeklyBoostClaim,
-                            appAccountToken: appAccountToken, demoMode: demoMode)
+                            appAccountToken: appAccountToken, demoMode: demoMode,
+                            lastLotOfDaySeen: lastLotOfDaySeen)
         if let data = try? JSONEncoder().encode(snap) {
             store.set(data, forKey: Self.key)
         }
@@ -1101,6 +1122,7 @@ final class AuctionStore: ObservableObject {
         lastWeeklyBoostClaim = snap.lastWeeklyBoostClaim
         appAccountToken = snap.appAccountToken ?? appAccountToken
         demoMode = snap.demoMode ?? false
+        lastLotOfDaySeen = snap.lastLotOfDaySeen
         if isBoosted, role == .woman { startBoostSummons() }
         for bid in outgoingBids where bid.status == .pending {
             scheduleWomanDecision(bidID: bid.id)
