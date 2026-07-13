@@ -4,6 +4,8 @@ import UIKit
 struct ContentView: View {
     @StateObject private var viewModel: DecodeViewModel
     @State private var showingReleaseGateway: Bool
+    @State private var showingAPISettings = false
+    @State private var hasSavedAPIKey = AnthropicAPIKeyStore().isConfigured
     @FocusState private var inputFocused: Bool
 
     init(launchArguments: [String] = ProcessInfo.processInfo.arguments) {
@@ -41,6 +43,15 @@ struct ContentView: View {
             ReleaseGatewayView()
                 .preferredColorScheme(.dark)
         }
+        .sheet(isPresented: $showingAPISettings) {
+            APIKeySettingsView {
+                hasSavedAPIKey = AnthropicAPIKeyStore().isConfigured
+            }
+                .preferredColorScheme(.dark)
+        }
+        .onAppear {
+            hasSavedAPIKey = AnthropicAPIKeyStore().isConfigured
+        }
     }
 
     private var header: some View {
@@ -51,6 +62,15 @@ struct ContentView: View {
                     .foregroundStyle(.white)
 
                 Spacer(minLength: 8)
+
+                Button {
+                    showingAPISettings = true
+                } label: {
+                    Image(systemName: hasSavedAPIKey ? "key.fill" : "key")
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(IconButtonStyle(size: 44))
+                .accessibilityLabel("Open API key settings")
 
                 Button {
                     showingReleaseGateway = true
@@ -270,9 +290,9 @@ final class DecodeViewModel: ObservableObject {
         statusMessage = nil
         let outcome = await service.decode(text: text, tone: tone, context: context)
         result = outcome.result
-        statusMessage = outcome.usedFallback
+        statusMessage = outcome.statusMessage ?? (outcome.usedFallback
             ? "Offline mode used. Connect an AI proxy for fresher reads."
-            : "AI read complete. Standards remain undefeated."
+            : "AI read complete. Standards remain undefeated.")
         isDecoding = false
     }
 
@@ -295,6 +315,167 @@ final class DecodeViewModel: ObservableObject {
             flags: ["No concrete plan", "Keeps access open"]
         )
         statusMessage = "Demo screenshot loaded for App Store capture."
+    }
+}
+
+private struct APIKeySettingsView: View {
+    let onKeyStatusChanged: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var draftKey = ""
+    @State private var showKey = false
+    @State private var statusMessage: String?
+    private let keyStore = AnthropicAPIKeyStore()
+
+    private var trimmedDraft: String {
+        draftKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasSavedKey: Bool {
+        keyStore.isConfigured
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppBackground()
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        header
+                        keyPanel
+                        helpPanel
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 22)
+                    .padding(.bottom, 36)
+                    .frame(maxWidth: 720)
+                    .frame(maxWidth: .infinity)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .navigationTitle("AI Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.bold)
+                        .foregroundStyle(AppTheme.hotPink)
+                }
+            }
+            .onAppear {
+                draftKey = keyStore.apiKey
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Claude API Key", systemImage: "key.fill")
+                .font(.system(size: 28, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+            Text("Paste your Anthropic key once. ChadDrop stores it in Keychain, uses it for Claude reads, and falls back to offline mode if it cannot connect.")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.74))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var keyPanel: some View {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Your key")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+
+                keyField
+
+                HStack(spacing: 10) {
+                    Button {
+                        draftKey = UIPasteboard.general.string ?? draftKey
+                    } label: {
+                        Label("Paste", systemImage: "doc.on.clipboard")
+                    }
+                    .buttonStyle(CompactButtonStyle())
+
+                    Button {
+                        showKey.toggle()
+                    } label: {
+                        Label(showKey ? "Hide" : "Show", systemImage: showKey ? "eye.slash" : "eye")
+                    }
+                    .buttonStyle(CompactButtonStyle())
+                }
+
+                Button {
+                    keyStore.save(trimmedDraft)
+                    onKeyStatusChanged()
+                    statusMessage = trimmedDraft.isEmpty ? "API key cleared." : "API key saved. Decode will use Claude first."
+                } label: {
+                    Label(hasSavedKey ? "Update API Key" : "Save API Key", systemImage: hasSavedKey ? "checkmark.seal.fill" : "key.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(trimmedDraft.isEmpty)
+
+                Button(role: .destructive) {
+                    draftKey = ""
+                    keyStore.clear()
+                    onKeyStatusChanged()
+                    statusMessage = "API key cleared."
+                } label: {
+                    Label("Clear Saved Key", systemImage: "trash")
+                }
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(AppTheme.orange)
+                .disabled(!hasSavedKey)
+
+                if let statusMessage {
+                    Text(statusMessage)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var keyField: some View {
+        Group {
+            if showKey {
+                TextField("sk-ant-...", text: $draftKey)
+            } else {
+                SecureField("sk-ant-...", text: $draftKey)
+            }
+        }
+        .textContentType(.password)
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
+        .keyboardType(.asciiCapable)
+        .font(.system(size: 15, weight: .medium, design: .monospaced))
+        .foregroundStyle(.white)
+        .tint(AppTheme.hotPink)
+        .padding(12)
+        .background(AppTheme.panel.opacity(0.74), in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white.opacity(0.12)))
+    }
+
+    private var helpPanel: some View {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Need a key?", systemImage: "arrow.up.right.square.fill")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(AppTheme.sky)
+
+                Text("Create an Anthropic API key, copy it, then come back here and paste it. Keys usually start with sk-ant.")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.78))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Link("Open console.anthropic.com", destination: URL(string: "https://console.anthropic.com/settings/keys")!)
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(AppTheme.hotPink)
+            }
+        }
     }
 }
 

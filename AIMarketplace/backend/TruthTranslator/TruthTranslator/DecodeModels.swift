@@ -82,4 +82,5 @@ struct DecodeResult: Codable, Equatable {
 struct DecodeOutcome: Equatable {
     let result: DecodeResult
     let usedFallback: Bool
+    var statusMessage: String? = nil
 }
