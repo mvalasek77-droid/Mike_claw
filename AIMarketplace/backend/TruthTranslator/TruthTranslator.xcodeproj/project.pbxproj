@@ -14,6 +14,7 @@
 		9E897C25C4B38A66C8B4C3E9 /* TruthTranslatorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED4657DDA4D84219960F9FB /* TruthTranslatorUITests.swift */; };
 		A0B3B04522B26B7AD60EA3B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24A694B5EE1EFB8DE1C86F8E /* Assets.xcassets */; };
 		CED2F1C32F3F1E03C09E7988 /* AIProxyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40786EE5C662F482B177129 /* AIProxyClient.swift */; };
+		AF01B2C3D4E5F6A7B8C9D0E1 /* AppleFoundationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF11B2C3D4E5F6A7B8C9D0E2 /* AppleFoundationClient.swift */; };
 		D1E3CFC64485CBBE8CF4CD2E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A714BFA8042C5C406DF53D9 /* PrivacyInfo.xcprivacy */; };
 		F89581878FE7787F2C46A23A /* DecodeEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12636417F5CC7E79E75D990F /* DecodeEngineTests.swift */; };
 /* End PBXBuildFile section */
@@ -50,6 +51,7 @@
 		CCC32FB8967BB173138E0E17 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		D9935D8EB8B566576CC339E7 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E40786EE5C662F482B177129 /* AIProxyClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProxyClient.swift; sourceTree = "<group>"; };
+		AF11B2C3D4E5F6A7B8C9D0E2 /* AppleFoundationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationClient.swift; sourceTree = "<group>"; };
 		EF7C236AA0980660467CBA9B /* TruthTranslatorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TruthTranslatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -86,6 +88,7 @@
 			isa = PBXGroup;
 			children = (
 				E40786EE5C662F482B177129 /* AIProxyClient.swift */,
+				AF11B2C3D4E5F6A7B8C9D0E2 /* AppleFoundationClient.swift */,
 				D9935D8EB8B566576CC339E7 /* ContentView.swift */,
 				A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */,
 				4A02B4B6FD63D06B493CD0D7 /* DecodeModels.swift */,
@@ -257,6 +260,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CED2F1C32F3F1E03C09E7988 /* AIProxyClient.swift in Sources */,
+				AF01B2C3D4E5F6A7B8C9D0E1 /* AppleFoundationClient.swift in Sources */,
 				1979147A0DB535C8D05F80AC /* ContentView.swift in Sources */,
 				9BEA61620E71BC72AFF09CB7 /* DecodeEngine.swift in Sources */,
 				176378C4D7F18EBBC88E7992 /* DecodeModels.swift in Sources */,
