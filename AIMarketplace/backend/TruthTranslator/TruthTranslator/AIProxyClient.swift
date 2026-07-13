@@ -7,6 +7,9 @@ struct DecodeService {
     private let userAPI = UserAnthropicClient()
 
     func decode(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome {
+        var apiFailure: String?
+
+        // Tier 1: user's own Claude key (opted-in cloud read).
         if userAPI.isConfigured {
             do {
                 let result = try await userAPI.decode(text: text, tone: tone, context: context)
@@ -16,27 +19,58 @@ struct DecodeService {
                     statusMessage: "Claude read complete using your saved API key."
                 )
             } catch {
-                let result = engine.decode(text: text, tone: tone, context: context)
-                let raw = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                let reason = ".?!".contains(raw.last ?? " ") ? raw : raw + "."
-                return DecodeOutcome(
-                    result: result,
-                    usedFallback: true,
-                    statusMessage: "Offline mode used. \(reason) Check the key in settings."
-                )
+                apiFailure = Self.describe(error)
             }
         }
 
+        // Tier 2: hosted proxy, if the build ships one.
         if proxy.isConfigured {
             do {
                 let result = try await proxy.decode(text: text, tone: tone, context: context)
                 return DecodeOutcome(result: result.normalized, usedFallback: false)
             } catch {
-                let result = engine.decode(text: text, tone: tone, context: context)
-                return DecodeOutcome(result: result, usedFallback: true)
+                // fall through
             }
         }
-        return DecodeOutcome(result: engine.decode(text: text, tone: tone, context: context), usedFallback: true)
+
+        // Tier 3: on-device Apple Intelligence (free, private) when available.
+        if let onDevice = await onDeviceDecode(text: text, tone: tone, context: context) {
+            return onDevice
+        }
+
+        // Tier 4: local heuristic engine.
+        let local = engine.decode(text: text, tone: tone, context: context)
+        if let apiFailure {
+            return DecodeOutcome(
+                result: local,
+                usedFallback: true,
+                statusMessage: "Offline mode used. \(apiFailure) Check the key in settings."
+            )
+        }
+        return DecodeOutcome(result: local, usedFallback: true)
+    }
+
+    private func onDeviceDecode(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome? {
+        if #available(iOS 26.0, *) {
+            let client = AppleFoundationClient()
+            guard client.isAvailable else { return nil }
+            do {
+                let result = try await client.decode(text: text, tone: tone, context: context)
+                return DecodeOutcome(
+                    result: result.normalized,
+                    usedFallback: false,
+                    statusMessage: "On-device Apple Intelligence read complete."
+                )
+            } catch {
+                return nil
+            }
+        }
+        return nil
+    }
+
+    private static func describe(_ error: Error) -> String {
+        let raw = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        return ".?!".contains(raw.last ?? " ") ? raw : raw + "."
     }
 }
 
@@ -137,17 +171,11 @@ struct UserAnthropicClient {
         request.httpBody = try JSONEncoder().encode(AnthropicRequest(
             model: Self.model,
             max_tokens: 900,
-            system: Self.systemPrompt,
+            system: ChadDropPrompt.system,
             messages: [
                 AnthropicRequest.Message(
                     role: "user",
-                    content: """
-                    Context: \(context.rawValue)
-                    Tone: \(tone.promptValue)
-
-                    Decode this message:
-                    \(text)
-                    """
+                    content: ChadDropPrompt.userMessage(text: text, tone: tone, context: context)
                 )
             ]
         ))
@@ -155,7 +183,7 @@ struct UserAnthropicClient {
         let data = try await Self.send(request)
         let apiResponse = try JSONDecoder().decode(AnthropicResponse.self, from: data)
         let textOutput = apiResponse.content.compactMap(\.text).joined(separator: "\n")
-        return try Self.decodeResult(from: textOutput)
+        return try ChadDropPrompt.parse(textOutput)
     }
 
     /// Sends the request, retrying once on transient overload/rate-limit so a
@@ -180,107 +208,6 @@ struct UserAnthropicClient {
         }
     }
 
-    private static let systemPrompt = """
-    You are ChadDrop, a sharp, funny, psychology-literate text-message decoder for people trying to read between the lines.
-    Voice: group-chat clear, witty, a little spicy, quotable — never cruel, never mean, never contemptuous. Roast the behavior, not the person reading it.
-
-    Ground EVERY read in real relationship psychology and name the pattern you see. Draw on:
-    - Attachment theory (secure, anxious, avoidant behavior and mixed signals)
-    - Gottman's research (bids for connection, stonewalling, contempt, the four horsemen)
-    - CBT reframing (separating the story from the evidence) and intermittent reinforcement
-    - Dating-market dynamics: effort vs. access, breadcrumbing, future-faking, love-bombing, benching, orbiting, DARVO, and low-effort "u up" energy
-
-    Field guidance:
-    - "headline": a funny, screenshot-worthy one-liner verdict — the kind someone forwards to the group chat.
-    - "translation": the blunt truth of what they actually mean.
-    - "psychology": genuinely insightful and SPECIFIC to this message — explain WHY the pattern reads this way, naming the concept. No generic platitudes.
-    - "suggestedReplies": confident, boundary-respecting, and actually usable.
-    - "realityScore": 0-100, how much genuine effort/intent the message shows.
-    - "energy": a short, vivid vibe label.
-    - "flags": short warning labels for the patterns present.
-
-    If the message contains threats, stalking, coercion, self-harm, or physical danger, drop the jokes entirely: prioritize safety, validate the reader's instincts, and point toward distance, documentation, and support.
-
-    Return ONLY valid JSON matching this exact shape:
-    {
-      "headline": "short punchy verdict",
-      "translation": "what the message likely means",
-      "psychology": "why this pattern reads this way",
-      "receipts": ["short evidence label", "another"],
-      "suggestedReplies": ["reply 1", "reply 2", "reply 3"],
-      "realityScore": 50,
-      "energy": "short vibe label",
-      "flags": ["short warning label"]
-    }
-    """
-
-    private static func decodeResult(from text: String) throws -> DecodeResult {
-        let cleaned = stripMarkdownFences(text)
-        guard let data = cleaned.data(using: .utf8) else {
-            throw URLError(.cannotDecodeContentData)
-        }
-
-        // Preferred path: exact shape.
-        if let strict = try? JSONDecoder().decode(DecodeResult.self, from: data) {
-            return strict
-        }
-
-        // Tolerant path: build from a loose JSON object so small deviations
-        // (a stringified score, a missing flags array, extra keys) still
-        // produce a real Claude read instead of dropping to offline mode.
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw URLError(.cannotParseResponse)
-        }
-
-        func string(_ key: String) -> String { (obj[key] as? String) ?? "" }
-        func strings(_ key: String) -> [String] {
-            if let values = obj[key] as? [String] { return values }
-            if let values = obj[key] as? [Any] { return values.compactMap { $0 as? String } }
-            return []
-        }
-        func score() -> Int {
-            if let value = obj["realityScore"] as? Int { return value }
-            if let value = obj["realityScore"] as? Double { return Int(min(100, max(0, value.rounded()))) }
-            if let value = obj["realityScore"] as? String, let parsed = Int(value) { return parsed }
-            return 50
-        }
-
-        let result = DecodeResult(
-            headline: string("headline"),
-            translation: string("translation"),
-            psychology: string("psychology"),
-            receipts: strings("receipts"),
-            suggestedReplies: strings("suggestedReplies"),
-            realityScore: score(),
-            energy: string("energy"),
-            flags: strings("flags")
-        )
-
-        // Require the core verdict fields; otherwise treat as unparseable.
-        guard !result.headline.isEmpty, !result.translation.isEmpty else {
-            throw URLError(.cannotParseResponse)
-        }
-        return result
-    }
-
-    private static func stripMarkdownFences(_ text: String) -> String {
-        var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.hasPrefix("```") {
-            if let firstNewline = trimmed.firstIndex(of: "\n") {
-                trimmed = String(trimmed[trimmed.index(after: firstNewline)...])
-            }
-            if let closingRange = trimmed.range(of: "```") {
-                trimmed = String(trimmed[..<closingRange.lowerBound])
-            }
-            trimmed = trimmed.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        guard let firstBrace = trimmed.firstIndex(of: "{"),
-              let lastBrace = trimmed.lastIndex(of: "}"),
-              firstBrace <= lastBrace else {
-            return trimmed
-        }
-        return String(trimmed[firstBrace...lastBrace])
-    }
 
     private static func errorMessage(from data: Data) -> String? {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
