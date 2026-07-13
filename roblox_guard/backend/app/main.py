@@ -8,6 +8,7 @@ expectations.
 
 import logging
 import os
+import traceback
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -15,15 +16,17 @@ import hmac
 
 import httpx
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
+from . import mailer
 from .config import Settings, settings as default_settings
 from .db import Database
 from .education import education_payload
 from .evidence import EvidenceVault
 from .glossary import explain as glossary_explain
 from .intel import IntelService
+from .logging_config import configure_logging
 from .monitor import Monitor
 from .report import build_report_html, build_report_markdown
 from .resources import RESOURCES
@@ -55,10 +58,19 @@ class FeedbackRequest(BaseModel):
     verdict: str = Field(pattern="^(confirmed|dismissed)$")
 
 
+class BugReportRequest(BaseModel):
+    summary: str = Field(min_length=1, max_length=200)
+    details: str = Field(default="", max_length=5000)
+    contact_email: str = Field(default="", max_length=200)
+    app_version: str = Field(default="", max_length=40)
+    platform: str = Field(default="", max_length=40)
+
+
 def create_app(settings: Optional[Settings] = None,
                client: Optional[RobloxClient] = None,
                start_monitor: bool = True) -> FastAPI:
     settings = settings or default_settings
+    configure_logging(settings.log_dir)
     db = Database(settings.db_path)
     roblox = client or RobloxClient(spacing_seconds=settings.request_spacing_seconds)
     evidence_dir = os.environ.get(
@@ -96,6 +108,26 @@ def create_app(settings: Optional[Settings] = None,
     app.state.db = db
     app.state.monitor = monitor
     app.state.roblox = roblox
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        """Every unhandled error is logged AND persisted to the bug log.
+
+        The response never leaks internals to the client; the traceback goes
+        to the rotating log file and the bug_reports table (visible at
+        GET /support/bug-reports) so a crash is discoverable without a parent
+        having to notice and report it themselves.
+        """
+        log.exception("Unhandled error on %s %s", request.method, request.url.path)
+        try:
+            db.log_backend_error(
+                f"{type(exc).__name__} on {request.method} {request.url.path}",
+                traceback.format_exc(),
+                context={"method": request.method, "path": request.url.path},
+            )
+        except Exception:
+            log.exception("Failed to persist backend_error bug report")
+        return JSONResponse(status_code=500, content={"detail": "Internal server error."})
 
     @app.get("/health")
     async def health():
@@ -215,6 +247,34 @@ def create_app(settings: Optional[Settings] = None,
             raise HTTPException(status_code=409,
                                 detail="No intel sources configured (data/intel_sources.json).")
         return await intel.run_once()
+
+    # -- bug reports -----------------------------------------------------------
+
+    @app.post("/support/bug-report", status_code=201)
+    async def submit_bug_report(payload: BugReportRequest):
+        """Customer-facing 'Report a Bug' entry point (see Settings in the app).
+
+        Always persisted to the durable bug log first; email relay to
+        RG_SUPPORT_EMAIL (default mvalasek@gmail.com) is attempted on a
+        best-effort basis afterward and never blocks the write.
+        """
+        report_id = db.add_bug_report(
+            source="customer",
+            summary=payload.summary,
+            details=payload.details,
+            context={"app_version": payload.app_version, "platform": payload.platform},
+            contact_email=payload.contact_email,
+        )
+        report = db.get_bug_report(report_id)
+        emailed = mailer.send_bug_report_email(settings, report)
+        if emailed:
+            db.mark_bug_report_emailed(report_id)
+        return {"id": report_id, "emailed": emailed, "support_email": settings.support_email}
+
+    @app.get("/support/bug-reports")
+    async def list_bug_reports(limit: int = 100):
+        """Operator view of the bug log — customer reports and backend errors."""
+        return {"reports": db.list_bug_reports(limit=limit)}
 
     # -- evidence ------------------------------------------------------------
 

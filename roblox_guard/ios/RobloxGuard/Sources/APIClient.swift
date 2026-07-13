@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// Thin client for the RobloxGuard backend. The app never talks to Roblox
 /// directly and never handles the child's Roblox credentials — there is no
@@ -145,6 +146,21 @@ struct APIClient {
 
     func evidenceFileURL(evidenceId: Int) -> URL {
         baseURL.appendingPathComponent("evidence/\(evidenceId)/file")
+    }
+
+    /// Submits a "Report a Bug" entry (Settings). Always persisted server-side
+    /// to the durable bug log even if email relay isn't configured yet.
+    @discardableResult
+    func submitBugReport(summary: String, details: String, contactEmail: String) async throws -> Bool {
+        struct BugReportResponse: Decodable { let id: Int; let emailed: Bool; let support_email: String }
+        let response: BugReportResponse = try await request("POST", "support/bug-report", body: [
+            "summary": summary,
+            "details": details,
+            "contact_email": contactEmail,
+            "app_version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
+            "platform": "iOS \(UIDevice.current.systemVersion), \(UIDevice.current.model)",
+        ])
+        return response.emailed
     }
 
     func uploadEvidence(childId: Int, imageData: Data, filename: String,

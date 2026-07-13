@@ -54,6 +54,21 @@ class Settings:
     # auth (local development only) — production MUST set RG_API_TOKEN.
     api_token: str = os.environ.get("RG_API_TOKEN", "")
 
+    # Directory for the persistent rotating bug/error log. Empty disables the
+    # file handler (console-only, e.g. in tests).
+    log_dir: str = os.environ.get("RG_LOG_DIR", "")
+
+    # Where customer-submitted bug reports (and backend error alerts) get
+    # emailed, if SMTP is configured. Every report is always stored in the
+    # bug_reports table regardless of whether SMTP is set up.
+    support_email: str = os.environ.get("RG_SUPPORT_EMAIL", "mvalasek@gmail.com")
+    smtp_host: str = os.environ.get("RG_SMTP_HOST", "")
+    smtp_port: int = _int("RG_SMTP_PORT", 587)
+    smtp_user: str = os.environ.get("RG_SMTP_USER", "")
+    smtp_password: str = os.environ.get("RG_SMTP_PASSWORD", "")
+    smtp_from: str = os.environ.get("RG_SMTP_FROM", "")
+    smtp_use_tls: bool = os.environ.get("RG_SMTP_USE_TLS", "1") not in ("0", "false", "False")
+
     extra: dict = field(default_factory=dict)
 
 

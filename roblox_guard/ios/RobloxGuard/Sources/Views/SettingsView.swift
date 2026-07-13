@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var protection: ProtectionStatus?
     @State private var showPaywall = false
     @State private var showManageSubscriptions = false
+    @State private var showBugReport = false
 
     var body: some View {
         NavigationStack {
@@ -77,10 +78,23 @@ struct SettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+
+                Section {
+                    Button {
+                        showBugReport = true
+                    } label: {
+                        Label("Report a Bug", systemImage: "ladybug")
+                    }
+                } header: {
+                    Text("Support")
+                } footer: {
+                    Text("Reports go to \(BugReportView.supportEmail) and are logged for the team to review.")
+                }
             }
             .navigationTitle("Settings")
             .task { protection = try? await store.api.protectionStatus() }
             .sheet(isPresented: $showPaywall) { PaywallView() }
+            .sheet(isPresented: $showBugReport) { BugReportView() }
             .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
             .confirmationDialog(
                 "Unlink this account? All stored alerts and history for it will be permanently deleted.",

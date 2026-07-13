@@ -104,6 +104,19 @@ def main() -> int:
         intel = client.get("/intel/runs").json()
         step("intel status", "analyzer" in intel,
              f"analyzer={intel.get('analyzer')}, sources={intel.get('sources_configured')}")
+
+        # 10. Bug report round-trip (the durable bug log a parent's
+        # "Report a Bug" button in Settings writes to)
+        bug = client.post("/support/bug-report", json={
+            "summary": "[smoke_test.py] automated bug log check",
+            "details": "Posted by scripts/smoke_test.py; safe to ignore/delete.",
+            "app_version": "smoke-test",
+        })
+        bug_ok = bug.status_code == 201 and "support_email" in bug.json()
+        step("bug report submitted", bug_ok, f"emailed={bug.json().get('emailed')}"
+             if bug_ok else f"{bug.status_code}: {bug.text[:120]}")
+        reports = client.get("/support/bug-reports?limit=1").json().get("reports", [])
+        step("bug log readable", bool(reports) and reports[0]["source"] == "customer")
     finally:
         # 10. Erasure — always clean up the smoke child
         deleted = client.delete(f"/children/{child_id}")

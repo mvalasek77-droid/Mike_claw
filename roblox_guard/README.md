@@ -224,7 +224,7 @@ Two layers, for two different questions.
 **"Did I break anything?" — the pytest suite, offline, every commit:**
 
 ```bash
-cd backend && python -m pytest -q     # 119 tests, ~20s, no network
+cd backend && python -m pytest -q     # 131 tests, ~20s, no network
 ```
 
 This runs entirely against `FakeRobloxClient` (synthetic accounts only — see
@@ -257,15 +257,42 @@ post-deploy gate.
 Xcode build, run in Simulator/device, VoiceOver and Dynamic Type checks,
 TestFlight beta. See *Production readiness* below and `docs/ROADMAP.md`.
 
+## Bug log & reporting a bug
+
+Two layers, so a bug is discoverable whether or not anyone tells you about it:
+
+1. **Automatic error log.** Every `roblox_guard.*` logger writes to a rotating
+   file (`app/logging_config.py`, capped at 5 × 5 MB, set `RG_LOG_DIR` to
+   enable) so operational errors survive a process restart. Unhandled
+   exceptions in any endpoint are additionally caught by a global FastAPI
+   handler (`main.py`), logged with a full traceback, and never leak internals
+   back to the app — the client just sees a generic 500.
+2. **Customer-submitted reports.** The iOS app's Settings → Support → "Report
+   a Bug" (`BugReportView.swift`) posts to `POST /support/bug-report` with a
+   summary, optional details, and an optional reply-to email.
+
+Both feed the same durable table — `bug_reports` in the backend database, the
+actual "bug log" — queryable at `GET /support/bug-reports` regardless of
+whether email is configured, so nothing is lost if SMTP isn't set up yet.
+Set `RG_SMTP_HOST` (+ `RG_SMTP_USER`/`RG_SMTP_PASSWORD`/`RG_SMTP_PORT` as
+needed) to also relay each customer report by email to `RG_SUPPORT_EMAIL`
+(default `mvalasek@gmail.com`) via `app/mailer.py`. If the backend itself is
+unreachable — often exactly when a parent most needs to reach someone — the
+same screen has an independent "Email us directly" button that opens Mail
+via a `mailto:` link straight to the support address, with no dependency on
+the backend or network at all.
+
 ## Production readiness
 
 What's verified here and what still needs real-device work before launch:
 
-**Verified in CI (119 tests):** full parent journey end-to-end (link →
+**Verified in CI (131 tests):** full parent journey end-to-end (link →
 baseline → threat → alert → evidence → report → feedback → erasure), hostile
 input (unicode, null bytes, script injection — HTML reports escape it),
 oversized uploads rejected, unknown-ID and validation paths, API auth
-(bearer token, constant-time compare, /health open for probes), performance
+(bearer token, constant-time compare, /health open for probes), bug log +
+report submission (DB persistence, mailer no-op/success/failure paths),
+performance
 budgets (250-friend snapshot < 5s through the whole pipeline, no-change
 re-poll < 2s), rapid-friending baseline bug fixed (was firing a false alert
 on every second poll after linking — caught by the perf test).

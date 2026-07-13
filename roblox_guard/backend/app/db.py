@@ -78,6 +78,17 @@ CREATE TABLE IF NOT EXISTS alerts (
     acknowledged INTEGER NOT NULL DEFAULT 0,
     feedback TEXT NOT NULL DEFAULT ''   -- '' | 'confirmed' | 'dismissed'
 );
+
+CREATE TABLE IF NOT EXISTS bug_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    source TEXT NOT NULL,               -- 'customer' | 'backend_error'
+    summary TEXT NOT NULL,
+    details TEXT NOT NULL DEFAULT '',
+    context TEXT NOT NULL DEFAULT '{}', -- JSON object: app_version, platform, path, etc.
+    contact_email TEXT NOT NULL DEFAULT '',
+    emailed INTEGER NOT NULL DEFAULT 0
+);
 """
 
 # Columns added after first release; applied to pre-existing databases.
@@ -354,3 +365,51 @@ class Database:
                 (child_id, signal_type, subject_user_id, subject_user_id, since_iso),
             ).fetchone()
             return row is not None
+
+    # -- bug reports ------------------------------------------------------------
+    # The durable bug log: every customer-submitted report and every unhandled
+    # backend error lands here, regardless of whether email delivery (mailer.py)
+    # succeeds, so nothing depends on SMTP being configured to not be lost.
+
+    def add_bug_report(self, source: str, summary: str, details: str = "",
+                       context: Optional[dict] = None, contact_email: str = "") -> int:
+        if source not in ("customer", "backend_error"):
+            raise ValueError("source must be 'customer' or 'backend_error'")
+        with self._connect() as conn:
+            cur = conn.execute(
+                "INSERT INTO bug_reports (created_at, source, summary, details,"
+                " context, contact_email) VALUES (?, ?, ?, ?, ?, ?)",
+                (utcnow(), source, summary, details,
+                 json.dumps(context or {}), contact_email),
+            )
+            return cur.lastrowid
+
+    def get_bug_report(self, report_id: int) -> Optional[dict]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM bug_reports WHERE id = ?", (report_id,)
+            ).fetchone()
+        if not row:
+            return None
+        out = dict(row)
+        out["context"] = json.loads(out["context"])
+        out["emailed"] = bool(out["emailed"])
+        return out
+
+    def list_bug_reports(self, limit: int = 100) -> list[dict]:
+        with self._connect() as conn:
+            rows = [dict(r) for r in conn.execute(
+                "SELECT * FROM bug_reports ORDER BY id DESC LIMIT ?", (limit,))]
+        for row in rows:
+            row["context"] = json.loads(row["context"])
+            row["emailed"] = bool(row["emailed"])
+        return rows
+
+    def mark_bug_report_emailed(self, report_id: int) -> None:
+        with self._connect() as conn:
+            conn.execute("UPDATE bug_reports SET emailed = 1 WHERE id = ?", (report_id,))
+
+    def log_backend_error(self, summary: str, details: str = "",
+                          context: Optional[dict] = None) -> int:
+        """Convenience wrapper used by exception handlers (main.py, monitor.py)."""
+        return self.add_bug_report("backend_error", summary, details, context)

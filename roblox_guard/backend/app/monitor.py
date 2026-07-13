@@ -76,8 +76,10 @@ class Monitor:
         while True:
             try:
                 await self.poll_all()
-            except Exception:
+            except Exception as error:
                 log.exception("poll cycle failed")
+                self.db.log_backend_error(
+                    f"Poll cycle failed: {type(error).__name__}", str(error))
             await asyncio.sleep(self.settings.poll_interval_seconds)
 
     # -- polling -------------------------------------------------------------
@@ -91,6 +93,9 @@ class Monitor:
                 log.exception("polling child %s failed", child["id"])
                 self.db.update_child_poll_status(
                     child["id"], f"error: {type(error).__name__}")
+                self.db.log_backend_error(
+                    f"Poll failed for child {child['id']}: {type(error).__name__}",
+                    str(error), context={"child_id": child["id"]})
 
     async def poll_child(self, child_id: int, local_now: Optional[datetime] = None) -> list[dict]:
         """Take a snapshot for one child and store any resulting alerts.

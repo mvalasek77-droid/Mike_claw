@@ -13,7 +13,10 @@
   daily Claude-analyzed threat-intelligence proposals with operator review
 - Parent feedback loop (mute noise / heighten vigilance), API auth,
   retry/backoff, poll-health surfacing
-- 119 backend tests incl. full-journey E2E, hostile-input, and perf budgets
+- StoreKit 2 subscriptions (Single Child / Family, see README "Pricing")
+- Durable bug log (rotating file + bug_reports table) and an in-app
+  "Report a Bug" flow with mailto: fallback (README "Bug log & reporting a bug")
+- 131 backend tests incl. full-journey E2E, hostile-input, and perf budgets
 
 ## Next (v0.2 — ship blockers for the App Store)
 
