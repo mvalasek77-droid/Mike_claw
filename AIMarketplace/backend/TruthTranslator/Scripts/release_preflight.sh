@@ -36,17 +36,6 @@ read_config_value() {
   sed -n "s/^${key}[[:space:]]*=[[:space:]]*//p" Config/Release.xcconfig | head -n 1
 }
 
-read_build_setting() {
-  local key="$1"
-  xcodebuild \
-    -project TruthTranslator.xcodeproj \
-    -target TruthTranslator \
-    -configuration Release \
-    -showBuildSettings 2>/dev/null \
-    | sed -n "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*//p" \
-    | head -n 1
-}
-
 note "ChadDrop release preflight"
 note "Project: $ROOT_DIR"
 note ""
@@ -82,10 +71,7 @@ else
   fail "App icon must be 1024x1024 with no alpha"
 fi
 
-TEAM_ID="$(read_build_setting DEVELOPMENT_TEAM | tr -d '[:space:]')"
-if [[ -z "$TEAM_ID" ]]; then
-  TEAM_ID="$(read_config_value DEVELOPMENT_TEAM | tr -d '[:space:]')"
-fi
+TEAM_ID="$(read_config_value DEVELOPMENT_TEAM | tr -d '[:space:]')"
 AI_PROXY_URL="$(read_config_value AI_PROXY_URL | tr -d '[:space:]')"
 
 if [[ -n "$TEAM_ID" ]]; then

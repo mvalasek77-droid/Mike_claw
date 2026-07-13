@@ -12,7 +12,7 @@ final class DecodeEngineTests: XCTestCase {
         )
 
         XCTAssertTrue(result.receipts.contains("Busy fog"))
-        XCTAssertTrue(result.receipts.contains("Noncommittal"))
+        XCTAssertTrue(result.receipts.contains("Noncommittal wording"))
         XCTAssertLessThan(result.realityScore, 50)
         XCTAssertFalse(result.suggestedReplies.isEmpty)
     }
@@ -39,68 +39,5 @@ final class DecodeEngineTests: XCTestCase {
         XCTAssertTrue(result.flags.contains("Safety"))
         XCTAssertEqual(result.energy, "Exit plan")
         XCTAssertLessThan(result.realityScore, 10)
-    }
-}
-
-final class EngineSettingsTests: XCTestCase {
-    private let modeKey = "chaddropEngineMode"
-    private var savedMode: String?
-
-    override func setUp() {
-        super.setUp()
-        savedMode = UserDefaults.standard.string(forKey: modeKey)
-    }
-
-    override func tearDown() {
-        if let savedMode {
-            UserDefaults.standard.set(savedMode, forKey: modeKey)
-        } else {
-            UserDefaults.standard.removeObject(forKey: modeKey)
-        }
-        super.tearDown()
-    }
-
-    func testDefaultModeIsAuto() {
-        UserDefaults.standard.removeObject(forKey: modeKey)
-        XCTAssertEqual(EngineSettings.mode, .auto)
-    }
-
-    func testModeRoundTripsThroughStorage() {
-        for mode in DecodeEngineMode.allCases {
-            EngineSettings.mode = mode
-            XCTAssertEqual(EngineSettings.mode, mode)
-        }
-    }
-
-    func testCorruptStoredValueFallsBackToAuto() {
-        UserDefaults.standard.set("not-a-real-mode", forKey: modeKey)
-        XCTAssertEqual(EngineSettings.mode, .auto)
-    }
-}
-
-final class UserAPIKeyRoutingTests: XCTestCase {
-    func testAnthropicKeysRouteToAnthropic() {
-        XCTAssertEqual(UserAPIKeyKind.detect("sk-ant-api03-abc123"), .anthropic)
-    }
-
-    func testOpenAIKeysRouteToOpenAI() {
-        XCTAssertEqual(UserAPIKeyKind.detect("sk-proj-abc123"), .openAI)
-        XCTAssertEqual(UserAPIKeyKind.detect("sk-abc123"), .openAI)
-    }
-
-    func testDecodePromptParserAcceptsPlainAndFencedJSON() throws {
-        let json = """
-        {"headline": "h", "translation": "t", "psychology": "p", "receipts": ["r"], "suggestedReplies": ["a", "b", "c"], "realityScore": 45, "energy": "e", "flags": ["f"]}
-        """
-        let plain = try ChadDropDecodePrompt.parse(json)
-        XCTAssertEqual(plain.realityScore, 45)
-
-        let fenced = try ChadDropDecodePrompt.parse("```json\n" + json + "\n```")
-        XCTAssertEqual(fenced.headline, "h")
-        XCTAssertEqual(fenced.suggestedReplies.count, 3)
-    }
-
-    func testDecodePromptParserRejectsGarbage() {
-        XCTAssertThrowsError(try ChadDropDecodePrompt.parse("not json at all"))
     }
 }

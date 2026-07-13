@@ -3,24 +3,12 @@ import UIKit
 
 struct ContentView: View {
     @StateObject private var viewModel: DecodeViewModel
-    @StateObject private var subscriptionStore = SubscriptionStore()
-    @State private var showingReleaseGateway: Bool
-    @State private var showingPaywall: Bool
-    @State private var showingSettings = false
-    @State private var legalDoc: ChadDropLegalDoc?
-    private let releaseGatewayEnabled: Bool
-    @AppStorage("chaddropFreeDecodeCount") private var freeDecodeCount = 0
+    @State private var showingAPISettings = false
+    @State private var hasSavedAPIKey = AnthropicAPIKeyStore().isConfigured
     @FocusState private var inputFocused: Bool
 
     init(launchArguments: [String] = ProcessInfo.processInfo.arguments) {
-        let releaseGatewayEnabled = launchArguments.contains("--chaddrop-show-release-gateway")
-        self.releaseGatewayEnabled = releaseGatewayEnabled
-        if launchArguments.contains("--chaddrop-reset-free-decodes") {
-            UserDefaults.standard.set(0, forKey: "chaddropFreeDecodeCount")
-        }
         _viewModel = StateObject(wrappedValue: DecodeViewModel(launchArguments: launchArguments))
-        _showingReleaseGateway = State(initialValue: releaseGatewayEnabled)
-        _showingPaywall = State(initialValue: launchArguments.contains("--chaddrop-show-paywall"))
     }
 
     var body: some View {
@@ -33,12 +21,10 @@ struct ContentView: View {
                     header
                     inputPanel
                     controls
-                    subscriptionStatus
                     actionRow
                     resultPanel
                     repliesPanel
                     footer
-                    legalLinks
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 22)
@@ -51,157 +37,81 @@ struct ContentView: View {
                 Color.clear.frame(height: 28)
             }
         }
-        .fullScreenCover(isPresented: $showingReleaseGateway) {
-            ReleaseGatewayView()
+        .sheet(isPresented: $showingAPISettings) {
+            APIKeySettingsView {
+                hasSavedAPIKey = AnthropicAPIKeyStore().isConfigured
+            }
                 .preferredColorScheme(.dark)
         }
-        .sheet(isPresented: $showingPaywall) {
-            PaywallView(store: subscriptionStore)
-                .preferredColorScheme(.dark)
-        }
-        .sheet(item: $legalDoc) { doc in
-            ChadDropLegalSheet(doc: doc)
-                .preferredColorScheme(.dark)
-        }
-        .sheet(isPresented: $showingSettings) {
-            ChadDropSettingsView()
-                .preferredColorScheme(.dark)
-        }
-        .task {
-            await subscriptionStore.refreshPurchasedProducts()
-            await subscriptionStore.loadProducts()
+        .onAppear {
+            hasSavedAPIKey = AnthropicAPIKeyStore().isConfigured
         }
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 12) {
-                Label("ChadDrop", systemImage: "magnifyingglass")
+                Label("ChadDrop", systemImage: "quote.bubble.fill")
                     .font(.system(size: 30, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
 
                 Spacer(minLength: 8)
 
                 Button {
-                    showingSettings = true
+                    showingAPISettings = true
                 } label: {
-                    Image(systemName: "gearshape.fill")
+                    Image(systemName: hasSavedAPIKey ? "key.fill" : "key")
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(IconButtonStyle(size: 44))
-                .accessibilityLabel("Open AI settings")
-                .accessibilityIdentifier("settingsButton")
-
-                Button {
-                    showingPaywall = true
-                } label: {
-                    Image(systemName: subscriptionStore.isSubscribed ? "checkmark.seal.fill" : "crown.fill")
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(IconButtonStyle(size: 44))
-                .accessibilityLabel("Open subscription options")
-
-                if releaseGatewayEnabled {
-                    Button {
-                        showingReleaseGateway = true
-                    } label: {
-                        Image(systemName: "checklist.checked")
-                            .frame(width: 44, height: 44)
-                    }
-                    .buttonStyle(IconButtonStyle(size: 44))
-                    .accessibilityLabel("Open release gateway")
-                }
+                .accessibilityLabel("Open API key settings")
             }
 
-            Text("Drop his text. Find out what he's really saying. 💅")
+            Text("Paste the text. Get the truth in group-chat English.")
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.76))
         }
     }
 
-    private var subscriptionStatus: some View {
-        HStack(spacing: 10) {
-            Image(systemName: subscriptionStore.isSubscribed ? "checkmark.seal.fill" : "sparkles")
-                .foregroundStyle(subscriptionStore.isSubscribed ? AppTheme.lime : AppTheme.blush)
-
-            Text(subscriptionStore.isSubscribed ? "ChadDrop Pro active." : "\(remainingFreeDecodes) free decodes left.")
-                .font(.system(size: 12, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.72))
-
-            Spacer(minLength: 8)
-
-            if !subscriptionStore.isSubscribed {
-                Button {
-                    showingPaywall = true
-                } label: {
-                    Text("Go Pro")
-                }
-                .buttonStyle(CompactButtonStyle())
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.10)))
-    }
-
     private var inputPanel: some View {
-        ZStack {
-            // Flower decorations around the text input
-            VStack {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    FlowerDecor(size: 28, color: AppTheme.hotPink, rotation: -15)
+                    Label("The Text", systemImage: "text.bubble.fill")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                     Spacer()
-                    FlowerDecor(size: 22, color: AppTheme.rose, rotation: 20)
-                }
-                Spacer()
-                HStack {
-                    FlowerDecor(size: 20, color: AppTheme.lavender, rotation: 30)
-                    Spacer()
-                    FlowerDecor(size: 26, color: AppTheme.blush, rotation: -10)
-                }
-            }
-            .padding(6)
-
-            GlassPanel {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .top) {
-                        Text("Paste your text messages to find out what he's really saying")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                        Spacer(minLength: 8)
-                        Button {
-                            if let pasted = UIPasteboard.general.string {
-                                viewModel.draft = pasted
-                                inputFocused = false
-                            }
-                        } label: {
-                            Label("Paste", systemImage: "doc.on.clipboard")
+                    Button {
+                        if let pasted = UIPasteboard.general.string {
+                            viewModel.draft = pasted
+                            inputFocused = false
                         }
-                        .buttonStyle(CompactButtonStyle())
+                    } label: {
+                        Label("Paste", systemImage: "doc.on.clipboard")
                     }
-
-                    TextEditor(text: $viewModel.draft)
-                        .focused($inputFocused)
-                        .scrollContentBackground(.hidden)
-                        .font(.system(size: 17, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white)
-                        .tint(AppTheme.hotPink)
-                        .frame(minHeight: 132)
-                        .padding(12)
-                        .background(AppTheme.panel.opacity(0.74), in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(alignment: .topLeading) {
-                            if viewModel.draft.isEmpty {
-                                Text("Paste what he said...")
-                                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.44))
-                                    .padding(.horizontal, 18)
-                                    .padding(.vertical, 20)
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                        .accessibilityIdentifier("pasteTextInput")
+                    .buttonStyle(CompactButtonStyle())
                 }
+                .foregroundStyle(.white)
+
+                TextEditor(text: $viewModel.draft)
+                    .focused($inputFocused)
+                    .scrollContentBackground(.hidden)
+                    .font(.system(size: 17, weight: .regular, design: .rounded))
+                    .foregroundStyle(.white)
+                    .tint(AppTheme.hotPink)
+                    .frame(minHeight: 132)
+                    .padding(12)
+                    .background(AppTheme.panel.opacity(0.74), in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(alignment: .topLeading) {
+                        if viewModel.draft.isEmpty {
+                            Text("Drop the suspicious masterpiece here...")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.44))
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 20)
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    .accessibilityIdentifier("pasteTextInput")
             }
         }
     }
@@ -230,7 +140,8 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
                 Button {
-                    startDecode()
+                    viewModel.decode()
+                    inputFocused = false
                 } label: {
                     HStack(spacing: 10) {
                         if viewModel.isDecoding {
@@ -239,7 +150,7 @@ struct ContentView: View {
                         } else {
                             Image(systemName: "sparkles")
                         }
-                        Text(viewModel.isDecoding ? "Reading..." : "Decode Him")
+                        Text(viewModel.isDecoding ? "Reading..." : "Decode")
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -277,16 +188,16 @@ struct ContentView: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Text(viewModel.result.energy)
                             .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(AppTheme.blush)
+                            .foregroundStyle(AppTheme.lime)
                     }
                     Spacer(minLength: 10)
                     ScoreRing(score: viewModel.result.realityScore)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    ResultBlock(title: "What he really means", icon: "captions.bubble.fill", text: viewModel.result.translation)
+                    ResultBlock(title: "The translation", icon: "captions.bubble.fill", text: viewModel.result.translation)
                     if viewModel.result != .placeholder {
-                        ResultBlock(title: "The psychology behind it", icon: "brain.head.profile", text: viewModel.result.psychology)
+                        ResultBlock(title: "The psychology", icon: "brain.head.profile", text: viewModel.result.psychology)
                     }
                 }
 
@@ -294,7 +205,7 @@ struct ContentView: View {
                     FlowTags(values: viewModel.result.receipts, icon: "checkmark.seal.fill")
 
                     if !viewModel.result.flags.isEmpty {
-                        FlowTags(values: viewModel.result.flags, icon: "exclamationmark.triangle.fill", tint: AppTheme.lavender)
+                        FlowTags(values: viewModel.result.flags, icon: "exclamationmark.triangle.fill", tint: AppTheme.orange)
                     }
                 }
             }
@@ -304,7 +215,7 @@ struct ContentView: View {
 
     private var repliesPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("How to reply")
+            Text("Suggested replies")
                 .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
 
@@ -315,53 +226,10 @@ struct ContentView: View {
     }
 
     private var footer: some View {
-        Text("For entertainment, not therapy. If a message feels threatening, skip the app and get real support.")
+        Text("Entertainment, not therapy or legal advice. If a message feels threatening, skip the roast and get support.")
             .font(.system(size: 11, weight: .medium, design: .rounded))
             .foregroundStyle(.white.opacity(0.52))
             .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private var legalLinks: some View {
-        HStack(spacing: 14) {
-            Button { legalDoc = .terms } label: {
-                Label("Terms of Use", systemImage: "doc.text.fill")
-            }
-            .accessibilityIdentifier("termsOfUseLink")
-
-            Button { legalDoc = .privacy } label: {
-                Label("Privacy Policy", systemImage: "lock.shield.fill")
-            }
-            .accessibilityIdentifier("privacyPolicyLink")
-        }
-        .buttonStyle(.plain)
-        .font(.system(size: 12, weight: .bold, design: .rounded))
-        .foregroundStyle(.white.opacity(0.78))
-        .lineLimit(1)
-        .minimumScaleFactor(0.78)
-    }
-
-    private var remainingFreeDecodes: Int {
-        max(0, 3 - freeDecodeCount)
-    }
-
-    private func startDecode() {
-        inputFocused = false
-
-        let hasDraft = !viewModel.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        guard hasDraft else {
-            viewModel.decode()
-            return
-        }
-
-        guard subscriptionStore.isSubscribed || remainingFreeDecodes > 0 else {
-            showingPaywall = true
-            return
-        }
-
-        if !subscriptionStore.isSubscribed {
-            freeDecodeCount += 1
-        }
-        viewModel.decode()
     }
 }
 
@@ -407,9 +275,9 @@ final class DecodeViewModel: ObservableObject {
         statusMessage = nil
         let outcome = await service.decode(text: text, tone: tone, context: context)
         result = outcome.result
-        statusMessage = outcome.usedFallback
-            ? "Built-in engine used. Open settings to use Apple Intelligence or your own API key."
-            : "AI read complete. Standards remain undefeated."
+        statusMessage = outcome.statusMessage ?? (outcome.usedFallback
+            ? "Offline mode used. Connect an AI proxy for fresher reads."
+            : "AI read complete. Standards remain undefeated.")
         isDecoding = false
     }
 
@@ -431,7 +299,174 @@ final class DecodeViewModel: ObservableObject {
             energy: "Vague with a side of breadcrumbs",
             flags: ["No concrete plan", "Keeps access open"]
         )
-        statusMessage = nil
+        statusMessage = "Demo screenshot loaded for App Store capture."
+    }
+}
+
+private struct APIKeySettingsView: View {
+    let onKeyStatusChanged: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var draftKey = ""
+    @State private var showKey = false
+    @State private var statusMessage: String?
+    private let keyStore = AnthropicAPIKeyStore()
+
+    private var trimmedDraft: String {
+        draftKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasSavedKey: Bool {
+        keyStore.isConfigured
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppBackground()
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        header
+                        keyPanel
+                        helpPanel
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 22)
+                    .padding(.bottom, 36)
+                    .frame(maxWidth: 720)
+                    .frame(maxWidth: .infinity)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .navigationTitle("AI Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.bold)
+                        .foregroundStyle(AppTheme.hotPink)
+                }
+            }
+            .onAppear {
+                draftKey = keyStore.apiKey
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Claude API Key", systemImage: "key.fill")
+                .font(.system(size: 28, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+            Text("Paste your Anthropic key once. ChadDrop stores it in Keychain, uses it for Claude reads, and falls back to offline mode if it cannot connect.")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.74))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var keyPanel: some View {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Your key")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+
+                keyField
+
+                HStack(spacing: 10) {
+                    Button {
+                        draftKey = UIPasteboard.general.string ?? draftKey
+                    } label: {
+                        Label("Paste", systemImage: "doc.on.clipboard")
+                    }
+                    .buttonStyle(CompactButtonStyle())
+
+                    Button {
+                        showKey.toggle()
+                    } label: {
+                        Label(showKey ? "Hide" : "Show", systemImage: showKey ? "eye.slash" : "eye")
+                    }
+                    .buttonStyle(CompactButtonStyle())
+                }
+
+                Button {
+                    keyStore.save(trimmedDraft)
+                    onKeyStatusChanged()
+                    if trimmedDraft.isEmpty {
+                        statusMessage = "API key cleared."
+                    } else if !trimmedDraft.hasPrefix("sk-ant-") {
+                        statusMessage = "Saved — but Anthropic keys usually start with sk-ant-. If decodes fall back to offline, re-check the key."
+                    } else {
+                        statusMessage = "API key saved. Decode will use Claude first."
+                    }
+                } label: {
+                    Label(hasSavedKey ? "Update API Key" : "Save API Key", systemImage: hasSavedKey ? "checkmark.seal.fill" : "key.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(trimmedDraft.isEmpty)
+
+                Button(role: .destructive) {
+                    draftKey = ""
+                    keyStore.clear()
+                    onKeyStatusChanged()
+                    statusMessage = "API key cleared."
+                } label: {
+                    Label("Clear Saved Key", systemImage: "trash")
+                }
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(AppTheme.orange)
+                .disabled(!hasSavedKey)
+
+                if let statusMessage {
+                    Text(statusMessage)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var keyField: some View {
+        Group {
+            if showKey {
+                TextField("sk-ant-...", text: $draftKey)
+            } else {
+                SecureField("sk-ant-...", text: $draftKey)
+            }
+        }
+        .textContentType(.password)
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
+        .keyboardType(.asciiCapable)
+        .font(.system(size: 15, weight: .medium, design: .monospaced))
+        .foregroundStyle(.white)
+        .tint(AppTheme.hotPink)
+        .padding(12)
+        .background(AppTheme.panel.opacity(0.74), in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white.opacity(0.12)))
+    }
+
+    private var helpPanel: some View {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Need a key?", systemImage: "arrow.up.right.square.fill")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(AppTheme.sky)
+
+                Text("Create an Anthropic API key, copy it, then come back here and paste it. Keys usually start with sk-ant.")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.78))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Link("Open console.anthropic.com", destination: URL(string: "https://console.anthropic.com/settings/keys")!)
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(AppTheme.hotPink)
+            }
+        }
     }
 }
 
@@ -444,7 +479,7 @@ private struct ResultBlock: View {
         VStack(alignment: .leading, spacing: 6) {
             Label(title, systemImage: icon)
                 .font(.system(size: 13, weight: .black, design: .rounded))
-                .foregroundStyle(AppTheme.lavender)
+                .foregroundStyle(AppTheme.sky)
             Text(text)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.84))
@@ -486,7 +521,7 @@ private struct ReplyRow: View {
 private struct FlowTags: View {
     let values: [String]
     var icon = "tag.fill"
-    var tint = AppTheme.blush
+    var tint = AppTheme.lime
 
     var body: some View {
         FlowLayout(spacing: 8) {
@@ -558,7 +593,7 @@ private struct ScoreRing: View {
             VStack(spacing: 0) {
                 Text("\(score)")
                     .font(.system(size: 21, weight: .black, design: .rounded))
-                Text("reality")
+                Text("truth")
                     .font(.system(size: 9, weight: .bold, design: .rounded))
             }
             .foregroundStyle(.white)
@@ -569,8 +604,8 @@ private struct ScoreRing: View {
 
     private var scoreColor: Color {
         switch score {
-        case 75...100: return AppTheme.blush
-        case 45..<75: return AppTheme.peach
+        case 75...100: return AppTheme.lime
+        case 45..<75: return AppTheme.orange
         default: return AppTheme.hotPink
         }
     }
@@ -579,7 +614,7 @@ private struct ScoreRing: View {
 struct AppBackground: View {
     var body: some View {
         LinearGradient(
-            colors: [Color(red: 0.12, green: 0.04, blue: 0.10), Color(red: 0.18, green: 0.06, blue: 0.16), Color(red: 0.08, green: 0.05, blue: 0.14)],
+            colors: [Color(red: 0.05, green: 0.05, blue: 0.08), Color(red: 0.12, green: 0.08, blue: 0.14), Color(red: 0.03, green: 0.10, blue: 0.12)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -587,16 +622,16 @@ struct AppBackground: View {
             GeometryReader { proxy in
                 Canvas { context, size in
                     let circles: [(CGPoint, CGFloat, Color)] = [
-                        (CGPoint(x: size.width * 0.16, y: size.height * 0.18), 190, AppTheme.hotPink.opacity(0.22)),
-                        (CGPoint(x: size.width * 0.82, y: size.height * 0.12), 170, AppTheme.lavender.opacity(0.18)),
-                        (CGPoint(x: size.width * 0.50, y: size.height * 0.86), 220, AppTheme.rose.opacity(0.14))
+                        (CGPoint(x: size.width * 0.16, y: size.height * 0.18), 170, AppTheme.hotPink.opacity(0.18)),
+                        (CGPoint(x: size.width * 0.82, y: size.height * 0.12), 150, AppTheme.sky.opacity(0.16)),
+                        (CGPoint(x: size.width * 0.78, y: size.height * 0.86), 210, AppTheme.lime.opacity(0.10))
                     ]
                     for circle in circles {
                         let rect = CGRect(x: circle.0.x - circle.1 / 2, y: circle.0.y - circle.1 / 2, width: circle.1, height: circle.1)
                         context.fill(Path(ellipseIn: rect), with: .color(circle.2))
                     }
                 }
-                .blur(radius: min(proxy.size.width, 500) * 0.06)
+                .blur(radius: min(proxy.size.width, 500) * 0.05)
             }
         }
     }
@@ -655,41 +690,14 @@ struct IconButtonStyle: ButtonStyle {
 }
 
 enum AppTheme {
-    static let panel = Color(red: 0.18, green: 0.06, blue: 0.14)
-    static let hotPink = Color(red: 1.0, green: 0.28, blue: 0.56)
-    static let rose = Color(red: 0.96, green: 0.40, blue: 0.68)
-    static let blush = Color(red: 1.0, green: 0.62, blue: 0.78)
-    static let lavender = Color(red: 0.68, green: 0.48, blue: 0.94)
-    static let peach = Color(red: 1.0, green: 0.72, blue: 0.58)
-    static let lime = Color(red: 0.62, green: 0.94, blue: 0.34)
+    static let panel = Color(red: 0.09, green: 0.09, blue: 0.13)
+    static let hotPink = Color(red: 1.0, green: 0.22, blue: 0.53)
     static let orange = Color(red: 1.0, green: 0.58, blue: 0.22)
+    static let lime = Color(red: 0.62, green: 0.94, blue: 0.34)
+    static let sky = Color(red: 0.35, green: 0.78, blue: 1.0)
     static let hotGradient = LinearGradient(
-        colors: [hotPink, rose],
+        colors: [hotPink, orange],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
-}
-
-private struct FlowerDecor: View {
-    var size: CGFloat = 24
-    var color: Color = .pink
-    var rotation: Double = 0
-
-    var body: some View {
-        ZStack {
-            // Five petals
-            ForEach(0..<5, id: \.self) { i in
-                Capsule()
-                    .fill(color.opacity(0.55))
-                    .frame(width: size * 0.45, height: size * 0.85)
-                    .offset(y: -size * 0.28)
-                    .rotationEffect(.degrees(Double(i) * 72))
-            }
-            // Center
-            Circle()
-                .fill(color.opacity(0.8))
-                .frame(width: size * 0.3, height: size * 0.3)
-        }
-        .rotationEffect(.degrees(rotation))
-    }
 }

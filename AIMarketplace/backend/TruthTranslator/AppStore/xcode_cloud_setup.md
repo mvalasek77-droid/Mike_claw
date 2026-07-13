@@ -6,7 +6,7 @@ Use this when you want Apple to build and sign ChadDrop instead of setting up lo
 
 - Xcode project: `TruthTranslator/TruthTranslator.xcodeproj`
 - Scheme: `TruthTranslator`
-- Bundle ID: `com.valasek.chaddrop`
+- Bundle ID: `com.chaddrop.app`
 - App name: `ChadDrop`
 - CI scripts: `TruthTranslator/ci_scripts`
 - Optional local secrets file: `TruthTranslator/Config/Secrets.xcconfig`
@@ -18,7 +18,7 @@ Use this when you want Apple to build and sign ChadDrop instead of setting up lo
 3. Use these values:
    - Platform: `iOS`
    - Name: `ChadDrop`
-   - Bundle ID: `com.valasek.chaddrop`
+   - Bundle ID: `com.chaddrop.app`
    - SKU: `CHADDROP-IOS-1`
 4. Open `TruthTranslator/TruthTranslator.xcodeproj` in Xcode.
 5. Open the Report Navigator, choose the Cloud tab, then press `Get Started`.

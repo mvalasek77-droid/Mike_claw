@@ -1,104 +1,327 @@
 import Foundation
+import Security
 
 struct DecodeService {
     private let engine = DecodeEngine()
     private let proxy = AIProxyClient()
-
-    /// Confidence threshold: if the local engine's score is in this range, try Apple Foundation for a better read.
-    private let uncertainRange = 35...65
+    private let userAPI = UserAnthropicClient()
 
     func decode(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome {
-        switch EngineSettings.mode {
-        case .onDevice:
-            return await decodeOnDevice(text: text, tone: tone, context: context)
-        case .apiKey:
-            return await decodeWithUserKey(text: text, tone: tone, context: context)
-        case .auto:
-            return await decodeAuto(text: text, tone: tone, context: context)
-        }
-    }
-
-    /// User picked the on-device Apple Foundation model. Falls back to the local engine.
-    private func decodeOnDevice(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome {
-        if let result = await decodeWithFoundation(text: text, tone: tone, context: context) {
-            return result
-        }
-        return DecodeOutcome(result: engine.decode(text: text, tone: tone, context: context), usedFallback: true)
-    }
-
-    /// User picked their own API key. Falls back to the local engine.
-    private func decodeWithUserKey(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome {
-        if let apiKey = ChadDropKeychain.loadAPIKey() {
+        if userAPI.isConfigured {
             do {
-                let result = try await Self.userKeyDecode(apiKey: apiKey, text: text, tone: tone, context: context)
-                return DecodeOutcome(result: result.normalized, usedFallback: false)
+                let result = try await userAPI.decode(text: text, tone: tone, context: context)
+                return DecodeOutcome(
+                    result: result.normalized,
+                    usedFallback: false,
+                    statusMessage: "Claude read complete using your saved API key."
+                )
             } catch {
-                // Key call failed, continue to local engine
+                let result = engine.decode(text: text, tone: tone, context: context)
+                let raw = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                let reason = ".?!".contains(raw.last ?? " ") ? raw : raw + "."
+                return DecodeOutcome(
+                    result: result,
+                    usedFallback: true,
+                    statusMessage: "Offline mode used. \(reason) Check the key in settings."
+                )
             }
         }
-        return DecodeOutcome(result: engine.decode(text: text, tone: tone, context: context), usedFallback: true)
-    }
 
-    /// Routes a user-supplied key to the matching provider: Anthropic (sk-ant-) or OpenAI.
-    static func userKeyDecode(apiKey: String, text: String, tone: DecodeTone, context: DecodeContext) async throws -> DecodeResult {
-        switch UserAPIKeyKind.detect(apiKey) {
-        case .anthropic:
-            return try await AnthropicDirectClient(apiKey: apiKey).decode(text: text, tone: tone, context: context)
-        case .openAI:
-            return try await OpenAIDirectClient(apiKey: apiKey).decode(text: text, tone: tone, context: context)
-        }
-    }
-
-    private func decodeAuto(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome {
-        // Tier 1: AI Proxy (if configured) — best quality, requires backend
         if proxy.isConfigured {
             do {
                 let result = try await proxy.decode(text: text, tone: tone, context: context)
                 return DecodeOutcome(result: result.normalized, usedFallback: false)
             } catch {
-                // Proxy failed, continue to next tier
+                let result = engine.decode(text: text, tone: tone, context: context)
+                return DecodeOutcome(result: result, usedFallback: true)
             }
         }
+        return DecodeOutcome(result: engine.decode(text: text, tone: tone, context: context), usedFallback: true)
+    }
+}
 
-        // Tier 2: User's own API key, if one is saved
-        if let apiKey = ChadDropKeychain.loadAPIKey() {
-            do {
-                let result = try await Self.userKeyDecode(apiKey: apiKey, text: text, tone: tone, context: context)
-                return DecodeOutcome(result: result.normalized, usedFallback: false)
-            } catch {
-                // Key call failed, continue to next tier
-            }
-        }
+enum ChadDropAPISettings {
+    static let keychainService = "com.valasek.chaddrop.api-keys"
+    static let anthropicAccount = "anthropic"
+}
 
-        // Tier 3: Local engine
-        let localResult = engine.decode(text: text, tone: tone, context: context)
+struct AnthropicAPIKeyStore {
+    private let service = ChadDropAPISettings.keychainService
+    private let account = ChadDropAPISettings.anthropicAccount
 
-        // If the engine is confident (score outside uncertain range), use its result directly
-        if !uncertainRange.contains(localResult.realityScore) {
-            return DecodeOutcome(result: localResult, usedFallback: true)
-        }
-
-        // Tier 4: Apple Foundation model — for ambiguous texts the engine can't confidently decode
-        if let result = await decodeWithFoundation(text: text, tone: tone, context: context) {
-            return result
-        }
-
-        return DecodeOutcome(result: localResult, usedFallback: true)
+    var apiKey: String {
+        readFromKeychain() ?? ""
     }
 
-    private func decodeWithFoundation(text: String, tone: DecodeTone, context: DecodeContext) async -> DecodeOutcome? {
-        if #available(iOS 26.0, *) {
-            let foundationClient = AppleFoundationClient()
-            if foundationClient.isAvailable {
-                do {
-                    let foundationResult = try await foundationClient.decode(text: text, tone: tone, context: context)
-                    return DecodeOutcome(result: foundationResult.normalized, usedFallback: false)
-                } catch {
-                    // Foundation failed, caller falls back to local engine
-                }
+    var isConfigured: Bool {
+        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func save(_ key: String) {
+        writeToKeychain(value: key.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    func clear() {
+        deleteFromKeychain()
+    }
+
+    private func readFromKeychain() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data,
+              let key = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return key
+    }
+
+    private func writeToKeychain(value: String) {
+        deleteFromKeychain()
+        guard !value.isEmpty else { return }
+
+        let item: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: Data(value.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+        SecItemAdd(item as CFDictionary, nil)
+    }
+
+    private func deleteFromKeychain() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+}
+
+struct UserAnthropicClient {
+    /// The Claude model used for decoding. Verified available and returning
+    /// valid decode JSON for ChadDrop accounts.
+    static let model = "claude-sonnet-5"
+
+    private let keyStore = AnthropicAPIKeyStore()
+
+    private var apiKey: String {
+        keyStore.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var isConfigured: Bool {
+        !apiKey.isEmpty
+    }
+
+    func decode(text: String, tone: DecodeTone, context: DecodeContext) async throws -> DecodeResult {
+        let key = apiKey
+        guard !key.isEmpty else {
+            throw URLError(.userAuthenticationRequired)
+        }
+
+        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 35
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(key, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.httpBody = try JSONEncoder().encode(AnthropicRequest(
+            model: Self.model,
+            max_tokens: 900,
+            system: Self.systemPrompt,
+            messages: [
+                AnthropicRequest.Message(
+                    role: "user",
+                    content: """
+                    Context: \(context.rawValue)
+                    Tone: \(tone.promptValue)
+
+                    Decode this message:
+                    \(text)
+                    """
+                )
+            ]
+        ))
+
+        let data = try await Self.send(request)
+        let apiResponse = try JSONDecoder().decode(AnthropicResponse.self, from: data)
+        let textOutput = apiResponse.content.compactMap(\.text).joined(separator: "\n")
+        return try Self.decodeResult(from: textOutput)
+    }
+
+    /// Sends the request, retrying once on transient overload/rate-limit so a
+    /// momentary 429/500/503/529 doesn't drop the user to offline mode.
+    private static func send(_ request: URLRequest) async throws -> Data {
+        let transient: Set<Int> = [408, 429, 500, 502, 503, 529]
+        var attempt = 0
+        while true {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw URLError(.badServerResponse)
+            }
+            if (200..<300).contains(http.statusCode) {
+                return data
+            }
+            if transient.contains(http.statusCode), attempt < 1 {
+                attempt += 1
+                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                continue
+            }
+            throw AnthropicClientError.http(status: http.statusCode, message: errorMessage(from: data))
+        }
+    }
+
+    private static let systemPrompt = """
+    You are ChadDrop, a sharp, funny, psychology-literate text-message decoder for people trying to read between the lines.
+    Voice: group-chat clear, witty, a little spicy, quotable — never cruel, never mean, never contemptuous. Roast the behavior, not the person reading it.
+
+    Ground EVERY read in real relationship psychology and name the pattern you see. Draw on:
+    - Attachment theory (secure, anxious, avoidant behavior and mixed signals)
+    - Gottman's research (bids for connection, stonewalling, contempt, the four horsemen)
+    - CBT reframing (separating the story from the evidence) and intermittent reinforcement
+    - Dating-market dynamics: effort vs. access, breadcrumbing, future-faking, love-bombing, benching, orbiting, DARVO, and low-effort "u up" energy
+
+    Field guidance:
+    - "headline": a funny, screenshot-worthy one-liner verdict — the kind someone forwards to the group chat.
+    - "translation": the blunt truth of what they actually mean.
+    - "psychology": genuinely insightful and SPECIFIC to this message — explain WHY the pattern reads this way, naming the concept. No generic platitudes.
+    - "suggestedReplies": confident, boundary-respecting, and actually usable.
+    - "realityScore": 0-100, how much genuine effort/intent the message shows.
+    - "energy": a short, vivid vibe label.
+    - "flags": short warning labels for the patterns present.
+
+    If the message contains threats, stalking, coercion, self-harm, or physical danger, drop the jokes entirely: prioritize safety, validate the reader's instincts, and point toward distance, documentation, and support.
+
+    Return ONLY valid JSON matching this exact shape:
+    {
+      "headline": "short punchy verdict",
+      "translation": "what the message likely means",
+      "psychology": "why this pattern reads this way",
+      "receipts": ["short evidence label", "another"],
+      "suggestedReplies": ["reply 1", "reply 2", "reply 3"],
+      "realityScore": 50,
+      "energy": "short vibe label",
+      "flags": ["short warning label"]
+    }
+    """
+
+    private static func decodeResult(from text: String) throws -> DecodeResult {
+        let cleaned = stripMarkdownFences(text)
+        guard let data = cleaned.data(using: .utf8) else {
+            throw URLError(.cannotDecodeContentData)
+        }
+
+        // Preferred path: exact shape.
+        if let strict = try? JSONDecoder().decode(DecodeResult.self, from: data) {
+            return strict
+        }
+
+        // Tolerant path: build from a loose JSON object so small deviations
+        // (a stringified score, a missing flags array, extra keys) still
+        // produce a real Claude read instead of dropping to offline mode.
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw URLError(.cannotParseResponse)
+        }
+
+        func string(_ key: String) -> String { (obj[key] as? String) ?? "" }
+        func strings(_ key: String) -> [String] {
+            if let values = obj[key] as? [String] { return values }
+            if let values = obj[key] as? [Any] { return values.compactMap { $0 as? String } }
+            return []
+        }
+        func score() -> Int {
+            if let value = obj["realityScore"] as? Int { return value }
+            if let value = obj["realityScore"] as? Double { return Int(min(100, max(0, value.rounded()))) }
+            if let value = obj["realityScore"] as? String, let parsed = Int(value) { return parsed }
+            return 50
+        }
+
+        let result = DecodeResult(
+            headline: string("headline"),
+            translation: string("translation"),
+            psychology: string("psychology"),
+            receipts: strings("receipts"),
+            suggestedReplies: strings("suggestedReplies"),
+            realityScore: score(),
+            energy: string("energy"),
+            flags: strings("flags")
+        )
+
+        // Require the core verdict fields; otherwise treat as unparseable.
+        guard !result.headline.isEmpty, !result.translation.isEmpty else {
+            throw URLError(.cannotParseResponse)
+        }
+        return result
+    }
+
+    private static func stripMarkdownFences(_ text: String) -> String {
+        var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("```") {
+            if let firstNewline = trimmed.firstIndex(of: "\n") {
+                trimmed = String(trimmed[trimmed.index(after: firstNewline)...])
+            }
+            if let closingRange = trimmed.range(of: "```") {
+                trimmed = String(trimmed[..<closingRange.lowerBound])
+            }
+            trimmed = trimmed.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard let firstBrace = trimmed.firstIndex(of: "{"),
+              let lastBrace = trimmed.lastIndex(of: "}"),
+              firstBrace <= lastBrace else {
+            return trimmed
+        }
+        return String(trimmed[firstBrace...lastBrace])
+    }
+
+    private static func errorMessage(from data: Data) -> String? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let error = obj["error"] as? [String: Any],
+              let message = error["message"] as? String else {
+            return nil
+        }
+        return message
+    }
+
+    enum AnthropicClientError: LocalizedError {
+        case http(status: Int, message: String?)
+
+        var errorDescription: String? {
+            switch self {
+            case let .http(status, message):
+                if let message { return "Claude error \(status): \(message)" }
+                return "Claude error \(status)."
             }
         }
-        return nil
+    }
+
+    private struct AnthropicRequest: Encodable {
+        let model: String
+        let max_tokens: Int
+        let system: String
+        let messages: [Message]
+
+        struct Message: Encodable {
+            let role: String
+            let content: String
+        }
+    }
+
+    private struct AnthropicResponse: Decodable {
+        let content: [ContentBlock]
+
+        struct ContentBlock: Decodable {
+            let type: String
+            let text: String?
+        }
     }
 }
 

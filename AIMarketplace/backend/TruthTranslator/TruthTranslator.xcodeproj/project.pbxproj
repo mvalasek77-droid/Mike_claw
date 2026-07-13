@@ -9,20 +9,11 @@
 /* Begin PBXBuildFile section */
 		176378C4D7F18EBBC88E7992 /* DecodeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A02B4B6FD63D06B493CD0D7 /* DecodeModels.swift */; };
 		1979147A0DB535C8D05F80AC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9935D8EB8B566576CC339E7 /* ContentView.swift */; };
-		26E4655420683C53C037B8DF /* SubscriptionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AB3749DA60F30F98D8F7C7 /* SubscriptionStore.swift */; };
-		29FA21B170A282AE5E9B2A38 /* ChadDropLegalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 027B0037B87F4E1329E1D80E /* ChadDropLegalLinks.swift */; };
-		6C5FCDFA434D9FDA8109FD96 /* ReleaseGatewayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F5B3B6EFC80FC0F0A4DBFB /* ReleaseGatewayView.swift */; };
-		7CC6C8039DA2238CDF25D90C /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 652E8D7F97E85599F9D79CD0 /* PaywallView.swift */; };
 		813741CCD00859DFF18D9AC9 /* TruthTranslatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 293CE7E28E23334A44CB1EC7 /* TruthTranslatorApp.swift */; };
 		9BEA61620E71BC72AFF09CB7 /* DecodeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */; };
 		9E897C25C4B38A66C8B4C3E9 /* TruthTranslatorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED4657DDA4D84219960F9FB /* TruthTranslatorUITests.swift */; };
 		A0B3B04522B26B7AD60EA3B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24A694B5EE1EFB8DE1C86F8E /* Assets.xcassets */; };
-		B8A1F2D3E4C5A6B7D9E0F1A2 /* LegalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6A7B8C9D0E1F2A3B4 /* LegalView.swift */; };
-		B9C2E3F4A5D6B7C8E0F1A2B3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A7B8C9D0E1F2A3B4C5 /* SettingsView.swift */; };
-		BBC4E5F6A7D8B9CAE2F3A4B5 /* AnthropicDirectClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E7F8A9BACBD2E3F4A5B6C7 /* AnthropicDirectClient.swift */; };
-		BAC3E4F5A6D7B8C9E1F2A3B4 /* OpenAIDirectClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6F7A8B9CAD1E2F3A4B5C6 /* OpenAIDirectClient.swift */; };
 		CED2F1C32F3F1E03C09E7988 /* AIProxyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40786EE5C662F482B177129 /* AIProxyClient.swift */; };
-		CF00FF954A99B06481C8CC3C /* AppleFoundationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27D03CDD95469402C09AF03 /* AppleFoundationClient.swift */; };
 		D1E3CFC64485CBBE8CF4CD2E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A714BFA8042C5C406DF53D9 /* PrivacyInfo.xcprivacy */; };
 		F89581878FE7787F2C46A23A /* DecodeEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12636417F5CC7E79E75D990F /* DecodeEngineTests.swift */; };
 /* End PBXBuildFile section */
@@ -45,7 +36,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		027B0037B87F4E1329E1D80E /* ChadDropLegalLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChadDropLegalLinks.swift; sourceTree = "<group>"; };
 		02CE888239E963754520A79B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		12636417F5CC7E79E75D990F /* DecodeEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecodeEngineTests.swift; sourceTree = "<group>"; };
 		24A694B5EE1EFB8DE1C86F8E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -53,18 +43,10 @@
 		3ED4657DDA4D84219960F9FB /* TruthTranslatorUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TruthTranslatorUITests.swift; sourceTree = "<group>"; };
 		4A02B4B6FD63D06B493CD0D7 /* DecodeModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecodeModels.swift; sourceTree = "<group>"; };
 		510AE8D5DC4E645C1F8DFFD6 /* TruthTranslatorUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TruthTranslatorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		652E8D7F97E85599F9D79CD0 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		688606854CDD2A3C3B60E441 /* TruthTranslator.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TruthTranslator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6BA243842EABA0CB33BC6E89 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
-		73AB3749DA60F30F98D8F7C7 /* SubscriptionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionStore.swift; sourceTree = "<group>"; };
 		8A714BFA8042C5C406DF53D9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecodeEngine.swift; sourceTree = "<group>"; };
-		C3D4E5F6A7B8C9D0E1F2A3B4 /* LegalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalView.swift; sourceTree = "<group>"; };
-		D4E5F6A7B8C9D0E1F2A3B4C5 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		D5E6F7A8B9CAD1E2F3A4B5C6 /* OpenAIDirectClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIDirectClient.swift; sourceTree = "<group>"; };
-		D6E7F8A9BACBD2E3F4A5B6C7 /* AnthropicDirectClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicDirectClient.swift; sourceTree = "<group>"; };
-		A2F5B3B6EFC80FC0F0A4DBFB /* ReleaseGatewayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseGatewayView.swift; sourceTree = "<group>"; };
-		C27D03CDD95469402C09AF03 /* AppleFoundationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationClient.swift; sourceTree = "<group>"; };
 		CCC32FB8967BB173138E0E17 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		D9935D8EB8B566576CC339E7 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E40786EE5C662F482B177129 /* AIProxyClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProxyClient.swift; sourceTree = "<group>"; };
@@ -104,18 +86,9 @@
 			isa = PBXGroup;
 			children = (
 				E40786EE5C662F482B177129 /* AIProxyClient.swift */,
-				C27D03CDD95469402C09AF03 /* AppleFoundationClient.swift */,
-				D6E7F8A9BACBD2E3F4A5B6C7 /* AnthropicDirectClient.swift */,
-				027B0037B87F4E1329E1D80E /* ChadDropLegalLinks.swift */,
 				D9935D8EB8B566576CC339E7 /* ContentView.swift */,
 				A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */,
 				4A02B4B6FD63D06B493CD0D7 /* DecodeModels.swift */,
-				C3D4E5F6A7B8C9D0E1F2A3B4 /* LegalView.swift */,
-				D5E6F7A8B9CAD1E2F3A4B5C6 /* OpenAIDirectClient.swift */,
-				652E8D7F97E85599F9D79CD0 /* PaywallView.swift */,
-				A2F5B3B6EFC80FC0F0A4DBFB /* ReleaseGatewayView.swift */,
-				D4E5F6A7B8C9D0E1F2A3B4C5 /* SettingsView.swift */,
-				73AB3749DA60F30F98D8F7C7 /* SubscriptionStore.swift */,
 				293CE7E28E23334A44CB1EC7 /* TruthTranslatorApp.swift */,
 				BB264E1CB7D9E8562A75A02E /* Resources */,
 			);
@@ -220,7 +193,7 @@
 						DevelopmentTeam = "";
 					};
 					67EFD50A7C137660B1F3805C = {
-						DevelopmentTeam = UDM4W27W9V;
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					EC034AC4CE02B2A7AE4A6758 = {
@@ -284,18 +257,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				CED2F1C32F3F1E03C09E7988 /* AIProxyClient.swift in Sources */,
-				CF00FF954A99B06481C8CC3C /* AppleFoundationClient.swift in Sources */,
-				BBC4E5F6A7D8B9CAE2F3A4B5 /* AnthropicDirectClient.swift in Sources */,
-				29FA21B170A282AE5E9B2A38 /* ChadDropLegalLinks.swift in Sources */,
 				1979147A0DB535C8D05F80AC /* ContentView.swift in Sources */,
 				9BEA61620E71BC72AFF09CB7 /* DecodeEngine.swift in Sources */,
 				176378C4D7F18EBBC88E7992 /* DecodeModels.swift in Sources */,
-				B8A1F2D3E4C5A6B7D9E0F1A2 /* LegalView.swift in Sources */,
-				BAC3E4F5A6D7B8C9E1F2A3B4 /* OpenAIDirectClient.swift in Sources */,
-				7CC6C8039DA2238CDF25D90C /* PaywallView.swift in Sources */,
-				6C5FCDFA434D9FDA8109FD96 /* ReleaseGatewayView.swift in Sources */,
-				B9C2E3F4A5D6B7C8E0F1A2B3 /* SettingsView.swift in Sources */,
-				26E4655420683C53C037B8DF /* SubscriptionStore.swift in Sources */,
 				813741CCD00859DFF18D9AC9 /* TruthTranslatorApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -378,14 +342,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.chaddrop.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chaddrop.app.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = TruthTranslator;
@@ -397,11 +360,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 12;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = UDM4W27W9V;
 				INFOPLIST_FILE = TruthTranslator/Resources/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 ChadDrop";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -409,7 +371,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.chaddrop;
 				PRODUCT_NAME = TruthTranslator;
 				SDKROOT = iphoneos;
@@ -422,14 +384,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.chaddrop.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chaddrop.app.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TruthTranslator.app/TruthTranslator";
@@ -440,14 +401,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.chaddrop.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chaddrop.app.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TruthTranslator.app/TruthTranslator";
@@ -458,14 +418,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.chaddrop.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chaddrop.app.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = TruthTranslator;
@@ -477,11 +436,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 12;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = UDM4W27W9V;
 				INFOPLIST_FILE = TruthTranslator/Resources/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 ChadDrop";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -489,7 +447,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.chaddrop;
 				PRODUCT_NAME = TruthTranslator;
 				SDKROOT = iphoneos;

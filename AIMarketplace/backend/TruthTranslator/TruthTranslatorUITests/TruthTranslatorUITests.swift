@@ -1,18 +1,8 @@
 import XCTest
 
 final class TruthTranslatorUITests: XCTestCase {
-    func testLegalLinksAreAvailableInApp() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--chaddrop-reset-free-decodes"]
-        app.launch()
-
-        XCTAssertTrue(app.links["termsOfUseLink"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.links["privacyPolicyLink"].waitForExistence(timeout: 5))
-    }
-
     func testDecodeFlowShowsResult() {
         let app = XCUIApplication()
-        app.launchArguments = ["--chaddrop-reset-free-decodes"]
         app.launch()
 
         let input = app.textViews["pasteTextInput"]
@@ -23,7 +13,6 @@ final class TruthTranslatorUITests: XCTestCase {
         app.buttons["decodeButton"].tap()
 
         XCTAssertTrue(app.otherElements["resultPanel"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["The calendar is always full but the schedule is always empty."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["What he really means"].exists)
+        XCTAssertTrue(app.staticTexts["The translation"].exists)
     }
 }
