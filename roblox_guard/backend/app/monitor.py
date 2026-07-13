@@ -43,12 +43,13 @@ def load_watchlist(path: str) -> dict[int, dict]:
 
 class Monitor:
     def __init__(self, db: Database, client: RobloxClient, settings: Settings,
-                 vault=None, feeds: Optional[FeedManager] = None):
+                 vault=None, feeds: Optional[FeedManager] = None, push=None):
         self.db = db
         self.client = client
         self.settings = settings
         self.vault = vault  # EvidenceVault; optional so tests can omit it
         self.feeds = feeds or FeedManager()
+        self.push = push  # APNsService; optional, no-ops when unconfigured
         self.local_watchlist = load_watchlist(settings.watchlist_path)
         self._task: Optional[asyncio.Task] = None
 
@@ -174,8 +175,22 @@ class Monitor:
             created.append({"id": alert_id, "type": s.type.value, "severity": s.severity.value,
                             "title": s.title})
             await self._capture_evidence(child_id, alert_id, s, presence)
+            await self._push_alert(child, s)
         self.db.update_child_poll_status(child_id, "ok")
         return created
+
+    async def _push_alert(self, child: dict, s: sig.Signal) -> None:
+        """Notifies every registered parent device — the whole point of a
+        push is hearing about a threat without having the app open. INFO
+        alerts are baseline noise and don't warrant an interruption."""
+        if self.push is None or s.severity == sig.Severity.INFO:
+            return
+        name = child["display_name"] or child["roblox_username"]
+        try:
+            await self.push.send_to_all(self.db, title=f"{s.severity.value.title()} alert: {name}",
+                                        body=s.title)
+        except Exception:
+            log.exception("push notification failed for alert on child %s", child["id"])
 
     async def _capture_evidence(self, child_id: int, alert_id: int,
                                 s: sig.Signal, presence) -> None:

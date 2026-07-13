@@ -89,6 +89,13 @@ CREATE TABLE IF NOT EXISTS bug_reports (
     contact_email TEXT NOT NULL DEFAULT '',
     emailed INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS device_tokens (
+    token TEXT PRIMARY KEY,
+    platform TEXT NOT NULL DEFAULT 'ios',
+    registered_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+);
 """
 
 # Columns added after first release; applied to pre-existing databases.
@@ -413,3 +420,34 @@ class Database:
                           context: Optional[dict] = None) -> int:
         """Convenience wrapper used by exception handlers (main.py, monitor.py)."""
         return self.add_bug_report("backend_error", summary, details, context)
+
+    # -- push notification device tokens ----------------------------------------
+    # No parent-account system yet (v0.1 uses one shared API token per
+    # deployment — see README), so every registered device gets every push;
+    # this matches the single-family-per-backend model everywhere else here.
+
+    def register_device_token(self, token: str, platform: str = "ios") -> None:
+        now = utcnow()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO device_tokens (token, platform, registered_at, last_seen_at)"
+                " VALUES (?, ?, ?, ?)"
+                " ON CONFLICT(token) DO UPDATE SET last_seen_at = excluded.last_seen_at",
+                (token, platform, now, now),
+            )
+
+    def list_device_tokens(self) -> list[str]:
+        with self._connect() as conn:
+            return [r["token"] for r in conn.execute("SELECT token FROM device_tokens")]
+
+    def remove_device_token(self, token: str) -> None:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM device_tokens WHERE token = ?", (token,))
+
+    def total_unacknowledged_alerts(self) -> int:
+        """Across every linked child — used as the push notification badge count."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM alerts WHERE acknowledged = 0"
+            ).fetchone()
+            return int(row["n"])

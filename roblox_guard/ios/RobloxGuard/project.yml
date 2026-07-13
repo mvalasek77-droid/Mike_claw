@@ -34,6 +34,14 @@ targets:
         # Sources/Assets.xcassets/AppIcon.appiconset — original shield + block
         # mark, not derived from Roblox's own logo/branding (see README).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    # Push Notifications capability (PushManager.swift, backend app/push.py).
+    # "development" here is correct for Simulator/local device builds; Xcode
+    # rewrites this to "production" automatically when archiving for App
+    # Store distribution, so nothing to change before release.
+    entitlements:
+      path: RobloxGuard.entitlements
+      properties:
+        aps-environment: development
     # StoreKit 2 subscriptions (PurchaseManager.swift, PaywallView.swift).
     # RobloxGuard.storekit is a local test configuration (no App Store Connect
     # needed for Simulator testing): after `xcodegen generate`, in Xcode set

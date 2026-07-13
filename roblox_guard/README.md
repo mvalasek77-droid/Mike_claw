@@ -224,7 +224,7 @@ Two layers, for two different questions.
 **"Did I break anything?" — the pytest suite, offline, every commit:**
 
 ```bash
-cd backend && python -m pytest -q     # 131 tests, ~20s, no network
+cd backend && python -m pytest -q     # 150 tests, ~20s, no network
 ```
 
 This runs entirely against `FakeRobloxClient` (synthetic accounts only — see
@@ -282,17 +282,60 @@ same screen has an independent "Email us directly" button that opens Mail
 via a `mailto:` link straight to the support address, with no dependency on
 the backend or network at all.
 
+## Push notifications
+
+Watch/elevated alerts push to every registered parent device the moment
+`monitor.py` creates them — the whole point is hearing about a threat
+without the app open. INFO-level baseline alerts don't push; they'd just be
+noise.
+
+**How it's wired:**
+1. Settings → Notifications → "Enable Notifications" requests OS permission
+   (`PushManager.swift`) and, once granted, UIKit hands the app a device
+   token via `AppDelegate.didRegisterForRemoteNotificationsWithDeviceToken`.
+2. The token is sent to `POST /devices/register` and stored in the
+   `device_tokens` table (`db.py`).
+3. `monitor.py`'s `_push_alert` calls `app/push.py`'s `APNsService.send_to_all`
+   for every new non-info alert, signing a fresh JWT (ES256, token-based
+   auth — no certificates to renew) and posting to Apple's APNs HTTP/2 API.
+   Tokens Apple reports as dead (410 Gone / BadDeviceToken) are pruned
+   automatically.
+
+There's no parent-account system yet (v0.1 uses one shared `RG_API_TOKEN` per
+deployment), so every registered device receives every push for that
+deployment — consistent with the single-family-per-backend model everywhere
+else in this app.
+
+**Getting a real APNs key**, in App Store Connect → Users and Access → Keys
+(previously under Certificates): create a key with the "Apple Push
+Notifications service (APNs)" capability, download the `.p8` file once (it
+can't be re-downloaded), and note the Key ID and your Team ID. Then set:
+
+```bash
+RG_APNS_KEY_P8="$(cat AuthKey_XXXXXXXXXX.p8)"   # or RG_APNS_KEY_PATH=/path/to/key.p8
+RG_APNS_KEY_ID=XXXXXXXXXX
+RG_APNS_TEAM_ID=YYYYYYYYYY
+RG_APNS_BUNDLE_ID=com.mikeclaw.robloxguard      # default already matches
+RG_APNS_SANDBOX=1                                # unset/0 once shipping to the App Store
+```
+
+Unconfigured is a deliberate no-op (same pattern as `RG_SMTP_HOST` for the
+bug-log emailer) — the rest of the app works fine without it, `GET
+/notifications/status` reports `configured: false`, and nothing crashes.
+
 ## Production readiness
 
 What's verified here and what still needs real-device work before launch:
 
-**Verified in CI (131 tests):** full parent journey end-to-end (link →
+**Verified in CI (150 tests):** full parent journey end-to-end (link →
 baseline → threat → alert → evidence → report → feedback → erasure), hostile
 input (unicode, null bytes, script injection — HTML reports escape it),
 oversized uploads rejected, unknown-ID and validation paths, API auth
 (bearer token, constant-time compare, /health open for probes), bug log +
-report submission (DB persistence, mailer no-op/success/failure paths),
-performance
+report submission (DB persistence, mailer no-op/success/failure paths), push
+notification delivery (JWT signing, dead-token pruning, the monitor hook that
+fires per non-info alert — mocked APNs, since real delivery needs a live
+Apple key), performance
 budgets (250-friend snapshot < 5s through the whole pipeline, no-change
 re-poll < 2s), rapid-friending baseline bug fixed (was firing a false alert
 on every second poll after linking — caught by the perf test).

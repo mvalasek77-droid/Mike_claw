@@ -28,6 +28,7 @@ from .glossary import explain as glossary_explain
 from .intel import IntelService
 from .logging_config import configure_logging
 from .monitor import Monitor
+from .push import APNsService
 from .report import build_report_html, build_report_markdown
 from .resources import RESOURCES
 from .roblox_client import RobloxClient
@@ -66,6 +67,11 @@ class BugReportRequest(BaseModel):
     platform: str = Field(default="", max_length=40)
 
 
+class DeviceRegisterRequest(BaseModel):
+    token: str = Field(min_length=16, max_length=200)
+    platform: str = Field(default="ios", max_length=20)
+
+
 def create_app(settings: Optional[Settings] = None,
                client: Optional[RobloxClient] = None,
                start_monitor: bool = True) -> FastAPI:
@@ -76,7 +82,8 @@ def create_app(settings: Optional[Settings] = None,
     evidence_dir = os.environ.get(
         "RG_EVIDENCE_DIR", os.path.join(os.path.dirname(settings.db_path) or ".", "evidence"))
     vault = EvidenceVault(db, evidence_dir)
-    monitor = Monitor(db, roblox, settings, vault=vault)
+    push = APNsService(settings)
+    monitor = Monitor(db, roblox, settings, vault=vault, push=push)
     intel = IntelService(db, monitor.feeds)
 
     @asynccontextmanager
@@ -275,6 +282,27 @@ def create_app(settings: Optional[Settings] = None,
     async def list_bug_reports(limit: int = 100):
         """Operator view of the bug log — customer reports and backend errors."""
         return {"reports": db.list_bug_reports(limit=limit)}
+
+    # -- push notifications ------------------------------------------------------
+
+    @app.post("/devices/register", status_code=201)
+    async def register_device(payload: DeviceRegisterRequest):
+        """Called once the app has an APNs device token (Settings > Notifications).
+
+        No parent-account system yet, so every registered device receives
+        every push for this deployment — see db.py's device_tokens note.
+        """
+        db.register_device_token(payload.token, payload.platform)
+        return {"registered": True}
+
+    @app.delete("/devices/{token}", status_code=204)
+    async def unregister_device(token: str):
+        db.remove_device_token(token)
+
+    @app.get("/notifications/status")
+    async def notifications_status():
+        return {"configured": push.configured, "sandbox": settings.apns_use_sandbox,
+                "registered_devices": len(db.list_device_tokens())}
 
     # -- evidence ------------------------------------------------------------
 

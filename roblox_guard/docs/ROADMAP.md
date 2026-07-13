@@ -16,12 +16,16 @@
 - StoreKit 2 subscriptions (Single Child / Family, see README "Pricing")
 - Durable bug log (rotating file + bug_reports table) and an in-app
   "Report a Bug" flow with mailto: fallback (README "Bug log & reporting a bug")
-- 131 backend tests incl. full-journey E2E, hostile-input, and perf budgets
+- Push notifications (APNs, token-based auth) for watch/elevated alerts —
+  `push.py` + `PushManager.swift` (see README "Push notifications")
+- Original app icon (`Design/generate_app_icon.py`) — not derived from
+  Roblox's branding, since this is an unaffiliated third-party app
+- Xcode Cloud CI prep (`ci_scripts/ci_post_clone.sh`) and a draft privacy
+  policy (`docs/PRIVACY_POLICY.md`) ready to publish
+- 150 backend tests incl. full-journey E2E, hostile-input, and perf budgets
 
 ## Next (v0.2 — ship blockers for the App Store)
 
-- [ ] Push notifications (APNs) for watch/elevated alerts — the product's
-      value depends on parents hearing about threats without opening the app
 - [ ] Parent accounts + multi-device sync (Sign in with Apple; token per
       account replaces the shared RG_API_TOKEN)
 - [ ] Postgres + migrations (Alembic) behind the same Database interface
@@ -32,9 +36,18 @@
       off client-side `Transaction.currentEntitlements` to server-verified
       App Store Server Notifications if the backend ever needs to trust
       subscription state.
-- [ ] Privacy policy, App Privacy labels, COPPA counsel review
+- [x] Push notifications (APNs) for watch/elevated alerts — code is done and
+      unit-tested against a mocked APNs; still needed before release: a real
+      APNs key from App Store Connect (README "Push notifications") and a
+      live-device test, since Simulator push delivery can't be fully
+      verified without one.
+- [ ] Privacy policy, App Privacy labels, COPPA counsel review — draft
+      written (`docs/PRIVACY_POLICY.md`), needs counsel review and
+      publishing at a real URL (`PaywallView.privacyPolicyURL` is a
+      placeholder pointing at it)
 - [ ] XCUITest suite + snapshot tests once the Xcode project is generated
-      (including the paywall / entitlement-gating flow added for pricing)
+      (including the paywall / entitlement-gating flow added for pricing,
+      and the notification permission flow)
 
 ## v0.3 — iOS 26 Liquid Glass theme
 

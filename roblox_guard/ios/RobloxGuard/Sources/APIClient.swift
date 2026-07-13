@@ -163,6 +163,16 @@ struct APIClient {
         return response.emailed
     }
 
+    /// Hands the APNs device token to the backend (see PushManager.swift) so
+    /// monitor.py's per-alert push hook knows where to deliver.
+    func registerDevice(token: String) async throws {
+        struct RegisterResponse: Decodable { let registered: Bool }
+        let _: RegisterResponse = try await request("POST", "devices/register", body: [
+            "token": token,
+            "platform": "ios",
+        ])
+    }
+
     func uploadEvidence(childId: Int, imageData: Data, filename: String,
                         note: String) async throws {
         let boundary = "rg-\(UUID().uuidString)"

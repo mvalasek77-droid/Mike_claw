@@ -117,8 +117,17 @@ def main() -> int:
              if bug_ok else f"{bug.status_code}: {bug.text[:120]}")
         reports = client.get("/support/bug-reports?limit=1").json().get("reports", [])
         step("bug log readable", bool(reports) and reports[0]["source"] == "customer")
+
+        # 11. Push notification device registration round-trip
+        smoke_token = "smoke" + "0" * 59
+        reg = client.post("/devices/register", json={"token": smoke_token, "platform": "ios"})
+        status = client.get("/notifications/status").json()
+        step("device registration", reg.status_code == 201
+             and status.get("registered_devices", 0) >= 1,
+             f"APNs configured={status.get('configured')}")
+        client.delete(f"/devices/{smoke_token}")
     finally:
-        # 10. Erasure — always clean up the smoke child
+        # 12. Erasure — always clean up the smoke child
         deleted = client.delete(f"/children/{child_id}")
         step("full erasure", deleted.status_code == 204)
 

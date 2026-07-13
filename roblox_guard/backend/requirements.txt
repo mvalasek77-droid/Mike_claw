@@ -1,7 +1,9 @@
 fastapi>=0.110
 uvicorn>=0.29
-httpx>=0.27
+httpx[http2]>=0.27
 python-multipart>=0.0.9
 playwright>=1.40        # evidence screenshots; app degrades gracefully without it
+pyjwt>=2.8               # APNs auth token signing (ES256)
+cryptography>=42.0       # backs pyjwt's ES256 signing
 pytest>=8.0
 pytest-asyncio>=0.23

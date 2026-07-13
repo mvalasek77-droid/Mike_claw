@@ -69,6 +69,18 @@ class Settings:
     smtp_from: str = os.environ.get("RG_SMTP_FROM", "")
     smtp_use_tls: bool = os.environ.get("RG_SMTP_USE_TLS", "1") not in ("0", "false", "False")
 
+    # Push notifications (APNs, token-based auth). Unconfigured = no-op, same
+    # pattern as SMTP above. RG_APNS_KEY_P8 carries the .p8 key content
+    # directly for hosts with no persistent filesystem; RG_APNS_KEY_PATH is
+    # an alternative for hosts that can mount a secret file. Key ID and Team
+    # ID come from the Keys section of your Apple Developer account.
+    apns_key_p8: str = os.environ.get("RG_APNS_KEY_P8", "")
+    apns_key_path: str = os.environ.get("RG_APNS_KEY_PATH", "")
+    apns_key_id: str = os.environ.get("RG_APNS_KEY_ID", "")
+    apns_team_id: str = os.environ.get("RG_APNS_TEAM_ID", "")
+    apns_bundle_id: str = os.environ.get("RG_APNS_BUNDLE_ID", "com.mikeclaw.robloxguard")
+    apns_use_sandbox: bool = os.environ.get("RG_APNS_SANDBOX", "0") in ("1", "true", "True")
+
     extra: dict = field(default_factory=dict)
 
 

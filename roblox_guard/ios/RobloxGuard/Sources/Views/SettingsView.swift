@@ -1,9 +1,13 @@
 import StoreKit
 import SwiftUI
+import UIKit
+import UserNotifications
 
 struct SettingsView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var purchases: PurchaseManager
+    @EnvironmentObject var push: PushManager
+    @Environment(\.openURL) private var openURL
     @State private var childToUnlink: Child?
     @State private var protection: ProtectionStatus?
     @State private var showPaywall = false
@@ -26,6 +30,14 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Subscription")
+                }
+
+                Section {
+                    notificationsRow
+                } header: {
+                    Text("Notifications")
+                } footer: {
+                    Text("Get notified the moment a watch-level or elevated alert fires, without opening the app.")
                 }
 
                 Section("Linked accounts") {
@@ -95,6 +107,7 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .task { protection = try? await store.api.protectionStatus() }
+            .task { await push.refreshStatus() }
             .sheet(isPresented: $showPaywall) { PaywallView() }
             .sheet(isPresented: $showBugReport) { BugReportView() }
             .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
@@ -111,6 +124,32 @@ struct SettingsView: View {
                     childToUnlink = nil
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var notificationsRow: some View {
+        switch push.authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            Label(push.isRegistered ? "Notifications enabled" : "Notifications enabled — connecting…",
+                  systemImage: "bell.badge.fill")
+                .foregroundStyle(.green)
+        case .denied:
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    openURL(url)
+                }
+            } label: {
+                Label("Notifications off — open Settings", systemImage: "bell.slash")
+            }
+        case .notDetermined:
+            Button {
+                Task { await push.requestAuthorization() }
+            } label: {
+                Label("Enable Notifications", systemImage: "bell")
+            }
+        @unknown default:
+            EmptyView()
         }
     }
 }
