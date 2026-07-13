@@ -330,8 +330,9 @@ repo, and what's left for you on a Mac:
    repo, select the branch to build from, and let it run its first build —
    this is the first time the app has ever actually compiled, so expect to
    fix real build errors (nothing here has been verified to compile).
-5. Add an app icon — there is currently no `Assets.xcassets`/`AppIcon` in the
-   project at all, which will fail App Store validation on archive.
+5. App icon is done — `Sources/Assets.xcassets/AppIcon.appiconset`, an
+   original shield-and-block mark (not derived from Roblox's branding; see
+   `ios/RobloxGuard/Design/generate_app_icon.py` to regenerate/edit it).
 6. Create the four subscription products in App Store Connect matching
    `RobloxGuard.storekit` (see "Pricing" above) before StoreKit works for
    real users — `RobloxGuard.storekit` only covers local Simulator testing.
