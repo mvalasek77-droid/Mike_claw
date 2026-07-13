@@ -52,8 +52,17 @@ class RobloxPresence:
 
 
 def _parse_created(value: str) -> datetime:
-    # Roblox returns ISO 8601 with a Z suffix and variable sub-second precision.
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    # Roblox returns ISO 8601 with a Z suffix and variable sub-second precision
+    # (sometimes 1 digit, sometimes 3, sometimes 6). Normalize to 6 digits.
+    if value.endswith("Z"):
+        value = value[:-1]  # strip Z for easier manipulation
+        # Find fractional seconds
+        if "." in value:
+            base, frac = value.rsplit(".", 1)
+            frac = (frac + "000000")[:6]  # pad/truncate to microseconds
+            value = f"{base}.{frac}"
+        value = value + "+00:00"
+    return datetime.fromisoformat(value)
 
 
 class RobloxClient:
