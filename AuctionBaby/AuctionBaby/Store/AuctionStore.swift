@@ -357,8 +357,85 @@ final class AuctionStore: ObservableObject {
 
     /// Poll for refunds that landed while the app was backgrounded. Called from
     /// the app root's `.onChange(of: scenePhase)` when returning to foreground.
-    func refreshPendingRefunds(storeKit: StoreKitService) async {
+    ///
+    /// Two channels feed the wallet clawback:
+    ///   1. `storeKit.drainPending()` — StoreKit's own `Transaction.all` sweep,
+    ///      which sees refunds only when Apple has already flagged the
+    ///      revocation in the receipt.
+    ///   2. The Worker's `/refunds/pending` queue — Apple's ASSN V2 webhook
+    ///      lands there in seconds, well before StoreKit surfaces it, and it
+    ///      also catches refunds that the on-device path misses entirely.
+    ///
+    /// Both paths write into the SAME `rev-<txID>` dedup set so a refund seen
+    /// twice can't double-debit the wallet.
+    func refreshPendingRefunds(storeKit: StoreKitService, backend: BackendService) async {
         await storeKit.drainPending()
+        await applyWorkerRefunds(backend: backend)
+    }
+
+    /// Shared dedup with `StoreKitService.checkRevocation` — both paths key on
+    /// `"rev-<transaction id>"`, so we can't debit twice.
+    private static let revokedKey = "auctionbaby.storekit.revoked.v1"
+    /// Records how much each refund actually clawed, so a REFUND_REVERSED
+    /// restores exactly that — not the full pack price when the wallet was
+    /// already empty at claw time.
+    private static let clawedKey = "auctionbaby.refunds.clawed.v1"
+
+    private func applyWorkerRefunds(backend: BackendService) async {
+        guard backend.isConfigured else { return }
+        let entries: [BackendService.RefundEntry]
+        switch await backend.fetchPendingRefunds(appAccountToken: appAccountToken) {
+        case .success(let list) where !list.isEmpty: entries = list
+        default: return
+        }
+
+        var revoked = Set(UserDefaults.standard.array(forKey: Self.revokedKey) as? [String] ?? [])
+        var clawed = UserDefaults.standard.dictionary(forKey: Self.clawedKey) as? [String: Int] ?? [:]
+        var ackedIDs: [String] = []
+
+        for entry in entries {
+            let txID = entry.transactionId
+            guard !txID.isEmpty else { continue }
+            let gavels = StoreKitService.gavels(for: entry.productId)
+            guard gavels > 0 else {
+                // Unknown/non-Gavel product (a Boost or Pass tier) — nothing
+                // for us to claw, but ack it or the Worker re-serves forever.
+                ackedIDs.append(txID)
+                continue
+            }
+            let revTag = "rev-\(txID)"
+            switch entry.kind {
+            case "refunded":
+                if !revoked.contains(revTag) {
+                    let before = wallet
+                    wallet = max(0, wallet - gavels)
+                    let actuallyClawed = before - wallet
+                    revoked.insert(revTag)
+                    clawed[txID] = actuallyClawed
+                    if actuallyClawed > 0 {
+                        toastFlash("Refund processed — \(Tally.compact(actuallyClawed)) Gavels removed.")
+                        ErrorMonitor.shared.record(category: "StoreKit",
+                                                   message: "Worker-refund clawback: \(actuallyClawed) Gavels",
+                                                   detail: "txn \(txID), product \(entry.productId)")
+                    }
+                }
+            case "refund_reversed":
+                let restore = clawed[txID] ?? (revoked.contains(revTag) ? gavels : 0)
+                clawed.removeValue(forKey: txID)
+                if restore > 0 {
+                    wallet += restore
+                    toastFlash("Refund reversed — \(Tally.compact(restore)) Gavels restored.")
+                }
+            default:
+                break
+            }
+            ackedIDs.append(txID)
+        }
+
+        UserDefaults.standard.set(Array(revoked), forKey: Self.revokedKey)
+        UserDefaults.standard.set(clawed, forKey: Self.clawedKey)
+        await backend.ackRefunds(appAccountToken: appAccountToken, transactionIDs: ackedIDs)
+        save()
     }
 
     /// Whether a Spotlight Boost is currently live.

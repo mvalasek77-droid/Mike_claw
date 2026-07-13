@@ -25,10 +25,11 @@ struct AuctionBabyApp: App {
                     let tier = storeKit.activeTier
                     store.autoRebidEnabled = tier == .reserve || tier == .blackcard
                     store.priorityPlacementEnabled = tier == .blackcard
+                    await store.refreshPendingRefunds(storeKit: storeKit, backend: backend)
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
-                        Task { await store.refreshPendingRefunds(storeKit: storeKit) }
+                        Task { await store.refreshPendingRefunds(storeKit: storeKit, backend: backend) }
                     }
                 }
                 .onChange(of: storeKit.activeTier) { _, tier in

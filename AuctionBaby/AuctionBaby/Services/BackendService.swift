@@ -114,6 +114,15 @@ final class BackendService: ObservableObject {
         let version: String
     }
 
+    /// One queued refund the Worker learned about via Apple's ASSN V2, waiting
+    /// for the client to claw back the matching Gavels.
+    struct RefundEntry: Decodable {
+        let transactionId: String
+        let productId: String
+        /// "refunded" (claw back Gavels) or "refund_reversed" (restore them).
+        let kind: String
+    }
+
     // MARK: - Calls
 
     /// GET / — verifies the URL + reachability (no auth needed, but we send
@@ -183,6 +192,27 @@ final class BackendService: ObservableObject {
                 : String(format: "Float healthy at $%.2f — no top-up needed.", r.availableUSD)
         }
     }
+
+    /// GET /refunds/pending?app_account_token=<uuid> — Apple ASSN refund events
+    /// that landed at the Worker while the app was closed. The Worker keeps the
+    /// queue keyed by the buyer's per-user `appAccountToken` so refunds route
+    /// to the right wallet without any account concept.
+    func fetchPendingRefunds(appAccountToken: UUID) async -> BackendResult<[RefundEntry]> {
+        struct Wrapper: Decodable { let refunds: [RefundEntry] }
+        let token = appAccountToken.uuidString.lowercased()
+        return await get("/refunds/pending?app_account_token=\(token)", as: Wrapper.self).map(\.refunds)
+    }
+
+    /// POST /refunds/ack — tell the Worker the client has applied these
+    /// transaction ids so they don't re-serve every foreground.
+    func ackRefunds(appAccountToken: UUID, transactionIDs: [String]) async {
+        guard !transactionIDs.isEmpty else { return }
+        _ = await post("/refunds/ack",
+                       body: ["app_account_token": appAccountToken.uuidString.lowercased(),
+                              "transaction_ids": transactionIDs],
+                       as: AckResponse.self)
+    }
+    private struct AckResponse: Decodable { let acked: Int }
 
     /// POST /payouts/digest — manually email the payout digest.
     func triggerDigest() async -> BackendResult<String> {
