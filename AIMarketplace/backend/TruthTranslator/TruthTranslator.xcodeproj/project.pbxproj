@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		176378C4D7F18EBBC88E7992 /* DecodeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A02B4B6FD63D06B493CD0D7 /* DecodeModels.swift */; };
 		1979147A0DB535C8D05F80AC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9935D8EB8B566576CC339E7 /* ContentView.swift */; };
-		6C5FCDFA434D9FDA8109FD96 /* ReleaseGatewayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F5B3B6EFC80FC0F0A4DBFB /* ReleaseGatewayView.swift */; };
 		813741CCD00859DFF18D9AC9 /* TruthTranslatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 293CE7E28E23334A44CB1EC7 /* TruthTranslatorApp.swift */; };
 		9BEA61620E71BC72AFF09CB7 /* DecodeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */; };
 		9E897C25C4B38A66C8B4C3E9 /* TruthTranslatorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED4657DDA4D84219960F9FB /* TruthTranslatorUITests.swift */; };
@@ -48,7 +47,6 @@
 		6BA243842EABA0CB33BC6E89 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		8A714BFA8042C5C406DF53D9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecodeEngine.swift; sourceTree = "<group>"; };
-		A2F5B3B6EFC80FC0F0A4DBFB /* ReleaseGatewayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseGatewayView.swift; sourceTree = "<group>"; };
 		CCC32FB8967BB173138E0E17 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		D9935D8EB8B566576CC339E7 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E40786EE5C662F482B177129 /* AIProxyClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProxyClient.swift; sourceTree = "<group>"; };
@@ -91,7 +89,6 @@
 				D9935D8EB8B566576CC339E7 /* ContentView.swift */,
 				A120F35FE8EDA6429B48A00B /* DecodeEngine.swift */,
 				4A02B4B6FD63D06B493CD0D7 /* DecodeModels.swift */,
-				A2F5B3B6EFC80FC0F0A4DBFB /* ReleaseGatewayView.swift */,
 				293CE7E28E23334A44CB1EC7 /* TruthTranslatorApp.swift */,
 				BB264E1CB7D9E8562A75A02E /* Resources */,
 			);
@@ -263,7 +260,6 @@
 				1979147A0DB535C8D05F80AC /* ContentView.swift in Sources */,
 				9BEA61620E71BC72AFF09CB7 /* DecodeEngine.swift in Sources */,
 				176378C4D7F18EBBC88E7992 /* DecodeModels.swift in Sources */,
-				6C5FCDFA434D9FDA8109FD96 /* ReleaseGatewayView.swift in Sources */,
 				813741CCD00859DFF18D9AC9 /* TruthTranslatorApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

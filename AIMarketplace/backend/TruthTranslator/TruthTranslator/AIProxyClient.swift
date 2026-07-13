@@ -17,10 +17,11 @@ struct DecodeService {
                 )
             } catch {
                 let result = engine.decode(text: text, tone: tone, context: context)
+                let reason = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 return DecodeOutcome(
                     result: result,
                     usedFallback: true,
-                    statusMessage: "Saved API key could not reach Claude. Offline mode used; check the key in settings."
+                    statusMessage: "Offline mode used — \(reason) Check the key in settings."
                 )
             }
         }
@@ -129,7 +130,7 @@ struct UserAnthropicClient {
         request.setValue(key, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.httpBody = try JSONEncoder().encode(AnthropicRequest(
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-5",
             max_tokens: 900,
             system: Self.systemPrompt,
             messages: [
@@ -147,8 +148,12 @@ struct UserAnthropicClient {
         ))
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+        guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let detail = Self.errorMessage(from: data)
+            throw AnthropicClientError.http(status: http.statusCode, message: detail)
         }
 
         let apiResponse = try JSONDecoder().decode(AnthropicResponse.self, from: data)
@@ -200,6 +205,27 @@ struct UserAnthropicClient {
             return trimmed
         }
         return String(trimmed[firstBrace...lastBrace])
+    }
+
+    private static func errorMessage(from data: Data) -> String? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let error = obj["error"] as? [String: Any],
+              let message = error["message"] as? String else {
+            return nil
+        }
+        return message
+    }
+
+    enum AnthropicClientError: LocalizedError {
+        case http(status: Int, message: String?)
+
+        var errorDescription: String? {
+            switch self {
+            case let .http(status, message):
+                if let message { return "Claude error \(status): \(message)" }
+                return "Claude error \(status)."
+            }
+        }
     }
 
     private struct AnthropicRequest: Encodable {

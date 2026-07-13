@@ -96,7 +96,6 @@ capture_internal() {
 
 capture_public "01-home"
 capture_public "02-decoded-example" --chaddrop-demo-result
-capture_internal "release-gateway-walkthrough" --chaddrop-show-release-gateway
 
 echo ""
 echo "Public App Store screenshot candidates:"

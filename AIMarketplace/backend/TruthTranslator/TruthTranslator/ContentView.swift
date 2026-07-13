@@ -3,14 +3,12 @@ import UIKit
 
 struct ContentView: View {
     @StateObject private var viewModel: DecodeViewModel
-    @State private var showingReleaseGateway: Bool
     @State private var showingAPISettings = false
     @State private var hasSavedAPIKey = AnthropicAPIKeyStore().isConfigured
     @FocusState private var inputFocused: Bool
 
     init(launchArguments: [String] = ProcessInfo.processInfo.arguments) {
         _viewModel = StateObject(wrappedValue: DecodeViewModel(launchArguments: launchArguments))
-        _showingReleaseGateway = State(initialValue: launchArguments.contains("--chaddrop-show-release-gateway"))
     }
 
     var body: some View {
@@ -38,10 +36,6 @@ struct ContentView: View {
             .safeAreaInset(edge: .bottom) {
                 Color.clear.frame(height: 28)
             }
-        }
-        .fullScreenCover(isPresented: $showingReleaseGateway) {
-            ReleaseGatewayView()
-                .preferredColorScheme(.dark)
         }
         .sheet(isPresented: $showingAPISettings) {
             APIKeySettingsView {
@@ -71,15 +65,6 @@ struct ContentView: View {
                 }
                 .buttonStyle(IconButtonStyle(size: 44))
                 .accessibilityLabel("Open API key settings")
-
-                Button {
-                    showingReleaseGateway = true
-                } label: {
-                    Image(systemName: "checklist.checked")
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(IconButtonStyle(size: 44))
-                .accessibilityLabel("Open release gateway")
             }
 
             Text("Paste the text. Get the truth in group-chat English.")
