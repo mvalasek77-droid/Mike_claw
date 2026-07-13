@@ -55,6 +55,11 @@ final class AuctionStore: ObservableObject {
     /// Which match currently shows the "…typing" bubble, if any.
     @Published var typingMatchID: UUID?
 
+    /// Set by the app root when the user has Reserve+ or higher.
+    var autoRebidEnabled = false
+    /// Set by the app root when the user has Black Card.
+    var priorityPlacementEnabled = false
+
     var isRegistered: Bool { role != nil }
 
     /// Free bidders may keep this many *live* (pending) bids at once. A Pass
@@ -210,7 +215,7 @@ final class AuctionStore: ObservableObject {
                               location: isDemo && location.isEmpty ? "Cupertino" : location,
                               bio: isDemo && bio.isEmpty ? "Here to see everything." : bio,
                               hue: hue, prompts: prompts, interests: interests)
-        if role == .woman { profile.startingBid = startingBid }
+        if role == .woman { profile.startingBid = startingBid.map { max(0, min($0, Self.maxStartingBid)) } }
         self.me = profile
         self.role = role
         self.floor = SampleData.floor()
@@ -361,7 +366,8 @@ final class AuctionStore: ObservableObject {
 
     /// Activate a 30-minute Spotlight Boost (called from a verified purchase).
     func activateBoost() {
-        boostUntil = Date().addingTimeInterval(Double(StoreKitService.boostMinutes) * 60)
+        let base = isBoosted ? (boostUntil ?? .now) : .now
+        boostUntil = base.addingTimeInterval(Double(StoreKitService.boostMinutes) * 60)
         Haptics.success()
         toastFlash(role == .woman
                    ? "⚡️ Spotlight Boost live — bidders are flocking to your lot."
@@ -446,9 +452,11 @@ final class AuctionStore: ObservableObject {
 
     // MARK: - Lot (woman) actions
 
+    static let maxStartingBid = 10_000_000
+
     func setStartingBid(_ value: Int?) {
         guard role == .woman else { return }
-        me.startingBid = value
+        me.startingBid = value.map { max(0, min($0, Self.maxStartingBid)) }
         save()
     }
 
@@ -501,7 +509,9 @@ final class AuctionStore: ObservableObject {
     /// guarantees a $1M Masterpiece-eligible bid so that flow is reachable.
     func summonBidder(trillionaire: Bool = false) {
         guard role == .woman else { return }
-        let pool = bidders.isEmpty ? SampleData.suitors() : bidders
+        let raw = bidders.isEmpty ? SampleData.suitors() : bidders
+        let pool = raw.filter { !blockedIDs.contains($0.id) }
+        guard !pool.isEmpty else { return }
         var man = pool.randomElement() ?? pool[0]
         let amount: Int
         if trillionaire {
@@ -509,7 +519,7 @@ final class AuctionStore: ObservableObject {
             man = pool.first { $0.archetype == .trillionaire } ?? pool[0]
             amount = Bid.masterpieceBid   // $1,000,000 — the Masterpiece-minting bid
         } else {
-            let floor = me.startingBid ?? 150
+            let floor = min(me.startingBid ?? 150, Self.maxStartingBid)
             amount = Int(Double(floor) * Double.random(in: 0.7...2.4))
         }
         let note = trillionaire
@@ -661,12 +671,18 @@ final class AuctionStore: ObservableObject {
               !matches[idx].womanReviewedMan else { return }   // one review per date
         let bid = matches[idx].bid
 
-        // Her verdict on him (cosmetic — he isn't the user).
+        // Her verdict on him — stored on the match. The woman's stars and text
+        // feed into the man's record (cosmetic — he isn't the user).
         matches[idx].womanReviewedMan = true
+        if let manIdx = bidders.firstIndex(where: { $0.id == bid.man.id }) {
+            bidders[manIdx].reviews.insert(
+                DateReview(authorName: me.name, authorHue: me.hue, stars: stars, text: text,
+                           paidBid: paid, bidAmount: bid.amount), at: 0)
+        }
 
         let showcaseBefore = me.showcaseCredit
         let tierBefore = me.artTier
-        // His review of her → grows *her* Showcase score with simulated traits.
+        // His simulated review of her → grows *her* Showcase score.
         var traits: [String: Int] = [:]
         for t in Trait.allCases { traits[t.rawValue] = Int.random(in: 4...5) }
         me.reviews.insert(
@@ -675,7 +691,8 @@ final class AuctionStore: ObservableObject {
                        interestCategories: Array(me.interests.prefix(2))),
             at: 0)
 
-        // Earnings were credited at acceptance in this demo, so nothing to add here.
+        // Deadbeat: claw back earnings credited at acceptance.
+        if !paid { earnings = max(0, earnings - bid.amount) }
         if bid.qualifiesForMasterpiece && paid {
             me.masterpiece = true
             // Her confirmation is also what verifies his Trillionaire status on record.
@@ -747,9 +764,10 @@ final class AuctionStore: ObservableObject {
                 // Money + reputation both move the needle.
                 let ratio = Double(bid.amount) / Double(threshold)
                 let creditPull = Double(self.me.auctionCredit - 600) / 300.0
-                let boostPull = self.isBoosted ? 0.25 : 0   // Spotlight Boost lifts your odds
-                let gildPull = bid.gilded ? 0.30 : 0        // a Gilded bid stands out
-                accepted = (ratio + creditPull + boostPull + gildPull + Double.random(in: -0.25...0.25)) >= 1.0
+                let boostPull = self.isBoosted ? 0.25 : 0
+                let gildPull = bid.gilded ? 0.30 : 0
+                let priorityPull = self.priorityPlacementEnabled ? 0.20 : 0
+                accepted = (ratio + creditPull + boostPull + gildPull + priorityPull + Double.random(in: -0.25...0.25)) >= 1.0
             }
 
             bid.status = accepted ? .accepted : .declined
@@ -773,9 +791,20 @@ final class AuctionStore: ObservableObject {
                 self.log(.bidAccepted, "\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid.")
             } else {
                 let before = self.me.auctionCredit
-                self.me.declinedBids += 1   // rejection is data — a light credit drag
-                Haptics.warning()
-                self.toastFlash("\(bid.woman.name) passed. Bid higher or build your reputation.")
+                self.me.declinedBids += 1
+                if self.autoRebidEnabled && !bid.onCopycat {
+                    let raised = Int(Double(bid.amount) * 1.2)
+                    var rebid = Bid(man: self.me, woman: bid.woman, amount: raised, note: bid.note)
+                    rebid.gilded = bid.gilded
+                    self.outgoingBids.insert(rebid, at: 0)
+                    Haptics.commit()
+                    self.toastFlash("Auto-rebid: \(Money.compact(raised)) on \(bid.woman.name).")
+                    self.log(.rebid, "Auto-rebid \(Money.compact(raised)) on \(bid.woman.name) (Reserve perk).")
+                    self.scheduleWomanDecision(bidID: rebid.id)
+                } else {
+                    Haptics.warning()
+                    self.toastFlash("\(bid.woman.name) passed. Bid higher or build your reputation.")
+                }
                 self.log(.bidDeclined, "\(bid.woman.name) passed on your \(Money.compact(bid.amount)) bid.")
                 self.creditPing(before: before)
             }
@@ -819,10 +848,11 @@ final class AuctionStore: ObservableObject {
     private func seedIncomingBids() {
         let suitors = bidders.isEmpty ? SampleData.suitors() : bidders
         guard suitors.count > 3 else { return }
+        let base = min(me.startingBid ?? 150, Self.maxStartingBid)
         incomingBids = [
-            Bid(man: suitors[0], woman: me, amount: max(300, (me.startingBid ?? 150) * 2),
+            Bid(man: suitors[0], woman: me, amount: max(300, base &* 2),
                 note: "Saw your prompts. Dinner at Carbone? My treat."),
-            Bid(man: suitors[3], woman: me, amount: max(120, me.startingBid ?? 150),
+            Bid(man: suitors[3], woman: me, amount: max(120, base),
                 note: "I'll lose at trivia and pay anyway."),
         ]
     }
@@ -915,5 +945,8 @@ final class AuctionStore: ObservableObject {
         appAccountToken = snap.appAccountToken ?? appAccountToken
         demoMode = snap.demoMode ?? false
         if isBoosted, role == .woman { startBoostSummons() }
+        for bid in outgoingBids where bid.status == .pending {
+            scheduleWomanDecision(bidID: bid.id)
+        }
     }
 }

@@ -22,11 +22,18 @@ struct AuctionBabyApp: App {
                     storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
                     storeKit.onBoost = { [weak store] in store?.activateBoost() }
                     await storeKit.loadProducts()
+                    let tier = storeKit.activeTier
+                    store.autoRebidEnabled = tier == .reserve || tier == .blackcard
+                    store.priorityPlacementEnabled = tier == .blackcard
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         Task { await store.refreshPendingRefunds(storeKit: storeKit) }
                     }
+                }
+                .onChange(of: storeKit.activeTier) { _, tier in
+                    store.autoRebidEnabled = tier == .reserve || tier == .blackcard
+                    store.priorityPlacementEnabled = tier == .blackcard
                 }
         }
     }

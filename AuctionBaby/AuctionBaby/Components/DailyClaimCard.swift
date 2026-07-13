@@ -8,7 +8,14 @@ struct DailyClaimCard: View {
     @State private var pulse = false
 
     private var nextReward: Int {
-        AuctionStore.dailyGavelBase * min(max(store.dailyStreak, 0) + 1, 7)
+        let streakWillContinue: Bool = {
+            guard let last = store.lastDailyClaim else { return false }
+            let cal = Calendar.current
+            guard let nextDay = cal.date(byAdding: .day, value: 1, to: last) else { return false }
+            return cal.isDate(nextDay, inSameDayAs: Date())
+        }()
+        let nextStreak = streakWillContinue ? store.dailyStreak + 1 : 1
+        return AuctionStore.dailyGavelBase * min(nextStreak, 7)
     }
 
     var body: some View {
@@ -24,8 +31,8 @@ struct DailyClaimCard: View {
                         .background(Circle().fill(Theme.goldGradient))
                         .scaleEffect(pulse ? 1.08 : 1)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(store.dailyStreak > 0 ? "Day \(store.dailyStreak + 1) streak ready"
-                                                   : "Daily Gavels ready")
+                        Text(nextReward > AuctionStore.dailyGavelBase ? "Day streak ready"
+                                                               : "Daily Gavels ready")
                             .font(.system(size: 14, weight: .heavy, design: .serif))
                             .foregroundStyle(Theme.ink)
                         Text("Claim \(Tally.compact(nextReward)) Gavels — streaks grow the pot.")

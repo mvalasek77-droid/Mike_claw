@@ -123,10 +123,12 @@ struct GavelStoreView: View {
 
     private var unavailableCard: some View {
         GlassCard(tint: Theme.warning) {
-            Text("Store products aren't loaded. In a sandbox/TestFlight build they appear here. For now, use the demo top-up:")
+            Text("Store products aren't loaded yet. In a sandbox/TestFlight build they appear here.")
                 .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
-            GhostButton(title: "Demo: +10,000 Gavels (no charge)", systemImage: "wand.and.stars") {
-                store.addDemoGavels()
+            if store.demoMode {
+                GhostButton(title: "Demo: +10,000 Gavels (no charge)", systemImage: "wand.and.stars") {
+                    store.addDemoGavels()
+                }
             }
         }
     }

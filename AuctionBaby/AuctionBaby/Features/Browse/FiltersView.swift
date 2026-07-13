@@ -56,13 +56,18 @@ struct FiltersView: View {
         }
     }
 
+    private var hasReserve: Bool {
+        guard let tier = storeKit.activeTier else { return false }
+        return tier == .reserve || tier == .blackcard
+    }
+
     private var premiumCard: some View {
         GlassCard(title: "Advanced filters", icon: "slider.horizontal.3", tint: Theme.rose) {
-            if !storeKit.hasPass {
+            if !hasReserve {
                 Button { showStore = true } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "lock.fill")
-                        Text("Unlock advanced filters with a Pass")
+                        Text("Unlock advanced filters with Reserve+")
                         Spacer()
                         Image(systemName: "chevron.right")
                     }
@@ -70,20 +75,38 @@ struct FiltersView: View {
                     .padding(.vertical, 4)
                 }.buttonStyle(.plain)
             }
-            Toggle(isOn: f.verifiedOnly.animation(Motion.snap)) {
+            Toggle(isOn: Binding(
+                get: { store.filters.verifiedOnly },
+                set: { newValue in
+                    if newValue && !hasReserve { showStore = true; return }
+                    Motion.run(Motion.snap) { store.filters.verifiedOnly = newValue }
+                }
+            )) {
                 Label("Verified profiles only", systemImage: "checkmark.seal.fill")
                     .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
             }
             .tint(Theme.verify)
-            .disabled(!storeKit.hasPass)
-            .opacity(storeKit.hasPass ? 1 : 0.45)
+            .opacity(hasReserve || store.filters.verifiedOnly ? 1 : 0.45)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("MATCH INTERESTS").font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(1).foregroundStyle(Theme.inkFaint)
                 FlowChips(items: FilterPreferences.interestPool, selected: f.interests)
-                    .disabled(!storeKit.hasPass)
-                    .opacity(storeKit.hasPass ? 1 : 0.45)
+                    .disabled(!hasReserve)
+                    .opacity(hasReserve ? 1 : 0.45)
+            }
+            if !hasReserve && store.filters.activeCount > (store.filters.minAge > 18 || store.filters.maxAge < 60 ? 1 : 0) {
+                Button {
+                    Motion.run(Motion.snap) {
+                        store.filters.verifiedOnly = false
+                        store.filters.interests = []
+                    }
+                } label: {
+                    Label("Clear premium filters", systemImage: "xmark.circle.fill")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.danger)
+                }
+                .buttonStyle(.plain)
             }
         }
     }

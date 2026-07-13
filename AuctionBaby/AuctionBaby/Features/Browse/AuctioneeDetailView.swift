@@ -5,9 +5,15 @@ import SwiftUI
 struct AuctioneeDetailView: View {
     let woman: Profile
     var onBid: () -> Void
+    @EnvironmentObject private var storeKit: StoreKitService
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
     @State private var bidPrompt: Prompt?
+
+    private var hasReserve: Bool {
+        guard let tier = storeKit.activeTier else { return false }
+        return tier == .reserve || tier == .blackcard
+    }
 
     var body: some View {
         ScrollView {
@@ -39,6 +45,25 @@ struct AuctioneeDetailView: View {
                     GlassCard(title: "About", icon: "text.quote") {
                         Text(woman.bio).font(.system(size: 15)).foregroundStyle(Theme.ink)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
+                if hasReserve, let reserve = woman.startingBid {
+                    GlassSurface(corner: Theme.cornerL, tint: Theme.gold) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "lock.open.fill").font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(Theme.gold)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Her reserve price").font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .foregroundStyle(Theme.inkFaint)
+                                Text(Money.full(reserve))
+                                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(Theme.gold)
+                            }
+                            Spacer()
+                            Chip(text: "Reserve perk", systemImage: "lock.open.fill", color: Theme.rose)
+                        }
+                        .padding(14)
                     }
                 }
 
