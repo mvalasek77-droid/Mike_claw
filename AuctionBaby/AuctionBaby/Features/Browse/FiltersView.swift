@@ -16,6 +16,7 @@ struct FiltersView: View {
                 VStack(spacing: 16) {
                     ageCard
                     premiumCard
+                    reserveRequirementsCard
                     Spacer(minLength: 24)
                 }
                 .screenPadding().padding(.top, 8)
@@ -100,6 +101,11 @@ struct FiltersView: View {
                     Motion.run(Motion.snap) {
                         store.filters.verifiedOnly = false
                         store.filters.interests = []
+                        store.filters.minHeightCm = 0
+                        store.filters.smokingRequirement = nil
+                        store.filters.drinkingRequirement = nil
+                        store.filters.kidsRequirement = nil
+                        store.filters.educationRequirement = nil
                     }
                 } label: {
                     Label("Clear premium filters", systemImage: "xmark.circle.fill")
@@ -109,5 +115,93 @@ struct FiltersView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// Reserve Requirements — dealbreaker filters, Reserve-tier perk. A stated
+    /// mismatch removes the profile from the feed; unset fields on the target
+    /// profile always pass (we don't punish incomplete profiles).
+    private var reserveRequirementsCard: some View {
+        GlassCard(title: "Reserve Requirements", icon: "checklist", tint: Theme.gold) {
+            Text("Dealbreakers. Anyone whose profile clearly doesn't fit is hidden from the floor. Blank fields on a profile always pass.")
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.inkFaint)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !hasReserve {
+                Button { showStore = true } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lock.fill")
+                        Text("Unlock Reserve Requirements")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
+                    .padding(.vertical, 4)
+                }.buttonStyle(.plain)
+            }
+
+            heightRow.disabled(!hasReserve).opacity(hasReserve ? 1 : 0.45)
+            enumRow(title: "Smoking", options: Lifestyle.Smoking.allCases,
+                    binding: $store.filters.smokingRequirement)
+                .disabled(!hasReserve).opacity(hasReserve ? 1 : 0.45)
+            enumRow(title: "Drinking", options: Lifestyle.Drinking.allCases,
+                    binding: $store.filters.drinkingRequirement)
+                .disabled(!hasReserve).opacity(hasReserve ? 1 : 0.45)
+            enumRow(title: "Kids", options: Lifestyle.Kids.allCases,
+                    binding: $store.filters.kidsRequirement)
+                .disabled(!hasReserve).opacity(hasReserve ? 1 : 0.45)
+            enumRow(title: "Education", options: Lifestyle.Education.allCases,
+                    binding: $store.filters.educationRequirement)
+                .disabled(!hasReserve).opacity(hasReserve ? 1 : 0.45)
+        }
+    }
+
+    private var heightRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Minimum height").font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                Text(store.filters.minHeightCm == 0 ? "Any" : Self.formatHeight(store.filters.minHeightCm))
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.gold)
+            }
+            // 0 = "Any", 150cm–200cm range covered by the slider.
+            Slider(value: Binding(
+                get: { Double(store.filters.minHeightCm == 0 ? 149 : store.filters.minHeightCm) },
+                set: { store.filters.minHeightCm = Int($0) <= 149 ? 0 : Int($0) }
+            ), in: 149...200, step: 1).tint(Theme.gold)
+        }
+    }
+
+    private func enumRow<Option: RawRepresentable & Identifiable & CaseIterable>(
+        title: String, options: Option.AllCases, binding: Binding<Option?>
+    ) -> some View where Option.RawValue == String {
+        HStack {
+            Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+            Spacer()
+            Menu {
+                Button("Any") { binding.wrappedValue = nil }
+                ForEach(Array(options), id: \.id) { option in
+                    Button(option.rawValue) { binding.wrappedValue = option }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(binding.wrappedValue?.rawValue ?? "Any")
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                }
+                .foregroundStyle(Theme.gold)
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(Capsule().fill(Theme.gold.opacity(0.14)))
+            }
+        }
+    }
+
+    private static func formatHeight(_ cm: Int) -> String {
+        let totalInches = Double(cm) / 2.54
+        let feet = Int(totalInches / 12)
+        let inches = Int(totalInches.truncatingRemainder(dividingBy: 12).rounded())
+        return "\(feet)′\(inches)″ (\(cm) cm)"
     }
 }

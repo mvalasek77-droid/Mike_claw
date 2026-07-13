@@ -67,6 +67,18 @@ A living plan. Shipped items reflect what's in the branch today.
 - XCTest coverage of the domain logic; `Products.storekit` for IAP testing
 - VoiceOver-announced toasts, accessibility labels on floor cards and bid rows
 
+**Photos**
+- Multi-photo upload (PhotosPicker, up to 6), primary + gallery, ≥600×600
+  quality gate, JPEG resize to 1600px, rides the AES-GCM encrypted archive
+- Onboarding "Photos" step + Profile → "Edit photos" editor
+- NSPhotoLibraryUsageDescription in Info.plist
+
+**Dealbreakers (Reserve Requirements)**
+- Minimum height (metric with ft/in rendering), smoking, drinking, kids,
+  education requirements, gated on Reserve tier
+- Blank fields on a target profile always pass — we don't punish incomplete
+  profiles
+
 **Money infrastructure**
 - StoreKit 2 with `appAccountToken`, transaction dedup, crash-safe
   credit-first ordering, revocation clawback, foreground refund polling
@@ -78,6 +90,20 @@ A living plan. Shipped items reflect what's in the branch today.
   paid product, demo Pass, seeded wallet)
 
 ## 🔜 Next (v1.1)
+
+**Dating-app parity (agent-flagged P1 features, deferred from launch):**
+- **Motion Placard** — video prompts (Hinge-style), 15-sec captures
+- **Call from the Floor** — voice prompts, in-profile playback
+- **Floor Call** — voice notes in chat
+- **Podium Authentication** — live selfie liveness check tied to the blue
+  check, so the "verified" signal actually resists spoofing
+- **NSFW moderation** — on-device `SCSensitivityAnalyzer` gate at upload time
+- **Provenance Check** — ID / gov verification tied into Auction Credit
+- **Provenance Report** — background-check integration (Garbo-style) before
+  a real-world date
+- **Placard Captions** — captions/prompts pinned to individual photos
+- Reserve Requirements: self-editor so users can set their own lifestyle
+  (currently only bidder-side filters + seeded on sample floor)
 
 - Real backend + accounts (guest vs verified tiers), cloud sync
 - Live presence + push notifications ("You've been outbid")

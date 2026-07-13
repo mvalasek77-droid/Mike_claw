@@ -116,6 +116,10 @@ struct Profile: Identifiable, Codable, Hashable {
     var photoGallery: [Data] = []
     var prompts: [Prompt] = []
     var interests: [String] = []
+    /// Height + smoking/drinking/kids/education used by the bidder-side Reserve
+    /// Requirements filters. Every field defaults to nil so pre-Lifestyle
+    /// snapshots decode cleanly and existing profiles pass every filter.
+    var lifestyle: Lifestyle = Lifestyle()
     var reviews: [DateReview] = []
     /// Identity-verified (selfie match). Copycats can never be verified — it's
     /// the strongest "this is a real human" signal in the app.
@@ -450,6 +454,48 @@ extension Profile {
     /// A one-line read on where he stands, used to keep his written reviews and
     /// his credit number telling the same story.
     var creditStanding: String { Self.tierName(auctionCredit) }
+
+    /// True when at least one lifestyle field is set; the detail card uses
+    /// this to hide the whole section on profiles that never answered.
+    var hasAnyLifestyle: Bool {
+        lifestyle.heightCm != nil || lifestyle.smoking != nil
+            || lifestyle.drinking != nil || lifestyle.kids != nil
+            || lifestyle.education != nil
+    }
+
+    /// Returns a copy with a deterministic Lifestyle seeded from the profile's
+    /// UUID, so seeded sample data has enough lifestyle answers for Reserve
+    /// Requirements to actually bite. Real users' Lifestyle stays untouched
+    /// (we only seed when `lifestyle` is the default all-nil struct AND the
+    /// profile is not the current user).
+    func seededLifestyle() -> Profile {
+        guard lifestyle == Lifestyle() else { return self }
+        var copy = self
+        // Draw four independent bits from the UUID's low bytes so different
+        // fields don't correlate. Deterministic because UUID is fixed.
+        let bytes = withUnsafeBytes(of: id.uuid) { Array($0) }
+        func pick<T>(_ options: [T], byte: Int) -> T {
+            options[Int(bytes[byte % bytes.count]) % options.count]
+        }
+        // Only ~60% of profiles get each attribute — real people leave
+        // things blank, and the "unset always passes" rule makes that fine.
+        if bytes[0] % 5 < 3 {
+            copy.lifestyle.heightCm = 160 + Int(bytes[1]) % 30   // 160–189 cm
+        }
+        if bytes[2] % 5 < 3 {
+            copy.lifestyle.smoking = pick(Lifestyle.Smoking.allCases, byte: 3)
+        }
+        if bytes[4] % 5 < 3 {
+            copy.lifestyle.drinking = pick(Lifestyle.Drinking.allCases, byte: 5)
+        }
+        if bytes[6] % 5 < 3 {
+            copy.lifestyle.kids = pick(Lifestyle.Kids.allCases, byte: 7)
+        }
+        if bytes[8] % 5 < 3 {
+            copy.lifestyle.education = pick(Lifestyle.Education.allCases, byte: 9)
+        }
+        return copy
+    }
 
     /// Suggested opening lines, generated from this profile's own prompts and
     /// interests — tapped to fill (not auto-send) the composer on a cold match,

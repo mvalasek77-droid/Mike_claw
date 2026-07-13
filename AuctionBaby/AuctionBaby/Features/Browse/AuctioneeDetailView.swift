@@ -15,6 +15,13 @@ struct AuctioneeDetailView: View {
         return tier == .reserve || tier == .blackcard
     }
 
+    private static func formatHeight(_ cm: Int) -> String {
+        let totalInches = Double(cm) / 2.54
+        let feet = Int(totalInches / 12)
+        let inches = Int(totalInches.truncatingRemainder(dividingBy: 12).rounded())
+        return "\(feet)′\(inches)″"
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -91,6 +98,18 @@ struct AuctioneeDetailView: View {
                 if !woman.interests.isEmpty {
                     GlassCard(title: "Interests", icon: "sparkles") {
                         FlexLayout { ForEach(woman.interests, id: \.self) { Chip(text: $0, color: Theme.rose) } }
+                    }
+                }
+
+                if woman.hasAnyLifestyle {
+                    GlassCard(title: "Lifestyle", icon: "person.text.rectangle") {
+                        FlexLayout {
+                            if let h = woman.lifestyle.heightCm { Chip(text: Self.formatHeight(h), systemImage: "ruler", color: Theme.gold) }
+                            if let v = woman.lifestyle.smoking { Chip(text: "Smokes: \(v.rawValue)", systemImage: "smoke", color: Theme.inkFaint) }
+                            if let v = woman.lifestyle.drinking { Chip(text: "Drinks: \(v.rawValue)", systemImage: "wineglass", color: Theme.inkFaint) }
+                            if let v = woman.lifestyle.kids { Chip(text: v.rawValue, systemImage: "figure.and.child.holdinghands", color: Theme.rose) }
+                            if let v = woman.lifestyle.education { Chip(text: v.rawValue, systemImage: "graduationcap", color: Theme.verify) }
+                        }
                     }
                 }
 

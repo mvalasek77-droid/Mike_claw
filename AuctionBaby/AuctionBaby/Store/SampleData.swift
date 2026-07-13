@@ -585,7 +585,7 @@ enum SampleData {
                     ],
                     interests: ["Fitness", "Music", "Travel", "Nightlife"],
                     isCopycat: true, copycatStyle: .beach),
-        ]
+        ].map { $0.seededLifestyle() }
     }
 
     // MARK: Men (used to seed incoming bids on the woman side)
@@ -671,6 +671,6 @@ enum SampleData {
                     ],
                     verified: true,
                     archetype: .goodGuy),
-        ]
+        ].map { $0.seededLifestyle() }
     }
 }
