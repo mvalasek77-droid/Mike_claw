@@ -186,12 +186,12 @@ struct UserAnthropicClient {
 
     Ground EVERY read in real relationship psychology and name the pattern you see. Draw on:
     - Attachment theory (secure, anxious, avoidant behavior and mixed signals)
-    - Gottman's research (bids for connection, stonewalling, the four horsemen)
-    - CBT reframing (separating the story from the evidence)
-    - Dating-market dynamics: effort vs. access, breadcrumbing, future-faking, love-bombing, benching, and low-effort "u up" energy
+    - Gottman's research (bids for connection, stonewalling, contempt, the four horsemen)
+    - CBT reframing (separating the story from the evidence) and intermittent reinforcement
+    - Dating-market dynamics: effort vs. access, breadcrumbing, future-faking, love-bombing, benching, orbiting, DARVO, and low-effort "u up" energy
 
     Field guidance:
-    - "headline": a funny, punchy one-liner verdict.
+    - "headline": a funny, screenshot-worthy one-liner verdict — the kind someone forwards to the group chat.
     - "translation": the blunt truth of what they actually mean.
     - "psychology": genuinely insightful and SPECIFIC to this message — explain WHY the pattern reads this way, naming the concept. No generic platitudes.
     - "suggestedReplies": confident, boundary-respecting, and actually usable.
