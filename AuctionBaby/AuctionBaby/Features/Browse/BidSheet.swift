@@ -118,6 +118,7 @@ struct BidSheet: View {
                             .font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.warning)
                         PrimaryButton(title: "Get a Pass for unlimited bids", systemImage: "sparkles",
                                       gradient: Theme.roseGradient) { showStore = true }
+                        whisperFallback
                     }
                 } else {
                     PrimaryButton(title: gild ? "Send Gilded bid · \(Money.compact(amount))"
@@ -129,6 +130,7 @@ struct BidSheet: View {
                                        promptRef: promptContext?.question)
                         dismiss()
                     }
+                    whisperFallback
                 }
 
                 Text("A bid is a letter of intent — no money moves in the app. You pay her in person; she confirms (or flags you) after the date.")
@@ -141,6 +143,30 @@ struct BidSheet: View {
         .motion(Motion.snap, value: amount)
         .motion(Motion.snap, value: gild)
         .sheet(isPresented: $showStore) { PaywallView(trigger: .bidLimit) }
+    }
+
+    /// Whisper Bid — anonymous, free, no credit hit. A "reserve nod" that
+    /// tests the water before committing a real number. Hidden on copycats.
+    @ViewBuilder private var whisperFallback: some View {
+        if !woman.isCopycat {
+            Button {
+                store.placeWhisper(on: woman)
+                dismiss()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "ear.fill")
+                    Text("Whisper — no Gavels, no credit hit")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                }
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(Theme.rose)
+                .padding(.horizontal, 14).padding(.vertical, 11)
+                .background(Capsule().stroke(Theme.rose.opacity(0.55), lineWidth: 1.2))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Send an anonymous whisper to \(woman.name)")
+        }
     }
 
     private var gildToggle: some View {

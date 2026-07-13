@@ -21,6 +21,11 @@ struct Bid: Identifiable, Codable, Hashable {
     /// Costs Gavels, pins to the top of her inbox with a gold ribbon, and
     /// nudges her toward accepting.
     var gilded: Bool = false
+    /// A Whisper Bid — anonymous, no-Gavel, no-credit-impact signal of interest.
+    /// She sees "someone whispered" without his name or archetype; he can
+    /// escalate to a real bid once she nods back. Doesn't count against the
+    /// free bid limit.
+    var isWhisper: Bool = false
     /// If he bid in response to a specific prompt, the question he's replying to
     /// (Hinge-style targeted interaction). Optional → backward-compatible decode.
     var promptRef: String? = nil

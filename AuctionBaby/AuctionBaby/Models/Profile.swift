@@ -123,6 +123,11 @@ struct Profile: Identifiable, Codable, Hashable {
     /// Requirements filters. Every field defaults to nil so pre-Lifestyle
     /// snapshots decode cleanly and existing profiles pass every filter.
     var lifestyle: Lifestyle = Lifestyle()
+    /// Woman-authored first-message script the auto-generated "you're in"
+    /// invite falls back to when set. Bumble's Opening Moves: she sets the
+    /// question once, every accepted bidder gets the same opener. Optional
+    /// so untouched profiles keep the current default openers.
+    var openingBidScript: String? = nil
     var reviews: [DateReview] = []
     /// Identity-verified (selfie match). Copycats can never be verified — it's
     /// the strongest "this is a real human" signal in the app.

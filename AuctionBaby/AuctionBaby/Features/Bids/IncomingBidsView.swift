@@ -101,7 +101,16 @@ struct BidRow: View {
     var body: some View {
         GlassSurface(corner: Theme.cornerL) {
             VStack(spacing: 12) {
-                if bid.gilded {
+                if bid.isWhisper {
+                    HStack(spacing: 5) {
+                        Image(systemName: "ear.fill").font(.system(size: 10, weight: .bold))
+                        Text("WHISPER").font(.system(size: 10, weight: .heavy, design: .rounded)).tracking(1)
+                        Spacer()
+                    }
+                    .foregroundStyle(Theme.rose)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(Theme.rose.opacity(0.14)))
+                } else if bid.gilded {
                     HStack(spacing: 5) {
                         Image(systemName: "seal.fill").font(.system(size: 10, weight: .bold))
                         Text("GILDED BID").font(.system(size: 10, weight: .heavy, design: .rounded)).tracking(1)
@@ -113,22 +122,30 @@ struct BidRow: View {
                 }
                 HStack(spacing: 12) {
                     AvatarCircle(name: bid.man.name, hue: bid.man.hue, photoName: bid.man.photoName, size: 52,
-                                 locked: bid.status != .accepted, copycat: false)
+                                 locked: bid.status != .accepted || bid.isWhisper, copycat: false)
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text(bid.status == .accepted ? bid.man.name : "Hidden bidder")
+                            Text(bid.isWhisper ? "Someone whispered"
+                                 : bid.status == .accepted ? bid.man.name : "Hidden bidder")
                                 .font(.system(size: 16, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
-                            if bid.man.verified { VerifiedBadge(size: 14) }
+                            if !bid.isWhisper, bid.man.verified { VerifiedBadge(size: 14) }
                         }
-                        ArchetypeBadge(archetype: bid.man.archetype, compact: true, pending: bid.man.showsPendingTrillionaire)
+                        if bid.isWhisper {
+                            Text("Anonymous nod — nod back to draw a real bid.")
+                                .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                        } else {
+                            ArchetypeBadge(archetype: bid.man.archetype, compact: true, pending: bid.man.showsPendingTrillionaire)
+                        }
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(Money.compact(bid.amount))
-                            .font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
-                        if bid.qualifiesForMasterpiece {
-                            Text("Masterpiece").font(.system(size: 9, weight: .heavy, design: .rounded))
-                                .foregroundStyle(Theme.rose)
+                    if !bid.isWhisper {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(Money.compact(bid.amount))
+                                .font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
+                            if bid.qualifiesForMasterpiece {
+                                Text("Masterpiece").font(.system(size: 9, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(Theme.rose)
+                            }
                         }
                     }
                 }

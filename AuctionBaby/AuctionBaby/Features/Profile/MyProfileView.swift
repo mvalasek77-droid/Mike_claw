@@ -12,6 +12,7 @@ struct MyProfileView: View {
     @State private var showSafety = false
     @State private var showAdmin = false
     @State private var showPhotoEditor = false
+    @State private var showOpeningScript = false
 
     private var me: Profile { store.me }
     private var isMan: Bool { store.role == .man }
@@ -44,6 +45,7 @@ struct MyProfileView: View {
             }
             .sheet(isPresented: $showSafety) { SafetyCenterView() }
             .sheet(isPresented: $showPhotoEditor) { PhotoEditorSheet() }
+            .sheet(isPresented: $showOpeningScript) { OpeningBidScriptSheet() }
             .sheet(isPresented: $showAdmin) { AdminGateView() }
             .alert("Reset account?", isPresented: $showReset) {
                 Button("Reset", role: .destructive) {
@@ -306,6 +308,80 @@ struct MyProfileView: View {
         return total == 0 ? "None" : "\(total) / \(PhotoUploadStep.maxTotal)"
     }
 
+    private struct OpeningBidScriptSheet: View {
+        @EnvironmentObject private var store: AuctionStore
+        @Environment(\.dismiss) private var dismiss
+        @State private var script: String = ""
+
+        private let presets: [String] = [
+            "You're in. Where are we going? Impress me.",
+            "Bold move. Tell me the plan — I like a man who books it.",
+            "Alright, you won the bid. Now win the night.",
+            "Fine — you have my attention. What's the reservation?",
+        ]
+
+        var body: some View {
+            NavigationStack {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        GlassCard(title: "Your opener", icon: "text.bubble.fill", tint: Theme.rose) {
+                            Text("This line auto-sends the moment you accept a bid. Set it once — every winning bidder gets the same welcome.")
+                                .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                                .fixedSize(horizontal: false, vertical: true)
+                            TextField("", text: $script,
+                                      prompt: Text("Write your opener — e.g. \"You're in. Where are we going?\"")
+                                        .foregroundStyle(Theme.inkFaint), axis: .vertical)
+                                .textFieldStyle(.plain).font(.system(size: 15))
+                                .foregroundStyle(Theme.ink)
+                                .lineLimit(2...5)
+                                .padding(12)
+                                .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
+                            Text("\(script.count) / 240")
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .foregroundStyle(script.count > 240 ? Theme.danger : Theme.inkFaint)
+                        }
+                        GlassCard(title: "Presets", icon: "sparkles") {
+                            VStack(spacing: 8) {
+                                ForEach(presets, id: \.self) { preset in
+                                    Button { script = preset } label: {
+                                        HStack {
+                                            Text(preset).font(.system(size: 13, weight: .medium))
+                                                .foregroundStyle(Theme.ink)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                            Image(systemName: "arrow.up.left").foregroundStyle(Theme.gold)
+                                        }
+                                        .padding(12)
+                                        .background(RoundedRectangle(cornerRadius: Theme.cornerS)
+                                            .fill(.white.opacity(0.05)))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        Spacer(minLength: 20)
+                    }
+                    .screenPadding().padding(.top, 8)
+                }
+                .background(AppBackground())
+                .navigationTitle("Opening Bid Script")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Clear") { script = "" }.foregroundStyle(Theme.inkSoft)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Save") {
+                            let trimmed = script.trimmingCharacters(in: .whitespacesAndNewlines)
+                            store.updateOpeningBidScript(trimmed.isEmpty ? nil : String(trimmed.prefix(240)))
+                            dismiss()
+                        }.foregroundStyle(Theme.gold).fontWeight(.bold)
+                    }
+                }
+                .onAppear { script = store.me.openingBidScript ?? "" }
+            }
+        }
+    }
+
     private struct PhotoEditorSheet: View {
         @EnvironmentObject private var store: AuctionStore
         @Environment(\.dismiss) private var dismiss
@@ -363,6 +439,24 @@ struct MyProfileView: View {
                 .padding(.vertical, 4)
             }
             .buttonStyle(.plain)
+            if !isMan {
+                Divider().overlay(Theme.hairline)
+                Button { showOpeningScript = true } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "text.bubble.fill").foregroundStyle(Theme.rose)
+                        Text("Opening Bid Script").font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Spacer()
+                        Text(me.openingBidScript == nil ? "Off" : "On")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.inkFaint)
+                        Image(systemName: "chevron.right").font(.system(size: 12))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+            }
             Divider().overlay(Theme.hairline)
             Button { showSafety = true } label: {
                 HStack(spacing: 10) {

@@ -67,7 +67,11 @@ final class AuctionStore: ObservableObject {
     static let freeActiveBidLimit = 3
     /// Gavel cost of gilding a bid (the premium "Rose" move).
     static let gildedBidCost = 250
-    var activePendingBidCount: Int { outgoingBids.filter { $0.status == .pending }.count }
+    /// Free live-bid ceiling: only real bids count. Whispers are a
+    /// zero-Gavel signal that shouldn't sink you into the paywall.
+    var activePendingBidCount: Int {
+        outgoingBids.filter { $0.status == .pending && !$0.isWhisper }.count
+    }
 
     // MARK: Woman-side insights ("what you're worth")
     private var livePending: [Bid] { incomingBids.filter { $0.status == .pending } }
@@ -264,6 +268,26 @@ final class AuctionStore: ObservableObject {
     /// Place a bid on a woman. Bids are offers — nothing is charged until a date
     /// actually happens — but bidding on an AI copycat is logged against the
     /// bidder's reputation immediately.
+    /// Whisper Bid — an anonymous, no-Gavel signal of interest. She sees
+    /// "someone whispered on your lot" without his identity or archetype;
+    /// he can escalate to a real bid once she's nodded back. Doesn't spend
+    /// Gavels, doesn't touch Auction Credit, doesn't count against the
+    /// free live-bid limit. Copycats never receive whispers — the point of
+    /// a Whisper is to test intent before committing, and a Copycat has
+    /// nothing to test.
+    func placeWhisper(on woman: Profile) {
+        guard role == .man, !woman.isCopycat else { return }
+        var bid = Bid(man: me, woman: woman, amount: 0, note: "")
+        bid.isWhisper = true
+        outgoingBids.insert(bid, at: 0)
+        Haptics.tap()
+        toastFlash("Whisper sent — she'll see interest, not who.")
+        log(.bidPlaced, "You whispered on \(woman.name).")
+        // Sim: her decision timer still runs but on a lighter cadence.
+        scheduleWomanDecision(bidID: bid.id)
+        save()
+    }
+
     func placeBid(on woman: Profile, amount: Int, note: String, gilded: Bool = false,
                   promptRef: String? = nil) {
         guard role == .man, amount > 0 else { return }
@@ -543,6 +567,13 @@ final class AuctionStore: ObservableObject {
         toastFlash(primary == nil ? "Photos cleared." : "Photos updated.")
     }
 
+    /// Save the woman's Opening Bid Script. Passing nil clears it.
+    func updateOpeningBidScript(_ script: String?) {
+        me.openingBidScript = script
+        save()
+        toastFlash(script == nil ? "Opener cleared." : "Opener saved.")
+    }
+
     func setStartingBid(_ value: Int?) {
         guard role == .woman else { return }
         me.startingBid = value.map { max(0, min($0, Self.maxStartingBid)) }
@@ -556,10 +587,18 @@ final class AuctionStore: ObservableObject {
         let accepted = incomingBids[idx]
         earnings += accepted.amount
 
-        // The woman always sends the first invite (per the brief).
+        // The woman always sends the first invite (per the brief). Opening Bid
+        // Script (if she set one) takes precedence over the canned line.
         var match = Match(bid: accepted, phase: .chatting)
+        let opener: String
+        if let scripted = me.openingBidScript,
+           !scripted.trimmingCharacters(in: .whitespaces).isEmpty {
+            opener = scripted
+        } else {
+            opener = "You're in. \(accepted.man.name) — let's set a date. 🍸"
+        }
         match.messages = [
-            ChatMessage(fromMe: true, text: "You're in. \(accepted.man.name) — let's set a date. 🍸", isSystem: false),
+            ChatMessage(fromMe: true, text: opener, isSystem: false),
         ]
         match.expiresAt = Date().addingTimeInterval(24 * 3600)
         matches.insert(match, at: 0)
@@ -882,9 +921,17 @@ final class AuctionStore: ObservableObject {
 
             if accepted {
                 var match = Match(bid: bid, phase: .chatting)
-                let opener = bid.onCopycat
-                    ? "Hey you 😊 so glad you bid. Quick thing — I ask for a small deposit before I give out my number. It just filters out the games, hope you get it 💕"
-                    : "Okay, you win. \(bid.woman.name) here — where are you taking me?"
+                // Opening Bid Script: the woman's authored opener when she set
+                // one; copycats stay on their bait line so the sting still lands.
+                let opener: String
+                if bid.onCopycat {
+                    opener = "Hey you 😊 so glad you bid. Quick thing — I ask for a small deposit before I give out my number. It just filters out the games, hope you get it 💕"
+                } else if let scripted = bid.woman.openingBidScript,
+                          !scripted.trimmingCharacters(in: .whitespaces).isEmpty {
+                    opener = scripted
+                } else {
+                    opener = "Okay, you win. \(bid.woman.name) here — where are you taking me?"
+                }
                 match.messages = [ChatMessage(fromMe: false, text: opener)]
                 match.expiresAt = Date().addingTimeInterval(24 * 3600)
                 self.matches.insert(match, at: 0)
@@ -956,11 +1003,14 @@ final class AuctionStore: ObservableObject {
         let suitors = bidders.isEmpty ? SampleData.suitors() : bidders
         guard suitors.count > 3 else { return }
         let base = min(me.startingBid ?? 150, Self.maxStartingBid)
+        var whisper = Bid(man: suitors[1], woman: me, amount: 0, note: "")
+        whisper.isWhisper = true
         incomingBids = [
             Bid(man: suitors[0], woman: me, amount: max(300, base &* 2),
                 note: "Saw your prompts. Dinner at Carbone? My treat."),
             Bid(man: suitors[3], woman: me, amount: max(120, base),
                 note: "I'll lose at trivia and pay anyway."),
+            whisper,
         ]
     }
 
