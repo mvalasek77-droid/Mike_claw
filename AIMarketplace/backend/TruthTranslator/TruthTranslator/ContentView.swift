@@ -60,11 +60,11 @@ struct ContentView: View {
                 Button {
                     showingAPISettings = true
                 } label: {
-                    Image(systemName: hasSavedAPIKey ? "key.fill" : "key")
+                    Image(systemName: hasSavedAPIKey ? "bolt.fill" : "sparkles")
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(IconButtonStyle(size: 44))
-                .accessibilityLabel("Open API key settings")
+                .accessibilityLabel("Open AI engine settings")
             }
 
             Text("Paste the text. Get the truth in group-chat English.")
@@ -276,7 +276,7 @@ final class DecodeViewModel: ObservableObject {
         let outcome = await service.decode(text: text, tone: tone, context: context)
         result = outcome.result
         statusMessage = outcome.statusMessage ?? (outcome.usedFallback
-            ? "Offline mode used. Connect an AI proxy for fresher reads."
+            ? "Offline read — on-device Apple Intelligence isn't available here. Add a Claude key in settings to level up."
             : "AI read complete. Standards remain undefeated.")
         isDecoding = false
     }
@@ -328,6 +328,7 @@ private struct APIKeySettingsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         header
+                        engineExplainer
                         keyPanel
                         helpPanel
                     }
@@ -354,22 +355,70 @@ private struct APIKeySettingsView: View {
         }
     }
 
+    private var onDeviceAvailable: Bool {
+        AppleFoundationClient().isAvailable
+    }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Claude API Key", systemImage: "key.fill")
+            Label("AI Engine", systemImage: "sparkles")
                 .font(.system(size: 28, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
-            Text("Paste your Anthropic key once. ChadDrop stores it in Keychain, uses it for Claude reads, and falls back to offline mode if it cannot connect.")
+            Text("ChadDrop decodes on-device by default — private and free. Add your own Claude key to level up to sharper cloud reads.")
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.74))
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
+    private var engineExplainer: some View {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "iphone.gen3")
+                            .foregroundStyle(AppTheme.lime)
+                        Text("On-device · Default")
+                            .font(.system(size: 15, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                        Spacer(minLength: 8)
+                        Text(onDeviceAvailable ? "Available" : "Not on this device")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(onDeviceAvailable ? AppTheme.lime : .white.opacity(0.5))
+                    }
+                    Text("Apple Intelligence runs the read right on your iPhone. Private and free — your text never leaves the device, and no key is needed. Requires iPhone 15 Pro or newer on iOS 26 with Apple Intelligence turned on.")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider().overlay(.white.opacity(0.12))
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bolt.fill")
+                            .foregroundStyle(AppTheme.hotPink)
+                        Text("Claude · Level up")
+                            .font(.system(size: 15, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                        Spacer(minLength: 8)
+                        Text(hasSavedKey ? "Active" : "Optional")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(hasSavedKey ? AppTheme.hotPink : .white.opacity(0.5))
+                    }
+                    Text("Add your own Anthropic API key for sharper, more detailed reads. Your text is sent to Anthropic to generate the decode; ChadDrop falls back to on-device or offline if it can't connect.")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
     private var keyPanel: some View {
         GlassPanel {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Your key")
+                Text("Your Claude key (optional)")
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
 
