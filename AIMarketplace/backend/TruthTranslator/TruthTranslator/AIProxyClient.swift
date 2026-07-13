@@ -107,6 +107,10 @@ struct AnthropicAPIKeyStore {
 }
 
 struct UserAnthropicClient {
+    /// The Claude model used for decoding. Verified available and returning
+    /// valid decode JSON for ChadDrop accounts.
+    static let model = "claude-sonnet-5"
+
     private let keyStore = AnthropicAPIKeyStore()
 
     private var apiKey: String {
@@ -130,7 +134,7 @@ struct UserAnthropicClient {
         request.setValue(key, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.httpBody = try JSONEncoder().encode(AnthropicRequest(
-            model: "claude-sonnet-5",
+            model: Self.model,
             max_tokens: 900,
             system: Self.systemPrompt,
             messages: [
@@ -147,18 +151,32 @@ struct UserAnthropicClient {
             ]
         ))
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw URLError(.badServerResponse)
-        }
-        guard (200..<300).contains(http.statusCode) else {
-            let detail = Self.errorMessage(from: data)
-            throw AnthropicClientError.http(status: http.statusCode, message: detail)
-        }
-
+        let data = try await Self.send(request)
         let apiResponse = try JSONDecoder().decode(AnthropicResponse.self, from: data)
         let textOutput = apiResponse.content.compactMap(\.text).joined(separator: "\n")
         return try Self.decodeResult(from: textOutput)
+    }
+
+    /// Sends the request, retrying once on transient overload/rate-limit so a
+    /// momentary 429/500/503/529 doesn't drop the user to offline mode.
+    private static func send(_ request: URLRequest) async throws -> Data {
+        let transient: Set<Int> = [408, 429, 500, 502, 503, 529]
+        var attempt = 0
+        while true {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw URLError(.badServerResponse)
+            }
+            if (200..<300).contains(http.statusCode) {
+                return data
+            }
+            if transient.contains(http.statusCode), attempt < 1 {
+                attempt += 1
+                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                continue
+            }
+            throw AnthropicClientError.http(status: http.statusCode, message: errorMessage(from: data))
+        }
     }
 
     private static let systemPrompt = """
@@ -185,7 +203,48 @@ struct UserAnthropicClient {
         guard let data = cleaned.data(using: .utf8) else {
             throw URLError(.cannotDecodeContentData)
         }
-        return try JSONDecoder().decode(DecodeResult.self, from: data)
+
+        // Preferred path: exact shape.
+        if let strict = try? JSONDecoder().decode(DecodeResult.self, from: data) {
+            return strict
+        }
+
+        // Tolerant path: build from a loose JSON object so small deviations
+        // (a stringified score, a missing flags array, extra keys) still
+        // produce a real Claude read instead of dropping to offline mode.
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw URLError(.cannotParseResponse)
+        }
+
+        func string(_ key: String) -> String { (obj[key] as? String) ?? "" }
+        func strings(_ key: String) -> [String] {
+            if let values = obj[key] as? [String] { return values }
+            if let values = obj[key] as? [Any] { return values.compactMap { $0 as? String } }
+            return []
+        }
+        func score() -> Int {
+            if let value = obj["realityScore"] as? Int { return value }
+            if let value = obj["realityScore"] as? Double { return Int(value) }
+            if let value = obj["realityScore"] as? String, let parsed = Int(value) { return parsed }
+            return 50
+        }
+
+        let result = DecodeResult(
+            headline: string("headline"),
+            translation: string("translation"),
+            psychology: string("psychology"),
+            receipts: strings("receipts"),
+            suggestedReplies: strings("suggestedReplies"),
+            realityScore: score(),
+            energy: string("energy"),
+            flags: strings("flags")
+        )
+
+        // Require the core verdict fields; otherwise treat as unparseable.
+        guard !result.headline.isEmpty, !result.translation.isEmpty else {
+            throw URLError(.cannotParseResponse)
+        }
+        return result
     }
 
     private static func stripMarkdownFences(_ text: String) -> String {

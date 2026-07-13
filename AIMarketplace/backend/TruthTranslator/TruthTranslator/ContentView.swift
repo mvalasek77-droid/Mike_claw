@@ -394,7 +394,13 @@ private struct APIKeySettingsView: View {
                 Button {
                     keyStore.save(trimmedDraft)
                     onKeyStatusChanged()
-                    statusMessage = trimmedDraft.isEmpty ? "API key cleared." : "API key saved. Decode will use Claude first."
+                    if trimmedDraft.isEmpty {
+                        statusMessage = "API key cleared."
+                    } else if !trimmedDraft.hasPrefix("sk-ant-") {
+                        statusMessage = "Saved — but Anthropic keys usually start with sk-ant-. If decodes fall back to offline, re-check the key."
+                    } else {
+                        statusMessage = "API key saved. Decode will use Claude first."
+                    }
                 } label: {
                     Label(hasSavedKey ? "Update API Key" : "Save API Key", systemImage: hasSavedKey ? "checkmark.seal.fill" : "key.fill")
                         .frame(maxWidth: .infinity)
