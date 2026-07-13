@@ -29,6 +29,15 @@ struct Match: Identifiable, Codable, Hashable {
     var manReviewedWoman: Bool = false   // man left his review of her
     var womanReviewedMan: Bool = false   // woman left her review of him
     var spentAmount: Int? = nil          // what he actually paid, set at review
+    /// Each side attests independently that the date actually happened. When
+    /// both flags are true the match is Gavel Confirmed — the credit engine
+    /// treats it as gold: full trait weight for her, full deadbeat protection
+    /// for him. If either side leaves this off the review still posts, but
+    /// the credit signal is discounted (self-reported, not corroborated).
+    var manConfirmedMet: Bool = false
+    var womanConfirmedMet: Bool = false
+    /// True only when both sides confirm the meetup happened.
+    var gavelConfirmed: Bool { manConfirmedMet && womanConfirmedMet }
     /// The other side has read your latest message (Black Card read receipts).
     var seenByOther: Bool = false
     /// Bumble-style urgency: set when the match is created, cleared the moment

@@ -694,9 +694,14 @@ final class AuctionStore: ObservableObject {
     /// he *actually* spent — which becomes the woman's verdict on whether he's a
     /// deadbeat.
     func completeAsMan(_ match: Match, stars: Int, traits: [Trait: Int],
-                       categories: [String], text: String, actuallySpent: Int) {
+                       categories: [String], text: String, actuallySpent: Int,
+                       confirmedMet: Bool = true) {
         guard let idx = matches.firstIndex(where: { $0.id == match.id }),
               !matches[idx].manReviewedWoman else { return }   // one review per date
+        matches[idx].manConfirmedMet = confirmedMet
+        // Sim woman corroborates when he confirmed — that's what makes the
+        // signal Gavel Confirmed. If he says they didn't meet, no corroboration.
+        if confirmedMet { matches[idx].womanConfirmedMet = true }
         let bid = matches[idx].bid
 
         let creditBefore = me.auctionCredit
@@ -708,8 +713,9 @@ final class AuctionStore: ObservableObject {
         // His review of her — stored on the match and reflected on the floor.
         var traitDict: [String: Int] = [:]
         for (t, v) in traits { traitDict[t.rawValue] = v }
-        let review = DateReview(authorName: me.name, authorHue: me.hue, stars: stars, text: text,
+        var review = DateReview(authorName: me.name, authorHue: me.hue, stars: stars, text: text,
                                 traits: traitDict, interestCategories: categories)
+        review.gavelConfirmed = matches[idx].gavelConfirmed
         // The woman's verdict on him → updates *his* deadbeat / credit score.
         let paid = actuallySpent >= bid.amount
 
@@ -724,11 +730,11 @@ final class AuctionStore: ObservableObject {
         // and among men who paid, the praise scales with his standing.
         let verdict = ReviewCopy.manVerdict(paid: paid, credit: creditBefore,
                                             bidAmount: bid.amount, spentAmount: actuallySpent)
-        me.reviews.insert(
-            DateReview(authorName: bid.woman.name, authorHue: bid.woman.hue,
-                       stars: verdict.stars, text: verdict.text,
-                       paidBid: paid, bidAmount: bid.amount, spentAmount: actuallySpent),
-            at: 0)
+        var wReview = DateReview(authorName: bid.woman.name, authorHue: bid.woman.hue,
+                                  stars: verdict.stars, text: verdict.text,
+                                  paidBid: paid, bidAmount: bid.amount, spentAmount: actuallySpent)
+        wReview.gavelConfirmed = matches[idx].gavelConfirmed
+        me.reviews.insert(wReview, at: 0)
 
         // Trillionaire is earned here: he bought the badge, bid & paid the full
         // $9,999, and the woman (sim) confirmed it. That's the third gate.
@@ -744,10 +750,15 @@ final class AuctionStore: ObservableObject {
             return
         }
 
+        let confirmed = matches[idx].gavelConfirmed
         closeMatch(idx)
         Haptics.success()
-        toastFlash(paid ? "Review posted. Your credit just went up."
-                        : "Review posted. Paying short dented your credit.")
+        if confirmed {
+            toastFlash(paid ? "✓ Gavel Confirmed. Your credit just moved."
+                            : "✓ Gavel Confirmed — but paying short still dented your credit.")
+        } else {
+            toastFlash("Review posted (self-reported). Full weight when both sides confirm.")
+        }
         log(.reviewReceived, "\(bid.woman.name) reviewed your date.")
         creditPing(before: creditBefore)
         save()
@@ -755,18 +766,23 @@ final class AuctionStore: ObservableObject {
 
     /// Woman reviews the man after the date (the woman-user path). Records the
     /// deadbeat verdict; a paid Trillionaire mints her Masterpiece.
-    func completeAsWoman(_ match: Match, paid: Bool, stars: Int, text: String) {
+    func completeAsWoman(_ match: Match, paid: Bool, stars: Int, text: String,
+                         confirmedMet: Bool = true) {
         guard let idx = matches.firstIndex(where: { $0.id == match.id }),
               !matches[idx].womanReviewedMan else { return }   // one review per date
+        matches[idx].womanConfirmedMet = confirmedMet
+        // Sim man corroborates when she confirmed the meetup.
+        if confirmedMet { matches[idx].manConfirmedMet = true }
         let bid = matches[idx].bid
 
         // Her verdict on him — stored on the match. The woman's stars and text
         // feed into the man's record (cosmetic — he isn't the user).
         matches[idx].womanReviewedMan = true
         if let manIdx = bidders.firstIndex(where: { $0.id == bid.man.id }) {
-            bidders[manIdx].reviews.insert(
-                DateReview(authorName: me.name, authorHue: me.hue, stars: stars, text: text,
-                           paidBid: paid, bidAmount: bid.amount), at: 0)
+            var mReview = DateReview(authorName: me.name, authorHue: me.hue, stars: stars, text: text,
+                                     paidBid: paid, bidAmount: bid.amount)
+            mReview.gavelConfirmed = matches[idx].gavelConfirmed
+            bidders[manIdx].reviews.insert(mReview, at: 0)
         }
 
         let showcaseBefore = me.showcaseCredit
@@ -774,11 +790,13 @@ final class AuctionStore: ObservableObject {
         // His simulated review of her → grows *her* Showcase score.
         var traits: [String: Int] = [:]
         for t in Trait.allCases { traits[t.rawValue] = Int.random(in: 4...5) }
-        me.reviews.insert(
-            DateReview(authorName: bid.man.name, authorHue: bid.man.hue, stars: Int.random(in: 4...5),
-                       text: "Effortless company. Worth the bid.", traits: traits,
-                       interestCategories: Array(me.interests.prefix(2))),
-            at: 0)
+        var meRev = DateReview(authorName: bid.man.name, authorHue: bid.man.hue,
+                                stars: Int.random(in: 4...5),
+                                text: "Effortless company. Worth the bid.",
+                                traits: traits,
+                                interestCategories: Array(me.interests.prefix(2)))
+        meRev.gavelConfirmed = matches[idx].gavelConfirmed
+        me.reviews.insert(meRev, at: 0)
 
         // Deadbeat: claw back earnings credited at acceptance.
         if !paid { earnings = max(0, earnings - bid.amount) }

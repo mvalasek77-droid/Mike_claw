@@ -204,6 +204,13 @@ struct ReviewRow: View {
             HStack(spacing: 8) {
                 AvatarCircle(name: review.authorName, hue: review.authorHue, size: 30)
                 Text(review.authorName).font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.ink)
+                if review.gavelConfirmed {
+                    Label("Gavel Confirmed", systemImage: "checkmark.seal.fill")
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Theme.verify)
+                        .accessibilityLabel("Gavel Confirmed date")
+                }
                 Spacer()
                 if let paid = review.paidBid {
                     DeadbeatTag(score: paid ? 100 : 10, compact: true)

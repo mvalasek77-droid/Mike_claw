@@ -47,6 +47,9 @@ struct DateReview: Identifiable, Codable, Hashable {
     var paidBid: Bool? = nil             // did he actually spend the bid?
     var bidAmount: Int? = nil
     var spentAmount: Int? = nil
+    /// Gavel Confirmed — both sides attested the date happened. Missing/false
+    /// = self-reported only; the credit engine weights this review lighter.
+    var gavelConfirmed: Bool = false
 }
 
 /// The "look" a copycat lure is styled around. Drives the synthetic portrait's
@@ -302,7 +305,20 @@ extension Profile {
             comment: verified ? "Selfie-verified — bidders bid harder on a real face."
                              : "Unverified — the blue check raises every bid."))
 
-        // 5. Masterpiece — +50. The rarest line on any report.
+        // 5. Gavel Confirmed dates — corroborated meetups carry more weight
+        // than self-reported ones. +10 per, capped at +60. This is what makes
+        // the credit engine resistant to solo review-farming.
+        let confirmed = reviews.filter(\.gavelConfirmed).count
+        if confirmed > 0 {
+            f.append(CreditFactor(
+                name: "Gavel Confirmed", icon: "checkmark.seal.fill",
+                points: min(confirmed * 10, 60),
+                comment: confirmed == 1
+                    ? "1 date confirmed by both sides — corroborated, not self-reported."
+                    : "\(confirmed) dates confirmed by both sides — the record is on the books."))
+        }
+
+        // 6. Masterpiece — +50. The rarest line on any report.
         if masterpiece {
             f.append(CreditFactor(
                 name: "Masterpiece", icon: "rosette", points: 50,
@@ -405,7 +421,20 @@ extension Profile {
             comment: verified ? "Selfie-verified. A real face behind the bids."
                              : "Unverified — a blue check would lift every number here."))
 
-        // 5. Copycat incidents — −40 each. The floor never forgets.
+        // 5. Gavel Confirmed — +12 per corroborated meetup (capped at +72).
+        // Higher weight than the woman's side because payment history is the
+        // biggest slice already; here it's the anti-fraud accelerator.
+        let confirmed = reviews.filter(\.gavelConfirmed).count
+        if confirmed > 0 {
+            f.append(CreditFactor(
+                name: "Gavel Confirmed", icon: "checkmark.seal.fill",
+                points: min(confirmed * 12, 72),
+                comment: confirmed == 1
+                    ? "1 date confirmed by both sides — the record isn't self-reported."
+                    : "\(confirmed) dates confirmed by both sides — the floor trusts corroborated history."))
+        }
+
+        // 6. Copycat incidents — −40 each. The floor never forgets.
         if copycatBids > 0 {
             f.append(CreditFactor(
                 name: "Copycat incidents", icon: "sparkles", points: -copycatBids * 40,

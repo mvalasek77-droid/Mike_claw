@@ -16,6 +16,9 @@ struct RateDateView: View {
     @State private var spent: Int
     // woman → man
     @State private var paidInFull = true
+    /// Gavel Confirmed: did the date actually happen in person? Defaults true;
+    /// a no-show flips it and downgrades the review's credit weight.
+    @State private var metInPerson = true
 
     private let categoryPool = ["Wine bars", "Art openings", "Tasting menus", "Live music",
                                 "Hiking", "Travel", "Theatre", "Coffee crawls", "Dancing"]
@@ -39,6 +42,19 @@ struct RateDateView: View {
                     Text("How was your date with \(other.name)?")
                         .font(.system(size: 18, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.center)
+                }
+
+                GlassCard(title: "Did you actually meet?", icon: "seal.fill", tint: Theme.verify) {
+                    Text("Both sides confirm the date happened. Gavel Confirmed reviews carry full weight in the credit reports — self-reported alone reads guarded.")
+                        .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Toggle(isOn: $metInPerson.animation(Motion.snap)) {
+                        Label(metInPerson ? "We met in person" : "They didn't show up",
+                              systemImage: metInPerson ? "checkmark.seal.fill" : "xmark.seal.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(metInPerson ? Theme.verify : Theme.danger)
+                    }
+                    .tint(Theme.verify)
                 }
 
                 GlassCard(title: "Overall", icon: "star.fill", tint: Theme.gold) {
@@ -126,10 +142,11 @@ struct RateDateView: View {
             store.completeAsMan(match, stars: stars, traits: traitScores,
                                 categories: Array(categories),
                                 text: text.isEmpty ? "Good evening out." : text,
-                                actuallySpent: spent)
+                                actuallySpent: spent, confirmedMet: metInPerson)
         } else {
             store.completeAsWoman(match, paid: paidInFull, stars: stars,
-                                  text: text.isEmpty ? (paidInFull ? "He delivered." : "All talk.") : text)
+                                  text: text.isEmpty ? (paidInFull ? "He delivered." : "All talk.") : text,
+                                  confirmedMet: metInPerson)
         }
     }
 }
