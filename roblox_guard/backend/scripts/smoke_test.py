@@ -125,9 +125,20 @@ def main() -> int:
         step("device registration", reg.status_code == 201
              and status.get("registered_devices", 0) >= 1,
              f"APNs configured={status.get('configured')}")
+
+        # 12. If a real APNs key is configured, actually fire a push — this
+        # will fail against the fake "smoke" token above (not a real device),
+        # so only check that APNs was *reachable*, not that delivery succeeded.
+        if status.get("configured"):
+            test_push = client.post("/notifications/test")
+            step("push reachable", test_push.status_code == 200,
+                 f"{test_push.json()}" if test_push.status_code == 200 else test_push.text[:120])
+        else:
+            step("push reachable", True, "skipped — APNs not configured on this deployment")
+
         client.delete(f"/devices/{smoke_token}")
     finally:
-        # 12. Erasure — always clean up the smoke child
+        # 13. Erasure — always clean up the smoke child
         deleted = client.delete(f"/children/{child_id}")
         step("full erasure", deleted.status_code == 204)
 

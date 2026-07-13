@@ -304,6 +304,23 @@ def create_app(settings: Optional[Settings] = None,
         return {"configured": push.configured, "sandbox": settings.apns_use_sandbox,
                 "registered_devices": len(db.list_device_tokens())}
 
+    @app.post("/notifications/test")
+    async def send_test_notification():
+        """Fires one push to every registered device on demand.
+
+        For testing: without this, the only way to see a real push is to
+        wait for monitor.py to detect an actual risky signal on a real
+        Roblox account, which is slow and hard to reproduce on purpose.
+        """
+        if not push.configured:
+            raise HTTPException(status_code=409,
+                                detail="APNs not configured — set RG_APNS_KEY_* env vars first.")
+        if not db.list_device_tokens():
+            raise HTTPException(status_code=409,
+                                detail="No devices registered — enable notifications in the app first.")
+        return await push.send_to_all(
+            db, title="RobloxGuard test", body="If you see this, push notifications are working.")
+
     # -- evidence ------------------------------------------------------------
 
     @app.get("/children/{child_id}/evidence")

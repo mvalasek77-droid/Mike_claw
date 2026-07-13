@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var showPaywall = false
     @State private var showManageSubscriptions = false
     @State private var showBugReport = false
+    @State private var testNotificationResult: String?
 
     var body: some View {
         NavigationStack {
@@ -34,6 +35,24 @@ struct SettingsView: View {
 
                 Section {
                     notificationsRow
+                    if push.isRegistered {
+                        Button("Send test notification") {
+                            Task {
+                                do {
+                                    let result = try await store.api.sendTestNotification()
+                                    testNotificationResult = "Sent to \(result.sent) device(s)"
+                                    + (result.failed > 0 ? ", \(result.failed) failed" : "")
+                                } catch {
+                                    testNotificationResult = error.localizedDescription
+                                }
+                            }
+                        }
+                        if let testNotificationResult {
+                            Text(testNotificationResult)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 } header: {
                     Text("Notifications")
                 } footer: {

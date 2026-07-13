@@ -323,6 +323,39 @@ Unconfigured is a deliberate no-op (same pattern as `RG_SMTP_HOST` for the
 bug-log emailer) — the rest of the app works fine without it, `GET
 /notifications/status` reports `configured: false`, and nothing crashes.
 
+### Testing it
+
+Waiting for `monitor.py` to organically detect a real risky signal is slow
+and hard to reproduce on demand, so there's a manual trigger for exactly
+this:
+
+1. **Offline, no Apple account needed:** `pytest tests/test_push.py` — 22
+   tests covering JWT signing, delivery, dead-token pruning, and that the
+   monitor hook fires for watch/elevated but stays silent for INFO alerts,
+   all against a mocked APNs.
+2. **Backend sanity without a device:** `POST /devices/register` a fake
+   token, then `GET /notifications/status` to confirm it's stored. With a
+   real APNs key configured, `scripts/smoke_test.py` also calls
+   `POST /notifications/test` and checks Apple's API was *reachable*
+   (JWT + HTTP/2 handshake worked) — it can't check real delivery since the
+   smoke test's token isn't a real device.
+3. **The real test, on a physical iPhone** (Simulator push delivery can't be
+   fully trusted): build and run with a debug/dev provisioning profile,
+   Settings → Notifications → Enable Notifications → grant the permission
+   prompt. Confirm registration worked — either watch for "Notifications
+   enabled" in Settings, or check the backend's
+   `GET /notifications/status` for `registered_devices` going up by one.
+   Then tap **"Send test notification"**, which appears right there in
+   Settings once registered — it calls the same `POST /notifications/test`
+   endpoint and should produce a real push within a few seconds. This
+   confirms the entire chain (permission → token → registration → APNs
+   delivery) without needing to fabricate an actual off-platform-handle
+   match on a real Roblox account.
+4. Only once step 3 works should you trust that a *real* alert (e.g. link a
+   test child whose friend's bio contains a Discord handle) will actually
+   reach the device — that exercises `monitor.py`'s real trigger path
+   instead of the manual one.
+
 ## Production readiness
 
 What's verified here and what still needs real-device work before launch:

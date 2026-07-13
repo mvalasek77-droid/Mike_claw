@@ -264,3 +264,43 @@ def test_unregister_device_endpoint(api):
 def test_register_device_rejects_short_token(api):
     resp = api.post("/devices/register", json={"token": "short"})
     assert resp.status_code == 422
+
+
+def test_test_notification_requires_apns_configured(api):
+    api.post("/devices/register", json={"token": "a" * 64})
+    resp = api.post("/notifications/test")
+    assert resp.status_code == 409
+    assert "not configured" in resp.json()["detail"]
+
+
+@pytest.fixture
+def apns_api(tmp_path):
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+
+    fake = FakeRobloxClient()
+    settings = configured_settings(db_path=str(tmp_path / "apns.db"),
+                                   watchlist_path=str(tmp_path / "missing.json"))
+    app = create_app(settings=settings, client=fake, start_monitor=False)
+    with TestClient(app) as client:
+        yield client
+
+
+def test_test_notification_requires_a_registered_device_endpoint(apns_api):
+    resp = apns_api.post("/notifications/test")
+    assert resp.status_code == 409
+    assert "No devices registered" in resp.json()["detail"]
+
+
+def test_test_notification_sends_when_configured(apns_api, monkeypatch):
+    apns_api.post("/devices/register", json={"token": "a" * 64})
+
+    async def fake_post(self, url, json=None, headers=None):
+        return httpx.Response(200, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    resp = apns_api.post("/notifications/test")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["sent"] == 1
+    assert body["configured"] is True

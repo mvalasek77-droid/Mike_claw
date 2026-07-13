@@ -173,6 +173,14 @@ struct APIClient {
         ])
     }
 
+    /// Fires one on-demand push to every registered device — for testing,
+    /// so you don't have to wait for a real Roblox signal to fire.
+    func sendTestNotification() async throws -> (sent: Int, failed: Int) {
+        struct TestResponse: Decodable { let sent: Int; let failed: Int }
+        let response: TestResponse = try await request("POST", "notifications/test")
+        return (response.sent, response.failed)
+    }
+
     func uploadEvidence(childId: Int, imageData: Data, filename: String,
                         note: String) async throws {
         let boundary = "rg-\(UUID().uuidString)"
