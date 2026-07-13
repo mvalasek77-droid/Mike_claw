@@ -171,6 +171,46 @@ open RobloxGuard.xcodeproj
 
 Point `APIClient.baseURL` at your deployed backend (HTTPS in release).
 
+## Smoke testing
+
+Two layers, for two different questions.
+
+**"Did I break anything?" — the pytest suite, offline, every commit:**
+
+```bash
+cd backend && python -m pytest -q     # 119 tests, ~20s, no network
+```
+
+This runs entirely against `FakeRobloxClient` (synthetic accounts only — see
+`tests/test_e2e.py`), including a full parent journey (link → baseline →
+threat → alert → evidence → report → feedback → erasure), hostile input, and
+performance budgets. This is the CI gate; it never touches the real Roblox
+API and never needs a live server.
+
+**"Is the deployed instance actually working?" — `scripts/smoke_test.py`,
+after every deploy:**
+
+```bash
+RG_SMOKE_URL=https://api.yourdomain.com RG_API_TOKEN=... \
+    python backend/scripts/smoke_test.py
+```
+
+This hits a **running server** and the **real Roblox API**, exercising the
+same critical path end-to-end: health + feed version, auth enforcement,
+education content, linking an account, a live snapshot poll, alerts with
+explainers, an evidence upload/hash/download round-trip, both incident-report
+formats, intel status, and full erasure in a `finally` block so the smoke
+run never leaves data behind — even on failure. It deliberately links
+Roblox's own official `builderman` account rather than any child's account,
+consistent with this project's policy of never monitoring a real minor
+without their parent's consent, even for testing. Prints `PASS`/`FAIL` per
+step and exits non-zero on any failure, so it's CI/CD-pipeline friendly as a
+post-deploy gate.
+
+**"Does it work on an actual iPhone?" — still outstanding, needs a Mac:**
+Xcode build, run in Simulator/device, VoiceOver and Dynamic Type checks,
+TestFlight beta. See *Production readiness* below and `docs/ROADMAP.md`.
+
 ## Production readiness
 
 What's verified here and what still needs real-device work before launch:
