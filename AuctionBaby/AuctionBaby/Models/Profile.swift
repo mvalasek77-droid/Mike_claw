@@ -104,6 +104,16 @@ struct Profile: Identifiable, Codable, Hashable {
     /// drop licensed photos into Resources/Assets.xcassets and reference them
     /// here. Optional + defaulted, so old snapshots decode unchanged.
     var photoName: String? = nil
+    /// The user-uploaded primary photo as JPEG data. Wins over `photoName` when
+    /// present. Populated via `PhotoUploadStep` → `PhotosPicker` in onboarding
+    /// and the profile editor. Persisted alongside the rest of the profile in
+    /// the AES-GCM encrypted archive.
+    var photoData: Data? = nil
+    /// Additional photos in gallery order (0..n-1); `photoData` above is the
+    /// primary shown on cards. Capped at 5 extras by the UI (6 total, matching
+    /// Hinge). Kept as [Data] rather than paths because `EncryptedArchive`
+    /// already serialises the whole `Profile` Codable.
+    var photoGallery: [Data] = []
     var prompts: [Prompt] = []
     var interests: [String] = []
     var reviews: [DateReview] = []

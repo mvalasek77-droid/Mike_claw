@@ -12,6 +12,10 @@ struct AvatarView: View {
     let name: String
     let hue: Double
     var photoName: String? = nil
+    /// User-uploaded JPEG bytes. When present, wins over `photoName` and the
+    /// gradient fallback. Kept optional so bundled/sample profiles keep
+    /// rendering their asset-catalog photos unchanged.
+    var photoData: Data? = nil
     var locked: Bool = false
     var copycat: Bool = false
     /// Copycats are indistinguishable on the floor — the synthetic-glam
@@ -31,8 +35,10 @@ struct AvatarView: View {
     private var deep: Color { Color(hue: (hue + 0.08).truncatingRemainder(dividingBy: 1),
                                     saturation: 0.7, brightness: 0.45) }
 
-    /// The real photo, only if the asset actually exists in the bundle.
+    /// The real photo. User-uploaded JPEG bytes win over an asset-catalog
+    /// name; if neither resolves we fall through to the gradient monogram.
     private var photo: UIImage? {
+        if let photoData, let image = UIImage(data: photoData) { return image }
         guard let photoName else { return nil }
         return UIImage(named: photoName)
     }
@@ -131,6 +137,7 @@ struct AvatarCircle: View {
     let name: String
     let hue: Double
     var photoName: String? = nil
+    var photoData: Data? = nil
     var size: CGFloat = 44
     var locked: Bool = false
     var copycat: Bool = false
@@ -138,7 +145,8 @@ struct AvatarCircle: View {
     var copycatStyle: CopycatStyle = .glam
 
     var body: some View {
-        AvatarView(name: name, hue: hue, photoName: photoName, locked: locked, copycat: copycat,
+        AvatarView(name: name, hue: hue, photoName: photoName, photoData: photoData,
+                   locked: locked, copycat: copycat,
                    revealed: revealed, copycatStyle: copycatStyle, corner: size)
             .frame(width: size, height: size)
             .clipShape(Circle())

@@ -11,6 +11,7 @@ struct MyProfileView: View {
     @State private var showVerify = false
     @State private var showSafety = false
     @State private var showAdmin = false
+    @State private var showPhotoEditor = false
 
     private var me: Profile { store.me }
     private var isMan: Bool { store.role == .man }
@@ -42,6 +43,7 @@ struct MyProfileView: View {
                     .presentationDetents([.medium])
             }
             .sheet(isPresented: $showSafety) { SafetyCenterView() }
+            .sheet(isPresented: $showPhotoEditor) { PhotoEditorSheet() }
             .sheet(isPresented: $showAdmin) { AdminGateView() }
             .alert("Reset account?", isPresented: $showReset) {
                 Button("Reset", role: .destructive) {
@@ -56,7 +58,8 @@ struct MyProfileView: View {
     private var headerCard: some View {
         GlassSurface(corner: Theme.cornerXL) {
             VStack(spacing: 0) {
-                AvatarView(name: me.name, hue: me.hue, photoName: me.photoName, corner: Theme.cornerXL)
+                AvatarView(name: me.name, hue: me.hue, photoName: me.photoName,
+                           photoData: me.photoData, corner: Theme.cornerXL)
                     .frame(height: 260)
                     .overlay(alignment: .bottomLeading) {
                         VStack(alignment: .leading, spacing: 6) {
@@ -208,7 +211,7 @@ struct MyProfileView: View {
     private var womanStats: some View {
         VStack(spacing: 16) {
             worthCard
-            GlassCard(title: "Showcase score", icon: "rosette", tint: Theme.rose) {
+            GlassCard(title: "Showcase Credit", icon: "rosette", tint: Theme.rose) {
                 HStack(spacing: 16) {
                     ScoreGauge(value: me.showcaseCredit, range: 300...900, label: me.showcaseTier, tint: Theme.rose, size: 124)
                     VStack(alignment: .leading, spacing: 8) {
@@ -298,8 +301,69 @@ struct MyProfileView: View {
         }
     }
 
+    private var photoCountLabel: String {
+        let total = (me.photoData == nil ? 0 : 1) + me.photoGallery.count
+        return total == 0 ? "None" : "\(total) / \(PhotoUploadStep.maxTotal)"
+    }
+
+    private struct PhotoEditorSheet: View {
+        @EnvironmentObject private var store: AuctionStore
+        @Environment(\.dismiss) private var dismiss
+        @State private var primary: Data?
+        @State private var gallery: [Data]
+
+        init() {
+            _primary = State(initialValue: nil)
+            _gallery = State(initialValue: [])
+        }
+
+        var body: some View {
+            NavigationStack {
+                ScrollView {
+                    PhotoUploadStep(primary: $primary, gallery: $gallery)
+                        .screenPadding().padding(.top, 8)
+                }
+                .background(AppBackground())
+                .navigationTitle("Edit photos")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") { dismiss() }.foregroundStyle(Theme.inkSoft)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Save") {
+                            store.updateProfilePhotos(primary: primary, gallery: gallery)
+                            dismiss()
+                        }
+                        .foregroundStyle(Theme.gold).fontWeight(.bold)
+                    }
+                }
+                .onAppear {
+                    // Sheet re-inits with a fresh @State each present, so we
+                    // seed from the store here rather than in init (which
+                    // wouldn't see the @EnvironmentObject).
+                    primary = store.me.photoData
+                    gallery = store.me.photoGallery
+                }
+            }
+        }
+    }
+
     private var settingsCard: some View {
         GlassCard(title: "Settings", icon: "gearshape.fill") {
+            Button { showPhotoEditor = true } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "photo.on.rectangle.angled").foregroundStyle(Theme.gold)
+                    Text("Edit photos").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text(photoCountLabel).font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.inkFaint)
+                    Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                }
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(.plain)
+            Divider().overlay(Theme.hairline)
             Button { showSafety = true } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "shield.lefthalf.filled").foregroundStyle(Theme.verify)

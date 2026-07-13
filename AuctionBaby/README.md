@@ -51,11 +51,14 @@ Real money flows through **StoreKit 2** only (`Services/StoreKitService.swift`,
 
 ### Credit scores
 
-- **Auction Credit** (men, 300–850): a credit-score analogue driven by archetype
+- **Auction Credit** (men, 300–900): a credit-score analogue driven by archetype
   tier (money), a **deadbeat score** (did he actually pay what he bid?), repeat
   business, and a penalty for bidding on AI copycats.
-- **Showcase score** (women, 0–100): built from the five traits a date rates her
-  on — Fun, Interesting, Social, Polite, Genuine — plus her **market value**.
+- **Showcase Credit** (women, 300–900): a matching bureau-scale rating built from
+  the five traits a date rates her on — Fun, Interesting, Social, Polite,
+  Genuine — plus her **market value**. Her `showcaseScore` (0–100) is the
+  internal roll-up of the trait averages; `showcaseCredit` (300–900) is what
+  the UI card displays, so the two sides read on the same scale.
 
 ### Archetypes — buy your rating
 

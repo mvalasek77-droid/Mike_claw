@@ -204,7 +204,8 @@ final class AuctionStore: ObservableObject {
     // MARK: - Onboarding
 
     func register(role: Role, name: String, age: Int, location: String, bio: String,
-                  hue: Double, startingBid: Int?, prompts: [Prompt], interests: [String]) {
+                  hue: Double, startingBid: Int?, prompts: [Prompt], interests: [String],
+                  photoData: Data? = nil, photoGallery: [Data] = []) {
         // "demo" as the name is the App Review credential (see DEMO_MODE.md):
         // it enables Demo Mode and swaps in the demo identity, so a reviewer
         // needs no password, email, or real payment method.
@@ -215,6 +216,8 @@ final class AuctionStore: ObservableObject {
                               location: isDemo && location.isEmpty ? "Cupertino" : location,
                               bio: isDemo && bio.isEmpty ? "Here to see everything." : bio,
                               hue: hue, prompts: prompts, interests: interests)
+        profile.photoData = photoData
+        profile.photoGallery = photoGallery
         if role == .woman { profile.startingBid = startingBid.map { max(0, min($0, Self.maxStartingBid)) } }
         self.me = profile
         self.role = role
@@ -530,6 +533,15 @@ final class AuctionStore: ObservableObject {
     // MARK: - Lot (woman) actions
 
     static let maxStartingBid = 10_000_000
+
+    /// Save an edited photo set from `PhotoEditorSheet`. Empty primary + empty
+    /// gallery is legal — the app falls back to the gradient monogram.
+    func updateProfilePhotos(primary: Data?, gallery: [Data]) {
+        me.photoData = primary
+        me.photoGallery = gallery
+        save()
+        toastFlash(primary == nil ? "Photos cleared." : "Photos updated.")
+    }
 
     func setStartingBid(_ value: Int?) {
         guard role == .woman else { return }

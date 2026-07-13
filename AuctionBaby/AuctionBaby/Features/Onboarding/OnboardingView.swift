@@ -15,6 +15,8 @@ struct OnboardingView: View {
     @State private var startingBidText = "250"
     @State private var promptAnswers: [String] = ["", ""]
     @State private var selectedInterests: Set<String> = []
+    @State private var primaryPhoto: Data? = nil
+    @State private var photoGallery: [Data] = []
 
     @State private var promptQuestions = ["The way to win me over is", "My simple pleasures"]
     private let promptPool = ["The way to win me over is", "My simple pleasures",
@@ -131,7 +133,7 @@ struct OnboardingView: View {
                 }
                 .padding(.top, 8)
 
-                AvatarView(name: name.isEmpty ? "You" : name, hue: hue)
+                AvatarView(name: name.isEmpty ? "You" : name, hue: hue, photoData: primaryPhoto)
                     .frame(height: 150)
                     .overlay(alignment: .bottomLeading) {
                         if role == .woman {
@@ -142,6 +144,10 @@ struct OnboardingView: View {
                                 .padding(10)
                         }
                     }
+
+                GlassCard(title: "Photos", icon: "photo.on.rectangle.angled", tint: Theme.gold) {
+                    PhotoUploadStep(primary: $primaryPhoto, gallery: $photoGallery)
+                }
 
                 GlassCard(title: "Basics", icon: "person.text.rectangle.fill") {
                     field("Name", text: $name, placeholder: "Your name")
@@ -227,7 +233,8 @@ struct OnboardingView: View {
         let bid = (role == .woman && startingBidOn) ? Int(startingBidText) : nil
         store.register(role: role!, name: name, age: Int(ageText) ?? 25, location: location,
                        bio: bio, hue: hue, startingBid: bid, prompts: prompts,
-                       interests: Array(selectedInterests))
+                       interests: Array(selectedInterests),
+                       photoData: primaryPhoto, photoGallery: photoGallery)
     }
 
     // MARK: Field helpers

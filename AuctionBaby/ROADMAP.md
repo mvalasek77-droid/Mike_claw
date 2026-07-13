@@ -12,7 +12,7 @@ A living plan. Shipped items reflect what's in the branch today.
 - Matches, chat, mark-date-done, two-sided post-date reviews
 
 **Reputation system ("credit scores")**
-- Auction Credit (300–850) for men — archetype tier, deadbeat score, copycat penalty
+- Auction Credit (300–900) for men — archetype tier, deadbeat score, copycat penalty
 - Showcase Score + market value for women — from trait reviews
 - Earned-and-verified **Trillionaire** (buy → pay $9,999 on a date → confirmed)
 - **Masterpiece** — minted only by a confirmed Trillionaire date
@@ -23,7 +23,7 @@ A living plan. Shipped items reflect what's in the branch today.
 - Gavels consumable currency → status archetypes
 - Auction Baby Pass (Paddle / Reserve / Black Card) with real gated perks:
   rank reveal, unlimited bids, read receipts, weekly Boost claim,
-  reserve price reveal (Reserve+), auto-rebid on decline (Reserve+),
+  reserve price reveal (Reserve), auto-rebid on decline (Reserve),
   priority placement in inbox (Black Card)
 - Contextual paywall fired at four peak-intent moments (outbid rank, bid
   cap, locked filters, "did she read it?") with a per-tier benefits matrix
@@ -38,7 +38,7 @@ A living plan. Shipped items reflect what's in the branch today.
 - "SOLD!" celebration · "What you're worth tonight" dashboard
 - 24-hour match-reply clock (Bumble-style urgency) with a live countdown;
   cold matches lock the composer
-- Rewind your last bid (Reserve+ Pass perk)
+- Rewind your last bid (Reserve Pass perk)
 - Typing indicators + double-tap / long-press message reactions
 - Icebreaker suggestions generated from the other profile's own prompts
   and interests, shown until the human sends their first real reply

@@ -146,7 +146,7 @@ struct AuctioneeDetailView: View {
 struct ShowcaseScoreCard: View {
     let woman: Profile
     var body: some View {
-        GlassCard(title: "Showcase score", icon: "rosette", tint: Theme.rose) {
+        GlassCard(title: "Showcase Credit", icon: "rosette", tint: Theme.rose) {
             HStack(alignment: .center, spacing: 16) {
                 ScoreGauge(value: woman.showcaseCredit, range: 300...900, label: woman.showcaseTier,
                            tint: Theme.rose, size: 116)

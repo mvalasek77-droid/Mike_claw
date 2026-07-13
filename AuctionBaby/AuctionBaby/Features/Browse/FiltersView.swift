@@ -67,7 +67,7 @@ struct FiltersView: View {
                 Button { showStore = true } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "lock.fill")
-                        Text("Unlock advanced filters with Reserve+")
+                        Text("Unlock advanced filters with Reserve")
                         Spacer()
                         Image(systemName: "chevron.right")
                     }

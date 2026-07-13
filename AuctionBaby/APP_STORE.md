@@ -28,7 +28,7 @@ character limits.
 > and you're flagged a deadbeat.
 >
 > **Reputation is the whole game.**
-> • Auction Credit (300–850) for bidders — built on whether you actually pay
+> • Auction Credit (300–900) for bidders — built on whether you actually pay
 > • Showcase Score for the lot — earned from real date reviews
 > • Identity verification — a blue check the floor can trust
 >
@@ -80,10 +80,16 @@ payments — those are a real-world, person-to-person service and stay off-platf
 
 ## Privacy nutrition labels
 
-This build is fully local: no account server, no analytics SDKs, no tracking.
+This build is client-local for every consumer surface: no analytics SDKs, no
+tracking identifiers, no third-party auth. A founder-only payout Worker
+(gated behind admin credentials, never exercised by end users) handles Stripe
+Connect payouts and Apple refund routing when the operator has configured it;
+it is off in the default build.
 - **Data used to track you:** None
 - **Data linked to you:** None
-- **Data not linked to you:** Purchases (IAP, via Apple)
+- **Data not linked to you:** Purchases (IAP, via Apple); an anonymous
+  `appAccountToken` (per-install UUID, no PII) sent with each IAP so Apple's
+  refund webhook can route to the correct wallet.
 - A production launch would add: name, photos, and identity-verification media
   (used for app functionality and safety; not for tracking).
 
