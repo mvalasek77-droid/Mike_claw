@@ -328,6 +328,20 @@ struct MyProfileView: View {
                 .buttonStyle(.plain)
             }
             Divider().overlay(Theme.hairline)
+            if let url = BugReport.mailtoURL() {
+                Link(destination: url) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "ladybug.fill").foregroundStyle(Theme.gold)
+                        Text("Report a bug").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Report a bug via email")
+                Divider().overlay(Theme.hairline)
+            }
             HStack {
                 Text("Reduce Motion / Dark Mode honoured system-wide")
                     .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)

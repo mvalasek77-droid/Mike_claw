@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Trust & safety hub — date-safety guidance, how reporting works, and the
 /// verification nudge. The layer serious daters (and App Review) expect.
@@ -13,6 +14,8 @@ struct SafetyCenterView: View {
         ("sparkles", "Spot the Copycats", "AI lure profiles walk the floor unlabelled — spotting them is part of the game. Bid on one and you're told instantly, no Gavels are taken, and your Auction Credit pays for it. If a profile feels too perfect, it probably is."),
         ("flag", "Report anything off", "Use Report & Block on any profile or chat. Reported users are removed from your floor immediately."),
     ]
+
+    private var bugReportURL: URL? { BugReport.mailtoURL() }
 
     var body: some View {
         NavigationStack {
@@ -45,6 +48,31 @@ struct SafetyCenterView: View {
                             }
                             .padding(14)
                         }
+                    }
+                    if let url = bugReportURL {
+                        Link(destination: url) {
+                            GlassSurface(corner: Theme.cornerL, tint: Theme.gold) {
+                                HStack(alignment: .top, spacing: 12) {
+                                    Image(systemName: "ladybug.fill")
+                                        .font(.system(size: 16, weight: .bold))
+                                        .foregroundStyle(Theme.gold).frame(width: 30)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("Report a bug")
+                                            .font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.ink)
+                                        Text("Something look wrong? Opens Mail with a pre-filled report — your device info is already attached.")
+                                            .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundStyle(Theme.inkFaint)
+                                }
+                                .padding(14)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Report a bug via email")
                     }
                     if !store.blockedIDs.isEmpty {
                         Text("\(store.blockedIDs.count) profile\(store.blockedIDs.count == 1 ? "" : "s") blocked")
