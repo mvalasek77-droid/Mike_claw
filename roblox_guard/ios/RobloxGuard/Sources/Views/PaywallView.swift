@@ -5,6 +5,11 @@ struct PaywallView: View {
     @EnvironmentObject var purchases: PurchaseManager
     @Environment(\.dismiss) private var dismiss
 
+    // TODO: point at the real hosted page before submitting to App Review —
+    // App Store Connect's own "Privacy Policy URL" field must match. See
+    // docs/PRIVACY_POLICY.md for a draft to publish.
+    static let privacyPolicyURL = URL(string: "https://robloxguard.app/privacy")!
+
     var reason = "Subscribe to start protecting your child on Roblox."
 
     @State private var selectedProductID: String?
@@ -77,6 +82,17 @@ struct PaywallView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
+
+                    // Required by App Store guideline 3.1.2(b): functional links to
+                    // Terms of Use and Privacy Policy must be visible at the point of
+                    // purchase. PRIVACY_POLICY_URL is a placeholder — see docs/PRIVACY_POLICY.md.
+                    HStack(spacing: 16) {
+                        Link("Terms of Use (EULA)",
+                             destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
+                        Link("Privacy Policy", destination: PaywallView.privacyPolicyURL)
+                    }
+                    .font(.caption2)
+                    .frame(maxWidth: .infinity)
                 }
                 .padding()
             }

@@ -77,6 +77,8 @@ struct SettingsView: View {
                     Text("RobloxGuard stores only your child's Roblox username and the safety alerts derived from public account information. Unlinking an account permanently deletes everything associated with it. Nothing is shared with third parties.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    Link("Privacy Policy", destination: PaywallView.privacyPolicyURL)
+                        .font(.footnote)
                 }
 
                 Section {
