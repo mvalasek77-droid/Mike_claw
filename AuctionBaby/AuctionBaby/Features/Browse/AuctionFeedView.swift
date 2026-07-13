@@ -235,11 +235,14 @@ struct FloorCard: View {
                             .depth(40, strong: true)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Bid on \(woman.name)")
                     }
                 }
                 .padding(16)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(woman.name), \(woman.age), \(woman.location)\(woman.verified ? ", verified" : "")\(woman.startingBid.map { ", starting bid \(Money.full($0))" } ?? ", open bidding")")
     }
 }
 

@@ -179,6 +179,8 @@ struct BidRow: View {
             .padding(16)
         }
         .opacity(dimmed ? 0.55 : 1)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(bid.status == .accepted ? bid.man.name : "Hidden bidder"), \(Money.compact(bid.amount))\(bid.gilded ? ", gilded bid" : "")\(bid.man.verified ? ", verified" : ""), credit \(bid.man.auctionCredit)")
     }
 
     private func creditTint(_ v: Int) -> Color {

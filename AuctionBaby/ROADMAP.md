@@ -22,7 +22,9 @@ A living plan. Shipped items reflect what's in the branch today.
 **Premium & monetization (StoreKit 2)**
 - Gavels consumable currency → status archetypes
 - Auction Baby Pass (Paddle / Reserve / Black Card) with real gated perks:
-  rank reveal, unlimited bids, read receipts, weekly Boost claim
+  rank reveal, unlimited bids, read receipts, weekly Boost claim,
+  reserve price reveal (Reserve+), auto-rebid on decline (Reserve+),
+  priority placement in inbox (Black Card)
 - Contextual paywall fired at four peak-intent moments (outbid rank, bid
   cap, locked filters, "did she read it?") with a per-tier benefits matrix
 - Spotlight Boost (consumable) — works both sides (lot side pulls bidders in)
@@ -63,6 +65,17 @@ A living plan. Shipped items reflect what's in the branch today.
 - iOS 26 Liquid Glass (graceful iOS 17–25 fallback), adaptive haptics,
   "SOLD!" match celebration, Reduce Motion + Dark Mode, vector logo + icon
 - XCTest coverage of the domain logic; `Products.storekit` for IAP testing
+- VoiceOver-announced toasts, accessibility labels on floor cards and bid rows
+
+**Money infrastructure**
+- StoreKit 2 with `appAccountToken`, transaction dedup, crash-safe
+  credit-first ordering, revocation clawback, foreground refund polling
+- AES-GCM encrypted state persistence with Keychain-backed master key
+- Cloudflare Worker backend with Stripe Connect Express payouts,
+  Apple ASSN V2 JWS verification, append-only KV money ledger
+- HMAC-gated admin console: float status, pay-now, ledger, moderation
+- Demo Mode for App Review (name "demo", free counterparts of every
+  paid product, demo Pass, seeded wallet)
 
 ## 🔜 Next (v1.1)
 
@@ -78,11 +91,25 @@ A living plan. Shipped items reflect what's in the branch today.
 - Onboarding glow-up: multi-step, dealbreakers, voice prompts
 - Woman-side bidder filters & saved searches
 
+## 🧊 iOS 26 Liquid Glass (v1.1 theme)
+
+- Tab bar: `.glassEffect(.regular)` with adaptive tint per tab
+- Navigation bars: native Liquid Glass chrome, translucent scroll behaviour
+- Cards: swap GlassSurface to `GlassBackground` material with depth tinting
+- Paywall + celebration: frosted depth layers with live blur radius animations
+- Haptics: `SensoryFeedback` API (`.impact`, `.selection`, `.notification`)
+  replacing the UIKit haptic engine for tighter Glass-era feel
+- Floating action buttons: new `.glassProminentButtonStyle` on bid CTAs
+- Adaptive color: use `Color.resolvedDynamic()` to tint glass surfaces with
+  the gold/rose theme palette while respecting light/dark appearance
+- Graceful fallback: `#available(iOS 26, *)` gates; iOS 17–25 gets the
+  current hand-rolled glass aesthetic
+
 ## 🌅 Later (v1.2+)
 
 - "We met?" safety check-ins and date-share
-- Proxy / auto-rebid engine and live outbid alerts
-- Localization, accessibility audit (VoiceOver pass), iPad layout
+- Live outbid alerts and push notifications
+- Localization, full accessibility audit (VoiceOver pass), iPad layout
 - Trust graph: weighted reputation, fraud/Copycat detection
 - Events / curated "auction nights"
 

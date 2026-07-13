@@ -165,5 +165,8 @@ struct ToastView: View {
         .background(GlassSurface(corner: Theme.cornerM) { Color.clear })
         .padding(.horizontal, 30)
         .transition(.move(edge: .top).combined(with: .opacity))
+        .accessibilityLabel(text)
+        .accessibilityAddTraits(.isStaticText)
+        .onAppear { UIAccessibility.post(notification: .announcement, argument: text) }
     }
 }
