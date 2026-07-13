@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct RobloxGuardApp: App {
     @StateObject private var store = Store()
+    @StateObject private var purchases = PurchaseManager()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     var body: some Scene {
@@ -10,6 +11,7 @@ struct RobloxGuardApp: App {
             if hasCompletedOnboarding {
                 MainTabView()
                     .environmentObject(store)
+                    .environmentObject(purchases)
             } else {
                 ConsentOnboardingView {
                     hasCompletedOnboarding = true
@@ -22,6 +24,7 @@ struct RobloxGuardApp: App {
 
 struct MainTabView: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var purchases: PurchaseManager
 
     var body: some View {
         TabView {
@@ -33,5 +36,6 @@ struct MainTabView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
         .task { await store.loadAll() }
+        .task { await purchases.start() }
     }
 }

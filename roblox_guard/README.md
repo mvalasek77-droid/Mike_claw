@@ -184,6 +184,39 @@ open RobloxGuard.xcodeproj
 
 Point `APIClient.baseURL` at your deployed backend (HTTPS in release).
 
+## Pricing
+
+Two auto-renewable subscription tiers via StoreKit 2 (`PurchaseManager.swift`,
+`PaywallView.swift`), priced below the category leader (Bark: ~$5/mo or
+$49/yr for one child, ~$14/mo or $99/yr for up to five) while keeping real
+margin, since marginal cost per subscriber is near zero — Roblox's API is
+free and the daily threat-intel run is a fixed cost shared across all users,
+not billed per seat:
+
+| Plan | Monthly | Annual | Covers |
+|---|---|---|---|
+| Single Child | $3.99 | $34 | 1 linked Roblox account, full alerts + evidence vault |
+| Family | $8.99 | $69 | Up to 5 children, incident reports, priority protection updates |
+
+There is no free tier — like Bark, the entry-level single-child plan is the
+low-commitment option. The paywall (`PaywallView`) defaults the selection to
+the annual plan on each tier, since annual billing is where subscription
+monitoring apps retain past the "nothing's happened yet, do I still need
+this" drop-off point. `DashboardView` routes to the paywall instead of the
+link sheet when there's no active entitlement or the plan's child limit is
+reached; `SettingsView` shows the active plan and links to Apple's native
+manage-subscription sheet.
+
+**Before this ships**, the four product IDs
+(`com.mikeclaw.robloxguard.{single,family}.{monthly,annual}`) must be created
+in App Store Connect matching `RobloxGuard.storekit` (which is a local test
+configuration only, for Simulator testing — see `project.yml`), and receipt
+validation / entitlement checks assumed here are client-side StoreKit 2
+(`Transaction.currentEntitlements`), which is sufficient for gating local UI
+but not for trusting the backend — if server-side features ever need to know
+subscription state, verify entitlements server-side via App Store Server
+Notifications rather than trusting the client.
+
 ## Smoke testing
 
 Two layers, for two different questions.

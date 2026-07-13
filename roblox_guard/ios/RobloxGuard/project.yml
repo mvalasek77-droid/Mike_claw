@@ -20,3 +20,9 @@ targets:
         # Local dev talks to http://localhost:8000; production must use HTTPS
         # (no ATS exceptions shipped in release builds).
         INFOPLIST_KEY_NSAppTransportSecurity_dev_note: remove-before-release
+    # StoreKit 2 subscriptions (PurchaseManager.swift, PaywallView.swift).
+    # RobloxGuard.storekit is a local test configuration (no App Store Connect
+    # needed for Simulator testing): after `xcodegen generate`, in Xcode set
+    # Product > Scheme > Edit Scheme > Run > Options > StoreKit Configuration
+    # to RobloxGuard.storekit. Real product IDs must also be created in App
+    # Store Connect before release (see README "Pricing").

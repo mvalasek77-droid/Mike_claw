@@ -1,0 +1,111 @@
+{
+  "identifier" : "F5C6A1C0-0000-4A00-8A00-ROBLOXGUARD01",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_applicationInternalID" : "0000000000",
+    "_developerTeamID" : "0000000000",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "20500000",
+      "localizations" : [],
+      "name" : "RobloxGuard Protection",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "20500001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Monitor one Roblox account: full alerts and evidence vault.",
+              "displayName" : "Single Child (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mikeclaw.robloxguard.single.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Single Child Monthly",
+          "subscriptionGroupID" : "20500000",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "34.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "20500002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Monitor one Roblox account: full alerts and evidence vault. Best value.",
+              "displayName" : "Single Child (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mikeclaw.robloxguard.single.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Single Child Annual",
+          "subscriptionGroupID" : "20500000",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "8.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "20500003",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Up to 5 children, incident reports, priority protection updates.",
+              "displayName" : "Family (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mikeclaw.robloxguard.family.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Family Monthly",
+          "subscriptionGroupID" : "20500000",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "69.00",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "20500004",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Up to 5 children, incident reports, priority protection updates. Best value.",
+              "displayName" : "Family (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mikeclaw.robloxguard.family.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Family Annual",
+          "subscriptionGroupID" : "20500000",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

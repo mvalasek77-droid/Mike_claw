@@ -22,9 +22,16 @@
 - [ ] Parent accounts + multi-device sync (Sign in with Apple; token per
       account replaces the shared RG_API_TOKEN)
 - [ ] Postgres + migrations (Alembic) behind the same Database interface
-- [ ] Subscription via StoreKit 2 (guideline 3.1.1) with a real free tier
+- [x] Subscription via StoreKit 2 (guideline 3.1.1) — `PurchaseManager.swift`
+      + `PaywallView.swift` ship two tiers (Single Child $3.99/mo·$34/yr,
+      Family $8.99/mo·$69/yr, see README "Pricing"). Still needed before
+      release: create the four product IDs in App Store Connect, and move
+      off client-side `Transaction.currentEntitlements` to server-verified
+      App Store Server Notifications if the backend ever needs to trust
+      subscription state.
 - [ ] Privacy policy, App Privacy labels, COPPA counsel review
 - [ ] XCUITest suite + snapshot tests once the Xcode project is generated
+      (including the paywall / entitlement-gating flow added for pricing)
 
 ## v0.3 — iOS 26 Liquid Glass theme
 

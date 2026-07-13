@@ -2,7 +2,10 @@ import SwiftUI
 
 struct DashboardView: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var purchases: PurchaseManager
     @State private var showLinkSheet = false
+    @State private var showPaywall = false
+    @State private var paywallReason = ""
 
     var body: some View {
         NavigationStack {
@@ -16,13 +19,16 @@ struct DashboardView: View {
             .navigationTitle("Dashboard")
             .toolbar {
                 Button {
-                    showLinkSheet = true
+                    requestLinkChild()
                 } label: {
                     Label("Link a child", systemImage: "plus")
                 }
             }
             .sheet(isPresented: $showLinkSheet) {
                 LinkChildSheet()
+            }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView(reason: paywallReason)
             }
             .refreshable { await store.loadAll() }
             .overlay {
@@ -33,12 +39,33 @@ struct DashboardView: View {
         }
     }
 
+    /// Free accounts and accounts at their plan's child limit are routed to
+    /// the paywall instead of the link sheet.
+    private func requestLinkChild() {
+        if purchases.activeTier == .none {
+            paywallReason = "Subscribe to start protecting your child on Roblox."
+            showPaywall = true
+        } else if store.children.count >= purchases.activeTier.maxChildren {
+            paywallReason = "Your \(purchases.activeTier.displayName) plan covers \(purchases.activeTier.maxChildren) child\(purchases.activeTier.maxChildren == 1 ? "" : "ren"). Upgrade to Family to add more."
+            showPaywall = true
+        } else {
+            showLinkSheet = true
+        }
+    }
+
     private var emptyState: some View {
-        ContentUnavailableView(
-            "No accounts linked",
-            systemImage: "person.badge.shield.checkmark",
-            description: Text("Link your child's Roblox username to start receiving safety signals.")
-        )
+        ContentUnavailableView {
+            Label("No accounts linked", systemImage: "person.badge.shield.checkmark")
+        } description: {
+            Text(purchases.activeTier == .none
+                 ? "Subscribe, then link your child's Roblox username to start receiving safety signals."
+                 : "Link your child's Roblox username to start receiving safety signals.")
+        } actions: {
+            Button(purchases.activeTier == .none ? "Subscribe" : "Link a child") {
+                requestLinkChild()
+            }
+            .buttonStyle(.borderedProminent)
+        }
     }
 
     private var childList: some View {

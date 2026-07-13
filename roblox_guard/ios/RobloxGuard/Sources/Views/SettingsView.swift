@@ -1,13 +1,32 @@
+import StoreKit
 import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var purchases: PurchaseManager
     @State private var childToUnlink: Child?
     @State private var protection: ProtectionStatus?
+    @State private var showPaywall = false
+    @State private var showManageSubscriptions = false
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    LabeledContent("Plan", value: purchases.activeTier.displayName)
+                    if purchases.activeTier != .none {
+                        LabeledContent("Children covered", value: "\(store.children.count) of \(purchases.activeTier.maxChildren)")
+                    }
+                    if purchases.activeTier == .none {
+                        Button("Subscribe") { showPaywall = true }
+                    } else {
+                        Button("Change plan") { showPaywall = true }
+                        Button("Manage subscription") { showManageSubscriptions = true }
+                    }
+                } header: {
+                    Text("Subscription")
+                }
+
                 Section("Linked accounts") {
                     if store.children.isEmpty {
                         Text("No accounts linked")
@@ -61,6 +80,8 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .task { protection = try? await store.api.protectionStatus() }
+            .sheet(isPresented: $showPaywall) { PaywallView() }
+            .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
             .confirmationDialog(
                 "Unlink this account? All stored alerts and history for it will be permanently deleted.",
                 isPresented: .init(get: { childToUnlink != nil },
