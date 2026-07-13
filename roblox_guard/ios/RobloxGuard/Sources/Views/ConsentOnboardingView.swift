@@ -9,8 +9,11 @@ struct ConsentOnboardingView: View {
     @State private var isParent = false
     @State private var understandsScope = false
     @State private var understandsData = false
+    @State private var understandsLimits = false
 
-    private var canContinue: Bool { isParent && understandsScope && understandsData }
+    private var canContinue: Bool {
+        isParent && understandsScope && understandsData && understandsLimits
+    }
 
     var body: some View {
         NavigationStack {
@@ -46,6 +49,15 @@ struct ConsentOnboardingView: View {
                         }
                     }
 
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Understand the limits", systemImage: "exclamationmark.triangle")
+                                .font(.headline)
+                            bullet("Alerts can be wrong in both directions: some will flag something innocent (false positives), and the app can miss real problems it has no way to see (false negatives) — it never reads chats.")
+                            bullet("This app is one tool, not a complete safety strategy. Use it alongside ongoing conversations with your child, Roblox's own parental controls, and your own judgment — not instead of them.")
+                        }
+                    }
+
                     VStack(alignment: .leading, spacing: 16) {
                         Toggle(isOn: $isParent) {
                             Text("I am the parent or legal guardian of the child whose account I will link.")
@@ -55,6 +67,9 @@ struct ConsentOnboardingView: View {
                         }
                         Toggle(isOn: $understandsData) {
                             Text("I consent to this app storing my child's Roblox username and derived safety alerts. Unlinking the account deletes all of it.")
+                        }
+                        Toggle(isOn: $understandsLimits) {
+                            Text("I understand alerts can be false positives or miss real issues, and that this app supplements — not replaces — my own supervision and judgment.")
                         }
                     }
                     .toggleStyle(.switch)

@@ -21,11 +21,15 @@ struct AlertDetailView: View {
                 .padding(.vertical, 4)
             }
 
-            Section("What we observed") {
+            Section {
                 ForEach(alert.facts, id: \.self) { fact in
                     Label(fact, systemImage: "doc.text.magnifyingglass")
                         .font(.subheadline)
                 }
+            } header: {
+                Text("What we observed")
+            } footer: {
+                Text("This is a pattern match, not a conclusion — it can be a false positive, and a lack of alerts doesn't mean nothing is wrong. Use it as one input alongside talking to your child.")
             }
 
             Section("What you can do") {

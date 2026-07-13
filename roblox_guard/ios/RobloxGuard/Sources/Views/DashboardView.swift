@@ -73,6 +73,10 @@ struct DashboardView: View {
                         }
                         .buttonStyle(.borderless)
                     }
+                } footer: {
+                    if child.id == store.children.last?.id {
+                        Text("Alerts are automated pattern matches, not verdicts — they can be wrong in either direction. Use RobloxGuard alongside conversation and supervision, not in place of them.")
+                    }
                 }
             }
         }

@@ -13,6 +13,19 @@ and grounds for App Store rejection) or lying. RobloxGuard works entirely from
 Roblox's **public, unauthenticated APIs** and never asks for the child's
 password.
 
+**Known limits, stated plainly:** detection is pattern-matching over public
+data, and pattern-matching is wrong in both directions. It will sometimes
+flag something innocent (a false positive — a new friend's bio happens to
+mention a Discord server for an unrelated reason), and it will sometimes miss
+something real (a false negative — it cannot see private chats at all, so
+grooming conducted entirely there produces no alert). No alert is a
+determination, and no absence of alerts is a guarantee of safety. RobloxGuard
+is **one tool a parent uses, not a standalone safety strategy** — it's meant
+to sit alongside ongoing conversation with your child, Roblox's own parental
+controls, and your own judgment, not replace any of them. The app's
+onboarding requires parents to affirmatively acknowledge this before linking
+an account, and every alert and report repeats it.
+
 ## How coverage works (the parent's-eye view)
 
 **Nothing is installed on the child's device.** The app runs on the

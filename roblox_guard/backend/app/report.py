@@ -36,7 +36,15 @@ DISCLAIMER = (
     "This report contains automated observations of publicly visible Roblox "
     "account information, plus evidence supplied by the parent. It states "
     "facts and pattern matches; it does not accuse any person of a crime. "
-    "Determinations belong to Roblox Trust & Safety and law enforcement."
+    "Determinations belong to Roblox Trust & Safety and law enforcement. "
+    "These are pattern matches, not conclusions, and can be wrong in either "
+    "direction: an alert can flag something innocent (a false positive), and "
+    "the absence of an alert does not mean the account is safe (a false "
+    "negative) — automated detection cannot see private chats and cannot "
+    "catch everything. This report is one input to your judgment, not a "
+    "verdict, and RobloxGuard is a monitoring aid, not a complete child "
+    "safety strategy — pair it with ongoing conversation, Roblox's own "
+    "parental controls, and your own supervision."
 )
 
 CSAM_WARNING = (
