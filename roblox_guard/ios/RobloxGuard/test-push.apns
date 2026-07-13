@@ -1,0 +1,11 @@
+{
+  "Simulator Target Bundle": "com.mikeclaw.robloxguard",
+  "aps": {
+    "alert": {
+      "title": "Elevated alert: MyKid",
+      "body": "A new friend's bio contains a Discord handle — this is the strongest observable grooming precursor."
+    },
+    "sound": "default",
+    "badge": 1
+  }
+}

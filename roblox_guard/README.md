@@ -339,19 +339,44 @@ this:
    `POST /notifications/test` and checks Apple's API was *reachable*
    (JWT + HTTP/2 handshake worked) — it can't check real delivery since the
    smoke test's token isn't a real device.
-3. **The real test, on a physical iPhone** (Simulator push delivery can't be
-   fully trusted): build and run with a debug/dev provisioning profile,
-   Settings → Notifications → Enable Notifications → grant the permission
-   prompt. Confirm registration worked — either watch for "Notifications
-   enabled" in Settings, or check the backend's
-   `GET /notifications/status` for `registered_devices` going up by one.
-   Then tap **"Send test notification"**, which appears right there in
-   Settings once registered — it calls the same `POST /notifications/test`
-   endpoint and should produce a real push within a few seconds. This
-   confirms the entire chain (permission → token → registration → APNs
-   delivery) without needing to fabricate an actual off-platform-handle
-   match on a real Roblox account.
-4. Only once step 3 works should you trust that a *real* alert (e.g. link a
+3. **In the iOS Simulator** — two different things get tested here, and
+   they're not the same check:
+   - *Does our app + backend plumbing work?* Run the app in Simulator
+     (`Cmd+R` after `xcodegen generate` and opening `RobloxGuard.xcodeproj`),
+     go to Settings → Notifications → Enable Notifications, grant the
+     permission prompt (Simulator supports this natively). The app will get
+     a *placeholder* device token from `didRegisterForRemoteNotificationsWithDeviceToken`
+     and register it with the backend — confirm via `GET /notifications/status`
+     that `registered_devices` went up by one. This proves the entire
+     client-side chain (permission → token → `APIClient.registerDevice` →
+     `POST /devices/register`) works. Tapping "Send test notification"
+     afterward will reach the backend and attempt real APNs delivery, but
+     Apple will almost certainly reject a Simulator-origin token — that's
+     expected, not a bug; it's still proof the backend-to-Apple leg (JWT
+     signing, HTTP/2 handshake) works, same as `smoke_test.py`'s check.
+   - *Does the notification actually look right when it arrives?* Simulator
+     can't receive genuine remote pushes from Apple, so use Apple's own
+     local-injection tool instead, which bypasses APNs entirely and just
+     tests rendering:
+     ```bash
+     xcrun simctl push booted com.mikeclaw.robloxguard ios/RobloxGuard/test-push.apns
+     ```
+     (`booted` targets whichever Simulator is currently running; swap in a
+     specific device UDID from `xcrun simctl list` if you have more than
+     one booted.) That file already matches the real payload shape
+     `app/push.py` sends. You should see the banner, hear the sound, and
+     the app's badge should update — if it doesn't, the gap is in the
+     client (entitlement, permission, or notification delegate), not the
+     backend. Note there's currently no notification-tap handler, so
+     tapping it just opens to whatever screen the app was last on rather
+     than deep-linking to the specific alert — that's a real gap, not
+     tested here, and would be a good next addition.
+4. **The real test, on a physical iPhone** (the only way to confirm actual
+   end-to-end delivery through Apple's servers): same Settings flow as
+   above, but on real hardware with a debug/dev provisioning profile. Tap
+   "Send test notification" and you should get a real push within a few
+   seconds — that's the chain fully proven, permission through delivery.
+5. Only once step 4 works should you trust that a *real* alert (e.g. link a
    test child whose friend's bio contains a Discord handle) will actually
    reach the device — that exercises `monitor.py`'s real trigger path
    instead of the manual one.
