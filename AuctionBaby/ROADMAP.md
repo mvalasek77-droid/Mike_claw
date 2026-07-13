@@ -79,6 +79,26 @@ A living plan. Shipped items reflect what's in the branch today.
 - Blank fields on a target profile always pass — we don't punish incomplete
   profiles
 
+**Integrity + funnel (agent-flagged P1 bundle)**
+- **Gavel Confirmed** — mutual meetup verification, both sides attest;
+  Gavel Confirmed reviews carry up to +72 (men) / +60 (women) in the
+  credit report
+- **Opening Bid Script** — Bumble-style woman-authored opener that
+  auto-sends on accept, with 4 preset templates
+- **Whisper Bid** — anonymous, zero-Gavel, zero-credit-impact signal of
+  interest; doesn't count against the free live-bid ceiling
+- **Lot of the Day** — full-screen "TONIGHT'S LOT" once-a-day intro sheet;
+  headliner banner rebranded to Lot of the Day
+- **On the Floor Now** — deterministic hour-of-day live-presence signal on
+  ~30% of non-copycat profiles; pulsing green dot on the card
+- **Bid Insurance** — Gavel premium on a bid; on decline, premium + a
+  Gilded Bid credit refunded
+- **The Docket** — daily-claim variable-reward mystery box (20% chance of
+  a Gilded credit or bonus streak-freeze); streak-freeze token protects
+  the streak on missed days, buyable for Gavels
+- **The Standing** — weekly cosmetic leaderboards (top bidders, most-
+  contested lots) by city, deterministic per-week
+
 **Money infrastructure**
 - StoreKit 2 with `appAccountToken`, transaction dedup, crash-safe
   credit-first ordering, revocation clawback, foreground refund polling

@@ -13,6 +13,7 @@ struct BidSheet: View {
     @State private var note: String = ""
     @State private var showStore = false
     @State private var gild = false
+    @State private var insure = false
 
     /// Free bidders are capped on live bids; a Pass lifts it.
     private var atFreeLimit: Bool {
@@ -110,6 +111,7 @@ struct BidSheet: View {
                 }
 
                 gildToggle
+                insuranceToggle
 
                 if atFreeLimit {
                     VStack(spacing: 8) {
@@ -127,7 +129,7 @@ struct BidSheet: View {
                                   gradient: gild ? Theme.prestigeGradient : Theme.goldGradient,
                                   enabled: amount > 0) {
                         store.placeBid(on: woman, amount: amount, note: note, gilded: gild,
-                                       promptRef: promptContext?.question)
+                                       insured: insure, promptRef: promptContext?.question)
                         dismiss()
                     }
                     whisperFallback
@@ -143,6 +145,36 @@ struct BidSheet: View {
         .motion(Motion.snap, value: amount)
         .motion(Motion.snap, value: gild)
         .sheet(isPresented: $showStore) { PaywallView(trigger: .bidLimit) }
+    }
+
+    /// Bid Insurance — small Gavel premium; if she declines you get it back
+    /// plus a Gilded Bid credit. Fixes the sting of a flat "no" without
+    /// letting you self-cancel for free profit.
+    private var insuranceToggle: some View {
+        Button { Haptics.selection(); insure.toggle() } label: {
+            HStack(spacing: 12) {
+                Image(systemName: insure ? "shield.checkerboard" : "shield")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(insure ? Theme.verify : Theme.inkSoft)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Bid Insurance").font(.system(size: 15, weight: .heavy, design: .serif))
+                        .foregroundStyle(Theme.ink)
+                    Text("If she declines, refund + a Gilded credit lands back in your wallet.")
+                        .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 6)
+                Text("\(Tally.compact(AuctionStore.bidInsuranceCost)) ⚖︎")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .foregroundStyle(insure ? Theme.verify : Theme.inkFaint)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: Theme.cornerM)
+                .fill(insure ? Theme.verify.opacity(0.12) : .white.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cornerM)
+                .strokeBorder(insure ? Theme.verify.opacity(0.6) : Theme.hairline, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 
     /// Whisper Bid — anonymous, free, no credit hit. A "reserve nod" that

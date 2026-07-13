@@ -21,6 +21,12 @@ struct Bid: Identifiable, Codable, Hashable {
     /// Costs Gavels, pins to the top of her inbox with a gold ribbon, and
     /// nudges her toward accepting.
     var gilded: Bool = false
+    /// Bid Insurance — a small Gavel premium paid up-front. If she declines
+    /// or the match expires without acceptance, the premium is refunded and
+    /// a consolation Gilded Bid credit lands in the wallet. Doesn't refund
+    /// on a bid he cancels himself; that would be free-money farming.
+    var insured: Bool = false
+
     /// A Whisper Bid — anonymous, no-Gavel, no-credit-impact signal of interest.
     /// She sees "someone whispered" without his name or archetype; he can
     /// escalate to a real bid once she nods back. Doesn't count against the

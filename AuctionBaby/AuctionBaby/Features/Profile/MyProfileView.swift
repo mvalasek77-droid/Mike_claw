@@ -13,6 +13,7 @@ struct MyProfileView: View {
     @State private var showAdmin = false
     @State private var showPhotoEditor = false
     @State private var showOpeningScript = false
+    @State private var showStanding = false
 
     private var me: Profile { store.me }
     private var isMan: Bool { store.role == .man }
@@ -46,6 +47,7 @@ struct MyProfileView: View {
             .sheet(isPresented: $showSafety) { SafetyCenterView() }
             .sheet(isPresented: $showPhotoEditor) { PhotoEditorSheet() }
             .sheet(isPresented: $showOpeningScript) { OpeningBidScriptSheet() }
+            .sheet(isPresented: $showStanding) { StandingView() }
             .sheet(isPresented: $showAdmin) { AdminGateView() }
             .alert("Reset account?", isPresented: $showReset) {
                 Button("Reset", role: .destructive) {
@@ -457,6 +459,21 @@ struct MyProfileView: View {
                 }
                 .buttonStyle(.plain)
             }
+            Divider().overlay(Theme.hairline)
+            Button { showStanding = true } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "trophy.fill").foregroundStyle(Theme.gold)
+                    Text("The Standing").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text("This week")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.inkFaint)
+                    Image(systemName: "chevron.right").font(.system(size: 12))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(.plain)
             Divider().overlay(Theme.hairline)
             Button { showSafety = true } label: {
                 HStack(spacing: 10) {

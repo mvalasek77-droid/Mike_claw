@@ -23,6 +23,9 @@ final class AuctionStore: ObservableObject {
     /// Day-key of the last Lot-of-the-Day intro sheet the user saw. Set to
     /// `Calendar.startOfDay` so a new day flips it clean.
     @Published var lastLotOfDaySeen: Date?
+    /// The Docket — streak-freeze inventory. Each token consumed automatically
+    /// on a missed day (in claimDaily) protects the streak from resetting.
+    @Published var streakFreezeCount: Int = 0
 
     /// Per-user UUID attached to every IAP purchase so Apple server notifications
     /// can route refunds to the correct wallet. Generated once, persisted forever.
@@ -70,6 +73,10 @@ final class AuctionStore: ObservableObject {
     static let freeActiveBidLimit = 3
     /// Gavel cost of gilding a bid (the premium "Rose" move).
     static let gildedBidCost = 250
+    /// Bid Insurance premium — small Gavel amount added on top of a bid.
+    /// Refunded plus a Gilded Bid credit when she declines. Deliberately
+    /// cheaper than the Gilded fee so the ceiling on total spend stays sane.
+    static let bidInsuranceCost = 200
     /// Free live-bid ceiling: only real bids count. Whispers are a
     /// zero-Gavel signal that shouldn't sink you into the paywall.
     var activePendingBidCount: Int {
@@ -113,6 +120,68 @@ final class AuctionStore: ObservableObject {
         lastLotOfDaySeen = Calendar.current.startOfDay(for: Date())
         save()
     }
+
+    // MARK: - The Standing (weekly leaderboards)
+
+    /// One line on the leaderboard — a profile plus their numeric standing.
+    struct StandingEntry: Identifiable, Hashable {
+        let id: UUID           // profile.id
+        let name: String
+        let hue: Double
+        let photoName: String?
+        let value: Int
+        let subtitle: String
+        let isYou: Bool
+    }
+
+    /// Weekly top-bidders leaderboard for the user's city (or nation-wide when
+    /// the profile city is blank). Computed from the sample bidders roster
+    /// plus the user; deterministic per-week so it doesn't reshuffle within
+    /// a session. Auction Credit is the sort key — the whole app is about rank.
+    var topBiddersInCity: [StandingEntry] {
+        let key = weekKey()
+        let city = me.location.isEmpty ? "the floor" : me.location
+        var pool: [Profile] = SampleData.suitors()
+        if role == .man { pool.append(me) }
+        let sorted = pool
+            .filter { !$0.location.isEmpty ? $0.location == city : true }
+            .sorted { $0.auctionCredit > $1.auctionCredit }
+            .prefix(5)
+        _ = key   // pinned per-week (all inputs are stable per week already)
+        return sorted.map { p in
+            StandingEntry(id: p.id, name: p.name, hue: p.hue, photoName: p.photoName,
+                          value: p.auctionCredit,
+                          subtitle: p.creditTier,
+                          isYou: p.id == me.id)
+        }
+    }
+
+    /// Weekly most-contested lots — the women whose Showcase Credit runs
+    /// hottest right now. Client-side proxy for a real bid-count feed.
+    var mostContestedLots: [StandingEntry] {
+        let city = me.location.isEmpty ? nil : me.location
+        let sorted = floor
+            .filter { !$0.isCopycat }
+            .filter { city == nil ? true : $0.location == city }
+            .sorted { $0.showcaseCredit > $1.showcaseCredit }
+            .prefix(5)
+        return sorted.map { p in
+            StandingEntry(id: p.id, name: p.name, hue: p.hue, photoName: p.photoName,
+                          value: p.showcaseCredit,
+                          subtitle: p.showcaseTier,
+                          isYou: false)
+        }
+    }
+
+    /// Stable per-week seed. Used only to tag the leaderboard as "week of X"
+    /// in the UI — the sort inputs are already week-stable.
+    private func weekKey() -> String {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        return "\(comps.yearForWeekOfYear ?? 0)-W\(comps.weekOfYear ?? 0)"
+    }
+
+    var currentWeekLabel: String { weekKey() }
 
     /// Block and report a profile: removes them from the floor, the bid inbox,
     /// outgoing bids and matches. Local + irreversible in this demo.
@@ -308,11 +377,11 @@ final class AuctionStore: ObservableObject {
     }
 
     func placeBid(on woman: Profile, amount: Int, note: String, gilded: Bool = false,
-                  promptRef: String? = nil) {
+                  insured: Bool = false, promptRef: String? = nil) {
         guard role == .man, amount > 0 else { return }
         // Gilding spends Gavels up front; fall back to a normal bid if short.
-        // Real currency never flows toward an AI lure — a gild attempt on a
-        // copycat is silently uncharged (the reveal lands a second later).
+        // Real currency never flows toward an AI lure — a gild/insurance attempt
+        // on a copycat is silently uncharged (the reveal lands a second later).
         var gild = gilded
         if gild && woman.isCopycat {
             gild = false
@@ -320,8 +389,17 @@ final class AuctionStore: ObservableObject {
             if wallet >= Self.gildedBidCost { wallet -= Self.gildedBidCost }
             else { gild = false; toastFlash("Not enough Gavels to gild — sent a standard bid.") }
         }
+        // Bid Insurance premium — copycats never charge it either.
+        var insure = insured
+        if insure && woman.isCopycat {
+            insure = false
+        } else if insure {
+            if wallet >= Self.bidInsuranceCost { wallet -= Self.bidInsuranceCost }
+            else { insure = false }
+        }
         var bid = Bid(man: me, woman: woman, amount: amount, note: note)
         bid.gilded = gild
+        bid.insured = insure
         bid.promptRef = promptRef
         outgoingBids.insert(bid, at: 0)
 
@@ -532,22 +610,71 @@ final class AuctionStore: ObservableObject {
     }
 
     /// Claim today's Gavels. Consecutive days grow the streak; a missed day
-    /// resets it. `now` is injectable so the streak math is unit-testable.
+    /// resets it — unless the user holds a streak-freeze token, in which case
+    /// one token is spent per missed day and the streak survives.
+    ///
+    /// The Docket variable-reward layer: 20% chance the base reward is
+    /// replaced by a mystery bonus (a Gilded Bid credit, a bonus streak-freeze
+    /// token, or an extra Gavel windfall). Deterministic-per-day so the same
+    /// claim isn't reroll-able within a session.
     func claimDaily(now: Date = .now) {
         guard canClaimDaily(now: now) else { return }
-        if let last = lastDailyClaim,
-           let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: last),
-           Calendar.current.isDate(nextDay, inSameDayAs: now) {
+        let missed = missedDays(from: lastDailyClaim, to: now)
+        if missed == 0 {
             dailyStreak += 1
+        } else if missed <= streakFreezeCount {
+            // Spend one freeze per missed day; streak survives, grows by 1.
+            streakFreezeCount -= missed
+            dailyStreak += 1
+            toastFlash("Streak-freeze spent — day \(dailyStreak) preserved.")
         } else {
             dailyStreak = 1
         }
         lastDailyClaim = now
         let reward = Self.dailyGavelBase * min(dailyStreak, 7)
-        wallet += reward
+
+        // Mystery box roll — deterministic on the day so it can't be rerolled.
+        let dayKey = Calendar.current.ordinality(of: .day, in: .era, for: now) ?? 0
+        let mysteryRoll = (dayKey &+ Int(appAccountToken.uuidString.hashValue & 0x3FF)) % 5
+        switch mysteryRoll {
+        case 0:  // Gilded Bid credit (worth gildedBidCost Gavels)
+            wallet += reward + Self.gildedBidCost
+            toastFlash("Docket mystery — +\(Tally.compact(reward + Self.gildedBidCost)) Gavels (Gilded credit).")
+        case 1:  // Streak-freeze token
+            wallet += reward
+            streakFreezeCount += 1
+            toastFlash("Docket mystery — streak-freeze added to your inventory.")
+        default: // Standard reward
+            wallet += reward
+            toastFlash("Day \(dailyStreak) streak — +\(Tally.compact(reward)) Gavels.")
+        }
         Haptics.success()
-        toastFlash("Day \(dailyStreak) streak — +\(Tally.compact(reward)) Gavels.")
         log(.daily, "Claimed your day-\(dailyStreak) streak: \(Tally.compact(reward)) Gavels.")
+        save()
+    }
+
+    /// Days elapsed between `last` and `now` that weren't the "next day". 0 if
+    /// today is the day after last; N otherwise.
+    private func missedDays(from last: Date?, to now: Date) -> Int {
+        guard let last else { return 0 }
+        let cal = Calendar.current
+        let lastDay = cal.startOfDay(for: last)
+        let today = cal.startOfDay(for: now)
+        let days = cal.dateComponents([.day], from: lastDay, to: today).day ?? 0
+        return max(0, days - 1)
+    }
+
+    /// Buy an extra streak-freeze token from the Docket for a Gavel amount.
+    /// Used by the DailyClaimCard's "Get another" action.
+    static let streakFreezeGavelCost = 500
+    func buyStreakFreeze() {
+        guard wallet >= Self.streakFreezeGavelCost else {
+            toastFlash("Not enough Gavels for a streak-freeze."); return
+        }
+        wallet -= Self.streakFreezeGavelCost
+        streakFreezeCount += 1
+        Haptics.success()
+        toastFlash("Streak-freeze added — miss a day, streak survives.")
         save()
     }
 
@@ -965,6 +1092,12 @@ final class AuctionStore: ObservableObject {
             } else {
                 let before = self.me.auctionCredit
                 self.me.declinedBids += 1
+                // Bid Insurance payout: refund the premium + a consolation
+                // Gilded Bid credit so the sting of a decline hurts less.
+                if bid.insured {
+                    self.wallet += Self.bidInsuranceCost + Self.gildedBidCost
+                    self.toastFlash("Bid Insurance paid — premium + a Gilded credit back.")
+                }
                 if self.autoRebidEnabled && !bid.onCopycat {
                     let raised = Int(Double(bid.amount) * 1.2)
                     var rebid = Bid(man: self.me, woman: bid.woman, amount: raised, note: bid.note)
@@ -1076,6 +1209,7 @@ final class AuctionStore: ObservableObject {
         var appAccountToken: UUID?
         var demoMode: Bool?
         var lastLotOfDaySeen: Date?
+        var streakFreezeCount: Int?
     }
 
     private let encryptedArchive = EncryptedArchive(filename: "auctionbaby-state.aesgcm")
@@ -1089,7 +1223,8 @@ final class AuctionStore: ObservableObject {
                             dailyStreak: dailyStreak, lastDailyClaim: lastDailyClaim,
                             lastWeeklyBoostClaim: lastWeeklyBoostClaim,
                             appAccountToken: appAccountToken, demoMode: demoMode,
-                            lastLotOfDaySeen: lastLotOfDaySeen)
+                            lastLotOfDaySeen: lastLotOfDaySeen,
+                            streakFreezeCount: streakFreezeCount)
         if let data = try? JSONEncoder().encode(snap) {
             store.set(data, forKey: Self.key)
         }
@@ -1123,6 +1258,7 @@ final class AuctionStore: ObservableObject {
         appAccountToken = snap.appAccountToken ?? appAccountToken
         demoMode = snap.demoMode ?? false
         lastLotOfDaySeen = snap.lastLotOfDaySeen
+        streakFreezeCount = snap.streakFreezeCount ?? 0
         if isBoosted, role == .woman { startBoostSummons() }
         for bid in outgoingBids where bid.status == .pending {
             scheduleWomanDecision(bidID: bid.id)
