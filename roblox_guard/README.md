@@ -303,6 +303,40 @@ sizes, live roblox.com API smoke test, TestFlight beta. Deployment needs:
 HTTPS termination, `RG_API_TOKEN` set, Postgres for multi-instance,
 APNs for alert pushes (see docs/ROADMAP.md — this is the v0.2 blocker).
 
+### Getting onto App Store Connect via Xcode Cloud
+
+This part can't be done from a headless environment — it requires Xcode's
+GUI and your own Apple Developer account. What's already prepped in the
+repo, and what's left for you on a Mac:
+
+**Prepped here:**
+- `project.yml` — XcodeGen project definition (bundle ID
+  `com.mikeclaw.robloxguard`, iOS 17+ target).
+- `ci_scripts/ci_post_clone.sh` — Xcode Cloud hook that installs XcodeGen and
+  runs `xcodegen generate` on every CI build, so the built project can never
+  drift from `project.yml`.
+
+**Still needed, on a Mac, roughly in order:**
+1. Enroll in the Apple Developer Program if you haven't (paid, tied to your
+   Apple ID — this is the account/billing step only you can do).
+2. `cd roblox_guard/ios/RobloxGuard && xcodegen generate`, then commit the
+   resulting `RobloxGuard.xcodeproj` — Xcode Cloud's setup wizard needs a
+   project file already in the repo to detect and select; after this one
+   bootstrap commit, `ci_post_clone.sh` keeps it regenerated automatically.
+3. Open the project in Xcode, register the bundle ID
+   (`com.mikeclaw.robloxguard`) and create the app record in App Store
+   Connect (or let Xcode Cloud's setup flow create it for you).
+4. Product → Xcode Cloud → Create Workflow, authorize access to this GitHub
+   repo, select the branch to build from, and let it run its first build —
+   this is the first time the app has ever actually compiled, so expect to
+   fix real build errors (nothing here has been verified to compile).
+5. Add an app icon — there is currently no `Assets.xcassets`/`AppIcon` in the
+   project at all, which will fail App Store validation on archive.
+6. Create the four subscription products in App Store Connect matching
+   `RobloxGuard.storekit` (see "Pricing" above) before StoreKit works for
+   real users — `RobloxGuard.storekit` only covers local Simulator testing.
+7. TestFlight beta once a build passes Xcode Cloud, before public submission.
+
 ## App Store compliance design
 
 | Guideline | How RobloxGuard complies |

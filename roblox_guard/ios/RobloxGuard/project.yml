@@ -1,4 +1,12 @@
 # Generate RobloxGuard.xcodeproj with XcodeGen: `xcodegen generate`
+#
+# RobloxGuard.xcodeproj is intentionally NOT committed — it's generated from
+# this file, both locally and in CI (ci_scripts/ci_post_clone.sh runs
+# `xcodegen generate` on every Xcode Cloud build so the project can never
+# drift from project.yml). To bootstrap Xcode Cloud for the first time you
+# must generate + commit the .xcodeproj once locally, since Xcode Cloud's
+# workflow setup needs a project file already in the repo to detect and
+# select — after that first commit, later changes only need project.yml.
 name: RobloxGuard
 options:
   bundleIdPrefix: com.mikeclaw
