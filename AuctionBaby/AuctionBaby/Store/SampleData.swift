@@ -661,7 +661,7 @@ enum SampleData {
                     hue: 0.5,
                     photoName: "photo-sam",
                     prompts: [
-                        Prompt(question: "The way to win me over", answer: "Care about something and let me ask you questions about it."),
+                        Prompt(question: "The way to win me over is", answer: "Care about something and let me ask you questions about it."),
                     ],
                     interests: ["Reading", "Food", "Music"],
                     reviews: [

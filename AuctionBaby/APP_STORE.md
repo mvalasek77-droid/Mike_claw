@@ -7,8 +7,8 @@ character limits.
 
 - **App name:** Auction Baby
 - **Subtitle (30 chars):** Bid for the date. Earn it.
-- **Primary category:** Lifestyle
-- **Secondary category:** Social Networking
+- **Primary category:** Social Networking
+- **Secondary category:** Lifestyle
 - **Age rating:** 17+ (mature/suggestive themes, simulated relationships)
 - **Bundle ID:** com.valasek.auctionbaby
 
@@ -29,7 +29,7 @@ character limits.
 >
 > **Reputation is the whole game.**
 > • Auction Credit (300–900) for bidders — built on whether you actually pay
-> • Showcase Score for the lot — earned from real date reviews
+> • Showcase Credit (300–900) for the lot — earned from real date reviews
 > • Identity verification — a blue check the floor can trust
 >
 > **Status you earn, not just buy.**

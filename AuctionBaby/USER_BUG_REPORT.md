@@ -1,8 +1,18 @@
 # Report a Bug — Auction Baby
 
-Thanks for helping us make the floor better. **Please send this filled-out form to** `founder@auctionbaby.app` **(subject: Bug report — [one-line summary]).**
+Thanks for helping us make the floor better. In-app: **Profile → Report a bug**
+opens Mail pre-filled with your device info. This form is a fallback for
+anyone routing bugs by hand.
 
-If your issue involves money (a charge, a missing top-up, a refund), skip this and email `payments@auctionbaby.app` — those get triaged same-day.
+**Please send this filled-out form to** the founder mailbox (once the domain
+lands; the in-app flow is authoritative until then).
+
+If your issue involves money (a charge, a missing top-up, a refund), skip this
+and email the payments mailbox — those get triaged same-day.
+
+> _The addresses `founder@auctionbaby.app` and `payments@auctionbaby.app` are
+> placeholders until the app-store submission ships. Use the in-app "Report a
+> bug" flow instead — it goes to a live inbox._
 
 ---
 

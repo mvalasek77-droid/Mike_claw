@@ -13,7 +13,7 @@ A living plan. Shipped items reflect what's in the branch today.
 
 **Reputation system ("credit scores")**
 - Auction Credit (300–900) for men — archetype tier, deadbeat score, copycat penalty
-- Showcase Score + market value for women — from trait reviews
+- Showcase Credit (300–900) + market value for women — from trait reviews
 - Earned-and-verified **Trillionaire** (buy → pay $9,999 on a date → confirmed)
 - **Masterpiece** — minted only by a confirmed Trillionaire date
 - Identity **verification** (blue check); copycats can never verify
@@ -28,8 +28,8 @@ A living plan. Shipped items reflect what's in the branch today.
 - Contextual paywall fired at four peak-intent moments (outbid rank, bid
   cap, locked filters, "did she read it?") with a per-tier benefits matrix
 - Spotlight Boost (consumable) — works both sides (lot side pulls bidders in)
-- Gilded bids (the "Rose") · bid on a specific prompt
-- Headliner of the Day (curated standout)
+- Gilded Bids (the "Rose") · bid on a specific prompt
+- Lot of the Day (curated standout, full-screen intro once per day)
 
 **Retention loops**
 - Outbid → one-tap rebid ("take the top")
@@ -85,10 +85,11 @@ A living plan. Shipped items reflect what's in the branch today.
   credit report
 - **Opening Bid Script** — Bumble-style woman-authored opener that
   auto-sends on accept, with 4 preset templates
-- **Whisper Bid** — anonymous, zero-Gavel, zero-credit-impact signal of
-  interest; doesn't count against the free live-bid ceiling
+- **Whisper** — anonymous, zero-Gavel, zero-credit-impact signal of interest;
+  doesn't count against the free live-bid ceiling. Rendered as "Whisper" on
+  the floor; "Whisper Bid" is the internal name only.
 - **Lot of the Day** — full-screen "TONIGHT'S LOT" once-a-day intro sheet;
-  headliner banner rebranded to Lot of the Day
+  gold-framed banner + full-screen intro once per day, both named Lot of the Day
 - **On the Floor Now** — deterministic hour-of-day live-presence signal on
   ~30% of non-copycat profiles; pulsing green dot on the card
 - **Bid Insurance** — Gavel premium on a bid; on decline, premium + a

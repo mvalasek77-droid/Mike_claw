@@ -123,7 +123,7 @@ struct BidSheet: View {
                         whisperFallback
                     }
                 } else {
-                    PrimaryButton(title: gild ? "Send Gilded bid · \(Money.compact(amount))"
+                    PrimaryButton(title: gild ? "Send Gilded Bid · \(Money.compact(amount))"
                                               : "Place \(Money.compact(amount)) bid",
                                   systemImage: gild ? "seal.fill" : "hand.raised.fill",
                                   gradient: gild ? Theme.prestigeGradient : Theme.goldGradient,

@@ -10,7 +10,7 @@ struct AuctionFeedView: View {
     @State private var showActivity = false
     @State private var showLotOfDay = false
 
-    private var lots: [Profile] { store.filteredFloor.filter { $0.id != store.headliner?.id } }
+    private var lots: [Profile] { store.filteredFloor.filter { $0.id != store.lotOfTheDay?.id } }
 
     var body: some View {
         NavigationStack {
@@ -19,12 +19,12 @@ struct AuctionFeedView: View {
                     header
                     LiveTicker()
                     DailyClaimCard()
-                    if let star = store.headliner {
-                        NavigationLink(value: star) { HeadlinerBanner(woman: star) }
+                    if let star = store.lotOfTheDay {
+                        NavigationLink(value: star) { LotOfTheDayBanner(woman: star) }
                             .buttonStyle(.plain)
                             .riseIn(0.05)
                     }
-                    if lots.isEmpty && store.headliner == nil {
+                    if lots.isEmpty && store.lotOfTheDay == nil {
                         EmptyStateView(icon: "line.3.horizontal.decrease.circle",
                                        title: "No lots match",
                                        message: "Your filters are hiding everyone. Loosen them to see more of the floor.")
@@ -77,7 +77,7 @@ struct AuctionFeedView: View {
             }
             .sheet(isPresented: $showActivity) { ActivityView() }
             .sheet(isPresented: $showLotOfDay) {
-                if let lot = store.headliner {
+                if let lot = store.lotOfTheDay {
                     LotOfTheDayIntroSheet(woman: lot) { profile in
                         showLotOfDay = false
                         if let profile { bidTarget = profile }
@@ -129,9 +129,10 @@ struct AuctionFeedView: View {
     }
 }
 
-/// The curated "Headliner of the Day" — a premium gold-framed hero above the
-/// floor (Auction Baby's answer to Hinge Standouts).
-struct HeadlinerBanner: View {
+/// The curated "Lot of the Day" — a premium gold-framed hero above the floor
+/// (Auction Baby's answer to Hinge Standouts). Rendered inline in the feed;
+/// the full-screen intro variant is `LotOfTheDayIntroSheet`.
+struct LotOfTheDayBanner: View {
     let woman: Profile
     @State private var shimmer = false
 
@@ -321,7 +322,7 @@ struct FloorCard: View {
                     if woman.isOnTheFloorNow {
                         HStack(spacing: 5) {
                             LivePulseDot()
-                            Text("ON THE FLOOR")
+                            Text("ON THE FLOOR NOW")
                                 .font(.system(size: 10, weight: .heavy, design: .rounded))
                                 .tracking(1)
                         }

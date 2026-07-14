@@ -194,7 +194,7 @@ struct GavelStoreView: View {
 
     private var footer: some View {
         VStack(spacing: 6) {
-            Text("Gavels are a one-time purchase of in-app currency. Passes are auto-renewable subscriptions billed to your Apple ID; they renew unless cancelled at least 24h before the period ends. Manage or cancel in Settings.")
+            Text("Gavels are a one-time purchase of in-app currency. Passes are auto-renewable subscriptions billed to your Apple ID; they renew unless canceled at least 24h before the period ends. Manage or cancel in Settings.")
                 .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
             HStack(spacing: 14) {
                 Link("Terms", destination: URL(string: "https://auctionbaby.app/terms")!)

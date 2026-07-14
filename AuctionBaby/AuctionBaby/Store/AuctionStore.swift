@@ -61,7 +61,7 @@ final class AuctionStore: ObservableObject {
     /// Which match currently shows the "…typing" bubble, if any.
     @Published var typingMatchID: UUID?
 
-    /// Set by the app root when the user has Reserve+ or higher.
+    /// Set by the app root when the user has Reserve or Black Card.
     var autoRebidEnabled = false
     /// Set by the app root when the user has Black Card.
     var priorityPlacementEnabled = false
@@ -95,11 +95,11 @@ final class AuctionStore: ObservableObject {
         floor.filter { !blockedIDs.contains($0.id) && filters.matches($0) }
     }
 
-    /// "Lot of the Day" — a real (non-copycat) lot, rotating daily and
+    /// The Lot of the Day — a real (non-copycat) lot, rotating daily and
     /// favouring verified, high-Showcase profiles. Rendered as the pinned
     /// gold-framed hero above the floor and as the once-a-day full-screen
     /// intro (`shouldShowLotOfDayIntro`).
-    var headliner: Profile? {
+    var lotOfTheDay: Profile? {
         let pool = filteredFloor.filter { !$0.isCopycat }
             .sorted { ($0.verified ? 1 : 0, $0.showcaseScore) > ($1.verified ? 1 : 0, $1.showcaseScore) }
         guard !pool.isEmpty else { return nil }
@@ -111,7 +111,7 @@ final class AuctionStore: ObservableObject {
     /// The feed presents the full-screen "Tonight's Lot" moment; dismissing
     /// it stamps `lastLotOfDaySeen`, so it never re-fires the same day.
     var shouldShowLotOfDayIntro: Bool {
-        guard role == .man, headliner != nil else { return false }
+        guard role == .man, lotOfTheDay != nil else { return false }
         guard let last = lastLotOfDaySeen else { return true }
         return !Calendar.current.isDate(last, inSameDayAs: Date())
     }
@@ -416,7 +416,7 @@ final class AuctionStore: ObservableObject {
             creditPing(before: before)
         } else {
             Haptics.commit()
-            toastFlash(gild ? "✦ Gilded bid sent to \(woman.name) — top of her inbox."
+            toastFlash(gild ? "✦ Gilded Bid sent to \(woman.name) — top of her inbox."
                             : "Bid placed: \(Money.compact(amount)) on \(woman.name).")
         }
         save()
@@ -834,7 +834,7 @@ final class AuctionStore: ObservableObject {
         save()
     }
 
-    /// Undo your most recent live bid — a Reserve+/Black Card Pass perk. Only
+    /// Undo your most recent live bid — a Reserve / Black Card Pass perk. Only
     /// the single latest pending bid can be recalled, and only before she's
     /// decided; her simulated decision task checks the array by id, so
     /// removing it here makes any in-flight decision a silent no-op.

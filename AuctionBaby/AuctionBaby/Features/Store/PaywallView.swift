@@ -9,7 +9,7 @@ enum PaywallTrigger {
     case bidLimit            // out of free live bids
     case filters             // tried a premium filter
     case readReceipts        // wanted Seen/Delivered
-    case rewind              // tried to undo a bid without Reserve+
+    case rewind              // tried to undo a bid without Reserve
     case general             // browsed in from the store
 
     var headline: String {
@@ -258,7 +258,7 @@ struct PaywallView: View {
 
     private var footer: some View {
         VStack(spacing: 6) {
-            Text("Auto-renews monthly until cancelled at least 24h before the period ends. Billed to your Apple ID; manage in Settings.")
+            Text("Auto-renews monthly until canceled at least 24h before the period ends. Billed to your Apple ID; manage in Settings.")
                 .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
                 .multilineTextAlignment(.center)
             HStack(spacing: 14) {

@@ -68,7 +68,7 @@ final class AuctionLogicTests: XCTestCase {
         var rich = poor
         rich.archetype = .trillionaire
         XCTAssertGreaterThan(rich.auctionCredit, poor.auctionCredit)
-        XCTAssertLessEqual(rich.auctionCredit, 850)
+        XCTAssertLessEqual(rich.auctionCredit, 900)
         XCTAssertGreaterThanOrEqual(poor.auctionCredit, 300)
     }
 
@@ -544,7 +544,7 @@ final class AuctionLogicTests: XCTestCase {
         XCTAssertEqual(mike?.verified, true)
     }
 
-    // MARK: Gilded bids & Headliner
+    // MARK: Gilded Bids & Lot of the Day
 
     @MainActor
     func testGildedBidSpendsGavelsAndFlags() {
@@ -584,13 +584,13 @@ final class AuctionLogicTests: XCTestCase {
     }
 
     @MainActor
-    func testHeadlinerIsRealAndOnFloor() {
+    func testLotOfTheDayIsRealAndOnFloor() {
         let store = freshStore()
         store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
                        hue: 0.6, startingBid: nil, prompts: [], interests: [])
-        let star = store.headliner
+        let star = store.lotOfTheDay
         XCTAssertNotNil(star)
-        XCTAssertEqual(star?.isCopycat, false, "the headliner is never a copycat")
+        XCTAssertEqual(star?.isCopycat, false, "the Lot of the Day is never a copycat")
         XCTAssertTrue(store.floor.contains { $0.id == star?.id })
     }
 

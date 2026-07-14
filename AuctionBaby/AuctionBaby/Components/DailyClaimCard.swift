@@ -37,7 +37,7 @@ struct DailyClaimCard: View {
                     .background(Circle().fill(Theme.goldGradient))
                     .scaleEffect(pulse ? 1.08 : 1)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(nextReward > AuctionStore.dailyGavelBase ? "Day streak ready"
+                    Text(nextReward > AuctionStore.dailyGavelBase ? "Daily streak ready"
                                                            : "Daily Gavels ready")
                         .font(.system(size: 14, weight: .heavy, design: .serif))
                         .foregroundStyle(Theme.ink)

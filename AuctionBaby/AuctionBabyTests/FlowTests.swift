@@ -390,7 +390,7 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(store.matches.first?.messages.first?.reaction, "😂", "a different emoji replaces the old one")
     }
 
-    // MARK: - Rewind last bid (Reserve+ perk)
+    // MARK: - Rewind last bid (Reserve perk)
 
     func testRewindRemovesOnlyTheLatestPendingBidAndRefundsGilding() {
         let store = freshStore()

@@ -518,7 +518,7 @@ struct MyProfileView: View {
                 Divider().overlay(Theme.hairline)
             }
             HStack {
-                Text("Reduce Motion / Dark Mode honoured system-wide")
+                Text("Reduce Motion / Dark Mode honored system-wide")
                     .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
                 Spacer()
             }

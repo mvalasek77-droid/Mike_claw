@@ -91,9 +91,11 @@ Trillionaire is the only *verified* tier — three gates, all required:
 
 ### Masterpiece
 
-The rarest object on the floor. A woman earns a **Masterpiece** rating *only* on
-that same confirmed date — when a **Trillionaire** pays the full **$9,999** and
-she confirms it. So a Masterpiece inherits all three Trillionaire gates.
+The rarest object on the floor. Separate, higher bar than Trillionaire
+verification: a woman earns a **Masterpiece** rating *only* when a **verified
+Trillionaire** bids and pays **$1,000,000** for one evening — and she confirms
+it. The $9,999 gates verify the Trillionaire badge; the $1,000,000 gate mints
+the Masterpiece.
 
 ### Copycats
 
@@ -139,10 +141,15 @@ AuctionBaby/
 - **Solo-playable simulation.** With no backend, `AuctionStore` simulates the
   other side — women weigh bids against their floor and the bidder's credit,
   copycats take the bait, chats reply — all Reduce-Motion- and main-actor-safe.
-- **No real content.** Every "photo" is a deterministic gradient + monogram, so
-  the concept reads clearly while staying tasteful and SFW. All money is play
-  money; there is no IAP and no network.
-- **Accessibility first.** Honours Dark Mode and Reduce Motion system-wide; all
+- **Photos are optional.** Users can upload up to six real photos via
+  `PhotosPicker`; without them, a deterministic gradient + monogram stands in
+  so the concept reads clearly while staying tasteful and SFW.
+- **Real StoreKit 2 monetization.** Gavel packs ($4.99–$99.99), Spotlight Boost
+  ($3.99), Auction Baby Pass subscriptions ($19.99 / $39.99 / $99.99 / month).
+  Refunds route through a Cloudflare Worker keyed on an anonymous
+  `appAccountToken`. Real-world date money is peer-to-peer; the app doesn't
+  route dates through IAP.
+- **Accessibility first.** Honors Dark Mode and Reduce Motion system-wide; all
   scores, badges and bubbles carry accessibility labels.
 
 ## Real photos
