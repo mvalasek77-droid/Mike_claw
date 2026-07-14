@@ -15,7 +15,7 @@ struct Roblox101View: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("The basics") {
+                Section {
                     ForEach(content.robloxBasics) { entry in
                         DisclosureGroup {
                             Text(entry.answer)
@@ -26,9 +26,9 @@ struct Roblox101View: View {
                                 .font(.subheadline.weight(.medium))
                         }
                     }
-                }
+                } header: {    Text("The basics")}
 
-                Section("Every term, explained") {
+                Section {
                     ForEach(content.glossary, id: \.term) { entry in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entry.term)
@@ -39,7 +39,7 @@ struct Roblox101View: View {
                         }
                         .padding(.vertical, 2)
                     }
-                }
+                } header: {    Text("Every term, explained")}
             } else {
                 ProgressView("Loading…")
             }

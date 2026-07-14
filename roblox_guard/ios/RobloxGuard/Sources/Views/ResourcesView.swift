@@ -43,7 +43,7 @@ struct ResourcesView: View {
                         }
                     }
                 }
-                Section("Common questions") {
+                Section {
                     DisclosureGroup("Do I install anything on my child's phone?") {
                         Text("No. RobloxGuard runs only on YOUR phone. It watches the public footprint of your child's Roblox account — friend list, friends' profiles, online status — which is visible without any access to their device or password. Nothing to install, nothing for them to delete, nothing that breaks when they get a new device.")
                             .font(.footnote)
@@ -60,8 +60,8 @@ struct ResourcesView: View {
                         Text("No — and no honest app can. Private Roblox chats are visible only to Roblox's own moderators. That's why reporting in-platform matters: Roblox can see the messages and act on them.")
                             .font(.footnote)
                     }
-                }
-                Section("Reporting & guidance") {
+                } header: {    Text("Common questions")}
+                Section {
                     ForEach(store.resources) { resource in
                         if let url = URL(string: resource.url) {
                             Link(destination: url) {
@@ -76,7 +76,7 @@ struct ResourcesView: View {
                             }
                         }
                     }
-                }
+                } header: {    Text("Reporting & guidance")}
             }
             .navigationTitle("Get Help")
         }

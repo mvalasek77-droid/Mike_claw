@@ -20,17 +20,17 @@ struct LinkChildSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Child's Roblox account") {
+                Section {
                     TextField("Roblox username", text: $username)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                } footer: {
+                } header: {    Text("Child's Roblox account")}  footer: {
                     Text("Just the public username — never a password.")
                 }
 
-                Section("Your details") {
+                Section {
                     TextField("Your name", text: $parentName)
-                }
+                } header: {    Text("Your details")}
 
                 Section {
                     Toggle(isOn: $attested) {

@@ -32,13 +32,13 @@ struct AlertDetailView: View {
                 Text("This is a pattern match, not a conclusion — it can be a false positive, and a lack of alerts doesn't mean nothing is wrong. Use it as one input alongside talking to your child.")
             }
 
-            Section("What you can do") {
+            Section {
                 Text(alert.guidance)
                     .font(.subheadline)
-            }
+            } header: {    Text("What you can do")}
 
             if let explainers = alert.explainers, !explainers.isEmpty {
-                Section("What these words mean") {
+                Section {
                     ForEach(explainers, id: \.term) { entry in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entry.term)
@@ -49,10 +49,10 @@ struct AlertDetailView: View {
                         }
                         .padding(.vertical, 2)
                     }
-                }
+                } header: {    Text("What these words mean")}
             }
 
-            Section("Take action") {
+            Section {
                 Link(destination: URL(string: "https://en.help.roblox.com/hc/en-us/articles/203312410")!) {
                     Label("Report to Roblox", systemImage: "flag")
                 }
@@ -65,7 +65,7 @@ struct AlertDetailView: View {
                         Label("View \(username) on Roblox", systemImage: "person.crop.circle")
                     }
                 }
-            }
+            } header: {    Text("Take action")}
 
             Section {
                 Button {

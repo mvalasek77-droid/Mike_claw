@@ -125,18 +125,18 @@ struct EvidenceUploadSheet: View {
                     }
                 }
 
-                Section("Screenshot") {
+                Section {
                     PhotosPicker(selection: $selection, matching: .screenshots) {
                         Label(imageData == nil ? "Choose screenshot" : "Screenshot selected ✓",
                               systemImage: "photo.on.rectangle")
                     }
-                }
+                } header: {    Text("Screenshot")}
 
-                Section("What does this show?") {
+                Section {
                     TextField("e.g. Chat where the account asks to move to Discord",
                               text: $note, axis: .vertical)
                         .lineLimit(2...4)
-                }
+                } header: {    Text("What does this show?")}
 
                 if let errorMessage {
                     Section { Text(errorMessage).foregroundStyle(.red).font(.footnote) }

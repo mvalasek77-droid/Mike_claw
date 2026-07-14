@@ -35,21 +35,21 @@ struct BugReportView: View {
                     }
                 }
 
-                Section("What went wrong?") {
+                Section {
                     TextField("Short summary, e.g. \"Alerts don't refresh\"", text: $summary)
                     TextField("Details (optional): what you were doing, what you expected",
                               text: $details, axis: .vertical)
                         .lineLimit(4...8)
-                } footer: {
+                } header: {    Text("What went wrong?")}  footer: {
                     Text("Never include your child's Roblox password or private chat content — this app never asks for either.")
                 }
 
-                Section("Hear back (optional)") {
+                Section {
                     TextField("Your email", text: $contactEmail)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                }
+                } header: {    Text("Hear back (optional)")}
 
                 if let submitError {
                     Section {

@@ -16,7 +16,7 @@ struct KnowTheDangersView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("The dangers") {
+                Section {
                     ForEach(content.dangers) { danger in
                         DisclosureGroup {
                             Text(danger.summary)
@@ -37,14 +37,14 @@ struct KnowTheDangersView: View {
                                 .font(.subheadline.weight(.medium))
                         }
                     }
-                }
+                } header: {    Text("The dangers")}
 
-                Section("Signs only you can see at home") {
+                Section {
                     ForEach(content.behavioralSigns, id: \.self) { sign in
                         Label { Text(sign).font(.subheadline) }
                             icon: { Image(systemName: "eye").foregroundStyle(.orange) }
                     }
-                }
+                } header: {    Text("Signs only you can see at home")}
 
                 Section {
                     ForEach(content.immediateRedFlags, id: \.self) { flag in
@@ -55,7 +55,7 @@ struct KnowTheDangersView: View {
                     Text("Act the same day if any of these happened")
                 }
 
-                Section("If something has happened: the playbook") {
+                Section {
                     ForEach(Array(content.responsePlaybook.enumerated()), id: \.offset) { index, step in
                         HStack(alignment: .top, spacing: 10) {
                             Text("\(index + 1)")
@@ -65,7 +65,7 @@ struct KnowTheDangersView: View {
                             Text(step).font(.subheadline)
                         }
                     }
-                }
+                } header: {    Text("If something has happened: the playbook")}
             } else {
                 ProgressView("Loading…")
             }

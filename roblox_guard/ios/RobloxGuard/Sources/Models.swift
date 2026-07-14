@@ -118,6 +118,13 @@ struct ProtectionStatus: Codable {
     let analyzer: String
     let autoApply: Bool
     let sourcesConfigured: Int
+
+    enum CodingKeys: String, CodingKey {
+        case feed, analyzer
+        case lastIntelRun = "last_intel_run"
+        case autoApply = "auto_apply"
+        case sourcesConfigured = "sources_configured"
+    }
 }
 
 struct BasicsEntry: Identifiable, Codable, Hashable {

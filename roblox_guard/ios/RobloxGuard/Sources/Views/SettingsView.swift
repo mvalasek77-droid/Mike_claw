@@ -59,7 +59,7 @@ struct SettingsView: View {
                     Text("Get notified the moment a watch-level or elevated alert fires, without opening the app.")
                 }
 
-                Section("Linked accounts") {
+                Section {
                     if store.children.isEmpty {
                         Text("No accounts linked")
                             .foregroundStyle(.secondary)
@@ -78,7 +78,7 @@ struct SettingsView: View {
                             }
                         }
                     }
-                }
+                } header: {    Text("Linked accounts")}
 
                 Section {
                     if let protection {
@@ -104,13 +104,13 @@ struct SettingsView: View {
                     Text("Detection rules, term definitions, and the experience watchlist refresh themselves — new threats roll out without app updates. A daily search of safety sources proposes additions automatically.")
                 }
 
-                Section("Privacy") {
+                Section {
                     Text("RobloxGuard stores only your child's Roblox username and the safety alerts derived from public account information. Unlinking an account permanently deletes everything associated with it. Nothing is shared with third parties.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Link("Privacy Policy", destination: PaywallView.privacyPolicyURL)
                         .font(.footnote)
-                }
+                } header: {    Text("Privacy")}
 
                 Section {
                     Button {
