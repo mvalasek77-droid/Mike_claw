@@ -141,10 +141,59 @@ These were flagged by the sweep but deferred because they're non-blocking or bet
 - `StoreKitService` has `#if DEBUG` affordances: `suspendListenerForTesting`, `resetForTesting()`, `drainPendingForTesting()`, `simulateRefundForTesting(productID:)`.
 - Backend has `smoke-test.sh` for a full staging round-trip.
 
-## Sign-off
+## Sign-off (first sweep)
 
 Two commits pushed:
 1. `5ad2a78` — Fix P0 integer overflow + 12 P1 bugs from QA sweep
 2. `16ef258` — Polish: VoiceOver toasts, accessibility labels, iOS 26 roadmap
 
 Ready for TestFlight after a physical-device compile pass (this environment can't run Xcode).
+
+---
+
+# Sweep 2 — post-launch bundle
+
+**Sweep date:** 2026-07-14
+**Method:** Six-plus agents in successive waves audited photo uploads, IAP end-to-end, monetization + retention mechanics, mainstream + niche dating-app features, and every metadata surface. Findings triaged into implementation commits below.
+
+## Shipped (feature commits)
+
+| Commit | What |
+|---|---|
+| `d2efdb3` | **IAP refund gap closed** — client now polls Worker's `/refunds/pending` and claws Gavels back with a shared dedup set (`rev-<txID>`), restores on `REFUND_REVERSED`. Wrangler.toml KV placeholder story made loud. |
+| `4275c8d` | **Multi-photo upload** — `PhotoUploadStep` (PhotosPicker, ≤ 6, primary/reorder, ≥600×600 gate, JPEG resize) wired into onboarding + Profile → Edit photos. Info.plist got `NSPhotoLibraryUsageDescription`. Metadata FACT fixes: Auction Credit 300–900 across docs; "Showcase score" UI card corrected to "Showcase Credit"; `Reserve+` → `Reserve`; privacy nutrition label qualified for the founder Worker. |
+| `c4aa6ad` | **Reserve Requirements** — height/smoking/drinking/kids/education dealbreakers gated on Reserve tier; seeded on the sample floor via deterministic UUID-driven `Lifestyle`; Lifestyle card on woman detail view. Roadmap updated with the agent-flagged deferred P1s. |
+| `13df7ff` | **Gavel Confirmed** — mutual meetup verification; corroborated reviews feed +72 (men) / +60 (women) into the credit reports. Toggle in `RateDateView`, seal on `ReviewRow`. |
+| `dc98b53` | **Opening Bid Script + Whisper Bid** — Bumble-style woman-authored opener that auto-sends on accept + anonymous zero-Gavel signal that doesn't count against the free live-bid ceiling. Whisper seeded in the woman-side inbox for demo visibility. |
+| `72b8fba` | **Lot of the Day + On the Floor Now** — full-screen daily intro sheet (`LotOfTheDayIntroSheet`) fires once per calendar day; live-presence dot on ~30% of non-copycat profiles, deterministic on (id, hour). Headliner banner rebranded. |
+| `f8ea9bf` | **Bid Insurance + The Docket + The Standing** — 200-Gavel insurance premium with decline refund + Gilded credit; streak-freeze inventory + mystery-box daily rewards + 500-Gavel buy CTA; weekly cosmetic city leaderboards (`StandingView`) client-computed per-week. |
+
+## Fixed (metadata + polish)
+
+- **`179cb73` — metadata tear-down (four agents)**:
+  - **PLIST:** `LSApplicationCategoryType` `lifestyle` → `social-networking` (dating-app category); `APP_STORE.md` primary/secondary category flipped.
+  - **FACT:** README Masterpiece $9,999 → $1,000,000 (confused Masterpiece with plain Trillionaire verification); README "no IAP / no network" rewritten to match the shipped Worker + StoreKit; APP_STORE + ROADMAP "Showcase Score" → "Showcase Credit"; USER_BUG_REPORT placeholder-domain disclaimer + redirect to in-app flow.
+  - **UI copy:** Sam Okafor prompt "The way to win me over" → "…over is"; DailyClaimCard "Day streak ready" fragment → "Daily streak ready"; British → US spelling (honoured/cancelled).
+  - **Renames:** `AuctionStore.headliner` → `lotOfTheDay`, `HeadlinerBanner` → `LotOfTheDayBanner`, test renamed to `testLotOfTheDayIsRealAndOnFloor`, ROADMAP v1.0 bullet updated. Test credit ceiling assertion 850 → 900 (stale). ROADMAP "Whisper Bid" → "Whisper" (canonical UI); Gilded Bid Title Case; "ON THE FLOOR" chip → "ON THE FLOOR NOW"; non-user-facing Reserve+ → Reserve in code comments.
+
+## Deferred backlog (unchanged from Sweep 1 unless noted)
+
+Everything in Sweep 1's Deferred backlog (P2-4 through P2-13) still applies unless the ROADMAP or a later commit closed it. New deferrals from Sweep 2:
+
+- **Motion Placard** (video prompts), **Call from the Floor** (voice prompts), **Floor Call** (voice notes in chat) — all need AVKit/mic permission + upload plumbing beyond this pass.
+- **Podium Authentication** (live-selfie liveness) — needs `AVCaptureSession` + Vision; `NSCameraUsageDescription` already landed in Info.plist so it's ready when the code ships.
+- **NSFW moderation** on uploaded photos — needs `SCSensitivityAnalyzer` integration; upload flow currently validates only size/dimensions.
+- **Provenance Check / Provenance Report** — external services (ID verify, Garbo-style background check).
+- **Wrangler KV namespace IDs** — `wrangler.toml` still ships placeholders. Two `wrangler kv namespace create KV` calls (prod + `--env staging`) needed before first deploy or the refund queue silently no-ops.
+- **Backend secrets to xcconfig** — done in `Config/Secrets.xcconfig` (untracked, `.example` template committed, `Build.xcconfig` includes it optionally).
+
+## Test harness
+
+- `AuctionLogicTests` covers 60+ synchronous domain assertions; test renames landed in `179cb73`.
+- `FlowTests` covers the async simulation flow.
+- `StoreKitService` retains its `#if DEBUG` affordances.
+- Backend `smoke-test.sh` for a full staging round-trip.
+
+## Sign-off (Sweep 2)
+
+Ten commits pushed since Sweep 1, all on `claude/auction-baby-dating-app-rezanv`. App is v1.0-feature-complete against the P1 bundle from the feature-gap agent's launch recommendation. Ready for TestFlight after a physical-device compile pass and provisioning of the KV namespace IDs + Secrets.xcconfig.

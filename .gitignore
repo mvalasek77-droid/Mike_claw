@@ -22,7 +22,8 @@ AIMarketplace/backend/node_modules/
 AIMarketplace/backend/package-lock.json
 
 # App-side secrets (production Worker URL + shared secret).
-# Bake in via Secrets.xcconfig (see AIMarketplace/Config/README.md).
+# Bake in via Secrets.xcconfig (see the sibling .example template).
 AIMarketplace/Config/Secrets.xcconfig
+AuctionBaby/Config/Secrets.xcconfig
 node_modules/
 .wrangler/

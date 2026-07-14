@@ -19,6 +19,58 @@ hand-tuned material on iOS 17–25.
 | **The Lot** (woman) | always-visible profile | sets an optional starting bid, reads each bidder's stats, accepts when a bid is high enough, then sends the first invite |
 | **The Bidder** (man) | photo hidden until accepted | browses the floor, bids what a date is worth, buys a status archetype, builds reputation |
 
+## What ships in v1.0
+
+**Core auction loop** — role-aware tab bar, Hinge-style feed with prompts +
+generated portraits (or user uploads), bid composer, accept/decline inbox,
+matches with 24h reply clock, chat with reactions/typing/icebreakers,
+two-sided post-date reviews, Reduce Motion + Dark Mode.
+
+**Reputation ("credit scores")** — Auction Credit (300–900) for men,
+Showcase Credit (300–900) for women, deadbeat score, factor-based written
+credit reports, honors ladder (Fresh Canvas → Exhibition Star →
+Masterpiece), earned-and-verified Trillionaire, blue-check verification,
+hidden AI Copycat lures that only reveal after a bid.
+
+**Multi-photo profile** — `PhotosPicker`-backed upload up to 6 photos
+(primary + gallery), drag-reorder, ≥ 600×600 quality gate, JPEG resize to
+1600px, rides the AES-GCM encrypted archive. Gradient monogram fallback
+when the user skips.
+
+**Reserve Requirements (dealbreaker filters)** — Reserve-tier gated;
+minimum height (rendered ft/in from cm), smoking, drinking, kids,
+education. Blank fields on a target profile always pass — we don't
+punish incomplete profiles.
+
+**Integrity + funnel bundle**
+- **Gavel Confirmed** — mutual meetup verification; corroborated reviews
+  carry +72 (men) / +60 (women) in the credit reports, self-reported
+  reviews are downweighted.
+- **Opening Bid Script** — Bumble-style woman-authored opener that
+  auto-sends the moment she accepts a bid.
+- **Whisper** — anonymous, zero-Gavel, zero-credit-impact signal of
+  interest. Doesn't count against the free live-bid ceiling.
+- **Lot of the Day** — daily-rotating pinned banner + full-screen
+  first-open-of-day intro sheet.
+- **On the Floor Now** — deterministic hour-of-day live-presence dots
+  on ~30% of non-copycat profiles.
+
+**Retention + revenue trio**
+- **Bid Insurance** — 200-Gavel premium; if she declines, premium + a
+  Gilded Bid credit refunded.
+- **The Docket** — daily-claim variable-reward mystery box + streak-freeze
+  inventory (purchasable for 500 Gavels).
+- **The Standing** — weekly cosmetic city leaderboards for top bidders
+  and most-contested lots.
+
+**Money infrastructure** — StoreKit 2 with `appAccountToken` for refund
+routing, transaction dedup, crash-safe credit-first ordering, AES-GCM
+encrypted archive, Cloudflare Worker backend (Stripe Connect Express
+payouts, Apple ASSN V2 JWS refund poll), founder admin console gated by
+HMAC credentials, Demo Mode for App Review.
+
+Full detail per feature lives in `ROADMAP.md`.
+
 ## Money model (important)
 
 There is exactly **one** thing real money buys in the app, and one thing it does not:
@@ -154,15 +206,26 @@ AuctionBaby/
 
 ## Real photos
 
-Profiles carry a `photoName` (see `Store/SampleData.swift` — `photo-mara`,
-`photo-priya`, `photo-mike`, …). Add **licensed** images to
-`AuctionBaby/Resources/Assets.xcassets` under those names and they render
-everywhere automatically — feed cards, detail pages, chat, celebrations — with
-the generated portrait as the fallback when an asset is missing. Portrait-crop
-(~3:4) looks best. Copycat profiles with photos keep a small baked-in `AI`
-watermark: the imagery can look completely real, but the disclosure always
-travels with the picture (required for App Review and FTC compliance — fake
-undisclosed profiles are what got Match.com sued).
+Two paths, coexisting cleanly:
+
+1. **User uploads (real users).** Onboarding and Profile → Edit photos open a
+   `PhotosPicker` for up to six images (see `Features/Onboarding/PhotoUploadStep.swift`).
+   Each photo is quality-gated (≥ 600×600, ≥ 30KB), resized to a 1600px long
+   edge, re-encoded as JPEG(0.85), then written into the same AES-GCM
+   encrypted profile archive as the rest of the account. `AvatarView` resolves
+   `photoData` first, `photoName` (asset catalog) second, gradient monogram
+   third — so bundled sample data keeps working unchanged.
+
+2. **Bundled sample data.** Profiles carry a `photoName` (see
+   `Store/SampleData.swift` — `photo-mara`, `photo-priya`, `photo-mike`, …).
+   Drop **licensed** images into `AuctionBaby/Resources/Assets.xcassets` under
+   those names and they render on the seeded floor. Portrait-crop (~3:4) looks
+   best.
+
+Copycat profiles with photos keep a small baked-in `AI` watermark: the
+imagery can look completely real, but the disclosure always travels with
+the picture (required for App Review and FTC compliance — fake undisclosed
+profiles are what got Match.com sued).
 
 ## Building
 

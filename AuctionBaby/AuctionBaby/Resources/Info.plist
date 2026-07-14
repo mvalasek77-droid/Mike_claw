@@ -21,13 +21,15 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>AB_WORKER_URL</key>
-	<string></string>
+	<string>$(AB_WORKER_URL)</string>
 	<key>AB_SHARED_SECRET</key>
-	<string></string>
+	<string>$(AB_SHARED_SECRET)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Auction Baby needs access to your photos so you can upload the pictures that appear on your profile. Photos never leave your device without your action.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Auction Baby uses the camera for identity verification — a live selfie is matched to your profile photos so the blue check on your profile means you're a real person, not a copycat.</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.social-networking</string>
 	<key>LSRequiresIPhoneOS</key>

@@ -1,8 +1,22 @@
 // Build.xcconfig — shared base config for Auction Baby.
 //
-// The app is fully local (no backend, no secrets, no IAP), so this file only
-// pins the deployment target and Swift version that project.yml also sets.
-// Kept as a config file so future per-environment settings have a home.
+// Pins the deployment target and Swift version that project.yml also sets,
+// and includes the untracked Secrets.xcconfig so the payout-Worker URL and
+// shared secret can be baked into Info.plist at build time without ever
+// living in git. See Config/Secrets.xcconfig.example for the template.
+//
+// The include is optional at file-not-found — a fresh checkout without
+// Secrets.xcconfig still compiles; the admin console will just show the
+// Worker as unconfigured until the file exists.
+
+#include? "Secrets.xcconfig"
 
 IPHONEOS_DEPLOYMENT_TARGET = 17.0
 SWIFT_VERSION = 5.0
+
+// Default values used when Secrets.xcconfig is absent. The `$(inherited)`
+// order means anything defined in Secrets.xcconfig wins; when it isn't
+// present the plist gets empty strings and BackendConfig.isBundled returns
+// false, which the admin backend view already handles.
+AB_WORKER_URL = $(inherited)
+AB_SHARED_SECRET = $(inherited)
