@@ -27,9 +27,6 @@ targets:
         SWIFT_VERSION: "5.9"
         # Local dev talks to http://localhost:8000; production must use HTTPS
         # (no ATS exceptions shipped in release builds).
-        INFOPLIST_KEY_NSAppTransportSecurity_dev_note: remove-before-release
-        # Only standard HTTPS/TLS is used (URLSession) — no proprietary crypto —
-        # so this skips ASC's export compliance question on every build.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         # Sources/Assets.xcassets/AppIcon.appiconset — original shield + block
         # mark, not derived from Roblox's own logo/branding (see README).
