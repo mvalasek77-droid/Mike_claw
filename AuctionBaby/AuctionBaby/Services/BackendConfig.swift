@@ -30,6 +30,14 @@ enum BackendConfig {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
+    /// The Stripe consumables Worker (web Gavel shop). Optional — absent means
+    /// no web shop is wired and the sync path is a no-op. Shares
+    /// AB_SHARED_SECRET with the payout Worker by convention.
+    static var consumablesURL: String {
+        (Bundle.main.object(forInfoDictionaryKey: "AB_CONSUMABLES_URL") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
     /// True iff a Worker has been wired into the build. The admin backend
     /// panel checks this to decide whether the config card needs attention.
     static var isBundled: Bool { !workerURL.isEmpty && !sharedSecret.isEmpty }

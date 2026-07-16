@@ -20,3 +20,4 @@ SWIFT_VERSION = 5.0
 // false, which the admin backend view already handles.
 AB_WORKER_URL = $(inherited)
 AB_SHARED_SECRET = $(inherited)
+AB_CONSUMABLES_URL = $(inherited)

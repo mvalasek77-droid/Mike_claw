@@ -201,6 +201,11 @@ AuctionBaby/
   Refunds route through a Cloudflare Worker keyed on an anonymous
   `appAccountToken`. Real-world date money is peer-to-peer; the app doesn't
   route dates through IAP.
+- **Stripe web Gavel shop.** A second Worker (`consumables/`) sells the same
+  Gavel ladder through hosted Stripe Checkout for web surfaces — Apple's rules
+  keep in-app digital Gavels on StoreKit, but the web shop pays Stripe's ~3%
+  instead of Apple's cut. The app drains web-purchased Gavels into the local
+  wallet on foreground (idempotent, refund-aware).
 - **Accessibility first.** Honors Dark Mode and Reduce Motion system-wide; all
   scores, badges and bubbles carry accessibility labels.
 

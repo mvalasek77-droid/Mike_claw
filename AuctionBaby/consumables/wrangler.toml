@@ -1,0 +1,49 @@
+name = "auctionbaby-consumables"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Secrets (never committed) — set once with `wrangler secret put <NAME>`:
+#   STRIPE_SECRET_KEY      sk_live_… (or sk_test_… while testing)
+#   STRIPE_WEBHOOK_SECRET  whsec_… from the Checkout webhook endpoint you create
+#   APP_SHARED_SECRET      long random string; reuse the payout Worker's value
+#                          so the app carries ONE secret for both Workers
+#
+# The publishable key is client-side only and never needed here — this Worker
+# creates Checkout Sessions server-side and redirects the user to Stripe's
+# hosted page, so no card data ever touches the app or this service.
+
+[vars]
+# Settlement currency for the Gavel packs. Lowercase ISO-4217, per Stripe.
+# The payout Worker settles in CAD (platform account is Canadian) — that's
+# fine; Checkout charge currency and Connect payout currency are independent.
+CURRENCY = "usd"
+# Success/cancel URLs the hosted Checkout returns to. The web shop can
+# override these per-request; these are the safe defaults.
+SUCCESS_URL = "https://auctionbaby.app/purchase/success"
+CANCEL_URL = "https://auctionbaby.app/purchase/cancel"
+
+# KV: user Gavel balances + processed-event set (webhook idempotency) +
+# consume-idempotency keys + payment_intent→user refund routing + ledger.
+#
+# ⚠️  MUST BE REPLACED BEFORE FIRST DEPLOY — until then every credit and
+# debit silently no-ops.
+#   npx wrangler kv namespace create KV
+[[kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# ── STAGING (Stripe test mode / fake money) ──────────────────────────────────
+# Deploy: npx wrangler deploy --env staging
+[env.staging]
+name = "auctionbaby-consumables-staging"
+
+[env.staging.vars]
+CURRENCY = "usd"
+SUCCESS_URL = "https://auctionbaby.app/purchase/success"
+CANCEL_URL = "https://auctionbaby.app/purchase/cancel"
+
+# ⚠️  Same rule: create + paste, or credits silently drop.
+#   npx wrangler kv namespace create KV --env staging
+[[env.staging.kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_STAGING_KV_NAMESPACE_ID"

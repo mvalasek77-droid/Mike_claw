@@ -172,22 +172,40 @@ struct BidRow: View {
                 }
 
                 if bid.status == .pending {
-                    HStack(spacing: 10) {
-                        Button { store.decline(bid) } label: {
-                            Label("Pass", systemImage: "xmark")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundStyle(Theme.inkSoft).frame(maxWidth: .infinity).padding(.vertical, 11)
-                                .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
-                        }.buttonStyle(.plain)
-                        Button { store.accept(bid) } label: {
-                            Label("Accept", systemImage: "checkmark")
-                                .font(.system(size: 14, weight: .heavy, design: .rounded))
-                                .foregroundStyle(.black).frame(maxWidth: .infinity).padding(.vertical, 11)
-                                .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.roseGradient))
-                        }.buttonStyle(.plain)
+                    if bid.isWhisper {
+                        HStack(spacing: 10) {
+                            Button { store.decline(bid) } label: {
+                                Label("Let it fade", systemImage: "xmark")
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .foregroundStyle(Theme.inkSoft).frame(maxWidth: .infinity).padding(.vertical, 11)
+                                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
+                            }.buttonStyle(.plain)
+                            Button { store.nodAtWhisper(bid) } label: {
+                                Label("Nod back", systemImage: "hand.wave.fill")
+                                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.black).frame(maxWidth: .infinity).padding(.vertical, 11)
+                                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.roseGradient))
+                            }.buttonStyle(.plain)
+                        }
+                    } else {
+                        HStack(spacing: 10) {
+                            Button { store.decline(bid) } label: {
+                                Label("Pass", systemImage: "xmark")
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .foregroundStyle(Theme.inkSoft).frame(maxWidth: .infinity).padding(.vertical, 11)
+                                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
+                            }.buttonStyle(.plain)
+                            Button { store.accept(bid) } label: {
+                                Label("Accept", systemImage: "checkmark")
+                                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.black).frame(maxWidth: .infinity).padding(.vertical, 11)
+                                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.roseGradient))
+                            }.buttonStyle(.plain)
+                        }
                     }
                 } else {
-                    Text(bid.status == .accepted ? "Accepted · invite sent" : "Passed")
+                    Text(bid.isWhisper ? (bid.status == .accepted ? "Nodded back" : "Faded")
+                         : bid.status == .accepted ? "Accepted · invite sent" : "Passed")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(bid.status == .accepted ? Theme.success : Theme.inkFaint)
                         .frame(maxWidth: .infinity, alignment: .leading)

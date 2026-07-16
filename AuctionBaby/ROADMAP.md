@@ -109,6 +109,12 @@ A living plan. Shipped items reflect what's in the branch today.
 - HMAC-gated admin console: float status, pay-now, ledger, moderation
 - Demo Mode for App Review (name "demo", free counterparts of every
   paid product, demo Pass, seeded wallet)
+- Stripe web Gavel shop (`consumables/` Worker, AI Marketplace model):
+  catalog → hosted Checkout → signed webhook → idempotent crediting →
+  consume/ledger, plus `charge.refunded` clawback. The app drains the
+  web balance into the wallet on foreground via idempotent `/consume`.
+  Digital Gavels in-app stay on StoreKit per Apple's rules — Stripe is
+  the web surface only.
 
 ## 🔜 Next (v1.1)
 
@@ -129,12 +135,10 @@ A living plan. Shipped items reflect what's in the branch today.
 - Real backend + accounts (guest vs verified tiers), cloud sync
 - Live presence + push notifications ("You've been outbid")
 - KYC-gated real-world date payments via a licensed processor (marketplace fee)
-- Consumable credit purchases via Stripe Checkout — scaffolded as a standalone
-  Cloudflare Worker (`ai-marketplace-consumables/`): catalog → hosted Checkout →
-  signed webhook → idempotent crediting → spend/ledger. (Digital consumables in
-  the iOS app itself stay on StoreKit per Apple's rules; Stripe is for web /
-  real-world surfaces.)
-- Photo upload + on-device safety/NSFW screening
+- Web Gavel shop front-end (a checkout page that drives the shipped
+  `consumables/` Worker; the Worker + app sync are live, the storefront
+  page itself is not built yet)
+- On-device safety/NSFW screening for uploaded photos
 - Onboarding glow-up: multi-step, dealbreakers, voice prompts
 - Woman-side bidder filters & saved searches
 

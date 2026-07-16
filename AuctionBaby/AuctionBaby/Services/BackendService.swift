@@ -35,21 +35,38 @@ final class BackendService: ObservableObject {
     @Published var sharedSecret: String {
         didSet { UserDefaults.standard.set(sharedSecret, forKey: Self.secretKey) }
     }
+    /// Stripe consumables Worker (the web Gavel shop), e.g.
+    /// "https://auctionbaby-consumables.you.workers.dev". Optional — empty
+    /// means no web shop is wired and the Gavel sync is a no-op. Shares
+    /// `sharedSecret` with the payout Worker by convention.
+    @Published var consumablesURL: String {
+        didSet { UserDefaults.standard.set(consumablesURL, forKey: Self.consumablesKey) }
+    }
 
     private static let urlKey = "auctionbaby.backend.url.v1"
     private static let secretKey = "auctionbaby.backend.secret.v1"
+    private static let consumablesKey = "auctionbaby.backend.consumables.v1"
 
     init() {
         let savedURL = UserDefaults.standard.string(forKey: Self.urlKey) ?? ""
         let savedSecret = UserDefaults.standard.string(forKey: Self.secretKey) ?? ""
+        let savedConsumables = UserDefaults.standard.string(forKey: Self.consumablesKey) ?? ""
         // Baked build config wins only when nothing was saved locally, so a
         // staging URL typed into the admin console survives relaunch.
         workerURL = savedURL.isEmpty ? BackendConfig.workerURL : savedURL
         sharedSecret = savedSecret.isEmpty ? BackendConfig.sharedSecret : savedSecret
+        consumablesURL = savedConsumables.isEmpty ? BackendConfig.consumablesURL : savedConsumables
     }
 
     var isConfigured: Bool {
         !workerURL.trimmingCharacters(in: .whitespaces).isEmpty
+            && !sharedSecret.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// The web Gavel shop is optional; sync only runs when both the
+    /// consumables URL and the shared secret are present.
+    var isConsumablesConfigured: Bool {
+        !consumablesURL.trimmingCharacters(in: .whitespaces).isEmpty
             && !sharedSecret.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
@@ -222,24 +239,55 @@ final class BackendService: ObservableObject {
         }
     }
 
-    // MARK: - Transport
+    // MARK: - Web Gavel shop (Stripe consumables Worker)
 
-    private func get<T: Decodable>(_ path: String, as type: T.Type) async -> BackendResult<T> {
-        await request(path: path, method: "GET", body: nil, as: type)
+    /// GET /balance on the consumables Worker — Gavels bought on the web shop
+    /// that haven't been drained into the app wallet yet.
+    func fetchWebGavels(appAccountToken: UUID) async -> BackendResult<Int> {
+        struct Response: Decodable { let gavels: Int }
+        let token = appAccountToken.uuidString.lowercased()
+        return await get("/balance?userId=\(token)", base: consumablesURL, as: Response.self)
+            .map(\.gavels)
     }
 
-    private func post<T: Decodable>(_ path: String, body: [String: Any], as type: T.Type) async -> BackendResult<T> {
-        await request(path: path, method: "POST", body: body, as: type)
+    /// POST /consume on the consumables Worker — drains `gavels` from the web
+    /// balance so they can be credited to the local wallet. Idempotent per
+    /// `idempotencyKey`: a retried drain returns the prior result (`replay`)
+    /// instead of double-spending the web balance.
+    func drainWebGavels(appAccountToken: UUID, gavels: Int,
+                        idempotencyKey: String) async -> BackendResult<Int> {
+        struct Response: Decodable { let ok: Bool; let spent: Int? }
+        let body: [String: Any] = [
+            "userId": appAccountToken.uuidString.lowercased(),
+            "gavels": gavels,
+            "reason": "drain-to-app-wallet",
+            "idempotencyKey": idempotencyKey,
+        ]
+        return await post("/consume", base: consumablesURL, body: body, as: Response.self)
+            .map { $0.spent ?? gavels }
+    }
+
+    // MARK: - Transport
+
+    private func get<T: Decodable>(_ path: String, base: String? = nil, as type: T.Type) async -> BackendResult<T> {
+        await request(path: path, method: "GET", body: nil, baseOverride: base, as: type)
+    }
+
+    private func post<T: Decodable>(_ path: String, base: String? = nil, body: [String: Any], as type: T.Type) async -> BackendResult<T> {
+        await request(path: path, method: "POST", body: body, baseOverride: base, as: type)
     }
 
     private func request<T: Decodable>(path: String, method: String,
-                                       body: [String: Any]?, as type: T.Type) async -> BackendResult<T> {
-        guard isConfigured else {
+                                       body: [String: Any]?, baseOverride: String? = nil,
+                                       as type: T.Type) async -> BackendResult<T> {
+        let rawBase = baseOverride ?? workerURL
+        guard !rawBase.trimmingCharacters(in: .whitespaces).isEmpty,
+              !sharedSecret.trimmingCharacters(in: .whitespaces).isEmpty else {
             return .failure("Backend not configured — set the Worker URL and shared secret first.")
         }
-        let base = workerURL.hasSuffix("/") ? String(workerURL.dropLast()) : workerURL
+        let base = rawBase.hasSuffix("/") ? String(rawBase.dropLast()) : rawBase
         guard let url = URL(string: "\(base)\(path)") else {
-            return .failure("Worker URL looks malformed: '\(workerURL)'.")
+            return .failure("Worker URL looks malformed: '\(rawBase)'.")
         }
         var request = URLRequest(url: url)
         request.httpMethod = method

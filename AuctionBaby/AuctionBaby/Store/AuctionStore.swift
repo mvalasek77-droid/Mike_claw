@@ -370,7 +370,7 @@ final class AuctionStore: ObservableObject {
         outgoingBids.insert(bid, at: 0)
         Haptics.tap()
         toastFlash("Whisper sent — she'll see interest, not who.")
-        log(.bidPlaced, "You whispered on \(woman.name).")
+        log(.bidReceived, "You whispered on \(woman.name).")
         // Sim: her decision timer still runs but on a lighter cadence.
         scheduleWomanDecision(bidID: bid.id)
         save()
@@ -495,6 +495,64 @@ final class AuctionStore: ObservableObject {
     func refreshPendingRefunds(storeKit: StoreKitService, backend: BackendService) async {
         await storeKit.drainPending()
         await applyWorkerRefunds(backend: backend)
+        await syncWebGavels(backend: backend)
+    }
+
+    // MARK: - Web Gavel shop sync (Stripe consumables Worker)
+
+    /// Gavels bought on the web shop (Stripe Checkout) land in a KV balance
+    /// keyed by `appAccountToken`. This drains that balance into the local
+    /// wallet: fetch → /consume (idempotent) → credit.
+    ///
+    /// Crash-safety follows the StoreKit house rule — overpay, never
+    /// under-credit: the pending drain (idempotency key + amount) persists in
+    /// UserDefaults before the network call, and is only cleared AFTER the
+    /// wallet credit is saved. A crash in between re-runs the drain; the
+    /// Worker replies `replay` without double-spending the web balance.
+    private static let pendingDrainKey = "auctionbaby.webgavels.pendingdrain.v1"
+
+    func syncWebGavels(backend: BackendService) async {
+        guard backend.isConsumablesConfigured else { return }
+
+        // 1. Finish any drain that was interrupted mid-flight.
+        if let pending = UserDefaults.standard.dictionary(forKey: Self.pendingDrainKey),
+           let key = pending["key"] as? String, let amount = pending["amount"] as? Int {
+            await completeDrain(backend: backend, key: key, amount: amount)
+            return   // one drain per foreground pass keeps the flow simple
+        }
+
+        // 2. Fresh pass: anything waiting on the web balance?
+        guard case .success(let balance) = await backend.fetchWebGavels(appAccountToken: appAccountToken),
+              balance > 0 else { return }
+
+        let key = "drain-\(UUID().uuidString.lowercased())"
+        UserDefaults.standard.set(["key": key, "amount": balance], forKey: Self.pendingDrainKey)
+        await completeDrain(backend: backend, key: key, amount: balance)
+    }
+
+    private func completeDrain(backend: BackendService, key: String, amount: Int) async {
+        switch await backend.drainWebGavels(appAccountToken: appAccountToken,
+                                            gavels: amount, idempotencyKey: key) {
+        case .success(let drained):
+            wallet += drained
+            save()   // credit first…
+            UserDefaults.standard.removeObject(forKey: Self.pendingDrainKey)  // …then clear
+            Haptics.success()
+            toastFlash("Web shop synced — +\(Tally.compact(drained)) Gavels.")
+            log(.daily, "Synced \(Tally.compact(drained)) Gavels from the web shop.")
+            ErrorMonitor.shared.record(category: "Backend",
+                                       message: "Web Gavel drain: +\(drained)",
+                                       detail: "key \(key)")
+        case .failure(let message):
+            // Leave the pending record in place — the next foreground retries
+            // with the same idempotency key. 402 (insufficient) means a refund
+            // raced the drain; clear so the next pass re-reads the balance.
+            if message.contains("insufficient") {
+                UserDefaults.standard.removeObject(forKey: Self.pendingDrainKey)
+            }
+            ErrorMonitor.shared.record(category: "Backend",
+                                       message: "Web Gavel drain failed", detail: message)
+        }
     }
 
     /// Shared dedup with `StoreKitService.checkRevocation` — both paths key on
@@ -729,6 +787,8 @@ final class AuctionStore: ObservableObject {
     func accept(_ bid: Bid) {
         guard let idx = incomingBids.firstIndex(where: { $0.id == bid.id }),
               incomingBids[idx].status == .pending else { return }   // idempotent: no double-credit
+        // A whisper has no amount to accept — it resolves via nodAtWhisper.
+        guard !incomingBids[idx].isWhisper else { nodAtWhisper(bid); return }
         incomingBids[idx].status = .accepted
         let accepted = incomingBids[idx]
         earnings += accepted.amount
@@ -777,6 +837,32 @@ final class AuctionStore: ObservableObject {
         incomingBids[idx].status = .declined
         Haptics.tap()
         save()
+    }
+
+    /// Nod back at a whisper. Never a match (there's no bid to accept) — the
+    /// nod invites the whisperer to come back with a real number, which the
+    /// simulation delivers a few seconds later.
+    func nodAtWhisper(_ bid: Bid) {
+        guard role == .woman,
+              let idx = incomingBids.firstIndex(where: { $0.id == bid.id }),
+              incomingBids[idx].status == .pending, incomingBids[idx].isWhisper else { return }
+        incomingBids[idx].status = .accepted
+        Haptics.tap()
+        toastFlash("You nodded back — watch for his real bid.")
+        save()
+        let man = bid.man
+        after(Double.random(in: 2.0...4.0)) { [weak self] in
+            guard let self, !self.blockedIDs.contains(man.id) else { return }
+            let floor = min(self.me.startingBid ?? 150, Self.maxStartingBid)
+            let amount = max(120, Int(Double(floor) * Double.random(in: 1.0...2.0)))
+            let real = Bid(man: man, woman: self.me, amount: amount,
+                           note: "You nodded. I don't waste a second chance — here's my number.")
+            self.incomingBids.insert(real, at: 0)
+            Haptics.commit()
+            self.toastFlash("\(man.name) came back with \(Money.compact(amount)).")
+            self.log(.bidReceived, "\(man.name) followed his whisper with \(Money.compact(amount)).")
+            self.save()
+        }
     }
 
     /// Demo helper — summon a fresh bidder to the inbox. `trillionaire: true`
@@ -1047,6 +1133,22 @@ final class AuctionStore: ObservableObject {
             guard let self, let idx = self.outgoingBids.firstIndex(where: { $0.id == bidID }) else { return }
             guard self.outgoingBids[idx].status == .pending else { return }
             var bid = self.outgoingBids[idx]
+
+            // Whispers resolve softly: she either nods back (inviting a real
+            // bid) or lets it fade. Never a credit event, never a match, never
+            // an auto-rebid — that's the whole point of a zero-stakes signal.
+            if bid.isWhisper {
+                let nodded = Double.random(in: 0...1) < 0.7
+                bid.status = nodded ? .accepted : .declined
+                self.outgoingBids[idx] = bid
+                if nodded {
+                    Haptics.tap()
+                    self.toastFlash("\(bid.woman.name) noticed your whisper — she's waiting for a real bid.")
+                    self.log(.bidReceived, "\(bid.woman.name) nodded at your whisper. Your move.")
+                }
+                self.save()
+                return
+            }
 
             let accepted: Bool
             if bid.onCopycat {
