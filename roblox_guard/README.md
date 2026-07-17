@@ -112,7 +112,7 @@ roblox_guard/
 │   │   ├── main.py            REST API consumed by the iOS app
 │   │   └── resources.py       Reporting / escalation resources
 │   ├── data/experience_watchlist.json   Curated watchlist (ships empty)
-│   └── tests/                 40 tests: signals, monitor, API
+│   └── tests/                 153 tests: signals, monitor, API, push, support
 └── ios/RobloxGuard/    SwiftUI parent app (iOS 17+, XcodeGen project)
 ```
 
@@ -121,6 +121,7 @@ roblox_guard/
 | Signal | Severity | Trigger |
 |---|---|---|
 | `off_platform_handle` | elevated | A new friend's bio advertises Discord/Snapchat/Telegram/Kik/WhatsApp/Instagram handles or a phone number — the strongest observable grooming precursor (moving chat off-platform, away from Roblox's filters) |
+| `grooming_phrase` | elevated | A new friend's bio contains a known grooming phrase from the threat feed (e.g. "DMs open", "send pics") — behavioral language associated with solicitation |
 | `established_account_contact` | watch | New friend's account is unusually old for a child's friend group |
 | `large_network_contact` | watch | New friend has a friend count near Roblox's 1,000 cap (mass-friending pattern) |
 | `rapid_friending` | watch | Child added many friends within a short window |
@@ -165,7 +166,7 @@ and is served to the app at `GET /education`.
 ```bash
 cd backend
 pip install -r requirements.txt
-python -m pytest            # 40 tests
+python -m pytest            # 153 tests
 uvicorn app.main:app        # serves on :8000; monitor polls every 15 min
 ```
 
@@ -224,7 +225,7 @@ Two layers, for two different questions.
 **"Did I break anything?" — the pytest suite, offline, every commit:**
 
 ```bash
-cd backend && python -m pytest -q     # 150 tests, ~20s, no network
+cd backend && python -m pytest -q     # 153 tests, ~20s, no network
 ```
 
 This runs entirely against `FakeRobloxClient` (synthetic accounts only — see
@@ -385,7 +386,7 @@ this:
 
 What's verified here and what still needs real-device work before launch:
 
-**Verified in CI (150 tests):** full parent journey end-to-end (link →
+**Verified in CI (153 tests):** full parent journey end-to-end (link →
 baseline → threat → alert → evidence → report → feedback → erasure), hostile
 input (unicode, null bytes, script injection — HTML reports escape it),
 oversized uploads rejected, unknown-ID and validation paths, API auth

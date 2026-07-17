@@ -5,12 +5,16 @@ struct Child: Identifiable, Codable, Hashable {
     let robloxUserId: Int
     let robloxUsername: String
     let displayName: String
+    let lastPollAt: String?
+    let lastPollStatus: String?
 
     enum CodingKeys: String, CodingKey {
         case id
         case robloxUserId = "roblox_user_id"
         case robloxUsername = "roblox_username"
         case displayName = "display_name"
+        case lastPollAt = "last_poll_at"
+        case lastPollStatus = "last_poll_status"
     }
 }
 
