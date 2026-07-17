@@ -53,38 +53,61 @@ a retried drain can't double-credit).
 | `POST /consume` | Bearer | spend/drain Gavels (idempotent) |
 | `GET /ledger?userId=` | Bearer | recent purchases/spends/refunds |
 
-## Deploy
+## Deploy — one command
+
+The whole provisioning flow (KV namespaces, shared secret, Stripe key,
+deploy, **automatic Stripe webhook registration via the API**, smoke tests)
+is scripted for both Workers:
+
+```bash
+cd AuctionBaby
+npx wrangler login                                  # once
+STRIPE_SECRET_KEY=sk_test_… ./setup-workers.sh      # staging first
+STRIPE_SECRET_KEY=sk_live_… ENV=production ./setup-workers.sh
+```
+
+The script prints the exact `Secrets.xcconfig` lines when it finishes.
+Webhook events registered: `checkout.session.completed`,
+`checkout.session.async_payment_succeeded`, `charge.refunded`.
+
+<details>
+<summary>Manual steps, if you'd rather run them yourself</summary>
 
 ```bash
 cd AuctionBaby/consumables
 npm install
-
-# 1. KV namespace (required — without it every credit silently no-ops)
 npx wrangler kv namespace create KV            # paste id into wrangler.toml
 npx wrangler kv namespace create KV --env staging
-
-# 2. Secrets
 npx wrangler secret put STRIPE_SECRET_KEY      # sk_test_… first, sk_live_… later
 npx wrangler secret put APP_SHARED_SECRET      # reuse the payout Worker's value
-
-# 3. Deploy, then create the webhook endpoint in the Stripe dashboard:
-#    URL:    https://auctionbaby-consumables.<subdomain>.workers.dev/webhook
-#    Events: checkout.session.completed, charge.refunded
 npx wrangler deploy
+# Stripe dashboard → webhook endpoint at <url>/webhook with the three events
 npx wrangler secret put STRIPE_WEBHOOK_SECRET  # whsec_… from that endpoint
-
-# 4. Verify
-BASE_URL=https://auctionbaby-consumables.<subdomain>.workers.dev \
-  APP_SHARED_SECRET=<secret> ./smoke-test.sh
+BASE_URL=<url> APP_SHARED_SECRET=<secret> ./smoke-test.sh
 ```
+</details>
 
-For end-to-end webhook testing locally:
+## Testing
+
+Two layers, both runnable against local `wrangler dev` or a deployed URL:
 
 ```bash
-npx wrangler dev
-stripe listen --forward-to http://127.0.0.1:8787/webhook
-stripe trigger checkout.session.completed
+npx wrangler dev --local        # boots with simulated KV; .dev.vars carries
+                                # test secrets (git-ignored)
+
+# Route/auth sanity:
+BASE_URL=http://127.0.0.1:8787 APP_SHARED_SECRET=devsecret ./smoke-test.sh
+
+# Full money path with genuinely HMAC-signed webhook events — credit,
+# replay-idempotency, signature rejection, unpaid skip, async-payment
+# credit, consume + replay, proportional partial refunds, floor at zero:
+BASE_URL=http://127.0.0.1:8787 APP_SHARED_SECRET=devsecret \
+  STRIPE_WEBHOOK_SECRET=whsec_localtest ./e2e-test.sh
 ```
+
+`e2e-test.sh` passes 17/17 against the shipped Worker. For dashboard-driven
+testing use the Stripe CLI instead: `stripe listen --forward-to
+http://127.0.0.1:8787/webhook` + `stripe trigger checkout.session.completed`.
 
 ## Relationship to the payout Worker
 

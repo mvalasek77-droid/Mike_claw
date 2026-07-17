@@ -27,3 +27,4 @@ AIMarketplace/Config/Secrets.xcconfig
 AuctionBaby/Config/Secrets.xcconfig
 node_modules/
 .wrangler/
+.dev.vars
