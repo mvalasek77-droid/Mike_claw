@@ -23,22 +23,25 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: RobloxGuard
         # Parent-facing utility; NOT a Kids Category app (see README).
         PRODUCT_BUNDLE_IDENTIFIER: com.mikeclaw.robloxguard
-        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_STYLE: Manual
+        PROVISIONING_PROFILE_SPECIFIER: RobloxGuard App Store
+        CODE_SIGN_IDENTITY: Apple Distribution
+        DEVELOPMENT_TEAM: UDM4W27W9V
         SWIFT_VERSION: "5.9"
         # Local dev talks to http://localhost:8000; production must use HTTPS
         # (no ATS exceptions shipped in release builds).
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+
         # Sources/Assets.xcassets/AppIcon.appiconset — original shield + block
         # mark, not derived from Roblox's own logo/branding (see README).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-    # Push Notifications capability (PushManager.swift, backend app/push.py).
-    # "development" here is correct for Simulator/local device builds; Xcode
-    # rewrites this to "production" automatically when archiving for App
-    # Store distribution, so nothing to change before release.
+    # Push Notifications capability restored — distribution profile ZD53Q938HN
+    # includes aps-environment production.
     entitlements:
       path: RobloxGuard.entitlements
       properties:
-        aps-environment: development
+        aps-environment: production
+
     # StoreKit 2 subscriptions (PurchaseManager.swift, PaywallView.swift).
     # RobloxGuard.storekit is a local test configuration (no App Store Connect
     # needed for Simulator testing): after `xcodegen generate`, in Xcode set
