@@ -28,6 +28,7 @@ information about the linked child's public Roblox account.
 | Generated safety alerts and your feedback on them (confirmed/dismissed) | To show you alerts and tune future ones | Yes |
 | Evidence you upload (screenshots) and automatically captured public profile screenshots | To preserve what was observed if you need to report something | Yes |
 | Bug reports you submit (description, optional reply email) | To fix problems you report | Yes, if you provide contact info |
+| Device push-notification token and platform (e.g. "ios") | To deliver real-time alerts to your device via Apple Push Notification service (APNs) | No (not linked to your identity) |
 | Subscription status | Apple's StoreKit tells us which plan is active; App Store handles all payment details — **we never see your card number** | Yes |
 
 We do **not** collect: your child's Roblox password (there is no password
@@ -50,7 +51,9 @@ financial, or biometric data.
 Data for a linked child is retained for as long as the account stays linked.
 Unlinking a child from Settings **permanently and immediately deletes**
 everything associated with that child — alerts, evidence, screenshots, and
-snapshot history — from our database.
+snapshot history — from our database. Device push-notification tokens are
+retained until the app unregisters them or Apple reports the token as
+expired; they are automatically pruned when delivery fails.
 
 ## Who can see it
 
