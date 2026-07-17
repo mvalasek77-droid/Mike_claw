@@ -1,22 +1,120 @@
 {
-  "generated_for": "2026-07-17T10",
+  "generated_for": "2026-07-17T13",
   "posts": [
     {
       "community": {
-        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
-        "name": "Iron Bro-hood",
-        "slug": "fitness",
-        "member_count": 182000,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
         "is_joined": true
       },
-      "title": "PSA: warm up your rotator cuffs, bros",
-      "body": "Saved my bench after years of nagging pain. Here's the routine.",
-      "score": 288,
+      "title": "Finally finished the brake job",
+      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
+      "score": 209,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "14ebf4bc-f3c8-a5d3-9826-cf9db295f09c",
+      "id": "01017fe9-d699-d0a9-521d-414e9ae5b971",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 85,
+      "created_at": "2026-07-17T09:18:27+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 32,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 20
+        },
+        {
+          "kind": "strong",
+          "count": 26
+        },
+        {
+          "kind": "like",
+          "count": 36
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "f13579ea-589a-ef1b-62a6-5f133866f899",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 110,
+      "created_at": "2026-07-17T09:43:27+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 55,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 18
+        },
+        {
+          "kind": "strong",
+          "count": 37
+        },
+        {
+          "kind": "like",
+          "count": 3
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "9acc7b90-c163-9f0b-e749-64d9803eb2a9",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 60,
+      "created_at": "2026-07-17T08:15:27+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 40,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 8
+        },
+        {
+          "kind": "strong",
+          "count": 7
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "3f77c35f-886c-e9f0-7cdd-d47873076520",
       "author": {
         "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
         "handle": "@newbro",
@@ -25,8 +123,8 @@
         "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 4,
-      "created_at": "2026-07-17T07:49:26+00:00",
+      "comment_count": 70,
+      "created_at": "2026-07-17T10:16:27+00:00",
       "my_vote": 0
     },
     {
@@ -40,70 +138,7 @@
       },
       "title": "Built a treehouse this weekend",
       "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
-      "score": 177,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 1
-        }
-      ],
-      "id": "a6e6c2d3-a511-1176-b768-06d38dceafd1",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 0,
-      "created_at": "2026-07-17T09:11:26+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 14,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 26
-        },
-        {
-          "kind": "strong",
-          "count": 14
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "6ada7b93-a56e-e102-7eda-e143f3ad7c37",
-      "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
-      },
-      "image_url": null,
-      "comment_count": 27,
-      "created_at": "2026-07-17T07:43:26+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
-        "name": "Iron Bro-hood",
-        "slug": "fitness",
-        "member_count": 182000,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
-        "is_joined": true
-      },
-      "title": "Cutting without losing strength",
-      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
-      "score": 113,
+      "score": 84,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -112,37 +147,7 @@
           "count": 2
         }
       ],
-      "id": "db47a0b2-9845-1071-ec7c-aa8920a97dcc",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 11,
-      "created_at": "2026-07-17T04:56:26+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 97,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 8
-        },
-        {
-          "kind": "strong",
-          "count": 13
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "16ede55a-6e51-523a-da4e-db30bb91571d",
+      "id": "3cf71f2a-de1b-7934-9350-ede8b8eab60e",
       "author": {
         "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
         "handle": "@ironbro",
@@ -151,28 +156,32 @@
         "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 63,
-      "created_at": "2026-07-17T07:40:26+00:00",
+      "comment_count": 67,
+      "created_at": "2026-07-17T06:49:27+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 74,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 39,
       "reactions": [
         {
           "kind": "strong",
-          "count": 36
+          "count": 15
         },
         {
-          "kind": "like",
+          "kind": "respect",
+          "count": 23
+        },
+        {
+          "kind": "lol",
           "count": 13
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "01e3d253-a899-2064-82c4-32db7f5866d8",
+      "id": "c9e8e6c9-70c7-db46-41cf-0e514ebd06ba",
       "author": {
         "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
         "handle": "@newbro",
@@ -181,8 +190,8 @@
         "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 94,
-      "created_at": "2026-07-17T04:36:26+00:00",
+      "comment_count": 27,
+      "created_at": "2026-07-17T08:02:27+00:00",
       "my_vote": 0
     }
   ],
