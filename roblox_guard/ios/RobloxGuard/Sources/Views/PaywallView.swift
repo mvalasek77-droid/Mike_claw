@@ -5,10 +5,8 @@ struct PaywallView: View {
     @EnvironmentObject var purchases: PurchaseManager
     @Environment(\.dismiss) private var dismiss
 
-    // TODO: point at the real hosted page before submitting to App Review —
-    // App Store Connect's own "Privacy Policy URL" field must match. See
-    // docs/PRIVACY_POLICY.md for a draft to publish.
-    static let privacyPolicyURL = URL(string: "https://robloxguard.app/privacy")!
+    // Must match the "Privacy Policy URL" field in App Store Connect's App Privacy section.
+    static let privacyPolicyURL = URL(string: "https://mvalasek77-droid.github.io/Mike_claw/robloxguard-privacy.html")!
 
     var reason = "Subscribe to start protecting your child on Roblox."
 
