@@ -7,12 +7,18 @@ struct DailyClaimCard: View {
     @EnvironmentObject private var store: AuctionStore
     @State private var pulse = false
 
+    /// Mirrors claimDaily's streak math exactly — including streak-freezes
+    /// covering missed days — so the previewed number always matches what
+    /// the claim actually credits.
     private var nextReward: Int {
         let streakWillContinue: Bool = {
             guard let last = store.lastDailyClaim else { return false }
             let cal = Calendar.current
-            guard let nextDay = cal.date(byAdding: .day, value: 1, to: last) else { return false }
-            return cal.isDate(nextDay, inSameDayAs: Date())
+            let lastDay = cal.startOfDay(for: last)
+            let today = cal.startOfDay(for: Date())
+            let days = cal.dateComponents([.day], from: lastDay, to: today).day ?? 0
+            let missed = max(0, days - 1)
+            return missed == 0 || missed <= store.streakFreezeCount
         }()
         let nextStreak = streakWillContinue ? store.dailyStreak + 1 : 1
         return AuctionStore.dailyGavelBase * min(nextStreak, 7)
@@ -72,7 +78,9 @@ struct DailyClaimCard: View {
                 Image(systemName: "snowflake").font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Theme.verify)
                 if store.streakFreezeCount > 0 {
-                    Text("\(store.streakFreezeCount)× streak-freeze — miss a day, streak survives.")
+                    Text(store.streakFreezeCount == 1
+                         ? "1× streak-freeze — covers one missed day."
+                         : "\(store.streakFreezeCount)× streak-freeze — covers \(store.streakFreezeCount) missed days.")
                         .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkSoft)
                 } else {
                     Text("No streak-freeze. One miss and day \(store.dailyStreak) resets.")

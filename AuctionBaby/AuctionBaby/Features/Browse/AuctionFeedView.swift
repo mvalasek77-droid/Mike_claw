@@ -2,7 +2,8 @@ import SwiftUI
 import UIKit
 
 /// The bidder's home: a Hinge-style vertical feed of women on the floor. Each
-/// card is a tappable lot; copycats are flagged in place.
+/// card is a tappable lot. Copycats render EXACTLY like real profiles here —
+/// the house rule is no pre-bid labelling; the reveal fires after the bid.
 struct AuctionFeedView: View {
     @EnvironmentObject private var store: AuctionStore
     @State private var bidTarget: Profile?

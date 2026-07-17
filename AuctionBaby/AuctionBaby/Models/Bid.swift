@@ -32,12 +32,53 @@ struct Bid: Identifiable, Codable, Hashable {
     /// escalate to a real bid once she nods back. Doesn't count against the
     /// free bid limit.
     var isWhisper: Bool = false
+    /// How many auto-rebids led to this bid (0 = placed by the user). Caps the
+    /// Reserve-perk auto-rebid chain so a decline streak can't loop forever.
+    var rebidDepth: Int = 0
     /// If he bid in response to a specific prompt, the question he's replying to
     /// (Hinge-style targeted interaction). Optional → backward-compatible decode.
     var promptRef: String? = nil
 
     /// Bidding on an AI copycat is always disclosed and counts against the man.
     var onCopycat: Bool { woman.isCopycat }
+
+    // Explicit memberwise init (init(from:) below suppresses the synthesized
+    // one). Parameter order mirrors property order.
+    init(id: UUID = UUID(), man: Profile, woman: Profile, amount: Int,
+         note: String = "", status: BidStatus = .pending, createdAt: Date = .now,
+         gilded: Bool = false, insured: Bool = false, isWhisper: Bool = false,
+         rebidDepth: Int = 0, promptRef: String? = nil) {
+        self.id = id
+        self.man = man
+        self.woman = woman
+        self.amount = amount
+        self.note = note
+        self.status = status
+        self.createdAt = createdAt
+        self.gilded = gilded
+        self.insured = insured
+        self.isWhisper = isWhisper
+        self.rebidDepth = rebidDepth
+        self.promptRef = promptRef
+    }
+
+    // Backward-compatible decode — a Bid written by any previous build must
+    // keep decoding; a thrown key here wipes the whole account snapshot.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        man = try c.decode(Profile.self, forKey: .man)
+        woman = try c.decode(Profile.self, forKey: .woman)
+        amount = try c.decodeIfPresent(Int.self, forKey: .amount) ?? 0
+        note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
+        status = try c.decodeIfPresent(BidStatus.self, forKey: .status) ?? .pending
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
+        gilded = try c.decodeIfPresent(Bool.self, forKey: .gilded) ?? false
+        insured = try c.decodeIfPresent(Bool.self, forKey: .insured) ?? false
+        isWhisper = try c.decodeIfPresent(Bool.self, forKey: .isWhisper) ?? false
+        rebidDepth = try c.decodeIfPresent(Int.self, forKey: .rebidDepth) ?? 0
+        promptRef = try c.decodeIfPresent(String.self, forKey: .promptRef)
+    }
 
     /// The Masterpiece bar, per the house rules: a **Trillionaire** (the $9,999
     /// badge) who bids **$1,000,000** on the date — real-world money, settled in

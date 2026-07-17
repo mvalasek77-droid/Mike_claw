@@ -107,11 +107,17 @@ struct OutgoingBidRow: View {
                             Text(bid.woman.name).font(.system(size: 16, weight: .heavy, design: .serif))
                                 .foregroundStyle(Theme.ink)
                         }
-                        Text(Money.compact(bid.amount)).font(.system(size: 13, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Theme.gold)
+                        if bid.isWhisper {
+                            Label("Whisper", systemImage: "ear.fill")
+                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Theme.rose)
+                        } else {
+                            Text(Money.compact(bid.amount)).font(.system(size: 13, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Theme.gold)
+                        }
                     }
                     Spacer()
-                    if canRewind {
+                    if canRewind && !bid.isWhisper {
                         Button {
                             if rewindUnlocked { onRewind() } else { onRewindLocked() }
                         } label: {
@@ -128,10 +134,27 @@ struct OutgoingBidRow: View {
                     }
                     statusBadge
                 }
-                if bid.status == .pending { rankReveal }
+                if bid.status == .pending {
+                    // A whisper has no amount to rank or raise — rank reveal
+                    // against a $0 "bid" reads as permanently outbid and the
+                    // rebid button would silently mutate the whisper.
+                    if bid.isWhisper { whisperStatus } else { rankReveal }
+                }
             }
             .padding(16)
         }
+    }
+
+    private var whisperStatus: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "ear.fill").font(.system(size: 12, weight: .bold))
+            Text("Whisper sent — if she nods back, come in with a real bid.")
+                .font(.system(size: 12, weight: .heavy, design: .rounded))
+            Spacer()
+        }
+        .foregroundStyle(Theme.rose)
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.rose.opacity(0.12)))
     }
 
     @ViewBuilder private var rankReveal: some View {
@@ -193,8 +216,8 @@ struct OutgoingBidRow: View {
         let (text, color): (String, Color) = {
             switch bid.status {
             case .pending: return ("Live", Theme.gold)
-            case .accepted: return ("Accepted", Theme.success)
-            case .declined: return ("Passed", Theme.inkFaint)
+            case .accepted: return (bid.isWhisper ? "She nodded" : "Accepted", Theme.success)
+            case .declined: return (bid.isWhisper ? "Faded" : "Passed", Theme.inkFaint)
             }
         }()
         return Text(text).font(.system(size: 10, weight: .heavy, design: .rounded))

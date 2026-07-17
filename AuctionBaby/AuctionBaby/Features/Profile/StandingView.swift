@@ -87,7 +87,7 @@ struct StandingView: View {
                 .foregroundStyle(rank == 1 ? tint : Theme.inkSoft)
                 .frame(width: 22, alignment: .center)
             AvatarCircle(name: entry.name, hue: entry.hue,
-                         photoName: entry.photoName, size: 34)
+                         photoName: entry.photoName, photoData: entry.photoData, size: 34)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     Text(entry.name).font(.system(size: 14, weight: .heavy, design: .serif))

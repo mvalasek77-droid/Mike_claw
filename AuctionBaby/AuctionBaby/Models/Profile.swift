@@ -50,6 +50,45 @@ struct DateReview: Identifiable, Codable, Hashable {
     /// Gavel Confirmed — both sides attested the date happened. Missing/false
     /// = self-reported only; the credit engine weights this review lighter.
     var gavelConfirmed: Bool = false
+
+    init(id: UUID = UUID(), authorName: String, authorHue: Double, date: Date = .now,
+         stars: Int, text: String, traits: [String: Int] = [:],
+         interestCategories: [String] = [], paidBid: Bool? = nil,
+         bidAmount: Int? = nil, spentAmount: Int? = nil, gavelConfirmed: Bool = false) {
+        self.id = id
+        self.authorName = authorName
+        self.authorHue = authorHue
+        self.date = date
+        self.stars = stars
+        self.text = text
+        self.traits = traits
+        self.interestCategories = interestCategories
+        self.paidBid = paidBid
+        self.bidAmount = bidAmount
+        self.spentAmount = spentAmount
+        self.gavelConfirmed = gavelConfirmed
+    }
+
+    // Backward-compatible decode: synthesized Codable throws on ANY missing
+    // key for non-optional fields — so every field added after a user's
+    // snapshot was written would wipe their whole account. decodeIfPresent +
+    // defaults means old JSON always decodes. (Same pattern on every
+    // persisted model below and in Bid/Match/FilterPreferences.)
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        authorName = try c.decodeIfPresent(String.self, forKey: .authorName) ?? ""
+        authorHue = try c.decodeIfPresent(Double.self, forKey: .authorHue) ?? 0.5
+        date = try c.decodeIfPresent(Date.self, forKey: .date) ?? .now
+        stars = try c.decodeIfPresent(Int.self, forKey: .stars) ?? 3
+        text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
+        traits = try c.decodeIfPresent([String: Int].self, forKey: .traits) ?? [:]
+        interestCategories = try c.decodeIfPresent([String].self, forKey: .interestCategories) ?? []
+        paidBid = try c.decodeIfPresent(Bool.self, forKey: .paidBid)
+        bidAmount = try c.decodeIfPresent(Int.self, forKey: .bidAmount)
+        spentAmount = try c.decodeIfPresent(Int.self, forKey: .spentAmount)
+        gavelConfirmed = try c.decodeIfPresent(Bool.self, forKey: .gavelConfirmed) ?? false
+    }
 }
 
 /// The "look" a copycat lure is styled around. Drives the synthetic portrait's
@@ -147,6 +186,75 @@ struct Profile: Identifiable, Codable, Hashable {
     /// full $9,999 on a date and the woman confirms it. Until then the badge
     /// reads "Pending".
     var trillionaireVerified: Bool = false
+
+    // Explicit memberwise init — adding init(from:) below removes the
+    // synthesized one, and SampleData + the stores construct Profiles
+    // everywhere. Parameter order mirrors property order exactly.
+    init(id: UUID = UUID(), name: String, age: Int, role: Role, location: String,
+         bio: String, hue: Double, photoName: String? = nil, photoData: Data? = nil,
+         photoGallery: [Data] = [], prompts: [Prompt] = [], interests: [String] = [],
+         lifestyle: Lifestyle = Lifestyle(), openingBidScript: String? = nil,
+         reviews: [DateReview] = [], verified: Bool = false, startingBid: Int? = nil,
+         isCopycat: Bool = false, copycatStyle: CopycatStyle = .glam,
+         masterpiece: Bool = false, archetype: Archetype = .none,
+         copycatBids: Int = 0, declinedBids: Int = 0, trillionaireVerified: Bool = false) {
+        self.id = id
+        self.name = name
+        self.age = age
+        self.role = role
+        self.location = location
+        self.bio = bio
+        self.hue = hue
+        self.photoName = photoName
+        self.photoData = photoData
+        self.photoGallery = photoGallery
+        self.prompts = prompts
+        self.interests = interests
+        self.lifestyle = lifestyle
+        self.openingBidScript = openingBidScript
+        self.reviews = reviews
+        self.verified = verified
+        self.startingBid = startingBid
+        self.isCopycat = isCopycat
+        self.copycatStyle = copycatStyle
+        self.masterpiece = masterpiece
+        self.archetype = archetype
+        self.copycatBids = copycatBids
+        self.declinedBids = declinedBids
+        self.trillionaireVerified = trillionaireVerified
+    }
+
+    // Backward-compatible decode — see the note on DateReview.init(from:).
+    // A Profile written by ANY previous build must keep decoding forever;
+    // one thrown key here wipes the whole account snapshot (and with it the
+    // appAccountToken that keys the server-side money surfaces).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        age = try c.decodeIfPresent(Int.self, forKey: .age) ?? 25
+        role = try c.decodeIfPresent(Role.self, forKey: .role) ?? .woman
+        location = try c.decodeIfPresent(String.self, forKey: .location) ?? ""
+        bio = try c.decodeIfPresent(String.self, forKey: .bio) ?? ""
+        hue = try c.decodeIfPresent(Double.self, forKey: .hue) ?? 0.5
+        photoName = try c.decodeIfPresent(String.self, forKey: .photoName)
+        photoData = try c.decodeIfPresent(Data.self, forKey: .photoData)
+        photoGallery = try c.decodeIfPresent([Data].self, forKey: .photoGallery) ?? []
+        prompts = try c.decodeIfPresent([Prompt].self, forKey: .prompts) ?? []
+        interests = try c.decodeIfPresent([String].self, forKey: .interests) ?? []
+        lifestyle = try c.decodeIfPresent(Lifestyle.self, forKey: .lifestyle) ?? Lifestyle()
+        openingBidScript = try c.decodeIfPresent(String.self, forKey: .openingBidScript)
+        reviews = try c.decodeIfPresent([DateReview].self, forKey: .reviews) ?? []
+        verified = try c.decodeIfPresent(Bool.self, forKey: .verified) ?? false
+        startingBid = try c.decodeIfPresent(Int.self, forKey: .startingBid)
+        isCopycat = try c.decodeIfPresent(Bool.self, forKey: .isCopycat) ?? false
+        copycatStyle = try c.decodeIfPresent(CopycatStyle.self, forKey: .copycatStyle) ?? .glam
+        masterpiece = try c.decodeIfPresent(Bool.self, forKey: .masterpiece) ?? false
+        archetype = try c.decodeIfPresent(Archetype.self, forKey: .archetype) ?? .none
+        copycatBids = try c.decodeIfPresent(Int.self, forKey: .copycatBids) ?? 0
+        declinedBids = try c.decodeIfPresent(Int.self, forKey: .declinedBids) ?? 0
+        trillionaireVerified = try c.decodeIfPresent(Bool.self, forKey: .trillionaireVerified) ?? false
+    }
 }
 
 // MARK: - Derived "credit scores"
@@ -492,11 +600,12 @@ extension Profile {
     /// "On the Floor Now" — a deterministic hour-of-day rotation that flips
     /// a subset of profiles to "live" so the feed carries the same live-
     /// presence energy Bumble/Tinder use as their #1 DAU lever. About 30% of
-    /// non-copycat profiles read as active in any given hour; copycats stay
-    /// dark (they're the bait, not the party). Deterministic on (id, hour)
-    /// so the signal doesn't flicker while the user scrolls.
+    /// ALL profiles read as active in any given hour — copycats included,
+    /// on the same odds. They must be: if the bait never lit up, a patient
+    /// user could identify every Copycat by absence-of-presence, and the
+    /// house rule is that they're indistinguishable until after the bid.
+    /// Deterministic on (id, hour) so the signal doesn't flicker mid-scroll.
     var isOnTheFloorNow: Bool {
-        guard !isCopycat else { return false }
         let hour = Calendar.current.component(.hour, from: Date())
         let idBytes = withUnsafeBytes(of: id.uuid) { Array($0) }
         let seed = Int(idBytes[0]) &+ Int(idBytes[1]) &* 7 &+ hour &* 13

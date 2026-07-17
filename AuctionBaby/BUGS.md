@@ -197,3 +197,47 @@ Everything in Sweep 1's Deferred backlog (P2-4 through P2-13) still applies unle
 ## Sign-off (Sweep 2)
 
 Ten commits pushed since Sweep 1, all on `claude/auction-baby-dating-app-rezanv`. App is v1.0-feature-complete against the P1 bundle from the feature-gap agent's launch recommendation. Ready for TestFlight after a physical-device compile pass and provisioning of the KV namespace IDs + Secrets.xcconfig.
+
+---
+
+# Sweep 3 — full-feature QA (five parallel agents)
+
+**Sweep date:** 2026-07-17
+**Method:** Five agents traced every feature domain end-to-end: bidder flows, woman flows, retention features, money infrastructure, persistence/state machine. ~20 findings; all P0s and P1s fixed, P2s fixed where cheap.
+
+## P0 — fixed
+
+1. **Codable decode wipe (persistence agent).** Every struct in the snapshot graph used synthesized `Codable`; Swift's synthesized decoder throws on ANY missing key for non-optional fields — inline defaults don't help. Confirmed via git history: every release since the `auctionbaby.state.v5` key added non-optional fields (gilded, verified, archetype, lifestyle, minHeightCm, photoGallery, manConfirmedMet, isWhisper, insured, gavelConfirmed…) without a key bump, so upgrading decode-failed → silent total account wipe → next save() overwrites the good bytes → `appAccountToken` regenerates → server-side web-Gavel balance + refund queue orphaned. **Fix:** custom `init(from:)` with `decodeIfPresent` + defaults on Profile, Bid, Match, ChatMessage, DateReview, FilterPreferences (explicit memberwise inits preserved); `load()` now decodes BOTH stores and keeps the newer (`savedAt` stamp) so a failed archive write can't shadow fresher UserDefaults data; on total decode failure the raw bytes are stashed under a `.rescue` key before any save can clobber them.
+2. **Bid Insurance money printer (two agents independently).** Decline payout was unconditionally `premium + gildedBidCost` (450) against a 200 premium — a guaranteed-decline farm minted +250 Gavels per cycle. **Fix:** payout = premium + (gild fee only if the bid was actually gilded); payout can never exceed spend. BidSheet copy updated.
+3. **Concurrent web-Gavel sync double credit (money agent).** Launch `.task` and scenePhase `.active` fire `refreshPendingRefunds` nearly simultaneously; `@MainActor` doesn't exclude across `await`, so two overlapping syncs each drained the same balance under different idempotency keys → double wallet credit, no crash needed. **Fix:** `webGavelSyncInFlight` re-entrancy guard set synchronously before the first await.
+
+## P1 — fixed
+
+- **402 drain-retry black hole:** Worker's `/consume` 402 body is `{ok, reason}` but the client only decoded `{error}` → message "HTTP 402" → the `insufficient` check never matched → stale pending drain retried forever. Client now decodes both shapes.
+- **`checkout.session.async_payment_succeeded` unhandled** in the consumables Worker — delayed payment methods (ACH/SEPA) would be charged but never credited. Now handled by the same credit routine.
+- **Partial Stripe refunds debited the full pack.** Now proportional to the newly-refunded slice, cumulative-tracked per payment_intent (`refundedCents`), idempotent across repeated partial events.
+- **Copycat presence leak:** copycats never showed "On the Floor Now," so absence-of-presence identified them over time. They now roll the same deterministic ~30%.
+- **The Standing:** exact-string city match made real users' boards empty/single-row; pool read stale `SampleData` and ignored `blockedIDs`. Now: live roster, blocked filter, loose last-token city match, widen-to-floor fallback when < 3 rows, `photoData` on entries so the YOU row shows the uploaded photo.
+- **SuitorDetailView leaked whisper anonymity** (identity dossier + "Accept $0" CTA one tap from the anonymous inbox row). Whispers now get a dedicated anonymous sheet with Nod back / Let it fade.
+- **Summon-Trillionaire impostor:** with the seeded Trillionaire blocked, the fallback sent a $1M bid from a random man that could never mint. Now toasts "The Trillionaire isn't on your floor right now." instead.
+- **`trillionaireVerified` only set on the match snapshot** — now also written to the live `bidders` roster so he stops reading "Pending" everywhere else.
+- **Whispers leaked into MyBidsView rank/raise flow** ("$0" amount, always-outbid rank, a Rebid button that silently mutated the whisper). Whispers now show a dedicated status row, whisper badge, She nodded/Faded badges; `raiseBid` guards `isWhisper`.
+- **`resetAccount` leaks:** now clears streakFreezeCount, lastLotOfDaySeen, pendingNodManIDs, autoRebid/priorityPlacement flags, pending web-drain + refund-dedup UserDefaults keys, the rescue blob — and rotates `appAccountToken` (a reset is a new identity).
+
+## P2 — fixed
+
+- Whispers excluded from the woman's demand dashboard (liveBidCount / totalOnTable / highestLiveBid / acceptedCount).
+- DailyClaimCard reward preview now mirrors claimDaily's streak-freeze math exactly.
+- Docket freeze copy scales to actual coverage ("covers N missed days").
+- Auto-rebid capped at 3 rounds + amount clamped to maxStartingBid; whisper decisions run on a genuinely lighter 1.5–2.5s cadence.
+- Whisper nod follow-up persisted (`pendingNodManIDs` in the snapshot) and re-armed in `load()`.
+- Opening Bid Script hard-clamps at 240 chars live (no silent truncation at save).
+- Store-level expiry guard in `send()` (composer lock was view-only).
+- Stale "copycats are flagged in place" comment corrected to the actual no-pre-bid-labelling rule.
+
+## Deferred (documented, not fixed)
+
+- Chat simulation timers (`scheduleSuitorReply`/read receipts) aren't re-armed on relaunch — cosmetic, no money at risk.
+- Expired matches never transition to `.closed` — they sit dimmed with a locked composer, acceptable.
+- `buyStreakFreeze` has no inventory cap — product decision (monetization escape valve vs. streak-pressure purity).
+- EncryptedArchive key is device-only while the archive file can ride device backups — new-phone restores fall back to the UD path by design; revisit with real accounts.

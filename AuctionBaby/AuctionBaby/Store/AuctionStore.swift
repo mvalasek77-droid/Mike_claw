@@ -26,6 +26,9 @@ final class AuctionStore: ObservableObject {
     /// The Docket — streak-freeze inventory. Each token consumed automatically
     /// on a missed day (in claimDaily) protects the streak from resetting.
     @Published var streakFreezeCount: Int = 0
+    /// Whisper nods whose follow-up real bid hasn't landed yet. Persisted so
+    /// a kill inside the 2–4s follow-up window re-arms on next launch.
+    var pendingNodManIDs: Set<UUID> = []
 
     /// Per-user UUID attached to every IAP purchase so Apple server notifications
     /// can route refunds to the correct wallet. Generated once, persisted forever.
@@ -84,11 +87,13 @@ final class AuctionStore: ObservableObject {
     }
 
     // MARK: Woman-side insights ("what you're worth")
-    private var livePending: [Bid] { incomingBids.filter { $0.status == .pending } }
+    // Whispers are anonymous $0 signals — counting them as "live bidders"
+    // would inflate her demand dashboard with non-committal noise.
+    private var livePending: [Bid] { incomingBids.filter { $0.status == .pending && !$0.isWhisper } }
     var liveBidCount: Int { livePending.count }
     var highestLiveBid: Int { livePending.map(\.amount).max() ?? 0 }
     var totalOnTable: Int { livePending.map(\.amount).reduce(0, +) }
-    var acceptedCount: Int { incomingBids.filter { $0.status == .accepted }.count }
+    var acceptedCount: Int { incomingBids.filter { $0.status == .accepted && !$0.isWhisper }.count }
 
     /// The floor after blocks + filters are applied — what the bidder actually sees.
     var filteredFloor: [Profile] {
@@ -129,48 +134,70 @@ final class AuctionStore: ObservableObject {
         let name: String
         let hue: Double
         let photoName: String?
+        let photoData: Data?
         let value: Int
         let subtitle: String
         let isYou: Bool
     }
 
-    /// Weekly top-bidders leaderboard for the user's city (or nation-wide when
-    /// the profile city is blank). Computed from the sample bidders roster
-    /// plus the user; deterministic per-week so it doesn't reshuffle within
-    /// a session. Auction Credit is the sort key — the whole app is about rank.
+    /// Loose locality match: compare the last comma-separated component of
+    /// each location, case-insensitively ("Tribeca, New York" ↔ "new york").
+    /// Exact string equality made every real user's leaderboard empty —
+    /// nobody types "Venice, Los Angeles" into a free-text field.
+    private static func sameCity(_ a: String, _ b: String) -> Bool {
+        func token(_ s: String) -> String {
+            (s.split(separator: ",").last.map(String.init) ?? s)
+                .trimmingCharacters(in: .whitespaces).lowercased()
+        }
+        let ta = token(a), tb = token(b)
+        guard !ta.isEmpty, !tb.isEmpty else { return false }
+        return ta == tb || ta.contains(tb) || tb.contains(ta)
+    }
+
+    /// Weekly top-bidders leaderboard for the user's city, falling back to
+    /// the whole floor when the city match comes up empty (free-text
+    /// locations rarely align). Reads the LIVE bidders roster and honours
+    /// blocks — a reported man must never rank on her own board.
     var topBiddersInCity: [StandingEntry] {
-        let key = weekKey()
-        let city = me.location.isEmpty ? "the floor" : me.location
-        var pool: [Profile] = SampleData.suitors()
+        var pool: [Profile] = (bidders.isEmpty ? SampleData.suitors() : bidders)
+            .filter { !blockedIDs.contains($0.id) }
         if role == .man { pool.append(me) }
-        let sorted = pool
-            .filter { !$0.location.isEmpty ? $0.location == city : true }
+        var scoped = me.location.isEmpty
+            ? pool
+            : pool.filter { Self.sameCity($0.location, me.location) || $0.id == me.id }
+        // A one-row (just you) or empty board isn't a leaderboard — widen out.
+        if scoped.count < 3 { scoped = pool }
+        return scoped
             .sorted { $0.auctionCredit > $1.auctionCredit }
             .prefix(5)
-        _ = key   // pinned per-week (all inputs are stable per week already)
-        return sorted.map { p in
-            StandingEntry(id: p.id, name: p.name, hue: p.hue, photoName: p.photoName,
-                          value: p.auctionCredit,
-                          subtitle: p.creditTier,
-                          isYou: p.id == me.id)
-        }
+            .map { p in
+                StandingEntry(id: p.id, name: p.name, hue: p.hue, photoName: p.photoName,
+                              photoData: p.photoData,
+                              value: p.auctionCredit,
+                              subtitle: p.creditTier,
+                              isYou: p.id == me.id)
+            }
     }
 
     /// Weekly most-contested lots — the women whose Showcase Credit runs
-    /// hottest right now. Client-side proxy for a real bid-count feed.
+    /// hottest right now. Reads `floor` (already scrubbed by blockAndReport),
+    /// same loose city match + widen-on-empty as the bidders board.
     var mostContestedLots: [StandingEntry] {
-        let city = me.location.isEmpty ? nil : me.location
-        let sorted = floor
-            .filter { !$0.isCopycat }
-            .filter { city == nil ? true : $0.location == city }
+        let pool = floor.filter { !$0.isCopycat && !blockedIDs.contains($0.id) }
+        var scoped = me.location.isEmpty
+            ? pool
+            : pool.filter { Self.sameCity($0.location, me.location) }
+        if scoped.count < 3 { scoped = pool }
+        return scoped
             .sorted { $0.showcaseCredit > $1.showcaseCredit }
             .prefix(5)
-        return sorted.map { p in
-            StandingEntry(id: p.id, name: p.name, hue: p.hue, photoName: p.photoName,
-                          value: p.showcaseCredit,
-                          subtitle: p.showcaseTier,
-                          isYou: false)
-        }
+            .map { p in
+                StandingEntry(id: p.id, name: p.name, hue: p.hue, photoName: p.photoName,
+                              photoData: p.photoData,
+                              value: p.showcaseCredit,
+                              subtitle: p.showcaseTier,
+                              isYou: false)
+            }
     }
 
     /// Stable per-week seed. Used only to tag the leaderboard as "week of X"
@@ -347,6 +374,21 @@ final class AuctionStore: ObservableObject {
         lastDailyClaim = nil
         lastWeeklyBoostClaim = nil
         demoMode = false
+        // Newer state that must not leak into the "fresh" account.
+        streakFreezeCount = 0
+        lastLotOfDaySeen = nil
+        pendingNodManIDs = []
+        autoRebidEnabled = false
+        priorityPlacementEnabled = false
+        // A reset is a new identity: rotate the money-routing token and drop
+        // every token-adjacent bookkeeping key. (Any undrained web-Gavel
+        // balance under the old token is intentionally abandoned — the old
+        // account is gone.)
+        appAccountToken = UUID()
+        UserDefaults.standard.removeObject(forKey: Self.pendingDrainKey)
+        UserDefaults.standard.removeObject(forKey: Self.revokedKey)
+        UserDefaults.standard.removeObject(forKey: Self.clawedKey)
+        store.removeObject(forKey: Self.key + ".rescue")
         store.removeObject(forKey: Self.key)
         encryptedArchive.delete()
     }
@@ -428,6 +470,7 @@ final class AuctionStore: ObservableObject {
     func raiseBid(_ bidID: UUID, to newAmount: Int) {
         guard let idx = outgoingBids.firstIndex(where: { $0.id == bidID }),
               outgoingBids[idx].status == .pending,
+              !outgoingBids[idx].isWhisper,   // whispers have no amount to raise
               newAmount > outgoingBids[idx].amount else { return }
         outgoingBids[idx].amount = newAmount
         Haptics.commit()
@@ -511,8 +554,18 @@ final class AuctionStore: ObservableObject {
     /// Worker replies `replay` without double-spending the web balance.
     private static let pendingDrainKey = "auctionbaby.webgavels.pendingdrain.v1"
 
+    /// Re-entrancy guard: launch (.task) and foreground (.onChange scenePhase)
+    /// both fire refreshPendingRefunds almost simultaneously on cold start.
+    /// @MainActor doesn't exclude across await suspension points, so without
+    /// this flag two overlapping syncs each fetch the same web balance, write
+    /// DIFFERENT idempotency keys, and both drains succeed — double credit.
+    private var webGavelSyncInFlight = false
+
     func syncWebGavels(backend: BackendService) async {
         guard backend.isConsumablesConfigured else { return }
+        guard !webGavelSyncInFlight else { return }
+        webGavelSyncInFlight = true
+        defer { webGavelSyncInFlight = false }
 
         // 1. Finish any drain that was interrupted mid-flight.
         if let pending = UserDefaults.standard.dictionary(forKey: Self.pendingDrainKey),
@@ -847,12 +900,21 @@ final class AuctionStore: ObservableObject {
               let idx = incomingBids.firstIndex(where: { $0.id == bid.id }),
               incomingBids[idx].status == .pending, incomingBids[idx].isWhisper else { return }
         incomingBids[idx].status = .accepted
+        pendingNodManIDs.insert(bid.man.id)   // persisted; re-armed in load()
         Haptics.tap()
         toastFlash("You nodded back — watch for his real bid.")
         save()
-        let man = bid.man
+        scheduleNodFollowUp(man: bid.man)
+    }
+
+    /// The whisperer's follow-up real bid, 2–4s after the nod. Split out so
+    /// load() can re-arm nods that were interrupted by a kill.
+    private func scheduleNodFollowUp(man: Profile) {
         after(Double.random(in: 2.0...4.0)) { [weak self] in
-            guard let self, !self.blockedIDs.contains(man.id) else { return }
+            guard let self else { return }
+            guard self.pendingNodManIDs.contains(man.id) else { return }   // already delivered
+            self.pendingNodManIDs.remove(man.id)
+            guard !self.blockedIDs.contains(man.id) else { self.save(); return }
             let floor = min(self.me.startingBid ?? 150, Self.maxStartingBid)
             let amount = max(120, Int(Double(floor) * Double.random(in: 1.0...2.0)))
             let real = Bid(man: man, woman: self.me, amount: amount,
@@ -875,8 +937,15 @@ final class AuctionStore: ObservableObject {
         var man = pool.randomElement() ?? pool[0]
         let amount: Int
         if trillionaire {
-            // The first verified Trillionaire himself comes to bid.
-            man = pool.first { $0.archetype == .trillionaire } ?? pool[0]
+            // The first verified Trillionaire himself comes to bid. If he's
+            // been blocked/removed there is no impostor fallback — a $1M bid
+            // from a non-Trillionaire can never mint (qualifiesForMasterpiece
+            // checks the archetype), so the copy would over-promise.
+            guard let trillionaireMan = pool.first(where: { $0.archetype == .trillionaire }) else {
+                toastFlash("The Trillionaire isn't on your floor right now.")
+                return
+            }
+            man = trillionaireMan
             amount = Bid.masterpieceBid   // $1,000,000 — the Masterpiece-minting bid
         } else {
             let floor = min(me.startingBid ?? 150, Self.maxStartingBid)
@@ -899,6 +968,8 @@ final class AuctionStore: ObservableObject {
 
     func send(_ text: String, in match: Match) {
         guard let idx = matches.firstIndex(where: { $0.id == match.id }) else { return }
+        // Store-level expiry guard — the composer lock in ChatView is view-only.
+        guard !matches[idx].isExpired else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         matches[idx].messages.append(ChatMessage(fromMe: true, text: trimmed))
@@ -1073,8 +1144,13 @@ final class AuctionStore: ObservableObject {
         if !paid { earnings = max(0, earnings - bid.amount) }
         if bid.qualifiesForMasterpiece && paid {
             me.masterpiece = true
-            // Her confirmation is also what verifies his Trillionaire status on record.
+            // Her confirmation is also what verifies his Trillionaire status —
+            // on the match snapshot AND the live roster, or he'd read
+            // "Pending" everywhere else he appears.
             matches[idx].bid.man.trillionaireVerified = true
+            if let rosterIdx = bidders.firstIndex(where: { $0.id == bid.man.id }) {
+                bidders[rosterIdx].trillionaireVerified = true
+            }
             Haptics.success()
             toastFlash("✦ MASTERPIECE minted. A verified Trillionaire paid in full.")
             log(.masterpiece, "✦ Masterpiece minted by \(bid.man.name).")
@@ -1126,10 +1202,16 @@ final class AuctionStore: ObservableObject {
 
     // MARK: - Simulation
 
-    /// A woman's automated decision on a bidder's offer.
+    /// A woman's automated decision on a bidder's offer. Copycats bite fastest
+    /// (that's the trap), whispers resolve on a lighter cadence than real
+    /// bids (a nod is a smaller decision than money).
     private func scheduleWomanDecision(bidID: UUID) {
-        let copycat = outgoingBids.first(where: { $0.id == bidID })?.onCopycat ?? false
-        after(copycat ? 1.6 : Double.random(in: 2.5...4.2)) { [weak self] in
+        let pending = outgoingBids.first(where: { $0.id == bidID })
+        let copycat = pending?.onCopycat ?? false
+        let whisper = pending?.isWhisper ?? false
+        let delay = copycat ? 1.6 : whisper ? Double.random(in: 1.5...2.5)
+                                            : Double.random(in: 2.5...4.2)
+        after(delay) { [weak self] in
             guard let self, let idx = self.outgoingBids.firstIndex(where: { $0.id == bidID }) else { return }
             guard self.outgoingBids[idx].status == .pending else { return }
             var bid = self.outgoingBids[idx]
@@ -1194,16 +1276,25 @@ final class AuctionStore: ObservableObject {
             } else {
                 let before = self.me.auctionCredit
                 self.me.declinedBids += 1
-                // Bid Insurance payout: refund the premium + a consolation
-                // Gilded Bid credit so the sting of a decline hurts less.
+                // Bid Insurance payout: the premium comes back, and the gild
+                // fee too when the bid was actually gilded. Payout can never
+                // exceed what the bid cost — an unconditional Gilded credit
+                // here was a farmable +250/decline money printer.
                 if bid.insured {
-                    self.wallet += Self.bidInsuranceCost + Self.gildedBidCost
-                    self.toastFlash("Bid Insurance paid — premium + a Gilded credit back.")
+                    let refund = Self.bidInsuranceCost + (bid.gilded ? Self.gildedBidCost : 0)
+                    self.wallet += refund
+                    self.toastFlash(bid.gilded
+                        ? "Bid Insurance paid — premium + gild fee back."
+                        : "Bid Insurance paid — premium back.")
                 }
-                if self.autoRebidEnabled && !bid.onCopycat {
-                    let raised = Int(Double(bid.amount) * 1.2)
+                // Cap the chain at 3 rounds: it converges naturally (each
+                // round raises the accept ratio 1.2×) but an explicit ceiling
+                // guarantees termination and bounds the amount growth.
+                if self.autoRebidEnabled && !bid.onCopycat && bid.rebidDepth < 3 {
+                    let raised = min(Int(Double(bid.amount) * 1.2), Self.maxStartingBid)
                     var rebid = Bid(man: self.me, woman: bid.woman, amount: raised, note: bid.note)
                     rebid.gilded = bid.gilded
+                    rebid.rebidDepth = bid.rebidDepth + 1
                     self.outgoingBids.insert(rebid, at: 0)
                     Haptics.commit()
                     self.toastFlash("Auto-rebid: \(Money.compact(raised)) on \(bid.woman.name).")
@@ -1312,6 +1403,14 @@ final class AuctionStore: ObservableObject {
         var demoMode: Bool?
         var lastLotOfDaySeen: Date?
         var streakFreezeCount: Int?
+        /// Write timestamp — load() picks whichever store (archive vs
+        /// UserDefaults) carries the newer snapshot, so a silently-failed
+        /// archive write can't permanently shadow fresher UD data.
+        var savedAt: Date?
+        /// Pending whisper nods whose follow-up real bid hasn't landed yet
+        /// (man ids). Re-armed in load() so a kill inside the 2–4s window
+        /// doesn't lose the promised bid.
+        var pendingNodManIDs: [UUID]?
     }
 
     private let encryptedArchive = EncryptedArchive(filename: "auctionbaby-state.aesgcm")
@@ -1326,7 +1425,9 @@ final class AuctionStore: ObservableObject {
                             lastWeeklyBoostClaim: lastWeeklyBoostClaim,
                             appAccountToken: appAccountToken, demoMode: demoMode,
                             lastLotOfDaySeen: lastLotOfDaySeen,
-                            streakFreezeCount: streakFreezeCount)
+                            streakFreezeCount: streakFreezeCount,
+                            savedAt: Date(),
+                            pendingNodManIDs: Array(pendingNodManIDs))
         if let data = try? JSONEncoder().encode(snap) {
             store.set(data, forKey: Self.key)
         }
@@ -1334,12 +1435,28 @@ final class AuctionStore: ObservableObject {
     }
 
     private func load() {
-        // Try encrypted archive first (preferred), fall back to UserDefaults for
-        // backward compatibility with pre-encryption installs.
-        let snap: Snapshot? = encryptedArchive.load(Snapshot.self) ?? {
-            guard let data = store.data(forKey: Self.key) else { return nil }
-            return try? JSONDecoder().decode(Snapshot.self, from: data)
-        }()
+        // Decode BOTH stores and keep the newer one (savedAt; missing = old),
+        // so a silently-failed archive write can't shadow fresher UD data.
+        let archiveSnap = encryptedArchive.load(Snapshot.self)
+        let udData = store.data(forKey: Self.key)
+        let udSnap = udData.flatMap { try? JSONDecoder().decode(Snapshot.self, from: $0) }
+        let snap: Snapshot?
+        switch (archiveSnap, udSnap) {
+        case (let a?, let u?):
+            snap = (a.savedAt ?? .distantPast) >= (u.savedAt ?? .distantPast) ? a : u
+        case (let a?, nil): snap = a
+        case (nil, let u?): snap = u
+        case (nil, nil): snap = nil
+        }
+        // Data exists but nothing decoded: stash the raw bytes under a rescue
+        // key (once) before the next save() overwrites them, so a hotfix
+        // build can still recover the account + its appAccountToken.
+        if snap == nil, let udData,
+           store.data(forKey: Self.key + ".rescue") == nil {
+            store.set(udData, forKey: Self.key + ".rescue")
+            ErrorMonitor.shared.record(category: "Persistence",
+                                       message: "Snapshot decode failed — raw bytes stashed to .rescue")
+        }
         guard let snap else { return }
         role = snap.role
         me = snap.me
@@ -1361,9 +1478,18 @@ final class AuctionStore: ObservableObject {
         demoMode = snap.demoMode ?? false
         lastLotOfDaySeen = snap.lastLotOfDaySeen
         streakFreezeCount = snap.streakFreezeCount ?? 0
+        pendingNodManIDs = Set(snap.pendingNodManIDs ?? [])
         if isBoosted, role == .woman { startBoostSummons() }
         for bid in outgoingBids where bid.status == .pending {
             scheduleWomanDecision(bidID: bid.id)
+        }
+        // Re-arm whisper follow-ups interrupted by a kill.
+        for manID in pendingNodManIDs {
+            if let man = bidders.first(where: { $0.id == manID }) {
+                scheduleNodFollowUp(man: man)
+            } else {
+                pendingNodManIDs.remove(manID)
+            }
         }
     }
 }

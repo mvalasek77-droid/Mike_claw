@@ -159,7 +159,7 @@ struct BidSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Bid Insurance").font(.system(size: 15, weight: .heavy, design: .serif))
                         .foregroundStyle(Theme.ink)
-                    Text("If she declines, refund + a Gilded credit lands back in your wallet.")
+                    Text("If she declines, your premium comes back — and the gild fee too, if you gilded.")
                         .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                 }

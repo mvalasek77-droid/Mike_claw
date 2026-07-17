@@ -341,6 +341,11 @@ struct MyProfileView: View {
                             Text("\(script.count) / 240")
                                 .font(.system(size: 10, weight: .semibold, design: .rounded))
                                 .foregroundStyle(script.count > 240 ? Theme.danger : Theme.inkFaint)
+                                .onChange(of: script) { _, newValue in
+                                    // Hard clamp so Save can't silently drop
+                                    // text the user believed was kept.
+                                    if newValue.count > 240 { script = String(newValue.prefix(240)) }
+                                }
                         }
                         GlassCard(title: "Presets", icon: "sparkles") {
                             VStack(spacing: 8) {

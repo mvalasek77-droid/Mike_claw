@@ -301,9 +301,13 @@ final class BackendService: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(status) else {
-                struct WorkerError: Decodable { let error: String }
-                let message = (try? JSONDecoder().decode(WorkerError.self, from: data))?.error
-                    ?? "HTTP \(status)"
+                // Workers use two failure shapes: `{error: "…"}` on plain
+                // errors and `{ok:false, reason:"…"}` on domain failures like
+                // /consume's 402 insufficient_gavels. Read both, or the
+                // caller only ever sees "HTTP 402" and can't branch on why.
+                struct WorkerError: Decodable { let error: String?; let reason: String? }
+                let decoded = try? JSONDecoder().decode(WorkerError.self, from: data)
+                let message = decoded?.error ?? decoded?.reason ?? "HTTP \(status)"
                 ErrorMonitor.shared.record(category: "Backend",
                                            message: "\(method) \(path) failed", detail: message)
                 return .failure(message)

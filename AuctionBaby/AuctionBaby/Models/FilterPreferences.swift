@@ -24,6 +24,25 @@ struct FilterPreferences: Codable, Equatable {
     var kidsRequirement: Lifestyle.Kids? = nil
     var educationRequirement: Lifestyle.Education? = nil
 
+    init() {}
+
+    // Backward-compatible decode — see Profile.init(from:). Filter fields
+    // have been added in three separate releases; a thrown key here wipes
+    // the whole account snapshot.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        minAge = try c.decodeIfPresent(Int.self, forKey: .minAge) ?? 18
+        maxAge = try c.decodeIfPresent(Int.self, forKey: .maxAge) ?? 60
+        hideCopycats = try c.decodeIfPresent(Bool.self, forKey: .hideCopycats) ?? false
+        verifiedOnly = try c.decodeIfPresent(Bool.self, forKey: .verifiedOnly) ?? false
+        interests = try c.decodeIfPresent(Set<String>.self, forKey: .interests) ?? []
+        minHeightCm = try c.decodeIfPresent(Int.self, forKey: .minHeightCm) ?? 0
+        smokingRequirement = try c.decodeIfPresent(Lifestyle.Smoking.self, forKey: .smokingRequirement)
+        drinkingRequirement = try c.decodeIfPresent(Lifestyle.Drinking.self, forKey: .drinkingRequirement)
+        kidsRequirement = try c.decodeIfPresent(Lifestyle.Kids.self, forKey: .kidsRequirement)
+        educationRequirement = try c.decodeIfPresent(Lifestyle.Education.self, forKey: .educationRequirement)
+    }
+
     var activeCount: Int {
         var n = 0
         if minAge > 18 || maxAge < 60 { n += 1 }

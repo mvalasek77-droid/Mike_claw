@@ -306,10 +306,17 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
     if (seen) return json({ received: true, duplicate: true });
   }
 
-  if (event.type === "checkout.session.completed") {
+  // checkout.session.completed covers instant payment methods (cards).
+  // Delayed methods (ACH/SEPA) complete with payment_status "unpaid" and
+  // Stripe later fires the SEPARATE async_payment_succeeded event when the
+  // funds actually clear — miss it and money is taken but never credited.
+  if (event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded") {
     const session = event.data.object;
-    // Only credit a genuinely paid session (async payment methods complete later).
     if (session.payment_status !== "paid") {
+      // Unpaid completed-event for an async method; the credit rides the
+      // later async_payment_succeeded event. Don't mark the event id —
+      // no state changed.
       return json({ received: true, skipped: "unpaid" });
     }
 
@@ -327,11 +334,12 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
       ref: String(session.id), note: String(session.metadata?.packId ?? ""),
     });
     if (env.KV) {
-      // Route table for refunds: payment_intent → who got how many Gavels.
-      // 180-day TTL comfortably outlives Stripe's refund window.
+      // Route table for refunds: payment_intent → who got how many Gavels
+      // for how many cents. 180-day TTL comfortably outlives Stripe's
+      // refund window. refundedCents tracks cumulative partial refunds.
       if (session.payment_intent) {
         await env.KV.put(piKey(String(session.payment_intent)),
-                         JSON.stringify({ userId, gavels }),
+                         JSON.stringify({ userId, gavels, refundedCents: 0 }),
                          { expirationTtl: 60 * 60 * 24 * 180 });
       }
       // Mark the event processed for 30 days — long past Stripe's retry window.
@@ -347,15 +355,34 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
 
     const routed = await env.KV.get(piKey(pi));
     if (!routed) return json({ received: true, skipped: "unknown payment_intent" });
-    const { userId, gavels } = JSON.parse(routed) as { userId: string; gavels: number };
+    const record = JSON.parse(routed) as { userId: string; gavels: number; refundedCents?: number };
+    const { userId, gavels } = record;
+
+    // Stripe fires charge.refunded on PARTIAL refunds too, with the
+    // CUMULATIVE amount_refunded. Debit proportionally to the newly-refunded
+    // slice only, tracked via refundedCents, so a $0.01 partial refund on a
+    // $99.99 pack doesn't claw back all 30,000 Gavels — and repeated partial
+    // events stay idempotent in aggregate.
+    const totalCents = Number(charge.amount ?? 0);
+    const cumulativeRefunded = Number(charge.amount_refunded ?? 0);
+    const priorRefunded = Number(record.refundedCents ?? 0);
+    const newlyRefunded = Math.max(0, Math.min(cumulativeRefunded, totalCents) - priorRefunded);
+    if (totalCents <= 0 || newlyRefunded <= 0) {
+      await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
+      return json({ received: true, skipped: "nothing newly refunded" });
+    }
+    const debit = Math.round(gavels * (newlyRefunded / totalCents));
 
     const current = await getBalance(env, userId);
-    const next = Math.max(0, current - gavels);
+    const next = Math.max(0, current - debit);
     await setBalance(env, userId, next);
     await appendLedger(env, userId, {
       ts: Date.now(), type: "refund", gavels: -(current - next), balanceAfter: next,
       ref: String(charge.id), note: pi,
     });
+    await env.KV.put(piKey(pi),
+                     JSON.stringify({ ...record, refundedCents: priorRefunded + newlyRefunded }),
+                     { expirationTtl: 60 * 60 * 24 * 180 });
     await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
     console.log(`Refund: debited ${current - next} Gavels from ${userId} (charge ${charge.id}); balance ${next}`);
   }

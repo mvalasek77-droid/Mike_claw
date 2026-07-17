@@ -13,6 +13,53 @@ struct SuitorDetailView: View {
     private var accepted: Bool { bid.status == .accepted }
 
     var body: some View {
+        // A whisper is anonymous by contract — the dossier below would leak
+        // his archetype, credit, reviews and a nonsensical "$0 bid" CTA.
+        if bid.isWhisper {
+            whisperBody
+        } else {
+            dossierBody
+        }
+    }
+
+    /// Anonymous whisper sheet: no identity signals, just the nod choice.
+    private var whisperBody: some View {
+        VStack(spacing: 20) {
+            Capsule().fill(Theme.hairline).frame(width: 38, height: 5).padding(.top, 8)
+            Spacer(minLength: 8)
+            AvatarCircle(name: "?", hue: 0.85, size: 84, locked: true)
+            VStack(spacing: 6) {
+                Text("Someone whispered")
+                    .font(.system(size: 22, weight: .heavy, design: .serif))
+                    .foregroundStyle(Theme.ink)
+                Text("A whisper is an anonymous nod — no name, no number, no strings. Nod back and he'll return with a real bid; let it fade and he'll never know you saw it.")
+                    .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+            if bid.status == .pending {
+                HStack(spacing: 12) {
+                    GhostButton(title: "Let it fade", systemImage: "xmark") {
+                        store.decline(bid); dismiss()
+                    }
+                    PrimaryButton(title: "Nod back", systemImage: "hand.wave.fill",
+                                  gradient: Theme.roseGradient) {
+                        store.nodAtWhisper(bid); dismiss()
+                    }
+                }
+                .screenPadding()
+            } else {
+                Text(bid.status == .accepted ? "You nodded back." : "It faded.")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .background(AppBackground().opacity(0.5))
+    }
+
+    private var dossierBody: some View {
         ScrollView {
             VStack(spacing: 16) {
                 ZStack {

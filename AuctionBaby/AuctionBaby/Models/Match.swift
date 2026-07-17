@@ -9,6 +9,27 @@ struct ChatMessage: Identifiable, Codable, Hashable {
     var isSystem: Bool = false
     /// A double-tapped emoji reaction, iMessage-style. Nil = no reaction.
     var reaction: String? = nil
+
+    init(id: UUID = UUID(), fromMe: Bool, text: String, date: Date = .now,
+         isSystem: Bool = false, reaction: String? = nil) {
+        self.id = id
+        self.fromMe = fromMe
+        self.text = text
+        self.date = date
+        self.isSystem = isSystem
+        self.reaction = reaction
+    }
+
+    // Backward-compatible decode — see Profile.init(from:).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        fromMe = try c.decodeIfPresent(Bool.self, forKey: .fromMe) ?? false
+        text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
+        date = try c.decodeIfPresent(Date.self, forKey: .date) ?? .now
+        isSystem = try c.decodeIfPresent(Bool.self, forKey: .isSystem) ?? false
+        reaction = try c.decodeIfPresent(String.self, forKey: .reaction)
+    }
 }
 
 /// What stage a match is in. The flow: accepted → chatting → date marked done →
@@ -52,5 +73,39 @@ struct Match: Identifiable, Codable, Hashable {
     var isExpired: Bool {
         guard phase == .chatting, let expiresAt else { return false }
         return Date() > expiresAt
+    }
+
+    init(id: UUID = UUID(), bid: Bid, messages: [ChatMessage] = [],
+         phase: MatchPhase = .chatting, manReviewedWoman: Bool = false,
+         womanReviewedMan: Bool = false, spentAmount: Int? = nil,
+         manConfirmedMet: Bool = false, womanConfirmedMet: Bool = false,
+         seenByOther: Bool = false, expiresAt: Date? = nil) {
+        self.id = id
+        self.bid = bid
+        self.messages = messages
+        self.phase = phase
+        self.manReviewedWoman = manReviewedWoman
+        self.womanReviewedMan = womanReviewedMan
+        self.spentAmount = spentAmount
+        self.manConfirmedMet = manConfirmedMet
+        self.womanConfirmedMet = womanConfirmedMet
+        self.seenByOther = seenByOther
+        self.expiresAt = expiresAt
+    }
+
+    // Backward-compatible decode — see Profile.init(from:).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        bid = try c.decode(Bid.self, forKey: .bid)
+        messages = try c.decodeIfPresent([ChatMessage].self, forKey: .messages) ?? []
+        phase = try c.decodeIfPresent(MatchPhase.self, forKey: .phase) ?? .chatting
+        manReviewedWoman = try c.decodeIfPresent(Bool.self, forKey: .manReviewedWoman) ?? false
+        womanReviewedMan = try c.decodeIfPresent(Bool.self, forKey: .womanReviewedMan) ?? false
+        spentAmount = try c.decodeIfPresent(Int.self, forKey: .spentAmount)
+        manConfirmedMet = try c.decodeIfPresent(Bool.self, forKey: .manConfirmedMet) ?? false
+        womanConfirmedMet = try c.decodeIfPresent(Bool.self, forKey: .womanConfirmedMet) ?? false
+        seenByOther = try c.decodeIfPresent(Bool.self, forKey: .seenByOther) ?? false
+        expiresAt = try c.decodeIfPresent(Date.self, forKey: .expiresAt)
     }
 }
