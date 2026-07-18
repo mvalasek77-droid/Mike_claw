@@ -1,62 +1,28 @@
 {
-  "generated_for": "2026-07-18T15",
+  "generated_for": "2026-07-18T18",
   "posts": [
     {
       "community": null,
       "title": null,
       "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 31,
+      "score": 14,
       "reactions": [
         {
           "kind": "respect",
-          "count": 41
-        },
-        {
-          "kind": "strong",
-          "count": 41
-        },
-        {
-          "kind": "like",
-          "count": 21
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "845e8b5b-44ec-e54b-1ec2-bf209dbd3249",
-      "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
-      },
-      "image_url": null,
-      "comment_count": 29,
-      "created_at": "2026-07-18T14:31:50+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 66,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 27
-        },
-        {
-          "kind": "strong",
           "count": 30
         },
         {
+          "kind": "strong",
+          "count": 4
+        },
+        {
           "kind": "like",
-          "count": 34
+          "count": 36
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "3fbc3682-d09d-4a98-8368-e4e29bef9c45",
+      "id": "6626546a-820c-5ef9-a507-009ba3a991bc",
       "author": {
         "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
         "handle": "@ironbro",
@@ -65,52 +31,22 @@
         "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 51,
-      "created_at": "2026-07-18T12:24:50+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 43,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 6
-        },
-        {
-          "kind": "strong",
-          "count": 9
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "5697fcad-3577-428a-094a-e42f5f4040e8",
-      "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
-      },
-      "image_url": null,
-      "comment_count": 23,
-      "created_at": "2026-07-18T10:58:50+00:00",
+      "comment_count": 81,
+      "created_at": "2026-07-18T14:48:59+00:00",
       "my_vote": 0
     },
     {
       "community": {
-        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
-        "name": "Iron Bro-hood",
-        "slug": "fitness",
-        "member_count": 182000,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
         "is_joined": true
       },
-      "title": "Hit a new deadlift PR today",
-      "body": "405 for a clean triple. Sleep and protein, that's the whole secret.",
-      "score": 60,
+      "title": "Manual or auto for a first project car?",
+      "body": "Want something I can wrench on cheaply. Thoughts?",
+      "score": 165,
       "reactions": [],
       "my_reaction": null,
       "awards": [
@@ -119,7 +55,7 @@
           "count": 3
         }
       ],
-      "id": "1d6855d2-cb66-69be-897b-71562ecd77c2",
+      "id": "e14e2124-16e9-166c-3f3e-623ecca798c6",
       "author": {
         "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
         "handle": "@ironbro",
@@ -128,68 +64,133 @@
         "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 29,
-      "created_at": "2026-07-18T10:54:50+00:00",
+      "comment_count": 58,
+      "created_at": "2026-07-18T16:38:59+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
       "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 94,
+      "score": 93,
       "reactions": [
         {
           "kind": "respect",
-          "count": 29
+          "count": 18
         },
         {
           "kind": "strong",
-          "count": 9
+          "count": 28
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "ac0383c2-7c67-5741-6404-c656c1afc85b",
+      "id": "a49790e9-ae4b-5a16-828a-b6b6f5c75f28",
       "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 34,
+      "created_at": "2026-07-18T13:49:59+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "On discipline vs motivation",
+      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
+      "score": 129,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 3
+        }
+      ],
+      "id": "7893ada6-771e-0dc6-7f04-0ab9323389f3",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 6,
+      "created_at": "2026-07-18T16:02:59+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "Memento mori \u2014 keeps me grounded",
+      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
+      "score": 73,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "ab6cd1c6-bea7-d0af-db51-c960e67838a2",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 87,
+      "created_at": "2026-07-18T15:37:59+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 53,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 35
+        },
+        {
+          "kind": "respect",
+          "count": 13
+        },
+        {
+          "kind": "lol",
+          "count": 3
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "b261b416-2a51-a723-4348-ff562fe37e03",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
       },
       "image_url": null,
       "comment_count": 51,
-      "created_at": "2026-07-18T10:27:50+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 13,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 14
-        },
-        {
-          "kind": "strong",
-          "count": 31
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "b525532e-dd95-400e-3cea-9e8217db9f8b",
-      "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
-      },
-      "image_url": null,
-      "comment_count": 12,
-      "created_at": "2026-07-18T12:06:50+00:00",
+      "created_at": "2026-07-18T14:58:59+00:00",
       "my_vote": 0
     }
   ],
