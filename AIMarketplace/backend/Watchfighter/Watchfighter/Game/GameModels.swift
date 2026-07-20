@@ -25,11 +25,23 @@ enum FighterAction: Equatable {
     case hit
     case victory
     case defeated
+
+    var isAttack: Bool {
+        switch self {
+        case .jab, .kick, .jumpKick, .throwAttack, .special, .projectile:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 enum StrikeKind: Equatable {
+    case whiff
     case hit
     case blocked
+    case counter
+    case guardBreak
     case special
     case projectile
     case throwImpact
@@ -919,6 +931,17 @@ struct WatchfighterState: Equatable {
     var bannerTimer: TimeInterval = 2.2
     var finisherText = ""
     var finisherTimer: TimeInterval = 0
+    var hitStop: TimeInterval = 0
+    var cameraShake: CGFloat = 0
+    var impactFlash: CGFloat = 0
+    var impactSequence = 0
+    var impactKind: StrikeKind = .hit
+    var impactStrength: CGFloat = 0
+    var impactSide: FighterSide = .player
+    var impactX: CGFloat = 0.5
+    var impactY: CGFloat = 0.54
+    var combatCallout = ""
+    var combatCalloutTimer: TimeInterval = 0
     var player = DuelFighter(archetype: .kael, x: 0.25, facing: 1)
     var opponent = DuelFighter(archetype: .nyra, x: 0.75, facing: -1)
     var strikes: [FighterStrike] = []

@@ -6,10 +6,16 @@ struct WatchfighterCanvas: View {
 
     var body: some View {
         Canvas { context, size in
-            drawBackground(in: &context, size: size)
-            drawFighter(in: &context, fighter: state.opponent, side: .opponent, size: size)
-            drawFighter(in: &context, fighter: state.player, side: .player, size: size)
-            drawStrikes(in: &context, size: size)
+            var stageContext = context
+            let time = date.timeIntervalSinceReferenceDate
+            let shakeX = sin(time * 119) * state.cameraShake * size.width
+            let shakeY = cos(time * 151) * state.cameraShake * size.height * 0.62
+            stageContext.translateBy(x: shakeX, y: shakeY)
+
+            drawBackground(in: &stageContext, size: size)
+            drawFighter(in: &stageContext, fighter: state.opponent, side: .opponent, size: size)
+            drawFighter(in: &stageContext, fighter: state.player, side: .player, size: size)
+            drawStrikes(in: &stageContext, size: size)
             drawScreenOverlay(in: &context, size: size)
         }
     }
@@ -214,10 +220,16 @@ struct WatchfighterCanvas: View {
             let radius = base * (strike.kind == .round ? 0.17 : 0.055) * (0.35 + progress)
             let color: Color
             switch strike.kind {
+            case .whiff:
+                color = .white
             case .hit:
                 color = .watchfighterGold
             case .blocked:
                 color = .white
+            case .counter:
+                color = .watchfighterRed
+            case .guardBreak:
+                color = .watchfighterMint
             case .special:
                 color = strike.side == .player ? styleAccent(for: state.player.archetype) : styleAccent(for: state.opponent.archetype)
             case .projectile:
@@ -249,8 +261,47 @@ struct WatchfighterCanvas: View {
                 continue
             }
 
+            if strike.kind == .whiff {
+                var wind = Path()
+                let direction: CGFloat = strike.side == .player ? 1 : -1
+                wind.move(to: CGPoint(x: center.x - direction * radius * 1.6, y: center.y - radius * 0.7))
+                wind.addQuadCurve(
+                    to: CGPoint(x: center.x + direction * radius * 1.5, y: center.y + radius * 0.2),
+                    control: CGPoint(x: center.x, y: center.y - radius * 1.3)
+                )
+                context.stroke(wind, with: .color(color.opacity(Double(1 - progress) * 0.34)), lineWidth: max(1, radius * 0.12))
+                continue
+            }
+
             if strike.kind == .headPop || strike.kind == .bodyBurst || strike.kind == .armDrop {
                 drawFinisherEffect(in: &context, center: center, radius: radius, progress: progress, kind: strike.kind)
+                continue
+            }
+
+            if strike.kind == .guardBreak {
+                for index in 0..<9 {
+                    let angle = CGFloat(index) / 9 * .pi * 2 + progress * 0.7
+                    let distance = radius * (0.45 + progress * 2.1)
+                    let shardCenter = CGPoint(x: center.x + cos(angle) * distance, y: center.y + sin(angle) * distance)
+                    var shard = Path()
+                    shard.move(to: shardCenter)
+                    shard.addLine(to: CGPoint(x: shardCenter.x + cos(angle + 0.6) * radius * 0.45, y: shardCenter.y + sin(angle + 0.6) * radius * 0.45))
+                    shard.addLine(to: CGPoint(x: shardCenter.x + cos(angle - 0.5) * radius * 0.18, y: shardCenter.y + sin(angle - 0.5) * radius * 0.18))
+                    shard.closeSubpath()
+                    context.fill(shard, with: .color((index.isMultiple(of: 2) ? Color.watchfighterMint : .white).opacity(Double(1 - progress) * 0.80)))
+                }
+                context.stroke(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(Color.watchfighterMint.opacity(Double(1 - progress) * 0.8)), lineWidth: max(1.5, radius * 0.13))
+                continue
+            }
+
+            if strike.kind == .counter {
+                var cross = Path()
+                for angle in [CGFloat.pi * 0.18, CGFloat.pi * 0.82, CGFloat.pi * 1.18, CGFloat.pi * 1.82] {
+                    cross.move(to: CGPoint(x: center.x - cos(angle) * radius * 0.18, y: center.y - sin(angle) * radius * 0.18))
+                    cross.addLine(to: CGPoint(x: center.x + cos(angle) * radius * 1.55, y: center.y + sin(angle) * radius * 1.55))
+                }
+                context.stroke(cross, with: .color(Color.watchfighterGold.opacity(Double(1 - progress))), lineWidth: max(2, radius * 0.16))
+                context.fill(Path(ellipseIn: CGRect(x: center.x - radius * 0.34, y: center.y - radius * 0.34, width: radius * 0.68, height: radius * 0.68)), with: .color(Color.watchfighterRed.opacity(Double(1 - progress) * 0.86)))
                 continue
             }
 
@@ -312,6 +363,28 @@ struct WatchfighterCanvas: View {
         let right = CGRect(x: size.width * 0.90, y: 0, width: size.width * 0.10, height: size.height)
         context.fill(Path(left), with: .linearGradient(Gradient(colors: [.black.opacity(0.36), .black.opacity(0)]), startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: left.maxX, y: 0)))
         context.fill(Path(right), with: .linearGradient(Gradient(colors: [.black.opacity(0), .black.opacity(0.36)]), startPoint: CGPoint(x: right.minX, y: 0), endPoint: CGPoint(x: size.width, y: 0)))
+
+        if state.impactFlash > 0 {
+            let flashColor = state.impactKind == .guardBreak ? Color.watchfighterMint : (state.impactKind == .blocked ? .white : Color.watchfighterGold)
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(flashColor.opacity(Double(min(0.18, state.impactFlash)))))
+        }
+
+        if state.combatCalloutTimer > 0, !state.combatCallout.isEmpty {
+            let calloutPoint = point(
+                x: (state.impactX + (state.impactSide == .player ? -0.05 : 0.05)).clamped(to: 0.18...0.82),
+                y: (state.impactY - 0.12).clamped(to: 0.28...0.74),
+                size: size
+            )
+            var calloutContext = context
+            calloutContext.addFilter(.shadow(color: .black.opacity(0.95), radius: 2, x: 1, y: 2))
+            calloutContext.draw(
+                Text(state.combatCallout)
+                    .font(.system(size: max(10, size.width * 0.052), weight: .black, design: .rounded))
+                    .foregroundStyle(state.impactKind == .guardBreak ? Color.watchfighterMint : Color.watchfighterGold),
+                at: calloutPoint,
+                anchor: .center
+            )
+        }
 
         if state.finisherTimer > 0 {
             context.draw(

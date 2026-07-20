@@ -749,14 +749,38 @@ struct GameScreen: View {
     }
 
     private func healthBar(value: CGFloat, color: Color, width: CGFloat, trailing: Bool) -> some View {
-        ZStack(alignment: trailing ? .trailing : .leading) {
-            Capsule()
-                .fill(.white.opacity(0.15))
-            Capsule()
-                .fill(color)
-                .frame(width: max(3, width * value.clamped(to: 0...1)))
+        let healthValue = value.clamped(to: 0...1)
+        let activeColor = healthValue < 0.24 ? Color.watchfighterRed : color
+
+        return ZStack(alignment: trailing ? .trailing : .leading) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(.black.opacity(0.82))
+            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [activeColor.opacity(0.72), activeColor, .white.opacity(0.88)],
+                        startPoint: trailing ? .trailing : .leading,
+                        endPoint: trailing ? .leading : .trailing
+                    )
+                )
+                .frame(width: max(3, width * healthValue))
+
+            HStack(spacing: 0) {
+                ForEach(0..<3, id: \.self) { _ in
+                    Spacer(minLength: 0)
+                    Rectangle()
+                        .fill(.black.opacity(0.35))
+                        .frame(width: 0.7)
+                }
+                Spacer(minLength: 0)
+            }
         }
         .frame(width: width, height: 6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .stroke(.white.opacity(0.28), lineWidth: 0.6)
+        )
+        .shadow(color: activeColor.opacity(healthValue < 0.24 ? 0.7 : 0.28), radius: healthValue < 0.24 ? 2.5 : 1)
     }
 
     private func guardBar(value: CGFloat, width: CGFloat, trailing: Bool) -> some View {
@@ -792,14 +816,18 @@ struct GameScreen: View {
     }
 
     private func meter(value: CGFloat, color: Color, width: CGFloat) -> some View {
-        ZStack(alignment: .leading) {
+        let meterValue = value.clamped(to: 0...1)
+
+        return ZStack(alignment: .leading) {
             Capsule()
                 .fill(.white.opacity(0.14))
             Capsule()
                 .fill(color)
-                .frame(width: max(3, width * value.clamped(to: 0...1)))
+                .frame(width: max(3, width * meterValue))
         }
         .frame(width: width, height: 4)
+        .overlay(Capsule().stroke(color.opacity(meterValue >= 0.99 ? 0.92 : 0.22), lineWidth: 0.7))
+        .shadow(color: color.opacity(meterValue >= 0.99 ? 0.85 : 0), radius: 3)
     }
 
     private func dragGesture(size: CGSize) -> some Gesture {
@@ -856,6 +884,7 @@ struct GameScreen: View {
         let beforeRound = engine.state.round
         let beforeChapter = engine.state.chapter
         let beforePlayerWins = engine.state.playerWins
+        let beforeImpactSequence = engine.state.impactSequence
 
         let spacingTarget = (engine.state.opponent.x - 0.25 + CGFloat(sin(engine.state.elapsed * 1.6)) * 0.035).clamped(to: 0.16...0.52)
         let targetX = isPressing ? touchX : (demoMode ? spacingTarget : CGFloat(crownX))
@@ -884,6 +913,10 @@ struct GameScreen: View {
             )
         )
         pendingDashStrike = false
+        let didImpact = engine.state.impactSequence != beforeImpactSequence
+        if didImpact {
+            arcadeAudio.playImpact(kind: engine.state.impactKind, strength: engine.state.impactStrength)
+        }
         voiceTimer = max(0, voiceTimer - delta)
         if engine.state.score > bestScore {
             bestScore = engine.state.score
@@ -918,8 +951,12 @@ struct GameScreen: View {
             announce(playerWon ? "KNOCKOUT" : "DEFEAT")
         }
 
-        if engine.state.player.health < beforePlayerHealth {
+        if didImpact, engine.state.impactKind == .whiff {
+            // Keep misses airy; a haptic here makes them feel like accidental hits.
+        } else if engine.state.player.health < beforePlayerHealth {
             playHaptic(engine.state.phase == .gameOver ? .failure : .retry)
+        } else if didImpact, (engine.state.impactKind == .guardBreak || engine.state.impactKind == .counter || engine.state.impactStrength > 0.72) {
+            playHaptic(.directionDown)
         } else if engine.state.opponent.health < beforeOpponentHealth || engine.state.score > beforeScore {
             playHaptic(.click)
         }
@@ -1287,10 +1324,41 @@ private enum ArcadeCue {
     }
 }
 
+private enum ImpactCue: CaseIterable, Hashable {
+    case wind
+    case light
+    case heavy
+    case block
+    case counter
+    case guardBreak
+    case energy
+    case throwBody
+
+    init(kind: StrikeKind, strength: CGFloat) {
+        switch kind {
+        case .whiff:
+            self = .wind
+        case .blocked:
+            self = .block
+        case .counter:
+            self = .counter
+        case .guardBreak:
+            self = .guardBreak
+        case .special, .projectile, .finisher:
+            self = .energy
+        case .throwImpact, .headPop, .bodyBurst, .armDrop:
+            self = .throwBody
+        case .hit, .blood, .round:
+            self = strength >= 0.58 ? .heavy : .light
+        }
+    }
+}
+
 private final class ArcadeAudio {
     private var players: [String: AVAudioPlayer] = [:]
     private var lastPlayedAt = Date.distantPast
     private let music = ArcadeMusic()
+    private let impacts = ImpactAudio()
 
     init() {
         for fileName in ["fight", "combo", "finish", "ko", "million", "titan"] {
@@ -1318,8 +1386,138 @@ private final class ArcadeAudio {
         player.play()
     }
 
+    func playImpact(kind: StrikeKind, strength: CGFloat) {
+        impacts.play(cue: ImpactCue(kind: kind, strength: strength), strength: strength)
+    }
+
     func startMusic() {
         music.start()
+        impacts.start()
+    }
+}
+
+private final class ImpactAudio {
+    private let engine = AVAudioEngine()
+    private var players: [AVAudioPlayerNode] = []
+    private var buffers: [ImpactCue: AVAudioPCMBuffer] = [:]
+    private var nextPlayer = 0
+    private let sampleRate = 24_000.0
+
+    init() {
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else { return }
+
+        for _ in 0..<4 {
+            let player = AVAudioPlayerNode()
+            players.append(player)
+            engine.attach(player)
+            engine.connect(player, to: engine.mainMixerNode, format: format)
+        }
+        for cue in ImpactCue.allCases {
+            buffers[cue] = Self.makeBuffer(cue: cue, format: format, sampleRate: sampleRate)
+        }
+        engine.mainMixerNode.outputVolume = 0.82
+    }
+
+    func start() {
+        guard !engine.isRunning, !players.isEmpty else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        try? engine.start()
+    }
+
+    func play(cue: ImpactCue, strength: CGFloat) {
+        start()
+        guard !players.isEmpty, let buffer = buffers[cue] else { return }
+        let player = players[nextPlayer % players.count]
+        nextPlayer += 1
+        player.stop()
+        player.volume = Float((0.62 + strength * 0.34).clamped(to: 0.55...0.98))
+        player.scheduleBuffer(buffer, at: nil, options: [])
+        player.play()
+    }
+
+    private static func makeBuffer(cue: ImpactCue, format: AVAudioFormat, sampleRate: Double) -> AVAudioPCMBuffer? {
+        let duration: Double
+        switch cue {
+        case .wind:
+            duration = 0.10
+        case .light, .block:
+            duration = 0.12
+        case .heavy, .counter:
+            duration = 0.18
+        case .guardBreak, .throwBody:
+            duration = 0.22
+        case .energy:
+            duration = 0.28
+        }
+
+        let frameCount = AVAudioFrameCount(duration * sampleRate)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
+              let samples = buffer.floatChannelData?[0] else {
+            return nil
+        }
+        buffer.frameLength = frameCount
+
+        var noiseState: UInt32 = 0xA11C_E551 ^ UInt32(cue.hashValue & 0xFFFF)
+        var smoothedNoise = 0.0
+        for frame in 0..<Int(frameCount) {
+            let t = Double(frame) / sampleRate
+            let progress = min(1, t / duration)
+            let attack = min(1, t / 0.0025)
+            let release = pow(max(0, 1 - progress), 2.15)
+            let envelope = attack * release
+
+            noiseState = noiseState &* 1_664_525 &+ 1_013_904_223
+            let noise = (Double(noiseState >> 8) / Double(0x00FF_FFFF)) * 2 - 1
+            smoothedNoise = smoothedNoise * 0.86 + noise * 0.14
+            let brightNoise = noise - smoothedNoise
+
+            let sample: Double
+            switch cue {
+            case .wind:
+                let sweep = 780 - progress * 510
+                sample = (brightNoise * 0.28 + sin(2 * .pi * sweep * t) * 0.055) * envelope
+            case .light:
+                let bodyFrequency = 165 - progress * 92
+                let body = sin(2 * .pi * bodyFrequency * t) * 0.38
+                let glove = brightNoise * 0.52 * exp(-t * 46)
+                let snap = sin(2 * .pi * 920 * t) * 0.14 * exp(-t * 58)
+                sample = (body + glove + snap) * envelope
+            case .heavy:
+                let bodyFrequency = 112 - progress * 62
+                let body = sin(2 * .pi * bodyFrequency * t) * 0.62
+                let chest = sin(2 * .pi * 225 * t) * 0.18
+                let crack = brightNoise * 0.48 * exp(-t * 32)
+                sample = tanh((body + chest + crack) * 1.35) * envelope
+            case .block:
+                let metal = sin(2 * .pi * 1_180 * t) * 0.28 + sin(2 * .pi * 1_760 * t) * 0.18
+                let clack = brightNoise * 0.42 * exp(-t * 44)
+                sample = (metal + clack) * envelope
+            case .counter:
+                let boom = sin(2 * .pi * (92 - progress * 53) * t) * 0.68
+                let ring = sin(2 * .pi * 335 * t) * 0.22
+                let crack = brightNoise * 0.58 * exp(-t * 35)
+                sample = tanh((boom + ring + crack) * 1.5) * envelope
+            case .guardBreak:
+                let boom = sin(2 * .pi * (88 - progress * 45) * t) * 0.58
+                let shards = sin(2 * .pi * 1_460 * t) * 0.20 + sin(2 * .pi * 2_210 * t) * 0.14
+                let crackle = brightNoise * 0.62 * exp(-t * 22)
+                sample = tanh((boom + shards + crackle) * 1.38) * envelope
+            case .energy:
+                let sweep = 540 - progress * 455
+                let blast = sin(2 * .pi * sweep * t) * 0.52
+                let sub = sin(2 * .pi * (72 - progress * 26) * t) * 0.46
+                let edge = brightNoise * 0.38 * exp(-t * 18)
+                sample = tanh((blast + sub + edge) * 1.28) * envelope
+            case .throwBody:
+                let secondHit = exp(-pow((t - 0.058) / 0.012, 2))
+                let thump = sin(2 * .pi * (82 - progress * 36) * t) * (0.66 + secondHit * 0.22)
+                let crunch = brightNoise * (0.38 * exp(-t * 26) + secondHit * 0.42)
+                sample = tanh((thump + crunch) * 1.42) * envelope
+            }
+            samples[frame] = Float(sample.clamped(to: -0.98...0.98))
+        }
+        return buffer
     }
 }
 
@@ -1328,9 +1526,9 @@ private final class ArcadeMusic {
     private var source: AVAudioSourceNode?
     private var sampleIndex = 0.0
     private let sampleRate = 22_050.0
-    private let tempo = 176.0
-    private let melody = [196.0, 246.94, 293.66, 329.63, 392.0, 329.63, 293.66, 246.94]
-    private let bass = [98.0, 98.0, 123.47, 146.83, 98.0, 164.81, 146.83, 123.47]
+    private let tempo = 158.0
+    private let melody = [196.0, 233.08, 293.66, 349.23, 392.0, 349.23, 293.66, 233.08]
+    private let bass = [98.0, 98.0, 116.54, 146.83, 98.0, 174.61, 146.83, 116.54]
 
     func start() {
         guard !engine.isRunning else { return }
@@ -1343,15 +1541,25 @@ private final class ArcadeMusic {
                 let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
 
                 for frame in 0..<Int(frameCount) {
-                    let beat = self.sampleIndex / self.sampleRate * self.tempo / 60.0
+                    let time = self.sampleIndex / self.sampleRate
+                    let beat = time * self.tempo / 60.0
                     let step = Int(beat * 2.0) % self.melody.count
-                    let envelope = 1.0 - min(0.82, (beat * 2.0).truncatingRemainder(dividingBy: 1.0) * 1.1)
+                    let eighthPhase = (beat * 2.0).truncatingRemainder(dividingBy: 1.0)
+                    let beatPhase = beat.truncatingRemainder(dividingBy: 1.0)
+                    let envelope = exp(-eighthPhase * 2.4)
                     let leadPhase = self.sampleIndex * self.melody[step] / self.sampleRate
                     let bassPhase = self.sampleIndex * self.bass[Int(beat) % self.bass.count] / self.sampleRate
-                    let hat = Int(beat * 4.0).isMultiple(of: 2) ? 0.025 : -0.015
-                    let lead = sin(leadPhase * 2.0 * .pi) >= 0 ? 0.12 : -0.12
-                    let low = sin(bassPhase * 2.0 * .pi) * 0.10
-                    let sample = Float((lead * envelope) + low + hat)
+                    let pseudoNoise = (sin(self.sampleIndex * 12.9898) * 43_758.5453).truncatingRemainder(dividingBy: 1.0)
+                    let kickEnvelope = exp(-beatPhase * 13.0)
+                    let kickFrequency = 48.0 + 38.0 * kickEnvelope
+                    let kick = sin(time * kickFrequency * 2.0 * .pi) * 0.15 * kickEnvelope
+                    let snareBeat = Int(beat).isMultiple(of: 2) ? 0.0 : exp(-beatPhase * 18.0)
+                    let snare = pseudoNoise * 0.055 * snareBeat
+                    let hatEnvelope = exp(-((beat * 4.0).truncatingRemainder(dividingBy: 1.0)) * 24.0)
+                    let hat = pseudoNoise * 0.018 * hatEnvelope
+                    let lead = (sin(leadPhase * 2.0 * .pi) + sin(leadPhase * 4.0 * .pi) * 0.28) * 0.078 * envelope
+                    let low = sin(bassPhase * 2.0 * .pi) * 0.105
+                    let sample = Float(tanh((lead + low + kick + snare + hat) * 1.15))
 
                     for buffer in buffers {
                         guard let data = buffer.mData else { continue }

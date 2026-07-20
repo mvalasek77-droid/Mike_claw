@@ -12,9 +12,12 @@ king, and a near-impossible heavyweight boss. Wins advance to the next rival,
 losses retry the current chapter, and two losses end the run.
 
 The game uses stylized blood sparks, finisher bursts, bitmap and procedural
-fighter animation, and bundled retro synthetic voice clips for callouts such as
-FIGHT, COMBO, FINISH, and MILLION SHOT. Characters are original and intentionally
-avoid exact celebrity, fighter, or classic-game replicas.
+fighter animation, directional screen shake, hit-stop, pushback, counter hits,
+guard breaks, and bundled retro synthetic voice clips for callouts such as
+FIGHT, COMBO, FINISH, and MILLION SHOT. Layered procedural impact audio gives
+misses, gloves, body blows, blocks, counters, throws, and energy attacks their
+own sound instead of replaying one generic punch. Characters are original and
+intentionally avoid exact celebrity, fighter, or classic-game replicas.
 
 ## Modes
 

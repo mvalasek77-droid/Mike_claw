@@ -137,9 +137,27 @@ struct WatchfighterEngine {
     }
 
     mutating func tick(delta rawDelta: TimeInterval, input: GameInput) {
-        guard state.phase == .running else { return }
+        let frameDelta = min(max(rawDelta, 0), 1.0 / 10.0)
+        var delta = frameDelta
+        state.cameraShake = max(0, state.cameraShake - CGFloat(frameDelta) * 0.09)
+        state.impactFlash = max(0, state.impactFlash - CGFloat(frameDelta) * 3.2)
+        state.combatCalloutTimer = max(0, state.combatCalloutTimer - frameDelta)
+        if state.combatCalloutTimer == 0 {
+            state.combatCallout = ""
+        }
 
-        let delta = min(max(rawDelta, 0), 1.0 / 10.0)
+        guard state.phase == .running else {
+            state.hitStop = max(0, state.hitStop - frameDelta)
+            return
+        }
+
+        if state.hitStop > 0 {
+            let stoppedTime = state.hitStop
+            state.hitStop = max(0, stoppedTime - frameDelta)
+            delta = max(0, frameDelta - stoppedTime)
+            guard delta > 0 else { return }
+        }
+
         state.elapsed += delta
         state.bannerTimer = max(0, state.bannerTimer - delta)
         state.finisherTimer = max(0, state.finisherTimer - delta)
@@ -197,6 +215,11 @@ struct WatchfighterEngine {
 
     mutating func debugChargeSpecial() {
         state.player.meter = 1
+    }
+
+    mutating func debugSetOpponentAction(_ action: FighterAction, duration: TimeInterval = 0.5) {
+        state.opponent.action = action
+        state.opponent.actionTimer = duration
     }
 
     mutating func debugPrimeMillionShotCombo() {
@@ -379,50 +402,78 @@ struct WatchfighterEngine {
         let connected = abs(attacker.x - defender.x) <= range
         let impactX = (attacker.x + defender.x) * 0.5
         guard connected else {
-            addStrike(side: side, x: impactX, y: 0.56, kind: .blocked, lifetime: 0.18)
+            addStrike(side: side, x: attacker.x + attacker.facing * min(range, 0.20), y: 0.56, kind: .whiff, lifetime: 0.16)
+            registerImpact(kind: .whiff, side: side, strength: 0.16, x: attacker.x, y: 0.56, hitStop: 0, shake: 0)
             return
         }
 
         let defenderGuarding = action != .throwAttack && (defender.action == .blocking || defender.action == .crouch) && defender.guardMeter > 0.22
+        let counterHit = !defenderGuarding && defender.action.isAttack && defender.hitStun == 0
         let millionCounter = side == .player && defender.archetype.isMillionBoss && action == .special && state.combo >= 8
         var rawDamage = Int((CGFloat(baseDamage) * attacker.archetype.power).rounded())
+        if counterHit {
+            rawDamage = max(1, Int((CGFloat(rawDamage) * 1.18).rounded()))
+        }
         if defender.archetype.isMillionBoss, side == .player {
             rawDamage = millionCounter ? max(rawDamage, defender.maxHealth) : max(1, Int((CGFloat(rawDamage) * 0.04).rounded()))
         }
         let damage = defenderGuarding ? max(2, Int(CGFloat(rawDamage) * 0.32)) : rawDamage
-        let hitStun = defenderGuarding ? 0.08 : (action == .special ? 0.28 : 0.16)
+        let guardDrain = 0.34 * style.guardPressure
+        var guardBroken = false
+        var hitStun = defenderGuarding ? 0.08 : (action == .special ? 0.28 : 0.16)
+        if counterHit {
+            hitStun += 0.07
+        }
 
         if side == .player {
             state.opponent.health = max(0, state.opponent.health - damage)
+            state.opponent.guardMeter = defenderGuarding ? max(0, state.opponent.guardMeter - guardDrain) : max(0, state.opponent.guardMeter - 0.18 * style.guardPressure)
+            guardBroken = defenderGuarding && state.opponent.guardMeter <= 0.02
+            if guardBroken {
+                hitStun = max(hitStun, 0.36)
+            }
             state.opponent.hitStun = hitStun
-            state.opponent.guardMeter = defenderGuarding ? max(0, state.opponent.guardMeter - 0.34 * style.guardPressure) : max(0, state.opponent.guardMeter - 0.18 * style.guardPressure)
-            setAction(defenderGuarding ? .blocking : .hit, for: .opponent, duration: hitStun)
-            awardPlayerHit(damage: damage, action: action, blocked: defenderGuarding)
+            setAction(defenderGuarding && !guardBroken ? .blocking : .hit, for: .opponent, duration: hitStun)
+            awardPlayerHit(damage: damage, action: action, blocked: defenderGuarding && !guardBroken)
             if state.opponent.health > 0 {
                 state.opponent.meter = min(1, state.opponent.meter + CGFloat(damage) / (defenderGuarding ? 260 : 145))
-                queueOpponentCounter(blocked: defenderGuarding, distance: abs(state.opponent.x - state.player.x))
+                if !guardBroken {
+                    queueOpponentCounter(blocked: defenderGuarding, distance: abs(state.opponent.x - state.player.x))
+                }
             }
             if action == .throwAttack, !defenderGuarding {
                 state.opponent.x = min(0.88, state.opponent.x + state.player.facing * style.throwPush)
             }
         } else {
             state.player.health = max(0, state.player.health - damage)
+            state.player.guardMeter = defenderGuarding ? max(0, state.player.guardMeter - guardDrain) : max(0, state.player.guardMeter - 0.18 * style.guardPressure)
+            guardBroken = defenderGuarding && state.player.guardMeter <= 0.02
+            if guardBroken {
+                hitStun = max(hitStun, 0.36)
+            }
             state.player.hitStun = hitStun
-            state.player.guardMeter = defenderGuarding ? max(0, state.player.guardMeter - 0.34 * style.guardPressure) : max(0, state.player.guardMeter - 0.18 * style.guardPressure)
-            setAction(defenderGuarding ? .blocking : .hit, for: .player, duration: hitStun)
-            state.opponent.combo += defenderGuarding ? 0 : 1
-            if !defenderGuarding {
+            setAction(defenderGuarding && !guardBroken ? .blocking : .hit, for: .player, duration: hitStun)
+            state.opponent.combo += defenderGuarding && !guardBroken ? 0 : 1
+            if !defenderGuarding || guardBroken {
                 opponentComboClock = 1.25
             }
             state.opponent.meter = min(1, state.opponent.meter + CGFloat(damage) / 120 * style.meterBuildRate)
-            queueOpponentFollowUp(after: action, connected: !defenderGuarding, distance: abs(state.opponent.x - state.player.x))
+            queueOpponentFollowUp(after: action, connected: !defenderGuarding || guardBroken, distance: abs(state.opponent.x - state.player.x))
             if action == .throwAttack, !defenderGuarding {
                 state.player.x = max(0.14, state.player.x + state.opponent.facing * style.throwPush)
             }
         }
 
+        if action != .throwAttack {
+            applyPushback(from: side, action: action, blocked: defenderGuarding)
+        }
+
         let strikeKind: StrikeKind
-        if action == .special {
+        if guardBroken {
+            strikeKind = .guardBreak
+        } else if counterHit {
+            strikeKind = .counter
+        } else if action == .special {
             strikeKind = .special
         } else if action == .projectile {
             strikeKind = .projectile
@@ -432,9 +483,24 @@ struct WatchfighterEngine {
             strikeKind = defenderGuarding ? .blocked : .hit
         }
         let impactY: CGFloat = action == .kick || action == .jumpKick ? 0.62 : (action == .throwAttack ? 0.68 : 0.53)
-        addStrike(side: side, x: impactX, y: impactY, kind: strikeKind, lifetime: action == .special || action == .projectile ? 0.38 : 0.25)
+        let impactStrength = impactStrength(for: action, blocked: defenderGuarding, counter: counterHit, guardBroken: guardBroken)
+        addStrike(side: side, x: impactX, y: impactY, kind: strikeKind, lifetime: action == .special || action == .projectile || guardBroken ? 0.38 : 0.25)
         if !defenderGuarding {
             addStrike(side: side, x: impactX + attacker.facing * 0.02, y: 0.50, kind: .blood, lifetime: 0.34)
+        }
+        registerImpact(
+            kind: strikeKind,
+            side: side,
+            strength: impactStrength,
+            x: impactX,
+            y: impactY,
+            hitStop: hitStopDuration(for: action, blocked: defenderGuarding, counter: counterHit, guardBroken: guardBroken),
+            shake: shakeStrength(for: action, blocked: defenderGuarding, counter: counterHit, guardBroken: guardBroken)
+        )
+        if guardBroken {
+            showCombatCallout("GUARD BREAK", duration: 0.78)
+        } else if counterHit {
+            showCombatCallout("COUNTER", duration: 0.58)
         }
         if defender.archetype.isMillionBoss, side == .player, action == .special {
             showBanner(
@@ -445,6 +511,135 @@ struct WatchfighterEngine {
         } else if side == .opponent, (action == .special || action == .projectile) {
             showBanner(attacker.archetype.signatureMove, "counter pressure", duration: 0.92)
         }
+    }
+
+    private mutating func applyPushback(from side: FighterSide, action: FighterAction, blocked: Bool) {
+        let basePush: CGFloat
+        switch action {
+        case .jab:
+            basePush = 0.012
+        case .kick:
+            basePush = 0.025
+        case .jumpKick:
+            basePush = 0.032
+        case .projectile:
+            basePush = 0.020
+        case .special:
+            basePush = 0.044
+        default:
+            basePush = 0
+        }
+
+        let direction = side == .player ? state.player.facing : state.opponent.facing
+        let defenderPush = basePush * (blocked ? 0.66 : 1)
+        let attackerRecoil = basePush * (blocked ? 0.34 : 0.10)
+        if side == .player {
+            state.opponent.x = (state.opponent.x + direction * defenderPush).clamped(to: 0.44...0.88)
+            state.player.x = (state.player.x - direction * attackerRecoil).clamped(to: 0.14...0.56)
+        } else {
+            state.player.x = (state.player.x + direction * defenderPush).clamped(to: 0.14...0.56)
+            state.opponent.x = (state.opponent.x - direction * attackerRecoil).clamped(to: 0.44...0.88)
+        }
+
+        if state.opponent.x - state.player.x < 0.18 {
+            let midpoint = (state.player.x + state.opponent.x) * 0.5
+            state.player.x = (midpoint - 0.09).clamped(to: 0.14...0.56)
+            state.opponent.x = (midpoint + 0.09).clamped(to: 0.44...0.88)
+        }
+    }
+
+    private func impactStrength(for action: FighterAction, blocked: Bool, counter: Bool, guardBroken: Bool) -> CGFloat {
+        if guardBroken { return 1 }
+        let base: CGFloat
+        switch action {
+        case .jab:
+            base = 0.42
+        case .kick:
+            base = 0.62
+        case .jumpKick:
+            base = 0.72
+        case .throwAttack:
+            base = 0.82
+        case .projectile:
+            base = 0.76
+        case .special:
+            base = 1
+        default:
+            base = 0.35
+        }
+        if blocked { return max(0.28, base * 0.54) }
+        return min(1, base + (counter ? 0.18 : 0))
+    }
+
+    private func hitStopDuration(for action: FighterAction, blocked: Bool, counter: Bool, guardBroken: Bool) -> TimeInterval {
+        if guardBroken { return 0.09 }
+        if blocked { return 0.026 }
+        let base: TimeInterval
+        switch action {
+        case .jab:
+            base = 0.034
+        case .kick:
+            base = 0.050
+        case .jumpKick:
+            base = 0.060
+        case .throwAttack:
+            base = 0.074
+        case .projectile:
+            base = 0.058
+        case .special:
+            base = 0.092
+        default:
+            base = 0.030
+        }
+        return base + (counter ? 0.018 : 0)
+    }
+
+    private func shakeStrength(for action: FighterAction, blocked: Bool, counter: Bool, guardBroken: Bool) -> CGFloat {
+        if guardBroken { return 0.021 }
+        if blocked { return 0.003 }
+        let base: CGFloat
+        switch action {
+        case .jab:
+            base = 0.004
+        case .kick:
+            base = 0.008
+        case .jumpKick:
+            base = 0.011
+        case .throwAttack:
+            base = 0.014
+        case .projectile:
+            base = 0.010
+        case .special:
+            base = 0.018
+        default:
+            base = 0.004
+        }
+        return min(0.024, base + (counter ? 0.006 : 0))
+    }
+
+    private mutating func registerImpact(
+        kind: StrikeKind,
+        side: FighterSide,
+        strength: CGFloat,
+        x: CGFloat,
+        y: CGFloat,
+        hitStop: TimeInterval,
+        shake: CGFloat
+    ) {
+        state.impactSequence += 1
+        state.impactKind = kind
+        state.impactSide = side
+        state.impactStrength = strength.clamped(to: 0...1)
+        state.impactX = x.clamped(to: 0...1)
+        state.impactY = y.clamped(to: 0...1)
+        state.hitStop = max(state.hitStop, hitStop)
+        state.cameraShake = max(state.cameraShake, shake)
+        state.impactFlash = max(state.impactFlash, kind == .blocked ? 0.055 : strength * 0.22)
+    }
+
+    private mutating func showCombatCallout(_ text: String, duration: TimeInterval) {
+        state.combatCallout = text
+        state.combatCalloutTimer = duration
     }
 
     private mutating func popOpponentPlannedAttack(distance: CGFloat) -> FighterAction? {
@@ -722,6 +917,11 @@ struct WatchfighterEngine {
         state.comboClock = 0
         state.finisherText = ""
         state.finisherTimer = 0
+        state.hitStop = 0
+        state.cameraShake = 0
+        state.impactFlash = 0
+        state.combatCallout = ""
+        state.combatCalloutTimer = 0
         state.player = DuelFighter(archetype: playerArchetype, x: 0.25, facing: 1)
         state.opponent = DuelFighter(archetype: ruleSet.advancesLadder ? opponent(for: state.chapter) : previousOpponent, x: 0.75, facing: -1)
         if ruleSet == .learn {

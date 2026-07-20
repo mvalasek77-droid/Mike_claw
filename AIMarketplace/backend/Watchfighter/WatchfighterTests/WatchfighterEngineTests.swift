@@ -30,11 +30,60 @@ final class WatchfighterEngineTests: XCTestCase {
         engine.debugSetOpponent(x: 0.49)
 
         let startingHealth = engine.state.opponent.health
+        let startingX = engine.state.opponent.x
         engine.tick(delta: 0.01, input: GameInput(targetX: 0.30, attacking: true))
 
         XCTAssertLessThan(engine.state.opponent.health, startingHealth)
+        XCTAssertGreaterThan(engine.state.opponent.x, startingX)
         XCTAssertGreaterThan(engine.state.score, 0)
         XCTAssertEqual(engine.state.combo, 1)
+        XCTAssertGreaterThan(engine.state.hitStop, 0)
+        XCTAssertGreaterThan(engine.state.cameraShake, 0)
+        XCTAssertEqual(engine.state.impactKind, .hit)
+    }
+
+    func testMissCreatesWhiffFeedbackInsteadOfFakeBlock() {
+        var engine = WatchfighterEngine(seed: 8)
+        engine.debugSetPlayer(x: 0.20)
+        engine.debugSetOpponent(x: 0.72)
+
+        let startingHealth = engine.state.opponent.health
+        engine.tick(delta: 0.01, input: GameInput(targetX: 0.20, attacking: true))
+
+        XCTAssertEqual(engine.state.opponent.health, startingHealth)
+        XCTAssertEqual(engine.state.impactKind, .whiff)
+        XCTAssertEqual(engine.state.cameraShake, 0)
+        XCTAssertTrue(engine.state.strikes.contains { $0.kind == .whiff })
+        XCTAssertFalse(engine.state.strikes.contains { $0.kind == .blocked })
+    }
+
+    func testCounterHitGetsExtraStunAndArcadeCallout() {
+        var engine = WatchfighterEngine(seed: 9)
+        engine.debugSetPlayer(x: 0.30)
+        engine.debugSetOpponent(x: 0.49)
+        engine.debugSetOpponentAction(.jab)
+
+        engine.tick(delta: 0.01, input: GameInput(targetX: 0.30, attacking: true))
+
+        XCTAssertEqual(engine.state.impactKind, .counter)
+        XCTAssertEqual(engine.state.combatCallout, "COUNTER")
+        XCTAssertGreaterThan(engine.state.opponent.hitStun, 0.20)
+        XCTAssertTrue(engine.state.strikes.contains { $0.kind == .counter })
+    }
+
+    func testLowGuardBreaksIntoLongStun() {
+        var engine = WatchfighterEngine(seed: 10)
+        engine.debugSetPlayer(x: 0.30)
+        engine.debugSetOpponent(x: 0.49, guardMeter: 0.23)
+        engine.debugSetOpponentAction(.blocking)
+
+        engine.tick(delta: 0.01, input: GameInput(targetX: 0.30, attacking: true))
+
+        XCTAssertEqual(engine.state.impactKind, .guardBreak)
+        XCTAssertEqual(engine.state.combatCallout, "GUARD BREAK")
+        XCTAssertEqual(engine.state.opponent.guardMeter, 0)
+        XCTAssertGreaterThanOrEqual(engine.state.opponent.hitStun, 0.36)
+        XCTAssertEqual(engine.state.opponent.action, .hit)
     }
 
     func testComboChainsBeforeTimerExpires() {
@@ -360,10 +409,10 @@ final class WatchfighterEngineTests: XCTestCase {
         XCTAssertLessThan(engine.state.opponent.health, engine.state.opponent.maxHealth)
 
         var sawSecretCounter = false
-        for _ in 0..<12 {
+        for _ in 0..<18 {
             engine.tick(delta: 1.0 / 12.0, input: GameInput(targetX: 0.56))
             sawSecretCounter = sawSecretCounter || engine.state.strikes.contains {
-                $0.side == .opponent && ($0.kind == .special || $0.kind == .projectile)
+                $0.side == .opponent && ($0.kind == .special || $0.kind == .projectile || $0.kind == .counter)
             }
         }
 
