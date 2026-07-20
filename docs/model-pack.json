@@ -1,0 +1,131 @@
+{
+  "pack_version": "2026.07.20",
+  "source": "docs/CLAUDE_MODEL_PROMPTING_NOTES.md",
+  "verified": "2026-07",
+  "cross_model_rules": [
+    "Never suggest temperature, top_p, or top_k — these models reject them; steer with words.",
+    "No prefill or assistant-priming tricks — use an explicit format instruction or structured outputs.",
+    "Put stable context first and the specific question last.",
+    "End every prompt with an explicit success criterion ('done means…').",
+    "Recommend adaptive thinking when reasoning is wanted; depth is set by effort, not a token budget.",
+    "Pick the cheapest model that fits the job."
+  ],
+  "models": [
+    {
+      "name": "Claude Sonnet 5",
+      "id": "claude-sonnet-5",
+      "accent": "teal",
+      "price_in_per_mtok": 3.0,
+      "price_out_per_mtok": 15.0,
+      "price_note": "Intro $2/$10 per MTok through 2026-08-31",
+      "one_liner": "Takes you literally — spell out scope, it won't infer.",
+      "temperament": "literal",
+      "strengths": [
+        "Predictable, precise instruction-following",
+        "Structured extraction and high-volume pipelines",
+        "Fast, near-Opus quality on coding at lower cost"
+      ],
+      "default_effort": "high",
+      "hard_task_effort": "xhigh",
+      "rewrite_rules": [
+        "Make scope explicit — restate any rule that should apply broadly ('every section, not just the first').",
+        "Convert vague asks into concrete deliverables with a definition of done.",
+        "Control verbosity with positive examples ('be concise, skip non-essential context'), not prohibitions.",
+        "For creative variety use propose-then-pick (3–4 directions, user chooses) — no temperature knob.",
+        "If thinking is disabled and a tool is needed, add an explicit trigger line for it.",
+        "Remove stale 'summarize every N tool calls' progress scaffolding."
+      ],
+      "do": [
+        "State scope universally",
+        "Give an acceptance test",
+        "Raise effort if reasoning is shallow"
+      ],
+      "dont": [
+        "Assume it will generalize an instruction",
+        "Rely on temperature for variety",
+        "Prompt around under-thinking instead of raising effort"
+      ],
+      "best_fit": "Literal, well-scoped, high-volume, structured, cost-sensitive tasks."
+    },
+    {
+      "name": "Claude Opus 4.8",
+      "id": "claude-opus-4-8",
+      "accent": "indigo",
+      "price_in_per_mtok": 5.0,
+      "price_out_per_mtok": 25.0,
+      "price_note": "1M context at standard pricing, no long-context premium",
+      "one_liner": "Deliberate autonomous worker — hand over the whole spec up front.",
+      "temperament": "autonomous",
+      "strengths": [
+        "State-of-the-art long-horizon autonomous work",
+        "Refactors and overnight builds that finish without correction",
+        "Strong bug-finding and clear explanations"
+      ],
+      "default_effort": "high",
+      "hard_task_effort": "xhigh",
+      "rewrite_rules": [
+        "Consolidate the ramble into one complete up-front spec: goal, inputs, constraints, definition of done.",
+        "Add explicit 'use X when Y' trigger lines for search, subagents, memory, and custom tools.",
+        "Add an autonomy line: pick reasonable defaults for small decisions, ask only on scope changes or destructive actions.",
+        "Remove forced-progress scaffolding; add a silence-default if a terse coding agent is wanted.",
+        "Re-check warmth/style prompts carried over from 4.7 — 4.8 is warmer by default and they may overcorrect.",
+        "If thinking is disabled, add 'respond only with your final answer' to prevent reasoning leaking into the response."
+      ],
+      "do": [
+        "Give the full task in the first turn",
+        "Put trigger conditions in tool descriptions",
+        "Start at high effort and sweep, don't reflex to xhigh"
+      ],
+      "dont": [
+        "Dribble requirements over multiple turns",
+        "Assume it will reach for tools/subagents on its own",
+        "Leave it to ask permission on every small choice"
+      ],
+      "best_fit": "Long, autonomous, multi-step work you can fully specify up front."
+    },
+    {
+      "name": "Claude Fable 5",
+      "id": "claude-fable-5",
+      "accent": "ember",
+      "price_in_per_mtok": 10.0,
+      "price_out_per_mtok": 50.0,
+      "price_note": "Requires 30-day data retention; not available under zero-data-retention",
+      "one_liner": "Frontier reasoner — give the goal and the why, not the steps.",
+      "temperament": "frontier",
+      "strengths": [
+        "Deepest reasoning and hardest long-horizon problems",
+        "First-shot implementations of well-specified systems",
+        "Reliable parallel subagent delegation"
+      ],
+      "default_effort": "high",
+      "hard_task_effort": "xhigh",
+      "rewrite_rules": [
+        "Strip step-by-step scaffolding down to goal + constraints + acceptance test — over-prescription reduces quality.",
+        "Prepend the intent: 'I'm building X for Y; they need Z — with that in mind, [request].'",
+        "Add a short communication-style section (lead with the outcome; be selective, not compressed).",
+        "For long autonomous runs, add 'audit each progress claim against a tool result from this session'.",
+        "State boundaries: when the user is asking or thinking out loud, report the assessment and stop.",
+        "Encourage async subagent delegation and a memory file for learnings; warn that a hard run may take many minutes."
+      ],
+      "do": [
+        "Give it your hardest problems",
+        "Explain the why behind the ask",
+        "Run an effort sweep — low/medium is often enough"
+      ],
+      "dont": [
+        "Micromanage with enumerated steps",
+        "Use it for routine tasks a cheaper model handles",
+        "Assume high effort is always better (it can over-tidy)"
+      ],
+      "best_fit": "The hardest reasoning and long-horizon problems where frontier capability justifies the price."
+    }
+  ],
+  "unknown_model_fallback": {
+    "note": "Future models not in this pack fall back to cross_model_rules plus these defaults.",
+    "rewrite_rules": [
+      "Front-load context, put the question last, end with a success criterion.",
+      "Keep instructions explicit but not over-prescriptive; state scope where it matters.",
+      "Recommend adaptive thinking at high effort; do not emit sampling parameters or prefills."
+    ]
+  }
+}

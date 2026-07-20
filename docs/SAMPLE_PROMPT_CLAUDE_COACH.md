@@ -38,6 +38,13 @@ advice — these models reject sampling parameters, steer with words instead;
 no prefill tricks (removed); stable context first, question last; always
 include an acceptance test ("done means…").
 
+**The full, expanded per-model rewrite rules — the actual research behind these
+profiles — live in `docs/CLAUDE_MODEL_PROMPTING_NOTES.md`, and the
+machine-readable model pack the app loads is `docs/model-pack.json`.** The
+Model Profile summaries in the prompt below are the short form; the notes doc
+and JSON are the source of truth. When Anthropic ships a new model, add an entry
+to `model-pack.json` and bump `pack_version` — no app update needed.
+
 ## The prompt (paste this into DescribeAppView)
 
 **Title:** `Claude Prompt Coach`
