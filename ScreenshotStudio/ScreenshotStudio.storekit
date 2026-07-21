@@ -3,7 +3,7 @@
   "nonRenewingSubscriptions" : [],
   "products" : [
     {
-      "displayPrice" : "49.99",
+      "displayPrice" : "69.99",
       "familyShareable" : false,
       "internalID" : "B1A2C3D4-1000-0000-0000-000000000001",
       "localizations" : [
@@ -25,13 +25,18 @@
   "subscriptionGroups" : [
     {
       "id" : "B1A2C3D4-2000-0000-0000-000000000010",
-      "localizations" : [],
+      "localizations" : [
+        {
+          "displayName" : "Screenshot Studio Pro",
+          "locale" : "en_US"
+        }
+      ],
       "name" : "Screenshot Studio Pro",
       "subscriptions" : [
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "6.99",
+          "displayPrice" : "9.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "B1A2C3D4-2000-0000-0000-000000000011",
@@ -52,7 +57,7 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "29.99",
+          "displayPrice" : "39.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "B1A2C3D4-2000-0000-0000-000000000012",

@@ -59,6 +59,7 @@
 		DBDB99447AFC4227C52930AB /* StudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408E39F73DE8F6C7CB1909D0 /* StudioView.swift */; };
 		E35A889E756D6114BA5E0CEC /* ProjectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 806E9B71A9A436DC237D0F3A /* ProjectsView.swift */; };
 		F387E10B14AEC789A3897F90 /* StatusBarStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE758A8BE7C7B49C133E6840 /* StatusBarStyle.swift */; };
+		F3BFB0D70F4A01D32914147D /* LegalURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A4EC1027C64BF4FD2068157 /* LegalURL.swift */; };
 		F8B1084CF77C8BAB2DBD0824 /* VideoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12701BC1536282B995EDA001 /* VideoPicker.swift */; };
 		FC533A3DF68F8BAC93D36091 /* ModelCodableTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12B0D035A9F7263C6C5C5944 /* ModelCodableTests.swift */; };
 /* End PBXBuildFile section */
@@ -79,6 +80,7 @@
 		10D2102030DF8883AC2D18D9 /* StyleTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleTemplate.swift; sourceTree = "<group>"; };
 		12701BC1536282B995EDA001 /* VideoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPicker.swift; sourceTree = "<group>"; };
 		12B0D035A9F7263C6C5C5944 /* ModelCodableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCodableTests.swift; sourceTree = "<group>"; };
+		1A4EC1027C64BF4FD2068157 /* LegalURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalURL.swift; sourceTree = "<group>"; };
 		1AF0E3536518D914E5C2C4CA /* ScreenshotStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotStudioApp.swift; sourceTree = "<group>"; };
 		1E3C7A9D57DB1F48FE987194 /* ScreenshotCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotCanvas.swift; sourceTree = "<group>"; };
 		1FB4360228C05FB605743AAD /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
@@ -287,6 +289,7 @@
 				C7E7232D2F78773C2C154F36 /* BugLog.swift */,
 				97CCCDD9A2D50D0831C750DA /* ExportCoordinator.swift */,
 				D9FC508119DF9447960B1BB4 /* ImageStore.swift */,
+				1A4EC1027C64BF4FD2068157 /* LegalURL.swift */,
 				2D34C1247C5B7F22AC225CD8 /* PhotoExporter.swift */,
 				41E0F1A1C1CC52CC9D11CE42 /* ProjectStore.swift */,
 				B55E7AFB2CD66484552A4CC3 /* ScreenshotComposer.swift */,
@@ -443,6 +446,7 @@
 				549C021BA0DD6856598AED99 /* GlassCard.swift in Sources */,
 				7E16A29A1A0730C6043AC80A /* Haptics.swift in Sources */,
 				9FD27C205B6C2565D35B5669 /* ImageStore.swift in Sources */,
+				F3BFB0D70F4A01D32914147D /* LegalURL.swift in Sources */,
 				8CD40FA0344390088E7094E3 /* LiquidGlass.swift in Sources */,
 				1072FCA419388E2A9AD15194 /* MainTabView.swift in Sources */,
 				B6932ACA1C233637C699AB39 /* Motion.swift in Sources */,
@@ -666,7 +670,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 12;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				INFOPLIST_FILE = ScreenshotStudio/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -690,7 +694,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 12;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				INFOPLIST_FILE = ScreenshotStudio/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

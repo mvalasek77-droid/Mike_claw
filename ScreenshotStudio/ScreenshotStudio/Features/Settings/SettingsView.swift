@@ -108,6 +108,13 @@ struct SettingsView: View {
                             privacyLine("Everything runs on-device.")
                             privacyLine("Screenshots never leave your iPhone.")
                             privacyLine("No accounts, no tracking, no analytics.")
+                            Divider().overlay(LiquidGlass.hairline)
+                            Link("Privacy Policy", destination: LegalURL.privacy)
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundStyle(LiquidGlass.accent)
+                            Link("Terms of Use", destination: LegalURL.terms)
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundStyle(LiquidGlass.accent)
                         }
                     }
 

@@ -172,6 +172,13 @@ struct PaywallView: View {
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 16) {
+                Link("Terms of Use", destination: LegalURL.terms)
+                Link("Privacy Policy", destination: LegalURL.privacy)
+            }
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .foregroundStyle(LiquidGlass.accent)
         }
     }
 }
