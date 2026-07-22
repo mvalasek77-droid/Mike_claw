@@ -15,11 +15,56 @@ actively wrong for another.
 
 | Model | ID | Temperament | Prompt it like… |
 |---|---|---|---|
+| Haiku 4.5 | `claude-haiku-4-5` | Fast and literal, shallow | a quick assistant — one clear task, spell out the output |
 | Sonnet 5 | `claude-sonnet-5` | Takes you literally | a precise contractor — spell out scope, it won't infer |
 | Opus 4.8 | `claude-opus-4-8` | Deliberate autonomous worker | a senior engineer — hand over the whole spec up front |
 | Fable 5 | `claude-fable-5` | Frontier reasoner, resents micromanagement | a domain expert — give the goal and the *why*, not the steps |
 
+**Efficiency first: pick the cheapest model that clears the task's bar.** Most
+rambles do not need Opus or Fable. The recommender below maps the ramble to a
+model; when two clear the bar, take the cheaper one.
+
 ---
+
+## Model recommender (efficiency lever)
+
+The app suggests a model from the ramble's shape so users don't overpay. Default
+is Sonnet 5; the user can always override.
+
+| Ramble looks like… | Recommend | Why |
+|---|---|---|
+| Simple, single-step: classify, format, extract, short reply, quick lookup; or explicitly high-volume / latency-sensitive | **Haiku 4.5** | Cheapest and fastest; no deep reasoning needed |
+| Literal, well-scoped, structured; most coding; medium complexity where predictability matters | **Sonnet 5** | Near-Opus quality at Sonnet cost — the sensible default |
+| Long, multi-step, autonomous: refactors, overnight builds, deep research, end-to-end deliverables | **Opus 4.8** | State-of-the-art long-horizon autonomy |
+| The hardest novel reasoning or frontier problems where lesser models plateau | **Fable 5** | Deepest reasoning; justifies top price only when it pays off |
+
+Tie-breaker: when two models both clear the bar, pick the cheaper one. If Haiku
+can't hold the reasoning, that's the signal to move up to Sonnet 5 — not to pile
+more instructions onto Haiku.
+
+## Claude Haiku 4.5 — the cheap, fast one
+
+**Core trait: fast, literal, and shallow.** Lowest cost and latency in the
+family, but not a reasoner. Use it for simple, well-defined, single-step work;
+the moment a task needs planning or multi-step reasoning, move up to Sonnet 5.
+
+**Rewrite rules the coach applies:**
+
+1. **Keep it simple and concrete.** Spell out exactly what you want — Haiku
+   won't infer intent or fill gaps the way the bigger models do.
+2. **One clear task per prompt.** Don't ask it to plan multi-step work; decompose
+   first or escalate to Sonnet 5.
+3. **Nail the output shape.** Use an explicit format instruction or structured
+   outputs; a short worked example helps a lot — Haiku follows examples well.
+4. **No effort/adaptive-thinking advice.** Haiku 4.5 has no `effort` parameter
+   (it errors) and uses the older `budget_tokens` thinking style, off by default.
+   If a task seems to need reasoning, that's a signal to move up, not to bolt
+   thinking onto Haiku.
+5. **It accepts what the others reject** — sampling params and prefill work on
+   Haiku 4.5 — but steering with words stays the portable habit.
+
+**Best-fit jobs:** classify / format / extract / short reply, high-volume or
+latency-sensitive pipelines where per-call cost dominates.
 
 ## Claude Sonnet 5 — the literal one
 
@@ -167,20 +212,19 @@ Prompt craft is above; these are the hard API facts. If the coach ever emits a
 "recommended settings" line alongside the prompt, it must not contradict these,
 and it must never suggest a parameter a model rejects. Verified July 2026.
 
-| Fact | Sonnet 5 | Opus 4.8 | Fable 5 |
-|---|---|---|---|
-| Model ID | `claude-sonnet-5` | `claude-opus-4-8` | `claude-fable-5` |
-| Thinking when `thinking` omitted | **Adaptive ON** | **OFF** — set `{type:"adaptive"}` to enable | **Always on** — omit the param |
-| Explicit `{type:"disabled"}` | Allowed | Allowed | **400 error** — never send it |
-| `budget_tokens` | **400** — removed | **400** — removed | **400** — removed |
-| Sampling (`temperature`/`top_p`/`top_k`) | Non-default → **400** | Non-default → **400** | **400** — removed |
-| Last-assistant-turn prefill | **400** | **400** | **400** |
-| Effort levels | low/med/high/xhigh/max (default high) | low/med/high/xhigh/max (default high) | low/med/high/xhigh/max (default high) |
-| `thinking.display` default | `omitted` | `omitted` | `omitted` |
-| Refusal (`stop_reason:"refusal"`) | Possible (cyber) — handle | Rare | **Likely for bio/cyber** — handle + opt into fallbacks |
-| Data retention | Standard | Standard | **Requires 30-day; ZDR orgs 400 on every request** |
-| Tokenizer note | ~30% more tokens than Sonnet 4.6 | — | Same tokenizer as Opus 4.8 |
-| Extras | Bedrock only: forced `tool_choice` needs thinking disabled | Mid-session `role:"system"` messages supported (4.8 only) | Raw chain-of-thought never returned; read summarized `thinking` blocks |
+| Fact | Haiku 4.5 | Sonnet 5 | Opus 4.8 | Fable 5 |
+|---|---|---|---|---|
+| Model ID | `claude-haiku-4-5` | `claude-sonnet-5` | `claude-opus-4-8` | `claude-fable-5` |
+| Thinking when `thinking` omitted | **OFF** (older style) | **Adaptive ON** | **OFF** — set `{type:"adaptive"}` | **Always on** — omit the param |
+| Explicit `{type:"disabled"}` | Allowed | Allowed | Allowed | **400 error** |
+| `budget_tokens` | **Used** (min 1024, < max_tokens) | **400** | **400** | **400** |
+| Sampling (`temperature`/`top_p`/`top_k`) | **Accepted** (one of temp/top_p) | Non-default → **400** | Non-default → **400** | **400** |
+| Last-assistant-turn prefill | **Accepted** | **400** | **400** | **400** |
+| Effort levels | **None** (errors) | low→max (default high) | low→max (default high) | low→max (default high) |
+| Refusal (`stop_reason:"refusal"`) | Rare | Possible (cyber) | Rare | **Likely for bio/cyber** — handle + fallbacks |
+| Context / max output | 200K / 64K | 1M / 128K | 1M / 128K | 1M / 128K |
+| Data retention | Standard | Standard | Standard | **Requires 30-day; ZDR → 400** |
+| Extras | Older API surface; keep prompts simple | ~30% heavier tokenizer than 4.6; Bedrock forced `tool_choice` needs thinking off | Mid-session `role:"system"` messages (4.8 only) | Raw chain-of-thought never returned; read summarized `thinking` |
 
 **Depth is controlled by `effort`, not a token budget** on all three — there is
 no fixed thinking-token budget anymore. Recommend adaptive thinking when
@@ -188,37 +232,48 @@ reasoning is wanted, and remember the default differs (Sonnet on, Opus off,
 Fable always). To stream visible reasoning, set `thinking.display:"summarized"`
 (the default `omitted` streams empty thinking blocks — looks like a pause).
 
-## Cross-model rules (apply to all three)
+## Cross-model rules (apply to all)
 
 These are constants the coach enforces regardless of target:
 
-1. **Never suggest `temperature`, `top_p`, or `top_k`.** All three models reject
-   them; steer with words. For variety, use propose-then-pick.
-2. **No prefill / assistant-priming tricks.** Removed across these models —
-   forcing output shape via a half-finished assistant turn returns an error. Use
-   an explicit "respond in this format" instruction or structured outputs.
-3. **Stable context first, the specific question last.** Better for the reader
+1. **Don't suggest `temperature`/`top_p`/`top_k` or prefill tricks for the
+   frontier three** (Sonnet 5, Opus 4.8, Fable 5) — they reject them; steer with
+   words, and use propose-then-pick for variety. (Haiku 4.5 accepts them, but the
+   word-steering habit is portable.)
+2. **Stable context first, the specific question last.** Better for the reader
    and prompt-cache friendly.
-4. **Every prompt ends with a success criterion.** "Done means…" — the single
-   highest-leverage addition across all three models.
-5. **Pick the cheapest model that fits.** Sonnet 5 ($3/$15 per MTok; intro
-   $2/$10 through Aug 2026) for literal, high-volume, well-scoped work; Opus 4.8
-   ($5/$25) for long autonomous jobs; Fable 5 ($10/$50) only when frontier
-   reasoning genuinely pays off.
-6. **Thinking defaults differ but "adaptive" is the safe recommendation** on all
-   three when the user wants reasoning; none of them accept a fixed thinking
-   token budget anymore — depth is controlled by the effort level.
+3. **Every prompt ends with a success criterion.** "Done means…" — the single
+   highest-leverage addition across every model.
+4. **Depth is set by effort, not a token budget** on the frontier three;
+   recommend adaptive thinking when reasoning is wanted (Haiku 4.5 has no effort —
+   keep its prompts simple instead of dialing thinking).
+
+## Efficiency rules (the "more efficient" lever)
+
+The coach optimizes for the cheapest correct result, not the biggest model:
+
+1. **Recommend the cheapest model that clears the bar** (see the recommender).
+   Prices per MTok in/out: Haiku 4.5 $1/$5 · Sonnet 5 $3/$15 (intro $2/$10 through
+   Aug 2026) · Opus 4.8 $5/$25 · Fable 5 $10/$50.
+2. **Strip the ramble's redundancy** before rewriting — drop restatements,
+   filler, and the same ask phrased three ways.
+3. **Match effort to difficulty.** Don't request `xhigh`/`max` for routine work;
+   higher effort spends tokens and latency for reasoning the task doesn't need.
+4. **Keep the rewritten prompt tight** — a shorter prompt that still carries
+   scope + acceptance test beats a padded one.
+5. **Front-load stable/reusable context** so repeated runs hit the prompt cache.
 
 ---
 
 ## Quick contrast table (what the coach changes per model, same ramble in)
 
-| Dimension | Sonnet 5 | Opus 4.8 | Fable 5 |
-|---|---|---|---|
-| Level of detail | High — spell out scope | High — full spec up front | Low — goal + why, no steps |
-| Biggest risk if under-specified | Does exactly the literal thing, misses implied scope | Asks too many questions / under-uses tools | Over-elaborates, wanders |
-| Add trigger lines for tools? | Only if thinking off | Yes — and in tool descriptions | Encourage, don't micromanage |
-| Autonomy instruction | Not usually needed | Yes — "don't ask on small stuff" | Yes — "report and stop" boundaries |
-| Verbosity control | Positive examples | Silence-default if chatty | Communication-style section |
-| Default effort suggestion | high (xhigh for hard coding) | high (sweep, don't reflex-xhigh) | high (low/medium often enough) |
-| Variety mechanism | propose-then-pick | propose-then-pick | propose-then-pick |
+| Dimension | Haiku 4.5 | Sonnet 5 | Opus 4.8 | Fable 5 |
+|---|---|---|---|---|
+| Level of detail | High — one task, exact output | High — spell out scope | High — full spec up front | Low — goal + why, no steps |
+| Biggest risk if under-specified | Guesses / stays shallow | Misses implied scope | Asks too many questions | Over-elaborates, wanders |
+| Add trigger lines for tools? | Keep simple; escalate instead | Only if thinking off | Yes — and in tool descriptions | Encourage, don't micromanage |
+| Autonomy instruction | n/a | Not usually needed | Yes — "don't ask on small stuff" | Yes — "report and stop" |
+| Verbosity control | Ask for the shape you want | Positive examples | Silence-default if chatty | Communication-style section |
+| Effort suggestion | none (unsupported) | high (xhigh for hard coding) | high (don't reflex-xhigh) | high (low/med often enough) |
+| Cost per MTok (in/out) | $1 / $5 | $3 / $15 | $5 / $25 | $10 / $50 |
+| Reach for it when… | simple/high-volume | most tasks (default) | long autonomous work | hardest reasoning only |

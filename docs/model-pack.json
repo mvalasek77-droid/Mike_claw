@@ -1,14 +1,19 @@
 {
-  "pack_version": "2026.07.22",
+  "pack_version": "2026.07.23",
   "source": "docs/CLAUDE_MODEL_PROMPTING_NOTES.md",
   "verified": "2026-07",
   "cross_model_rules": [
-    "Never suggest temperature, top_p, or top_k — these models reject them; steer with words.",
-    "No prefill or assistant-priming tricks — use an explicit format instruction or structured outputs.",
-    "Put stable context first and the specific question last.",
+    "For the frontier models (Sonnet 5, Opus 4.8, Fable 5) never suggest temperature/top_p/top_k or prefill tricks — they reject them; steer with words. Haiku 4.5 still accepts them, but steering with words stays the portable default.",
+    "Put stable context first and the specific question last (clearer, and prompt-cache friendly).",
     "End every prompt with an explicit success criterion ('done means…').",
-    "Recommend adaptive thinking when reasoning is wanted; depth is set by effort, not a token budget.",
-    "Pick the cheapest model that fits the job."
+    "Depth is set by effort, not a token budget; recommend adaptive thinking when reasoning is wanted (Haiku 4.5 has no effort — keep its prompts simple instead)."
+  ],
+  "efficiency_rules": [
+    "Recommend the cheapest model that clears the task's bar — see the recommender block; don't reach for Opus/Fable when Haiku or Sonnet suffices.",
+    "Cut the ramble's redundancy: drop restatements, filler, and three-ways-of-saying-the-same-ask before rewriting.",
+    "Don't request more effort than the task needs — higher effort costs tokens and latency; match effort to difficulty.",
+    "Keep the rewritten prompt tight; a shorter prompt that still carries scope + acceptance test beats a padded one.",
+    "Front-load the stable/reusable context so repeated runs hit the prompt cache."
   ],
   "models": [
     {
@@ -148,8 +153,68 @@
         "Assume high effort is always better (it can over-tidy)"
       ],
       "best_fit": "The hardest reasoning and long-horizon problems where frontier capability justifies the price."
+    },
+    {
+      "name": "Claude Haiku 4.5",
+      "id": "claude-haiku-4-5",
+      "accent": "amber",
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0,
+      "price_note": "Cheapest and fastest; 200K context, 64K max output (smaller than the 1M models)",
+      "one_liner": "Cheap and fast — for simple, high-volume, latency-sensitive tasks.",
+      "temperament": "fast-simple",
+      "strengths": [
+        "Lowest cost and latency of the family",
+        "Great for classification, formatting, short generation, quick replies",
+        "High-volume pipelines where per-call cost dominates"
+      ],
+      "default_effort": null,
+      "hard_task_effort": null,
+      "api_facts": {
+        "thinking_when_omitted": "off",
+        "explicit_disable_allowed": true,
+        "rejects": [],
+        "accepts": ["temperature_or_top_p", "assistant_prefill"],
+        "effort_levels": [],
+        "thinking_style": "budget_tokens (older style: {type:enabled, budget_tokens:N}, min 1024, < max_tokens)",
+        "thinking_display_default": "n/a",
+        "refusal_possible": false,
+        "data_retention": "standard",
+        "context_window": 200000,
+        "max_output": 64000,
+        "notes": "Older-generation API surface: no effort parameter (it errors), thinking uses budget_tokens not adaptive, and sampling params + prefill ARE accepted. Structured outputs supported. Don't expect frontier reasoning — keep prompts simple, concrete, and explicit."
+      },
+      "rewrite_rules": [
+        "Keep it simple and concrete — Haiku is not a deep reasoner; spell out exactly what you want.",
+        "Best for one clear task per prompt; don't ask it to plan multi-step work.",
+        "Use explicit format instructions or structured outputs for reliable machine-readable output.",
+        "Give a short worked example when the output shape matters — Haiku follows examples well.",
+        "Skip effort/adaptive-thinking advice entirely (unsupported); if it needs reasoning, that's a signal to move up to Sonnet 5."
+      ],
+      "do": [
+        "Use it for classify / format / extract / short reply",
+        "Give one clear task and an output shape",
+        "Move up to Sonnet 5 if the task needs real reasoning"
+      ],
+      "dont": [
+        "Ask it to plan or reason across many steps",
+        "Suggest an effort level (unsupported)",
+        "Expect frontier-quality prose or code"
+      ],
+      "best_fit": "Simple, high-volume, latency- or cost-sensitive tasks that don't need deep reasoning."
     }
   ],
+  "recommender": {
+    "note": "Signals in the ramble map to a recommended model. Default to the cheapest model that clears the task's bar; the app suggests it but the user can override.",
+    "default": "claude-sonnet-5",
+    "rules": [
+      {"model": "claude-haiku-4-5", "when": "Simple, well-defined, single-step: classify, format, extract, short reply, quick lookup — or explicitly high-volume / latency-sensitive.", "why": "Cheapest and fastest; deep reasoning not needed."},
+      {"model": "claude-sonnet-5", "when": "Literal, well-scoped, structured work; most coding; medium-complexity tasks where predictability matters.", "why": "Near-Opus quality at Sonnet cost; the sensible default."},
+      {"model": "claude-opus-4-8", "when": "Long, multi-step, autonomous work: refactors, overnight builds, deep research, end-to-end deliverables.", "why": "State-of-the-art long-horizon autonomy."},
+      {"model": "claude-fable-5", "when": "The hardest novel reasoning or frontier problems where lesser models plateau.", "why": "Deepest reasoning; justifies the top price only when it pays off."}
+    ],
+    "tie_breaker": "When two models both clear the bar, pick the cheaper one."
+  },
   "unknown_model_fallback": {
     "note": "Future models not in this pack fall back to cross_model_rules plus these defaults.",
     "rewrite_rules": [

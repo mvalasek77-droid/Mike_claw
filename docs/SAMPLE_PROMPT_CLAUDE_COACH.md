@@ -56,18 +56,30 @@ An iPhone app that takes rambling, stream-of-consciousness prompts and
 turns them into clean, model-ready prompts for Anthropic's Claude
 models. Home screen: a big text box that says "Just ramble." The user
 types or dictates whatever is in their head — half-formed, out of
-order, contradictory is fine — then picks a target model from a
-segmented control: Sonnet 5, Opus 4.8, or Fable 5.
+order, contradictory is fine.
 
-Tap Coach It and the app produces three things:
+When they tap Coach It, the app first RECOMMENDS the cheapest model
+that fits the task (Haiku 4.5 for simple/high-volume work, Sonnet 5 as
+the default, Opus 4.8 for long autonomous jobs, Fable 5 only for the
+hardest reasoning) with a one-line reason and the price — the user can
+accept the suggestion or override it with a segmented control. This is
+the efficiency win: most rambles don't need an expensive model, and the
+app steers away from overpaying by default.
+
+The app then produces three things:
 1. The rewritten prompt, tailored to the chosen model, in a card the
    user can copy or share with one tap.
 2. A "What I changed" list: each edit with a one-line reason
    ("Moved your constraint up front", "Added an acceptance test",
-   "Cut the three restatements of the same ask").
+   "Cut the three restatements of the same ask", "Recommended Haiku —
+   this is a formatting task, no need to pay for Opus").
 3. A "Why this works on [model]" note, two or three sentences.
 
 Each model has a Model Profile that drives the rewrite rules:
+- Haiku 4.5 profile: cheapest and fastest, but shallow. The coach keeps
+  the prompt simple and concrete, one clear task with an explicit output
+  shape, and if the ramble actually needs reasoning it suggests moving
+  up to Sonnet 5 rather than piling instructions onto Haiku.
 - Sonnet 5 profile: this model follows instructions literally and
   won't infer unstated scope. The coach makes scope explicit ("apply
   to every section, not just the first"), turns vague asks into
@@ -116,7 +128,7 @@ no analytics, no tracking. Nothing the user types ever leaves the
 phone except optional Test It calls to Anthropic with their own key.
 
 Style: iOS 26 Liquid Glass. Warm neutral palette, one accent color
-per model (Sonnet teal, Opus indigo, Fable ember) so the whole
+per model (Haiku amber, Sonnet teal, Opus indigo, Fable ember) so the whole
 screen subtly re-tints when you switch targets. Haptic tick on
 Coach It. Dark mode by default.
 ```
