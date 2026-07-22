@@ -1,5 +1,5 @@
 {
-  "pack_version": "2026.07.20",
+  "pack_version": "2026.07.22",
   "source": "docs/CLAUDE_MODEL_PROMPTING_NOTES.md",
   "verified": "2026-07",
   "cross_model_rules": [
@@ -27,6 +27,16 @@
       ],
       "default_effort": "high",
       "hard_task_effort": "xhigh",
+      "api_facts": {
+        "thinking_when_omitted": "adaptive_on",
+        "explicit_disable_allowed": true,
+        "rejects": ["temperature", "top_p", "top_k", "budget_tokens", "assistant_prefill"],
+        "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+        "thinking_display_default": "omitted",
+        "refusal_possible": true,
+        "data_retention": "standard",
+        "notes": "Tokenizer produces ~30% more tokens than Sonnet 4.6. Bedrock only: forced tool_choice requires thinking disabled."
+      },
       "rewrite_rules": [
         "Make scope explicit — restate any rule that should apply broadly ('every section, not just the first').",
         "Convert vague asks into concrete deliverables with a definition of done.",
@@ -63,6 +73,16 @@
       ],
       "default_effort": "high",
       "hard_task_effort": "xhigh",
+      "api_facts": {
+        "thinking_when_omitted": "off",
+        "explicit_disable_allowed": true,
+        "rejects": ["temperature", "top_p", "top_k", "budget_tokens", "assistant_prefill"],
+        "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+        "thinking_display_default": "omitted",
+        "refusal_possible": false,
+        "data_retention": "standard",
+        "notes": "Thinking is OFF when the thinking field is omitted — set {type:adaptive} explicitly to enable. Supports mid-session role:'system' messages (Opus 4.8 only). Same request surface as 4.7."
+      },
       "rewrite_rules": [
         "Consolidate the ramble into one complete up-front spec: goal, inputs, constraints, definition of done.",
         "Add explicit 'use X when Y' trigger lines for search, subagents, memory, and custom tools.",
@@ -99,6 +119,16 @@
       ],
       "default_effort": "high",
       "hard_task_effort": "xhigh",
+      "api_facts": {
+        "thinking_when_omitted": "always_on",
+        "explicit_disable_allowed": false,
+        "rejects": ["temperature", "top_p", "top_k", "budget_tokens", "assistant_prefill", "thinking_disabled"],
+        "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+        "thinking_display_default": "omitted",
+        "refusal_possible": true,
+        "data_retention": "requires_30_day",
+        "notes": "Thinking is always on — omit the thinking param; explicit {type:disabled} is a 400. Raw chain-of-thought never returned. Likely to refuse bio/cyber requests — handle refusal and opt into fallbacks. Not available under zero-data-retention (ZDR orgs 400 on every request). Same tokenizer as Opus 4.8."
+      },
       "rewrite_rules": [
         "Strip step-by-step scaffolding down to goal + constraints + acceptance test — over-prescription reduces quality.",
         "Prepend the intent: 'I'm building X for Y; they need Z — with that in mind, [request].'",

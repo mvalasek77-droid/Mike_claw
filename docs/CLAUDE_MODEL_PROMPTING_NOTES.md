@@ -161,6 +161,33 @@ analysis — where frontier capability justifies the higher price.
 
 ---
 
+## API facts the coach must get exactly right (per model)
+
+Prompt craft is above; these are the hard API facts. If the coach ever emits a
+"recommended settings" line alongside the prompt, it must not contradict these,
+and it must never suggest a parameter a model rejects. Verified July 2026.
+
+| Fact | Sonnet 5 | Opus 4.8 | Fable 5 |
+|---|---|---|---|
+| Model ID | `claude-sonnet-5` | `claude-opus-4-8` | `claude-fable-5` |
+| Thinking when `thinking` omitted | **Adaptive ON** | **OFF** — set `{type:"adaptive"}` to enable | **Always on** — omit the param |
+| Explicit `{type:"disabled"}` | Allowed | Allowed | **400 error** — never send it |
+| `budget_tokens` | **400** — removed | **400** — removed | **400** — removed |
+| Sampling (`temperature`/`top_p`/`top_k`) | Non-default → **400** | Non-default → **400** | **400** — removed |
+| Last-assistant-turn prefill | **400** | **400** | **400** |
+| Effort levels | low/med/high/xhigh/max (default high) | low/med/high/xhigh/max (default high) | low/med/high/xhigh/max (default high) |
+| `thinking.display` default | `omitted` | `omitted` | `omitted` |
+| Refusal (`stop_reason:"refusal"`) | Possible (cyber) — handle | Rare | **Likely for bio/cyber** — handle + opt into fallbacks |
+| Data retention | Standard | Standard | **Requires 30-day; ZDR orgs 400 on every request** |
+| Tokenizer note | ~30% more tokens than Sonnet 4.6 | — | Same tokenizer as Opus 4.8 |
+| Extras | Bedrock only: forced `tool_choice` needs thinking disabled | Mid-session `role:"system"` messages supported (4.8 only) | Raw chain-of-thought never returned; read summarized `thinking` blocks |
+
+**Depth is controlled by `effort`, not a token budget** on all three — there is
+no fixed thinking-token budget anymore. Recommend adaptive thinking when
+reasoning is wanted, and remember the default differs (Sonnet on, Opus off,
+Fable always). To stream visible reasoning, set `thinking.display:"summarized"`
+(the default `omitted` streams empty thinking blocks — looks like a pause).
+
 ## Cross-model rules (apply to all three)
 
 These are constants the coach enforces regardless of target:
