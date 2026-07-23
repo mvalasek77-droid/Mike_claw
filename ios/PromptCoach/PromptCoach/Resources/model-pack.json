@@ -1,0 +1,332 @@
+{
+  "pack_version": "2026.07.26",
+  "source": "docs/CLAUDE_MODEL_PROMPTING_NOTES.md",
+  "verified": "2026-07",
+  "cross_model_rules": [
+    "For the frontier models (Sonnet 5, Opus 4.8, Fable 5) never suggest temperature/top_p/top_k or prefill tricks — they reject them; steer with words. Haiku 4.5 still accepts them, but steering with words stays the portable default.",
+    "Put stable context first and the specific question last (clearer, and prompt-cache friendly).",
+    "End every prompt with an explicit success criterion ('done means…').",
+    "Depth is set by effort, not a token budget; recommend adaptive thinking when reasoning is wanted (Haiku 4.5 has no effort — keep its prompts simple instead)."
+  ],
+  "efficiency_rules": [
+    "Recommend the cheapest model that clears the task's bar — see the recommender block; don't reach for Opus/Fable when Haiku or Sonnet suffices.",
+    "Cut the ramble's redundancy: drop restatements, filler, and three-ways-of-saying-the-same-ask before rewriting.",
+    "Don't request more effort than the task needs — higher effort costs tokens and latency; match effort to difficulty.",
+    "Keep the rewritten prompt tight; a shorter prompt that still carries scope + acceptance test beats a padded one.",
+    "Front-load the stable/reusable context so repeated runs hit the prompt cache."
+  ],
+  "techniques": {
+    "note": "The coach's toolkit — full detail in docs/PROMPTING_TECHNIQUES.md, sourced from Anthropic's official prompt-engineering docs (verified 2026-07). Each technique has a trigger; the coach applies matching ones and names them in 'What I changed'.",
+    "library": [
+      {"id": "clear_direct", "name": "Be clear and direct", "category": "foundational", "when": "always — vague or ambiguous ask"},
+      {"id": "add_context", "name": "Add context / say why", "category": "foundational", "when": "instruction whose intent isn't obvious; strongest on Fable 5"},
+      {"id": "examples", "name": "Use examples (multishot)", "category": "foundational", "when": "output format/tone/structure matters; 3-5 in <example> tags; great for Haiku"},
+      {"id": "xml_structure", "name": "Structure with XML tags", "category": "foundational", "when": "ramble mixes ask + pasted data/code"},
+      {"id": "role", "name": "Give Claude a role", "category": "foundational", "when": "domain-specific task"},
+      {"id": "success_criterion", "name": "End with a success criterion", "category": "foundational", "when": "always"},
+      {"id": "do_not_dont", "name": "Say what TO do", "category": "formatting", "when": "ramble is full of prohibitions"},
+      {"id": "format_indicator", "name": "Format indicator / style match", "category": "formatting", "when": "specific or machine-readable output shape"},
+      {"id": "verbosity", "name": "Control verbosity", "category": "formatting", "when": "output too long/short for the use"},
+      {"id": "plain_text_latex", "name": "Plain text vs LaTeX", "category": "formatting", "when": "math output to a non-LaTeX surface"},
+      {"id": "structured_outputs", "name": "Structured outputs (not prefill)", "category": "formatting", "when": "needs JSON/schema/classification"},
+      {"id": "adaptive_thinking", "name": "Let it think (adaptive + effort)", "category": "reasoning", "when": "hard multi-step task"},
+      {"id": "manual_cot", "name": "Manual chain-of-thought", "category": "reasoning", "when": "thinking off, or Haiku 4.5"},
+      {"id": "self_check", "name": "Ask it to self-check", "category": "reasoning", "when": "correctness-sensitive (code/math)"},
+      {"id": "commit_approach", "name": "Commit to an approach", "category": "reasoning", "when": "open-ended task on a high-effort model"},
+      {"id": "explicit_action", "name": "Be explicit about action", "category": "agentic", "when": "action-vs-advice is ambiguous"},
+      {"id": "tool_triggers", "name": "Trigger conditions in tool descriptions", "category": "agentic", "when": "task mentions tools; key for Opus 4.8"},
+      {"id": "parallel_tools", "name": "Parallel tool calls", "category": "agentic", "when": "multi-read/multi-search agent prompt"},
+      {"id": "autonomy_safety", "name": "Autonomy & safety balance", "category": "agentic", "when": "agent can take destructive/irreversible actions"},
+      {"id": "state_tracking", "name": "Long-horizon state tracking", "category": "agentic", "when": "multi-window / long autonomous work"},
+      {"id": "anti_hallucination", "name": "Ground answers / investigate first", "category": "agentic", "when": "codebase or document Q&A"},
+      {"id": "self_correction_chain", "name": "Self-correction chaining", "category": "agentic", "when": "high-stakes output worth a review pass"},
+      {"id": "long_context", "name": "Long-context layout", "category": "capability", "when": "20k+ tokens of pasted docs/data"},
+      {"id": "anti_slop_frontend", "name": "Anti-AI-slop frontend brief", "category": "capability", "when": "UI/design generation"},
+      {"id": "vision_crop", "name": "Vision crop tool", "category": "capability", "when": "image analysis"}
+    ],
+    "retired": [
+      "assistant prefill (400 on frontier models) — use structured outputs or a direct no-preamble instruction",
+      "temperature / top_p / top_k on frontier models (rejected) — steer with words",
+      "fixed thinking budgets / budget_tokens (rejected on Opus 4.7+ and Fable) — use effort",
+      "'CRITICAL: YOU MUST' tool language — causes overtriggering; use 'Use this when…'",
+      "'if in doubt, use [tool]' / blanket 'always' defaults — make them conditional",
+      "prescriptive step-by-step reasoning plans on frontier models — 'think it through' beats a hand-written plan"
+    ]
+  },
+  "advanced_features": {
+    "note": "The 'next level' power features layered on top of the core ramble->clean-prompt loop. Full prose in docs/TASK_PLAYBOOKS.md -> Level-up features.",
+    "features": [
+      {
+        "id": "meta_prompt",
+        "name": "Sharpen it further (meta-prompting)",
+        "what": "An optional second pass that critiques and improves the already-coached prompt.",
+        "how": "Applies the self_correction_chain technique to the prompt itself: draft -> review against the technique checklist + task playbook -> refine. Runs on device from the rules, or via Test It on the user's key for a model-graded pass.",
+        "when": "User taps 'Sharpen' on a coached prompt, or for high-stakes prompts."
+      },
+      {
+        "id": "structured_mode",
+        "name": "Structured-output mode",
+        "what": "Emits the coached prompt PLUS a ready-to-use JSON schema so results come back machine-readable.",
+        "how": "For code/sql/classify/extract tasks, generate a JSON Schema from the acceptance criteria and attach a 'conform to this schema' instruction (structured_outputs technique) — never prefill.",
+        "when": "Task is classify/extract/summarize/sql, or the user wants parseable output."
+      },
+      {
+        "id": "cache_layout",
+        "name": "Prompt-cache-aware layout",
+        "what": "Orders the prompt so the stable, reusable part comes first and the volatile ask comes last.",
+        "how": "Front-load fixed context (role, standing instructions, reference docs) ahead of the per-run question, so repeated runs on the same key hit the prompt cache (~10% of input cost). Marks the reusable prefix.",
+        "when": "Prompt has a large reusable preamble the user will run many times."
+      },
+      {
+        "id": "report_card",
+        "name": "Prompt report card",
+        "what": "Scores the ORIGINAL ramble against the technique checklist so the user sees what was missing.",
+        "how": "Checks presence of: clear ask, context/why, role, examples, XML structure for pasted data, explicit scope, success criterion — and flags any retired patterns (prefill, temperature, budget_tokens, CRITICAL-language). Returns a 0-100 score + per-item pass/fail, then the coached prompt shows the fixes.",
+        "when": "Shown alongside every coaching result to reinforce learning."
+      }
+    ],
+    "report_card_checklist": [
+      {"item": "clear_ask", "checks": "Is the actual request unambiguous and specific?"},
+      {"item": "context_why", "checks": "Is the intent/motivation stated?"},
+      {"item": "role", "checks": "Is a role/system framing present when the task is domain-specific?"},
+      {"item": "examples", "checks": "Are examples provided when output shape matters?"},
+      {"item": "xml_structure", "checks": "Is pasted data/code separated from the instruction?"},
+      {"item": "explicit_scope", "checks": "Is scope stated (what to touch / not touch)?"},
+      {"item": "success_criterion", "checks": "Is there a definition of done?"},
+      {"item": "no_retired_patterns", "checks": "Free of prefill / temperature / budget_tokens / CRITICAL-language?"}
+    ]
+  },
+  "task_playbooks": {
+    "note": "Detected task type -> recommended model + ordered technique recipe + output shape. Full prose in docs/TASK_PLAYBOOKS.md.",
+    "playbooks": [
+      {"task": "email", "recommend": "claude-haiku-4-5", "techniques": ["add_context", "clear_direct", "examples", "success_criterion"], "output": "the message text, tight"},
+      {"task": "code", "recommend": "claude-sonnet-5", "techniques": ["clear_direct", "xml_structure", "explicit_action", "adaptive_thinking", "self_check", "anti_hallucination", "success_criterion"], "output": "code + one-line what-changed"},
+      {"task": "sql", "recommend": "claude-sonnet-5", "techniques": ["xml_structure", "clear_direct", "examples", "success_criterion", "self_check"], "output": "dialect-correct query"},
+      {"task": "debug", "recommend": "claude-opus-4-8", "techniques": ["xml_structure", "anti_hallucination", "adaptive_thinking", "commit_approach", "self_check"], "output": "root cause + fix"},
+      {"task": "research", "recommend": "claude-opus-4-8", "techniques": ["success_criterion", "add_context", "tool_triggers", "state_tracking", "self_correction_chain"], "output": "synthesis with sources"},
+      {"task": "writing", "recommend": "claude-fable-5", "techniques": ["role", "add_context", "examples", "do_not_dont", "verbosity", "success_criterion"], "output": "the piece"},
+      {"task": "summarize", "recommend": "claude-haiku-4-5", "techniques": ["long_context", "clear_direct", "structured_outputs", "success_criterion"], "output": "summary or structured extraction"},
+      {"task": "classify", "recommend": "claude-haiku-4-5", "techniques": ["examples", "structured_outputs", "clear_direct", "success_criterion"], "output": "machine-readable label"},
+      {"task": "design", "recommend": "claude-opus-4-8", "techniques": ["anti_slop_frontend", "add_context", "format_indicator", "explicit_action", "success_criterion"], "output": "UI/code or 3-4 proposed directions"},
+      {"task": "agentic", "recommend": "claude-opus-4-8", "techniques": ["clear_direct", "tool_triggers", "parallel_tools", "autonomy_safety", "state_tracking", "anti_hallucination", "self_check"], "output": "the agent/system prompt"}
+    ]
+  },
+  "refusal_handling": {
+    "note": "The legitimate inverse of a jailbreak: help a real request be understood as legitimate; never help disguise a disallowed one. Full detail in docs/TASK_PLAYBOOKS.md.",
+    "false_positive_fixes": [
+      "State the benign context and purpose (authorized pentest of own server, clinical charting, fiction, academic study).",
+      "Be specific about scope and role — vague-and-edgy reads as risky; specific-and-contextualized reads as legitimate.",
+      "Give permission to partial-decline: 'if part of this isn't something you can help with, do the rest and say which part you skipped.'",
+      "On a genuine refusal (e.g. Fable 5 bio/cyber stop_reason), surface it honestly and optionally fall back to Opus 4.8 — do not defeat the classifier."
+    ],
+    "out_of_scope": "Will not craft prompts to bypass safety systems or produce disallowed content (weapons, CSAM, real-world harm, malware for unauthorized targets). No fake-authorization or role-play wrappers around a correct refusal. Encoding that would violate Anthropic's usage policy, revoke the API key, and get the app pulled."
+  },
+  "models": [
+    {
+      "name": "Claude Sonnet 5",
+      "id": "claude-sonnet-5",
+      "accent": "teal",
+      "price_in_per_mtok": 3.0,
+      "price_out_per_mtok": 15.0,
+      "price_note": "Intro $2/$10 per MTok through 2026-08-31",
+      "one_liner": "Takes you literally — spell out scope, it won't infer.",
+      "temperament": "literal",
+      "strengths": [
+        "Predictable, precise instruction-following",
+        "Structured extraction and high-volume pipelines",
+        "Fast, near-Opus quality on coding at lower cost"
+      ],
+      "default_effort": "high",
+      "hard_task_effort": "xhigh",
+      "api_facts": {
+        "thinking_when_omitted": "adaptive_on",
+        "explicit_disable_allowed": true,
+        "rejects": ["temperature", "top_p", "top_k", "budget_tokens", "assistant_prefill"],
+        "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+        "thinking_display_default": "omitted",
+        "refusal_possible": true,
+        "data_retention": "standard",
+        "notes": "Tokenizer produces ~30% more tokens than Sonnet 4.6. Bedrock only: forced tool_choice requires thinking disabled."
+      },
+      "rewrite_rules": [
+        "Make scope explicit — restate any rule that should apply broadly ('every section, not just the first').",
+        "Convert vague asks into concrete deliverables with a definition of done.",
+        "Control verbosity with positive examples ('be concise, skip non-essential context'), not prohibitions.",
+        "For creative variety use propose-then-pick (3–4 directions, user chooses) — no temperature knob.",
+        "If thinking is disabled and a tool is needed, add an explicit trigger line for it.",
+        "Remove stale 'summarize every N tool calls' progress scaffolding."
+      ],
+      "do": [
+        "State scope universally",
+        "Give an acceptance test",
+        "Raise effort if reasoning is shallow"
+      ],
+      "dont": [
+        "Assume it will generalize an instruction",
+        "Rely on temperature for variety",
+        "Prompt around under-thinking instead of raising effort"
+      ],
+      "best_fit": "Literal, well-scoped, high-volume, structured, cost-sensitive tasks."
+    },
+    {
+      "name": "Claude Opus 4.8",
+      "id": "claude-opus-4-8",
+      "accent": "indigo",
+      "price_in_per_mtok": 5.0,
+      "price_out_per_mtok": 25.0,
+      "price_note": "1M context at standard pricing, no long-context premium",
+      "one_liner": "Deliberate autonomous worker — hand over the whole spec up front.",
+      "temperament": "autonomous",
+      "strengths": [
+        "State-of-the-art long-horizon autonomous work",
+        "Refactors and overnight builds that finish without correction",
+        "Strong bug-finding and clear explanations"
+      ],
+      "default_effort": "high",
+      "hard_task_effort": "xhigh",
+      "api_facts": {
+        "thinking_when_omitted": "off",
+        "explicit_disable_allowed": true,
+        "rejects": ["temperature", "top_p", "top_k", "budget_tokens", "assistant_prefill"],
+        "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+        "thinking_display_default": "omitted",
+        "refusal_possible": false,
+        "data_retention": "standard",
+        "notes": "Thinking is OFF when the thinking field is omitted — set {type:adaptive} explicitly to enable. Supports mid-session role:'system' messages (Opus 4.8 only). Same request surface as 4.7."
+      },
+      "rewrite_rules": [
+        "Consolidate the ramble into one complete up-front spec: goal, inputs, constraints, definition of done.",
+        "Add explicit 'use X when Y' trigger lines for search, subagents, memory, and custom tools.",
+        "Add an autonomy line: pick reasonable defaults for small decisions, ask only on scope changes or destructive actions.",
+        "Remove forced-progress scaffolding; add a silence-default if a terse coding agent is wanted.",
+        "Re-check warmth/style prompts carried over from 4.7 — 4.8 is warmer by default and they may overcorrect.",
+        "If thinking is disabled, add 'respond only with your final answer' to prevent reasoning leaking into the response."
+      ],
+      "do": [
+        "Give the full task in the first turn",
+        "Put trigger conditions in tool descriptions",
+        "Start at high effort and sweep, don't reflex to xhigh"
+      ],
+      "dont": [
+        "Dribble requirements over multiple turns",
+        "Assume it will reach for tools/subagents on its own",
+        "Leave it to ask permission on every small choice"
+      ],
+      "best_fit": "Long, autonomous, multi-step work you can fully specify up front."
+    },
+    {
+      "name": "Claude Fable 5",
+      "id": "claude-fable-5",
+      "accent": "ember",
+      "price_in_per_mtok": 10.0,
+      "price_out_per_mtok": 50.0,
+      "price_note": "Requires 30-day data retention; not available under zero-data-retention",
+      "one_liner": "Frontier reasoner — give the goal and the why, not the steps.",
+      "temperament": "frontier",
+      "strengths": [
+        "Deepest reasoning and hardest long-horizon problems",
+        "First-shot implementations of well-specified systems",
+        "Reliable parallel subagent delegation"
+      ],
+      "default_effort": "high",
+      "hard_task_effort": "xhigh",
+      "api_facts": {
+        "thinking_when_omitted": "always_on",
+        "explicit_disable_allowed": false,
+        "rejects": ["temperature", "top_p", "top_k", "budget_tokens", "assistant_prefill", "thinking_disabled"],
+        "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+        "thinking_display_default": "omitted",
+        "refusal_possible": true,
+        "data_retention": "requires_30_day",
+        "notes": "Thinking is always on — omit the thinking param; explicit {type:disabled} is a 400. Raw chain-of-thought never returned. Likely to refuse bio/cyber requests — handle refusal and opt into fallbacks. Not available under zero-data-retention (ZDR orgs 400 on every request). Same tokenizer as Opus 4.8."
+      },
+      "rewrite_rules": [
+        "Strip step-by-step scaffolding down to goal + constraints + acceptance test — over-prescription reduces quality.",
+        "Prepend the intent: 'I'm building X for Y; they need Z — with that in mind, [request].'",
+        "Add a short communication-style section (lead with the outcome; be selective, not compressed).",
+        "For long autonomous runs, add 'audit each progress claim against a tool result from this session'.",
+        "State boundaries: when the user is asking or thinking out loud, report the assessment and stop.",
+        "Encourage async subagent delegation and a memory file for learnings; warn that a hard run may take many minutes."
+      ],
+      "do": [
+        "Give it your hardest problems",
+        "Explain the why behind the ask",
+        "Run an effort sweep — low/medium is often enough"
+      ],
+      "dont": [
+        "Micromanage with enumerated steps",
+        "Use it for routine tasks a cheaper model handles",
+        "Assume high effort is always better (it can over-tidy)"
+      ],
+      "best_fit": "The hardest reasoning and long-horizon problems where frontier capability justifies the price."
+    },
+    {
+      "name": "Claude Haiku 4.5",
+      "id": "claude-haiku-4-5",
+      "accent": "amber",
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0,
+      "price_note": "Cheapest and fastest; 200K context, 64K max output (smaller than the 1M models)",
+      "one_liner": "Cheap and fast — for simple, high-volume, latency-sensitive tasks.",
+      "temperament": "fast-simple",
+      "strengths": [
+        "Lowest cost and latency of the family",
+        "Great for classification, formatting, short generation, quick replies",
+        "High-volume pipelines where per-call cost dominates"
+      ],
+      "default_effort": null,
+      "hard_task_effort": null,
+      "api_facts": {
+        "thinking_when_omitted": "off",
+        "explicit_disable_allowed": true,
+        "rejects": [],
+        "accepts": ["temperature_or_top_p", "assistant_prefill"],
+        "effort_levels": [],
+        "thinking_style": "budget_tokens (older style: {type:enabled, budget_tokens:N}, min 1024, < max_tokens)",
+        "thinking_display_default": "n/a",
+        "refusal_possible": false,
+        "data_retention": "standard",
+        "context_window": 200000,
+        "max_output": 64000,
+        "notes": "Older-generation API surface: no effort parameter (it errors), thinking uses budget_tokens not adaptive, and sampling params + prefill ARE accepted. Structured outputs supported. Don't expect frontier reasoning — keep prompts simple, concrete, and explicit."
+      },
+      "rewrite_rules": [
+        "Keep it simple and concrete — Haiku is not a deep reasoner; spell out exactly what you want.",
+        "Best for one clear task per prompt; don't ask it to plan multi-step work.",
+        "Use explicit format instructions or structured outputs for reliable machine-readable output.",
+        "Give a short worked example when the output shape matters — Haiku follows examples well.",
+        "Skip effort/adaptive-thinking advice entirely (unsupported); if it needs reasoning, that's a signal to move up to Sonnet 5."
+      ],
+      "do": [
+        "Use it for classify / format / extract / short reply",
+        "Give one clear task and an output shape",
+        "Move up to Sonnet 5 if the task needs real reasoning"
+      ],
+      "dont": [
+        "Ask it to plan or reason across many steps",
+        "Suggest an effort level (unsupported)",
+        "Expect frontier-quality prose or code"
+      ],
+      "best_fit": "Simple, high-volume, latency- or cost-sensitive tasks that don't need deep reasoning."
+    }
+  ],
+  "recommender": {
+    "note": "Signals in the ramble map to a recommended model. Default to the cheapest model that clears the task's bar; the app suggests it but the user can override.",
+    "default": "claude-sonnet-5",
+    "rules": [
+      {"model": "claude-haiku-4-5", "when": "Simple, well-defined, single-step: classify, format, extract, short reply, quick lookup — or explicitly high-volume / latency-sensitive.", "why": "Cheapest and fastest; deep reasoning not needed."},
+      {"model": "claude-sonnet-5", "when": "Literal, well-scoped, structured work; most coding; medium-complexity tasks where predictability matters.", "why": "Near-Opus quality at Sonnet cost; the sensible default."},
+      {"model": "claude-opus-4-8", "when": "Long, multi-step, autonomous work: refactors, overnight builds, deep research, end-to-end deliverables.", "why": "State-of-the-art long-horizon autonomy."},
+      {"model": "claude-fable-5", "when": "The hardest novel reasoning or frontier problems where lesser models plateau.", "why": "Deepest reasoning; justifies the top price only when it pays off."}
+    ],
+    "tie_breaker": "When two models both clear the bar, pick the cheaper one."
+  },
+  "unknown_model_fallback": {
+    "note": "Future models not in this pack fall back to cross_model_rules plus these defaults.",
+    "rewrite_rules": [
+      "Front-load context, put the question last, end with a success criterion.",
+      "Keep instructions explicit but not over-prescriptive; state scope where it matters.",
+      "Recommend adaptive thinking at high effort; do not emit sampling parameters or prefills."
+    ]
+  }
+}
