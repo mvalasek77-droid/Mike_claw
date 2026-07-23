@@ -45,6 +45,16 @@ Model Profile summaries in the prompt below are the short form; the notes doc
 and JSON are the source of truth. When Anthropic ships a new model, add an entry
 to `model-pack.json` and bump `pack_version` — no app update needed.
 
+**The app is a "how to prompt Claude correctly" tool, not just a tier picker.**
+Its coaching engine draws on a full technique library — Anthropic's official
+prompt-engineering methods (roles, examples, XML structure, chain-of-thought,
+long-context layout, tool-trigger conditions, anti-hallucination, and ~18 more) —
+documented in `docs/PROMPTING_TECHNIQUES.md` and encoded as the `techniques`
+block in `docs/model-pack.json`. It also knows the *retired* patterns (prefill,
+temperature, fixed thinking budgets, "CRITICAL: YOU MUST" language) and strips
+them. Crucially, when it rewrites a ramble it **names the techniques it applied**
+so the user learns the method — every coached prompt doubles as a lesson.
+
 ## The prompt (paste this into DescribeAppView)
 
 **Title:** `Claude Prompt Coach`
@@ -69,11 +79,16 @@ app steers away from overpaying by default.
 The app then produces three things:
 1. The rewritten prompt, tailored to the chosen model, in a card the
    user can copy or share with one tap.
-2. A "What I changed" list: each edit with a one-line reason
-   ("Moved your constraint up front", "Added an acceptance test",
-   "Cut the three restatements of the same ask", "Recommended Haiku —
-   this is a formatting task, no need to pay for Opus").
+2. A "What I changed" list where each edit NAMES the prompt-engineering
+   technique it applied, so the user learns the method — "Added a role
+   (system prompt)", "Moved your data to the top and wrapped it in XML
+   tags (long-context layout)", "Added a success criterion", "Cut the
+   three restatements", "Stripped your prefill — that 400s on this model,
+   used a format instruction instead".
 3. A "Why this works on [model]" note, two or three sentences.
+4. A tappable Learn link on each named technique that opens a short
+   explainer (drawn from the technique library) — the app teaches how to
+   prompt Claude correctly, it doesn't just hand back a black-box rewrite.
 
 Each model has a Model Profile that drives the rewrite rules:
 - Haiku 4.5 profile: cheapest and fastest, but shallow. The coach keeps

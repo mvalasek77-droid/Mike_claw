@@ -1,5 +1,5 @@
 {
-  "pack_version": "2026.07.23",
+  "pack_version": "2026.07.24",
   "source": "docs/CLAUDE_MODEL_PROMPTING_NOTES.md",
   "verified": "2026-07",
   "cross_model_rules": [
@@ -15,6 +15,44 @@
     "Keep the rewritten prompt tight; a shorter prompt that still carries scope + acceptance test beats a padded one.",
     "Front-load the stable/reusable context so repeated runs hit the prompt cache."
   ],
+  "techniques": {
+    "note": "The coach's toolkit — full detail in docs/PROMPTING_TECHNIQUES.md, sourced from Anthropic's official prompt-engineering docs (verified 2026-07). Each technique has a trigger; the coach applies matching ones and names them in 'What I changed'.",
+    "library": [
+      {"id": "clear_direct", "name": "Be clear and direct", "category": "foundational", "when": "always — vague or ambiguous ask"},
+      {"id": "add_context", "name": "Add context / say why", "category": "foundational", "when": "instruction whose intent isn't obvious; strongest on Fable 5"},
+      {"id": "examples", "name": "Use examples (multishot)", "category": "foundational", "when": "output format/tone/structure matters; 3-5 in <example> tags; great for Haiku"},
+      {"id": "xml_structure", "name": "Structure with XML tags", "category": "foundational", "when": "ramble mixes ask + pasted data/code"},
+      {"id": "role", "name": "Give Claude a role", "category": "foundational", "when": "domain-specific task"},
+      {"id": "success_criterion", "name": "End with a success criterion", "category": "foundational", "when": "always"},
+      {"id": "do_not_dont", "name": "Say what TO do", "category": "formatting", "when": "ramble is full of prohibitions"},
+      {"id": "format_indicator", "name": "Format indicator / style match", "category": "formatting", "when": "specific or machine-readable output shape"},
+      {"id": "verbosity", "name": "Control verbosity", "category": "formatting", "when": "output too long/short for the use"},
+      {"id": "plain_text_latex", "name": "Plain text vs LaTeX", "category": "formatting", "when": "math output to a non-LaTeX surface"},
+      {"id": "structured_outputs", "name": "Structured outputs (not prefill)", "category": "formatting", "when": "needs JSON/schema/classification"},
+      {"id": "adaptive_thinking", "name": "Let it think (adaptive + effort)", "category": "reasoning", "when": "hard multi-step task"},
+      {"id": "manual_cot", "name": "Manual chain-of-thought", "category": "reasoning", "when": "thinking off, or Haiku 4.5"},
+      {"id": "self_check", "name": "Ask it to self-check", "category": "reasoning", "when": "correctness-sensitive (code/math)"},
+      {"id": "commit_approach", "name": "Commit to an approach", "category": "reasoning", "when": "open-ended task on a high-effort model"},
+      {"id": "explicit_action", "name": "Be explicit about action", "category": "agentic", "when": "action-vs-advice is ambiguous"},
+      {"id": "tool_triggers", "name": "Trigger conditions in tool descriptions", "category": "agentic", "when": "task mentions tools; key for Opus 4.8"},
+      {"id": "parallel_tools", "name": "Parallel tool calls", "category": "agentic", "when": "multi-read/multi-search agent prompt"},
+      {"id": "autonomy_safety", "name": "Autonomy & safety balance", "category": "agentic", "when": "agent can take destructive/irreversible actions"},
+      {"id": "state_tracking", "name": "Long-horizon state tracking", "category": "agentic", "when": "multi-window / long autonomous work"},
+      {"id": "anti_hallucination", "name": "Ground answers / investigate first", "category": "agentic", "when": "codebase or document Q&A"},
+      {"id": "self_correction_chain", "name": "Self-correction chaining", "category": "agentic", "when": "high-stakes output worth a review pass"},
+      {"id": "long_context", "name": "Long-context layout", "category": "capability", "when": "20k+ tokens of pasted docs/data"},
+      {"id": "anti_slop_frontend", "name": "Anti-AI-slop frontend brief", "category": "capability", "when": "UI/design generation"},
+      {"id": "vision_crop", "name": "Vision crop tool", "category": "capability", "when": "image analysis"}
+    ],
+    "retired": [
+      "assistant prefill (400 on frontier models) — use structured outputs or a direct no-preamble instruction",
+      "temperature / top_p / top_k on frontier models (rejected) — steer with words",
+      "fixed thinking budgets / budget_tokens (rejected on Opus 4.7+ and Fable) — use effort",
+      "'CRITICAL: YOU MUST' tool language — causes overtriggering; use 'Use this when…'",
+      "'if in doubt, use [tool]' / blanket 'always' defaults — make them conditional",
+      "prescriptive step-by-step reasoning plans on frontier models — 'think it through' beats a hand-written plan"
+    ]
+  },
   "models": [
     {
       "name": "Claude Sonnet 5",
