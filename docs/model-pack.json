@@ -1,5 +1,5 @@
 {
-  "pack_version": "2026.07.24",
+  "pack_version": "2026.07.25",
   "source": "docs/CLAUDE_MODEL_PROMPTING_NOTES.md",
   "verified": "2026-07",
   "cross_model_rules": [
@@ -52,6 +52,31 @@
       "'if in doubt, use [tool]' / blanket 'always' defaults — make them conditional",
       "prescriptive step-by-step reasoning plans on frontier models — 'think it through' beats a hand-written plan"
     ]
+  },
+  "task_playbooks": {
+    "note": "Detected task type -> recommended model + ordered technique recipe + output shape. Full prose in docs/TASK_PLAYBOOKS.md.",
+    "playbooks": [
+      {"task": "email", "recommend": "claude-haiku-4-5", "techniques": ["add_context", "clear_direct", "examples", "success_criterion"], "output": "the message text, tight"},
+      {"task": "code", "recommend": "claude-sonnet-5", "techniques": ["clear_direct", "xml_structure", "explicit_action", "adaptive_thinking", "self_check", "anti_hallucination", "success_criterion"], "output": "code + one-line what-changed"},
+      {"task": "sql", "recommend": "claude-sonnet-5", "techniques": ["xml_structure", "clear_direct", "examples", "success_criterion", "self_check"], "output": "dialect-correct query"},
+      {"task": "debug", "recommend": "claude-opus-4-8", "techniques": ["xml_structure", "anti_hallucination", "adaptive_thinking", "commit_approach", "self_check"], "output": "root cause + fix"},
+      {"task": "research", "recommend": "claude-opus-4-8", "techniques": ["success_criterion", "add_context", "tool_triggers", "state_tracking", "self_correction_chain"], "output": "synthesis with sources"},
+      {"task": "writing", "recommend": "claude-fable-5", "techniques": ["role", "add_context", "examples", "do_not_dont", "verbosity", "success_criterion"], "output": "the piece"},
+      {"task": "summarize", "recommend": "claude-haiku-4-5", "techniques": ["long_context", "clear_direct", "structured_outputs", "success_criterion"], "output": "summary or structured extraction"},
+      {"task": "classify", "recommend": "claude-haiku-4-5", "techniques": ["examples", "structured_outputs", "clear_direct", "success_criterion"], "output": "machine-readable label"},
+      {"task": "design", "recommend": "claude-opus-4-8", "techniques": ["anti_slop_frontend", "add_context", "format_indicator", "explicit_action", "success_criterion"], "output": "UI/code or 3-4 proposed directions"},
+      {"task": "agentic", "recommend": "claude-opus-4-8", "techniques": ["clear_direct", "tool_triggers", "parallel_tools", "autonomy_safety", "state_tracking", "anti_hallucination", "self_check"], "output": "the agent/system prompt"}
+    ]
+  },
+  "refusal_handling": {
+    "note": "The legitimate inverse of a jailbreak: help a real request be understood as legitimate; never help disguise a disallowed one. Full detail in docs/TASK_PLAYBOOKS.md.",
+    "false_positive_fixes": [
+      "State the benign context and purpose (authorized pentest of own server, clinical charting, fiction, academic study).",
+      "Be specific about scope and role — vague-and-edgy reads as risky; specific-and-contextualized reads as legitimate.",
+      "Give permission to partial-decline: 'if part of this isn't something you can help with, do the rest and say which part you skipped.'",
+      "On a genuine refusal (e.g. Fable 5 bio/cyber stop_reason), surface it honestly and optionally fall back to Opus 4.8 — do not defeat the classifier."
+    ],
+    "out_of_scope": "Will not craft prompts to bypass safety systems or produce disallowed content (weapons, CSAM, real-world harm, malware for unauthorized targets). No fake-authorization or role-play wrappers around a correct refusal. Encoding that would violate Anthropic's usage policy, revoke the API key, and get the app pulled."
   },
   "models": [
     {

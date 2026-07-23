@@ -55,6 +55,19 @@ temperature, fixed thinking budgets, "CRITICAL: YOU MUST" language) and strips
 them. Crucially, when it rewrites a ramble it **names the techniques it applied**
 so the user learns the method — every coached prompt doubles as a lesson.
 
+**Per-task-type playbooks** (`docs/TASK_PLAYBOOKS.md`, encoded as
+`task_playbooks` in the model pack) make the rewrite deterministic: the app
+detects the task (email, code, SQL, debug, research, writing, summarize,
+classify, design, agentic), then applies that task's ordered technique recipe
+and recommends a model. It also ships a **refusal doctor**: when a *legitimate*
+ramble looks likely to trip a false-positive refusal (a security engineer's
+authorized-pentest question, a clinician's dosage question, a novelist's dark
+scene), the coach adds the benign context and role that let the real request be
+understood as legitimate. It explicitly does **not** help bypass safety or
+disguise a disallowed request — that stance is stated in the app's policy and in
+`refusal_handling.out_of_scope`, because encoding it would violate Anthropic's
+usage policy and get the app pulled.
+
 ## The prompt (paste this into DescribeAppView)
 
 **Title:** `Claude Prompt Coach`
