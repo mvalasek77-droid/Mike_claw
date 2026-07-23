@@ -73,6 +73,41 @@ Technique IDs referenced below are defined in `PROMPTING_TECHNIQUES.md` /
 
 ---
 
+## Level-up features (the "next level" layer)
+
+Optional power features on top of the core ramble → clean-prompt loop. Encoded as
+`advanced_features` in `docs/model-pack.json`.
+
+### Sharpen it further (meta-prompting)
+A second pass that critiques and improves the already-coached prompt — the
+`self_correction_chain` technique turned on the prompt itself: draft → review
+against the technique checklist + task playbook → refine. Runs on device from the
+rules, or (with the optional Test It key) as a model-graded pass. Surfaced as a
+"Sharpen" button on any coached prompt.
+
+### Structured-output mode
+For code / SQL / classify / extract tasks, the app emits the coached prompt **plus
+a ready JSON Schema** generated from the acceptance criteria, with a "conform to
+this schema" instruction (the `structured_outputs` technique) — never prefill. The
+user gets reliably parseable results, not prose they have to scrape.
+
+### Prompt-cache-aware layout
+Orders the prompt so the stable, reusable part (role, standing instructions,
+reference docs) comes first and the volatile ask comes last, and marks the
+reusable prefix. Repeated runs on the same key then hit the prompt cache at ~10%
+of input cost — a real saving for anyone running a prompt many times.
+
+### Prompt report card
+Scores the **original** ramble against the technique checklist so the user sees
+exactly what was missing before the rewrite fixes it. Checklist: clear ask,
+context/why, role, examples, XML structure for pasted data, explicit scope,
+success criterion, and no retired patterns (prefill / temperature /
+`budget_tokens` / CRITICAL-language). Returns a 0–100 score plus per-item
+pass/fail; the coached prompt then shows each fix. This is the teaching flywheel —
+users watch their raw prompts score higher over time.
+
+---
+
 ## Refusal handling — getting *legitimate* requests through (not a jailbreak)
 
 Some legitimate prompts get wrongly refused because the phrasing pattern-matches

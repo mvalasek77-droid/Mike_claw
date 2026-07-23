@@ -1,5 +1,5 @@
 {
-  "pack_version": "2026.07.25",
+  "pack_version": "2026.07.26",
   "source": "docs/CLAUDE_MODEL_PROMPTING_NOTES.md",
   "verified": "2026-07",
   "cross_model_rules": [
@@ -51,6 +51,49 @@
       "'CRITICAL: YOU MUST' tool language — causes overtriggering; use 'Use this when…'",
       "'if in doubt, use [tool]' / blanket 'always' defaults — make them conditional",
       "prescriptive step-by-step reasoning plans on frontier models — 'think it through' beats a hand-written plan"
+    ]
+  },
+  "advanced_features": {
+    "note": "The 'next level' power features layered on top of the core ramble->clean-prompt loop. Full prose in docs/TASK_PLAYBOOKS.md -> Level-up features.",
+    "features": [
+      {
+        "id": "meta_prompt",
+        "name": "Sharpen it further (meta-prompting)",
+        "what": "An optional second pass that critiques and improves the already-coached prompt.",
+        "how": "Applies the self_correction_chain technique to the prompt itself: draft -> review against the technique checklist + task playbook -> refine. Runs on device from the rules, or via Test It on the user's key for a model-graded pass.",
+        "when": "User taps 'Sharpen' on a coached prompt, or for high-stakes prompts."
+      },
+      {
+        "id": "structured_mode",
+        "name": "Structured-output mode",
+        "what": "Emits the coached prompt PLUS a ready-to-use JSON schema so results come back machine-readable.",
+        "how": "For code/sql/classify/extract tasks, generate a JSON Schema from the acceptance criteria and attach a 'conform to this schema' instruction (structured_outputs technique) — never prefill.",
+        "when": "Task is classify/extract/summarize/sql, or the user wants parseable output."
+      },
+      {
+        "id": "cache_layout",
+        "name": "Prompt-cache-aware layout",
+        "what": "Orders the prompt so the stable, reusable part comes first and the volatile ask comes last.",
+        "how": "Front-load fixed context (role, standing instructions, reference docs) ahead of the per-run question, so repeated runs on the same key hit the prompt cache (~10% of input cost). Marks the reusable prefix.",
+        "when": "Prompt has a large reusable preamble the user will run many times."
+      },
+      {
+        "id": "report_card",
+        "name": "Prompt report card",
+        "what": "Scores the ORIGINAL ramble against the technique checklist so the user sees what was missing.",
+        "how": "Checks presence of: clear ask, context/why, role, examples, XML structure for pasted data, explicit scope, success criterion — and flags any retired patterns (prefill, temperature, budget_tokens, CRITICAL-language). Returns a 0-100 score + per-item pass/fail, then the coached prompt shows the fixes.",
+        "when": "Shown alongside every coaching result to reinforce learning."
+      }
+    ],
+    "report_card_checklist": [
+      {"item": "clear_ask", "checks": "Is the actual request unambiguous and specific?"},
+      {"item": "context_why", "checks": "Is the intent/motivation stated?"},
+      {"item": "role", "checks": "Is a role/system framing present when the task is domain-specific?"},
+      {"item": "examples", "checks": "Are examples provided when output shape matters?"},
+      {"item": "xml_structure", "checks": "Is pasted data/code separated from the instruction?"},
+      {"item": "explicit_scope", "checks": "Is scope stated (what to touch / not touch)?"},
+      {"item": "success_criterion", "checks": "Is there a definition of done?"},
+      {"item": "no_retired_patterns", "checks": "Free of prefill / temperature / budget_tokens / CRITICAL-language?"}
     ]
   },
   "task_playbooks": {
