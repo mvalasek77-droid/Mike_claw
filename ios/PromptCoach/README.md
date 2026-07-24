@@ -38,12 +38,34 @@ open PromptCoach.xcodeproj
 Deployment target iOS 17. The iOS 26 `glassEffect` is availability-gated with an
 `.ultraThinMaterial` fallback, so it builds and runs on 17–25 too.
 
+## Assets
+
+`Resources/Assets.xcassets` has a real `AccentColor` (matches `Glass.accent`,
+identical light/dark pair to the CodeGenie app for family consistency) and an
+`AppIcon` with a **placeholder** 1024×1024 icon (generated programmatically —
+an aurora gradient + sparkle mark echoing the in-app "Coach It" glyph). It's
+there so the project has no missing-asset build warnings and looks coherent on
+a first run, but it is **not final branding** — swap it for real design before
+App Store submission.
+
 ## Not verified here
 
 Written and structurally checked in a Linux container with no Xcode — **not
-compiled or run.** The JSON is validated against the Swift structs in CI-style
-checks, but a real build/run/VoiceOver/Dynamic-Type pass on a Mac is still
-required before submission (see `docs/DISTRIBUTION_READINESS.md`).
+compiled or run.** Verified instead by: (1) decode-compatibility checks between
+`model-pack.json` and every Swift `Codable` struct, including that the report
+card's checklist items exactly match what `CoachEngine` scores, and that every
+`recommend`/`default` model ID resolves; (2) a manual read-through of every
+Swift file for compile-risk patterns (unused bindings, Equatable/Hashable
+synthesis, Codable key coverage, `@State`/`@Published` mutation safety,
+`navigationDestination(item:)` / `sheet(item:)` Identifiable+Hashable
+requirements); (3) mirroring `project.yml` and the asset catalog layout exactly
+against the sibling CodeGenie app's already-working XcodeGen configuration
+rather than guessing the shape.
+
+A real build/run/VoiceOver/Dynamic-Type pass on a Mac is still required before
+submission — no amount of static review substitutes for `xcodegen generate &&
+xcodebuild`. See `docs/DISTRIBUTION_READINESS.md` for the full pre-submission
+checklist (written for CodeGenie; the same categories apply here).
 
 ## Monetization & privacy
 

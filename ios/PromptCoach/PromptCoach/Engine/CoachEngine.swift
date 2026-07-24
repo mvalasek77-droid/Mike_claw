@@ -184,7 +184,7 @@ struct CoachEngine {
         }
 
         // 8. Per-model footer (effort / thinking / plain-text)
-        if let model, let effort = model.defaultEffort {
+        if let effort = model?.defaultEffort {
             sections.append("Suggested setting: effort \(effort) with adaptive thinking.")
         }
 
