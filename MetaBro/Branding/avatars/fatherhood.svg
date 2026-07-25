@@ -7,7 +7,7 @@
   </defs>
   <g clip-path="url(#c)">
     <rect width="512" height="512" fill="url(#g)"/>
-    <circle cx="269" cy="308" r="113" fill="#FFFFFF" fill-opacity="0.10"/><circle cx="192" cy="323" r="178" fill="#FFFFFF" fill-opacity="0.11"/><circle cx="201" cy="236" r="170" fill="#FFFFFF" fill-opacity="0.10"/><circle cx="270" cy="310" r="155" fill="#FFFFFF" fill-opacity="0.11"/>
+    <circle cx="102" cy="198" r="93" fill="#FFFFFF" fill-opacity="0.16"/><circle cx="262" cy="105" r="162" fill="#FFFFFF" fill-opacity="0.15"/><circle cx="265" cy="314" r="143" fill="#FFFFFF" fill-opacity="0.13"/><circle cx="310" cy="178" r="110" fill="#FFFFFF" fill-opacity="0.12"/>
     <ellipse cx="164" cy="123" rx="307" ry="215"
              fill="#FFFFFF" fill-opacity="0.12"/>
     <rect x="123" y="123" width="266" height="266" rx="82" fill="#FFFFFF" fill-opacity="0.16" stroke="#FFFFFF" stroke-opacity="0.35"/>
