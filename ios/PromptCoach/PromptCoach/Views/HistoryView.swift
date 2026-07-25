@@ -43,18 +43,18 @@ struct HistoryView: View {
     private func row(_ r: CoachResult) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(r.ramble).lineLimit(2)
-                .font(.system(size: 15, design: .rounded))
+                .font(Type.body)
                 .foregroundStyle(Glass.primaryText.opacity(0.9))
             HStack(spacing: 8) {
                 Text(app.pack.model(id: r.chosenModelID)?.name ?? r.chosenModelID)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(Type.captionB)
                     .foregroundStyle(Glass.tint(for: r.chosenModelID))
                 Text("· score \(r.reportCard.score)")
-                    .font(.system(size: 11, design: .rounded))
+                    .font(Type.caption)
                     .foregroundStyle(Glass.primaryText.opacity(0.5))
                 Spacer()
                 Text(r.date, style: .date)
-                    .font(.system(size: 11, design: .rounded))
+                    .font(Type.caption)
                     .foregroundStyle(Glass.primaryText.opacity(0.4))
             }
         }

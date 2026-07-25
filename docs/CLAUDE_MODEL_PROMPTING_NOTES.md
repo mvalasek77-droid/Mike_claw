@@ -17,7 +17,8 @@ actively wrong for another.
 |---|---|---|---|
 | Haiku 4.5 | `claude-haiku-4-5` | Fast and literal, shallow | a quick assistant — one clear task, spell out the output |
 | Sonnet 5 | `claude-sonnet-5` | Takes you literally | a precise contractor — spell out scope, it won't infer |
-| Opus 4.8 | `claude-opus-4-8` | Deliberate autonomous worker | a senior engineer — hand over the whole spec up front |
+| **Opus 5** | `claude-opus-5` | **Self-verifying, thorough, expansive** | **a senior engineer who over-delivers — give the spec, bound the scope, don't tell them to double-check** |
+| Opus 4.8 | `claude-opus-4-8` | Deliberate but cautious (legacy tier) | a senior engineer who needs nudging to use tools |
 | Fable 5 | `claude-fable-5` | Frontier reasoner, resents micromanagement | a domain expert — give the goal and the *why*, not the steps |
 
 **Efficiency first: pick the cheapest model that clears the task's bar.** Most
@@ -35,8 +36,11 @@ is Sonnet 5; the user can always override.
 |---|---|---|
 | Simple, single-step: classify, format, extract, short reply, quick lookup; or explicitly high-volume / latency-sensitive | **Haiku 4.5** | Cheapest and fastest; no deep reasoning needed |
 | Literal, well-scoped, structured; most coding; medium complexity where predictability matters | **Sonnet 5** | Near-Opus quality at Sonnet cost — the sensible default |
-| Long, multi-step, autonomous: refactors, overnight builds, deep research, end-to-end deliverables | **Opus 4.8** | State-of-the-art long-horizon autonomy |
+| Complex agentic coding, multi-file features, large refactors, code review, long-horizon autonomous work | **Opus 5** | Step change on agentic coding; frontier quality at half Fable's price, and cheap at low/medium effort |
 | The hardest novel reasoning or frontier problems where lesser models plateau | **Fable 5** | Deepest reasoning; justifies top price only when it pays off |
+
+Opus 4.8 stays in the pack as a legacy tier for prompts already tuned to it; new
+work should start on Opus 5, which is the same price and stronger.
 
 Tie-breaker: when two models both clear the bar, pick the cheaper one. If Haiku
 can't hold the reasoning, that's the signal to move up to Sonnet 5 — not to pile
@@ -112,7 +116,63 @@ doesn't need frontier reasoning.
 
 ---
 
-## Claude Opus 4.8 — the deliberate autonomous worker
+## Claude Opus 5 — the self-verifying agentic workhorse
+
+**Core trait: it already does the things you used to have to ask for.** Opus 5 is
+a step change on agentic coding — multi-file features, large refactors,
+end-to-end work — and it completes tasks rather than leaving stubs. The prompting
+consequence is counterintuitive: **several instructions that helped every prior
+model now actively hurt.**
+
+**The inversions — this is the headline.** Prompts carried over from Opus 4.8
+often contain lines that are now counterproductive:
+
+| Carried-over line | Why it hurts on Opus 5 |
+|---|---|
+| "Include a final verification step" / "use a subagent to verify" | It verifies its own work unprompted. These cause **over-verification** — wasted tokens, no quality gain. Remove them. |
+| "Double-check your answer" / "re-verify before responding" | Same: compounds with behaviour it already has. |
+| Nothing about length | Its default responses **and written deliverables run longer** than prior Opus models — and lowering effort does *not* reliably shorten the visible response. You must ask for brevity explicitly. |
+| Nothing about scope | It can **widen scope**, adding steps you didn't request. Bound narrow tasks explicitly. |
+| Nothing about delegation | It **delegates to subagents more readily**. Great for genuinely parallel tracks, expensive on small ones. |
+
+**Rewrite rules the coach applies:**
+
+1. **Never add a verification or self-check line.** The coach actively *withholds*
+   it here and tells the user why — this is the one place where the standard
+   advice is wrong.
+2. **Add a conciseness instruction.** Anthropic's own recommended shape:
+   *"Keep responses focused, brief, and concise. Keep disclaimers and caveats
+   short, and spend most of the response on the main answer."*
+3. **Bound the scope** on narrow tasks: deliver what was asked, make routine
+   judgment calls, check in only when readings differ materially.
+4. **Give the complete spec up front and let it run** — it performs best on a
+   full task specification, not drip-fed requirements.
+5. **Cap subagent delegation**: only for large, genuinely independent tracks;
+   never to double-check its own work.
+6. **Tune narration cadence** for agentic sessions — it announces what it's about
+   to do readily.
+7. **Limit correction narration** to corrections that would change the user's
+   code, conclusions, or decisions.
+8. **Effort: start at `high`, then use `low`/`medium` liberally.** Opus 5 converts
+   effort into quality more reliably than any prior Opus, but it's also unusually
+   strong at the low end — low/medium give strong quality at a fraction of the
+   tokens. Step to `xhigh` for demanding coding/agentic work.
+9. **For vision, give it tools** (crop/analyze/verify) rather than raising
+   thinking — tools are the more cost-effective lever.
+10. **Prefer low effort over disabling thinking.** Thinking is on by default, and
+    `thinking:{type:disabled}` is legal *only* at effort `high` or below —
+    pairing it with `xhigh`/`max` is a 400.
+
+**Two API changes to know:** thinking is **on by default** (it was off-when-omitted
+on 4.8, so revisit `max_tokens`, which caps thinking + response together), and the
+prompt-cache minimum drops to **512 tokens** (half of 4.8), so shorter reusable
+prefixes now cache.
+
+**Best-fit jobs:** complex agentic coding, long-horizon autonomous work, code
+review (high precision *and* recall), enterprise spreadsheet/slide work. Same
+price as 4.8 ($5/$25) and roughly half of Fable 5 — it is the new default Opus.
+
+## Claude Opus 4.8 — the deliberate autonomous worker (legacy tier)
 
 **Core trait: state-of-the-art long-horizon autonomy, but under-reaches for
 capabilities and asks permission more than you'd expect.** It plans well and
@@ -212,19 +272,21 @@ Prompt craft is above; these are the hard API facts. If the coach ever emits a
 "recommended settings" line alongside the prompt, it must not contradict these,
 and it must never suggest a parameter a model rejects. Verified July 2026.
 
-| Fact | Haiku 4.5 | Sonnet 5 | Opus 4.8 | Fable 5 |
-|---|---|---|---|---|
-| Model ID | `claude-haiku-4-5` | `claude-sonnet-5` | `claude-opus-4-8` | `claude-fable-5` |
-| Thinking when `thinking` omitted | **OFF** (older style) | **Adaptive ON** | **OFF** — set `{type:"adaptive"}` | **Always on** — omit the param |
-| Explicit `{type:"disabled"}` | Allowed | Allowed | Allowed | **400 error** |
-| `budget_tokens` | **Used** (min 1024, < max_tokens) | **400** | **400** | **400** |
-| Sampling (`temperature`/`top_p`/`top_k`) | **Accepted** (one of temp/top_p) | Non-default → **400** | Non-default → **400** | **400** |
-| Last-assistant-turn prefill | **Accepted** | **400** | **400** | **400** |
-| Effort levels | **None** (errors) | low→max (default high) | low→max (default high) | low→max (default high) |
-| Refusal (`stop_reason:"refusal"`) | Rare | Possible (cyber) | Rare | **Likely for bio/cyber** — handle + fallbacks |
-| Context / max output | 200K / 64K | 1M / 128K | 1M / 128K | 1M / 128K |
-| Data retention | Standard | Standard | Standard | **Requires 30-day; ZDR → 400** |
-| Extras | Older API surface; keep prompts simple | ~30% heavier tokenizer than 4.6; Bedrock forced `tool_choice` needs thinking off | Mid-session `role:"system"` messages (4.8 only) | Raw chain-of-thought never returned; read summarized `thinking` |
+| Fact | Haiku 4.5 | Sonnet 5 | **Opus 5** | Opus 4.8 | Fable 5 |
+|---|---|---|---|---|---|
+| Model ID | `claude-haiku-4-5` | `claude-sonnet-5` | `claude-opus-5` | `claude-opus-4-8` | `claude-fable-5` |
+| Thinking when `thinking` omitted | **OFF** (older style) | **Adaptive ON** | **ON** (adaptive) | **OFF** — set `{type:"adaptive"}` | **Always on** — omit the param |
+| Explicit `{type:"disabled"}` | Allowed | Allowed | **Only at effort ≤ high** (400 at xhigh/max) | Allowed | **400 error** |
+| `budget_tokens` | **Used** (min 1024, < max_tokens) | **400** | **400** | **400** | **400** |
+| Sampling (`temperature`/`top_p`/`top_k`) | **Accepted** (one of temp/top_p) | Non-default → **400** | **400** | Non-default → **400** | **400** |
+| Last-assistant-turn prefill | **Accepted** | **400** | **400** | **400** | **400** |
+| Effort levels | **None** (errors) | low→max (default high) | low→max (default high) | low→max (default high) | low→max (default high) |
+| Refusal (`stop_reason:"refusal"`) | Rare | Possible (cyber) | Possible | Rare | **Likely for bio/cyber** — handle + fallbacks |
+| Context / max output | 200K / 64K | 1M / 128K | 1M / 128K | 1M / 128K | 1M / 128K |
+| Prompt-cache minimum | — | 1024 | **512** | 1024 | 1024 |
+| Price in/out per MTok | $1 / $5 | $3 / $15 | $5 / $25 | $5 / $25 | $10 / $50 |
+| Data retention | Standard | Standard | Standard | Standard | **Requires 30-day; ZDR → 400** |
+| Extras | Older API surface; keep prompts simple | ~30% heavier tokenizer than 4.6; Bedrock forced `tool_choice` needs thinking off | Self-verifies (don't add verification); longer default output; mid-conversation tool changes (beta); fast mode $10/$50 | Mid-session `role:"system"` messages | Raw chain-of-thought never returned; read summarized `thinking` |
 
 **Depth is controlled by `effort`, not a token budget** on all three — there is
 no fixed thinking-token budget anymore. Recommend adaptive thinking when

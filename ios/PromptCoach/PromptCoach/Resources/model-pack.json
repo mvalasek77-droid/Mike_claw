@@ -1,22 +1,22 @@
 {
-  "pack_version": "2026.07.26",
+  "pack_version": "2026.07.27",
   "source": "docs/CLAUDE_MODEL_PROMPTING_NOTES.md",
   "verified": "2026-07",
   "cross_model_rules": [
-    "For the frontier models (Sonnet 5, Opus 4.8, Fable 5) never suggest temperature/top_p/top_k or prefill tricks — they reject them; steer with words. Haiku 4.5 still accepts them, but steering with words stays the portable default.",
+    "For the frontier models (Opus 5, Sonnet 5, Fable 5, Opus 4.8) never suggest temperature/top_p/top_k or prefill tricks — they reject them; steer with words. Haiku 4.5 still accepts them, but steering with words stays the portable default.",
     "Put stable context first and the specific question last (clearer, and prompt-cache friendly).",
     "End every prompt with an explicit success criterion ('done means…').",
     "Depth is set by effort, not a token budget; recommend adaptive thinking when reasoning is wanted (Haiku 4.5 has no effort — keep its prompts simple instead)."
   ],
   "efficiency_rules": [
-    "Recommend the cheapest model that clears the task's bar — see the recommender block; don't reach for Opus/Fable when Haiku or Sonnet suffices.",
+    "Recommend the cheapest model that clears the task's bar — see the recommender; don't reach for Opus or Fable when Haiku or Sonnet suffices.",
     "Cut the ramble's redundancy: drop restatements, filler, and three-ways-of-saying-the-same-ask before rewriting.",
-    "Don't request more effort than the task needs — higher effort costs tokens and latency; match effort to difficulty.",
+    "Don't request more effort than the task needs — higher effort costs tokens and latency; on Opus 5 specifically, use low/medium liberally wherever quality holds.",
     "Keep the rewritten prompt tight; a shorter prompt that still carries scope + acceptance test beats a padded one.",
-    "Front-load the stable/reusable context so repeated runs hit the prompt cache."
+    "Front-load the stable/reusable context so repeated runs hit the prompt cache (Opus 5 caches from 512 tokens, half the prior minimum)."
   ],
   "techniques": {
-    "note": "The coach's toolkit — full detail in docs/PROMPTING_TECHNIQUES.md, sourced from Anthropic's official prompt-engineering docs (verified 2026-07). Each technique has a trigger; the coach applies matching ones and names them in 'What I changed'.",
+    "note": "The coach's toolkit — full detail in docs/PROMPTING_TECHNIQUES.md, sourced from Anthropic's official prompt-engineering docs (verified 2026-07). Each technique has a trigger; the coach applies matching ones and names them in 'What I changed'. Per-model suppress_techniques / extra_instructions override these.",
     "library": [
       {"id": "clear_direct", "name": "Be clear and direct", "category": "foundational", "when": "always — vague or ambiguous ask"},
       {"id": "add_context", "name": "Add context / say why", "category": "foundational", "when": "instruction whose intent isn't obvious; strongest on Fable 5"},
@@ -26,12 +26,12 @@
       {"id": "success_criterion", "name": "End with a success criterion", "category": "foundational", "when": "always"},
       {"id": "do_not_dont", "name": "Say what TO do", "category": "formatting", "when": "ramble is full of prohibitions"},
       {"id": "format_indicator", "name": "Format indicator / style match", "category": "formatting", "when": "specific or machine-readable output shape"},
-      {"id": "verbosity", "name": "Control verbosity", "category": "formatting", "when": "output too long/short for the use"},
+      {"id": "verbosity", "name": "Control verbosity", "category": "formatting", "when": "output too long/short for the use; required on Opus 5, whose default responses run long"},
       {"id": "plain_text_latex", "name": "Plain text vs LaTeX", "category": "formatting", "when": "math output to a non-LaTeX surface"},
       {"id": "structured_outputs", "name": "Structured outputs (not prefill)", "category": "formatting", "when": "needs JSON/schema/classification"},
       {"id": "adaptive_thinking", "name": "Let it think (adaptive + effort)", "category": "reasoning", "when": "hard multi-step task"},
       {"id": "manual_cot", "name": "Manual chain-of-thought", "category": "reasoning", "when": "thinking off, or Haiku 4.5"},
-      {"id": "self_check", "name": "Ask it to self-check", "category": "reasoning", "when": "correctness-sensitive (code/math)"},
+      {"id": "self_check", "name": "Ask it to self-check", "category": "reasoning", "when": "correctness-sensitive (code/math) — but NOT on Opus 5, which self-verifies and over-verifies if told to"},
       {"id": "commit_approach", "name": "Commit to an approach", "category": "reasoning", "when": "open-ended task on a high-effort model"},
       {"id": "explicit_action", "name": "Be explicit about action", "category": "agentic", "when": "action-vs-advice is ambiguous"},
       {"id": "tool_triggers", "name": "Trigger conditions in tool descriptions", "category": "agentic", "when": "task mentions tools; key for Opus 4.8"},
@@ -40,17 +40,21 @@
       {"id": "state_tracking", "name": "Long-horizon state tracking", "category": "agentic", "when": "multi-window / long autonomous work"},
       {"id": "anti_hallucination", "name": "Ground answers / investigate first", "category": "agentic", "when": "codebase or document Q&A"},
       {"id": "self_correction_chain", "name": "Self-correction chaining", "category": "agentic", "when": "high-stakes output worth a review pass"},
+      {"id": "scope_constraint", "name": "Constrain scope", "category": "agentic", "when": "narrow task on a model that expands scope — required on Opus 5"},
+      {"id": "narration_cadence", "name": "Tune narration cadence", "category": "agentic", "when": "agentic/user-facing session; Opus 5 narrates readily"},
+      {"id": "subagent_cap", "name": "Cap subagent delegation", "category": "agentic", "when": "harness supports subagents; Opus 5 delegates readily"},
       {"id": "long_context", "name": "Long-context layout", "category": "capability", "when": "20k+ tokens of pasted docs/data"},
       {"id": "anti_slop_frontend", "name": "Anti-AI-slop frontend brief", "category": "capability", "when": "UI/design generation"},
-      {"id": "vision_crop", "name": "Vision crop tool", "category": "capability", "when": "image analysis"}
+      {"id": "vision_crop", "name": "Vision crop tool", "category": "capability", "when": "image analysis — on Opus 5 prefer tools over raising thinking"}
     ],
     "retired": [
       "assistant prefill (400 on frontier models) — use structured outputs or a direct no-preamble instruction",
       "temperature / top_p / top_k on frontier models (rejected) — steer with words",
-      "fixed thinking budgets / budget_tokens (rejected on Opus 4.7+ and Fable) — use effort",
+      "fixed thinking budgets / budget_tokens (rejected on Opus 4.7+, Opus 5, and Fable) — use effort",
       "'CRITICAL: YOU MUST' tool language — causes overtriggering; use 'Use this when…'",
       "'if in doubt, use [tool]' / blanket 'always' defaults — make them conditional",
-      "prescriptive step-by-step reasoning plans on frontier models — 'think it through' beats a hand-written plan"
+      "prescriptive step-by-step reasoning plans on frontier models — 'think it through' beats a hand-written plan",
+      "'double-check your answer' / 'include a final verification step' on Opus 5 — it self-verifies; these cause over-verification and waste tokens"
     ]
   },
   "advanced_features": {
@@ -74,7 +78,7 @@
         "id": "cache_layout",
         "name": "Prompt-cache-aware layout",
         "what": "Orders the prompt so the stable, reusable part comes first and the volatile ask comes last.",
-        "how": "Front-load fixed context (role, standing instructions, reference docs) ahead of the per-run question, so repeated runs on the same key hit the prompt cache (~10% of input cost). Marks the reusable prefix.",
+        "how": "Front-load fixed context (role, standing instructions, reference docs) ahead of the per-run question, so repeated runs on the same key hit the prompt cache (~10% of input cost). Marks the reusable prefix. Opus 5 caches from 512 tokens.",
         "when": "Prompt has a large reusable preamble the user will run many times."
       },
       {
@@ -102,13 +106,13 @@
       {"task": "email", "recommend": "claude-haiku-4-5", "techniques": ["add_context", "clear_direct", "examples", "success_criterion"], "output": "the message text, tight"},
       {"task": "code", "recommend": "claude-sonnet-5", "techniques": ["clear_direct", "xml_structure", "explicit_action", "adaptive_thinking", "self_check", "anti_hallucination", "success_criterion"], "output": "code + one-line what-changed"},
       {"task": "sql", "recommend": "claude-sonnet-5", "techniques": ["xml_structure", "clear_direct", "examples", "success_criterion", "self_check"], "output": "dialect-correct query"},
-      {"task": "debug", "recommend": "claude-opus-4-8", "techniques": ["xml_structure", "anti_hallucination", "adaptive_thinking", "commit_approach", "self_check"], "output": "root cause + fix"},
-      {"task": "research", "recommend": "claude-opus-4-8", "techniques": ["success_criterion", "add_context", "tool_triggers", "state_tracking", "self_correction_chain"], "output": "synthesis with sources"},
+      {"task": "debug", "recommend": "claude-opus-5", "techniques": ["xml_structure", "anti_hallucination", "adaptive_thinking", "commit_approach", "self_check"], "output": "root cause + fix"},
+      {"task": "research", "recommend": "claude-opus-5", "techniques": ["success_criterion", "add_context", "tool_triggers", "state_tracking", "self_correction_chain"], "output": "synthesis with sources"},
       {"task": "writing", "recommend": "claude-fable-5", "techniques": ["role", "add_context", "examples", "do_not_dont", "verbosity", "success_criterion"], "output": "the piece"},
       {"task": "summarize", "recommend": "claude-haiku-4-5", "techniques": ["long_context", "clear_direct", "structured_outputs", "success_criterion"], "output": "summary or structured extraction"},
       {"task": "classify", "recommend": "claude-haiku-4-5", "techniques": ["examples", "structured_outputs", "clear_direct", "success_criterion"], "output": "machine-readable label"},
-      {"task": "design", "recommend": "claude-opus-4-8", "techniques": ["anti_slop_frontend", "add_context", "format_indicator", "explicit_action", "success_criterion"], "output": "UI/code or 3-4 proposed directions"},
-      {"task": "agentic", "recommend": "claude-opus-4-8", "techniques": ["clear_direct", "tool_triggers", "parallel_tools", "autonomy_safety", "state_tracking", "anti_hallucination", "self_check"], "output": "the agent/system prompt"}
+      {"task": "design", "recommend": "claude-opus-5", "techniques": ["anti_slop_frontend", "add_context", "format_indicator", "explicit_action", "success_criterion"], "output": "UI/code or 3-4 proposed directions"},
+      {"task": "agentic", "recommend": "claude-opus-5", "techniques": ["clear_direct", "tool_triggers", "parallel_tools", "autonomy_safety", "state_tracking", "anti_hallucination", "scope_constraint"], "output": "the agent/system prompt"}
     ]
   },
   "refusal_handling": {
@@ -117,11 +121,52 @@
       "State the benign context and purpose (authorized pentest of own server, clinical charting, fiction, academic study).",
       "Be specific about scope and role — vague-and-edgy reads as risky; specific-and-contextualized reads as legitimate.",
       "Give permission to partial-decline: 'if part of this isn't something you can help with, do the rest and say which part you skipped.'",
-      "On a genuine refusal (e.g. Fable 5 bio/cyber stop_reason), surface it honestly and optionally fall back to Opus 4.8 — do not defeat the classifier."
+      "On a genuine refusal (e.g. Fable 5 bio/cyber stop_reason), surface it honestly and optionally fall back to Opus 5 — do not defeat the classifier."
     ],
     "out_of_scope": "Will not craft prompts to bypass safety systems or produce disallowed content (weapons, CSAM, real-world harm, malware for unauthorized targets). No fake-authorization or role-play wrappers around a correct refusal. Encoding that would violate Anthropic's usage policy, revoke the API key, and get the app pulled."
   },
   "models": [
+    {
+      "name": "Claude Haiku 4.5",
+      "id": "claude-haiku-4-5",
+      "accent": "amber",
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0,
+      "price_note": "Cheapest and fastest; 200K context, 64K max output (smaller than the 1M models)",
+      "one_liner": "Cheap and fast — for simple, high-volume, latency-sensitive tasks.",
+      "temperament": "fast-simple",
+      "strengths": [
+        "Lowest cost and latency of the family",
+        "Great for classification, formatting, short generation, quick replies",
+        "High-volume pipelines where per-call cost dominates"
+      ],
+      "default_effort": null,
+      "hard_task_effort": null,
+      "api_facts": {
+        "thinking_when_omitted": "off",
+        "explicit_disable_allowed": true,
+        "rejects": [],
+        "effort_levels": [],
+        "thinking_style": "budget_tokens (older style: {type:enabled, budget_tokens:N}, min 1024, < max_tokens)",
+        "refusal_possible": false,
+        "data_retention": "standard",
+        "context_window": 200000,
+        "max_output": 64000,
+        "notes": "Older-generation API surface: no effort parameter (it errors), thinking uses budget_tokens not adaptive, and sampling params + prefill ARE accepted. Structured outputs supported. Don't expect frontier reasoning — keep prompts simple, concrete, and explicit."
+      },
+      "suppress_techniques": ["adaptive_thinking"],
+      "extra_instructions": [],
+      "rewrite_rules": [
+        "Keep it simple and concrete — Haiku is not a deep reasoner; spell out exactly what you want.",
+        "Best for one clear task per prompt; don't ask it to plan multi-step work.",
+        "Use explicit format instructions or structured outputs for reliable machine-readable output.",
+        "Give a short worked example when the output shape matters — Haiku follows examples well.",
+        "Skip effort/adaptive-thinking advice entirely (unsupported); if it needs reasoning, that's a signal to move up to Sonnet 5."
+      ],
+      "do": ["Use it for classify / format / extract / short reply", "Give one clear task and an output shape", "Move up to Sonnet 5 if the task needs real reasoning"],
+      "dont": ["Ask it to plan or reason across many steps", "Suggest an effort level (unsupported)", "Expect frontier-quality prose or code"],
+      "best_fit": "Simple, high-volume, latency- or cost-sensitive tasks that don't need deep reasoning."
+    },
     {
       "name": "Claude Sonnet 5",
       "id": "claude-sonnet-5",
@@ -146,8 +191,12 @@
         "thinking_display_default": "omitted",
         "refusal_possible": true,
         "data_retention": "standard",
+        "context_window": 1000000,
+        "max_output": 128000,
         "notes": "Tokenizer produces ~30% more tokens than Sonnet 4.6. Bedrock only: forced tool_choice requires thinking disabled."
       },
+      "suppress_techniques": [],
+      "extra_instructions": [],
       "rewrite_rules": [
         "Make scope explicit — restate any rule that should apply broadly ('every section, not just the first').",
         "Convert vague asks into concrete deliverables with a definition of done.",
@@ -156,31 +205,84 @@
         "If thinking is disabled and a tool is needed, add an explicit trigger line for it.",
         "Remove stale 'summarize every N tool calls' progress scaffolding."
       ],
+      "do": ["State scope universally", "Give an acceptance test", "Raise effort if reasoning is shallow"],
+      "dont": ["Assume it will generalize an instruction", "Rely on temperature for variety", "Prompt around under-thinking instead of raising effort"],
+      "best_fit": "Literal, well-scoped, high-volume, structured, cost-sensitive tasks."
+    },
+    {
+      "name": "Claude Opus 5",
+      "id": "claude-opus-5",
+      "accent": "indigo",
+      "price_in_per_mtok": 5.0,
+      "price_out_per_mtok": 25.0,
+      "price_note": "Same price as Opus 4.8, ~half of Fable 5. Fast mode $10/$50.",
+      "one_liner": "Self-verifying agentic workhorse — give the whole spec, then get out of the way.",
+      "temperament": "autonomous-thorough",
+      "strengths": [
+        "Best on complex agentic coding: multi-file features, large refactors, end-to-end work",
+        "Code review and bug-finding with high precision AND recall",
+        "Strong quality at low/medium effort — the cost lever that actually works",
+        "Vision: charts, documents, diagrams, UI replication",
+        "Coordinates subagent teams with effective writer-verifier patterns"
+      ],
+      "default_effort": "high",
+      "hard_task_effort": "xhigh",
+      "api_facts": {
+        "thinking_when_omitted": "on_by_default",
+        "explicit_disable_allowed": true,
+        "disable_thinking_effort_ceiling": "high",
+        "rejects": ["temperature", "top_p", "top_k", "budget_tokens", "assistant_prefill", "thinking_disabled_above_high_effort"],
+        "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+        "thinking_display_default": "omitted",
+        "refusal_possible": true,
+        "data_retention": "standard",
+        "context_window": 1000000,
+        "max_output": 128000,
+        "prompt_cache_min_tokens": 512,
+        "notes": "Thinking is ON by default (breaking change from Opus 4.8, where omitting it meant off) — revisit max_tokens, which caps thinking + response together. thinking:{type:disabled} is valid ONLY at effort high or below; pairing it with xhigh/max returns 400. Prompt cache minimum is 512 tokens (half of 4.8). Mid-conversation tool changes available in beta. Sampling params and prefill remain rejected, as on 4.8."
+      },
+      "suppress_techniques": ["self_check", "self_correction_chain"],
+      "extra_instructions": [
+        "Keep responses focused, brief, and concise. Keep disclaimers and caveats short, and spend most of the response on the main answer.",
+        "Deliver what was asked, at the scope intended. Make routine judgment calls yourself, and check in only when different readings of the request would lead to materially different work. Finish the whole task, and stop short of actions clearly beyond what was asked."
+      ],
+      "rewrite_rules": [
+        "Do NOT add verification or self-check instructions — Opus 5 verifies its own work, and telling it to causes over-verification and wasted tokens with no quality gain.",
+        "Add an explicit conciseness instruction — Opus 5's default responses and written deliverables run longer than prior Opus models, and lowering effort does not reliably shorten them.",
+        "Constrain scope explicitly on narrow tasks — Opus 5 can widen scope and add steps that weren't requested.",
+        "Give the complete task specification up front and let it run — it completes full tasks rather than leaving stubs.",
+        "Cap subagent delegation: only for genuinely independent, sizeable parallel tracks; never to double-check its own work.",
+        "Tune narration cadence explicitly for agentic or user-facing sessions — it announces what it's about to do readily.",
+        "Limit correction narration to corrections that would change the user's code, conclusions, or decisions.",
+        "Start at effort high, then use low/medium liberally wherever quality holds; step up to xhigh for demanding coding and agentic work.",
+        "For vision work, give it crop/analyze tools rather than raising thinking — tools are the more cost-effective lever.",
+        "Prefer keeping thinking enabled at lower effort over disabling thinking; disabling is only legal at effort high or below."
+      ],
       "do": [
-        "State scope universally",
-        "Give an acceptance test",
-        "Raise effort if reasoning is shallow"
+        "Give the full task spec in one turn",
+        "Add a conciseness line and a scope boundary",
+        "Sweep low/medium effort — quality often holds"
       ],
       "dont": [
-        "Assume it will generalize an instruction",
-        "Rely on temperature for variety",
-        "Prompt around under-thinking instead of raising effort"
+        "Tell it to double-check or add a verification step",
+        "Leave scope open on a narrow task",
+        "Pair thinking:disabled with xhigh/max effort (400)"
       ],
-      "best_fit": "Literal, well-scoped, high-volume, structured, cost-sensitive tasks."
+      "best_fit": "Complex agentic coding, long-horizon autonomous work, code review, and enterprise document/spreadsheet tasks."
     },
     {
       "name": "Claude Opus 4.8",
       "id": "claude-opus-4-8",
-      "accent": "indigo",
+      "accent": "slate",
       "price_in_per_mtok": 5.0,
       "price_out_per_mtok": 25.0,
-      "price_note": "1M context at standard pricing, no long-context premium",
-      "one_liner": "Deliberate autonomous worker — hand over the whole spec up front.",
-      "temperament": "autonomous",
+      "price_note": "Previous-generation Opus; still available. Prefer Opus 5 for new work.",
+      "one_liner": "Previous-gen Opus — deliberate, but under-reaches for tools and asks a lot.",
+      "temperament": "autonomous-cautious",
       "strengths": [
-        "State-of-the-art long-horizon autonomous work",
-        "Refactors and overnight builds that finish without correction",
-        "Strong bug-finding and clear explanations"
+        "Strong long-horizon autonomous work",
+        "Well-understood, widely deployed",
+        "Mid-conversation system messages"
       ],
       "default_effort": "high",
       "hard_task_effort": "xhigh",
@@ -192,27 +294,23 @@
         "thinking_display_default": "omitted",
         "refusal_possible": false,
         "data_retention": "standard",
-        "notes": "Thinking is OFF when the thinking field is omitted — set {type:adaptive} explicitly to enable. Supports mid-session role:'system' messages (Opus 4.8 only). Same request surface as 4.7."
+        "context_window": 1000000,
+        "max_output": 128000,
+        "prompt_cache_min_tokens": 1024,
+        "notes": "Thinking is OFF when omitted — set {type:adaptive} explicitly. Supports mid-session role:'system' messages. Legacy tier: migrate to Opus 5, which is same-priced and stronger."
       },
+      "suppress_techniques": [],
+      "extra_instructions": [],
       "rewrite_rules": [
         "Consolidate the ramble into one complete up-front spec: goal, inputs, constraints, definition of done.",
-        "Add explicit 'use X when Y' trigger lines for search, subagents, memory, and custom tools.",
+        "Add explicit 'use X when Y' trigger lines for search, subagents, memory, and custom tools — it under-reaches by default.",
         "Add an autonomy line: pick reasonable defaults for small decisions, ask only on scope changes or destructive actions.",
         "Remove forced-progress scaffolding; add a silence-default if a terse coding agent is wanted.",
-        "Re-check warmth/style prompts carried over from 4.7 — 4.8 is warmer by default and they may overcorrect.",
         "If thinking is disabled, add 'respond only with your final answer' to prevent reasoning leaking into the response."
       ],
-      "do": [
-        "Give the full task in the first turn",
-        "Put trigger conditions in tool descriptions",
-        "Start at high effort and sweep, don't reflex to xhigh"
-      ],
-      "dont": [
-        "Dribble requirements over multiple turns",
-        "Assume it will reach for tools/subagents on its own",
-        "Leave it to ask permission on every small choice"
-      ],
-      "best_fit": "Long, autonomous, multi-step work you can fully specify up front."
+      "do": ["Give the full task in the first turn", "Put trigger conditions in tool descriptions", "Consider migrating to Opus 5"],
+      "dont": ["Assume thinking is on (it's off when omitted)", "Assume it will reach for tools on its own"],
+      "best_fit": "Existing deployments already tuned for 4.8; new work should start on Opus 5."
     },
     {
       "name": "Claude Fable 5",
@@ -238,8 +336,12 @@
         "thinking_display_default": "omitted",
         "refusal_possible": true,
         "data_retention": "requires_30_day",
+        "context_window": 1000000,
+        "max_output": 128000,
         "notes": "Thinking is always on — omit the thinking param; explicit {type:disabled} is a 400. Raw chain-of-thought never returned. Likely to refuse bio/cyber requests — handle refusal and opt into fallbacks. Not available under zero-data-retention (ZDR orgs 400 on every request). Same tokenizer as Opus 4.8."
       },
+      "suppress_techniques": [],
+      "extra_instructions": [],
       "rewrite_rules": [
         "Strip step-by-step scaffolding down to goal + constraints + acceptance test — over-prescription reduces quality.",
         "Prepend the intent: 'I'm building X for Y; they need Z — with that in mind, [request].'",
@@ -248,66 +350,9 @@
         "State boundaries: when the user is asking or thinking out loud, report the assessment and stop.",
         "Encourage async subagent delegation and a memory file for learnings; warn that a hard run may take many minutes."
       ],
-      "do": [
-        "Give it your hardest problems",
-        "Explain the why behind the ask",
-        "Run an effort sweep — low/medium is often enough"
-      ],
-      "dont": [
-        "Micromanage with enumerated steps",
-        "Use it for routine tasks a cheaper model handles",
-        "Assume high effort is always better (it can over-tidy)"
-      ],
+      "do": ["Give it your hardest problems", "Explain the why behind the ask", "Run an effort sweep — low/medium is often enough"],
+      "dont": ["Micromanage with enumerated steps", "Use it for routine tasks a cheaper model handles", "Assume high effort is always better (it can over-tidy)"],
       "best_fit": "The hardest reasoning and long-horizon problems where frontier capability justifies the price."
-    },
-    {
-      "name": "Claude Haiku 4.5",
-      "id": "claude-haiku-4-5",
-      "accent": "amber",
-      "price_in_per_mtok": 1.0,
-      "price_out_per_mtok": 5.0,
-      "price_note": "Cheapest and fastest; 200K context, 64K max output (smaller than the 1M models)",
-      "one_liner": "Cheap and fast — for simple, high-volume, latency-sensitive tasks.",
-      "temperament": "fast-simple",
-      "strengths": [
-        "Lowest cost and latency of the family",
-        "Great for classification, formatting, short generation, quick replies",
-        "High-volume pipelines where per-call cost dominates"
-      ],
-      "default_effort": null,
-      "hard_task_effort": null,
-      "api_facts": {
-        "thinking_when_omitted": "off",
-        "explicit_disable_allowed": true,
-        "rejects": [],
-        "accepts": ["temperature_or_top_p", "assistant_prefill"],
-        "effort_levels": [],
-        "thinking_style": "budget_tokens (older style: {type:enabled, budget_tokens:N}, min 1024, < max_tokens)",
-        "thinking_display_default": "n/a",
-        "refusal_possible": false,
-        "data_retention": "standard",
-        "context_window": 200000,
-        "max_output": 64000,
-        "notes": "Older-generation API surface: no effort parameter (it errors), thinking uses budget_tokens not adaptive, and sampling params + prefill ARE accepted. Structured outputs supported. Don't expect frontier reasoning — keep prompts simple, concrete, and explicit."
-      },
-      "rewrite_rules": [
-        "Keep it simple and concrete — Haiku is not a deep reasoner; spell out exactly what you want.",
-        "Best for one clear task per prompt; don't ask it to plan multi-step work.",
-        "Use explicit format instructions or structured outputs for reliable machine-readable output.",
-        "Give a short worked example when the output shape matters — Haiku follows examples well.",
-        "Skip effort/adaptive-thinking advice entirely (unsupported); if it needs reasoning, that's a signal to move up to Sonnet 5."
-      ],
-      "do": [
-        "Use it for classify / format / extract / short reply",
-        "Give one clear task and an output shape",
-        "Move up to Sonnet 5 if the task needs real reasoning"
-      ],
-      "dont": [
-        "Ask it to plan or reason across many steps",
-        "Suggest an effort level (unsupported)",
-        "Expect frontier-quality prose or code"
-      ],
-      "best_fit": "Simple, high-volume, latency- or cost-sensitive tasks that don't need deep reasoning."
     }
   ],
   "recommender": {
@@ -316,8 +361,8 @@
     "rules": [
       {"model": "claude-haiku-4-5", "when": "Simple, well-defined, single-step: classify, format, extract, short reply, quick lookup — or explicitly high-volume / latency-sensitive.", "why": "Cheapest and fastest; deep reasoning not needed."},
       {"model": "claude-sonnet-5", "when": "Literal, well-scoped, structured work; most coding; medium-complexity tasks where predictability matters.", "why": "Near-Opus quality at Sonnet cost; the sensible default."},
-      {"model": "claude-opus-4-8", "when": "Long, multi-step, autonomous work: refactors, overnight builds, deep research, end-to-end deliverables.", "why": "State-of-the-art long-horizon autonomy."},
-      {"model": "claude-fable-5", "when": "The hardest novel reasoning or frontier problems where lesser models plateau.", "why": "Deepest reasoning; justifies the top price only when it pays off."}
+      {"model": "claude-opus-5", "when": "Complex agentic coding, multi-file features, large refactors, code review, long-horizon autonomous work, enterprise document/spreadsheet tasks.", "why": "Step-change on agentic coding; frontier intelligence at half Fable's price, and cheap at low/medium effort."},
+      {"model": "claude-fable-5", "when": "The hardest novel reasoning or frontier problems where lesser models plateau.", "why": "Deepest reasoning; justifies top price only when it pays off."}
     ],
     "tie_breaker": "When two models both clear the bar, pick the cheaper one."
   },

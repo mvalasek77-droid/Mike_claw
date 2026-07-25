@@ -13,16 +13,16 @@ struct LearnView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         Text(technique.name)
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .font(Type.title)
                             .foregroundStyle(Glass.primaryText)
                         badge(technique.category)
                         GlassCard {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("When to use it")
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .font(Type.label)
                                     .foregroundStyle(Glass.primaryText.opacity(0.55)).textCase(.uppercase)
                                 Text(technique.when)
-                                    .font(.system(size: 15, design: .rounded))
+                                    .font(Type.body)
                                     .foregroundStyle(Glass.primaryText.opacity(0.9))
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -31,7 +31,7 @@ struct LearnView: View {
                         if let detail = Self.details[technique.id] {
                             GlassCard {
                                 Text(detail)
-                                    .font(.system(size: 15, design: .rounded))
+                                    .font(Type.body)
                                     .foregroundStyle(Glass.primaryText.opacity(0.9))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(16)
@@ -48,7 +48,7 @@ struct LearnView: View {
 
     private func badge(_ category: String) -> some View {
         Text(category.uppercased())
-            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .font(Type.captionB)
             .padding(.horizontal, 10).padding(.vertical, 4)
             .foregroundStyle(Glass.accent)
             .background(Glass.accent.opacity(0.15), in: Capsule())

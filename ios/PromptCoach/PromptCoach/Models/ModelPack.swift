@@ -57,6 +57,16 @@ struct ModelProfile: Codable, Identifiable, Hashable {
     let strengths: [String]
     let defaultEffort: String?
     let bestFit: String
+    /// Techniques that are counterproductive on this model and must NOT be
+    /// applied. Opus 5, for example, self-verifies — adding a self-check
+    /// instruction causes over-verification and burns tokens for no gain.
+    let suppressTechniques: [String]?
+    /// Verbatim prompt lines this model specifically benefits from.
+    let extraInstructions: [String]?
+    let rewriteRules: [String]?
+    let doList: [String]?
+    let dontList: [String]?
+    let apiFacts: APIFacts?
 
     enum CodingKeys: String, CodingKey {
         case name, id, accent, oneLiner = "one_liner", temperament, strengths
@@ -65,12 +75,60 @@ struct ModelProfile: Codable, Identifiable, Hashable {
         case priceNote = "price_note"
         case defaultEffort = "default_effort"
         case bestFit = "best_fit"
+        case suppressTechniques = "suppress_techniques"
+        case extraInstructions = "extra_instructions"
+        case rewriteRules = "rewrite_rules"
+        case doList = "do"
+        case dontList = "dont"
+        case apiFacts = "api_facts"
     }
 
+    var suppressed: Set<String> { Set(suppressTechniques ?? []) }
+    var extras: [String] { extraInstructions ?? [] }
+
     var priceLabel: String { "$\(fmt(priceInPerMtok)) / $\(fmt(priceOutPerMtok)) per M" }
+
+    /// Short display name without the "Claude " prefix, for chips.
+    var shortName: String {
+        name.replacingOccurrences(of: "Claude ", with: "")
+    }
+
     private func fmt(_ v: Double) -> String {
         v == v.rounded() ? String(Int(v)) : String(format: "%.2f", v)
     }
+}
+
+/// The hard API facts for a model — what it accepts and rejects. The coach
+/// must never emit advice that contradicts these (e.g. suggesting an effort
+/// level for Haiku 4.5, which has none).
+struct APIFacts: Codable, Hashable {
+    let thinkingWhenOmitted: String?
+    let explicitDisableAllowed: Bool?
+    let disableThinkingEffortCeiling: String?
+    let rejects: [String]?
+    let effortLevels: [String]?
+    let contextWindow: Int?
+    let maxOutput: Int?
+    let promptCacheMinTokens: Int?
+    let dataRetention: String?
+    let refusalPossible: Bool?
+    let notes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case thinkingWhenOmitted = "thinking_when_omitted"
+        case explicitDisableAllowed = "explicit_disable_allowed"
+        case disableThinkingEffortCeiling = "disable_thinking_effort_ceiling"
+        case rejects
+        case effortLevels = "effort_levels"
+        case contextWindow = "context_window"
+        case maxOutput = "max_output"
+        case promptCacheMinTokens = "prompt_cache_min_tokens"
+        case dataRetention = "data_retention"
+        case refusalPossible = "refusal_possible"
+        case notes
+    }
+
+    var supportsEffort: Bool { !(effortLevels ?? []).isEmpty }
 }
 
 struct Techniques: Codable {

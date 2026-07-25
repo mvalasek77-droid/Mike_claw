@@ -41,12 +41,34 @@ targets:
           DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
           SWIFT_COMPILATION_MODE: wholemodule
 
+  PromptCoachTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Tests/PromptCoachTests
+    # The engine tests load the real pack, so bundle a copy with the tests.
+    resources:
+      - path: PromptCoach/Resources/model-pack.json
+    dependencies:
+      - target: PromptCoach
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codegenie.promptcoach.tests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   PromptCoach:
     build:
       targets:
         PromptCoach: all
+        PromptCoachTests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - PromptCoachTests
     archive:
       config: Release

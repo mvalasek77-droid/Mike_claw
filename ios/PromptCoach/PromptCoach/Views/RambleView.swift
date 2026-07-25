@@ -26,6 +26,10 @@ struct RambleView: View {
             .navigationTitle("Prompt Coach")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink { SettingsView() } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("Settings, model reference, and techniques")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink { HistoryView() } label: { Image(systemName: "clock.arrow.circlepath") }
                         .accessibilityLabel("History")
@@ -38,10 +42,10 @@ struct RambleView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Just ramble.")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .font(Type.hero)
                 .foregroundStyle(Glass.primaryText)
             Text("Dump whatever's in your head — half-formed, out of order, contradictory is fine. I'll turn it into a clean, model-ready Claude prompt and show you how.")
-                .font(.system(size: 15, weight: .regular, design: .rounded))
+                .font(Type.body)
                 .foregroundStyle(Glass.primaryText.opacity(0.7))
         }
     }
@@ -50,7 +54,7 @@ struct RambleView: View {
         GlassCard {
             TextEditor(text: $ramble)
                 .focused($editing)
-                .font(.system(size: 16, design: .rounded))
+                .font(Type.body)
                 .foregroundStyle(Glass.primaryText)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 200)
@@ -58,7 +62,7 @@ struct RambleView: View {
                 .overlay(alignment: .topLeading) {
                     if ramble.isEmpty {
                         Text("e.g. \"need to reply to a customer mad about a late order, it shipped late cause of the carrier not us, be nice but don't just refund cash, offer store credit, keep it short\"")
-                            .font(.system(size: 15, design: .rounded))
+                            .font(Type.body)
                             .foregroundStyle(Glass.primaryText.opacity(0.35))
                             .padding(.horizontal, 17).padding(.vertical, 20)
                             .allowsHitTesting(false)
@@ -79,7 +83,7 @@ struct RambleView: View {
                 Image(systemName: "wand.and.stars")
                 Text("Coach It").fontWeight(.semibold)
             }
-            .font(.system(size: 17, design: .rounded))
+            .font(Type.cardTitle)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 52)
             .background(
@@ -94,17 +98,17 @@ struct RambleView: View {
 
     private var recentStrip: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Recent").font(.system(size: 13, weight: .semibold, design: .rounded))
+            Text("Recent").font(Type.label)
                 .foregroundStyle(Glass.primaryText.opacity(0.5)).textCase(.uppercase)
             ForEach(app.history.prefix(3)) { r in
                 NavigationLink { ResultView(result: r) } label: {
                     HStack {
                         Text(r.ramble).lineLimit(1)
-                            .font(.system(size: 14, design: .rounded))
+                            .font(Type.secondary)
                             .foregroundStyle(Glass.primaryText.opacity(0.85))
                         Spacer()
                         Text(app.pack.model(id: r.chosenModelID)?.name ?? r.chosenModelID)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .font(Type.captionB)
                             .foregroundStyle(Glass.tint(for: r.chosenModelID))
                     }
                     .padding(.vertical, 10).padding(.horizontal, 12)

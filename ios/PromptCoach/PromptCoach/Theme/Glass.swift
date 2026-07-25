@@ -10,12 +10,15 @@ enum Glass {
     static let success = Color(red: 0.30, green: 0.84, blue: 0.55)
     static let warning = Color(red: 1.00, green: 0.71, blue: 0.20)
 
-    /// One accent per model, so the screen subtly re-tints when the target changes.
+    /// One accent per model, so the screen subtly re-tints when the target
+    /// changes. Keys match `model-pack.json` ids; the contract test in
+    /// Tests/validate_pack.py asserts every model in the pack has a tint.
     static func tint(for modelID: String) -> Color {
         switch modelID {
         case "claude-haiku-4-5": return Color(red: 1.00, green: 0.74, blue: 0.28) // amber
         case "claude-sonnet-5":  return Color(red: 0.22, green: 0.80, blue: 0.76) // teal
-        case "claude-opus-4-8":  return Color(red: 0.44, green: 0.44, blue: 0.98) // indigo
+        case "claude-opus-5":    return Color(red: 0.44, green: 0.44, blue: 0.98) // indigo
+        case "claude-opus-4-8":  return Color(red: 0.52, green: 0.56, blue: 0.66) // slate (legacy tier)
         case "claude-fable-5":   return Color(red: 0.98, green: 0.45, blue: 0.28) // ember
         default:                 return accent
         }
@@ -113,9 +116,35 @@ private extension View {
     }
 }
 
-/// Adaptive haptics with a UIKit fallback.
+/// Typography that scales with Dynamic Type.
+///
+/// Deliberately built on text styles rather than fixed point sizes: a
+/// `.system(size: 14)` font ignores the user's text-size setting entirely,
+/// which fails accessibility review. These keep the rounded design while
+/// still responding to Larger Text.
+enum Type {
+    static let hero      = Font.system(.largeTitle, design: .rounded).weight(.bold)
+    static let title     = Font.system(.title2,     design: .rounded).weight(.bold)
+    static let heading   = Font.system(.title3,     design: .rounded).weight(.semibold)
+    static let cardTitle = Font.system(.headline,   design: .rounded)
+    static let body      = Font.system(.body,       design: .rounded)
+    static let bodyMed   = Font.system(.body,       design: .rounded).weight(.medium)
+    static let secondary = Font.system(.subheadline, design: .rounded)
+    static let label     = Font.system(.footnote,   design: .rounded).weight(.semibold)
+    static let caption   = Font.system(.caption,    design: .rounded)
+    static let captionB  = Font.system(.caption2,   design: .rounded).weight(.bold)
+    static let mono      = Font.system(.footnote,   design: .monospaced)
+}
+
+/// Adaptive haptics.
+///
+/// Wraps UIKit's feedback generators. Each call creates a fresh generator so
+/// there is no retained state to go stale between screens; the cost is
+/// negligible next to the haptic itself. Silently no-ops on hardware without
+/// a Taptic Engine, which is the platform's own behaviour.
 enum Haptics {
     static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
     static func select() { UISelectionFeedbackGenerator().selectionChanged() }
     static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+    static func warning() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
 }

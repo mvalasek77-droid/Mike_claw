@@ -19,6 +19,7 @@ struct ResultView: View {
                     modelPicker
                     reportCard
                     promptCard
+                    sharpenButton
                     if let schema = result.structuredSchema { schemaCard(schema) }
                     techniques
                 }
@@ -38,17 +39,17 @@ struct ResultView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Label("Recommended", systemImage: "sparkle")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(Type.label)
                         .foregroundStyle(Glass.primaryText.opacity(0.55))
                     Spacer()
                     if let m = app.pack.model(id: result.recommendedModelID) {
                         Text(m.priceLabel)
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .font(Type.caption)
                             .foregroundStyle(Glass.primaryText.opacity(0.5))
                     }
                 }
                 Text("Task looks like: \(TaskType(rawValue: result.taskType)?.label ?? result.taskType)")
-                    .font(.system(size: 13, design: .rounded))
+                    .font(Type.caption)
                     .foregroundStyle(Glass.primaryText.opacity(0.7))
 
                 // Segmented override — user can pick any model.
@@ -61,7 +62,7 @@ struct ResultView: View {
                 }
                 if let m = app.pack.model(id: result.chosenModelID) {
                     Text(m.oneLiner)
-                        .font(.system(size: 13, design: .rounded))
+                        .font(Type.caption)
                         .foregroundStyle(Glass.primaryText.opacity(0.8))
                         .padding(.top, 2)
                 }
@@ -81,9 +82,9 @@ struct ResultView: View {
         } label: {
             VStack(spacing: 2) {
                 Text(m.name.replacingOccurrences(of: "Claude ", with: ""))
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(Type.label)
                 if m.id == result.recommendedModelID {
-                    Text("best fit").font(.system(size: 9, weight: .bold, design: .rounded)).opacity(0.8)
+                    Text("best fit").font(Type.captionB).opacity(0.8)
                 }
             }
             .foregroundStyle(selected ? .white : Glass.primaryText.opacity(0.7))
@@ -107,22 +108,22 @@ struct ResultView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text("Your ramble scored")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(Type.label)
                         .foregroundStyle(Glass.primaryText.opacity(0.7))
                     Spacer()
                     Text("\(result.reportCard.score)")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .font(Type.title)
                         .foregroundStyle(scoreColor)
-                    Text("/100").font(.system(size: 13, design: .rounded))
+                    Text("/100").font(Type.caption)
                         .foregroundStyle(Glass.primaryText.opacity(0.5))
                 }
                 ForEach(result.reportCard.lines) { line in
                     HStack(spacing: 8) {
                         Image(systemName: line.passed ? "checkmark.circle.fill" : "circle.dashed")
                             .foregroundStyle(line.passed ? Glass.success : Glass.warning)
-                            .font(.system(size: 14))
+                            .font(Type.secondary)
                         Text(line.checks)
-                            .font(.system(size: 13, design: .rounded))
+                            .font(Type.caption)
                             .foregroundStyle(Glass.primaryText.opacity(line.passed ? 0.55 : 0.85))
                         Spacer()
                     }
@@ -147,7 +148,7 @@ struct ResultView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text("Model-ready prompt")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(Type.label)
                         .foregroundStyle(Glass.primaryText.opacity(0.7))
                     Spacer()
                     ShareLink(item: result.rewrittenPrompt) {
@@ -165,7 +166,7 @@ struct ResultView: View {
                     .accessibilityLabel(copied ? "Copied" : "Copy prompt")
                 }
                 Text(result.rewrittenPrompt)
-                    .font(.system(size: 14, design: .monospaced))
+                    .font(Type.mono)
                     .foregroundStyle(Glass.primaryText)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -174,14 +175,46 @@ struct ResultView: View {
         }
     }
 
+    /// Meta-prompting: a second pass that restructures the prompt into tagged
+    /// sections and fills the gaps the first pass only flagged.
+    @ViewBuilder
+    private var sharpenButton: some View {
+        if result.isSharpened {
+            Label("Sharpened — restructured into tagged sections", systemImage: "checkmark.seal.fill")
+                .font(Type.caption)
+                .foregroundStyle(Glass.success)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            Button {
+                Haptics.success()
+                let sharper = app.engine.sharpen(result)
+                withAnimation(Glass.motion) { result = sharper }
+                app.save(sharper)
+            } label: {
+                Label("Sharpen it further", systemImage: "sparkles")
+                    .font(Type.bodyMed)
+                    .foregroundStyle(tint)
+                    .frame(maxWidth: .infinity, minHeight: 46)
+                    .background(tint.opacity(0.14),
+                                in: RoundedRectangle(cornerRadius: Glass.cornerMedium, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Glass.cornerMedium, style: .continuous)
+                            .strokeBorder(tint.opacity(0.35), lineWidth: 0.8)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Runs a second pass that adds XML structure, examples, and explicit constraints")
+        }
+    }
+
     private func schemaCard(_ schema: String) -> some View {
         GlassCard(corner: Glass.cornerMedium) {
             VStack(alignment: .leading, spacing: 8) {
                 Label("JSON schema (structured output)", systemImage: "curlybraces")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(Type.label)
                     .foregroundStyle(Glass.primaryText.opacity(0.6))
                 Text(schema)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(Type.mono)
                     .foregroundStyle(Glass.primaryText.opacity(0.85))
                     .textSelection(.enabled)
             }
@@ -194,7 +227,7 @@ struct ResultView: View {
     private var techniques: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("What I changed")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(Type.label)
                 .foregroundStyle(Glass.primaryText.opacity(0.55)).textCase(.uppercase)
             ForEach(result.techniquesApplied) { t in
                 Button {
@@ -202,9 +235,9 @@ struct ResultView: View {
                 } label: {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "checkmark.seal.fill").foregroundStyle(tint)
-                            .font(.system(size: 14)).padding(.top, 1)
+                            .font(Type.secondary).padding(.top, 1)
                         Text(t.label)
-                            .font(.system(size: 14, design: .rounded))
+                            .font(Type.secondary)
                             .foregroundStyle(Glass.primaryText.opacity(0.9))
                             .multilineTextAlignment(.leading)
                         Spacer()

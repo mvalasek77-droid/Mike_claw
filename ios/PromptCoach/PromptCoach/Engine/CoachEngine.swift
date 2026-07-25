@@ -14,6 +14,18 @@ struct CoachResult: Identifiable, Codable, Hashable {
     var reportCard: ReportCard
     /// A generated JSON schema when structured-output mode fired; else nil.
     var structuredSchema: String?
+
+    /// True once the Sharpen (meta-prompting) pass has restructured it.
+    ///
+    /// Stored as `Bool?` on purpose: Swift's synthesized decoder only falls
+    /// back for Optionals, so a non-optional `Bool` here — even with a default
+    /// — would throw on history JSON written before this field existed and
+    /// silently wipe the user's saved sessions. Use `isSharpened`.
+    var sharpened: Bool?
+    var isSharpened: Bool {
+        get { sharpened ?? false }
+        set { sharpened = newValue }
+    }
 }
 
 struct AppliedTechnique: Codable, Hashable, Identifiable {
@@ -108,6 +120,74 @@ struct CoachEngine {
         )
     }
 
+    // MARK: Sharpen (meta-prompting)
+
+    /// Second pass: restructures an already-coached prompt into fully tagged
+    /// sections and fills the technique gaps the first pass only flagged.
+    ///
+    /// This is the `self_correction_chain` technique turned on the prompt
+    /// itself — draft, review against the checklist, refine. It stays on
+    /// device and deterministic; the optional Test It path (user's own key)
+    /// would layer a model-graded pass on top of this.
+    func sharpen(_ result: CoachResult) -> CoachResult {
+        let task = TaskType(rawValue: result.taskType) ?? .code
+        let model = pack.model(id: result.chosenModelID)
+        let suppressed = model?.suppressed ?? []
+        var added: [AppliedTechnique] = result.techniquesApplied
+
+        var blocks: [String] = []
+
+        if !suppressed.contains("role") {
+            blocks.append("<role>\n\(roleLine(for: task))\n</role>")
+        }
+
+        blocks.append("<context>\n<!-- Who this is for and why it matters. Replace this line. -->\n</context>")
+
+        let core = dedupeSentences(result.ramble)
+        blocks.append("<task>\n\(core.isEmpty ? "<!-- your request -->" : core)\n</task>")
+
+        // Examples scaffold — only where output shape actually matters, and
+        // only if the original didn't already carry one.
+        let shapeMatters: Set<TaskType> = [.classify, .summarize, .email, .writing, .sql]
+        if shapeMatters.contains(task), !suppressed.contains("examples"),
+           !passed(result.reportCard, "examples") {
+            blocks.append("""
+            <examples>
+              <example>
+                <input><!-- a representative input --></input>
+                <output><!-- the exact shape you want back --></output>
+              </example>
+            </examples>
+            """)
+            added.append(.init(techniqueID: "examples",
+                               label: "Sharpened: added an example scaffold — 3–5 examples is the most reliable way to lock output shape"))
+        }
+
+        // Explicit scope, if the ramble never bounded the work.
+        if !passed(result.reportCard, "explicit_scope") {
+            blocks.append("<constraints>\n<!-- What to touch and what to leave alone. -->\n</constraints>")
+            added.append(.init(techniqueID: "scope_constraint",
+                               label: "Sharpened: added a constraints block — unbounded scope is the most common cause of unwanted changes"))
+        }
+
+        blocks.append("<success_criteria>\nDone means: \(defaultDoneMeans(task)).\n</success_criteria>")
+
+        for line in model?.extras ?? [] { blocks.append(line) }
+
+        if let model, model.apiFacts?.supportsEffort ?? false, let effort = model.defaultEffort {
+            blocks.append("Suggested setting: effort \(effort)\(thinkingNote(for: model)).")
+        }
+
+        added.append(.init(techniqueID: "meta_prompt",
+                           label: "Sharpened: restructured into tagged sections so the model can't confuse instructions, context, and data"))
+
+        var out = result
+        out.rewrittenPrompt = blocks.joined(separator: "\n\n")
+        out.techniquesApplied = added
+        out.isSharpened = true
+        return out
+    }
+
     // MARK: Report card — scores the ORIGINAL ramble
 
     private func buildReportCard(ramble: String) -> ReportCard {
@@ -118,7 +198,7 @@ struct CoachEngine {
             case "context_why": return t.contains(" because ") || t.contains(" so that ") || t.contains(" for ") || t.contains("i'm building") || t.contains("im building")
             case "role": return t.contains("you are") || t.contains("act as") || t.contains("as a ")
             case "examples": return t.contains("example") || t.contains("e.g.") || t.contains("like this")
-            case "xml_structure": return ramble.contains("<") && ramble.contains(">") || ramble.contains("```")
+            case "xml_structure": return hasPastedBlock(ramble)
             case "explicit_scope": return t.contains("only") || t.contains("don't") || t.contains("do not") || t.contains("just ")
             case "success_criterion": return t.contains("done means") || t.contains("should ") || t.contains("must ") || t.contains("so that")
             case "no_retired_patterns": return !hasRetiredPatterns(ramble)
@@ -144,51 +224,105 @@ struct CoachEngine {
                              card: ReportCard) -> String {
         var sections: [String] = []
         let ids = Set(playbook?.techniques ?? [])
-        func used(_ id: String) -> Bool { ids.contains(id) }
+        let suppressed = model?.suppressed ?? []
 
-        // 1. Role (foundational, when the playbook calls for it or the task is domain-specific)
-        if used("role") || [.code, .sql, .writing, .design, .debug].contains(task) {
-            let role = roleLine(for: task)
-            sections.append(role)
-            applied.append(.init(techniqueID: "role", label: "Added a role so the model adopts the right expertise and tone"))
+        /// A technique fires when the playbook (or a task heuristic) calls for
+        /// it AND the target model doesn't suppress it. Suppression is how
+        /// per-model behavior differences are honoured — e.g. Opus 5
+        /// self-verifies, so `self_check` is suppressed there.
+        func fires(_ id: String, orTask condition: Bool = false) -> Bool {
+            guard !suppressed.contains(id) else { return false }
+            return ids.contains(id) || condition
         }
 
-        // 2. Context / why
-        if !passed(card, "context_why") {
-            sections.append("Context: <one line on who this is for and why it matters — the coach flags that adding this sharpens the result, especially on Fable 5>.")
-            applied.append(.init(techniqueID: "add_context", label: "Prompted you to state the intent — the model connects the task to the goal instead of guessing"))
+        // 1. Role — domain framing.
+        if fires("role", orTask: [.code, .sql, .writing, .design, .debug].contains(task)) {
+            sections.append(roleLine(for: task))
+            applied.append(.init(techniqueID: "role",
+                                 label: "Added a role so the model adopts the right expertise and tone"))
         }
 
-        // 3. Cleaned core ask (dedupe obvious repetition, strip retired patterns)
+        // 2. Context / why — only prompt for it if the ramble lacked it.
+        if fires("add_context", orTask: true), !passed(card, "context_why") {
+            sections.append("Context: <one line on who this is for and why it matters — stating the intent measurably sharpens the result, most of all on Fable 5>.")
+            applied.append(.init(techniqueID: "add_context",
+                                 label: "Prompted you to state the intent — the model connects the task to the goal instead of guessing"))
+        }
+
+        // 3. Cleaned core ask (dedupe repetition, strip retired patterns).
         let cleaned = stripRetired(dedupeSentences(ramble), applied: &applied)
         sections.append("Task: \(cleaned)")
 
-        // 4. Tag pasted data/code if present
-        if ramble.contains("```") || (ramble.contains("<") && ramble.contains(">")) {
-            applied.append(.init(techniqueID: "xml_structure", label: "Wrapped your pasted data/code in tags so the model doesn't confuse it with instructions"))
+        // 4. Tag pasted data/code if present.
+        if hasPastedBlock(ramble), !suppressed.contains("xml_structure") {
+            applied.append(.init(techniqueID: "xml_structure",
+                                 label: "Wrapped your pasted data/code in tags so the model doesn't confuse it with instructions"))
         }
 
-        // 5. Long-context reorder note
-        if ramble.count > 1500 {
-            applied.append(.init(techniqueID: "long_context", label: "Moved your long input to the top and put the question last (+quality on long inputs)"))
+        // 5. Long-context layout.
+        if ramble.count > 1_500, !suppressed.contains("long_context") {
+            applied.append(.init(techniqueID: "long_context",
+                                 label: "Moved your long input to the top and put the question last (+quality on long inputs)"))
         }
 
-        // 6. Success criterion (always)
+        // 6. Success criterion — the single highest-leverage addition.
         sections.append("Done means: <the concrete, checkable outcome — e.g. \(defaultDoneMeans(task))>.")
-        applied.append(.init(techniqueID: "success_criterion", label: "Added a success criterion so the model knows exactly what 'done' looks like"))
+        applied.append(.init(techniqueID: "success_criterion",
+                             label: "Added a success criterion so the model knows exactly what 'done' looks like"))
 
-        // 7. Reasoning / self-check for correctness-sensitive tasks
-        if [.code, .sql, .debug].contains(task) {
+        // 7. Self-check — correctness-sensitive tasks only, and NEVER on a
+        // model that already self-verifies (Opus 5 over-verifies if told to).
+        if fires("self_check", orTask: [.code, .sql, .debug].contains(task)) {
             sections.append("Before finishing, verify the result against the success criterion above.")
-            applied.append(.init(techniqueID: "self_check", label: "Added a self-check step — catches errors on code and logic reliably"))
+            applied.append(.init(techniqueID: "self_check",
+                                 label: "Added a self-check step — catches errors on code and logic reliably"))
+        } else if suppressed.contains("self_check"), [.code, .sql, .debug].contains(task) {
+            // Teach the user *why* the usual advice was withheld.
+            applied.append(.init(techniqueID: "self_check",
+                                 label: "Deliberately did NOT add a 'verify your work' line — \(model?.shortName ?? "this model") self-verifies, and telling it to causes over-verification and wasted tokens"))
         }
 
-        // 8. Per-model footer (effort / thinking / plain-text)
-        if let effort = model?.defaultEffort {
-            sections.append("Suggested setting: effort \(effort) with adaptive thinking.")
+        // 8. Scope constraint — for models that widen scope on narrow asks.
+        if fires("scope_constraint") {
+            applied.append(.init(techniqueID: "scope_constraint",
+                                 label: "Added a scope boundary so the model delivers what was asked and no more"))
+        }
+
+        // 9. Model-specific instruction lines straight from the pack.
+        for line in model?.extras ?? [] {
+            sections.append(line)
+        }
+        if let model, !model.extras.isEmpty {
+            applied.append(.init(techniqueID: "verbosity",
+                                 label: "Added \(model.shortName)-specific lines (conciseness + scope) — its default responses run long"))
+        }
+
+        // 10. Effort footer — only for models that actually have an effort
+        // ladder. Suggesting one to Haiku 4.5 is an API error.
+        if let model, model.apiFacts?.supportsEffort ?? (model.defaultEffort != nil),
+           let effort = model.defaultEffort {
+            sections.append("Suggested setting: effort \(effort)\(thinkingNote(for: model)).")
         }
 
         return sections.joined(separator: "\n\n")
+    }
+
+    /// Thinking guidance that matches the model's actual default, so the
+    /// coach never tells you to set something the API rejects or ignores.
+    private func thinkingNote(for model: ModelProfile) -> String {
+        switch model.apiFacts?.thinkingWhenOmitted {
+        case "on_by_default":  return " (thinking is on by default — no thinking field needed)"
+        case "always_on":      return " (thinking is always on — omit the thinking parameter)"
+        case "adaptive_on":    return " with adaptive thinking (on by default)"
+        case "off":            return " and set thinking to adaptive explicitly (it's off when omitted)"
+        default:               return ""
+        }
+    }
+
+    private func hasPastedBlock(_ s: String) -> Bool {
+        if s.contains("```") { return true }
+        // Require a plausible tag, not just stray angle brackets in prose.
+        return s.range(of: "<[A-Za-z_][A-Za-z0-9_-]*>", options: .regularExpression) != nil
     }
 
     private func passed(_ card: ReportCard, _ item: String) -> Bool {
