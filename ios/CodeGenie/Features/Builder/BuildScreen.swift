@@ -545,10 +545,11 @@ struct BuildScreen: View {
                         Text("Build green")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                        Text("Ready to test in the cloud simulator. Run Perfection Mode before App Store handoff.")
+                        Text("Your app is ready. It's saved here in CodeGenie — find it any time on the Apps tab.")
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
                             .multilineTextAlignment(.center)
+                        appLocationCard
                         Button {
                             Haptics.selection()
                             jargonHelp = .perfection
@@ -624,6 +625,42 @@ struct BuildScreen: View {
             .padding(.horizontal, 28)
         }
         .transition(.opacity)
+    }
+
+    private var appLocationCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "tray.full.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(LiquidGlass.accent)
+                Text("Where is my app?")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                locationRow(icon: "square.grid.2x2.fill", text: "Apps tab — tap to reopen any time")
+                locationRow(icon: "square.and.arrow.down", text: "Download — save the full Xcode project as a zip")
+                locationRow(icon: "chevron.left.forwardslash.chevron.right", text: "GitHub — back up so you never lose it")
+                locationRow(icon: "paperplane.fill", text: "Submit — send straight to the App Store")
+            }
+        }
+        .padding(12)
+        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.1)))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Your app is saved in the Apps tab. You can download, back up to GitHub, or submit to the App Store.")
+    }
+
+    private func locationRow(icon: String, text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.5))
+                .frame(width: 16)
+            Text(text)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+        }
     }
 
     private func perfectionSummary(_ run: PerfectionRun) -> some View {
@@ -716,6 +753,8 @@ struct BuildScreen: View {
                 id = backendID
             } else {
                 id = try await swarm.startBuild(spec: AppSpec(initialJob.description))
+                session.attachBackendJobID(id, to: initialJob)
+                session.registerBackendJob(backendID: id, description: initialJob.description)
             }
             swarm.openStream(jobID: id) { event in
                 Task { @MainActor in
@@ -736,6 +775,7 @@ struct BuildScreen: View {
                         Motion.run(.spring(response: 0.5, dampingFraction: 0.85)) { stage = mapped }
                         appendLog(for: mapped)
                         if mapped == .readyForTest {
+                            session.clearResumeRecord()
                             startPerfectionIfNeeded(jobID: id)
                         }
                     }

@@ -19,6 +19,28 @@ final class AppSession: ObservableObject {
     /// doesn't accidentally attach.
     @Published var currentJobBackendID: String?
 
+    /// Persisted record of an in-progress build so the user can resume
+    /// after a crash or force-quit. Shown as a callout on Home.
+    @Published var pendingResume: ResumeRecord? {
+        didSet { saveResumeRecord() }
+    }
+
+    struct ResumeRecord: Codable, Identifiable {
+        let backendID: String
+        let description: AppDescription
+        let startedAt: Date
+        var id: String { backendID }
+    }
+
+    private static let resumeKey = "codegenie.pendingResume.v1"
+
+    /// Stash for preview→build return. When the user opens a preview
+    /// from the success overlay, we nil `currentJob` (dismiss
+    /// BuildScreen) and save the return context here. On preview
+    /// dismiss, we re-open BuildScreen attached to the same backend
+    /// job so the Submit button is still reachable.
+    private var returnAfterPreview: (job: BuildJob, backendID: String)?
+
     /// Cap on persisted jobs so a power user's gallery doesn't bloat
     /// UserDefaults or stall launch decode. ~50 is enough to scroll
     /// through months of builds without choking on disk I/O.
@@ -27,10 +49,6 @@ final class AppSession: ObservableObject {
     private static let backendIDsKey = "codegenie.backendJobIDs.v1"
 
     init() {
-        // Load persisted state synchronously so the gallery is populated
-        // before any view binds to it. Decode failures (e.g. after a
-        // BuildJob shape change) reset rather than crash — losing the
-        // gallery is recoverable; a crash loop is not.
         if let data = UserDefaults.standard.data(forKey: Self.recentJobsKey),
            let decoded = try? JSONDecoder().decode([BuildJob].self, from: data) {
             self.recentJobs = decoded
@@ -38,6 +56,10 @@ final class AppSession: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: Self.backendIDsKey),
            let decoded = try? JSONDecoder().decode([UUID: String].self, from: data) {
             self.backendJobIDs = decoded
+        }
+        if let data = UserDefaults.standard.data(forKey: Self.resumeKey),
+           let decoded = try? JSONDecoder().decode(ResumeRecord.self, from: data) {
+            self.pendingResume = decoded
         }
     }
 
@@ -112,12 +134,55 @@ final class AppSession: ObservableObject {
     }
 
     func openPreview(for job: BuildJob) {
+        if let bid = currentJobBackendID {
+            returnAfterPreview = (job: job, backendID: bid)
+        }
         currentJob = nil
         pendingPreview = job
+    }
+
+    func returnToBuildAfterPreview() {
+        guard let stash = returnAfterPreview else { return }
+        returnAfterPreview = nil
+        currentJobBackendID = stash.backendID
+        currentJob = stash.job
     }
 
     func openAppStoreConnect(for job: BuildJob) {
         currentJob = nil
         pendingASC = job
+    }
+
+    // MARK: - Resume record
+
+    func registerBackendJob(backendID: String, description: AppDescription) {
+        pendingResume = ResumeRecord(
+            backendID: backendID,
+            description: description,
+            startedAt: .now
+        )
+    }
+
+    func clearResumeRecord() {
+        pendingResume = nil
+    }
+
+    func resumePendingBuild() {
+        guard let record = pendingResume else { return }
+        let job = BuildJob(description: record.description)
+        currentJobBackendID = record.backendID
+        backendJobIDs[job.id] = record.backendID
+        saveBackendIDs()
+        currentJob = job
+        Haptics.selection()
+    }
+
+    private func saveResumeRecord() {
+        if let record = pendingResume,
+           let data = try? JSONEncoder().encode(record) {
+            UserDefaults.standard.set(data, forKey: Self.resumeKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.resumeKey)
+        }
     }
 }

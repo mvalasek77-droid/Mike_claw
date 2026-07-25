@@ -22,6 +22,7 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 22) {
                 hero
+                if let record = session.pendingResume { resumeCallout(record) }
                 primaryAction
                 shipReadinessCard
                 quickGrid
@@ -90,7 +91,9 @@ struct HomeView: View {
             BuildScreen(job: job, attachToBackendID: session.currentJobBackendID)
                 .environmentObject(session)
         }
-        .fullScreenCover(item: $session.pendingPreview) { job in
+        .fullScreenCover(item: $session.pendingPreview, onDismiss: {
+            session.returnToBuildAfterPreview()
+        }) { job in
             RemoteBuildView(job: job)
                 .environmentObject(session)
         }
@@ -271,6 +274,47 @@ struct HomeView: View {
     }
 
     // MARK: Sections
+
+    private func resumeCallout(_ record: AppSession.ResumeRecord) -> some View {
+        GlassSurface(tier: .raised, corner: 18) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.clockwise.circle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Build in progress")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("\(record.description.title) — tap Resume to pick up where you left off.")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    }
+                }
+                HStack(spacing: 10) {
+                    Button {
+                        session.resumePendingBuild()
+                    } label: {
+                        Text("Resume")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 16).padding(.vertical, 8)
+                            .background(LiquidGlass.accent, in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    .accessibilityLabel("Resume \(record.description.title)")
+                    Button {
+                        session.clearResumeRecord()
+                    } label: {
+                        Text("Dismiss")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                    }
+                    .accessibilityLabel("Dismiss resume callout")
+                }
+            }
+            .padding(14)
+        }
+    }
 
     private var hero: some View {
         VStack(spacing: 10) {

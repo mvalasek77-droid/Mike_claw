@@ -185,16 +185,32 @@ class SwarmOrchestrator:
 
             # ---- DONE ----
             session.update_state(JobState.succeeded)
+            elapsed = int(time.time() - (job.started_at or job.created_at))
+            workspace_rel = str(session.workspace)
+            file_count = sum(
+                1 for p in session.workspace.rglob("*")
+                if p.is_file() and ".git" not in p.parts and ".codegenie" not in p.parts
+            )
+            session.job.workspace = workspace_rel
             session.job.summary = (
                 f"{job.spec.title} built successfully — "
-                f"{int((time.time() - (job.started_at or job.created_at)))}s end-to-end."
+                f"{elapsed}s end-to-end, {file_count} files."
             )
             self.memory.record_project(
                 job.id, job.spec.title, job.spec.model_dump(),
                 succeeded=True, summary=session.job.summary,
             )
-            await events.emit("job.state", state=session.job.state.value, summary=session.job.summary)
-            await events.emit("done", success=True)
+            await events.emit("artifact",
+                              title=job.spec.title,
+                              job_id=job.id,
+                              file_count=file_count,
+                              workspace=workspace_rel)
+            await events.emit("job.state", state=session.job.state.value,
+                              summary=session.job.summary,
+                              file_count=file_count)
+            await events.emit("done", success=True,
+                              file_count=file_count,
+                              title=job.spec.title)
         except asyncio.CancelledError:
             session.update_state(JobState.cancelled)
             await events.emit("job.state", state=session.job.state.value)
@@ -548,8 +564,37 @@ class SwarmOrchestrator:
                 await self._run_ship_stage(session, events)
 
             session.update_state(JobState.succeeded)
-            await events.emit("job.state", state=session.job.state.value, resumed=True)
-            await events.emit("done", success=True, resumed=True)
+            workspace_rel = str(session.workspace)
+            file_count = sum(
+                1 for p in session.workspace.rglob("*")
+                if p.is_file() and ".git" not in p.parts and ".codegenie" not in p.parts
+            )
+            session.job.workspace = workspace_rel
+            session.job.summary = (
+                f"{job.spec.title} built successfully (resumed) — "
+                f"{file_count} files."
+            )
+            await events.emit("artifact",
+                              title=job.spec.title,
+                              job_id=job.id,
+                              file_count=file_count,
+                              workspace=workspace_rel)
+            await events.emit("job.state", state=session.job.state.value,
+                              summary=session.job.summary,
+                              file_count=file_count,
+                              resumed=True)
+            await events.emit("done", success=True, resumed=True,
+                              file_count=file_count,
+                              title=job.spec.title)
+        except asyncio.CancelledError:
+            session.update_state(JobState.cancelled)
+            await events.emit("job.state", state=session.job.state.value)
+            await events.emit("done", success=False, reason="cancelled")
+            raise
+        except BudgetExceeded as exc:
+            session.update_state(JobState.cancelled, error=str(exc))
+            await events.emit("job.state", state="cancelled", reason="cost_cap")
+            await events.emit("done", success=False, reason="cost_cap")
         except Exception as exc:  # noqa: BLE001
             session.update_state(JobState.failed, error=str(exc))
             await events.emit("error", message=f"resume failed: {exc}")
