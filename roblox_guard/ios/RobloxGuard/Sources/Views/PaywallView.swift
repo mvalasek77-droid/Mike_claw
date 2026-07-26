@@ -10,7 +10,7 @@ struct PaywallView: View {
 
     var reason = "Subscribe to start protecting your child on Roblox."
 
-    @State private var selectedProductID: String?
+    @State private var selectedDemoProduct: DemoProduct?
     @State private var isPurchasing = false
 
     var body: some View {
@@ -19,27 +19,14 @@ struct PaywallView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     header
 
-                    if purchases.products.isEmpty {
+                    if purchases.isUsingDemoProducts {
+                        demoPlans
+                    } else if purchases.products.isEmpty {
                         ProgressView()
                             .frame(maxWidth: .infinity)
                             .padding(.top, 32)
                     } else {
-                        VStack(spacing: 12) {
-                            PlanCard(
-                                title: "Single Child",
-                                subtitle: "Monitor one Roblox account, full alerts and evidence vault",
-                                monthly: product(ProductID.singleMonthly),
-                                annual: product(ProductID.singleAnnual),
-                                selectedProductID: $selectedProductID
-                            )
-                            PlanCard(
-                                title: "Family",
-                                subtitle: "Up to 5 children, incident reports, priority protection updates",
-                                monthly: product(ProductID.familyMonthly),
-                                annual: product(ProductID.familyAnnual),
-                                selectedProductID: $selectedProductID
-                            )
-                        }
+                        realPlans
                     }
 
                     if let message = purchases.errorMessage {
@@ -48,26 +35,7 @@ struct PaywallView: View {
                             .foregroundStyle(.red)
                     }
 
-                    Button {
-                        guard let id = selectedProductID,
-                              let product = purchases.products.first(where: { $0.id == id })
-                        else { return }
-                        Task {
-                            isPurchasing = true
-                            await purchases.purchase(product)
-                            isPurchasing = false
-                            if purchases.activeTier != .none { dismiss() }
-                        }
-                    } label: {
-                        if isPurchasing {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Text("Subscribe").frame(maxWidth: .infinity)
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .disabled(selectedProductID == nil || isPurchasing)
+                    subscribeButton
 
                     Button("Restore purchases") {
                         Task { await purchases.restore() }
@@ -103,9 +71,6 @@ struct PaywallView: View {
             }
             .task {
                 await purchases.start()
-                if selectedProductID == nil {
-                    selectedProductID = product(ProductID.singleAnnual)?.id
-                }
             }
         }
     }
@@ -122,10 +87,161 @@ struct PaywallView: View {
         }
     }
 
-    private func product(_ id: String) -> Product? {
-        purchases.products.first { $0.id == id }
+    // MARK: - Real StoreKit products
+
+    @ViewBuilder
+    private var realPlans: some View {
+        VStack(spacing: 12) {
+            PlanCard(
+                title: "Single Child",
+                subtitle: "Monitor one Roblox account, full alerts and evidence vault",
+                monthly: purchases.products.first { $0.id == ProductID.singleMonthly },
+                annual: purchases.products.first { $0.id == ProductID.singleAnnual },
+                selectedProductID: selectedRealBinding
+            )
+            PlanCard(
+                title: "Family",
+                subtitle: "Up to 5 children, incident reports, priority protection updates",
+                monthly: purchases.products.first { $0.id == ProductID.familyMonthly },
+                annual: purchases.products.first { $0.id == ProductID.familyAnnual },
+                selectedProductID: selectedRealBinding
+            )
+        }
+    }
+
+    private var selectedRealBinding: Binding<String?> {
+        Binding(
+            get: { purchases.products.first { _ in true }?.id },
+            set: { _ in }
+        )
+    }
+
+    // MARK: - Demo products (Simulator / App Review)
+
+    @ViewBuilder
+    private var demoPlans: some View {
+        VStack(spacing: 12) {
+            DemoPlanCard(
+                title: "Single Child",
+                subtitle: "Monitor one Roblox account, full alerts and evidence vault",
+                annual: purchases.demoProducts.first { $0.id == ProductID.singleAnnual },
+                monthly: purchases.demoProducts.first { $0.id == ProductID.singleMonthly },
+                selected: $selectedDemoProduct
+            )
+            DemoPlanCard(
+                title: "Family",
+                subtitle: "Up to 5 children, incident reports, priority protection updates",
+                annual: purchases.demoProducts.first { $0.id == ProductID.familyAnnual },
+                monthly: purchases.demoProducts.first { $0.id == ProductID.familyMonthly },
+                selected: $selectedDemoProduct
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var subscribeButton: some View {
+        Button {
+            if purchases.isUsingDemoProducts {
+                guard let product = selectedDemoProduct else { return }
+                Task {
+                    isPurchasing = true
+                    await purchases.purchaseDemo(product)
+                    isPurchasing = false
+                    if purchases.activeTier != .none { dismiss() }
+                }
+            } else {
+                // Real StoreKit purchase
+                let id = purchases.products.sorted { $0.price < $1.price }.first?.id
+                guard let id,
+                      let product = purchases.products.first(where: { $0.id == id }) else { return }
+                Task {
+                    isPurchasing = true
+                    await purchases.purchase(product)
+                    isPurchasing = false
+                    if purchases.activeTier != .none { dismiss() }
+                }
+            }
+        } label: {
+            if isPurchasing {
+                ProgressView().frame(maxWidth: .infinity)
+            } else {
+                Text("Subscribe").frame(maxWidth: .infinity)
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .disabled(purchases.isUsingDemoProducts ? selectedDemoProduct == nil : false)
     }
 }
+
+// MARK: - Demo Plan Card
+
+private struct DemoPlanCard: View {
+    let title: String
+    let subtitle: String
+    let annual: DemoProduct?
+    let monthly: DemoProduct?
+    @Binding var selected: DemoProduct?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.headline)
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                if let annual {
+                    priceOption(annual, badge: "Best value")
+                }
+                if let monthly {
+                    priceOption(monthly, badge: nil)
+                }
+            }
+        }
+        .padding()
+        .glassCard()
+    }
+
+    private func priceOption(_ product: DemoProduct, badge: String?) -> some View {
+        let isSelected = selected?.id == product.id
+        return Button {
+            selected = product
+            Haptics.tap()
+        } label: {
+            VStack(spacing: 4) {
+                if let badge {
+                    Text(badge)
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.tint, in: Capsule())
+                        .foregroundStyle(.white)
+                } else {
+                    Color.clear.frame(height: 15)
+                }
+                Text(product.displayPrice)
+                    .font(.subheadline.bold())
+                Text(product.isAnnual ? "per year" : "per month")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(isSelected ? Color.accentColor : Color.secondary.opacity(0.3),
+                                  lineWidth: isSelected ? 2 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(product.displayPrice) \(product.isAnnual ? "per year" : "per month")\(badge.map { ", \($0)" } ?? "")")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+// MARK: - Real Plan Card (StoreKit)
 
 private struct PlanCard: View {
     let title: String

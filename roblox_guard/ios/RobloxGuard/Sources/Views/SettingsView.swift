@@ -18,6 +18,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                // MARK: - Subscription
                 Section {
                     LabeledContent("Plan", value: purchases.activeTier.displayName)
                     if purchases.activeTier != .none {
@@ -27,21 +28,30 @@ struct SettingsView: View {
                         Button("Subscribe") { showPaywall = true }
                     } else {
                         Button("Change plan") { showPaywall = true }
-                        Button("Manage subscription") { showManageSubscriptions = true }
+                        if !purchases.isUsingDemoProducts {
+                            Button("Manage subscription") { showManageSubscriptions = true }
+                        }
                     }
                 } header: {
                     Text("Subscription")
                 }
 
+                // MARK: - Notifications
                 Section {
                     notificationsRow
                     if push.isRegistered {
                         Button("Send test notification") {
                             Task {
+                                #if DEBUG
+                                if store.isDemoMode {
+                                    testNotificationResult = "Demo mode: test notification sent (visual only)"
+                                    return
+                                }
+                                #endif
                                 do {
                                     let result = try await store.api.sendTestNotification()
                                     testNotificationResult = "Sent to \(result.sent) device(s)"
-                                    + (result.failed > 0 ? ", \(result.failed) failed" : "")
+                                        + (result.failed > 0 ? ", \(result.failed) failed" : "")
                                 } catch {
                                     testNotificationResult = error.localizedDescription
                                 }
@@ -59,6 +69,7 @@ struct SettingsView: View {
                     Text("Get notified the moment a watch-level or elevated alert fires, without opening the app.")
                 }
 
+                // MARK: - Linked accounts
                 Section {
                     if store.children.isEmpty {
                         Text("No accounts linked")
@@ -78,8 +89,9 @@ struct SettingsView: View {
                             }
                         }
                     }
-                } header: {    Text("Linked accounts")}
+                } header: { Text("Linked accounts") }
 
+                // MARK: - Protection updates
                 Section {
                     if let protection {
                         LabeledContent("Threat definitions",
@@ -96,7 +108,16 @@ struct SettingsView: View {
                                 .font(.footnote)
                         }
                     } else {
+                        #if DEBUG
+                        if store.isDemoMode {
+                            LabeledContent("Threat definitions", value: "v1 · demo")
+                            LabeledContent("Updates from", value: "built-in (demo)")
+                        } else {
+                            Text("Loading…").foregroundStyle(.secondary)
+                        }
+                        #else
                         Text("Loading…").foregroundStyle(.secondary)
+                        #endif
                     }
                 } header: {
                     Text("Protection updates")
@@ -104,14 +125,16 @@ struct SettingsView: View {
                     Text("Detection rules, term definitions, and the experience watchlist refresh themselves — new threats roll out without app updates. A daily search of safety sources proposes additions automatically.")
                 }
 
+                // MARK: - Privacy
                 Section {
                     Text("RobloxGuard stores only your child's Roblox username and the safety alerts derived from public account information. Unlinking an account permanently deletes everything associated with it. Nothing is shared with third parties.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Link("Privacy Policy", destination: PaywallView.privacyPolicyURL)
                         .font(.footnote)
-                } header: {    Text("Privacy")}
+                } header: { Text("Privacy") }
 
+                // MARK: - Support
                 Section {
                     Button {
                         showBugReport = true
@@ -123,9 +146,41 @@ struct SettingsView: View {
                 } footer: {
                     Text("Reports go to \(BugReportView.supportEmail) and are logged for the team to review.")
                 }
+
+                // MARK: - Demo Mode (DEBUG only)
+                #if DEBUG
+                Section {
+                    Toggle("Demo Mode", isOn: Binding(
+                        get: { purchases.demoMode },
+                        set: { newValue in
+                            purchases.demoMode = newValue
+                            UserDefaults.standard.set(newValue, forKey: "demoMode")
+                            Task { await store.loadAll() }
+                            Task { await purchases.start() }
+                        }
+                    ))
+                    if purchases.demoMode {
+                        Text("Demo mode is ON. The app uses sample data — no backend required. All features are testable: link a child, view alerts with glossary explainers, upload evidence, generate an incident report, send bug reports, and test push notifications.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("App Review")
+                } footer: {
+                    Text("Demo mode provides sample alerts and a demo child (builderman) so Apple reviewers can test every feature without a running backend. Toggle off to use a live server.")
+                }
+                #endif
             }
             .navigationTitle("Settings")
-            .task { protection = try? await store.api.protectionStatus() }
+            .task {
+                #if DEBUG
+                if !store.isDemoMode {
+                    protection = try? await store.api.protectionStatus()
+                }
+                #else
+                protection = try? await store.api.protectionStatus()
+                #endif
+            }
             .task { await push.refreshStatus() }
             .sheet(isPresented: $showPaywall) { PaywallView() }
             .sheet(isPresented: $showBugReport) { BugReportView() }

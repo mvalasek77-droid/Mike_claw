@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RobloxGuard — Privacy Policy</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 24px 16px 48px;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+        h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
+        h2 { font-size: 1.3rem; margin-top: 2rem; }
+        .subtitle { color: #666; margin-bottom: 2rem; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        th, td { border: 1px solid #e0e0e0; padding: 8px 12px; text-align: left; }
+        th { background: #f5f5f7; }
+        ul { padding-left: 1.25rem; }
+        a { color: #0066cc; }
+        .effective-date { color: #666; font-size: 0.9rem; }
+        .disclaimer { background: #fff3cd; padding: 12px 16px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 2rem; }
+    </style>
+</head>
+<body>
+    <h1>RobloxGuard Privacy Policy</h1>
+    <p class="subtitle">Roblox safety alerts for parents</p>
+    <p class="effective-date"><strong>Effective date:</strong> July 25, 2026</p>
+
+    <div class="disclaimer">
+        This policy describes what the current codebase actually collects and stores.
+        Have counsel review before relying on it for legal compliance.
+    </div>
+
+    <h2>Who this is for</h2>
+    <p>RobloxGuard is used by <strong>parents and legal guardians</strong>, not children. The
+    child never installs or logs into the app. This policy describes what we collect from the
+    parent using the app and, necessarily, a limited amount of information about the linked
+    child's public Roblox account.</p>
+
+    <h2>What we collect</h2>
+    <table>
+        <thead>
+            <tr><th>Data</th><th>Why</th><th>Linked to you?</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Your name</td><td>Recorded as the parental consent attestation (who confirmed they are the parent/guardian)</td><td>Yes</td></tr>
+            <tr><td>Your child's public Roblox username, display name, and Roblox account ID</td><td>To monitor the account's public footprint</td><td>Yes</td></tr>
+            <tr><td>Public friend-list changes, account-age signals, and presence/activity timestamps for the linked account</td><td>Core detection functionality</td><td>Yes</td></tr>
+            <tr><td>Generated safety alerts and your feedback on them (confirmed/dismissed)</td><td>To show you alerts and tune future ones</td><td>Yes</td></tr>
+            <tr><td>Evidence you upload (screenshots) and automatically captured public profile screenshots</td><td>To preserve what was observed if you need to report something</td><td>Yes</td></tr>
+            <tr><td>Bug reports you submit (description, optional reply email)</td><td>To fix problems you report</td><td>Yes, if you provide contact info</td></tr>
+            <tr><td>Device push-notification token and platform (e.g. "ios")</td><td>To deliver real-time alerts to your device via Apple Push Notification service (APNs)</td><td>No (not linked to your identity)</td></tr>
+            <tr><td>Subscription status</td><td>Apple's StoreKit tells us which plan is active; App Store handles all payment details — <strong>we never see your card number</strong></td><td>Yes</td></tr>
+        </tbody>
+    </table>
+
+    <p>We do <strong>not</strong> collect: your child's Roblox password (there is no password
+    field anywhere in the app), private chat content (no outside app can access Roblox private
+    messages — see the app's "What this app can't do" onboarding screen), your location, your
+    device's advertising identifier, or health, financial, or biometric data.</p>
+
+    <h2>What we don't do</h2>
+    <ul>
+        <li><strong>No third-party analytics or advertising SDKs.</strong> Nothing here is shared
+            with ad networks or data brokers, and RobloxGuard does not track you across other
+            companies' apps or websites.</li>
+        <li><strong>No selling of data</strong>, ever, to anyone, for any purpose.</li>
+        <li><strong>No reading of private Roblox chats.</strong> Detection runs entirely on
+            Roblox's public, unauthenticated web APIs.</li>
+    </ul>
+
+    <h2>How long we keep it</h2>
+    <p>Data for a linked child is retained for as long as the account stays linked.
+    Unlinking a child from Settings <strong>permanently and immediately deletes</strong>
+    everything associated with that child — alerts, evidence, screenshots, and snapshot
+    history — from our database. Device push-notification tokens are retained until the app
+    unregisters them or Apple reports the token as expired; they are automatically pruned
+    when delivery fails.</p>
+
+    <h2>Who can see it</h2>
+    <p>Only you, as the linked account's parent/guardian. Backend access is restricted to the
+    operator via a bearer-token API key; there is no admin dashboard exposing your data to
+    anyone else. If you submit a bug report, that report (and any contact email you provide)
+    is visible to the developer for the purpose of fixing the issue.</p>
+
+    <h2>Your rights</h2>
+    <p>You can request deletion at any time by unlinking the child's account in the app, which
+    erases all associated data immediately. If you have questions about your data, contact us at
+    <a href="mailto:mvalasek@gmail.com">mvalasek@gmail.com</a>.</p>
+
+    <h2>Children's privacy (COPPA)</h2>
+    <p>RobloxGuard is not directed at children and is not available in Apple's Kids Category —
+    it is installed and operated exclusively by the parent/guardian. Information about a linked
+    child is limited to what's necessary for the service (public username, derived safety
+    signals) and is provided under the parent's own consent, recorded at the time the account
+    is linked.</p>
+
+    <h2>Changes to this policy</h2>
+    <p>If this policy changes materially, we'll update the effective date above.</p>
+
+    <hr>
+    <p style="color:#999;font-size:0.85rem;">© 2026 Mike Claw. <a href="robloxguard-support.html">Support</a></p>
+</body>
+</html>

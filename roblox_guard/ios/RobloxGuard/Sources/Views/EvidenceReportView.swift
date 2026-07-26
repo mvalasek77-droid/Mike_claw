@@ -88,6 +88,23 @@ struct EvidenceReportView: View {
     }
 
     private func load() async {
+        #if DEBUG
+        if store.isDemoMode {
+            evidence = [
+                EvidenceItem(id: 200001, kind: "profile_screenshot",
+                             sha256: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+                             note: "Auto-captured profile of UnknownPlayer42 when elevated alert fired.",
+                             capturedAt: ISO8601DateFormatter().string(from: Date()),
+                             filename: "profile_UnknownPlayer42.png"),
+                EvidenceItem(id: 200002, kind: "parent_upload",
+                             sha256: "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
+                             note: "Screenshot of chat where account asks to move to Discord.",
+                             capturedAt: ISO8601DateFormatter().string(from: Date()),
+                             filename: "chat_screenshot.png"),
+            ]
+            return
+        }
+        #endif
         evidence = (try? await store.api.evidence(childId: child.id)) ?? []
     }
 }

@@ -62,15 +62,19 @@ struct ConsentOnboardingView: View {
                         Toggle(isOn: $isParent) {
                             Text("I am the parent or legal guardian of the child whose account I will link.")
                         }
+                        .accessibilityIdentifier("toggleParent")
                         Toggle(isOn: $understandsScope) {
                             Text("I understand this app only sees public account information, not private chats.")
                         }
+                        .accessibilityIdentifier("toggleScope")
                         Toggle(isOn: $understandsData) {
                             Text("I consent to this app storing my child's Roblox username and derived safety alerts. Unlinking the account deletes all of it.")
                         }
+                        .accessibilityIdentifier("toggleData")
                         Toggle(isOn: $understandsLimits) {
                             Text("I understand alerts can be false positives or miss real issues, and that this app supplements — not replaces — my own supervision and judgment.")
                         }
+                        .accessibilityIdentifier("toggleLimits")
                     }
                     .toggleStyle(.switch)
                     .font(.subheadline)
@@ -84,6 +88,7 @@ struct ConsentOnboardingView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .disabled(!canContinue)
+                    .accessibilityIdentifier("buttonAgreeContinue")
                 }
                 .padding()
             }

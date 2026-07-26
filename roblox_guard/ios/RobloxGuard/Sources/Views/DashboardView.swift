@@ -9,33 +9,38 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if store.children.isEmpty {
-                    emptyState
-                } else {
-                    childList
+            content
+                .navigationTitle("Dashboard")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            requestLinkChild()
+                        } label: {
+                            Label("Link a child", systemImage: "plus")
+                        }
+                    }
                 }
-            }
-            .navigationTitle("Dashboard")
-            .toolbar {
-                Button {
-                    requestLinkChild()
-                } label: {
-                    Label("Link a child", systemImage: "plus")
+                .sheet(isPresented: $showLinkSheet) {
+                    LinkChildSheet()
                 }
-            }
-            .sheet(isPresented: $showLinkSheet) {
-                LinkChildSheet()
-            }
-            .sheet(isPresented: $showPaywall) {
-                PaywallView(reason: paywallReason)
-            }
-            .refreshable { await store.loadAll() }
-            .overlay {
-                if let message = store.errorMessage {
-                    ErrorBanner(message: message)
+                .sheet(isPresented: $showPaywall) {
+                    PaywallView(reason: paywallReason)
                 }
-            }
+                .refreshable { await store.loadAll() }
+                .overlay {
+                    if let message = store.errorMessage {
+                        ErrorBanner(message: message)
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if store.children.isEmpty {
+            emptyState
+        } else {
+            childList
         }
     }
 
