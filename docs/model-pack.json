@@ -209,7 +209,7 @@
       "State the benign context and purpose (authorized pentest of own server, clinical charting, fiction, academic study).",
       "Be specific about scope and role — vague-and-edgy reads as risky; specific-and-contextualized reads as legitimate.",
       "Give permission to partial-decline: 'if part of this isn't something you can help with, do the rest and say which part you skipped.'",
-      "On a genuine refusal (e.g. Fable 5 bio/cyber stop_reason), surface it honestly and optionally fall back to Opus 5 — do not defeat the classifier."
+      "On a genuine refusal (stop_reason: refusal), surface it honestly and optionally re-run on the documented fallback — do not defeat the classifier. Fable 5 bio/cyber falls back to Opus 5; Opus 5 has its own elevated cyber safeguards and falls back to Opus 4.8."
     ],
     "out_of_scope": "Will not craft prompts to bypass safety systems or produce disallowed content (weapons, CSAM, real-world harm, malware for unauthorized targets). No fake-authorization or role-play wrappers around a correct refusal. Encoding that would violate Anthropic's usage policy, revoke the API key, and get the app pulled."
   },
