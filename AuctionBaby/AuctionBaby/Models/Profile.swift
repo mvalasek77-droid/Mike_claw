@@ -550,12 +550,12 @@ extension Profile {
                     : "\(confirmed) dates confirmed by both sides — the floor trusts corroborated history."))
         }
 
-        // 6. Copycat incidents — −40 each. The floor never forgets.
+        // 6. Copycat incidents — −40 each.
         if copycatBids > 0 {
             f.append(CreditFactor(
                 name: "Copycat incidents", icon: "sparkles", points: -copycatBids * 40,
-                comment: copycatBids == 1 ? "Baited once by an AI Copycat. Everyone saw."
-                                          : "Baited \(copycatBids) times by AI Copycats. Study the floor."))
+                comment: copycatBids == 1 ? "Bid on 1 copycat — a profile that wasn't a real person."
+                                          : "Bid on \(copycatBids) copycats — profiles that weren't real people."))
         }
 
         // 6. Passed bids — a light drag; rejection is data too.
