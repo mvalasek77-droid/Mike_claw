@@ -46,4 +46,4 @@ CANCEL_URL = "https://auctionbaby.app/purchase/cancel"
 #   npx wrangler kv namespace create KV --env staging
 [[env.staging.kv_namespaces]]
 binding = "KV"
-id = "REPLACE_WITH_STAGING_KV_NAMESPACE_ID"
+id = "ad03ab484861447e8147945eff787e74"

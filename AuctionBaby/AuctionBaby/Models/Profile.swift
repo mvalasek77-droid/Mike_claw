@@ -384,8 +384,11 @@ extension Profile {
         let fun = t[.fun] ?? 0
 
         // 1. Personality — up to +300. Weighted: (2·Fun + the rest) / 6.
-        let weighted = (2 * fun + (t[.interesting] ?? 0) + (t[.social] ?? 0)
-                        + (t[.polite] ?? 0) + (t[.genuine] ?? 0)) / 6.0   // 0–5
+        let interesting = t[.interesting] ?? 0
+        let social = t[.social] ?? 0
+        let polite = t[.polite] ?? 0
+        let genuine = t[.genuine] ?? 0
+        let weighted: Double = Double(2 * fun + interesting + social + polite + genuine) / 6.0   // 0–5
         let personality = t.isEmpty ? 180 : Int((weighted / 5.0 * 300).rounded())
         f.append(CreditFactor(
             name: "Personality", icon: "party.popper.fill", points: personality,

@@ -1,0 +1,7 @@
+Config/Secrets.xcconfig
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+# Screenshot temp files
+/screenshots/

@@ -6,241 +6,603 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		020373975239A8D2945F6AE9 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAE3B8E852ED77F069BF735 /* Motion.swift */; };
+		03037BC76FEFAFEAF5E7E002 /* SafetyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 089EC02692DE2731BA6786D1 /* SafetyCenter.swift */; };
+		0359D3F2CBAC5A0B3E0A2041 /* FilterPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6A10D06DE85339F8CDDE96 /* FilterPreferences.swift */; };
+		045F45FC3091FE8DFC61B805 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406D9ADA1C8C7B31B8BE87ED /* Profile.swift */; };
+		0778F35AF9476EFDF5B12E8E /* AdminModerationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5047C830BB39E2636804FE /* AdminModerationView.swift */; };
+		0E15E1A63D77DF63FFCF2F3D /* BackendConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1DE67092EEC2E1AD934BAA /* BackendConfig.swift */; };
+		1973020899B82B972807DC73 /* IncomingBidsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 052FFE81F5645445018D6BEA /* IncomingBidsView.swift */; };
+		1CEEAF4AAC7B7E3D9E2C3922 /* CreditReportCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2505086CDD406433F18BA9EF /* CreditReportCard.swift */; };
+		1FA2D9656FFD755618C406FF /* RateDateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 608C2DD7FF5ADECC41F432C7 /* RateDateView.swift */; };
+		27149920E6AF788AAE8A478A /* Commerce.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6ED05FFE0CD5124AEA3A06F /* Commerce.swift */; };
+		2BED096F2573F4D11A5670CE /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03B33158B1778EA745A4A42A /* MainTabView.swift */; };
+		372F999B080D062AD184ECD5 /* ErrorMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0340D44C7440B0EC73DEC041 /* ErrorMonitor.swift */; };
+		3B4ED8E27D69B92DBBD752C3 /* BackendService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54B0390B0BFB1AE1474BB964 /* BackendService.swift */; };
+		41F2ADC3E29735CA9E070FC8 /* AuctionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F42021173930A873E4999D /* AuctionStore.swift */; };
+		46DDB8409A88907F5EFB46D3 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CAD6C814DA9F0C3DD74423B /* SecureStore.swift */; };
+		54C318C006E0CD5E0504B739 /* AdminBackendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF2FC41F5F9300274A8183E2 /* AdminBackendView.swift */; };
+		586DD77BB019BAC71B1B94EE /* Badges.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2166EE84AC1A3C6911D40CD /* Badges.swift */; };
+		5A7F5AA48407EA4BAD7F5E13 /* StoreKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16CD24D07EE3C970832CD4A5 /* StoreKitService.swift */; };
+		5C433E440BCAF4172FDBDE7F /* GavelStoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD590A941466483BC5B56C9 /* GavelStoreView.swift */; };
+		6252763C426200EB118315D1 /* DailyClaimCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3C1B67E57A3FD2E51FE6391 /* DailyClaimCard.swift */; };
+		67D3C9216FE65D09257C1DDA /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B556A4A99F3ED8E0AE09FAC4 /* ChatView.swift */; };
+		6E7897F42983124AA70CAF13 /* StoreCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A54DC811BCED2DE28831A9 /* StoreCatalogTests.swift */; };
+		7543B9F25AA468A08A4B7C3C /* ActivityEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1CEF8F0EDCE4BBEDC900760 /* ActivityEvent.swift */; };
+		75873375F43A84AEC5787C78 /* VerificationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AECF87BEDFCA13232299D2 /* VerificationSheet.swift */; };
+		79384A676F5D812BC1F101B0 /* Match.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3020E6F97EBBB4654BE7E4E8 /* Match.swift */; };
+		7B08C6037F698003274BD42B /* Admin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AACECB232CF9613772A0F67 /* Admin.swift */; };
+		7C2CC772884993B1B43518B9 /* AuctionBabyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB31F381E2651E2B7A05598C /* AuctionBabyApp.swift */; };
+		7FD8C049B6A88A1218D8FCD8 /* BugReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5478C7DA9664C0A6CE4361FD /* BugReport.swift */; };
+		802AD0B86BCF68206A12E772 /* AuctionFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B50AA90FC7FD4052035CBC09 /* AuctionFeedView.swift */; };
+		88AAAAE1BD5856BD0EB03D07 /* MatchCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 897DE9D862AF234FCD793BD2 /* MatchCelebrationView.swift */; };
+		8A16A15F11060D839D18211E /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D647D7CA95C13F6209FC41 /* AvatarView.swift */; };
+		8A579AF35E8B3E3D735C9D69 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 358F2E300C235717586C87C2 /* ActivityView.swift */; };
+		8BF6CBE5EC2EE24ADF2A70FF /* BrandLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B5FA6405B9892B27C32F009 /* BrandLogo.swift */; };
+		90D9CD22AA4D587A3D465A88 /* Bid.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2308C229CD07F7AFBF6EF82 /* Bid.swift */; };
+		92F090F04162206E89ABABB8 /* AdminView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D6598B9F062FD7930AB05A /* AdminView.swift */; };
+		97CC2AC7C59436F6FBF87BC3 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67A5B15F3099038DE5BBA084 /* SampleData.swift */; };
+		9A14493C78D349CE215C213C /* SuitorDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E3DA6B6864A3FE8BD1CA74 /* SuitorDetailView.swift */; };
+		9C94EF6A56E140FEE86B98E0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A42C10183100B9CE7A97FBB /* Theme.swift */; };
+		9F3284028C5C4AA82C373EB0 /* AuctioneeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 809985C50A71EAE83FFEBC7E /* AuctioneeDetailView.swift */; };
+		A1CC1AFC7627D963BFC3F872 /* AuctionLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FEB1605A91FFDF2BC377B95 /* AuctionLogicTests.swift */; };
+		A23A3E7F17C1C9655E31886D /* AdminLedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE2FBD37FF5B9541BBD2EFE4 /* AdminLedgerView.swift */; };
+		ACB016FF010D061D39D1E191 /* FiltersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07AC02F2F9A965BDC70FA7C2 /* FiltersView.swift */; };
+		ACCA73A8B919E41F6ECDEAF7 /* Role.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4063630A1E441DE0E336A912 /* Role.swift */; };
+		AF32F26EB6EF9D84A4A993B3 /* StandingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38D185589FBAF62BA4F40FA5 /* StandingView.swift */; };
+		B0A2626DE22371A2795E1CEC /* MatchesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 196C83191493065336ADF4A4 /* MatchesView.swift */; };
+		B21E39DA755A9CE3F4165934 /* BidSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D524073D5DCB21A6B653A29 /* BidSheet.swift */; };
+		BD36FD252636732F6A8C8257 /* FlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84D367DD48825369C0B3920B /* FlowTests.swift */; };
+		BF54D2211E961DE30AA07366 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97AE7C21D490678B8354DD10 /* Assets.xcassets */; };
+		C4FC052072D5CB6EB1BC56A1 /* Archetype.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D287DE19FCA22A4D359A61 /* Archetype.swift */; };
+		C591F5B9A1A7B678F5A5EFD5 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED98B374A580DEEF842A3D53 /* OnboardingView.swift */; };
+		CA93CCBDCD2B1F6C56B3C8CD /* CopycatPortrait.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6BDD580D9E566334FED2120 /* CopycatPortrait.swift */; };
+		CB44C54CA0F44501D4834DFE /* AdminGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16DA8A078921A6AF94FCF4B /* AdminGateView.swift */; };
+		DA6110A5F77F32EDBBA8D69A /* MyBidsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ABA839CA0DFCA7B243A8AFB /* MyBidsView.swift */; };
+		DD3ABADE9C413D50E163324D /* MyProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9282E0FA37C6970E331069B3 /* MyProfileView.swift */; };
+		DDF1CF2CA09B156227C98122 /* ArchetypeStoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0479494A00B5CB5E534DF7B4 /* ArchetypeStoreView.swift */; };
+		E7D540767326ED9022ACBD7E /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A702BAFB457DC7D1F54FFCA /* PrimaryButton.swift */; };
+		E818BC661801AFE3D39C0AF1 /* FlexLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 112E49D353A68607213CAADD /* FlexLayout.swift */; };
+		ECFB61AA762A121D8D751724 /* PhotoUploadStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 325E32AD9FEE08DE6052DB7E /* PhotoUploadStep.swift */; };
+		F184B96F3C50FB570393853A /* LiveTicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D253B8CA72697636E75432B /* LiveTicker.swift */; };
+		F197673AA71F0829C92A84B8 /* CreditScoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654A555029B9837013124FC7 /* CreditScoreView.swift */; };
+		F4EEAB9F7F8F8DF6F2129A10 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE3F0241BF88A14E03250B1 /* PaywallView.swift */; };
+		F672E0FF8C956F934E4E54B0 /* GlassKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4AC11F382F223AD90B2339 /* GlassKit.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		30F0157F0F0BA09CD206F7B1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9D479B4D9C2586692D52C8F8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AF542073B10F4A780B8EE8FA;
+			remoteInfo = AuctionBaby;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		1A0000000000000000000006 /* AuctionBaby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AuctionBaby.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		1A0000000000000000000007 /* AuctionBabyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AuctionBabyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		1A000000000000000000000C /* Build.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Build.xcconfig; sourceTree = "<group>"; };
-		1A000000000000000000001F /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
+		0340D44C7440B0EC73DEC041 /* ErrorMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorMonitor.swift; sourceTree = "<group>"; };
+		03B33158B1778EA745A4A42A /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		0479494A00B5CB5E534DF7B4 /* ArchetypeStoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchetypeStoreView.swift; sourceTree = "<group>"; };
+		052FFE81F5645445018D6BEA /* IncomingBidsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingBidsView.swift; sourceTree = "<group>"; };
+		05D287DE19FCA22A4D359A61 /* Archetype.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Archetype.swift; sourceTree = "<group>"; };
+		07AC02F2F9A965BDC70FA7C2 /* FiltersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FiltersView.swift; sourceTree = "<group>"; };
+		089EC02692DE2731BA6786D1 /* SafetyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetyCenter.swift; sourceTree = "<group>"; };
+		112E49D353A68607213CAADD /* FlexLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlexLayout.swift; sourceTree = "<group>"; };
+		16CD24D07EE3C970832CD4A5 /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
+		196C83191493065336ADF4A4 /* MatchesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchesView.swift; sourceTree = "<group>"; };
+		1A42C10183100B9CE7A97FBB /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		2505086CDD406433F18BA9EF /* CreditReportCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditReportCard.swift; sourceTree = "<group>"; };
+		28D647D7CA95C13F6209FC41 /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
+		3020E6F97EBBB4654BE7E4E8 /* Match.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Match.swift; sourceTree = "<group>"; };
+		325E32AD9FEE08DE6052DB7E /* PhotoUploadStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoUploadStep.swift; sourceTree = "<group>"; };
+		358F2E300C235717586C87C2 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
+		3899DC2C7B495BDFDB4C4793 /* Build.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Build.xcconfig; sourceTree = "<group>"; };
+		38D185589FBAF62BA4F40FA5 /* StandingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingView.swift; sourceTree = "<group>"; };
+		38F42021173930A873E4999D /* AuctionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionStore.swift; sourceTree = "<group>"; };
+		3A4AC11F382F223AD90B2339 /* GlassKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassKit.swift; sourceTree = "<group>"; };
+		3B5FA6405B9892B27C32F009 /* BrandLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandLogo.swift; sourceTree = "<group>"; };
+		4063630A1E441DE0E336A912 /* Role.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Role.swift; sourceTree = "<group>"; };
+		406D9ADA1C8C7B31B8BE87ED /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
+		4A702BAFB457DC7D1F54FFCA /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
+		4CAD6C814DA9F0C3DD74423B /* SecureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStore.swift; sourceTree = "<group>"; };
+		5478C7DA9664C0A6CE4361FD /* BugReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReport.swift; sourceTree = "<group>"; };
+		54B0390B0BFB1AE1474BB964 /* BackendService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendService.swift; sourceTree = "<group>"; };
+		5F5047C830BB39E2636804FE /* AdminModerationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModerationView.swift; sourceTree = "<group>"; };
+		608C2DD7FF5ADECC41F432C7 /* RateDateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateDateView.swift; sourceTree = "<group>"; };
+		654A555029B9837013124FC7 /* CreditScoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditScoreView.swift; sourceTree = "<group>"; };
+		67A5B15F3099038DE5BBA084 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
+		6ABA839CA0DFCA7B243A8AFB /* MyBidsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyBidsView.swift; sourceTree = "<group>"; };
+		6FD590A941466483BC5B56C9 /* GavelStoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GavelStoreView.swift; sourceTree = "<group>"; };
+		7D253B8CA72697636E75432B /* LiveTicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTicker.swift; sourceTree = "<group>"; };
+		7FEB1605A91FFDF2BC377B95 /* AuctionLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionLogicTests.swift; sourceTree = "<group>"; };
+		809985C50A71EAE83FFEBC7E /* AuctioneeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctioneeDetailView.swift; sourceTree = "<group>"; };
+		84D367DD48825369C0B3920B /* FlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowTests.swift; sourceTree = "<group>"; };
+		897DE9D862AF234FCD793BD2 /* MatchCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchCelebrationView.swift; sourceTree = "<group>"; };
+		8D524073D5DCB21A6B653A29 /* BidSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BidSheet.swift; sourceTree = "<group>"; };
+		9282E0FA37C6970E331069B3 /* MyProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyProfileView.swift; sourceTree = "<group>"; };
+		97AE7C21D490678B8354DD10 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9AACECB232CF9613772A0F67 /* Admin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Admin.swift; sourceTree = "<group>"; };
+		A3D6598B9F062FD7930AB05A /* AdminView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminView.swift; sourceTree = "<group>"; };
+		A6D9F830DC4E6A8D3968C3E3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		AFE3F0241BF88A14E03250B1 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
+		B2308C229CD07F7AFBF6EF82 /* Bid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bid.swift; sourceTree = "<group>"; };
+		B50AA90FC7FD4052035CBC09 /* AuctionFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionFeedView.swift; sourceTree = "<group>"; };
+		B556A4A99F3ED8E0AE09FAC4 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		BB31F381E2651E2B7A05598C /* AuctionBabyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionBabyApp.swift; sourceTree = "<group>"; };
+		C3C1B67E57A3FD2E51FE6391 /* DailyClaimCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyClaimCard.swift; sourceTree = "<group>"; };
+		C6BDD580D9E566334FED2120 /* CopycatPortrait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopycatPortrait.swift; sourceTree = "<group>"; };
+		C6ED05FFE0CD5124AEA3A06F /* Commerce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Commerce.swift; sourceTree = "<group>"; };
+		CA6A10D06DE85339F8CDDE96 /* FilterPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterPreferences.swift; sourceTree = "<group>"; };
+		CDACE4C0DE6AE362B9C40926 /* AuctionBabyTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AuctionBabyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CE2FBD37FF5B9541BBD2EFE4 /* AdminLedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminLedgerView.swift; sourceTree = "<group>"; };
+		E1CEF8F0EDCE4BBEDC900760 /* ActivityEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityEvent.swift; sourceTree = "<group>"; };
+		E2A54DC811BCED2DE28831A9 /* StoreCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreCatalogTests.swift; sourceTree = "<group>"; };
+		E2AECF87BEDFCA13232299D2 /* VerificationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationSheet.swift; sourceTree = "<group>"; };
+		E5E3DA6B6864A3FE8BD1CA74 /* SuitorDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuitorDetailView.swift; sourceTree = "<group>"; };
+		EA1DE67092EEC2E1AD934BAA /* BackendConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendConfig.swift; sourceTree = "<group>"; };
+		ECAE3B8E852ED77F069BF735 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion.swift; sourceTree = "<group>"; };
+		ED98B374A580DEEF842A3D53 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		EF2FC41F5F9300274A8183E2 /* AdminBackendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminBackendView.swift; sourceTree = "<group>"; };
+		F16DA8A078921A6AF94FCF4B /* AdminGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminGateView.swift; sourceTree = "<group>"; };
+		F2166EE84AC1A3C6911D40CD /* Badges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Badges.swift; sourceTree = "<group>"; };
+		FB67C0E6438789415BAA5A3B /* AuctionBaby.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AuctionBaby.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		1A000000000000000000001E /* Exceptions for "AuctionBaby" folder in "AuctionBaby" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Resources/Info.plist,
+/* Begin PBXGroup section */
+		143B07D7275E8B4B4CB4D313 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				28D647D7CA95C13F6209FC41 /* AvatarView.swift */,
+				F2166EE84AC1A3C6911D40CD /* Badges.swift */,
+				3B5FA6405B9892B27C32F009 /* BrandLogo.swift */,
+				C6BDD580D9E566334FED2120 /* CopycatPortrait.swift */,
+				2505086CDD406433F18BA9EF /* CreditReportCard.swift */,
+				654A555029B9837013124FC7 /* CreditScoreView.swift */,
+				C3C1B67E57A3FD2E51FE6391 /* DailyClaimCard.swift */,
+				112E49D353A68607213CAADD /* FlexLayout.swift */,
+				3A4AC11F382F223AD90B2339 /* GlassKit.swift */,
+				7D253B8CA72697636E75432B /* LiveTicker.swift */,
+				4A702BAFB457DC7D1F54FFCA /* PrimaryButton.swift */,
 			);
-			target = 1A0000000000000000000004 /* AuctionBaby */;
-		};
-		1A000000000000000000000A /* Exceptions for "AuctionBabyTests" folder in "AuctionBabyTests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				README.md,
-			);
-			target = 1A0000000000000000000005 /* AuctionBabyTests */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		1A0000000000000000000008 /* AuctionBaby */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				1A000000000000000000001E /* Exceptions for "AuctionBaby" folder in "AuctionBaby" target */,
-			);
-			path = AuctionBaby;
+			path = Components;
 			sourceTree = "<group>";
 		};
-		1A0000000000000000000009 /* AuctionBabyTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				1A000000000000000000000A /* Exceptions for "AuctionBabyTests" folder in "AuctionBabyTests" target */,
+		2738F504744073EFC5B022CC /* AuctionBabyTests */ = {
+			isa = PBXGroup;
+			children = (
+				7FEB1605A91FFDF2BC377B95 /* AuctionLogicTests.swift */,
+				84D367DD48825369C0B3920B /* FlowTests.swift */,
+				E2A54DC811BCED2DE28831A9 /* StoreCatalogTests.swift */,
 			);
 			path = AuctionBabyTests;
 			sourceTree = "<group>";
 		};
-/* End PBXFileSystemSynchronizedRootGroup section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		1A000000000000000000000E /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		1A0000000000000000000011 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXGroup section */
-		1A0000000000000000000002 = {
+		2F9D6CA0A6423521CAE036B5 /* Admin */ = {
 			isa = PBXGroup;
 			children = (
-				1A0000000000000000000008 /* AuctionBaby */,
-				1A0000000000000000000009 /* AuctionBabyTests */,
-				1A000000000000000000000B /* Config */,
-				1A000000000000000000001F /* Products.storekit */,
-				1A0000000000000000000003 /* Products */,
+				EF2FC41F5F9300274A8183E2 /* AdminBackendView.swift */,
+				F16DA8A078921A6AF94FCF4B /* AdminGateView.swift */,
+				CE2FBD37FF5B9541BBD2EFE4 /* AdminLedgerView.swift */,
+				5F5047C830BB39E2636804FE /* AdminModerationView.swift */,
+				A3D6598B9F062FD7930AB05A /* AdminView.swift */,
+			);
+			path = Admin;
+			sourceTree = "<group>";
+		};
+		4C8EB4F172704DE61BB7FA33 /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				38F42021173930A873E4999D /* AuctionStore.swift */,
+				67A5B15F3099038DE5BBA084 /* SampleData.swift */,
+			);
+			path = Store;
+			sourceTree = "<group>";
+		};
+		51F101E192D5003941375E32 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				ECAE3B8E852ED77F069BF735 /* Motion.swift */,
+				1A42C10183100B9CE7A97FBB /* Theme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		5F8A47A2A2E855D976A6A6C1 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				BB31F381E2651E2B7A05598C /* AuctionBabyApp.swift */,
+				03B33158B1778EA745A4A42A /* MainTabView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		64307DCDB6E9E302186F0590 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				97AE7C21D490678B8354DD10 /* Assets.xcassets */,
+				A6D9F830DC4E6A8D3968C3E3 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		7058E403587F13BB0A8C048C /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				9282E0FA37C6970E331069B3 /* MyProfileView.swift */,
+				38D185589FBAF62BA4F40FA5 /* StandingView.swift */,
+				E2AECF87BEDFCA13232299D2 /* VerificationSheet.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		75E955AB78ECBAB00A449BF5 = {
+			isa = PBXGroup;
+			children = (
+				BE0C2984D084C99E0BCC8D12 /* AuctionBaby */,
+				2738F504744073EFC5B022CC /* AuctionBabyTests */,
+				7739764AAAD2231E94F49364 /* Config */,
+				E48856A8EA2A9431F933D557 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		1A0000000000000000000003 /* Products */ = {
+		76C9BF1F4D24F6B013309428 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				1A0000000000000000000006 /* AuctionBaby.app */,
-				1A0000000000000000000007 /* AuctionBabyTests.xctest */,
+				EA1DE67092EEC2E1AD934BAA /* BackendConfig.swift */,
+				54B0390B0BFB1AE1474BB964 /* BackendService.swift */,
+				5478C7DA9664C0A6CE4361FD /* BugReport.swift */,
+				0340D44C7440B0EC73DEC041 /* ErrorMonitor.swift */,
+				4CAD6C814DA9F0C3DD74423B /* SecureStore.swift */,
+				16CD24D07EE3C970832CD4A5 /* StoreKitService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		7739764AAAD2231E94F49364 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				3899DC2C7B495BDFDB4C4793 /* Build.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		779B4E32F9C36E6BFB02F790 /* Safety */ = {
+			isa = PBXGroup;
+			children = (
+				089EC02692DE2731BA6786D1 /* SafetyCenter.swift */,
+			);
+			path = Safety;
+			sourceTree = "<group>";
+		};
+		798F7425D71A24763FD0073B /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				ED98B374A580DEEF842A3D53 /* OnboardingView.swift */,
+				325E32AD9FEE08DE6052DB7E /* PhotoUploadStep.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		79AB3D2381DE302F78B2B5E6 /* Matches */ = {
+			isa = PBXGroup;
+			children = (
+				B556A4A99F3ED8E0AE09FAC4 /* ChatView.swift */,
+				897DE9D862AF234FCD793BD2 /* MatchCelebrationView.swift */,
+				196C83191493065336ADF4A4 /* MatchesView.swift */,
+				608C2DD7FF5ADECC41F432C7 /* RateDateView.swift */,
+			);
+			path = Matches;
+			sourceTree = "<group>";
+		};
+		9941632CE626258C920EB217 /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				6FD590A941466483BC5B56C9 /* GavelStoreView.swift */,
+				AFE3F0241BF88A14E03250B1 /* PaywallView.swift */,
+			);
+			path = Store;
+			sourceTree = "<group>";
+		};
+		A9276A6AD44504141AD9C0ED /* Browse */ = {
+			isa = PBXGroup;
+			children = (
+				809985C50A71EAE83FFEBC7E /* AuctioneeDetailView.swift */,
+				B50AA90FC7FD4052035CBC09 /* AuctionFeedView.swift */,
+				8D524073D5DCB21A6B653A29 /* BidSheet.swift */,
+				07AC02F2F9A965BDC70FA7C2 /* FiltersView.swift */,
+			);
+			path = Browse;
+			sourceTree = "<group>";
+		};
+		BE0C2984D084C99E0BCC8D12 /* AuctionBaby */ = {
+			isa = PBXGroup;
+			children = (
+				5F8A47A2A2E855D976A6A6C1 /* App */,
+				143B07D7275E8B4B4CB4D313 /* Components */,
+				EBEBA34F68B8048CD1B0BCEA /* Features */,
+				CB5FB934A137E55C883D57D5 /* Models */,
+				64307DCDB6E9E302186F0590 /* Resources */,
+				76C9BF1F4D24F6B013309428 /* Services */,
+				4C8EB4F172704DE61BB7FA33 /* Store */,
+				51F101E192D5003941375E32 /* Theme */,
+			);
+			path = AuctionBaby;
+			sourceTree = "<group>";
+		};
+		C1BAA7B32F4A5631945CDEB2 /* Archetype */ = {
+			isa = PBXGroup;
+			children = (
+				0479494A00B5CB5E534DF7B4 /* ArchetypeStoreView.swift */,
+			);
+			path = Archetype;
+			sourceTree = "<group>";
+		};
+		CB5FB934A137E55C883D57D5 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				E1CEF8F0EDCE4BBEDC900760 /* ActivityEvent.swift */,
+				9AACECB232CF9613772A0F67 /* Admin.swift */,
+				05D287DE19FCA22A4D359A61 /* Archetype.swift */,
+				B2308C229CD07F7AFBF6EF82 /* Bid.swift */,
+				C6ED05FFE0CD5124AEA3A06F /* Commerce.swift */,
+				CA6A10D06DE85339F8CDDE96 /* FilterPreferences.swift */,
+				3020E6F97EBBB4654BE7E4E8 /* Match.swift */,
+				406D9ADA1C8C7B31B8BE87ED /* Profile.swift */,
+				4063630A1E441DE0E336A912 /* Role.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		DAD6595EC2EA17639426B306 /* Activity */ = {
+			isa = PBXGroup;
+			children = (
+				358F2E300C235717586C87C2 /* ActivityView.swift */,
+			);
+			path = Activity;
+			sourceTree = "<group>";
+		};
+		E48856A8EA2A9431F933D557 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FB67C0E6438789415BAA5A3B /* AuctionBaby.app */,
+				CDACE4C0DE6AE362B9C40926 /* AuctionBabyTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		1A000000000000000000000B /* Config */ = {
+		E6AACBC0BD475163AC4FF5A6 /* Bids */ = {
 			isa = PBXGroup;
 			children = (
-				1A000000000000000000000C /* Build.xcconfig */,
+				052FFE81F5645445018D6BEA /* IncomingBidsView.swift */,
+				6ABA839CA0DFCA7B243A8AFB /* MyBidsView.swift */,
+				E5E3DA6B6864A3FE8BD1CA74 /* SuitorDetailView.swift */,
 			);
-			path = Config;
+			path = Bids;
+			sourceTree = "<group>";
+		};
+		EBEBA34F68B8048CD1B0BCEA /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				DAD6595EC2EA17639426B306 /* Activity */,
+				2F9D6CA0A6423521CAE036B5 /* Admin */,
+				C1BAA7B32F4A5631945CDEB2 /* Archetype */,
+				E6AACBC0BD475163AC4FF5A6 /* Bids */,
+				A9276A6AD44504141AD9C0ED /* Browse */,
+				79AB3D2381DE302F78B2B5E6 /* Matches */,
+				798F7425D71A24763FD0073B /* Onboarding */,
+				7058E403587F13BB0A8C048C /* Profile */,
+				779B4E32F9C36E6BFB02F790 /* Safety */,
+				9941632CE626258C920EB217 /* Store */,
+			);
+			path = Features;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		1A0000000000000000000004 /* AuctionBaby */ = {
+		5613F72DC1EE7FBD9E048473 /* AuctionBabyTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 1A0000000000000000000016 /* Build configuration list for PBXNativeTarget "AuctionBaby" */;
+			buildConfigurationList = 5AF2E31302CEA9301D01ADEC /* Build configuration list for PBXNativeTarget "AuctionBabyTests" */;
 			buildPhases = (
-				1A000000000000000000000D /* Sources */,
-				1A000000000000000000000E /* Frameworks */,
-				1A000000000000000000000F /* Resources */,
+				2E94D009475B82B2399FAED5 /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				1A0000000000000000000008 /* AuctionBaby */,
-			);
-			name = AuctionBaby;
-			productName = AuctionBaby;
-			productReference = 1A0000000000000000000006 /* AuctionBaby.app */;
-			productType = "com.apple.product-type.application";
-		};
-		1A0000000000000000000005 /* AuctionBabyTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 1A0000000000000000000019 /* Build configuration list for PBXNativeTarget "AuctionBabyTests" */;
-			buildPhases = (
-				1A0000000000000000000010 /* Sources */,
-				1A0000000000000000000011 /* Frameworks */,
-				1A0000000000000000000012 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				1A000000000000000000001C /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				1A0000000000000000000009 /* AuctionBabyTests */,
+				F24D9AEC8A5EAA1094A5615A /* PBXTargetDependency */,
 			);
 			name = AuctionBabyTests;
+			packageProductDependencies = (
+			);
 			productName = AuctionBabyTests;
-			productReference = 1A0000000000000000000007 /* AuctionBabyTests.xctest */;
+			productReference = CDACE4C0DE6AE362B9C40926 /* AuctionBabyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		AF542073B10F4A780B8EE8FA /* AuctionBaby */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 16668F2016D35C91ADF872C8 /* Build configuration list for PBXNativeTarget "AuctionBaby" */;
+			buildPhases = (
+				420DCCE28F244FB8AAEB35E6 /* Sources */,
+				16C51477E8B466D58E7C5D80 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AuctionBaby;
+			packageProductDependencies = (
+			);
+			productName = AuctionBaby;
+			productReference = FB67C0E6438789415BAA5A3B /* AuctionBaby.app */;
+			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		1A0000000000000000000001 /* Project object */ = {
+		9D479B4D9C2586692D52C8F8 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					1A0000000000000000000004 = {
-						CreatedOnToolsVersion = 16.0;
+					5613F72DC1EE7FBD9E048473 = {
+						DevelopmentTeam = UDM4W27W9V;
 					};
-					1A0000000000000000000005 = {
-						CreatedOnToolsVersion = 16.0;
-						TestTargetID = 1A0000000000000000000004;
+					AF542073B10F4A780B8EE8FA = {
+						DevelopmentTeam = UDM4W27W9V;
 					};
 				};
 			};
-			buildConfigurationList = 1A0000000000000000000013 /* Build configuration list for PBXProject "AuctionBaby" */;
+			buildConfigurationList = 83F63FE64D8902E0A8A9216F /* Build configuration list for PBXProject "AuctionBaby" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
 			);
-			mainGroup = 1A0000000000000000000002;
+			mainGroup = 75E955AB78ECBAB00A449BF5;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 1A0000000000000000000003 /* Products */;
+			productRefGroup = E48856A8EA2A9431F933D557 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				1A0000000000000000000004 /* AuctionBaby */,
-				1A0000000000000000000005 /* AuctionBabyTests */,
+				AF542073B10F4A780B8EE8FA /* AuctionBaby */,
+				5613F72DC1EE7FBD9E048473 /* AuctionBabyTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		1A000000000000000000000F /* Resources */ = {
+		16C51477E8B466D58E7C5D80 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		1A0000000000000000000012 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
+				BF54D2211E961DE30AA07366 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		1A000000000000000000000D /* Sources */ = {
+		2E94D009475B82B2399FAED5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1CC1AFC7627D963BFC3F872 /* AuctionLogicTests.swift in Sources */,
+				BD36FD252636732F6A8C8257 /* FlowTests.swift in Sources */,
+				6E7897F42983124AA70CAF13 /* StoreCatalogTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		1A0000000000000000000010 /* Sources */ = {
+		420DCCE28F244FB8AAEB35E6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7543B9F25AA468A08A4B7C3C /* ActivityEvent.swift in Sources */,
+				8A579AF35E8B3E3D735C9D69 /* ActivityView.swift in Sources */,
+				7B08C6037F698003274BD42B /* Admin.swift in Sources */,
+				54C318C006E0CD5E0504B739 /* AdminBackendView.swift in Sources */,
+				CB44C54CA0F44501D4834DFE /* AdminGateView.swift in Sources */,
+				A23A3E7F17C1C9655E31886D /* AdminLedgerView.swift in Sources */,
+				0778F35AF9476EFDF5B12E8E /* AdminModerationView.swift in Sources */,
+				92F090F04162206E89ABABB8 /* AdminView.swift in Sources */,
+				C4FC052072D5CB6EB1BC56A1 /* Archetype.swift in Sources */,
+				DDF1CF2CA09B156227C98122 /* ArchetypeStoreView.swift in Sources */,
+				7C2CC772884993B1B43518B9 /* AuctionBabyApp.swift in Sources */,
+				802AD0B86BCF68206A12E772 /* AuctionFeedView.swift in Sources */,
+				41F2ADC3E29735CA9E070FC8 /* AuctionStore.swift in Sources */,
+				9F3284028C5C4AA82C373EB0 /* AuctioneeDetailView.swift in Sources */,
+				8A16A15F11060D839D18211E /* AvatarView.swift in Sources */,
+				0E15E1A63D77DF63FFCF2F3D /* BackendConfig.swift in Sources */,
+				3B4ED8E27D69B92DBBD752C3 /* BackendService.swift in Sources */,
+				586DD77BB019BAC71B1B94EE /* Badges.swift in Sources */,
+				90D9CD22AA4D587A3D465A88 /* Bid.swift in Sources */,
+				B21E39DA755A9CE3F4165934 /* BidSheet.swift in Sources */,
+				8BF6CBE5EC2EE24ADF2A70FF /* BrandLogo.swift in Sources */,
+				7FD8C049B6A88A1218D8FCD8 /* BugReport.swift in Sources */,
+				67D3C9216FE65D09257C1DDA /* ChatView.swift in Sources */,
+				27149920E6AF788AAE8A478A /* Commerce.swift in Sources */,
+				CA93CCBDCD2B1F6C56B3C8CD /* CopycatPortrait.swift in Sources */,
+				1CEEAF4AAC7B7E3D9E2C3922 /* CreditReportCard.swift in Sources */,
+				F197673AA71F0829C92A84B8 /* CreditScoreView.swift in Sources */,
+				6252763C426200EB118315D1 /* DailyClaimCard.swift in Sources */,
+				372F999B080D062AD184ECD5 /* ErrorMonitor.swift in Sources */,
+				0359D3F2CBAC5A0B3E0A2041 /* FilterPreferences.swift in Sources */,
+				ACB016FF010D061D39D1E191 /* FiltersView.swift in Sources */,
+				E818BC661801AFE3D39C0AF1 /* FlexLayout.swift in Sources */,
+				5C433E440BCAF4172FDBDE7F /* GavelStoreView.swift in Sources */,
+				F672E0FF8C956F934E4E54B0 /* GlassKit.swift in Sources */,
+				1973020899B82B972807DC73 /* IncomingBidsView.swift in Sources */,
+				F184B96F3C50FB570393853A /* LiveTicker.swift in Sources */,
+				2BED096F2573F4D11A5670CE /* MainTabView.swift in Sources */,
+				79384A676F5D812BC1F101B0 /* Match.swift in Sources */,
+				88AAAAE1BD5856BD0EB03D07 /* MatchCelebrationView.swift in Sources */,
+				B0A2626DE22371A2795E1CEC /* MatchesView.swift in Sources */,
+				020373975239A8D2945F6AE9 /* Motion.swift in Sources */,
+				DA6110A5F77F32EDBBA8D69A /* MyBidsView.swift in Sources */,
+				DD3ABADE9C413D50E163324D /* MyProfileView.swift in Sources */,
+				C591F5B9A1A7B678F5A5EFD5 /* OnboardingView.swift in Sources */,
+				F4EEAB9F7F8F8DF6F2129A10 /* PaywallView.swift in Sources */,
+				ECFB61AA762A121D8D751724 /* PhotoUploadStep.swift in Sources */,
+				E7D540767326ED9022ACBD7E /* PrimaryButton.swift in Sources */,
+				045F45FC3091FE8DFC61B805 /* Profile.swift in Sources */,
+				1FA2D9656FFD755618C406FF /* RateDateView.swift in Sources */,
+				ACCA73A8B919E41F6ECDEAF7 /* Role.swift in Sources */,
+				03037BC76FEFAFEAF5E7E002 /* SafetyCenter.swift in Sources */,
+				97CC2AC7C59436F6FBF87BC3 /* SampleData.swift in Sources */,
+				46DDB8409A88907F5EFB46D3 /* SecureStore.swift in Sources */,
+				AF32F26EB6EF9D84A4A993B3 /* StandingView.swift in Sources */,
+				5A7F5AA48407EA4BAD7F5E13 /* StoreKitService.swift in Sources */,
+				9A14493C78D349CE215C213C /* SuitorDetailView.swift in Sources */,
+				9C94EF6A56E140FEE86B98E0 /* Theme.swift in Sources */,
+				75873375F43A84AEC5787C78 /* VerificationSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		1A000000000000000000001C /* PBXTargetDependency */ = {
+		F24D9AEC8A5EAA1094A5615A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 1A0000000000000000000004 /* AuctionBaby */;
-			targetProxy = 1A000000000000000000001D /* PBXContainerItemProxy */;
+			target = AF542073B10F4A780B8EE8FA /* AuctionBaby */;
+			targetProxy = 30F0157F0F0BA09CD206F7B1 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
-/* Begin PBXContainerItemProxy section */
-		1A000000000000000000001D /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 1A0000000000000000000001 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 1A0000000000000000000004;
-			remoteInfo = AuctionBaby;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin XCBuildConfiguration section */
-		1A0000000000000000000014 /* Debug */ = {
+		18FB317DB626205E72E5C768 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3899DC2C7B495BDFDB4C4793 /* Build.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = AuctionBaby/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.auctionbaby;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3161E75FF4C00BCF80B0AA6D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
@@ -264,16 +626,17 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = UDM4W27W9V;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
 					"$(inherited)",
+					"DEBUG=1",
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -282,26 +645,65 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
-		1A0000000000000000000015 /* Release */ = {
+		3A44EEAEA7AF1F6534612893 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.auctionbaby.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AuctionBaby.app/AuctionBaby";
+			};
+			name = Release;
+		};
+		E2BD09A1EF1E55C178B39537 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.auctionbaby.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AuctionBaby.app/AuctionBaby";
+			};
+			name = Debug;
+		};
+		EB34720AB90CF6A28E19E81A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
@@ -325,10 +727,11 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = UDM4W27W9V;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -337,134 +740,65 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				VALIDATE_PRODUCT = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
-		1A0000000000000000000017 /* Debug */ = {
+		F902AFBC5A65C2CECB277F2C /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1A000000000000000000000C /* Build.xcconfig */;
+			baseConfigurationReference = 3899DC2C7B495BDFDB4C4793 /* Build.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = UDM4W27W9V;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = NO;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = AuctionBaby/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.auctionbaby;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
-		};
-		1A0000000000000000000018 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1A000000000000000000000C /* Build.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = UDM4W27W9V;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = AuctionBaby/Resources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.auctionbaby;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		1A000000000000000000001A /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = UDM4W27W9V;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.auctionbaby.tests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AuctionBaby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AuctionBaby";
-			};
-			name = Debug;
-		};
-		1A000000000000000000001B /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = UDM4W27W9V;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.valasek.auctionbaby.tests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AuctionBaby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AuctionBaby";
-			};
-			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		1A0000000000000000000013 /* Build configuration list for PBXProject "AuctionBaby" */ = {
+		16668F2016D35C91ADF872C8 /* Build configuration list for PBXNativeTarget "AuctionBaby" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				1A0000000000000000000014 /* Debug */,
-				1A0000000000000000000015 /* Release */,
+				F902AFBC5A65C2CECB277F2C /* Debug */,
+				18FB317DB626205E72E5C768 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
-		1A0000000000000000000016 /* Build configuration list for PBXNativeTarget "AuctionBaby" */ = {
+		5AF2E31302CEA9301D01ADEC /* Build configuration list for PBXNativeTarget "AuctionBabyTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				1A0000000000000000000017 /* Debug */,
-				1A0000000000000000000018 /* Release */,
+				E2BD09A1EF1E55C178B39537 /* Debug */,
+				3A44EEAEA7AF1F6534612893 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
-		1A0000000000000000000019 /* Build configuration list for PBXNativeTarget "AuctionBabyTests" */ = {
+		83F63FE64D8902E0A8A9216F /* Build configuration list for PBXProject "AuctionBaby" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				1A000000000000000000001A /* Debug */,
-				1A000000000000000000001B /* Release */,
+				3161E75FF4C00BCF80B0AA6D /* Debug */,
+				EB34720AB90CF6A28E19E81A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 1A0000000000000000000001 /* Project object */;
+	rootObject = 9D479B4D9C2586692D52C8F8 /* Project object */;
 }
