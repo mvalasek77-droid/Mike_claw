@@ -41,6 +41,7 @@ re-enable it each session.
 | The Standing (weekly leaderboards) | Standard | Identical; reviewer's demo profile appears in the "you" row |
 | Lot of the Day intro | First launch of a new day | Fires once per calendar day for the demo account too |
 | Status ratings (all 8) | Non-consumable IAPs, $4.99–$9,999.99 | All eight marked **owned** — equip free, no charge. Real buy buttons stay live for sandbox verification. |
+| Reserve the date (booking fee) | Real-world Stripe fee (default $5.00), platform-kept, opens hosted Checkout | "Demo: reserve free" button in an accepted chat marks the date reserved with no charge and no Stripe account needed. |
 
 ## Recommended review path (≈ 12 minutes)
 

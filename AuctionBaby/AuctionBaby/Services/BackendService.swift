@@ -17,6 +17,15 @@ enum BackendResult<T> {
         case .failure(let message): return .failure(message)
         }
     }
+
+    /// Chain a transform that can itself fail (e.g. a response that parses but
+    /// is semantically empty).
+    func flatMap<U>(_ transform: (T) -> BackendResult<U>) -> BackendResult<U> {
+        switch self {
+        case .success(let value): return transform(value)
+        case .failure(let message): return .failure(message)
+        }
+    }
 }
 
 /// The app's client for the Auction Baby payout Worker (see `backend/`).
@@ -268,6 +277,45 @@ final class BackendService: ObservableObject {
         ]
         return await post("/consume", base: consumablesURL, body: body, as: Response.self)
             .map { $0.spent ?? gavels }
+    }
+
+    // MARK: - Reserve the date (Stripe booking fee)
+
+    /// GET /reserve/info — the current booking fee, so the UI can show the real
+    /// price rather than hard-coding it.
+    func fetchReservationFee() async -> BackendResult<String> {
+        struct Response: Decodable { let feeDisplay: String }
+        return await get("/reserve/info", base: consumablesURL, as: Response.self)
+            .map(\.feeDisplay)
+    }
+
+    /// POST /reserve/checkout — open a Stripe Checkout for one date's booking
+    /// fee. Returns the hosted-checkout URL to open in the browser (Stripe is
+    /// the correct rail: this is a REAL-WORLD service fee, not IAP). If the
+    /// date is already booked the Worker returns no URL and we surface that.
+    func reserveDateCheckout(matchID: UUID, appAccountToken: UUID) async -> BackendResult<URL> {
+        struct Response: Decodable { let url: String?; let alreadyReserved: Bool? }
+        let body: [String: Any] = [
+            "matchId": matchID.uuidString.lowercased(),
+            "userId": appAccountToken.uuidString.lowercased(),
+        ]
+        return await post("/reserve/checkout", base: consumablesURL, body: body, as: Response.self)
+            .flatMap { r in
+                if r.alreadyReserved == true { return .success(URL(string: "about:blank")!) }
+                guard let s = r.url, let u = URL(string: s) else {
+                    return .failure("Couldn't start the reservation checkout.")
+                }
+                return .success(u)
+            }
+    }
+
+    /// GET /reserve/status — has the booking fee for this date been paid (and
+    /// not refunded)? Polled on foreground to reflect a completed web checkout.
+    func reservationStatus(matchID: UUID) async -> BackendResult<Bool> {
+        struct Response: Decodable { let reserved: Bool }
+        let id = matchID.uuidString.lowercased()
+        return await get("/reserve/status?matchId=\(id)", base: consumablesURL, as: Response.self)
+            .map(\.reserved)
     }
 
     // MARK: - Transport

@@ -77,6 +77,12 @@ The code currently points at **placeholder** URLs that Apple will check.
       one unbuilt piece) — or park a "coming soon" page and ship iOS-only
 - [ ] Update `SUCCESS_URL` / `CANCEL_URL` in `consumables/wrangler.toml`
       if the domain differs, and redeploy
+- [ ] Set the **"Reserve the date"** booking fee: `RESERVE_FEE_CENTS` in
+      `consumables/wrangler.toml` (default `500` = $5.00). This is a Stripe
+      (non-IAP) real-world reservation fee kept by the platform — it rides the
+      same consumables Worker + Stripe account as the web Gavel shop, so no
+      extra setup beyond Phase 1. The in-app "Reserve the date" card stays
+      dormant until `AB_CONSUMABLES_URL` is configured.
 - [ ] Confirm the in-app bug-report recipient: `BugReport.swift` currently
       sends to `mv19770601@gmail.com` — change if you want a dedicated
       support inbox

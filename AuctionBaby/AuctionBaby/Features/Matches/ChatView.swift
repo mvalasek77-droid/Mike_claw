@@ -7,11 +7,15 @@ struct ChatView: View {
     let matchID: UUID
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
+    @EnvironmentObject private var backend: BackendService
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @State private var draft = ""
     @State private var showReview = false
     @State private var showReport = false
     @State private var showReceiptPaywall = false
+    @State private var reserving = false
+    @State private var reserveFee = "$5.00"
 
     private var match: Match? { store.matches.first(where: { $0.id == matchID }) }
 
@@ -183,6 +187,100 @@ struct ChatView: View {
         .padding(.bottom, 4)
     }
 
+    /// Bidder-only "Reserve the date" card. Reserving pays a real-world booking
+    /// fee via Stripe (kept by the platform, never sent to her) and marks the
+    /// date booked. It deliberately unlocks NO in-app content — it's a
+    /// real-world confirmation, which is exactly why it's a Stripe charge and
+    /// not IAP. Hidden for the woman and on copycats.
+    @ViewBuilder
+    private func reserveCard(_ match: Match) -> some View {
+        if store.role == .man {
+            if match.dateReserved {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.verify)
+                    Text("Date reserved — you're locked in")
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Theme.ink)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.verify.opacity(0.12)))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.verify.opacity(0.5), lineWidth: 1))
+            } else if store.demoMode || backend.isConsumablesConfigured {
+                // Dormant unless the Stripe web shop is configured — no point
+                // offering a reservation the money rails can't fulfil.
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .font(.system(size: 18, weight: .bold)).foregroundStyle(Theme.gold)
+                        Text("Reserve the date")
+                            .font(.system(size: 15, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
+                        Spacer()
+                        Text(reserveFee)
+                            .font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
+                    }
+                    Text("A booking fee to lock in your in-person date. It goes to Auction Baby for the reservation — never to \(match.other(for: .man).name) — and unlocks nothing in the app. You still pay her what you bid, in person.")
+                        .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button {
+                        reserve(match)
+                    } label: {
+                        HStack(spacing: 8) {
+                            if reserving { ProgressView().tint(.black) }
+                            else { Image(systemName: store.demoMode ? "wand.and.stars" : "creditcard.fill") }
+                            Text(store.demoMode ? "Demo: reserve free"
+                                                : "Reserve for \(reserveFee)")
+                        }
+                        .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity).padding(.vertical, 11)
+                        .background(Capsule().fill(Theme.goldGradient))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(reserving)
+                }
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.gold.opacity(0.3), lineWidth: 1))
+                .task { await loadReserveFee() }
+            }
+        }
+    }
+
+    private func loadReserveFee() async {
+        guard !store.demoMode, backend.isConsumablesConfigured else { return }
+        if case .success(let fee) = await backend.fetchReservationFee() { reserveFee = fee }
+    }
+
+    /// Demo → mark booked free. Live → open Stripe hosted Checkout in the
+    /// browser; the completed payment is reflected on next foreground via
+    /// `store.refreshReservations`.
+    private func reserve(_ match: Match) {
+        if store.demoMode { store.reserveDateDemo(match.id); return }
+        guard !reserving else { return }
+        guard backend.isConsumablesConfigured else {
+            store.toastFlash("Reservations need the web shop configured (Stripe Worker).")
+            return
+        }
+        reserving = true
+        Task {
+            let result = await backend.reserveDateCheckout(matchID: match.id,
+                                                           appAccountToken: store.appAccountToken)
+            reserving = false
+            switch result {
+            case .success(let url):
+                if url.absoluteString == "about:blank" {
+                    store.markDateReserved(match.id)   // already booked server-side
+                } else {
+                    openURL(url)                        // Stripe Checkout in Safari
+                }
+            case .failure(let message):
+                store.toastFlash(message)
+            }
+        }
+    }
+
     @ViewBuilder
     private func composer(_ match: Match) -> some View {
         VStack(spacing: 10) {
@@ -216,6 +314,7 @@ struct ChatView: View {
                     .opacity(draft.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
                 }
                 if !match.bid.onCopycat {
+                    reserveCard(match)
                     GhostButton(title: "We went on the date", systemImage: "checkmark.circle") {
                         store.markDateDone(match)
                     }

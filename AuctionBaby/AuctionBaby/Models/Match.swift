@@ -65,6 +65,11 @@ struct Match: Identifiable, Codable, Hashable {
     /// the current user sends their first reply. If it lapses with no reply,
     /// the match goes cold.
     var expiresAt: Date? = nil
+    /// The bidder paid the real-world "Reserve the date" booking fee (via
+    /// Stripe, kept by the platform). Purely a real-world confirmation — it
+    /// unlocks NO in-app content, by design (Apple compliance). Set from the
+    /// consumables Worker's reservation status on foreground.
+    var dateReserved: Bool = false
 
     /// The counterpart, from the perspective of the logged-in `role`.
     func other(for role: Role) -> Profile { role == .woman ? bid.man : bid.woman }
@@ -79,7 +84,8 @@ struct Match: Identifiable, Codable, Hashable {
          phase: MatchPhase = .chatting, manReviewedWoman: Bool = false,
          womanReviewedMan: Bool = false, spentAmount: Int? = nil,
          manConfirmedMet: Bool = false, womanConfirmedMet: Bool = false,
-         seenByOther: Bool = false, expiresAt: Date? = nil) {
+         seenByOther: Bool = false, expiresAt: Date? = nil,
+         dateReserved: Bool = false) {
         self.id = id
         self.bid = bid
         self.messages = messages
@@ -91,6 +97,7 @@ struct Match: Identifiable, Codable, Hashable {
         self.womanConfirmedMet = womanConfirmedMet
         self.seenByOther = seenByOther
         self.expiresAt = expiresAt
+        self.dateReserved = dateReserved
     }
 
     // Backward-compatible decode — see Profile.init(from:).
@@ -107,5 +114,6 @@ struct Match: Identifiable, Codable, Hashable {
         womanConfirmedMet = try c.decodeIfPresent(Bool.self, forKey: .womanConfirmedMet) ?? false
         seenByOther = try c.decodeIfPresent(Bool.self, forKey: .seenByOther) ?? false
         expiresAt = try c.decodeIfPresent(Date.self, forKey: .expiresAt)
+        dateReserved = try c.decodeIfPresent(Bool.self, forKey: .dateReserved) ?? false
     }
 }

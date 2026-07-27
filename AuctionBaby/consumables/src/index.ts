@@ -26,14 +26,37 @@
  *   STRIPE_WEBHOOK_SECRET  — whsec_… for the Checkout webhook endpoint
  *   APP_SHARED_SECRET      — shared secret for app→worker auth (also in the app)
  *
+ * ── Reserve the date ─────────────────────────────────────────────────────────
+ * This Worker also collects a one-time "Reserve the date" fee: once a woman
+ * accepts a bid, the bidder can pay a small real-world BOOKING fee to lock in
+ * the in-person meeting. Two things make this deliberately different from the
+ * Gavel packs above, and both are load-bearing for App Store + legal safety:
+ *
+ *   1. It is a REAL-WORLD service fee (reserving an in-person date), so per
+ *      Apple's rules it must NOT use IAP — Stripe is the correct rail here,
+ *      the mirror image of why Gavels must stay on StoreKit.
+ *   2. The fee is kept by the PLATFORM. It never credits Gavels and never
+ *      flows to the other person — so it isn't escrow, isn't money
+ *      transmission, and unlocks no in-app content (reserving only marks the
+ *      real-world date as booked). That's what keeps it clear of the
+ *      escort-service / marketplace-payout line.
+ *
+ * Required secrets (set via `wrangler secret put`):
+ *   STRIPE_SECRET_KEY      — sk_test_… / sk_live_…
+ *   STRIPE_WEBHOOK_SECRET  — whsec_… for the Checkout webhook endpoint
+ *   APP_SHARED_SECRET      — shared secret for app→worker auth (also in the app)
+ *
  * Endpoints:
- *   GET  /health           — liveness + config sanity (no secrets leaked)
- *   GET  /catalog          — the Gavel packs for sale
- *   POST /checkout         — create a Checkout Session for a pack  [auth]
- *   POST /webhook          — Stripe webhook; credits/debits the balance
- *   GET  /balance?userId=  — a user's current web-Gavel balance    [auth]
- *   POST /consume          — spend/drain Gavels (idempotent)       [auth]
- *   GET  /ledger?userId=   — recent purchases/spends for a user    [auth]
+ *   GET  /health            — liveness + config sanity (no secrets leaked)
+ *   GET  /catalog           — the Gavel packs for sale
+ *   POST /checkout          — create a Checkout Session for a pack  [auth]
+ *   POST /webhook           — Stripe webhook; credits/debits balances & bookings
+ *   GET  /balance?userId=   — a user's current web-Gavel balance    [auth]
+ *   POST /consume           — spend/drain Gavels (idempotent)       [auth]
+ *   GET  /ledger?userId=    — recent purchases/spends for a user    [auth]
+ *   GET  /reserve/info      — the current reservation fee (public)
+ *   POST /reserve/checkout  — Checkout Session for a date's booking fee [auth]
+ *   GET  /reserve/status?matchId= — is a date reserved?             [auth]
  */
 
 interface Env {
@@ -43,6 +66,7 @@ interface Env {
   CURRENCY?: string;
   SUCCESS_URL?: string;
   CANCEL_URL?: string;
+  RESERVE_FEE_CENTS?: string;   // the "Reserve the date" booking fee (default 500 = $5)
   KV?: KVNamespace;
 }
 
@@ -170,9 +194,20 @@ const balanceKey = (userId: string) => `bal:${userId}`;
 const eventKey = (eventId: string) => `evt:${eventId}`;       // webhook idempotency
 const consumeKey = (key: string) => `use:${key}`;             // consume idempotency
 const ledgerKey = (userId: string) => `led:${userId}`;
-// payment_intent → {userId, gavels} so charge.refunded can route the debit
-// without relying on metadata propagation from the Checkout Session.
+// payment_intent → route record so charge.refunded can undo the right thing
+// without relying on metadata propagation from the Checkout Session. For a
+// Gavel pack the record is {kind:"gavels", userId, gavels, refundedCents};
+// for a booking it is {kind:"reservation", userId, matchId}.
 const piKey = (paymentIntent: string) => `pi:${paymentIntent}`;
+// matchId → {userId, paidAt, sessionId, refunded} — the booking record for a
+// single date. Presence + !refunded means the date is reserved.
+const reserveKey = (matchId: string) => `res:${matchId}`;
+
+/** The one-time "Reserve the date" fee in cents (env-overridable, default $5). */
+function reserveFeeCents(env: Env): number {
+  const v = Number(env.RESERVE_FEE_CENTS ?? 500);
+  return Number.isFinite(v) && v > 0 ? Math.round(v) : 500;
+}
 
 async function getBalance(env: Env, userId: string): Promise<number> {
   if (!env.KV) return 0;
@@ -320,6 +355,33 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
       return json({ received: true, skipped: "unpaid" });
     }
 
+    // ── "Reserve the date" booking fee ──────────────────────────────────────
+    // A paid reservation marks ONE date as booked. It never credits Gavels and
+    // never moves money to another person — the platform keeps the fee for the
+    // real-world service of reserving the meeting.
+    if (String(session.metadata?.kind ?? "gavels") === "reservation") {
+      const matchId = String(session.metadata?.matchId ?? "");
+      const bookedBy = String(session.metadata?.userId ?? session.client_reference_id ?? "");
+      if (!matchId) return json({ received: true, skipped: "missing matchId" });
+      if (env.KV) {
+        await env.KV.put(
+          reserveKey(matchId),
+          JSON.stringify({ userId: bookedBy, paidAt: Date.now(), sessionId: String(session.id), refunded: false }),
+          { expirationTtl: 60 * 60 * 24 * 180 },
+        );
+        if (session.payment_intent) {
+          await env.KV.put(
+            piKey(String(session.payment_intent)),
+            JSON.stringify({ kind: "reservation", userId: bookedBy, matchId }),
+            { expirationTtl: 60 * 60 * 24 * 180 },
+          );
+        }
+        await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
+      }
+      console.log(`Reservation paid for match ${matchId} by ${bookedBy}`);
+      return json({ received: true, reserved: true });
+    }
+
     const userId = String(session.metadata?.userId ?? session.client_reference_id ?? "");
     const gavels = Number(session.metadata?.gavels ?? 0);
     if (!userId || !gavels) {
@@ -339,7 +401,7 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
       // refund window. refundedCents tracks cumulative partial refunds.
       if (session.payment_intent) {
         await env.KV.put(piKey(String(session.payment_intent)),
-                         JSON.stringify({ userId, gavels, refundedCents: 0 }),
+                         JSON.stringify({ kind: "gavels", userId, gavels, refundedCents: 0 }),
                          { expirationTtl: 60 * 60 * 24 * 180 });
       }
       // Mark the event processed for 30 days — long past Stripe's retry window.
@@ -355,8 +417,28 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
 
     const routed = await env.KV.get(piKey(pi));
     if (!routed) return json({ received: true, skipped: "unknown payment_intent" });
-    const record = JSON.parse(routed) as { userId: string; gavels: number; refundedCents?: number };
-    const { userId, gavels } = record;
+    const record = JSON.parse(routed) as {
+      kind?: string; userId: string; gavels?: number; refundedCents?: number; matchId?: string;
+    };
+
+    // A refunded booking fee un-reserves the date; nothing to debit (Gavels
+    // were never credited). Idempotent: refunding again just re-sets the flag.
+    if (record.kind === "reservation") {
+      if (record.matchId) {
+        const rraw = await env.KV.get(reserveKey(record.matchId));
+        if (rraw) {
+          await env.KV.put(reserveKey(record.matchId),
+                           JSON.stringify({ ...JSON.parse(rraw), refunded: true }),
+                           { expirationTtl: 60 * 60 * 24 * 180 });
+        }
+      }
+      await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
+      console.log(`Reservation refunded for match ${record.matchId} (charge ${charge.id})`);
+      return json({ received: true, reservationRefunded: true });
+    }
+
+    const userId = record.userId;
+    const gavels = Number(record.gavels ?? 0);
 
     // Stripe fires charge.refunded on PARTIAL refunds too, with the
     // CUMULATIVE amount_refunded. Debit proportionally to the newly-refunded
@@ -445,6 +527,88 @@ async function handleLedger(request: Request, env: Env): Promise<Response> {
   return json({ userId, entries: raw ? JSON.parse(raw) : [] });
 }
 
+// ── Reserve the date ─────────────────────────────────────────────────────────
+
+/** GET /reserve/info — public: the current booking fee so the app can show it. */
+function handleReserveInfo(env: Env): Response {
+  const currency = (env.CURRENCY ?? "usd").toLowerCase();
+  const cents = reserveFeeCents(env);
+  return json({ feeCents: cents, feeDisplay: formatPrice(cents, currency), currency });
+}
+
+/** POST /reserve/checkout — Checkout Session for a single date's booking fee.
+ *  Body: { matchId, userId, successUrl?, cancelUrl? }
+ *  `userId` is the app's appAccountToken (lowercased UUID). Returns { url } to
+ *  open in the browser — or { alreadyReserved:true } if it's already booked. */
+async function handleReserveCheckout(request: Request, env: Env): Promise<Response> {
+  let body: any;
+  try { body = await request.json(); } catch { return error("Invalid JSON body"); }
+
+  const matchId = String(body?.matchId ?? "").trim();
+  const userId = String(body?.userId ?? "").trim().toLowerCase();
+  if (!matchId) return error("matchId is required");
+  if (!userId) return error("userId is required");
+
+  // Don't open a second Checkout for an already-booked date.
+  if (env.KV) {
+    const existing = await env.KV.get(reserveKey(matchId));
+    if (existing) {
+      const rec = JSON.parse(existing);
+      if (rec.paidAt && !rec.refunded) return json({ alreadyReserved: true });
+    }
+  }
+
+  const currency = (env.CURRENCY ?? "usd").toLowerCase();
+  const cents = reserveFeeCents(env);
+  const successUrl = String(body?.successUrl ?? env.SUCCESS_URL ?? "https://example.com/success");
+  const cancelUrl = String(body?.cancelUrl ?? env.CANCEL_URL ?? "https://example.com/cancel");
+
+  try {
+    const session = await stripe(
+      "/checkout/sessions",
+      {
+        mode: "payment",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency,
+              unit_amount: cents,
+              product_data: {
+                name: "Reserve your date",
+                description:
+                  "Booking fee to lock in your in-person date. Paid to Auction Baby " +
+                  "for the reservation — not to your match, and it unlocks nothing in the app.",
+              },
+            },
+          },
+        ],
+        metadata: { kind: "reservation", matchId, userId },
+        client_reference_id: userId,
+      },
+      env.STRIPE_SECRET_KEY,
+      // Idempotent per match within the minute so a double-tap opens one session.
+      `reserve:${matchId}:${Math.floor(Date.now() / 60000)}`,
+    );
+    return json({ sessionId: session.id, url: session.url });
+  } catch (e: any) {
+    return error(`Reservation checkout failed: ${e.message}`, 502);
+  }
+}
+
+/** GET /reserve/status?matchId= — is this date reserved (and not refunded)? */
+async function handleReserveStatus(request: Request, env: Env): Promise<Response> {
+  const matchId = new URL(request.url).searchParams.get("matchId")?.trim();
+  if (!matchId) return error("matchId is required");
+  if (!env.KV) return json({ matchId, reserved: false });
+  const raw = await env.KV.get(reserveKey(matchId));
+  if (!raw) return json({ matchId, reserved: false });
+  const rec = JSON.parse(raw);
+  return json({ matchId, reserved: Boolean(rec.paidAt) && !rec.refunded, paidAt: rec.paidAt ?? null });
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
@@ -477,6 +641,7 @@ export default {
       });
     }
     if (pathname === "/catalog" && method === "GET") return handleCatalog(env);
+    if (pathname === "/reserve/info" && method === "GET") return handleReserveInfo(env);
     // Stripe calls this server-to-server; it authenticates via signature, not
     // the shared secret.
     if (pathname === "/webhook" && method === "POST") return handleWebhook(request, env);
@@ -489,6 +654,8 @@ export default {
     if (pathname === "/balance" && method === "GET") return handleBalance(request, env);
     if (pathname === "/consume" && method === "POST") return handleConsume(request, env);
     if (pathname === "/ledger" && method === "GET") return handleLedger(request, env);
+    if (pathname === "/reserve/checkout" && method === "POST") return handleReserveCheckout(request, env);
+    if (pathname === "/reserve/status" && method === "GET") return handleReserveStatus(request, env);
 
     return error("Not found", 404);
   },

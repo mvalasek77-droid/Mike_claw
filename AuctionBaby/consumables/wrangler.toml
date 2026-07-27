@@ -21,6 +21,9 @@ CURRENCY = "usd"
 # override these per-request; these are the safe defaults.
 SUCCESS_URL = "https://auctionbaby.app/purchase/success"
 CANCEL_URL = "https://auctionbaby.app/purchase/cancel"
+# "Reserve the date" real-world booking fee, in cents. Platform-kept; never
+# credits Gavels and never reaches the other person. Default $5.00.
+RESERVE_FEE_CENTS = "500"
 
 # KV: user Gavel balances + processed-event set (webhook idempotency) +
 # consume-idempotency keys + payment_intent→user refund routing + ledger.
@@ -41,6 +44,7 @@ name = "auctionbaby-consumables-staging"
 CURRENCY = "usd"
 SUCCESS_URL = "https://auctionbaby.app/purchase/success"
 CANCEL_URL = "https://auctionbaby.app/purchase/cancel"
+RESERVE_FEE_CENTS = "500"
 
 # ⚠️  Same rule: create + paste, or credits silently drop.
 #   npx wrangler kv namespace create KV --env staging

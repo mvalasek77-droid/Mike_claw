@@ -585,6 +585,7 @@ final class AuctionStore: ObservableObject {
         await storeKit.drainPending()
         await applyWorkerRefunds(backend: backend)
         await syncWebGavels(backend: backend)
+        await refreshReservations(backend: backend)
     }
 
     // MARK: - Web Gavel shop sync (Stripe consumables Worker)
@@ -651,6 +652,41 @@ final class AuctionStore: ObservableObject {
             }
             ErrorMonitor.shared.record(category: "Backend",
                                        message: "Web Gavel drain failed", detail: message)
+        }
+    }
+
+    // MARK: - Reserve the date (Stripe booking fee)
+
+    /// Mark a date booked locally. The ONLY thing reserving changes is this
+    /// real-world confirmation flag — it deliberately unlocks no in-app content
+    /// (Apple: a real-world service fee must not gate digital features). Called
+    /// by the demo path and after the Worker confirms a completed web checkout.
+    func markDateReserved(_ matchID: UUID) {
+        guard let idx = matches.firstIndex(where: { $0.id == matchID }),
+              !matches[idx].dateReserved else { return }
+        matches[idx].dateReserved = true
+        Haptics.success()
+        toastFlash("Date reserved — you're locked in. Pay her in person as agreed.")
+        log(.bidAccepted, "You reserved your date with \(matches[idx].bid.woman.name).")
+        save()
+    }
+
+    /// Demo/App-Review convenience: reserve with no real charge, so a reviewer
+    /// can see the booked state without a live Stripe account.
+    func reserveDateDemo(_ matchID: UUID) {
+        guard demoMode else { return }
+        markDateReserved(matchID)
+    }
+
+    /// On foreground, reflect any booking fees paid on the web since we last
+    /// looked. Only checks the bidder's own un-reserved live matches.
+    func refreshReservations(backend: BackendService) async {
+        guard role == .man, backend.isConsumablesConfigured else { return }
+        let pending = matches.filter { $0.phase == .chatting && !$0.dateReserved }
+        for match in pending {
+            if case .success(true) = await backend.reservationStatus(matchID: match.id) {
+                markDateReserved(match.id)
+            }
         }
     }
 
