@@ -23,6 +23,18 @@ struct SettingsView: View {
                 } header: { header("Learn") }
                 .listRowBackground(Color.clear)
 
+                if app.learning.isSupported {
+                    Section {
+                        NavigationLink { LearningView() } label: {
+                            row("Adapts to you", "dial.medium",
+                                app.learning.adaptations.isEmpty
+                                    ? "Watching how you work — nothing adjusted yet"
+                                    : "\(app.learning.adaptations.count) adjustment\(app.learning.adaptations.count == 1 ? "" : "s") learned")
+                        }
+                    } header: { header("Adaptive controls") }
+                    .listRowBackground(Color.clear)
+                }
+
                 Section {
                     NavigationLink { LegalView(kind: .terms) } label: {
                         row("Terms of Use", "doc.text", nil)
@@ -289,6 +301,127 @@ struct ModelDetailView: View {
     }
 }
 
+// MARK: - Adaptive controls
+
+/// Everything the app has learned from this user, in plain language, with an
+/// off switch and a one-tap reset.
+///
+/// The transparency here is the feature. "Self-learning" in an app usually
+/// means an opaque model you can neither inspect nor undo; this is a short
+/// list of counted signals, each with the threshold it must clear, and the
+/// guardrails it is never allowed to cross — all of it read from the pack so
+/// the screen can't drift from what the engine actually does.
+struct LearningView: View {
+    @EnvironmentObject private var app: AppState
+
+    private var spec: SelfLearning? { app.pack.selfLearning }
+
+    var body: some View {
+        ZStack {
+            GlassBackground().ignoresSafeArea()
+            List {
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { app.learning.isEnabled },
+                        set: { app.setLearningEnabled($0) }
+                    )) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Let the controls adapt")
+                                .font(Type.bodyMed)
+                                .foregroundStyle(Glass.primaryText)
+                            Text("Off means the coach always uses the pack's defaults.")
+                                .font(Type.caption)
+                                .foregroundStyle(Glass.primaryText.opacity(0.55))
+                        }
+                    }
+                } footer: {
+                    if let note = spec?.note {
+                        Text(note).font(Type.caption)
+                    }
+                }
+                .listRowBackground(Color.clear)
+
+                Section {
+                    if app.learning.adaptations.isEmpty {
+                        Text(app.learning.totalSessions == 0
+                             ? "Nothing yet — coach a few prompts and this fills in."
+                             : "\(app.learning.totalSessions) session\(app.learning.totalSessions == 1 ? "" : "s") so far, but no signal has cleared its threshold. The app would rather do nothing than guess.")
+                            .font(Type.caption)
+                            .foregroundStyle(Glass.primaryText.opacity(0.6))
+                    } else {
+                        ForEach(app.learning.adaptations) { a in
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(a.title)
+                                    .font(Type.bodyMed)
+                                    .foregroundStyle(Glass.primaryText)
+                                Text(a.detail)
+                                    .font(Type.caption)
+                                    .foregroundStyle(Glass.primaryText.opacity(0.65))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                } header: { Text("WHAT IT HAS ADJUSTED").font(Type.captionB) }
+                .listRowBackground(Color.clear)
+
+                if let signals = spec?.signals {
+                    Section {
+                        ForEach(signals) { s in
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(s.learns)
+                                    .font(Type.secondary)
+                                    .foregroundStyle(Glass.primaryText.opacity(0.9))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text("\(s.adjusts) Needs \(s.threshold) observation\(s.threshold == 1 ? "" : "s").")
+                                    .font(Type.caption)
+                                    .foregroundStyle(Glass.primaryText.opacity(0.55))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    } header: { Text("WHAT IT WATCHES").font(Type.captionB) }
+                    .listRowBackground(Color.clear)
+                }
+
+                if let guardrails = spec?.guardrails {
+                    Section {
+                        ForEach(Array(guardrails.enumerated()), id: \.offset) { _, g in
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "lock.shield")
+                                    .font(Type.caption)
+                                    .foregroundStyle(Glass.success)
+                                    .padding(.top, 2)
+                                Text(g)
+                                    .font(Type.caption)
+                                    .foregroundStyle(Glass.primaryText.opacity(0.8))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    } header: { Text("WHAT IT MAY NEVER DO").font(Type.captionB) }
+                    .listRowBackground(Color.clear)
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        Haptics.tap()
+                        app.resetLearning()
+                    } label: {
+                        Label("Reset what the app has learned", systemImage: "arrow.counterclockwise")
+                            .font(Type.bodyMed)
+                    }
+                } footer: {
+                    Text("Clears the counters and every adjustment above. What you chose outright — this switch, and any techniques you muted — stays; unmute those in the technique library. Your history is untouched.")
+                        .font(Type.caption)
+                }
+                .listRowBackground(Color.clear)
+            }
+            .scrollContentBackground(.hidden)
+        }
+        .navigationTitle("Adapts to you")
+    }
+}
+
 // MARK: - Technique library
 
 struct TechniqueLibraryView: View {
@@ -316,9 +449,18 @@ struct TechniqueLibraryView: View {
                         ForEach(items) { t in
                             NavigationLink { LearnView(technique: t) } label: {
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(t.name)
-                                        .font(Type.bodyMed)
-                                        .foregroundStyle(Glass.primaryText)
+                                    HStack(spacing: 6) {
+                                        Text(t.name)
+                                            .font(Type.bodyMed)
+                                            .foregroundStyle(Glass.primaryText)
+                                        if app.learning.isMuted(t.id) {
+                                            Text("MUTED")
+                                                .font(Type.captionB)
+                                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                                .foregroundStyle(Glass.warning)
+                                                .background(Glass.warning.opacity(0.15), in: Capsule())
+                                        }
+                                    }
                                     Text(t.when)
                                         .font(Type.caption)
                                         .foregroundStyle(Glass.primaryText.opacity(0.6))

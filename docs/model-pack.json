@@ -15,6 +15,80 @@
     "Keep the rewritten prompt tight; a shorter prompt that still carries scope + acceptance test beats a padded one.",
     "Front-load the stable/reusable context so repeated runs hit the prompt cache (Opus 5 caches from 512 tokens, half the prior minimum)."
   ],
+  "token_estimation": {
+    "note": "On-device ESTIMATE only. Exact counts need the model's own tokenizer (or the count_tokens endpoint), which the app deliberately does not call — everything stays offline. Always present these as approximate.",
+    "chars_per_token": 3.8,
+    "multipliers": {
+      "claude-haiku-4-5": 1.0,
+      "claude-sonnet-5": 1.3,
+      "claude-opus-5": 1.3,
+      "claude-opus-4-8": 1.3,
+      "claude-fable-5": 1.3
+    },
+    "multiplier_note": "Models on the tokenizer introduced with Opus 4.7 (Sonnet 5, Opus 5, Opus 4.8, Fable 5) produce roughly 30% more tokens for the same text than earlier models such as Haiku 4.5.",
+    "filler_phrases": [
+      "ok so",
+      "okay so",
+      "so basically",
+      "basically",
+      "i was wondering if you could",
+      "i was wondering if you can",
+      "i just wanted to",
+      "please can you",
+      "could you please",
+      "if you don't mind",
+      "if you don\u2019t mind",
+      "thanks in advance",
+      "thank you so much",
+      "at the end of the day",
+      "needless to say",
+      "as you probably know",
+      "for what it's worth",
+      "for what it\u2019s worth"
+    ],
+    "filler_note": "Removed only as a whole phrase at the START of a clause — the beginning of the input, or right after a . ! ? ; , or newline. Never mid-sentence, so 'what kind of file' and 'do you know the answer' survive untouched. Never applied inside fenced code blocks. Meaning-bearing text is never rewritten, only leading throat-clearing is dropped."
+  },
+  "self_learning": {
+    "note": "On-device adaptive controls. These are heuristics learned from THIS user's own behaviour, stored locally — not a trained model and not shared anywhere. Every signal is observable in the app and resettable.",
+    "signals": [
+      {
+        "id": "model_override",
+        "learns": "Which model you actually pick when you disagree with the recommendation, per task type.",
+        "adjusts": "After the threshold is met, that task's recommendation shifts to your preferred model.",
+        "threshold": 3
+      },
+      {
+        "id": "sharpen_rate",
+        "learns": "How often you tap Sharpen for a given task type.",
+        "adjusts": "Once you sharpen a task type most of the time, the app offers the tagged-section structure up front instead of making you ask.",
+        "threshold": 3
+      },
+      {
+        "id": "acceptance",
+        "learns": "Whether you copied or shared the coached prompt (accepted) or left without using it.",
+        "adjusts": "Low acceptance on a task type surfaces a prompt to review that playbook's technique set.",
+        "threshold": 5
+      },
+      {
+        "id": "score_trend",
+        "learns": "Your report-card score on each raw ramble over time.",
+        "adjusts": "Shows your trend and stops re-teaching techniques you now use unprompted.",
+        "threshold": 5
+      },
+      {
+        "id": "technique_mute",
+        "learns": "Techniques you explicitly mute because they don't fit how you work.",
+        "adjusts": "Muted techniques stop being applied and stop being suggested.",
+        "threshold": 1
+      }
+    ],
+    "guardrails": [
+      "Never learn away a hard API fact — a muted technique can change style, never emit a parameter a model rejects.",
+      "Never override a per-model suppression (e.g. re-adding a self-check on Opus 5).",
+      "All learning is local, inspectable in Settings, and resettable in one tap.",
+      "Learning shifts defaults only; the user can always override on the spot."
+    ]
+  },
   "techniques": {
     "note": "The coach's toolkit — full detail in docs/PROMPTING_TECHNIQUES.md, sourced from Anthropic's official prompt-engineering docs (verified 2026-07). Each technique has a trigger; the coach applies matching ones and names them in 'What I changed'. Per-model suppress_techniques / extra_instructions override these.",
     "library": [
@@ -87,6 +161,20 @@
         "what": "Scores the ORIGINAL ramble against the technique checklist so the user sees what was missing.",
         "how": "Checks presence of: clear ask, context/why, role, examples, XML structure for pasted data, explicit scope, success criterion — and flags any retired patterns (prefill, temperature, budget_tokens, CRITICAL-language). Returns a 0-100 score + per-item pass/fail, then the coached prompt shows the fixes.",
         "when": "Shown alongside every coaching result to reinforce learning."
+      },
+      {
+        "id": "token_report",
+        "name": "Token & cost estimate",
+        "what": "Shows roughly how many input tokens the ramble and the coached prompt cost on the chosen model, what the filler trim saved, and the price difference against the most expensive model.",
+        "how": "Estimates chars/token from token_estimation and applies the per-model tokenizer multiplier, then prices it from the model's price_in_per_mtok. Always labelled approximate — no tokenizer call, no network.",
+        "when": "Shown on every coaching result, and it re-prices live when the user overrides the model."
+      },
+      {
+        "id": "adaptive_defaults",
+        "name": "Controls that adapt over time",
+        "what": "The app's defaults shift toward how this user actually works: preferred model per task, structure up front, and muted techniques.",
+        "how": "Counts the signals in self_learning on device, applies a signal only once its threshold is met, and shifts defaults only — never the user's explicit choice, never a hard API fact, never a per-model suppression. Inspectable and resettable in Settings.",
+        "when": "Continuously, after enough of the user's own sessions to be more than noise."
       }
     ],
     "report_card_checklist": [

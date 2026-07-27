@@ -75,7 +75,7 @@ struct RambleView: View {
         Button {
             editing = false
             Haptics.success()
-            let r = app.coach(ramble)
+            let r = app.startSession(ramble)
             app.save(r)
             withAnimation(Glass.motion) { result = r }
         } label: {

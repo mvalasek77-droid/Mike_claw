@@ -18,6 +18,7 @@ struct ResultView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     modelPicker
                     reportCard
+                    if let report = result.tokenReport { tokenCard(report) }
                     promptCard
                     sharpenButton
                     if let schema = result.structuredSchema { schemaCard(schema) }
@@ -75,8 +76,7 @@ struct ResultView: View {
         let selected = m.id == result.chosenModelID
         return Button {
             Haptics.select()
-            var updated = app.coach(result.ramble, overrideModelID: m.id)
-            updated.id = result.id; updated.date = result.date
+            let updated = app.recoach(result, modelID: m.id)
             withAnimation(Glass.motion) { result = updated }
             app.save(updated) // updates history entry copy
         } label: {
@@ -141,6 +141,76 @@ struct ResultView: View {
         }
     }
 
+    // MARK: Token & cost
+
+    /// What this prompt costs, approximately, on the chosen model.
+    ///
+    /// Deliberately honest in two directions: the numbers are labelled as
+    /// estimates (no tokenizer runs on device and the app makes no network
+    /// calls), and when structure makes the prompt *longer* than the ramble it
+    /// says so and explains the trade rather than hiding it.
+    private func tokenCard(_ report: TokenReport) -> some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Tokens & cost")
+                        .font(Type.label)
+                        .foregroundStyle(Glass.primaryText.opacity(0.7))
+                    Text("approx.")
+                        .font(Type.captionB)
+                        .foregroundStyle(Glass.primaryText.opacity(0.4))
+                    Spacer()
+                    Text(TokenReport.money(report.inputCostUSD) + " / run")
+                        .font(Type.label)
+                        .foregroundStyle(tint)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("≈ \(report.promptTokens)")
+                        .font(Type.title)
+                        .foregroundStyle(Glass.primaryText)
+                    Text("input tokens on \(app.pack.model(id: result.chosenModelID)?.shortName ?? "this model")")
+                        .font(Type.caption)
+                        .foregroundStyle(Glass.primaryText.opacity(0.6))
+                }
+
+                if report.wordingTokensSaved > 0 {
+                    tokenRow("scissors", Glass.success,
+                             "Trimmed ≈\(report.wordingTokensSaved) tokens of filler and repetition from your wording")
+                }
+                if report.promptIsLonger {
+                    tokenRow("plus.forwardslash.minus", Glass.primaryText.opacity(0.55),
+                             "Structure added tokens on top of your ≈\(report.rambleTokens). That's the trade: one vague round-trip costs far more than a scope line.")
+                }
+                if report.costSavedUSD > 0 {
+                    tokenRow("arrow.down.circle", Glass.success,
+                             "\(TokenReport.money(report.costSavedUSD)) per run cheaper than running this on \(report.priciestModelName)")
+                }
+
+                Text("Estimated on device from character counts and \(app.pack.model(id: result.chosenModelID)?.shortName ?? "the model")'s tokenizer ratio — not an exact count. Output tokens are billed separately.")
+                    .font(Type.caption)
+                    .foregroundStyle(Glass.primaryText.opacity(0.45))
+                    .padding(.top, 2)
+            }
+            .padding(16)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Approximately \(report.promptTokens) input tokens on the chosen model, about \(TokenReport.money(report.inputCostUSD)) per run")
+    }
+
+    private func tokenRow(_ icon: String, _ color: Color, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .font(Type.caption)
+                .foregroundStyle(color)
+                .padding(.top, 2)
+            Text(text)
+                .font(Type.caption)
+                .foregroundStyle(Glass.primaryText.opacity(0.75))
+            Spacer(minLength: 0)
+        }
+    }
+
     // MARK: Coached prompt
 
     private var promptCard: some View {
@@ -154,8 +224,10 @@ struct ResultView: View {
                     ShareLink(item: result.rewrittenPrompt) {
                         Image(systemName: "square.and.arrow.up")
                     }
+                    .simultaneousGesture(TapGesture().onEnded { app.noteAccepted(result) })
                     Button {
                         UIPasteboard.general.string = result.rewrittenPrompt
+                        app.noteAccepted(result)
                         Haptics.tap()
                         withAnimation { copied = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { withAnimation { copied = false } }
@@ -187,7 +259,7 @@ struct ResultView: View {
         } else {
             Button {
                 Haptics.success()
-                let sharper = app.engine.sharpen(result)
+                let sharper = app.sharpen(result)
                 withAnimation(Glass.motion) { result = sharper }
                 app.save(sharper)
             } label: {

@@ -25,6 +25,11 @@ The complete core loop, all on device, no network, no account.
 | Per-model overrides (e.g. Opus 5 self-verifies → withhold self-check) | ✅ |
 | Model reference library — how to prompt each of the 5 models | ✅ |
 | Technique library — 28 techniques, browsable and searchable | ✅ |
+| Token-efficiency pass — clause-leading filler trim + sentence de-duplication | ✅ |
+| Token & cost estimate per prompt, priced against the priciest model in the pack | ✅ (estimate, clearly labelled; exact counts need the API) |
+| Adaptive controls — on-device signals shift defaults over time | ✅ |
+| Adaptive controls are inspectable, per-signal, and resettable in Settings | ✅ |
+| Technique muting (only ever subtracts — can't re-enable a model suppression) | ✅ |
 | On-device history, searchable, deletable | ✅ |
 | Settings + in-app Terms & Privacy | ✅ |
 | Liquid Glass theme, per-model tint, Reduce Motion, Dynamic Type, dark mode | ✅ |
@@ -67,8 +72,11 @@ Everything stays keyless-optional: the app must remain fully useful with no key.
 
 ## v1.4 — Progress & habit
 
-- Score trend over time — the teaching flywheel made visible.
-- "Techniques you never use" nudge, with a Learn link.
+- ✅ *Shipped in v1.0:* score trend on the **raw ramble** (earlier vs recent
+  half) and a low-acceptance nudge per task, both in the adaptive-controls
+  screen — the teaching flywheel made visible.
+- Dedicated progress screen with a chart, rather than a line in Settings.
+- Per-technique "you've never used this" nudge, with a Learn link.
 - Weekly streak-free summary (no dark patterns, no manufactured urgency).
 
 ## v2.0 — Platform
@@ -105,3 +113,12 @@ Everything stays keyless-optional: the app must remain fully useful with no key.
    No guessed facts — a wrong API fact makes the app actively harmful.
 4. **On-device first.** Any new feature must degrade gracefully with no network
    and no key.
+5. **The adaptive controls only ever subtract or re-default.** They are counted
+   heuristics over this user's own sessions — not a trained model, never
+   shared. Learning may shift a *default*; it may never emit a parameter a
+   model rejects, override a per-model suppression, or beat a choice the user
+   makes in the moment. Anything learned must be listed in plain language and
+   clearable in one tap. See `self_learning.guardrails` in the pack.
+6. **Estimates are labelled as estimates.** Token and cost figures are computed
+   on device from a chars-per-token heuristic. The UI must never present them
+   as exact counts, and must admit when coaching made a prompt *longer*.

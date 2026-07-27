@@ -23,6 +23,9 @@ APP_PACK = ROOT / "ios/PromptCoach/PromptCoach/Resources/model-pack.json"
 DOCS_PACK = ROOT / "docs/model-pack.json"
 ENGINE = ROOT / "ios/PromptCoach/PromptCoach/Engine/CoachEngine.swift"
 MODELS_SWIFT = ROOT / "ios/PromptCoach/PromptCoach/Models/ModelPack.swift"
+ESTIMATOR = ROOT / "ios/PromptCoach/PromptCoach/Engine/TokenEstimator.swift"
+STORE = ROOT / "ios/PromptCoach/PromptCoach/Store/LearningStore.swift"
+RESULT_VIEW = ROOT / "ios/PromptCoach/PromptCoach/Views/ResultView.swift"
 
 failures: list[str] = []
 passes: list[str] = []
@@ -61,6 +64,10 @@ REQUIRED_TOP = [
     "task_playbooks", "refusal_handling", "advanced_features", "models",
     "recommender",
 ]
+# Optional in Swift (`TokenEstimation?` / `SelfLearning?`) so an older pack
+# still decodes — but the shipping pack is expected to carry both, and the
+# blocks below assert their shape.
+OPTIONAL_TOP = ["token_estimation", "self_learning"]
 for key in REQUIRED_TOP:
     check(f"top-level key '{key}' present", key in pack)
 
@@ -310,7 +317,7 @@ if settings.exists():
 # Every screen the app can reach should exist.
 for view in ("RambleView", "ResultView", "HistoryView", "LearnView",
              "SettingsView", "ModelReferenceView", "ModelDetailView",
-             "TechniqueLibraryView", "LegalView"):
+             "TechniqueLibraryView", "LegalView", "LearningView"):
     found = any(f"struct {view}" in p.read_text() for p in ALL_SWIFT)
     check(f"view '{view}' is defined", found)
 
@@ -329,6 +336,266 @@ if "report_card" in feature_ids:
 check("new CoachResult flags are Optional for history compatibility",
       "var sharpened: Bool?" in engine_all,
       "non-optional new fields throw on older history JSON")
+
+# ------------------------------------------- token efficiency (pack shape)
+
+te = pack.get("token_estimation")
+check("token_estimation block present", isinstance(te, dict))
+fillers: list[str] = []
+if isinstance(te, dict):
+    for k in ("note", "chars_per_token", "multipliers", "multiplier_note",
+              "filler_phrases", "filler_note"):
+        check(f"token_estimation has '{k}'", k in te)
+    check("chars_per_token is a positive number",
+          isinstance(te.get("chars_per_token"), (int, float)) and te["chars_per_token"] > 0)
+
+    mult = te.get("multipliers", {})
+    missing_mult = model_ids - set(mult)
+    check("every model has a tokenizer multiplier", not missing_mult, str(sorted(missing_mult)))
+    stale_mult = set(mult) - model_ids
+    check("no multipliers for models absent from the pack", not stale_mult, str(sorted(stale_mult)))
+    check("all multipliers are positive numbers",
+          all(isinstance(v, (int, float)) and v > 0 for v in mult.values()))
+    # Haiku 4.5 predates the heavier tokenizer introduced with Opus 4.7; the
+    # frontier models are on it. Getting this backwards under-prices Opus by
+    # ~30%, which is exactly the kind of wrong number that erodes trust.
+    check("Haiku 4.5 is the 1.0 tokenizer baseline", mult.get("claude-haiku-4-5") == 1.0)
+    for mid in ("claude-sonnet-5", "claude-opus-5", "claude-fable-5", "claude-opus-4-8"):
+        if mid in model_ids:
+            check(f"{mid} uses the heavier tokenizer multiplier", mult.get(mid, 0) > 1.0)
+
+    fillers = te.get("filler_phrases", [])
+    check("filler_phrases non-empty", isinstance(fillers, list) and len(fillers) > 0)
+    check("filler_phrases are lowercase (the matcher is case-insensitive)",
+          all(isinstance(f, str) and f == f.lower() for f in fillers))
+    check("filler phrases are unique", len(set(fillers)) == len(fillers))
+    # A very short phrase is almost always a real word in disguise.
+    stubby = [f for f in fillers if len(f) < 5]
+    check("no filler phrase short enough to be a real word", not stubby, str(stubby))
+
+# ---------------------------------- token efficiency (behaviour of the rule)
+# A Python mirror of TokenEstimator.stripFiller. It can't prove the Swift is
+# right, but it does prove the *rule* is safe for the phrase list the app
+# actually ships — which is where a bad edit would land.
+
+
+def strip_filler(text: str, phrases: list[str]) -> tuple[str, list[str]]:
+    segments = text.split("```")
+    ordered = sorted(phrases, key=len, reverse=True)
+    removed: list[str] = []
+    out: list[str] = []
+    for i, seg in enumerate(segments):
+        if i % 2 == 1:            # inside a fence — never touched
+            out.append(seg)
+            continue
+        working, rounds, changed = seg, 0, True
+        while changed and rounds < 4:
+            changed, rounds = False, rounds + 1
+            for phrase in ordered:
+                pat = r"(?i)(\A|[.!?;,\n][ \t]*)" + re.escape(phrase) + r"\b,?[ \t]*"
+                if re.search(pat, working):
+                    working = re.sub(pat, r"\1", working)
+                    changed = True
+                    if phrase not in removed:
+                        removed.append(phrase)
+        out.append(working)
+    return "```".join(out).strip(), removed
+
+
+if fillers:
+    # Meaning-bearing text that a careless whole-word trim would destroy.
+    MUST_SURVIVE = [
+        "what kind of file should this write to?",
+        "do you know the answer to this",
+        "only change just the header, nothing else",
+        "compute the balance at the end of the day for each account",
+        "sort of like a modal but inline",
+        "the basically-correct answer is fine",
+    ]
+    for sentence in MUST_SURVIVE:
+        out, _ = strip_filler(sentence, fillers)
+        check(f"filler trim preserves: {sentence[:34]!r}", out == sentence, f"became {out!r}")
+
+    MUST_TRIM = [
+        ("ok so basically i need a function that parses dates",
+         "i need a function that parses dates"),
+        ("Could you please rewrite this paragraph", "rewrite this paragraph"),
+        ("I was wondering if you could summarize the doc", "summarize the doc"),
+        ("Basically, ship it. Thanks in advance", "ship it."),
+    ]
+    for raw, expected in MUST_TRIM:
+        out, removed = strip_filler(raw, fillers)
+        check(f"filler trim cleans: {raw[:34]!r}", out == expected,
+              f"got {out!r}, wanted {expected!r}")
+
+    fenced = "clean this up\n```\nbasically = 1\nok so = 2\n```\nthanks in advance"
+    out, _ = strip_filler(fenced, fillers)
+    check("filler trim never edits fenced code",
+          "basically = 1" in out and "ok so = 2" in out, out)
+
+    # Idempotence: coaching the same ramble twice must not keep eating text.
+    once, _ = strip_filler("ok so basically fix the parser", fillers)
+    twice, _ = strip_filler(once, fillers)
+    check("filler trim is idempotent", once == twice, f"{once!r} -> {twice!r}")
+
+# ------------------------------------------------ self-learning (pack shape)
+
+sl = pack.get("self_learning")
+check("self_learning block present", isinstance(sl, dict))
+if isinstance(sl, dict):
+    for k in ("note", "signals", "guardrails"):
+        check(f"self_learning has '{k}'", k in sl)
+    signals = sl.get("signals", [])
+    check("self_learning declares signals", isinstance(signals, list) and len(signals) > 0)
+    signal_ids = set()
+    for s in signals:
+        sid = s.get("id", "?")
+        for k in ("id", "learns", "adjusts", "threshold"):
+            check(f"signal '{sid}' has '{k}'", k in s)
+        # A zero or negative threshold would fire a signal on no evidence.
+        check(f"signal '{sid}' threshold is a positive int",
+              isinstance(s.get("threshold"), int) and s.get("threshold", 0) >= 1)
+        signal_ids.add(sid)
+    check("signal ids unique", len(signal_ids) == len(signals))
+    # LearningStore keys its logic off these exact ids; a rename in the pack
+    # would silently stop the matching signal from ever firing.
+    for required in ("model_override", "sharpen_rate", "acceptance",
+                     "score_trend", "technique_mute"):
+        check(f"self_learning declares the '{required}' signal", required in signal_ids)
+
+    guardrails = sl.get("guardrails", [])
+    check("self_learning states at least four guardrails", len(guardrails) >= 4)
+    joined = " ".join(guardrails).lower()
+    check("a guardrail forbids overriding per-model suppression", "suppression" in joined)
+    check("a guardrail keeps learning local, inspectable and resettable",
+          "local" in joined and "resett" in joined)
+    check("a guardrail keeps learning to defaults only", "default" in joined)
+    # The honesty constraint: this must never be described as a trained model.
+    note = sl.get("note", "").lower()
+    check("self_learning is described as on-device heuristics, not a trained model",
+          "not a trained model" in note and "local" in note)
+
+# ------------------------------------- new pack blocks reach the Swift side
+
+if MODELS_SWIFT.exists():
+    models_src = MODELS_SWIFT.read_text()
+    check("decoder knows the token_estimation block",
+          'case tokenEstimation = "token_estimation"' in models_src)
+    check("decoder knows the self_learning block",
+          'case selfLearning = "self_learning"' in models_src)
+    # Optional, or an older/refreshed pack without these blocks crashes on
+    # launch — the same class of bug as the history `sharpened` field.
+    check("token_estimation is Optional in Swift",
+          "let tokenEstimation: TokenEstimation?" in models_src)
+    check("self_learning is Optional in Swift",
+          "let selfLearning: SelfLearning?" in models_src)
+    check("an unknown learning signal can never fire (unreachable threshold)",
+          "Int.max" in models_src)
+    if isinstance(te, dict):
+        for k in te:
+            check(f"decoder declares token_estimation key '{k}'",
+                  f'"{k}"' in models_src or f"case {k}" in models_src)
+    if isinstance(sl, dict):
+        check("LearningSignal is defined", "struct LearningSignal" in models_src)
+        for k in ("learns", "adjusts", "threshold"):
+            check(f"decoder declares learning-signal key '{k}'", k in models_src)
+
+# ------------------------------------------- estimator & learning behaviour
+
+if ESTIMATOR.exists():
+    est_src = ESTIMATOR.read_text()
+    check("filler trim only fires at a clause start",
+          r"\\A|[.!?;,\\n]" in est_src,
+          "the clause-leading anchor is what keeps 'what kind of file' intact")
+    check("filler trim skips fenced code", 'components(separatedBy: "```")' in est_src)
+    check("filler trim loop is bounded (always terminates)", "rounds < 4" in est_src)
+    check("token estimates carry a per-model tokenizer multiplier",
+          "func multiplier(" in est_src)
+    check("unknown model ids fall back to the 1.0 baseline rather than guessing",
+          "return 1.0" in est_src)
+
+if STORE.exists():
+    store_src = STORE.read_text()
+    check("learning never points at a model the pack dropped",
+          "pack.model(id: top.key) != nil" in store_src)
+    check("mutes are filtered to techniques the pack still defines",
+          "pack.technique(id: $0) != nil" in store_src)
+    check("learning thresholds come from the pack, not hardcoded in Swift",
+          'spec.threshold("model_override")' in store_src
+          and 'spec.threshold("sharpen_rate")' in store_src
+          and 'spec.threshold("acceptance")' in store_src
+          and 'spec.threshold("score_trend")' in store_src)
+    check("no learning threshold is hardcoded in the store",
+          not re.search(r">=\s*[2-9]\b", store_src),
+          "thresholds must be read from the pack")
+    # Same lesson as the history bug: a new counter must not wipe the old file.
+    check("learning record decodes leniently (no data loss on upgrade)",
+          store_src.count("decodeIfPresent") >= 6)
+    check("learning is resettable in one call", "func reset()" in store_src)
+    check("reset keeps explicit user choices (enabled + mutes)",
+          "record.muted = muted" in store_src and "record.enabled = enabled" in store_src)
+    check("the score trend window is bounded", "maxScores" in store_src)
+    check("re-picking the recommended model is not counted as a preference",
+          "guard modelID != recommendedID else { return }" in store_src)
+
+if ENGINE.exists():
+    check("engine consults the learned model preference",
+          "learning.preferredModelByTask" in engine_src)
+    check("engine consults the learned sharpen preference",
+          "learning.autoSharpenTasks" in engine_src)
+    check("engine honours muted techniques", "learning.mutedTechniques" in engine_src)
+    # The guardrail that matters most: muting subtracts, so nothing learned
+    # can re-enable a technique a model suppresses (e.g. Opus 5 self-check).
+    check("muting can never re-enable a per-model suppression",
+          "!suppressed.contains(id), !muted(id)" in engine_src)
+    check("an explicit model override still beats a learned default",
+          "overrideModelID ?? recommended" in engine_src)
+    check("engine builds a token report", "func buildTokenReport(" in engine_src)
+    check("the token report prices against the priciest model",
+          "costOnPriciestUSD" in engine_src)
+    check("the sharpened prompt is re-priced rather than left stale",
+          engine_src.count("buildTokenReport(") >= 3)
+    check("the filler trim runs before anything is added",
+          "cleanCore(ramble)" in engine_src)
+
+if RESULT_VIEW.exists():
+    result_src = RESULT_VIEW.read_text()
+    check("the token card labels its numbers as approximate",
+          "approx" in result_src.lower() and "not an exact count" in result_src)
+    check("the token card admits when structure made the prompt longer",
+          "promptIsLonger" in result_src)
+    check("copying the prompt feeds the acceptance signal",
+          "noteAccepted" in result_src)
+
+# ------------------------------------------------- the XCTest suite keeps up
+# These can't run here (no Swift toolchain), but a feature shipping with no
+# XCTest coverage at all is something this file *can* catch on any machine.
+
+XCTESTS = ROOT / "ios/PromptCoach/Tests/PromptCoachTests/CoachEngineTests.swift"
+if XCTESTS.exists():
+    xc_src = XCTESTS.read_text()
+    xc_names = re.findall(r"func (test\w+)", xc_src)
+    check("XCTest names are unique (a duplicate silently replaces the first)",
+          len(set(xc_names)) == len(xc_names))
+    for area, needle in (
+        ("filler trim safety", "stripFiller"),
+        ("token report", "tokenReport"),
+        ("per-model tokenizer multiplier", "multiplier(for:"),
+        ("learned model preference", "preferredModelByTask"),
+        ("auto-sharpen", "autoSharpenTasks"),
+        ("technique muting", "mutedTechniques"),
+        ("lenient learning-record decode", "LearningStore.Record"),
+    ):
+        check(f"XCTest covers {area}", needle in xc_src)
+    # The two guardrails that would be worst to regress unnoticed.
+    check("XCTest asserts an explicit override beats a learned default",
+          "overrideModelID:" in xc_src and "adaptive_defaults" in xc_src)
+    check("XCTest asserts muting can't re-enable a model suppression",
+          "testMutingCanNeverReEnableAModelSuppression" in xc_src)
+
+# The privacy claim is load-bearing for the Privacy Policy and for App Review.
+networked = [p.name for p in ALL_SWIFT if "URLSession" in p.read_text()]
+check("no network calls anywhere in the app", not networked, str(networked))
 
 # ------------------------------------------------------------------ report
 

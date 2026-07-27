@@ -7,6 +7,11 @@ struct ModelPack: Codable {
     let packVersion: String
     let crossModelRules: [String]
     let efficiencyRules: [String]
+    /// Optional so a pack written before token estimation existed still
+    /// decodes. Absent = the token card is simply not shown.
+    let tokenEstimation: TokenEstimation?
+    /// Optional for the same reason. Absent = adaptive defaults stay off.
+    let selfLearning: SelfLearning?
     let techniques: Techniques
     let taskPlaybooks: TaskPlaybooks
     let refusalHandling: RefusalHandling
@@ -18,6 +23,8 @@ struct ModelPack: Codable {
         case packVersion = "pack_version"
         case crossModelRules = "cross_model_rules"
         case efficiencyRules = "efficiency_rules"
+        case tokenEstimation = "token_estimation"
+        case selfLearning = "self_learning"
         case techniques
         case taskPlaybooks = "task_playbooks"
         case refusalHandling = "refusal_handling"
@@ -129,6 +136,53 @@ struct APIFacts: Codable, Hashable {
     }
 
     var supportsEffort: Bool { !(effortLevels ?? []).isEmpty }
+}
+
+/// Parameters for the on-device token estimate. Deliberately an *estimate*:
+/// an exact count needs the model's own tokenizer or the `count_tokens`
+/// endpoint, and the app makes no network calls. Everything derived from
+/// this is presented as approximate.
+struct TokenEstimation: Codable {
+    let note: String
+    let charsPerToken: Double
+    /// Per-model tokenizer multiplier. The tokenizer introduced with Opus 4.7
+    /// emits ~30% more tokens for the same text than Haiku 4.5's.
+    let multipliers: [String: Double]
+    let multiplierNote: String
+    let fillerPhrases: [String]
+    let fillerNote: String
+
+    enum CodingKeys: String, CodingKey {
+        case note
+        case charsPerToken = "chars_per_token"
+        case multipliers
+        case multiplierNote = "multiplier_note"
+        case fillerPhrases = "filler_phrases"
+        case fillerNote = "filler_note"
+    }
+}
+
+/// Describes the adaptive controls to the user. The *behaviour* lives in
+/// `LearningStore`; this is the pack's contract for what may be learned,
+/// how strong the evidence must be, and what learning may never touch.
+struct SelfLearning: Codable {
+    let note: String
+    let signals: [LearningSignal]
+    let guardrails: [String]
+
+    func signal(_ id: String) -> LearningSignal? { signals.first { $0.id == id } }
+
+    /// How many observations a signal needs before it may shift a default.
+    /// A missing signal returns a deliberately unreachable threshold rather
+    /// than a permissive default — an unknown signal must never fire.
+    func threshold(_ id: String) -> Int { signal(id)?.threshold ?? Int.max }
+}
+
+struct LearningSignal: Codable, Identifiable, Hashable {
+    let id: String
+    let learns: String
+    let adjusts: String
+    let threshold: Int
 }
 
 struct Techniques: Codable {

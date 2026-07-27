@@ -4,6 +4,7 @@ import SwiftUI
 /// Every coached prompt links here so users learn the method, not just the result.
 struct LearnView: View {
     let technique: Technique
+    @EnvironmentObject private var app: AppState
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -37,12 +38,36 @@ struct LearnView: View {
                                     .padding(16)
                             }
                         }
+                        if app.learning.isSupported { muteToggle }
                     }
                     .padding(20)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+        }
+    }
+
+    /// Muting is the one adaptive control the user drives directly. It only
+    /// ever *removes* a technique — which is precisely why it can't collide
+    /// with a model's hard API facts or a per-model suppression.
+    private var muteToggle: some View {
+        GlassCard(corner: Glass.cornerMedium) {
+            Toggle(isOn: Binding(
+                get: { app.learning.isMuted(technique.id) },
+                set: { app.setMuted(technique.id, $0) }
+            )) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Mute this technique")
+                        .font(Type.bodyMed)
+                        .foregroundStyle(Glass.primaryText)
+                    Text("The coach stops applying and suggesting it. Muting can only remove a technique, never add one a model rejects.")
+                        .font(Type.caption)
+                        .foregroundStyle(Glass.primaryText.opacity(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(16)
         }
     }
 

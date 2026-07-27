@@ -26,6 +26,11 @@ struct CoachResult: Identifiable, Codable, Hashable {
         get { sharpened ?? false }
         set { sharpened = newValue }
     }
+
+    /// Approximate token counts and input cost for this prompt on the chosen
+    /// model. Optional for the same history-compatibility reason as
+    /// `sharpened`, and nil when the pack ships no `token_estimation` block.
+    var tokenReport: TokenReport?
 }
 
 struct AppliedTechnique: Codable, Hashable, Identifiable {
@@ -94,29 +99,111 @@ enum TaskType: String, CaseIterable {
 struct CoachEngine {
     let pack: ModelPack
 
+    /// Defaults learned from this user's own sessions. `.none` is a fresh
+    /// install, so the engine's output is identical for a first-run user and
+    /// for a test that doesn't opt in.
+    var learning: LearningSnapshot = .none
+
+    var estimator: TokenEstimator { TokenEstimator(config: pack.tokenEstimation) }
+
+    /// A technique the user has muted. Muting only ever *subtracts* — which
+    /// is what makes the "never learn away a hard API fact" guardrail hold by
+    /// construction: nothing learned can add a parameter a model rejects.
+    private func muted(_ id: String) -> Bool { learning.mutedTechniques.contains(id) }
+
     func coach(ramble raw: String, overrideModelID: String? = nil) -> CoachResult {
         let ramble = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         let task = TaskType.detect(from: ramble)
         let playbook = pack.playbook(task: task.rawValue)
-        let recommended = playbook?.recommend ?? pack.recommender.default
+        let packRecommended = playbook?.recommend ?? pack.recommender.default
+
+        // Learning shifts the *default* only. An explicit override always
+        // wins, and the chip still says which model this user prefers rather
+        // than silently pretending the pack recommended it.
+        var recommended = packRecommended
+        var learnedShift = false
+        if let preferred = learning.preferredModelByTask[task.rawValue],
+           preferred != packRecommended, pack.model(id: preferred) != nil {
+            recommended = preferred
+            learnedShift = true
+        }
+
         let chosen = overrideModelID ?? recommended
         let model = pack.model(id: chosen)
 
         let card = buildReportCard(ramble: ramble)
         var applied: [AppliedTechnique] = []
-        let prompt = buildPrompt(ramble: ramble, task: task, model: model,
+
+        // Token-efficiency pass: drop throat-clearing and repetition before
+        // anything gets added on top.
+        let (core, filler) = cleanCore(ramble)
+        if !filler.isEmpty {
+            let saved = estimator.estimate(ramble, modelID: chosen)
+                      - estimator.estimate(core, modelID: chosen)
+            let sample = filler.prefix(3).map { "“\($0)”" }.joined(separator: ", ")
+            let tail = saved > 0
+                ? " — about \(saved) fewer input tokens, identical meaning"
+                : " — same meaning, less for the model to wade through"
+            applied.append(.init(techniqueID: "clear_direct",
+                                 label: "Trimmed filler (\(sample))\(tail)"))
+        }
+        if hasRetiredPatterns(ramble) {
+            applied.append(.init(techniqueID: "retired",
+                                 label: "Removed a retired pattern (temperature/prefill/CRITICAL-style language) — current models reject or overreact to it"))
+        }
+
+        let prompt = buildPrompt(core: core, ramble: ramble, task: task, model: model,
                                  playbook: playbook, applied: &applied, card: card)
         let schema = shouldEmitSchema(task) ? jsonSchema(for: task) : nil
         if schema != nil {
             applied.append(.init(techniqueID: "structured_mode",
                                  label: "Structured-output mode: attached a JSON schema so results come back machine-readable"))
         }
+        if learnedShift, overrideModelID == nil {
+            applied.append(.init(techniqueID: "adaptive_defaults",
+                                 label: "Recommended \(model?.shortName ?? chosen) because that's what you keep choosing for \(task.label.lowercased()) work — tap any chip to override"))
+        }
 
-        return CoachResult(
+        var result = CoachResult(
             ramble: ramble, taskType: task.rawValue,
             recommendedModelID: recommended, chosenModelID: chosen,
             rewrittenPrompt: prompt, techniquesApplied: applied,
             reportCard: card, structuredSchema: schema
+        )
+
+        // Learned: this user sharpens nearly every prompt of this kind, so
+        // hand them the tagged structure instead of a button to press.
+        if learning.autoSharpenTasks.contains(task.rawValue) {
+            result = sharpen(result, automatic: true)
+        }
+
+        result.tokenReport = buildTokenReport(ramble: ramble, core: core,
+                                              prompt: result.rewrittenPrompt,
+                                              model: model, filler: filler)
+        return result
+    }
+
+    // MARK: Token accounting
+
+    private func buildTokenReport(ramble: String, core: String, prompt: String,
+                                  model: ModelProfile?, filler: [String]) -> TokenReport? {
+        guard estimator.isAvailable else { return nil }
+        let id = model?.id
+        let promptTokens = estimator.estimate(prompt, modelID: id)
+        // Priced against the most expensive model in the pack so the
+        // recommender's saving is shown, not asserted. Each model is
+        // tokenized with its own multiplier.
+        let priciest = pack.models.max { $0.priceInPerMtok < $1.priceInPerMtok }
+        let priciestTokens = estimator.estimate(prompt, modelID: priciest?.id)
+        return TokenReport(
+            modelID: id ?? "",
+            rambleTokens: estimator.estimate(ramble, modelID: id),
+            cleanedTokens: estimator.estimate(core, modelID: id),
+            promptTokens: promptTokens,
+            fillerRemoved: filler,
+            inputCostUSD: estimator.inputCost(tokens: promptTokens, model: model),
+            costOnPriciestUSD: estimator.inputCost(tokens: priciestTokens, model: priciest),
+            priciestModelName: priciest?.shortName ?? ""
         )
     }
 
@@ -129,7 +216,7 @@ struct CoachEngine {
     /// itself — draft, review against the checklist, refine. It stays on
     /// device and deterministic; the optional Test It path (user's own key)
     /// would layer a model-graded pass on top of this.
-    func sharpen(_ result: CoachResult) -> CoachResult {
+    func sharpen(_ result: CoachResult, automatic: Bool = false) -> CoachResult {
         let task = TaskType(rawValue: result.taskType) ?? .code
         let model = pack.model(id: result.chosenModelID)
         let suppressed = model?.suppressed ?? []
@@ -137,19 +224,19 @@ struct CoachEngine {
 
         var blocks: [String] = []
 
-        if !suppressed.contains("role") {
+        if !suppressed.contains("role"), !muted("role") {
             blocks.append("<role>\n\(roleLine(for: task))\n</role>")
         }
 
         blocks.append("<context>\n<!-- Who this is for and why it matters. Replace this line. -->\n</context>")
 
-        let core = dedupeSentences(result.ramble)
+        let (core, filler) = cleanCore(result.ramble)
         blocks.append("<task>\n\(core.isEmpty ? "<!-- your request -->" : core)\n</task>")
 
         // Examples scaffold — only where output shape actually matters, and
         // only if the original didn't already carry one.
         let shapeMatters: Set<TaskType> = [.classify, .summarize, .email, .writing, .sql]
-        if shapeMatters.contains(task), !suppressed.contains("examples"),
+        if shapeMatters.contains(task), !suppressed.contains("examples"), !muted("examples"),
            !passed(result.reportCard, "examples") {
             blocks.append("""
             <examples>
@@ -164,7 +251,7 @@ struct CoachEngine {
         }
 
         // Explicit scope, if the ramble never bounded the work.
-        if !passed(result.reportCard, "explicit_scope") {
+        if !passed(result.reportCard, "explicit_scope"), !muted("scope_constraint") {
             blocks.append("<constraints>\n<!-- What to touch and what to leave alone. -->\n</constraints>")
             added.append(.init(techniqueID: "scope_constraint",
                                label: "Sharpened: added a constraints block — unbounded scope is the most common cause of unwanted changes"))
@@ -178,13 +265,22 @@ struct CoachEngine {
             blocks.append("Suggested setting: effort \(effort)\(thinkingNote(for: model)).")
         }
 
-        added.append(.init(techniqueID: "meta_prompt",
-                           label: "Sharpened: restructured into tagged sections so the model can't confuse instructions, context, and data"))
+        added.append(.init(
+            techniqueID: "meta_prompt",
+            label: automatic
+                ? "Sharpened up front — you sharpen most \(task.label.lowercased()) prompts, so the tagged sections are already here"
+                : "Sharpened: restructured into tagged sections so the model can't confuse instructions, context, and data"))
 
         var out = result
         out.rewrittenPrompt = blocks.joined(separator: "\n\n")
         out.techniquesApplied = added
         out.isSharpened = true
+        // Re-price: the sharpened prompt is a different, usually longer,
+        // prompt. A stale estimate is worse than none.
+        out.tokenReport = buildTokenReport(ramble: result.ramble, core: core,
+                                           prompt: out.rewrittenPrompt,
+                                           model: model,
+                                           filler: result.tokenReport?.fillerRemoved ?? filler)
         return out
     }
 
@@ -219,7 +315,7 @@ struct CoachEngine {
 
     // MARK: Prompt assembly
 
-    private func buildPrompt(ramble: String, task: TaskType, model: ModelProfile?,
+    private func buildPrompt(core: String, ramble: String, task: TaskType, model: ModelProfile?,
                              playbook: Playbook?, applied: inout [AppliedTechnique],
                              card: ReportCard) -> String {
         var sections: [String] = []
@@ -227,11 +323,13 @@ struct CoachEngine {
         let suppressed = model?.suppressed ?? []
 
         /// A technique fires when the playbook (or a task heuristic) calls for
-        /// it AND the target model doesn't suppress it. Suppression is how
-        /// per-model behavior differences are honoured — e.g. Opus 5
-        /// self-verifies, so `self_check` is suppressed there.
+        /// it AND the target model doesn't suppress it AND the user hasn't
+        /// muted it. Suppression is how per-model behavior differences are
+        /// honoured — e.g. Opus 5 self-verifies, so `self_check` is suppressed
+        /// there. Both suppression and muting only ever subtract, so no
+        /// learned preference can re-enable something a model shouldn't see.
         func fires(_ id: String, orTask condition: Bool = false) -> Bool {
-            guard !suppressed.contains(id) else { return false }
+            guard !suppressed.contains(id), !muted(id) else { return false }
             return ids.contains(id) || condition
         }
 
@@ -249,26 +347,29 @@ struct CoachEngine {
                                  label: "Prompted you to state the intent — the model connects the task to the goal instead of guessing"))
         }
 
-        // 3. Cleaned core ask (dedupe repetition, strip retired patterns).
-        let cleaned = stripRetired(dedupeSentences(ramble), applied: &applied)
-        sections.append("Task: \(cleaned)")
+        // 3. Cleaned core ask — filler trimmed, repetition collapsed, retired
+        // patterns stripped (done in `coach`, so the token report can measure
+        // the same text the prompt actually carries).
+        sections.append("Task: \(core)")
 
         // 4. Tag pasted data/code if present.
-        if hasPastedBlock(ramble), !suppressed.contains("xml_structure") {
+        if hasPastedBlock(ramble), !suppressed.contains("xml_structure"), !muted("xml_structure") {
             applied.append(.init(techniqueID: "xml_structure",
                                  label: "Wrapped your pasted data/code in tags so the model doesn't confuse it with instructions"))
         }
 
         // 5. Long-context layout.
-        if ramble.count > 1_500, !suppressed.contains("long_context") {
+        if ramble.count > 1_500, !suppressed.contains("long_context"), !muted("long_context") {
             applied.append(.init(techniqueID: "long_context",
                                  label: "Moved your long input to the top and put the question last (+quality on long inputs)"))
         }
 
         // 6. Success criterion — the single highest-leverage addition.
-        sections.append("Done means: <the concrete, checkable outcome — e.g. \(defaultDoneMeans(task))>.")
-        applied.append(.init(techniqueID: "success_criterion",
-                             label: "Added a success criterion so the model knows exactly what 'done' looks like"))
+        if !muted("success_criterion") {
+            sections.append("Done means: <the concrete, checkable outcome — e.g. \(defaultDoneMeans(task))>.")
+            applied.append(.init(techniqueID: "success_criterion",
+                                 label: "Added a success criterion so the model knows exactly what 'done' looks like"))
+        }
 
         // 7. Self-check — correctness-sensitive tasks only, and NEVER on a
         // model that already self-verifies (Opus 5 over-verifies if told to).
@@ -289,10 +390,10 @@ struct CoachEngine {
         }
 
         // 9. Model-specific instruction lines straight from the pack.
-        for line in model?.extras ?? [] {
+        for line in model?.extras ?? [] where !muted("verbosity") {
             sections.append(line)
         }
-        if let model, !model.extras.isEmpty {
+        if let model, !model.extras.isEmpty, !muted("verbosity") {
             applied.append(.init(techniqueID: "verbosity",
                                  label: "Added \(model.shortName)-specific lines (conciseness + scope) — its default responses run long"))
         }
@@ -367,15 +468,25 @@ struct CoachEngine {
         return out.joined(separator: ". ")
     }
 
-    private func stripRetired(_ s: String, applied: inout [AppliedTechnique]) -> String {
-        guard hasRetiredPatterns(s) else { return s }
-        applied.append(.init(techniqueID: "retired",
-                             label: "Removed a retired pattern (temperature/prefill/CRITICAL-style language) — current models reject or overreact to it"))
-        var out = s
-        for pat in ["you must", "You must", "CRITICAL:", "critical:"] {
-            out = out.replacingOccurrences(of: pat, with: "")
+    /// Retired prompt-era language that current models reject or overreact to.
+    private static let retiredPhrases = ["you must", "You must", "CRITICAL:", "critical:"]
+
+    /// The token-efficiency pass, as a pure function so both `coach` and
+    /// `sharpen` measure and emit exactly the same core text.
+    ///
+    /// Three reductions, none of which change meaning: leading filler,
+    /// repeated sentences, and retired directive language. Falls back to the
+    /// untouched ramble if the trim would leave nothing behind.
+    func cleanCore(_ ramble: String) -> (text: String, filler: [String]) {
+        let (deFilled, filler) = estimator.stripFiller(ramble)
+        var core = dedupeSentences(deFilled)
+        for pattern in Self.retiredPhrases {
+            core = core.replacingOccurrences(of: pattern, with: "")
         }
-        return out
+        core = core
+            .replacingOccurrences(of: "  ", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (core.isEmpty ? ramble : core, filler)
     }
 
     private func shouldEmitSchema(_ task: TaskType) -> Bool {

@@ -65,6 +65,44 @@ addition across every model and task.
 
 ---
 
+## Token efficiency (spend fewer tokens, not less meaning)
+
+Unnumbered on purpose: this isn't a technique you apply *to* a prompt, it's a
+constraint on every technique above. Input tokens are billed per call and eat
+the context window, so anything that costs tokens has to earn them.
+
+### Trim throat-clearing, never trim the ask
+Conversational lead-ins — "ok so", "basically", "I was wondering if you could",
+"thanks in advance" — carry no instruction. Removing them is free.
+
+The danger is that the same words carry meaning elsewhere in a sentence. "What
+**kind of** file?", "compute the balance **at the end of the day**", "**do you
+know** the answer" all contain filler-list substrings and all mean something.
+
+**The rule the coach implements:** a phrase is removed only where it *leads a
+clause* — at the very start of the input, or immediately after `.` `!` `?` `;`
+`,` or a newline — and never inside a fenced code block. One rule, explainable
+in a sentence, and safe on the pathological cases. Phrases that are ambiguous
+even under that rule (`i mean`, `you know`, `kind of`, `sort of`) are excluded
+from the list entirely rather than trusted to it.
+
+### De-duplicate before you add
+Rambles repeat themselves. Collapsing duplicate sentences is a pure win, and it
+has to happen *before* role/context/success-criteria lines are appended,
+otherwise the repetition gets structured and amplified instead of dropped.
+
+### Be honest that structure costs tokens
+A coached prompt is usually **longer** than the ramble it came from — a role, a
+scope boundary, and a "done means…" line all cost input tokens. That's the right
+trade (one vague round-trip costs far more than a scope line), but a tool that
+claims every prompt gets cheaper is lying. The coach reports the increase.
+
+### Pick the cheapest model that clears the bar
+The largest available saving isn't wording, it's routing. Model choice moves
+per-call cost by an order of magnitude; filler moves it by a few percent.
+
+---
+
 ## Output & formatting control
 
 ### 7. Say what TO do, not what NOT to do
