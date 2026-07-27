@@ -121,14 +121,18 @@ it is off in the default build.
   IAPs at their listed prices; the price is the product (the app's premise is
   that what a man pays for his rating is the signal). **Gavels**, the
   consumable currency, buy tactical moves only — never status.
-- **"Reserve the date"** is a real-world booking fee (default $5.00) a bidder
-  can pay *after* a match, to reserve the in-person date. It is intentionally
-  **NOT** an in-app purchase: per guideline 3.1.3/3.1.5 it is a physical,
-  real-world service between two people, so it is collected via **Stripe**, not
-  IAP. It is kept by the platform (a reservation/booking fee), never paid to
-  the other person, and it **unlocks no in-app content or functionality** — the
-  app only shows the date as "reserved." In Demo Mode a reviewer can exercise
-  it free ("Demo: reserve free") with no Stripe account.
+- **"Reserve the date"** is a real-world booking fee (bidder picks a tier —
+  $10 / $15 / $25 / $50 / $100) a bidder can pay *after* a match, to reserve
+  the in-person date. It is intentionally **NOT** an in-app purchase: per
+  guideline 3.1.3/3.1.5 it is a physical, real-world service between two
+  people, so it is collected via **Stripe**, not IAP. It is kept by the
+  platform (a reservation/booking fee), never paid to the other person, and it
+  **unlocks no in-app content or functionality** — the app only shows the date
+  as "reserved," identically at every tier (the amount is a real-world deposit,
+  not a purchase of anything in the app). In Demo Mode a reviewer can exercise
+  it free ("Demo: reserve free") with no Stripe account. The feature has a
+  server-side kill-switch, so it can be disabled without an app update if
+  needed.
 - The "$1,000,000 Masterpiece" is a **real-world date payment** between two
   people, never an in-app charge.
 - The **date payment** is a real-world service settled between two people; the

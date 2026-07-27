@@ -15,7 +15,9 @@ struct ChatView: View {
     @State private var showReport = false
     @State private var showReceiptPaywall = false
     @State private var reserving = false
-    @State private var reserveFee = "$5.00"
+    @State private var reserveTiers: [BackendService.ReservationTier] = []
+    @State private var reserveEnabled = false
+    @State private var selectedTierCents: Int?
 
     private var match: Match? { store.matches.first(where: { $0.id == matchID }) }
 
@@ -55,6 +57,7 @@ struct ChatView: View {
                     composer(match)
                 }
                 .background(AppBackground())
+                .task(id: matchID) { await loadReserveInfo() }
                 .sheet(isPresented: $showReview) {
                     RateDateView(match: match).presentationDetents([.large])
                         .presentationBackground(.ultraThinMaterial)
@@ -180,6 +183,11 @@ struct ChatView: View {
             if match.bid.onCopycat {
                 Text("· Copycat").foregroundStyle(Theme.copycat).font(.system(size: 12, weight: .heavy))
             }
+            if match.dateReserved {
+                Image(systemName: "checkmark.seal.fill").font(.system(size: 11))
+                    .foregroundStyle(Theme.verify)
+                Text("Reserved").foregroundStyle(Theme.verify).font(.system(size: 12, weight: .heavy))
+            }
         }
         .foregroundStyle(Theme.gold)
         .padding(.horizontal, 12).padding(.vertical, 7)
@@ -207,30 +215,29 @@ struct ChatView: View {
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.verify.opacity(0.12)))
                 .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.verify.opacity(0.5), lineWidth: 1))
-            } else if store.demoMode || backend.isConsumablesConfigured {
-                // Dormant unless the Stripe web shop is configured — no point
-                // offering a reservation the money rails can't fulfil.
-                VStack(alignment: .leading, spacing: 8) {
+            } else if store.demoMode || (backend.isConsumablesConfigured && reserveEnabled) {
+                // Dormant unless the Stripe web shop is configured AND the
+                // remote kill-switch is on — so it can be turned off fleet-wide
+                // (e.g. if Apple objects) without an app update.
+                VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 8) {
                         Image(systemName: "calendar.badge.checkmark")
                             .font(.system(size: 18, weight: .bold)).foregroundStyle(Theme.gold)
                         Text("Reserve the date")
                             .font(.system(size: 15, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
                         Spacer()
-                        Text(reserveFee)
-                            .font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
                     }
                     Text("A booking fee to lock in your in-person date. It goes to Auction Baby for the reservation — never to \(match.other(for: .man).name) — and unlocks nothing in the app. You still pay her what you bid, in person.")
                         .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
+                    tierPicker
                     Button {
                         reserve(match)
                     } label: {
                         HStack(spacing: 8) {
                             if reserving { ProgressView().tint(.black) }
                             else { Image(systemName: store.demoMode ? "wand.and.stars" : "creditcard.fill") }
-                            Text(store.demoMode ? "Demo: reserve free"
-                                                : "Reserve for \(reserveFee)")
+                            Text(reserveButtonTitle)
                         }
                         .font(.system(size: 14, weight: .heavy, design: .rounded))
                         .foregroundStyle(.black)
@@ -238,27 +245,70 @@ struct ChatView: View {
                         .background(Capsule().fill(Theme.goldGradient))
                     }
                     .buttonStyle(.plain)
-                    .disabled(reserving)
+                    .disabled(reserving || selectedTierCents == nil)
+                    .opacity(selectedTierCents == nil ? 0.5 : 1)
                 }
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
                 .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.gold.opacity(0.3), lineWidth: 1))
-                .task { await loadReserveFee() }
             }
         }
     }
 
-    private func loadReserveFee() async {
-        guard !store.demoMode, backend.isConsumablesConfigured else { return }
-        if case .success(let fee) = await backend.fetchReservationFee() { reserveFee = fee }
+    /// The selectable booking-fee tiers ($10 / 15 / 25 / 50 / 100).
+    @ViewBuilder private var tierPicker: some View {
+        FlexLayout(spacing: 8, lineSpacing: 8) {
+            ForEach(reserveTiers, id: \.cents) { tier in
+                let selected = tier.cents == selectedTierCents
+                Button {
+                    Haptics.selection(); selectedTierCents = tier.cents
+                } label: {
+                    Text(tier.display)
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .foregroundStyle(selected ? .black : Theme.ink)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Capsule().fill(selected ? AnyShapeStyle(Theme.goldGradient)
+                                                            : AnyShapeStyle(Color.white.opacity(0.07))))
+                        .overlay(Capsule().strokeBorder(selected ? .clear : Theme.hairline, lineWidth: 0.8))
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
-    /// Demo → mark booked free. Live → open Stripe hosted Checkout in the
-    /// browser; the completed payment is reflected on next foreground via
+    private var reserveButtonTitle: String {
+        let label = reserveTiers.first(where: { $0.cents == selectedTierCents })?.display
+        if store.demoMode { return "Demo: reserve free" }
+        return label.map { "Reserve for \($0)" } ?? "Reserve the date"
+    }
+
+    /// Load the tier ladder + kill-switch state. Demo seeds the ladder locally
+    /// so App Review sees the full picker with no Stripe account.
+    private func loadReserveInfo() async {
+        if store.demoMode {
+            reserveEnabled = true
+            reserveTiers = [
+                .init(cents: 1000, display: "$10.00"), .init(cents: 1500, display: "$15.00"),
+                .init(cents: 2500, display: "$25.00"), .init(cents: 5000, display: "$50.00"),
+                .init(cents: 10000, display: "$100.00"),
+            ]
+            if selectedTierCents == nil { selectedTierCents = reserveTiers.first?.cents }
+            return
+        }
+        guard backend.isConsumablesConfigured else { return }
+        if case .success(let info) = await backend.fetchReservationInfo() {
+            reserveEnabled = info.enabled
+            reserveTiers = info.tiers
+            if selectedTierCents == nil { selectedTierCents = info.tiers.first?.cents }
+        }
+    }
+
+    /// Demo → mark booked free. Live → open Stripe hosted Checkout at the chosen
+    /// tier; the completed payment is reflected on next foreground via
     /// `store.refreshReservations`.
     private func reserve(_ match: Match) {
         if store.demoMode { store.reserveDateDemo(match.id); return }
-        guard !reserving else { return }
+        guard !reserving, let cents = selectedTierCents else { return }
         guard backend.isConsumablesConfigured else {
             store.toastFlash("Reservations need the web shop configured (Stripe Worker).")
             return
@@ -266,7 +316,8 @@ struct ChatView: View {
         reserving = true
         Task {
             let result = await backend.reserveDateCheckout(matchID: match.id,
-                                                           appAccountToken: store.appAccountToken)
+                                                           appAccountToken: store.appAccountToken,
+                                                           amountCents: cents)
             reserving = false
             switch result {
             case .success(let url):

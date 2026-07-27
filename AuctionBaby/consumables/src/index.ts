@@ -66,7 +66,8 @@ interface Env {
   CURRENCY?: string;
   SUCCESS_URL?: string;
   CANCEL_URL?: string;
-  RESERVE_FEE_CENTS?: string;   // the "Reserve the date" booking fee (default 500 = $5)
+  RESERVE_ENABLED?: string;     // "false" turns the whole feature off remotely (kill-switch)
+  RESERVE_TIERS_CENTS?: string; // allowed booking-fee amounts, CSV of cents
   KV?: KVNamespace;
 }
 
@@ -203,10 +204,22 @@ const piKey = (paymentIntent: string) => `pi:${paymentIntent}`;
 // single date. Presence + !refunded means the date is reserved.
 const reserveKey = (matchId: string) => `res:${matchId}`;
 
-/** The one-time "Reserve the date" fee in cents (env-overridable, default $5). */
-function reserveFeeCents(env: Env): number {
-  const v = Number(env.RESERVE_FEE_CENTS ?? 500);
-  return Number.isFinite(v) && v > 0 ? Math.round(v) : 500;
+/** Remote kill-switch. Set RESERVE_ENABLED="false" to disable reservations
+ *  fleet-wide without an app update — the app hides the card when this is off. */
+function reserveEnabled(env: Env): boolean {
+  return String(env.RESERVE_ENABLED ?? "true").trim().toLowerCase() !== "false";
+}
+
+/** The allow-list of "Reserve the date" fee amounts, in cents. A checkout may
+ *  only charge one of these, so a client can never POST an arbitrary amount.
+ *  Default ladder: $10 / $15 / $25 / $50 / $100. */
+function reserveTiersCents(env: Env): number[] {
+  const raw = env.RESERVE_TIERS_CENTS ?? "1000,1500,2500,5000,10000";
+  const list = raw
+    .split(",")
+    .map((s) => Math.round(Number(s.trim())))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return list.length ? Array.from(new Set(list)).sort((a, b) => a - b) : [1000, 1500, 2500, 5000, 10000];
 }
 
 async function getBalance(env: Env, userId: string): Promise<number> {
@@ -529,11 +542,12 @@ async function handleLedger(request: Request, env: Env): Promise<Response> {
 
 // ── Reserve the date ─────────────────────────────────────────────────────────
 
-/** GET /reserve/info — public: the current booking fee so the app can show it. */
+/** GET /reserve/info — public: whether reservations are on, and the allowed
+ *  booking-fee tiers so the app can render the picker. */
 function handleReserveInfo(env: Env): Response {
   const currency = (env.CURRENCY ?? "usd").toLowerCase();
-  const cents = reserveFeeCents(env);
-  return json({ feeCents: cents, feeDisplay: formatPrice(cents, currency), currency });
+  const tiers = reserveTiersCents(env).map((c) => ({ cents: c, display: formatPrice(c, currency) }));
+  return json({ enabled: reserveEnabled(env), currency, tiers });
 }
 
 /** POST /reserve/checkout — Checkout Session for a single date's booking fee.
@@ -544,10 +558,20 @@ async function handleReserveCheckout(request: Request, env: Env): Promise<Respon
   let body: any;
   try { body = await request.json(); } catch { return error("Invalid JSON body"); }
 
+  if (!reserveEnabled(env)) return error("Reservations are currently unavailable", 403);
+
   const matchId = String(body?.matchId ?? "").trim();
   const userId = String(body?.userId ?? "").trim().toLowerCase();
   if (!matchId) return error("matchId is required");
   if (!userId) return error("userId is required");
+
+  // Charge only an allow-listed amount — never an arbitrary client-supplied one.
+  const tiers = reserveTiersCents(env);
+  const requested = Math.round(Number(body?.amountCents ?? tiers[0]));
+  if (!tiers.includes(requested)) {
+    return error(`amountCents must be one of: ${tiers.join(", ")}`, 400);
+  }
+  const cents = requested;
 
   // Don't open a second Checkout for an already-booked date.
   if (env.KV) {
@@ -559,7 +583,6 @@ async function handleReserveCheckout(request: Request, env: Env): Promise<Respon
   }
 
   const currency = (env.CURRENCY ?? "usd").toLowerCase();
-  const cents = reserveFeeCents(env);
   const successUrl = String(body?.successUrl ?? env.SUCCESS_URL ?? "https://example.com/success");
   const cancelUrl = String(body?.cancelUrl ?? env.CANCEL_URL ?? "https://example.com/cancel");
 
@@ -589,8 +612,8 @@ async function handleReserveCheckout(request: Request, env: Env): Promise<Respon
         client_reference_id: userId,
       },
       env.STRIPE_SECRET_KEY,
-      // Idempotent per match within the minute so a double-tap opens one session.
-      `reserve:${matchId}:${Math.floor(Date.now() / 60000)}`,
+      // Idempotent per match+amount within the minute so a double-tap opens one session.
+      `reserve:${matchId}:${cents}:${Math.floor(Date.now() / 60000)}`,
     );
     return json({ sessionId: session.id, url: session.url });
   } catch (e: any) {

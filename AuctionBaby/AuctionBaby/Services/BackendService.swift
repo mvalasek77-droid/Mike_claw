@@ -281,23 +281,34 @@ final class BackendService: ObservableObject {
 
     // MARK: - Reserve the date (Stripe booking fee)
 
-    /// GET /reserve/info — the current booking fee, so the UI can show the real
-    /// price rather than hard-coding it.
-    func fetchReservationFee() async -> BackendResult<String> {
-        struct Response: Decodable { let feeDisplay: String }
+    /// One booking-fee tier the user can pick.
+    struct ReservationTier: Hashable { let cents: Int; let display: String }
+    /// Whether reservations are on (remote kill-switch) and the allowed tiers.
+    struct ReservationInfo { let enabled: Bool; let tiers: [ReservationTier] }
+
+    /// GET /reserve/info — is the feature on, and which fee tiers are allowed.
+    /// Lets the app show the real ladder (and hide the card if turned off
+    /// server-side) without a hard-coded price or an app update.
+    func fetchReservationInfo() async -> BackendResult<ReservationInfo> {
+        struct TierDTO: Decodable { let cents: Int; let display: String }
+        struct Response: Decodable { let enabled: Bool; let tiers: [TierDTO] }
         return await get("/reserve/info", base: consumablesURL, as: Response.self)
-            .map(\.feeDisplay)
+            .map { ReservationInfo(enabled: $0.enabled,
+                                   tiers: $0.tiers.map { ReservationTier(cents: $0.cents, display: $0.display) }) }
     }
 
     /// POST /reserve/checkout — open a Stripe Checkout for one date's booking
-    /// fee. Returns the hosted-checkout URL to open in the browser (Stripe is
-    /// the correct rail: this is a REAL-WORLD service fee, not IAP). If the
+    /// fee at the chosen tier. Returns the hosted-checkout URL to open in the
+    /// browser (Stripe is the correct rail: this is a REAL-WORLD service fee,
+    /// not IAP). The Worker only accepts an allow-listed `amountCents`. If the
     /// date is already booked the Worker returns no URL and we surface that.
-    func reserveDateCheckout(matchID: UUID, appAccountToken: UUID) async -> BackendResult<URL> {
+    func reserveDateCheckout(matchID: UUID, appAccountToken: UUID,
+                             amountCents: Int) async -> BackendResult<URL> {
         struct Response: Decodable { let url: String?; let alreadyReserved: Bool? }
         let body: [String: Any] = [
             "matchId": matchID.uuidString.lowercased(),
             "userId": appAccountToken.uuidString.lowercased(),
+            "amountCents": amountCents,
         ]
         return await post("/reserve/checkout", base: consumablesURL, body: body, as: Response.self)
             .flatMap { r in

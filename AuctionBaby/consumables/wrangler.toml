@@ -21,9 +21,13 @@ CURRENCY = "usd"
 # override these per-request; these are the safe defaults.
 SUCCESS_URL = "https://auctionbaby.app/purchase/success"
 CANCEL_URL = "https://auctionbaby.app/purchase/cancel"
-# "Reserve the date" real-world booking fee, in cents. Platform-kept; never
-# credits Gavels and never reaches the other person. Default $5.00.
-RESERVE_FEE_CENTS = "500"
+# "Reserve the date" real-world booking fee. Platform-kept; never credits
+# Gavels and never reaches the other person. RESERVE_TIERS_CENTS is the
+# allow-list of chargeable amounts (a client can't POST an arbitrary one):
+# default $10 / $15 / $25 / $50 / $100. Flip RESERVE_ENABLED to "false" to
+# turn the whole feature off fleet-wide with no app update (kill-switch).
+RESERVE_ENABLED = "true"
+RESERVE_TIERS_CENTS = "1000,1500,2500,5000,10000"
 
 # KV: user Gavel balances + processed-event set (webhook idempotency) +
 # consume-idempotency keys + payment_intent→user refund routing + ledger.

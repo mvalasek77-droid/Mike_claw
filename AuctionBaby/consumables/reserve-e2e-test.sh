@@ -45,8 +45,17 @@ check() {  # $1 = label, $2 = actual, $3 = expected-substring
 status()  { curl -s "${AUTH[@]}" "${BASE_URL}/reserve/status?matchId=${MATCH}" ; }
 balance() { curl -s "${AUTH[@]}" "${BASE_URL}/balance?userId=${USER}" ; }
 
-echo "→ 0. reserve/info exposes the fee"
-check "fee is \$5.00" "$(curl -s "${BASE_URL}/reserve/info")" '"feeDisplay":"$5.00"'
+echo "→ 0. reserve/info exposes enabled + the tier ladder"
+INFO="$(curl -s "${BASE_URL}/reserve/info")"
+check "enabled=true" "$INFO" '"enabled":true'
+check "has \$10.00 tier" "$INFO" '"display":"$10.00"'
+check "has \$100.00 tier" "$INFO" '"display":"$100.00"'
+
+echo "→ 0b. checkout rejects an amount not on the allow-list (before Stripe)"
+BADAMT=$(curl -s -o /dev/null -w '%{http_code}' "${AUTH[@]}" -H 'Content-Type: application/json' \
+  -d "{\"matchId\":\"${MATCH}\",\"userId\":\"${USER}\",\"amountCents\":777}" \
+  "${BASE_URL}/reserve/checkout")
+check "400 for off-ladder amount" "$BADAMT" '400'
 
 echo "→ 1. date starts un-reserved"
 check "reserved=false" "$(status)" '"reserved":false'
