@@ -146,6 +146,11 @@ struct MatchCelebrationView: View {
             Text(Money.full(celebration.amount))
                 .font(.system(size: 26, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.gold)
+            Text("Letter of intent · paid in person · Auction Baby never handles this money")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Theme.inkFaint)
+                .multilineTextAlignment(.center)
+                .padding(.top, 2)
         }
     }
 

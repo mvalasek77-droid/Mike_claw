@@ -113,6 +113,8 @@ struct BidSheet: View {
                 gildToggle
                 insuranceToggle
 
+                intentCallout
+
                 if atFreeLimit {
                     VStack(spacing: 8) {
                         Label("You've used all \(AuctionStore.freeActiveBidLimit) free live bids.",
@@ -135,7 +137,7 @@ struct BidSheet: View {
                     whisperFallback
                 }
 
-                Text("A bid is a letter of intent — no money moves in the app. You pay her in person; she confirms (or flags you) after the date.")
+                Text("You pay her in person; she confirms (or flags you) after the date. Never wire money or send a deposit through the app — there's no way to, by design.")
                     .font(.system(size: 11)).foregroundStyle(Theme.inkFaint).multilineTextAlignment(.center)
                 Spacer(minLength: 20)
             }
@@ -145,6 +147,31 @@ struct BidSheet: View {
         .motion(Motion.snap, value: amount)
         .motion(Motion.snap, value: gild)
         .sheet(isPresented: $showStore) { PaywallView(trigger: .bidLimit) }
+    }
+
+    /// The commitment reminder shown right at the point of placing a bid: the
+    /// number is a promise, not a charge, and the app never touches the money.
+    private var intentCallout: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "signature")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Theme.gold)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Letter of intent · settled in person")
+                    .font(.system(size: 13, weight: .heavy, design: .serif))
+                    .foregroundStyle(Theme.ink)
+                Text("This is what you'll pay her on the date — Auction Baby never handles this money.")
+                    .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 6)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.gold.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.gold.opacity(0.35), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("A bid is a letter of intent, settled in person. Auction Baby never handles this money.")
     }
 
     /// Bid Insurance — small Gavel premium; if she declines you get it back
