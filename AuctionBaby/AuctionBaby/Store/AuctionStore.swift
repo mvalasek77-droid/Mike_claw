@@ -661,10 +661,11 @@ final class AuctionStore: ObservableObject {
     /// real-world confirmation flag — it deliberately unlocks no in-app content
     /// (Apple: a real-world service fee must not gate digital features). Called
     /// by the demo path and after the Worker confirms a completed web checkout.
-    func markDateReserved(_ matchID: UUID) {
+    func markDateReserved(_ matchID: UUID, amountCents: Int? = nil) {
         guard let idx = matches.firstIndex(where: { $0.id == matchID }),
               !matches[idx].dateReserved else { return }
         matches[idx].dateReserved = true
+        matches[idx].reservedAmountCents = amountCents
         Haptics.success()
         toastFlash("Date reserved — you're locked in. Pay her in person as agreed.")
         log(.bidAccepted, "You reserved your date with \(matches[idx].bid.woman.name).")
@@ -672,10 +673,11 @@ final class AuctionStore: ObservableObject {
     }
 
     /// Demo/App-Review convenience: reserve with no real charge, so a reviewer
-    /// can see the booked state without a live Stripe account.
-    func reserveDateDemo(_ matchID: UUID) {
+    /// can see the booked state (and the "Reserved · $X" label) without a live
+    /// Stripe account.
+    func reserveDateDemo(_ matchID: UUID, amountCents: Int? = nil) {
         guard demoMode else { return }
-        markDateReserved(matchID)
+        markDateReserved(matchID, amountCents: amountCents)
     }
 
     /// On foreground, reflect any booking fees paid on the web since we last
@@ -684,8 +686,9 @@ final class AuctionStore: ObservableObject {
         guard role == .man, backend.isConsumablesConfigured else { return }
         let pending = matches.filter { $0.phase == .chatting && !$0.dateReserved }
         for match in pending {
-            if case .success(true) = await backend.reservationStatus(matchID: match.id) {
-                markDateReserved(match.id)
+            if case .success(let state) = await backend.reservationStatus(matchID: match.id),
+               state.reserved {
+                markDateReserved(match.id, amountCents: state.amountCents)
             }
         }
     }

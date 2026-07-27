@@ -186,7 +186,7 @@ struct ChatView: View {
             if match.dateReserved {
                 Image(systemName: "checkmark.seal.fill").font(.system(size: 11))
                     .foregroundStyle(Theme.verify)
-                Text("Reserved").foregroundStyle(Theme.verify).font(.system(size: 12, weight: .heavy))
+                Text(match.reservedLabel).foregroundStyle(Theme.verify).font(.system(size: 12, weight: .heavy))
             }
         }
         .foregroundStyle(Theme.gold)
@@ -307,7 +307,7 @@ struct ChatView: View {
     /// tier; the completed payment is reflected on next foreground via
     /// `store.refreshReservations`.
     private func reserve(_ match: Match) {
-        if store.demoMode { store.reserveDateDemo(match.id); return }
+        if store.demoMode { store.reserveDateDemo(match.id, amountCents: selectedTierCents); return }
         guard !reserving, let cents = selectedTierCents else { return }
         guard backend.isConsumablesConfigured else {
             store.toastFlash("Reservations need the web shop configured (Stripe Worker).")
@@ -322,7 +322,7 @@ struct ChatView: View {
             switch result {
             case .success(let url):
                 if url.absoluteString == "about:blank" {
-                    store.markDateReserved(match.id)   // already booked server-side
+                    store.markDateReserved(match.id, amountCents: cents)   // already booked server-side
                 } else {
                     openURL(url)                        // Stripe Checkout in Safari
                 }

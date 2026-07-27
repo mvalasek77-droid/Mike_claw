@@ -320,13 +320,17 @@ final class BackendService: ObservableObject {
             }
     }
 
+    /// A date's reservation state: booked or not, and for how much (cents).
+    struct ReservationState { let reserved: Bool; let amountCents: Int? }
+
     /// GET /reserve/status — has the booking fee for this date been paid (and
-    /// not refunded)? Polled on foreground to reflect a completed web checkout.
-    func reservationStatus(matchID: UUID) async -> BackendResult<Bool> {
-        struct Response: Decodable { let reserved: Bool }
+    /// not refunded), and how much? Polled on foreground to reflect a completed
+    /// web checkout.
+    func reservationStatus(matchID: UUID) async -> BackendResult<ReservationState> {
+        struct Response: Decodable { let reserved: Bool; let amountCents: Int? }
         let id = matchID.uuidString.lowercased()
         return await get("/reserve/status?matchId=\(id)", base: consumablesURL, as: Response.self)
-            .map(\.reserved)
+            .map { ReservationState(reserved: $0.reserved, amountCents: $0.amountCents) }
     }
 
     // MARK: - Transport

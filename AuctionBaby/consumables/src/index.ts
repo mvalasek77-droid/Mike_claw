@@ -375,11 +375,13 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
     if (String(session.metadata?.kind ?? "gavels") === "reservation") {
       const matchId = String(session.metadata?.matchId ?? "");
       const bookedBy = String(session.metadata?.userId ?? session.client_reference_id ?? "");
+      const amountCents = Number(session.metadata?.amountCents ?? session.amount_total ?? 0);
       if (!matchId) return json({ received: true, skipped: "missing matchId" });
       if (env.KV) {
         await env.KV.put(
           reserveKey(matchId),
-          JSON.stringify({ userId: bookedBy, paidAt: Date.now(), sessionId: String(session.id), refunded: false }),
+          JSON.stringify({ userId: bookedBy, paidAt: Date.now(), amountCents,
+                           sessionId: String(session.id), refunded: false }),
           { expirationTtl: 60 * 60 * 24 * 180 },
         );
         if (session.payment_intent) {
@@ -608,7 +610,7 @@ async function handleReserveCheckout(request: Request, env: Env): Promise<Respon
             },
           },
         ],
-        metadata: { kind: "reservation", matchId, userId },
+        metadata: { kind: "reservation", matchId, userId, amountCents: String(cents) },
         client_reference_id: userId,
       },
       env.STRIPE_SECRET_KEY,
@@ -629,7 +631,8 @@ async function handleReserveStatus(request: Request, env: Env): Promise<Response
   const raw = await env.KV.get(reserveKey(matchId));
   if (!raw) return json({ matchId, reserved: false });
   const rec = JSON.parse(raw);
-  return json({ matchId, reserved: Boolean(rec.paidAt) && !rec.refunded, paidAt: rec.paidAt ?? null });
+  return json({ matchId, reserved: Boolean(rec.paidAt) && !rec.refunded,
+                paidAt: rec.paidAt ?? null, amountCents: rec.amountCents ?? null });
 }
 
 // ── Router ───────────────────────────────────────────────────────────────────

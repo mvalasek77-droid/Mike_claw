@@ -50,14 +50,16 @@ struct MatchRow: View {
                         Text(other.name).font(.system(size: 16, weight: .heavy, design: .serif))
                             .foregroundStyle(Theme.ink)
                         if other.verified { VerifiedBadge(size: 13) }
-                        if match.dateReserved {
-                            Image(systemName: "checkmark.seal.fill").font(.system(size: 12))
-                                .foregroundStyle(Theme.verify)
-                                .accessibilityLabel("Date reserved")
-                        }
                     }
                     Text(match.messages.last?.text ?? "Say hello")
                         .font(.system(size: 13)).foregroundStyle(Theme.inkSoft).lineLimit(1)
+                    if match.dateReserved {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.seal.fill").font(.system(size: 10))
+                            Text(match.reservedLabel).font(.system(size: 11, weight: .heavy, design: .rounded))
+                        }
+                        .foregroundStyle(Theme.verify)
+                    }
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 6) {

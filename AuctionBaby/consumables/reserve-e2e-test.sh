@@ -66,12 +66,13 @@ BODY=$(cat <<JSON
 {"id":"${EVT}","type":"checkout.session.completed","data":{"object":{
 "id":"cs_res_${STAMP}","payment_status":"paid","payment_intent":"${PI}",
 "client_reference_id":"${USER}",
-"metadata":{"kind":"reservation","matchId":"${MATCH}","userId":"${USER}"}}}}
+"metadata":{"kind":"reservation","matchId":"${MATCH}","userId":"${USER}","amountCents":"2500"}}}}
 JSON
 )
 BODY=$(echo "$BODY" | tr -d '\n')
 check "webhook reserved" "$(sign_and_post "$BODY")" '"reserved":true'
 check "status reserved=true" "$(status)" '"reserved":true'
+check "status carries amount (2500)" "$(status)" '"amountCents":2500'
 
 echo "→ 3. a reservation must NOT credit Gavels"
 check "gavel balance still 0" "$(balance)" '"gavels":0'

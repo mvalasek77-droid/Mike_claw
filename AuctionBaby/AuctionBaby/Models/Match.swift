@@ -70,9 +70,18 @@ struct Match: Identifiable, Codable, Hashable {
     /// unlocks NO in-app content, by design (Apple compliance). Set from the
     /// consumables Worker's reservation status on foreground.
     var dateReserved: Bool = false
+    /// The booking-fee amount paid, in cents (for the "Reserved · $X" label).
+    var reservedAmountCents: Int? = nil
 
     /// The counterpart, from the perspective of the logged-in `role`.
     func other(for role: Role) -> Profile { role == .woman ? bid.man : bid.woman }
+
+    /// Label for the booking-fee seal: "Reserved" or "Reserved · $50".
+    var reservedLabel: String {
+        guard let cents = reservedAmountCents, cents > 0 else { return "Reserved" }
+        let amount = cents % 100 == 0 ? "$\(cents / 100)" : String(format: "$%.2f", Double(cents) / 100)
+        return "Reserved · \(amount)"
+    }
 
     /// True once the reply window has lapsed with no reply from the current user.
     var isExpired: Bool {
@@ -85,7 +94,7 @@ struct Match: Identifiable, Codable, Hashable {
          womanReviewedMan: Bool = false, spentAmount: Int? = nil,
          manConfirmedMet: Bool = false, womanConfirmedMet: Bool = false,
          seenByOther: Bool = false, expiresAt: Date? = nil,
-         dateReserved: Bool = false) {
+         dateReserved: Bool = false, reservedAmountCents: Int? = nil) {
         self.id = id
         self.bid = bid
         self.messages = messages
@@ -98,6 +107,7 @@ struct Match: Identifiable, Codable, Hashable {
         self.seenByOther = seenByOther
         self.expiresAt = expiresAt
         self.dateReserved = dateReserved
+        self.reservedAmountCents = reservedAmountCents
     }
 
     // Backward-compatible decode — see Profile.init(from:).
@@ -115,5 +125,6 @@ struct Match: Identifiable, Codable, Hashable {
         seenByOther = try c.decodeIfPresent(Bool.self, forKey: .seenByOther) ?? false
         expiresAt = try c.decodeIfPresent(Date.self, forKey: .expiresAt)
         dateReserved = try c.decodeIfPresent(Bool.self, forKey: .dateReserved) ?? false
+        reservedAmountCents = try c.decodeIfPresent(Int.self, forKey: .reservedAmountCents)
     }
 }
