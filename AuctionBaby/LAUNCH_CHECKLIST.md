@@ -89,6 +89,11 @@ The code currently points at **placeholder** URLs that Apple will check.
       **Auction Baby**
 - [ ] Categories: **primary Social Networking, secondary Lifestyle**;
       age rating **17+**
+- [ ] **Request high price points first** (this gates three products below
+      and Apple reviews it, so start it early): App Store Connect →
+      Business / Agreements → request access to price points **above
+      $999.99**. Without it you can't create the Influencer, Ferrari, or
+      Trillionaire products. $9,999.99 is Apple's absolute ceiling.
 - [ ] Create the IAPs to match `Products.storekit` **exactly** (IDs must
       be character-identical):
       | Product ID | Type | Price |
@@ -98,9 +103,18 @@ The code currently points at **placeholder** URLs that Apple will check.
       | `com.valasek.auctionbaby.gavels.chest` | Consumable | $49.99 |
       | `com.valasek.auctionbaby.gavels.vault` | Consumable | $99.99 |
       | `com.valasek.auctionbaby.boost.spotlight` | Consumable | $3.99 |
+      | `com.valasek.auctionbaby.status.inheritance` | **Non-consumable** | $999.99 |
+      | `com.valasek.auctionbaby.status.influencer` | **Non-consumable** | $2,499.99 ⚠️ |
+      | `com.valasek.auctionbaby.status.ferrari` | **Non-consumable** | $4,999.99 ⚠️ |
+      | `com.valasek.auctionbaby.status.trillionaire` | **Non-consumable** | $9,999.99 ⚠️ |
       | `com.valasek.auctionbaby.sub.paddle` | Auto-renew (1 group) | $19.99/mo |
       | `com.valasek.auctionbaby.sub.reserve` | Auto-renew (same group) | $39.99/mo |
       | `com.valasek.auctionbaby.sub.blackcard` | Auto-renew (same group) | $99.99/mo |
+
+      ⚠️ = needs the high-price-point request above. Write clear review
+      notes for these four: the rating a man wears **is** what he paid for
+      it — that's the app's entire premise, not an arbitrary charge. Expect
+      Apple to look hard at a $9,999.99 product; be ready to explain it.
 - [ ] App Store Server Notifications **V2**: set both the production and
       sandbox URLs to `<payout-worker-url>/webhooks/app-store-server`
       (this is how Apple refunds reach the refund queue)

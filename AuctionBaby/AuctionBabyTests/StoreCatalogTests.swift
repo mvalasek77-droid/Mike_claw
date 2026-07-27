@@ -19,12 +19,17 @@ final class StoreCatalogTests: XCTestCase {
         XCTAssertEqual(StoreKitService.gavels(for: "com.valasek.auctionbaby.unknown"), 0)
     }
 
-    /// The whole point: the top status tier must be reachable. The largest pack
-    /// has to cover the most expensive archetype.
-    func testLargestPackCoversTrillionaire() {
+    /// The Gavel ladder must stay reachable: the largest pack has to cover the
+    /// most expensive *Gavel-priced* archetype. (The top four tiers are real
+    /// StoreKit purchases, deliberately outside the Gavel economy — no pack
+    /// stack could honestly reach $9,999.)
+    func testLargestPackCoversTopGavelTier() {
         let largest = StoreKitService.gavelCatalog.map(\.gavels).max() ?? 0
-        XCTAssertGreaterThanOrEqual(largest, Archetype.trillionaire.price,
-                                    "a single top pack should afford the Trillionaire tier")
+        let topGavelTier = Archetype.allCases.compactMap(\.gavelPrice).max() ?? 0
+        XCTAssertGreaterThanOrEqual(largest, topGavelTier,
+                                    "a single top pack should afford the top Gavel tier")
+        XCTAssertNil(Archetype.trillionaire.gavelPrice,
+                     "Trillionaire is a real-money purchase, not a Gavel one")
     }
 
     func testBoostProductIsDistinctFromGavels() {

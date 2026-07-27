@@ -28,6 +28,11 @@ final class StoreKitService: ObservableObject {
     @Published private(set) var boostProduct: Product?
     @Published private(set) var subscriptions: [Product] = []
     @Published private(set) var entitledSubscriptionIDs: Set<String> = []
+    /// Status archetypes bought with real money (non-consumables).
+    @Published private(set) var statusProducts: [Product] = []
+    /// Archetype product ids the user owns. Non-consumables are owned
+    /// forever, so re-wearing a badge you already bought is free.
+    @Published private(set) var ownedStatusIDs: Set<String> = []
     @Published private(set) var isLoading = false
     @Published var isWorking = false
     @Published var errorMessage: String?
@@ -90,6 +95,12 @@ final class StoreKitService: ObservableObject {
     var onRevoke: ((Int) -> Void)?
     /// Called when a Spotlight Boost is purchased.
     var onBoost: (() -> Void)?
+    /// Called when a status archetype is bought with real money, so the
+    /// store can equip it. Wired once at app root.
+    var onStatusPurchased: ((Archetype) -> Void)?
+    /// Called when a status archetype purchase is refunded/revoked, so the
+    /// store can drop the badge back to the best tier still owned.
+    var onStatusRevoked: ((Archetype) -> Void)?
 
     // MARK: Internals
 
@@ -119,10 +130,12 @@ final class StoreKitService: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let all = try await Product.products(for: Self.gavelIDs + [Self.boostProductID] + Self.subscriptionIDs)
+            let all = try await Product.products(
+                for: Self.gavelIDs + [Self.boostProductID] + Self.subscriptionIDs + Archetype.productIDs)
             gavelPacks = all.filter { Self.gavelIDs.contains($0.id) }.sorted { $0.price < $1.price }
             boostProduct = all.first { $0.id == Self.boostProductID }
             subscriptions = all.filter { Self.subscriptionIDs.contains($0.id) }.sorted { $0.price < $1.price }
+            statusProducts = all.filter { Archetype.productIDs.contains($0.id) }.sorted { $0.price < $1.price }
             await updateEntitlements()
             ErrorMonitor.shared.record(category: "StoreKit",
                                        message: "Products loaded: \(all.count) items")
@@ -208,14 +221,32 @@ final class StoreKitService: ObservableObject {
 
     private func updateEntitlements() async {
         var active: Set<String> = []
+        var owned: Set<String> = []
         for await result in Transaction.currentEntitlements {
             guard let transaction = try? Self.checkVerified(result) else { continue }
-            if transaction.productType == .autoRenewable, transaction.revocationDate == nil {
-                active.insert(transaction.productID)
+            guard transaction.revocationDate == nil else { continue }
+            switch transaction.productType {
+            case .autoRenewable: active.insert(transaction.productID)
+            case .nonConsumable where Archetype.productIDs.contains(transaction.productID):
+                owned.insert(transaction.productID)
+            default: break
             }
         }
         entitledSubscriptionIDs = active
+        ownedStatusIDs = owned
     }
+
+    /// True when the user has bought this tier outright (or it's a Gavel/free
+    /// tier, which ownership doesn't apply to). Demo Mode owns everything so
+    /// a reviewer can exercise the top of the ladder without a $9,999 charge.
+    func owns(_ archetype: Archetype) -> Bool {
+        guard let id = archetype.productID else { return true }
+        return ownedStatusIDs.contains(id) || demoOwnsAllStatus
+    }
+
+    /// Demo Mode (App Review) grants every status tier. Set from the app
+    /// root when `AuctionStore.demoMode` is active.
+    @Published var demoOwnsAllStatus = false
 
     // MARK: Transaction handling
 
@@ -246,8 +277,19 @@ final class StoreKitService: ObservableObject {
     /// (wallet hook not attached) — so a later drain retries.
     @discardableResult
     private func grant(for transaction: Transaction) async -> Bool {
-        // Subscriptions / non-consumables are entitlement-based; nothing to
-        // credit here (handled by updateEntitlements).
+        // Status archetypes are non-consumables: ownership comes from
+        // updateEntitlements, but a *fresh* purchase should also equip the
+        // badge immediately. Keyed by transaction.id like the consumables so
+        // a replayed transaction can't re-equip over a later downgrade.
+        if transaction.productType == .nonConsumable,
+           let tier = Archetype.tier(forProductID: transaction.productID) {
+            guard !processed.contains(transaction.id) else { return true }
+            guard let onStatusPurchased else { return false }   // retry after wiring
+            onStatusPurchased(tier)
+            markProcessed(transaction.id)
+            return true
+        }
+        // Subscriptions are entitlement-based; nothing to credit here.
         guard transaction.productType == .consumable else { return true }
         guard !processed.contains(transaction.id) else { return true }
         // Spotlight Boost: a consumable that grants time, not Gavels.
@@ -274,7 +316,14 @@ final class StoreKitService: ObservableObject {
         var revoked = Set(UserDefaults.standard.array(forKey: revokedKey) as? [String] ?? [])
         guard !revoked.contains(key) else { return }
 
-        if transaction.productType == .consumable {
+        if transaction.productType == .nonConsumable,
+           let tier = Archetype.tier(forProductID: transaction.productID) {
+            guard let onStatusRevoked else { return }
+            onStatusRevoked(tier)
+            ErrorMonitor.shared.record(category: "StoreKit",
+                                       message: "Refund clawback: \(tier.title) status",
+                                       detail: "txn \(transaction.id), product \(transaction.productID)")
+        } else if transaction.productType == .consumable {
             let gavels = Self.gavels(for: transaction.productID)
             if gavels > 0 {
                 guard let onRevoke else { return }

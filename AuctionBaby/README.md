@@ -115,23 +115,35 @@ Real money flows through **StoreKit 2** only (`Services/StoreKitService.swift`,
 ### Archetypes — buy your rating
 
 The price *is* the flex: the app exists to surface whether a man has money.
+Two economies, deliberately split — the impulse rungs cost in-app currency,
+the wealth-signalling rungs cost real money, because a Gavel price can never
+say "$9,999" honestly.
 
-| Price | Rating |
-| --- | --- |
-| Free | No Rating |
-| $5 | Good Guy |
-| $10 | In & Out Guy |
-| $20 | Why Not Guy |
-| $100 | Got a Good Job |
-| $1,000 | Inheritance Money Guy |
-| $2,500 | Influencer |
-| $5,000 | I Drive a Ferrari |
-| $9,999 | **Trillionaire** |
+| Rating | Cost | Bought with |
+| --- | --- | --- |
+| No Rating | Free | — |
+| Good Guy | 500 Gavels | wallet |
+| In & Out Guy | 1,500 Gavels | wallet |
+| Why Not Guy | 4,000 Gavels | wallet |
+| Got a Good Job | 12,000 Gavels | wallet |
+| Inheritance Money Guy | **$999.99** | StoreKit (non-consumable) |
+| Influencer | **$2,499.99** | StoreKit (non-consumable) |
+| I Drive a Ferrari | **$4,999.99** | StoreKit (non-consumable) |
+| **Trillionaire** | **$9,999.99** | StoreKit (non-consumable) |
 
-> Prices are kept under Apple's in-app purchase ceiling (~$9,999.99) so every
-> tier can be a real StoreKit purchase. The "$1,000,000" flex lives on the
-> *bid* side (a symbolic, credit-denominated date offer), which is what mints a
-> woman's Masterpiece — not the badge price.
+The four money tiers are **non-consumables**: bought once, owned forever, and
+re-wearing one you already own is free. A refund drops the badge to the best
+tier you still hold.
+
+> **Apple's IAP ceiling is $9,999.99**, and price points above $999.99 require
+> requesting access in App Store Connect. Trillionaire sits exactly at the
+> ceiling; Influencer and Ferrari also need that request granted. Inheritance
+> at $999.99 is a standard price point needing no approval.
+>
+> Separately, the **$1,000,000 Masterpiece** figure lives on the *bid* side — a
+> real-world date payment settled peer-to-peer, never an IAP. Buying the
+> Trillionaire badge only unlocks the *attempt*; paying $9,999 on a confirmed
+> date is what verifies it.
 
 ### Trillionaire (earned, not bought)
 

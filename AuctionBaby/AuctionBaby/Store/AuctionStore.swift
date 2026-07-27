@@ -480,28 +480,82 @@ final class AuctionStore: ObservableObject {
         scheduleWomanDecision(bidID: bidID)
     }
 
-    /// Buy (or upgrade to) a status archetype. The price is the point — it's how
+    /// Buy (or switch to) a status archetype. The price is the point — it's how
     /// a man proves he has money.
+    ///
+    /// Free and Gavel rungs are spent here. The real-money rungs are *not* —
+    /// those go through StoreKit (`ArchetypeStoreView` → `storeKit.purchase`)
+    /// and land back on `equipArchetype` via the `onStatusPurchased` hook. A
+    /// money tier the user already owns re-equips free.
     func buyArchetype(_ archetype: Archetype) {
         guard role == .man else { return }
         guard archetype != me.archetype else { return }
-        guard wallet >= archetype.price else {
-            Haptics.error()
-            toastFlash("Need \(Tally.compact(archetype.price)) Gavels for \(archetype.title). Top up.")
-            return
+        switch archetype.purchase {
+        case .free:
+            equipArchetype(archetype)
+        case .gavels(let cost):
+            guard wallet >= cost else {
+                Haptics.error()
+                toastFlash("Need \(Tally.compact(cost)) Gavels for \(archetype.title). Top up.")
+                return
+            }
+            wallet -= cost
+            equipArchetype(archetype)
+        case .money:
+            // Only an already-owned tier can be re-worn for free. Anything
+            // else must go through StoreKit — never hand out a $9,999 badge
+            // because a caller took the wrong branch.
+            guard ownsArchetype(archetype) else {
+                Haptics.error()
+                toastFlash("\(archetype.title) has to be bought from the App Store first.")
+                return
+            }
+            equipArchetype(archetype)
         }
+    }
+
+    /// Does the user own this real-money tier? Wired to StoreKit at app root;
+    /// defaults to "no" so a missing wiring fails closed (no free badges).
+    var ownsArchetype: (Archetype) -> Bool = { $0.productID == nil }
+
+    /// Put a badge on the profile. Called directly for free/Gavel tiers, and
+    /// from the StoreKit grant hook once a real-money tier is paid for.
+    func equipArchetype(_ archetype: Archetype) {
+        guard role == .man else { return }
         let before = me.auctionCredit
-        wallet -= archetype.price
         me.archetype = archetype
         // Trillionaire is earned: buying only unlocks the *attempt*. Verification
         // resets and must be re-won on a confirmed $9,999 date.
         me.trillionaireVerified = false
         Haptics.success()
         if archetype == .trillionaire {
-            toastFlash("Trillionaire pending — pay $9,999 on a date and get confirmed to verify.")
+            toastFlash("Trillionaire pending — pay $\(Archetype.trillionaireDateGateUSD.formatted()) on a date and get confirmed to verify.")
         } else {
             toastFlash(archetype == .none ? "Rating removed." : "You're now a \(archetype.title).")
         }
+        creditPing(before: before)
+        save()
+    }
+
+    /// A real-money status purchase was refunded. Drop the badge to the best
+    /// tier the user still holds so a refunded Ferrari doesn't keep flexing.
+    /// `stillOwned` is asked of StoreKit (wired at app root).
+    func revokeArchetype(_ archetype: Archetype, stillOwned: (Archetype) -> Bool) {
+        guard me.archetype == archetype else { return }   // already moved on
+        let fallback = Archetype.allCases
+            .filter { $0 != archetype && $0.rawValue < archetype.rawValue }
+            .last { tier in
+                switch tier.purchase {
+                case .free: return true
+                case .gavels: return true        // Gavel tiers were already paid for
+                case .money: return stillOwned(tier)
+                }
+            } ?? .none
+        let before = me.auctionCredit
+        me.archetype = fallback
+        me.trillionaireVerified = false
+        toastFlash("\(archetype.title) refunded — badge dropped to \(fallback.title).")
+        log(.admin, "\(archetype.title) refunded; status reset to \(fallback.title).")
         creditPing(before: before)
         save()
     }
@@ -1081,8 +1135,8 @@ final class AuctionStore: ObservableObject {
         // Trillionaire is earned here: he bought the badge, bid & paid the full
         // $9,999, and the woman (sim) confirmed it. That's the third gate.
         if me.archetype == .trillionaire && !me.trillionaireVerified
-            && bid.amount >= Archetype.trillionaire.price
-            && actuallySpent >= Archetype.trillionaire.price && paid {
+            && bid.amount >= Archetype.trillionaireDateGateUSD
+            && actuallySpent >= Archetype.trillionaireDateGateUSD && paid {
             me.trillionaireVerified = true
             closeMatch(idx)
             Haptics.success()

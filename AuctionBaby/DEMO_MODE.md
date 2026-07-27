@@ -40,6 +40,7 @@ re-enable it each session.
 | The Docket (streak-freeze + mystery box) | Standard | Identical — reviewer can watch the mystery-roll on a fresh Day 1 claim |
 | The Standing (weekly leaderboards) | Standard | Identical; reviewer's demo profile appears in the "you" row |
 | Lot of the Day intro | First launch of a new day | Fires once per calendar day for the demo account too |
+| Status ratings (top 4) | Non-consumable IAPs, $999.99–$9,999.99 | All four marked **owned** — equip free, no charge. Real buy buttons stay live for sandbox verification. |
 
 ## Recommended review path (≈ 12 minutes)
 
@@ -69,8 +70,13 @@ re-enable it each session.
    IAP packs below it → tap **Free Black Card Pass** → every Pass perk
    (rank reveal, reserve-price reveal on the detail view, read receipts,
    priority placement, auto-rebid on decline) is now unlocked.
-7. **Status tab** → buy an archetype with Gavels (e.g. Millionaire) —
-   real Gavel economics, play-money source.
+7. **Status tab** → buy a Gavel rating (e.g. **Got a Good Job**, 12,000
+   Gavels) — real economics, play-money source. The four top ratings
+   (Inheritance Money Guy $999.99 → Trillionaire $9,999.99) are real
+   non-consumable IAPs; **Demo Mode marks all four as owned**, so tapping
+   one shows "Wear this badge" and equips it free — no four-figure charge
+   is ever made in Demo Mode. The real purchase buttons still appear for
+   a sandbox tester who wants to verify that path.
 8. **Profile → The Standing** → weekly cosmetic leaderboards for the
    demo user's city. **Profile → Edit photos** → PhotosPicker prompts
    the reviewer for photo-library access (real iOS permission), then

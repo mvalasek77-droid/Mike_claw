@@ -10,26 +10,60 @@ final class AuctionLogicTests: XCTestCase {
     // MARK: Archetype pricing
 
     func testArchetypePricesMatchSpec() {
-        XCTAssertEqual(Archetype.none.price, 0)
-        XCTAssertEqual(Archetype.goodGuy.price, 5)
-        XCTAssertEqual(Archetype.inAndOut.price, 10)
-        XCTAssertEqual(Archetype.whyNot.price, 20)
-        XCTAssertEqual(Archetype.goodJob.price, 100)
-        XCTAssertEqual(Archetype.inheritance.price, 1_000)
-        XCTAssertEqual(Archetype.influencer.price, 2_500)
-        XCTAssertEqual(Archetype.ferrari.price, 5_000)
-        XCTAssertEqual(Archetype.trillionaire.price, 9_999)
+        XCTAssertEqual(Archetype.none.purchase, .free)
+        // Gavel rungs — the impulse tier.
+        XCTAssertEqual(Archetype.goodGuy.gavelPrice, 500)
+        XCTAssertEqual(Archetype.inAndOut.gavelPrice, 1_500)
+        XCTAssertEqual(Archetype.whyNot.gavelPrice, 4_000)
+        XCTAssertEqual(Archetype.goodJob.gavelPrice, 12_000)
+        // Real-money rungs — the price IS the flex.
+        XCTAssertEqual(Archetype.inheritance.usd, 999.99)
+        XCTAssertEqual(Archetype.influencer.usd, 2_499.99)
+        XCTAssertEqual(Archetype.ferrari.usd, 4_999.99)
+        XCTAssertEqual(Archetype.trillionaire.usd, 9_999.99)
     }
 
-    /// Every tier must stay under Apple's in-app purchase price ceiling and the
-    /// ladder must be strictly ascending.
-    func testArchetypePricesAreIAPValidAndAscending() {
-        let tiers = Archetype.allCases
-        for tier in tiers {
-            XCTAssertLessThanOrEqual(tier.price, 9_999, "\(tier.title) exceeds the IAP cap")
+    /// The two economies must not overlap: a tier is Gavels or money, never
+    /// both, and the Gavel rungs all sit below the money rungs.
+    func testEachTierBelongsToExactlyOneEconomy() {
+        for tier in Archetype.allCases {
+            let hasGavels = tier.gavelPrice != nil
+            let hasMoney = tier.productID != nil
+            if tier == .none {
+                XCTAssertFalse(hasGavels || hasMoney, "No Rating is free")
+            } else {
+                XCTAssertTrue(hasGavels != hasMoney, "\(tier.title) must be Gavels XOR money")
+            }
         }
-        let prices = tiers.map(\.price)
-        XCTAssertEqual(prices, prices.sorted(), "tiers must ascend in price")
+        let lastGavel = Archetype.allCases.lastIndex { $0.gavelPrice != nil } ?? 0
+        let firstMoney = Archetype.allCases.firstIndex { $0.productID != nil } ?? 0
+        XCTAssertLessThan(lastGavel, firstMoney, "Gavel rungs come before money rungs")
+    }
+
+    /// Real-money tiers must ascend and respect Apple's $9,999.99 ceiling.
+    func testMoneyTiersAscendAndRespectAppleCeiling() {
+        let usd = Archetype.moneyTiers.compactMap(\.usd)
+        XCTAssertEqual(usd, usd.sorted(), "money tiers must ascend in price")
+        for tier in Archetype.moneyTiers {
+            XCTAssertLessThanOrEqual(tier.usd ?? 0, 9_999.99,
+                                     "\(tier.title) exceeds Apple's IAP ceiling")
+        }
+        let ids = Archetype.productIDs
+        XCTAssertEqual(Set(ids).count, ids.count, "status product IDs unique")
+        for id in ids {
+            XCTAssertEqual(Archetype.tier(forProductID: id)?.productID, id, "round-trips")
+        }
+        XCTAssertNil(Archetype.tier(forProductID: "com.valasek.auctionbaby.nope"))
+    }
+
+    /// Gavel rungs must ascend too, and the biggest one has to be reachable
+    /// from a single top-up pack or the ladder stalls.
+    func testGavelTiersAscendAndAreReachable() {
+        let gavels = Archetype.allCases.compactMap(\.gavelPrice)
+        XCTAssertEqual(gavels, gavels.sorted(), "Gavel tiers must ascend")
+        let largestPack = StoreKitService.gavelCatalog.map(\.gavels).max() ?? 0
+        XCTAssertGreaterThanOrEqual(largestPack, gavels.max() ?? 0,
+                                    "one pack should afford the top Gavel tier")
     }
 
     func testOnlyTrillionaireUsesPrestigeStyle() {
@@ -272,14 +306,59 @@ final class AuctionLogicTests: XCTestCase {
     }
 
     @MainActor
-    func testBuyArchetypeDeductsWallet() {
+    func testBuyGavelArchetypeDeductsWallet() {
         let store = freshStore()
         store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
                        hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        store.creditGavels(20_000)
         let before = store.wallet
         store.buyArchetype(.goodJob)
         XCTAssertEqual(store.me.archetype, .goodJob)
-        XCTAssertEqual(store.wallet, before - 100)
+        XCTAssertEqual(store.wallet, before - 12_000)
+    }
+
+    /// Real-money tiers must never silently drain the Gavel wallet — they're
+    /// paid through StoreKit and land via `equipArchetype`.
+    @MainActor
+    func testMoneyArchetypeDoesNotSpendGavels() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        store.creditGavels(50_000)
+        store.ownsArchetype = { _ in true }        // pretend StoreKit says "owned"
+        let before = store.wallet
+        store.buyArchetype(.trillionaire)          // the "already owned" path
+        XCTAssertEqual(store.wallet, before, "money tiers cost no Gavels")
+        XCTAssertEqual(store.me.archetype, .trillionaire)
+        XCTAssertFalse(store.me.trillionaireVerified, "buying only unlocks the attempt")
+    }
+
+    /// A refunded status purchase drops the badge to the best tier still held.
+    @MainActor
+    func testRefundedStatusDropsToOwnedTier() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        store.equipArchetype(.ferrari)
+        // Owns nothing above the Gavel rungs after the refund.
+        store.revokeArchetype(.ferrari) { _ in false }
+        XCTAssertEqual(store.me.archetype, .goodJob,
+                       "falls back to the top Gavel rung when no money tier survives")
+        // With Inheritance still owned, that's the landing spot instead.
+        store.equipArchetype(.trillionaire)
+        store.revokeArchetype(.trillionaire) { $0 == .inheritance }
+        XCTAssertEqual(store.me.archetype, .inheritance)
+    }
+
+    /// A refund for a tier the user already moved off must not touch the badge.
+    @MainActor
+    func testRefundOfUnwornTierIsIgnored() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        store.equipArchetype(.inheritance)
+        store.revokeArchetype(.ferrari) { _ in false }
+        XCTAssertEqual(store.me.archetype, .inheritance, "unrelated refund leaves the badge alone")
     }
 
     @MainActor
@@ -331,13 +410,14 @@ final class AuctionLogicTests: XCTestCase {
         let store = freshStore()
         store.register(role: .man, name: "Max", age: 40, location: "LA", bio: "",
                        hue: 0.6, startingBid: nil, prompts: [], interests: [])
-        store.creditGavels(20_000)   // enough Gavels to afford the top tier
-        store.buyArchetype(.trillionaire)
+        // Trillionaire is a real-money purchase; StoreKit's grant hook calls
+        // equipArchetype, which this stands in for.
+        store.equipArchetype(.trillionaire)
         XCTAssertEqual(store.me.archetype, .trillionaire)
         XCTAssertFalse(store.me.trillionaireVerified, "buying alone leaves it pending")
 
         let woman = store.floor.first { !$0.isCopycat }!
-        let full = Archetype.trillionaire.price
+        let full = Archetype.trillionaireDateGateUSD
 
         // Underpaying a $9,999 date must NOT verify.
         let shortMatch = Match(bid: Bid(man: store.me, woman: woman, amount: full))
@@ -564,8 +644,10 @@ final class AuctionLogicTests: XCTestCase {
         let store = freshStore()
         store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
                        hue: 0.6, startingBid: nil, prompts: [], interests: [])
-        // Starting balance (750) < gilded cost? It's 250, so spend to near-zero first.
-        store.buyArchetype(.inheritance) // not affordable (1000) → no-op; wallet stays 750
+        // Starting balance is 750; the cheapest Gavel tier (500) is affordable
+        // but we want the wallet untouched, so buy nothing.
+        store.buyArchetype(.inheritance) // a money tier, unowned → no-op; wallet stays 750
+        XCTAssertEqual(store.me.archetype, .none, "an unowned money tier must not equip")
         store.placeBid(on: store.floor.first { !$0.isCopycat }!, amount: 100, note: "", gilded: true)
         // 750 >= 250, so this one gilds; verify the flag set and cost taken.
         XCTAssertEqual(store.outgoingBids.first?.gilded, true)

@@ -140,7 +140,7 @@ struct MyProfileView: View {
                         Text("Next tier: \(next.title)").font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.inkSoft)
                         Spacer()
-                        Text(Money.compact(next.price)).font(.system(size: 13, weight: .heavy, design: .rounded))
+                        Text(next.fallbackPriceLabel).font(.system(size: 13, weight: .heavy, design: .rounded))
                             .foregroundStyle(Theme.gold)
                     }
                 }

@@ -76,6 +76,66 @@
       "productID" : "com.valasek.auctionbaby.boost.spotlight",
       "referenceName" : "Spotlight Boost",
       "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "999.99",
+      "familyShareable" : false,
+      "internalID" : "status-inheritance",
+      "localizations" : [
+        {
+          "description" : "The Inheritance Money Guy rating. Yours for good.",
+          "displayName" : "Inheritance Money Guy",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.status.inheritance",
+      "referenceName" : "Status Inheritance",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "2499.99",
+      "familyShareable" : false,
+      "internalID" : "status-influencer",
+      "localizations" : [
+        {
+          "description" : "The Influencer rating. Yours for good.",
+          "displayName" : "Influencer",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.status.influencer",
+      "referenceName" : "Status Influencer",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "4999.99",
+      "familyShareable" : false,
+      "internalID" : "status-ferrari",
+      "localizations" : [
+        {
+          "description" : "The I Drive a Ferrari rating. Yours for good.",
+          "displayName" : "I Drive a Ferrari",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.status.ferrari",
+      "referenceName" : "Status Ferrari",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "9999.99",
+      "familyShareable" : false,
+      "internalID" : "status-trillionaire",
+      "localizations" : [
+        {
+          "description" : "The Trillionaire rating — the only tier that can mint a Masterpiece. Yours for good.",
+          "displayName" : "Trillionaire",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.status.trillionaire",
+      "referenceName" : "Status Trillionaire",
+      "type" : "NonConsumable"
     }
   ],
   "settings" : {

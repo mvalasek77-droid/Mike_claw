@@ -311,7 +311,7 @@ final class FlowTests: XCTestCase {
     func testStateSurvivesRelaunch() {
         let store = freshStore()
         registerMan(store)
-        store.creditGavels(2_000)
+        store.creditGavels(20_000)   // Got a Good Job costs 12,000 Gavels
         store.buyArchetype(.goodJob)
         store.placeBid(on: store.floor.first { !$0.isCopycat }!, amount: 250, note: "Hello")
         store.claimDaily()

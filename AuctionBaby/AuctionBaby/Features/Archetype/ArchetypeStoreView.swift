@@ -4,8 +4,17 @@ import SwiftUI
 /// prove he has money. Trillionaire unlocks the ability to mint a Masterpiece.
 struct ArchetypeStoreView: View {
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var storeKit: StoreKitService
     @State private var confirming: Archetype?
     @State private var showStore = false
+
+    /// The live StoreKit price for a money tier, falling back to the baked
+    /// figure when products haven't loaded.
+    private func priceLabel(_ tier: Archetype) -> String {
+        guard let id = tier.productID else { return tier.fallbackPriceLabel }
+        return storeKit.statusProducts.first { $0.id == id }?.displayPrice
+            ?? tier.fallbackPriceLabel
+    }
 
     var body: some View {
         NavigationStack {
@@ -13,22 +22,25 @@ struct ArchetypeStoreView: View {
                 VStack(spacing: 14) {
                     walletCard
                     SectionHeader(title: "Buy your rating",
-                                  subtitle: "Spend Gavels. The bigger the tier, the louder the flex.")
+                                  subtitle: "The bigger the tier, the louder the flex.")
                         .padding(.top, 4)
                     ForEach(Archetype.allCases) { tier in
                         ArchetypeRow(tier: tier,
+                                     priceLabel: priceLabel(tier),
                                      current: store.me.archetype == tier,
-                                     owned: store.me.archetype.rawValue >= tier.rawValue && tier != .none,
+                                     owned: tier.productID != nil && storeKit.owns(tier),
                                      pending: store.me.archetype == tier && store.me.showsPendingTrillionaire) {
                             confirming = tier
                         }
                     }
+                    ladderNote
                     Spacer(minLength: 24)
                 }
                 .screenPadding().padding(.top, 6)
             }
             .background(AppBackground())
             .navigationTitle("Status")
+            .overlay { if storeKit.isWorking { workingOverlay } }
             .sheet(isPresented: $showStore) {
                 GavelStoreView().presentationDetents([.large])
             }
@@ -36,15 +48,55 @@ struct ArchetypeStoreView: View {
                                 isPresented: Binding(get: { confirming != nil },
                                                      set: { if !$0 { confirming = nil } }),
                                 titleVisibility: .visible) {
-                if let tier = confirming {
-                    Button(tier == .none ? "Remove rating" : "Spend \(Tally.compact(tier.price)) Gavels") {
-                        store.buyArchetype(tier); confirming = nil
-                    }
-                    Button("Cancel", role: .cancel) { confirming = nil }
-                }
+                if let tier = confirming { confirmButtons(for: tier) }
+                Button("Cancel", role: .cancel) { confirming = nil }
             } message: {
                 if let tier = confirming { Text(tier.blurb) }
             }
+        }
+    }
+
+    @ViewBuilder private func confirmButtons(for tier: Archetype) -> some View {
+        switch tier.purchase {
+        case .free:
+            Button("Remove rating") { store.buyArchetype(tier); confirming = nil }
+        case .gavels(let cost):
+            Button("Spend \(Tally.compact(cost)) Gavels") {
+                store.buyArchetype(tier); confirming = nil
+            }
+        case .money(let productID, _):
+            if storeKit.owns(tier) {
+                // Already paid for — non-consumables are owned forever.
+                Button("Wear this badge") { store.buyArchetype(tier); confirming = nil }
+            } else {
+                Button("Buy for \(priceLabel(tier))") {
+                    let target = tier
+                    confirming = nil
+                    Task {
+                        guard let product = storeKit.statusProducts.first(where: { $0.id == productID }) else {
+                            storeKit.errorMessage = "\(target.title) isn't available from the App Store right now."
+                            return
+                        }
+                        // The grant hook equips the badge once Apple confirms.
+                        await storeKit.purchase(product, appAccountToken: store.appAccountToken)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Sets expectations before someone taps a four-figure button.
+    private var ladderNote: some View {
+        Text("The top four ratings are real purchases, billed by Apple — that's the point of them. Buy one once and it's yours for good; you can switch back to it any time for free. The lower ratings are paid in Gavels.")
+            .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 8).padding(.top, 4)
+    }
+
+    private var workingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.4).ignoresSafeArea()
+            ProgressView().controlSize(.large).tint(Theme.gold)
         }
     }
 
@@ -79,7 +131,9 @@ struct ArchetypeStoreView: View {
 
 struct ArchetypeRow: View {
     let tier: Archetype
+    var priceLabel: String = ""
     let current: Bool
+    /// True only for real-money tiers the user has already bought.
     let owned: Bool
     var pending: Bool = false
     var onTap: () -> Void
@@ -109,15 +163,24 @@ struct ArchetypeRow: View {
                     }
                     Spacer(minLength: 6)
                     VStack(alignment: .trailing, spacing: 4) {
-                        if tier == .none {
+                        switch tier.purchase {
+                        case .free:
                             Text("Free").font(.system(size: 16, weight: .heavy, design: .rounded))
                                 .foregroundStyle(Theme.ink)
-                        } else {
+                        case .gavels(let cost):
+                            // Gavels get the hammer; real money never does, so
+                            // the two economies can't be confused at a glance.
                             HStack(spacing: 3) {
                                 Image(systemName: "hammer.fill").font(.system(size: 11, weight: .bold))
-                                Text(Tally.compact(tier.price)).font(.system(size: 16, weight: .heavy, design: .rounded))
+                                Text(Tally.compact(cost)).font(.system(size: 16, weight: .heavy, design: .rounded))
                             }
-                            .foregroundStyle(tier.usesPrestigeStyle ? Theme.gold : Theme.ink)
+                            .foregroundStyle(Theme.ink)
+                        case .money:
+                            Text(owned ? "Owned" : priceLabel)
+                                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                                .foregroundStyle(owned ? Theme.success
+                                                 : tier.usesPrestigeStyle ? Theme.gold : Theme.ink)
+                                .lineLimit(1).minimumScaleFactor(0.7)
                         }
                         if current {
                             Text(pending ? "PENDING" : "ACTIVE").font(.system(size: 9, weight: .heavy, design: .rounded))

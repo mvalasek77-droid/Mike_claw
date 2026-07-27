@@ -21,6 +21,12 @@ struct AuctionBabyApp: App {
                     storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
                     storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
                     storeKit.onBoost = { [weak store] in store?.activateBoost() }
+                    storeKit.onStatusPurchased = { [weak store] tier in store?.equipArchetype(tier) }
+                    storeKit.onStatusRevoked = { [weak store, weak storeKit] tier in
+                        store?.revokeArchetype(tier) { storeKit?.owns($0) ?? false }
+                    }
+                    storeKit.demoOwnsAllStatus = store.demoMode
+                    store.ownsArchetype = { [weak storeKit] tier in storeKit?.owns(tier) ?? false }
                     await storeKit.loadProducts()
                     let tier = storeKit.activeTier
                     store.autoRebidEnabled = tier == .reserve || tier == .blackcard
@@ -35,6 +41,9 @@ struct AuctionBabyApp: App {
                 .onChange(of: storeKit.activeTier) { _, tier in
                     store.autoRebidEnabled = tier == .reserve || tier == .blackcard
                     store.priorityPlacementEnabled = tier == .blackcard
+                }
+                .onChange(of: store.demoMode) { _, isDemo in
+                    storeKit.demoOwnsAllStatus = isDemo
                 }
         }
     }

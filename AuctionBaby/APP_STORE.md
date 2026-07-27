@@ -74,9 +74,23 @@ character limits.
 | Paddle (Pass) | Auto-renewable | $19.99/mo |
 | Reserve (Pass) | Auto-renewable | $39.99/mo |
 | Black Card (Pass) | Auto-renewable | $99.99/mo |
+| Inheritance Money Guy (status) | Non-consumable | $999.99 |
+| Influencer (status) | Non-consumable | $2,499.99 |
+| I Drive a Ferrari (status) | Non-consumable | $4,999.99 |
+| Trillionaire (status) | Non-consumable | $9,999.99 |
 
-All prices are under Apple's IAP ceiling. The app never processes real date
-payments — those are a real-world, person-to-person service and stay off-platform.
+The four status tiers are the app's core premise made literal — the rating a
+man wears *is* what he paid for it. They're non-consumables: bought once,
+owned forever, re-wearable free, and a refund drops the badge to the best
+tier still held.
+
+⚠️ **The three above $999.99 require requesting high price points in App Store
+Connect** (Apple grants access case-by-case). Trillionaire sits exactly at
+Apple's $9,999.99 ceiling. The lower ratings (Good Guy → Got a Good Job) are
+bought with Gavels, not real money, so they're not IAPs.
+
+The app never processes real date payments — those are a real-world,
+person-to-person service and stay off-platform.
 
 ## Privacy nutrition labels
 
@@ -95,9 +109,13 @@ it is off in the default build.
 
 ## Review notes
 
-- Status archetypes and bids are denominated in **Gavels**, an in-app currency
-  purchased via StoreKit. The "$9,999 / Trillionaire" figures are symbolic
-  in-game status, not real charges.
+- **Bids** are denominated in dollars but are *letters of intent* — no charge
+  is made in the app. The lower status ratings are bought with **Gavels**, an
+  in-app currency. The four top ratings are genuine non-consumable IAPs at
+  their listed prices; the price is the product (the app's premise is that
+  what a man pays for his rating is the signal).
+- The "$1,000,000 Masterpiece" is a **real-world date payment** between two
+  people, never an in-app charge.
 - The **date payment** is a real-world service settled between two people; the
   app does not collect, hold, or process it (no escrow / money transmission).
 - "Copycat" profiles are clearly disclosed as AI-generated.
