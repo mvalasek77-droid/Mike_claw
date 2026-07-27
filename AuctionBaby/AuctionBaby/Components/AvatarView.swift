@@ -19,8 +19,8 @@ struct AvatarView: View {
     var locked: Bool = false
     var copycat: Bool = false
     /// Copycats are indistinguishable on the floor — the synthetic-glam
-    /// portrait and AI watermark only render in post-bid contexts (matches,
-    /// chat, the BAITED reveal), where the user has already been told.
+    /// portrait and AI watermark only render in post-bid contexts (the
+    /// copycat reveal), where the user has already been told.
     var revealed: Bool = false
     var copycatStyle: CopycatStyle = .glam
     var corner: CGFloat = Theme.cornerL

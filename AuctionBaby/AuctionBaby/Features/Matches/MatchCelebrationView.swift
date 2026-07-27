@@ -29,7 +29,7 @@ struct MatchCelebrationView: View {
     private var reduceMotion: Bool { UIAccessibility.isReduceMotionEnabled }
 
     private var headline: String {
-        if celebration.otherCopycat { return "BAITED" }
+        if celebration.otherCopycat { return "COPYCAT" }
         return celebration.masterpiece ? "MASTERPIECE" : "SOLD!"
     }
     private var accent: LinearGradient {
@@ -61,21 +61,12 @@ struct MatchCelebrationView: View {
 
                 if celebration.otherCopycat {
                     VStack(spacing: 8) {
-                        if celebration.masterpiece {
-                            Text("The Masterpiece was never real.")
-                                .font(.system(size: 16, weight: .heavy, design: .serif))
-                                .foregroundStyle(Theme.ink)
-                            Text("\(celebration.otherName) looked like perfection — because she was designed to. Your Auction Credit took the hit. The floor rewards judgment, not ambition.")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
-                        } else {
-                            Text("\(celebration.otherName) wasn't real.")
-                                .font(.system(size: 16, weight: .heavy, design: .serif))
-                                .foregroundStyle(Theme.ink)
-                            Text("She was AI — it's on your record and your Auction Credit took the hit. No Gavels were spent. Study the floor closer next time.")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
-                        }
+                        Text("\(celebration.otherName) is a copycat. She is not real.")
+                            .font(.system(size: 16, weight: .heavy, design: .serif))
+                            .foregroundStyle(Theme.ink).multilineTextAlignment(.center)
+                        Text("This affects your credit score.")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
                     }
                     .padding(.horizontal, 26)
                 } else {

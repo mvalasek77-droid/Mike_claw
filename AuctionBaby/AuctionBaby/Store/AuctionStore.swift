@@ -446,21 +446,25 @@ final class AuctionStore: ObservableObject {
         outgoingBids.insert(bid, at: 0)
 
         if woman.isCopycat {
+            // A copycat bid never becomes a match or a conversation. Reveal that
+            // she's fake, dock the credit, and stop. The app never role-plays a
+            // scam and never asks the user for anything.
+            if let i = outgoingBids.firstIndex(where: { $0.id == bid.id }) {
+                outgoingBids[i].status = .declined
+            }
             let before = me.auctionCredit
             me.copycatBids += 1
             Haptics.warning()
             celebrate(with: woman, amount: amount, copycat: true, masterpiece: woman.masterpiece)
-            if woman.masterpiece {
-                log(.bidDeclined, "You bid \(Money.compact(amount)) on \(woman.name) — the Masterpiece was never real. Your credit took the hit.")
-            } else {
-                log(.bidDeclined, "You bid on \(woman.name) — she was AI. Your Auction Credit took the hit.")
-            }
+            log(.bidDeclined, "You bid on \(woman.name) — a copycat, not a real person. Your Auction Credit took the hit.")
             creditPing(before: before)
-        } else {
-            Haptics.commit()
-            toastFlash(gild ? "✦ Gilded Bid sent to \(woman.name) — top of her inbox."
-                            : "Bid placed: \(Money.compact(amount)) on \(woman.name).")
+            save()
+            return
         }
+
+        Haptics.commit()
+        toastFlash(gild ? "✦ Gilded Bid sent to \(woman.name) — top of her inbox."
+                        : "Bid placed: \(Money.compact(amount)) on \(woman.name).")
         save()
         scheduleWomanDecision(bidID: bid.id)
     }
@@ -1287,15 +1291,16 @@ final class AuctionStore: ObservableObject {
 
     // MARK: - Simulation
 
-    /// A woman's automated decision on a bidder's offer. Copycats bite fastest
-    /// (that's the trap), whispers resolve on a lighter cadence than real
-    /// bids (a nod is a smaller decision than money).
+    /// A woman's automated decision on a bidder's offer. Whispers resolve on a
+    /// lighter cadence than real bids (a nod is a smaller decision than money).
+    /// Copycats never reach here — they're resolved at bid time in placeBid.
     private func scheduleWomanDecision(bidID: UUID) {
         let pending = outgoingBids.first(where: { $0.id == bidID })
-        let copycat = pending?.onCopycat ?? false
+        // Copycats are fully resolved in placeBid (reveal + credit hit, no match),
+        // so a copycat bid must never reach the decision simulation.
+        guard !(pending?.onCopycat ?? false) else { return }
         let whisper = pending?.isWhisper ?? false
-        let delay = copycat ? 1.6 : whisper ? Double.random(in: 1.5...2.5)
-                                            : Double.random(in: 2.5...4.2)
+        let delay = whisper ? Double.random(in: 1.5...2.5) : Double.random(in: 2.5...4.2)
         after(delay) { [weak self] in
             guard let self, let idx = self.outgoingBids.firstIndex(where: { $0.id == bidID }) else { return }
             guard self.outgoingBids[idx].status == .pending else { return }
@@ -1317,32 +1322,24 @@ final class AuctionStore: ObservableObject {
                 return
             }
 
-            let accepted: Bool
-            if bid.onCopycat {
-                accepted = true // copycats always "accept" — that's the bait
-            } else {
-                let threshold = bid.woman.startingBid ?? max(100, bid.woman.marketValue / 2)
-                // Money + reputation both move the needle.
-                let ratio = Double(bid.amount) / Double(threshold)
-                let creditPull = Double(self.me.auctionCredit - 600) / 300.0
-                let boostPull = self.isBoosted ? 0.25 : 0
-                let gildPull = bid.gilded ? 0.30 : 0
-                let priorityPull = self.priorityPlacementEnabled ? 0.20 : 0
-                accepted = (ratio + creditPull + boostPull + gildPull + priorityPull + Double.random(in: -0.25...0.25)) >= 1.0
-            }
+            let threshold = bid.woman.startingBid ?? max(100, bid.woman.marketValue / 2)
+            // Money + reputation both move the needle.
+            let ratio = Double(bid.amount) / Double(threshold)
+            let creditPull = Double(self.me.auctionCredit - 600) / 300.0
+            let boostPull = self.isBoosted ? 0.25 : 0
+            let gildPull = bid.gilded ? 0.30 : 0
+            let priorityPull = self.priorityPlacementEnabled ? 0.20 : 0
+            let accepted = (ratio + creditPull + boostPull + gildPull + priorityPull + Double.random(in: -0.25...0.25)) >= 1.0
 
             bid.status = accepted ? .accepted : .declined
             self.outgoingBids[idx] = bid
 
             if accepted {
                 var match = Match(bid: bid, phase: .chatting)
-                // Opening Bid Script: the woman's authored opener when she set
-                // one; copycats stay on their bait line so the sting still lands.
+                // Opening Bid Script: the woman's authored opener when she set one.
                 let opener: String
-                if bid.onCopycat {
-                    opener = "Hey you 😊 so glad you bid. Quick thing — I ask for a small deposit before I give out my number. It just filters out the games, hope you get it 💕"
-                } else if let scripted = bid.woman.openingBidScript,
-                          !scripted.trimmingCharacters(in: .whitespaces).isEmpty {
+                if let scripted = bid.woman.openingBidScript,
+                   !scripted.trimmingCharacters(in: .whitespaces).isEmpty {
                     opener = scripted
                 } else {
                     opener = "Okay, you win. \(bid.woman.name) here — where are you taking me?"
@@ -1352,11 +1349,8 @@ final class AuctionStore: ObservableObject {
                 self.matches.insert(match, at: 0)
                 Haptics.success()
                 self.toastFlash("\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid!")
-                // Copycats were already revealed at bid time — no second reveal.
-                if !bid.onCopycat {
-                    self.celebrate(with: bid.woman, amount: bid.amount,
-                                   copycat: false, masterpiece: bid.qualifiesForMasterpiece)
-                }
+                self.celebrate(with: bid.woman, amount: bid.amount,
+                               copycat: false, masterpiece: bid.qualifiesForMasterpiece)
                 self.log(.bidAccepted, "\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid.")
             } else {
                 let before = self.me.auctionCredit
@@ -1401,10 +1395,8 @@ final class AuctionStore: ObservableObject {
         after(Double.random(in: 1.8...3.0)) { [weak self] in
             guard let self, let idx = self.matches.firstIndex(where: { $0.id == matchID }) else { return }
             if self.typingMatchID == matchID { self.typingMatchID = nil }
-            let line = self.matches[idx].bid.onCopycat
-                ? "Did you see my message about the deposit? It's a small thing, promise 😘"
-                : ["Thursday works for me — I know a place.", "Looking forward to this, honestly.",
-                   "I made us a reservation. Don't be late.", "Wear something you can dance in."].randomElement()!
+            let line = ["Thursday works for me — I know a place.", "Looking forward to this, honestly.",
+                        "I made us a reservation. Don't be late.", "Wear something you can dance in."].randomElement()!
             self.matches[idx].messages.append(ChatMessage(fromMe: false, text: line))
             self.matches[idx].expiresAt = nil   // the conversation is alive — clock stops
             self.save()
@@ -1417,12 +1409,8 @@ final class AuctionStore: ObservableObject {
             guard let self, let idx = self.matches.firstIndex(where: { $0.id == matchID }) else { return }
             if self.typingMatchID == matchID { self.typingMatchID = nil }
             guard self.matches[idx].phase == .chatting else { return }
-            let copycat = self.matches[idx].bid.onCopycat
-            let lines = copycat
-                ? ["Once the deposit clears we can plan everything 💕", "You still there? The deposit only takes a minute.",
-                   "I don't meet anyone without it, it's a safety thing for me 😊"]
-                : ["Looking forward to it.", "Okay tell me your worst date story — I'll trade you mine.",
-                   "Counting down, not going to lie.", "You're funnier over text than your profile let on."]
+            let lines = ["Looking forward to it.", "Okay tell me your worst date story — I'll trade you mine.",
+                         "Counting down, not going to lie.", "You're funnier over text than your profile let on."]
             self.matches[idx].messages.append(ChatMessage(fromMe: false, text: lines.randomElement()!))
             self.matches[idx].expiresAt = nil   // the conversation is alive — clock stops
             self.save()
