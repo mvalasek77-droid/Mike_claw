@@ -6,7 +6,6 @@ struct ArchetypeStoreView: View {
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
     @State private var confirming: Archetype?
-    @State private var showStore = false
 
     /// The live StoreKit price for a money tier, falling back to the baked
     /// figure when products haven't loaded.
@@ -20,7 +19,7 @@ struct ArchetypeStoreView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
-                    walletCard
+                    currentCard
                     SectionHeader(title: "Buy your rating",
                                   subtitle: "The bigger the tier, the louder the flex.")
                         .padding(.top, 4)
@@ -41,9 +40,6 @@ struct ArchetypeStoreView: View {
             .background(AppBackground())
             .navigationTitle("Status")
             .overlay { if storeKit.isWorking { workingOverlay } }
-            .sheet(isPresented: $showStore) {
-                GavelStoreView().presentationDetents([.large])
-            }
             .confirmationDialog(confirming.map { "Become a \($0.title)?" } ?? "",
                                 isPresented: Binding(get: { confirming != nil },
                                                      set: { if !$0 { confirming = nil } }),
@@ -60,10 +56,6 @@ struct ArchetypeStoreView: View {
         switch tier.purchase {
         case .free:
             Button("Remove rating") { store.buyArchetype(tier); confirming = nil }
-        case .gavels(let cost):
-            Button("Spend \(Tally.compact(cost)) Gavels") {
-                store.buyArchetype(tier); confirming = nil
-            }
         case .money(let productID, _):
             if storeKit.owns(tier) {
                 // Already paid for — non-consumables are owned forever.
@@ -87,7 +79,7 @@ struct ArchetypeStoreView: View {
 
     /// Sets expectations before someone taps a four-figure button.
     private var ladderNote: some View {
-        Text("The top four ratings are real purchases, billed by Apple — that's the point of them. Buy one once and it's yours for good; you can switch back to it any time for free. The lower ratings are paid in Gavels.")
+        Text("Every rating is a real purchase, billed by Apple — the number is the whole point. Buy one and it's yours for good; you can switch between ratings you own any time, free. Gavels don't buy status: they're for Gilded Bids, Bid Insurance and streak freezes.")
             .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 8).padding(.top, 4)
@@ -100,32 +92,26 @@ struct ArchetypeStoreView: View {
         }
     }
 
-    private var walletCard: some View {
+    /// What you're wearing now. Ratings are bought with real money, so there's
+    /// deliberately no Gavel balance on this screen — Gavels buy Gilded Bids,
+    /// Bid Insurance and streak freezes, never status.
+    private var currentCard: some View {
         GlassCard(tint: Theme.gold) {
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Your Gavels").font(.system(size: 11, weight: .bold, design: .rounded))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Your rating").font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.inkFaint)
-                    HStack(spacing: 6) {
-                        Image(systemName: "hammer.fill").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.gold)
-                        Text(Tally.compact(store.wallet)).font(.system(size: 26, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Theme.gold).contentTransition(.numericText())
-                    }
+                    ArchetypeBadge(archetype: store.me.archetype,
+                                   pending: store.me.showsPendingTrillionaire)
                 }
-                Spacer()
-                Button { showStore = true } label: {
-                    Label("Top up", systemImage: "plus")
-                        .font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundStyle(.black)
-                        .padding(.horizontal, 14).padding(.vertical, 9)
-                        .background(Capsule().fill(Theme.goldGradient))
-                }.buttonStyle(.plain)
+                Spacer(minLength: 0)
             }
-            HStack(spacing: 8) {
-                Text("Current:").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
-                ArchetypeBadge(archetype: store.me.archetype, compact: true, pending: store.me.showsPendingTrillionaire)
+            if store.me.archetype == .none {
+                Text("Unbadged. On this floor that's information too.")
+                    .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
             }
         }
-        .motion(Motion.snap, value: store.wallet)
+        .motion(Motion.snap, value: store.me.archetype)
     }
 }
 
@@ -167,14 +153,6 @@ struct ArchetypeRow: View {
                         case .free:
                             Text("Free").font(.system(size: 16, weight: .heavy, design: .rounded))
                                 .foregroundStyle(Theme.ink)
-                        case .gavels(let cost):
-                            // Gavels get the hammer; real money never does, so
-                            // the two economies can't be confused at a glance.
-                            HStack(spacing: 3) {
-                                Image(systemName: "hammer.fill").font(.system(size: 11, weight: .bold))
-                                Text(Tally.compact(cost)).font(.system(size: 16, weight: .heavy, design: .rounded))
-                            }
-                            .foregroundStyle(Theme.ink)
                         case .money:
                             Text(owned ? "Owned" : priceLabel)
                                 .font(.system(size: 16, weight: .heavy, design: .rounded))

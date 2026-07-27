@@ -20,33 +20,31 @@ enum Archetype: Int, Codable, CaseIterable, Identifiable, Comparable {
 
     var id: Int { rawValue }
 
-    /// How a tier is acquired. Two economies, deliberately:
+    /// How a tier is acquired. **Every rating is a real StoreKit purchase** —
+    /// that's the whole premise: the rating a man wears *is* what he paid for
+    /// it, so it has to be a genuine charge. Gavels are deliberately kept out
+    /// of this ladder; they're the tactical currency (Gilded Bids, Bid
+    /// Insurance, streak freezes), not a way to buy status on the cheap.
     ///
-    /// * **Gavels** — the impulse rungs. Cheap, repeatable, spent from the
-    ///   in-app wallet. This is where a normal user plays.
-    /// * **Real money (StoreKit non-consumable)** — the wealth-signalling
-    ///   rungs. The price *is* the flex, so it has to be a real charge; a
-    ///   Gavel price can never say "$9,999" honestly (the largest Gavel pack
-    ///   is $99.99, so the top tier would take 100 purchases to reach).
-    ///   Bought once, owned forever — switching back to an owned badge is free.
+    /// All eight are **non-consumables**: bought once, owned forever, and
+    /// re-wearing a rating you already own is free.
     ///
     /// Apple's IAP ceiling is **$9,999.99**, and price points above $999.99
     /// require requesting access in App Store Connect. Trillionaire sits
     /// exactly at that ceiling; Influencer and Ferrari also need the request.
-    /// Inheritance at $999.99 is a standard price point needing no approval.
+    /// Everything from Good Guy through Inheritance is a standard price point.
     enum Purchase: Hashable {
         case free
-        case gavels(Int)
         case money(productID: String, usd: Decimal)
     }
 
     var purchase: Purchase {
         switch self {
         case .none:         return .free
-        case .goodGuy:      return .gavels(500)
-        case .inAndOut:     return .gavels(1_500)
-        case .whyNot:       return .gavels(4_000)
-        case .goodJob:      return .gavels(12_000)
+        case .goodGuy:      return .money(productID: Self.productPrefix + "goodguy",     usd: 4.99)
+        case .inAndOut:     return .money(productID: Self.productPrefix + "inandout",    usd: 9.99)
+        case .whyNot:       return .money(productID: Self.productPrefix + "whynot",      usd: 19.99)
+        case .goodJob:      return .money(productID: Self.productPrefix + "goodjob",     usd: 99.99)
         case .inheritance:  return .money(productID: Self.productPrefix + "inheritance", usd: 999.99)
         case .influencer:   return .money(productID: Self.productPrefix + "influencer",  usd: 2_499.99)
         case .ferrari:      return .money(productID: Self.productPrefix + "ferrari",     usd: 4_999.99)
@@ -56,19 +54,13 @@ enum Archetype: Int, Codable, CaseIterable, Identifiable, Comparable {
 
     private static let productPrefix = "com.valasek.auctionbaby.status."
 
-    /// Gavel cost, or nil when this tier is bought with real money.
-    var gavelPrice: Int? {
-        if case .gavels(let n) = purchase { return n }
-        return nil
-    }
-
-    /// StoreKit product id, or nil when this tier is bought with Gavels.
+    /// StoreKit product id. Nil only for `.none`, which is free.
     var productID: String? {
         if case .money(let id, _) = purchase { return id }
         return nil
     }
 
-    /// Real-money price, or nil for the Gavel rungs.
+    /// Real-money price. Nil only for `.none`.
     var usd: Decimal? {
         if case .money(_, let usd) = purchase { return usd }
         return nil
@@ -92,7 +84,6 @@ enum Archetype: Int, Codable, CaseIterable, Identifiable, Comparable {
     var fallbackPriceLabel: String {
         switch purchase {
         case .free: return "Free"
-        case .gavels(let n): return Tally.compact(n)
         case .money(_, let usd):
             let f = NumberFormatter()
             f.numberStyle = .currency

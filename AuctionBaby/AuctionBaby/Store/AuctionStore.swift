@@ -483,28 +483,21 @@ final class AuctionStore: ObservableObject {
     /// Buy (or switch to) a status archetype. The price is the point — it's how
     /// a man proves he has money.
     ///
-    /// Free and Gavel rungs are spent here. The real-money rungs are *not* —
-    /// those go through StoreKit (`ArchetypeStoreView` → `storeKit.purchase`)
-    /// and land back on `equipArchetype` via the `onStatusPurchased` hook. A
-    /// money tier the user already owns re-equips free.
+    /// Every rating is a real StoreKit purchase, so this method never spends
+    /// Gavels — it only handles "wear a rating I already own" (and removing
+    /// the badge). Buying goes through `ArchetypeStoreView` →
+    /// `storeKit.purchase`, landing back on `equipArchetype` via the
+    /// `onStatusPurchased` hook once Apple confirms.
     func buyArchetype(_ archetype: Archetype) {
         guard role == .man else { return }
         guard archetype != me.archetype else { return }
         switch archetype.purchase {
         case .free:
-            equipArchetype(archetype)
-        case .gavels(let cost):
-            guard wallet >= cost else {
-                Haptics.error()
-                toastFlash("Need \(Tally.compact(cost)) Gavels for \(archetype.title). Top up.")
-                return
-            }
-            wallet -= cost
-            equipArchetype(archetype)
+            equipArchetype(archetype)   // "Remove rating" is always allowed
         case .money:
-            // Only an already-owned tier can be re-worn for free. Anything
-            // else must go through StoreKit — never hand out a $9,999 badge
-            // because a caller took the wrong branch.
+            // Only an already-owned rating can be worn for free. Anything else
+            // must go through StoreKit — never hand out a paid badge because a
+            // caller took the wrong branch.
             guard ownsArchetype(archetype) else {
                 Haptics.error()
                 toastFlash("\(archetype.title) has to be bought from the App Store first.")
@@ -537,8 +530,8 @@ final class AuctionStore: ObservableObject {
         save()
     }
 
-    /// A real-money status purchase was refunded. Drop the badge to the best
-    /// tier the user still holds so a refunded Ferrari doesn't keep flexing.
+    /// A status purchase was refunded. Drop the badge to the best rating the
+    /// user still holds so a refunded Ferrari doesn't keep flexing.
     /// `stillOwned` is asked of StoreKit (wired at app root).
     func revokeArchetype(_ archetype: Archetype, stillOwned: (Archetype) -> Bool) {
         guard me.archetype == archetype else { return }   // already moved on
@@ -547,7 +540,6 @@ final class AuctionStore: ObservableObject {
             .last { tier in
                 switch tier.purchase {
                 case .free: return true
-                case .gavels: return true        // Gavel tiers were already paid for
                 case .money: return stillOwned(tier)
                 }
             } ?? .none

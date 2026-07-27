@@ -78,6 +78,66 @@
       "type" : "Consumable"
     },
     {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "status-goodguy",
+      "localizations" : [
+        {
+          "description" : "The Good Guy rating. Yours for good.",
+          "displayName" : "Good Guy",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.status.goodguy",
+      "referenceName" : "Status Good Guy",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "status-inandout",
+      "localizations" : [
+        {
+          "description" : "The In & Out Guy rating. Yours for good.",
+          "displayName" : "In & Out Guy",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.status.inandout",
+      "referenceName" : "Status In And Out",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : false,
+      "internalID" : "status-whynot",
+      "localizations" : [
+        {
+          "description" : "The Why Not Guy rating. Yours for good.",
+          "displayName" : "Why Not Guy",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.status.whynot",
+      "referenceName" : "Status Why Not",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "99.99",
+      "familyShareable" : false,
+      "internalID" : "status-goodjob",
+      "localizations" : [
+        {
+          "description" : "The Got a Good Job rating. Yours for good.",
+          "displayName" : "Got a Good Job",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.valasek.auctionbaby.status.goodjob",
+      "referenceName" : "Status Good Job",
+      "type" : "NonConsumable"
+    },
+    {
       "displayPrice" : "999.99",
       "familyShareable" : false,
       "internalID" : "status-inheritance",

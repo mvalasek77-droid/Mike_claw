@@ -115,35 +115,45 @@ Real money flows through **StoreKit 2** only (`Services/StoreKitService.swift`,
 ### Archetypes — buy your rating
 
 The price *is* the flex: the app exists to surface whether a man has money.
-Two economies, deliberately split — the impulse rungs cost in-app currency,
-the wealth-signalling rungs cost real money, because a Gavel price can never
-say "$9,999" honestly.
+So **every rating is a real purchase** — the number under the badge is what he
+actually paid. Gavels deliberately can't buy status.
 
-| Rating | Cost | Bought with |
+| Rating | Price | Type |
 | --- | --- | --- |
 | No Rating | Free | — |
-| Good Guy | 500 Gavels | wallet |
-| In & Out Guy | 1,500 Gavels | wallet |
-| Why Not Guy | 4,000 Gavels | wallet |
-| Got a Good Job | 12,000 Gavels | wallet |
-| Inheritance Money Guy | **$999.99** | StoreKit (non-consumable) |
-| Influencer | **$2,499.99** | StoreKit (non-consumable) |
-| I Drive a Ferrari | **$4,999.99** | StoreKit (non-consumable) |
-| **Trillionaire** | **$9,999.99** | StoreKit (non-consumable) |
+| Good Guy | $4.99 | Non-consumable |
+| In & Out Guy | $9.99 | Non-consumable |
+| Why Not Guy | $19.99 | Non-consumable |
+| Got a Good Job | $99.99 | Non-consumable |
+| Inheritance Money Guy | $999.99 | Non-consumable |
+| Influencer | $2,499.99 | Non-consumable |
+| I Drive a Ferrari | $4,999.99 | Non-consumable |
+| **Trillionaire** | **$9,999.99** | Non-consumable |
 
-The four money tiers are **non-consumables**: bought once, owned forever, and
-re-wearing one you already own is free. A refund drops the badge to the best
-tier you still hold.
+All eight are **non-consumables**: bought once, owned forever, and switching
+between ratings you own is free. A refund drops the badge to the best rating
+you still hold.
 
 > **Apple's IAP ceiling is $9,999.99**, and price points above $999.99 require
 > requesting access in App Store Connect. Trillionaire sits exactly at the
-> ceiling; Influencer and Ferrari also need that request granted. Inheritance
-> at $999.99 is a standard price point needing no approval.
+> ceiling; Influencer and Ferrari also need that request granted. Everything
+> from Good Guy through Inheritance is a standard price point.
 >
 > Separately, the **$1,000,000 Masterpiece** figure lives on the *bid* side — a
 > real-world date payment settled peer-to-peer, never an IAP. Buying the
 > Trillionaire badge only unlocks the *attempt*; paying $9,999 on a confirmed
 > date is what verifies it.
+
+### Gavels — the tactical currency
+
+Gavels are bought in consumable packs ($4.99–$99.99) and earned from the daily
+claim. They buy **moves, not status**:
+
+| Spend | Cost |
+| --- | --- |
+| Gilded Bid (pins to the top of her inbox) | 250 Gavels |
+| Bid Insurance (refunded if she declines) | 200 Gavels |
+| Streak freeze (protects the daily streak) | 500 Gavels |
 
 ### Trillionaire (earned, not bought)
 

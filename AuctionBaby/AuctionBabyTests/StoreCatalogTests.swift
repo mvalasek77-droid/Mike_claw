@@ -19,17 +19,21 @@ final class StoreCatalogTests: XCTestCase {
         XCTAssertEqual(StoreKitService.gavels(for: "com.valasek.auctionbaby.unknown"), 0)
     }
 
-    /// The Gavel ladder must stay reachable: the largest pack has to cover the
-    /// most expensive *Gavel-priced* archetype. (The top four tiers are real
-    /// StoreKit purchases, deliberately outside the Gavel economy — no pack
-    /// stack could honestly reach $9,999.)
-    func testLargestPackCoversTopGavelTier() {
-        let largest = StoreKitService.gavelCatalog.map(\.gavels).max() ?? 0
-        let topGavelTier = Archetype.allCases.compactMap(\.gavelPrice).max() ?? 0
-        XCTAssertGreaterThanOrEqual(largest, topGavelTier,
-                                    "a single top pack should afford the top Gavel tier")
-        XCTAssertNil(Archetype.trillionaire.gavelPrice,
-                     "Trillionaire is a real-money purchase, not a Gavel one")
+    /// Gavels are the tactical currency — Gilded Bids, Bid Insurance, streak
+    /// freezes — and must never buy status. The smallest pack has to cover
+    /// the tactical spends, or the currency is decorative.
+    func testGavelPacksCoverTacticalSpendsButNotStatus() {
+        let smallest = StoreKitService.gavelCatalog.map(\.gavels).min() ?? 0
+        for cost in [AuctionStore.gildedBidCost,
+                     AuctionStore.bidInsuranceCost,
+                     AuctionStore.streakFreezeGavelCost] {
+            XCTAssertGreaterThanOrEqual(smallest, cost,
+                                        "the entry pack should cover every tactical spend")
+        }
+        // Every rating is a real purchase; none is Gavel-priced.
+        for tier in Archetype.allCases where tier != .none {
+            XCTAssertNotNil(tier.productID, "\(tier.title) must be a StoreKit product")
+        }
     }
 
     func testBoostProductIsDistinctFromGavels() {

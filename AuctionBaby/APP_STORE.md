@@ -74,20 +74,24 @@ character limits.
 | Paddle (Pass) | Auto-renewable | $19.99/mo |
 | Reserve (Pass) | Auto-renewable | $39.99/mo |
 | Black Card (Pass) | Auto-renewable | $99.99/mo |
+| Good Guy (status) | Non-consumable | $4.99 |
+| In & Out Guy (status) | Non-consumable | $9.99 |
+| Why Not Guy (status) | Non-consumable | $19.99 |
+| Got a Good Job (status) | Non-consumable | $99.99 |
 | Inheritance Money Guy (status) | Non-consumable | $999.99 |
 | Influencer (status) | Non-consumable | $2,499.99 |
 | I Drive a Ferrari (status) | Non-consumable | $4,999.99 |
 | Trillionaire (status) | Non-consumable | $9,999.99 |
 
-The four status tiers are the app's core premise made literal — the rating a
-man wears *is* what he paid for it. They're non-consumables: bought once,
+The eight status ratings are the app's core premise made literal — the rating
+a man wears *is* what he paid for it. They're non-consumables: bought once,
 owned forever, re-wearable free, and a refund drops the badge to the best
-tier still held.
+rating still held. Gavels (the consumable currency) buy tactical moves —
+Gilded Bids, Bid Insurance, streak freezes — never status.
 
 ⚠️ **The three above $999.99 require requesting high price points in App Store
 Connect** (Apple grants access case-by-case). Trillionaire sits exactly at
-Apple's $9,999.99 ceiling. The lower ratings (Good Guy → Got a Good Job) are
-bought with Gavels, not real money, so they're not IAPs.
+Apple's $9,999.99 ceiling.
 
 The app never processes real date payments — those are a real-world,
 person-to-person service and stay off-platform.
@@ -110,10 +114,10 @@ it is off in the default build.
 ## Review notes
 
 - **Bids** are denominated in dollars but are *letters of intent* — no charge
-  is made in the app. The lower status ratings are bought with **Gavels**, an
-  in-app currency. The four top ratings are genuine non-consumable IAPs at
-  their listed prices; the price is the product (the app's premise is that
-  what a man pays for his rating is the signal).
+  is made in the app. The eight status **ratings** are genuine non-consumable
+  IAPs at their listed prices; the price is the product (the app's premise is
+  that what a man pays for his rating is the signal). **Gavels**, the
+  consumable currency, buy tactical moves only — never status.
 - The "$1,000,000 Masterpiece" is a **real-world date payment** between two
   people, never an in-app charge.
 - The **date payment** is a real-world service settled between two people; the
