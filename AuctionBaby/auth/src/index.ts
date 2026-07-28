@@ -29,11 +29,17 @@
  *     moderation (slice 5). See SPINE_ROADMAP.md.
  *
  * Endpoints:
- *   GET  /health         — liveness + config sanity (no secrets leaked)
- *   POST /auth/apple     — exchange an Apple identity JWT for our session
- *   GET  /me             — the authed user record   [auth]
- *   POST /auth/logout    — client-side hint; also refreshes last_seen_at [auth]
- *   DELETE /me           — delete the account (GDPR/CCPA subject-delete) [auth]
+ *   GET    /health              — liveness + config sanity (no secrets leaked)
+ *   POST   /auth/apple          — exchange an Apple identity JWT for our session
+ *   GET    /me                  — the authed user record             [auth]
+ *   POST   /auth/logout         — client-side hint; refreshes last_seen [auth]
+ *   DELETE /me                  — delete the account (GDPR/CCPA)     [auth]
+ *
+ *   Slice 2 (push notifications):
+ *   POST   /devices/register    — register/upsert an APNs device token [auth]
+ *   POST   /devices/unregister  — remove a device token (sign-out)     [auth]
+ *   POST   /push/send           — dispatch a push to a userId's devices
+ *                                 (admin-only, gated by APP_SHARED_SECRET)
  */
 
 interface Env {
@@ -41,7 +47,12 @@ interface Env {
   SESSION_SECRET: string;
   APPLE_CLIENT_ID: string;         // e.g. "com.valasek.auctionbaby" (bundle id)
   SESSION_TTL_SECONDS?: string;    // default 30 days
-  APP_SHARED_SECRET?: string;      // optional; gates future /admin routes
+  APP_SHARED_SECRET?: string;      // gates admin endpoints (POST /push/send)
+
+  // ── Slice 2: APNs push (optional — absent = push send is a no-op) ─────────
+  APNS_AUTH_KEY_P8?: string;       // full PEM contents of the .p8
+  APNS_KEY_ID?: string;            // 10-char key id from Apple Developer
+  APNS_TEAM_ID?: string;           // 10-char Apple Developer team id
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -252,6 +263,12 @@ function handleHealth(env: Env): Response {
     appleClientId: env.APPLE_CLIENT_ID,
     sessionSecretConfigured: Boolean(env.SESSION_SECRET),
     dbBound: Boolean(env.DB),
+    apns: {
+      configured: Boolean(env.APNS_AUTH_KEY_P8 && env.APNS_KEY_ID && env.APNS_TEAM_ID),
+      keyIdConfigured: Boolean(env.APNS_KEY_ID),
+      teamIdConfigured: Boolean(env.APNS_TEAM_ID),
+    },
+    adminGated: Boolean(env.APP_SHARED_SECRET),
   });
 }
 
@@ -337,6 +354,227 @@ async function handleDeleteMe(request: Request, env: Env): Promise<Response> {
   return json({ ok: true, deleted: userId });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Slice 2 — Push notifications (APNs)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const APNS_HOST_PROD = "https://api.push.apple.com";
+const APNS_HOST_SANDBOX = "https://api.sandbox.push.apple.com";
+/** APNs JWTs are valid up to 60 minutes; refresh every 50 to stay comfortably
+ *  under Apple's rate limits (they 429 aggressive re-signers). */
+const APNS_JWT_TTL_MS = 50 * 60 * 1000;
+
+// ── ES256 signing (for the APNs JWT auth header) ─────────────────────────────
+
+/** Extract the raw base64 body from a PEM block (works for both PKCS#8 and
+ *  the older SEC1 EC PRIVATE KEY form; Apple ships PKCS#8). */
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  const body = pem.replace(/-----BEGIN [^-]+-----/g, "")
+                  .replace(/-----END [^-]+-----/g, "")
+                  .replace(/\s+/g, "");
+  const bin = atob(body);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+
+/** Import the .p8 as a P-256 ECDSA signing key. */
+async function importApnsKey(pem: string): Promise<CryptoKey> {
+  return await crypto.subtle.importKey(
+    "pkcs8", pemToArrayBuffer(pem),
+    { name: "ECDSA", namedCurve: "P-256" },
+    false, ["sign"],
+  );
+}
+
+/** Module-level cache — Workers keep an isolate warm across requests, so this
+ *  survives normal traffic. On a cold start we re-sign; still cheap. */
+let apnsJwtCache: { jwt: string; signedAt: number; keyId: string; teamId: string } | null = null;
+
+async function apnsJwt(env: Env): Promise<string> {
+  if (!env.APNS_AUTH_KEY_P8 || !env.APNS_KEY_ID || !env.APNS_TEAM_ID) {
+    throw new Error("APNs not configured (APNS_AUTH_KEY_P8 / APNS_KEY_ID / APNS_TEAM_ID)");
+  }
+  if (apnsJwtCache
+      && apnsJwtCache.keyId === env.APNS_KEY_ID
+      && apnsJwtCache.teamId === env.APNS_TEAM_ID
+      && Date.now() - apnsJwtCache.signedAt < APNS_JWT_TTL_MS) {
+    return apnsJwtCache.jwt;
+  }
+  const header = { alg: "ES256", kid: env.APNS_KEY_ID, typ: "JWT" };
+  const payload = { iss: env.APNS_TEAM_ID, iat: Math.floor(Date.now() / 1000) };
+  const enc = new TextEncoder();
+  const headerB64 = base64UrlEncode(enc.encode(JSON.stringify(header)));
+  const payloadB64 = base64UrlEncode(enc.encode(JSON.stringify(payload)));
+  const signingInput = `${headerB64}.${payloadB64}`;
+
+  const key = await importApnsKey(env.APNS_AUTH_KEY_P8);
+  const sigBuf = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" }, key, enc.encode(signingInput),
+  );
+  // WebCrypto returns raw r||s (64 bytes for P-256), which is what JWT
+  // ES256 expects (unlike ASN.1/DER — that would be a common footgun).
+  const sigB64 = base64UrlEncode(new Uint8Array(sigBuf));
+  const jwt = `${signingInput}.${sigB64}`;
+  apnsJwtCache = { jwt, signedAt: Date.now(), keyId: env.APNS_KEY_ID, teamId: env.APNS_TEAM_ID };
+  return jwt;
+}
+
+// ── APNs send + token pruning ────────────────────────────────────────────────
+
+interface PushPayload { title: string; body: string; data?: Record<string, unknown> }
+
+interface ApnsResult { token: string; status: number; reason?: string }
+
+/** Send ONE push to ONE device token. Returns the raw APNs response so the
+ *  caller can decide whether to prune (410 = BadDeviceToken, and 400 with
+ *  reason=Unregistered means the same thing on newer APNs versions). */
+async function apnsSend(
+  env: Env, token: string, platform: string, jwt: string, payload: PushPayload,
+): Promise<ApnsResult> {
+  const host = platform === "apns_sandbox" ? APNS_HOST_SANDBOX : APNS_HOST_PROD;
+  const body = {
+    aps: { alert: { title: payload.title, body: payload.body }, sound: "default" },
+    ...(payload.data ?? {}),
+  };
+  const res = await fetch(`${host}/3/device/${token}`, {
+    method: "POST",
+    headers: {
+      "authorization": `bearer ${jwt}`,
+      "apns-topic": env.APPLE_CLIENT_ID,
+      "apns-push-type": "alert",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  let reason: string | undefined;
+  if (!res.ok) {
+    try { reason = (await res.json() as { reason?: string }).reason; } catch {}
+  }
+  return { token, status: res.status, reason };
+}
+
+/** Dispatch a push to every device registered against `userId`. Prunes the
+ *  DB of tokens Apple tells us are dead (410 / Unregistered / BadDeviceToken)
+ *  so an old device doesn't keep getting silently retried forever. */
+async function sendPushToUser(env: Env, userId: string, payload: PushPayload) {
+  if (!env.DB) return { sent: 0, pruned: 0, results: [] as ApnsResult[] };
+  const rows = await env.DB.prepare(
+    "SELECT token, platform FROM device_tokens WHERE user_id = ?",
+  ).bind(userId).all<{ token: string; platform: string }>();
+  const tokens = rows.results ?? [];
+  if (tokens.length === 0) return { sent: 0, pruned: 0, results: [] as ApnsResult[] };
+
+  const jwt = await apnsJwt(env);
+  const results: ApnsResult[] = [];
+  const toPrune: string[] = [];
+  for (const row of tokens) {
+    const r = await apnsSend(env, row.token, row.platform, jwt, payload);
+    results.push(r);
+    // BadDeviceToken (400) and Unregistered (410) → the device unsubscribed
+    // or the token was regenerated. Anything else (auth, quota, transient) we
+    // leave in place — the next push will retry with a fresh JWT.
+    if (r.status === 410 || (r.status === 400 && (r.reason === "BadDeviceToken" || r.reason === "Unregistered"))) {
+      toPrune.push(row.token);
+    }
+  }
+  if (toPrune.length > 0) {
+    // D1 doesn't support parameterized IN(?, ?, …) reliably; do individual
+    // deletes (small N — a user has ~1-3 devices) so we don't have to build
+    // a dynamic SQL string.
+    for (const t of toPrune) {
+      await env.DB.prepare("DELETE FROM device_tokens WHERE token = ?").bind(t).run();
+    }
+  }
+  return { sent: results.filter(r => r.status < 300).length, pruned: toPrune.length, results };
+}
+
+// ── Push handlers ────────────────────────────────────────────────────────────
+
+/** POST /devices/register  { token, platform? }  [auth]
+ *  Idempotent: upserts by primary key `token`. Re-registering the same
+ *  device token under a different user quietly transfers it. */
+async function handleRegisterDevice(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+
+  const token = String(body?.token ?? "").trim();
+  const platformIn = String(body?.platform ?? "apns").trim().toLowerCase();
+  if (!token || token.length < 32 || token.length > 200) return err("token is required (hex string)");
+  const platform = platformIn === "apns_sandbox" ? "apns_sandbox" : "apns";
+
+  const now = Date.now();
+  // Upsert on the primary key so this endpoint is safe to call repeatedly.
+  await env.DB.prepare(
+    `INSERT INTO device_tokens (token, user_id, platform, created_at, last_seen_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(token) DO UPDATE SET user_id = excluded.user_id,
+                                       platform = excluded.platform,
+                                       last_seen_at = excluded.last_seen_at`,
+  ).bind(token, userId, platform, now, now).run();
+  return json({ ok: true });
+}
+
+/** POST /devices/unregister  { token }  [auth]
+ *  Only removes tokens owned by the authed user — a leaked token can't be
+ *  used to yank someone else's registration. */
+async function handleUnregisterDevice(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+
+  const token = String(body?.token ?? "").trim();
+  if (!token) return err("token is required");
+  await env.DB.prepare(
+    "DELETE FROM device_tokens WHERE token = ? AND user_id = ?",
+  ).bind(token, userId).run();
+  return json({ ok: true });
+}
+
+/** POST /push/send  { userId, title, body, data? }  [admin]
+ *  Gated by APP_SHARED_SECRET (bearer). This is the entry-point every OTHER
+ *  Worker calls when it needs to notify a user (a bid arrived, a match
+ *  accepted, a message came in). Same secret convention as the other
+ *  Workers so ops carries one string. */
+async function handleSendPush(request: Request, env: Env): Promise<Response> {
+  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
+  const auth = request.headers.get("Authorization");
+  const supplied = auth?.startsWith("Bearer ") ? auth.slice(7) : (auth ?? "");
+  if (!(await constantTimeEqual(supplied, env.APP_SHARED_SECRET))) return err("Unauthorized", 401);
+
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const userId = String(body?.userId ?? "").trim();
+  const title = String(body?.title ?? "").trim();
+  const bodyText = String(body?.body ?? "").trim();
+  if (!userId || !title || !bodyText) return err("userId, title, body are all required");
+
+  try {
+    const result = await sendPushToUser(env, userId, { title, body: bodyText, data: body?.data });
+    return json({ ok: true, ...result });
+  } catch (e: any) {
+    return err(`Push send failed: ${e.message}`, 502);
+  }
+}
+
+/** Constant-time string compare over SHA-256 digests so timing can't leak
+ *  the admin secret. */
+async function constantTimeEqual(a: string, b: string): Promise<boolean> {
+  if (!a || !b) return false;
+  const enc = new TextEncoder();
+  const [x, y] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const xv = new Uint8Array(x), yv = new Uint8Array(y);
+  let diff = 0;
+  for (let i = 0; i < xv.length; i++) diff |= xv[i] ^ yv[i];
+  return diff === 0;
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
@@ -351,6 +589,11 @@ export default {
     if (pathname === "/me" && m === "GET") return handleMe(request, env);
     if (pathname === "/me" && m === "DELETE") return handleDeleteMe(request, env);
     if (pathname === "/auth/logout" && m === "POST") return handleLogout(request, env);
+
+    // Slice 2 — push
+    if (pathname === "/devices/register" && m === "POST") return handleRegisterDevice(request, env);
+    if (pathname === "/devices/unregister" && m === "POST") return handleUnregisterDevice(request, env);
+    if (pathname === "/push/send" && m === "POST") return handleSendPush(request, env);
 
     return err("Not found", 404);
   },

@@ -25,3 +25,21 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_apple_sub ON users(apple_sub);
+
+-- ── Slice 2: push notifications ──────────────────────────────────────────────
+-- One row per (user, device). A user can have multiple devices (iPhone + iPad),
+-- and a device can only belong to one user at a time (re-registering the same
+-- token on a different user account overwrites — the previous user simply
+-- stops receiving on that device, which is what they'd expect).
+--
+-- `platform` distinguishes sandbox (dev/TestFlight-internal) from production
+-- so we hit the right APNs host. `apns` = production. `apns_sandbox` = dev.
+CREATE TABLE IF NOT EXISTS device_tokens (
+  token         TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform      TEXT NOT NULL,   -- 'apns' | 'apns_sandbox'
+  created_at    INTEGER NOT NULL,
+  last_seen_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens(user_id);

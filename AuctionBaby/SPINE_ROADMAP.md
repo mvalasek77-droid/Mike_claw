@@ -14,8 +14,8 @@ opt into it (Sign in with Apple); demo/preview users never touch it.
 
 | # | Slice | Status | What it unlocks |
 |---|---|---|---|
-| 1 | **Server-side user identity** (Sign in with Apple + D1 users) | 🚧 in progress | Every real user has a durable server identity; foundation for everything below |
-| 2 | **Push notifications** (APNs via the auth Worker) | ⏳ planned | A new bid, an accepted bid, or a message wakes the phone even when the app is closed |
+| 1 | **Server-side user identity** (Sign in with Apple + D1 users) | ✅ shipped | Every real user has a durable server identity; foundation for everything below |
+| 2 | **Push notifications** (APNs via the auth Worker) | ✅ shipped | A new bid, an accepted bid, or a message wakes the phone even when the app is closed |
 | 3 | **Real verification** (server-owned truth, vendor for liveness/ID) | ⏳ planned | The blue check *means* something; fake selfies can't get through |
 | 4 | **Matching backend** (bids/matches/messages server-side) | ⏳ planned | Two real phones actually see each other. Where safety, rate-limiting, and reports live. |
 | 5 | **Server-enforced moderation** (reports → admin queue → blocks) | ⏳ planned | User reports actually reach the admin queue; blocks enforced server-side |
@@ -27,7 +27,7 @@ build.
 
 ---
 
-## Slice 1 — Server-side user identity  🚧
+## Slice 1 — Server-side user identity  ✅
 
 **Goal:** any real user can sign in with Apple and receive a durable server
 identity (a `serverUserId` + a session token) that persists across launches,
@@ -84,21 +84,40 @@ Slice 1 shipping value on its own: **real users get real accounts**, and
 
 ---
 
-## Slice 2 — Push notifications  ⏳
+## Slice 2 — Push notifications  ✅
 
-**Trigger events:** new bid received, bid accepted, new message, date
-reserved, refund landed.
+**What shipped:**
 
-**Approach:** the auth Worker persists per-user APNs device tokens (a new
-`device_tokens` table in D1), and each other Worker calls a shared
-`sendPush(userId, payload)` helper. Uses APNs HTTP/2 with an Auth Key (.p8)
-you generate in your Apple Developer account.
+- **Auth Worker gains push:** new `device_tokens` D1 table, three new
+  endpoints — `POST /devices/register` and `POST /devices/unregister`
+  (session-authed), and `POST /push/send` (admin-gated by
+  `APP_SHARED_SECRET`) that any other Worker can call when it needs to
+  notify a user.
+- **APNs HTTP/2 dispatcher** with ES256-signed JWT auth (`.p8` key
+  imported via `wrangler secret put`), JWT cached module-scoped for ~50 min
+  per Apple's rate limits. Tokens returning `410 Unregistered` or
+  `400 BadDeviceToken` are auto-pruned so dead devices don't keep getting
+  silently retried.
+- **iOS client:** minimal `AppDelegate` (SwiftUI's only route to APNs
+  callbacks), a `PushService` singleton that requests authorization, hex-
+  encodes the device token, buffers until a session is available, and POSTs
+  to `/devices/register`. Foreground presentation shows banners so
+  in-app bids aren't silently dropped.
+- **Sign-out cleanup:** `AuthService.onSignedOut` fires
+  `PushService.onSignedOut()` while the session is still valid, so the
+  device is un-registered server-side before the token is cleared.
+- **Sandbox vs production:** DEBUG builds register as `apns_sandbox`,
+  Release builds as `apns` — the Worker picks the right APNs host per
+  token.
 
-**Founder setup:** create an APNs Auth Key, upload it as a Worker secret.
+**Trigger events wired so far:** none yet (this slice is the pipe).
+When slice 4 (matching backend) lands, each event — new bid, accept,
+message, refund — calls `POST /push/send` on the auth Worker.
 
-**Client:** `UNUserNotificationCenter.requestAuthorization`, register for
-remote notifications, POST the device token to the auth Worker on launch and
-on token change.
+**What isn't in slice 2:**
+- Deep-linking into a specific screen from a notification tap (later slice).
+- Rich media attachments / notification service extensions (later).
+- Per-notification preferences (slice 5-ish, comes with a settings screen).
 
 ---
 
@@ -179,4 +198,6 @@ them in parallel — by the time slice 4 ships, you need answers.
 
 ## Status log
 
-- **2026-07-28** — Roadmap written. Slice 1 in progress.
+- **2026-07-28** — Roadmap written.
+- **2026-07-28** — Slice 1 shipped (SIWA + D1 users).
+- **2026-07-28** — Slice 2 shipped (push notifications).

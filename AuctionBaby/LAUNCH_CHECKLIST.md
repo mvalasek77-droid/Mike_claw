@@ -138,6 +138,64 @@ already wired via `DELETE /me`; a UI to trigger it will land with a settings
 screen). Update your Privacy Policy to disclose Apple-issued email/name +
 last-seen timestamp as "data collected for authentication."
 
+## Phase 2.6 — Spine Slice 2: Push notifications — ~30 min
+
+Extends the same auth Worker. Requires Phase 2.5 done first (device tokens
+are FK'd to `users.id`; the DELETE cascade cleans them up on account delete).
+
+- [ ] In your Apple Developer account → **Keys** → **+** → check **Apple
+      Push Notifications service (APNs)** → download the `.p8` file. Note the
+      **Key ID** (10 chars) shown after creation, and confirm your **Team ID**
+      (in the top right of the Developer portal).
+- [ ] In Xcode → Signing & Capabilities → **+ Capability → Push
+      Notifications**. Rebuild.
+- [ ] ⚙️ Upload the `.p8` and set the two ids as Worker secrets:
+      ```bash
+      cd AuctionBaby/auth
+      wrangler secret put APNS_AUTH_KEY_P8 < ~/Downloads/AuthKey_XXXXXXXXXX.p8
+      wrangler secret put APNS_KEY_ID     # paste the 10-char Key ID
+      wrangler secret put APNS_TEAM_ID    # paste your 10-char Team ID
+      wrangler secret put APP_SHARED_SECRET   # any long random string — gates /push/send
+      ```
+- [ ] ⚙️ Re-apply the schema to pick up the `device_tokens` table:
+      ```bash
+      wrangler d1 execute auctionbaby-users --file=schema.sql
+      ```
+      (Safe to re-run; every CREATE is `IF NOT EXISTS`.)
+- [ ] ⚙️ Redeploy: `wrangler deploy` (or `--env staging`).
+- [ ] ⚙️ Sanity-check the Worker sees everything:
+      ```bash
+      curl <auth-worker-url>/health
+      ```
+      The `apns.configured` field should be `true`.
+- [ ] Verify on device: fresh install → sign in with Apple → iOS prompts
+      for notification permission → tap Allow. The device token should be
+      posted; you can eyeball it by running:
+      ```bash
+      wrangler d1 execute auctionbaby-users --command="SELECT COUNT(*) FROM device_tokens"
+      ```
+      after the sign-in.
+- [ ] End-to-end test push (fire from your laptop to your own phone):
+      ```bash
+      # grab your userId from the D1 users table (SELECT id FROM users)
+      curl -X POST <auth-worker-url>/push/send \
+        -H "Authorization: Bearer <APP_SHARED_SECRET>" \
+        -H "Content-Type: application/json" \
+        -d '{"userId":"<YOUR_USER_ID>","title":"Auction Baby","body":"Push is live."}'
+      ```
+      A banner should land in seconds. The response body shows
+      `{ ok, sent, pruned, results }` — `sent >= 1` means it landed.
+
+**Sandbox vs production:** DEBUG builds (Xcode Run) register as
+`apns_sandbox` and hit `api.sandbox.push.apple.com`. Release/TestFlight/
+App Store builds register as `apns` and hit `api.push.apple.com`. Same .p8
+key works for both — Apple keys are environment-agnostic. This is handled
+automatically; nothing to configure.
+
+**Legal note (append to Privacy Policy):** you now also store an APNs
+device token (opaque 64-char hex, no PII) with a `platform` and timestamps.
+Disclosure category: "data collected for functionality (notifications)."
+
 ## Phase 3 — App Store Connect — ~2 hours
 
 - [ ] Create the app record: bundle id `com.valasek.auctionbaby`, name

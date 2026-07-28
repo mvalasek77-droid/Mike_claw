@@ -11,6 +11,12 @@ struct AuctionBabyApp: App {
     // at app root so onboarding, settings, and every later slice observe the
     // same auth state. Falls back to no-op when AB_AUTH_URL isn't configured.
     @StateObject private var auth = AuthService()
+    // Slice 2: push notifications. Singleton because AppDelegate needs a
+    // stable reference before SwiftUI @StateObject wiring has run.
+    @StateObject private var push = PushService.shared
+    /// Minimal UIKit AppDelegate — the only way to receive APNs device tokens
+    /// in a SwiftUI app. Its sole job is to forward the token to PushService.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -20,9 +26,14 @@ struct AuctionBabyApp: App {
                 .environmentObject(storeKit)
                 .environmentObject(backend)
                 .environmentObject(auth)
+                .environmentObject(push)
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .task {
+                    // Sign-out → un-register the APNs device token, so a
+                    // signed-out user never keeps receiving pushes on their
+                    // still-installed app.
+                    auth.onSignedOut = { [weak push] in await push?.onSignedOut() }
                     storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
                     storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
                     storeKit.onBoost = { [weak store] in store?.activateBoost() }

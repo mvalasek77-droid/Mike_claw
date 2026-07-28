@@ -6,6 +6,7 @@ import AuthenticationServices
 struct OnboardingView: View {
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var auth: AuthService
+    @EnvironmentObject private var push: PushService
 
     @State private var role: Role?
     @State private var name = ""
@@ -312,6 +313,12 @@ struct OnboardingView: View {
                        let n = user.name, !n.isEmpty {
                         name = n
                     }
+                    // Slice 2 — ask for push permission now that we have a
+                    // server identity to attach the device token to. If they
+                    // deny, no-op; if they allow, PushService POSTs the
+                    // registration as soon as APNs hands us the token.
+                    await push.requestAuthorizationIfNeeded()
+                    await push.onSignedIn()
                 }
             }
         case .failure(let error):

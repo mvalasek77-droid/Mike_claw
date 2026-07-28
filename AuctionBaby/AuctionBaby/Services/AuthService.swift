@@ -28,6 +28,11 @@ final class AuthService: ObservableObject {
     /// The last error string surfaced to the UI. Cleared on the next attempt.
     @Published var lastError: String?
 
+    /// Called after a successful `signOut()` (or `deleteAccount()`), *after*
+    /// the local Keychain state has been cleared. Wired at app root so
+    /// PushService can unregister its APNs token without importing us.
+    var onSignedOut: (() async -> Void)?
+
     private var sessionToken: String? {
         get { SecureStore.string(forKey: Self.tokenKey) }
         set { SecureStore.setString(newValue, forKey: Self.tokenKey) }
@@ -116,8 +121,13 @@ final class AuthService: ObservableObject {
     }
 
     /// Sign out on this device (no server-side revocation in slice 1 — see
-    /// the Worker's README on stateless-session tradeoffs).
+    /// the Worker's README on stateless-session tradeoffs). The `onSignedOut`
+    /// hook fires AFTER local state is cleared, so callers like PushService
+    /// can do their own cleanup with the session still readable.
     func signOut() async {
+        // Push-service unregister runs while the session is still valid, so it
+        // can authenticate the DELETE. Do this before clearing the token.
+        await onSignedOut?()
         // Best-effort ping; ignore failures. What matters is the local drop.
         if isEnabled, sessionToken != nil {
             _ = await request("/auth/logout", method: "POST", body: EmptyBody?.none,
@@ -131,6 +141,7 @@ final class AuthService: ObservableObject {
     /// leave the user "signed in but their record is gone."
     @discardableResult
     func deleteAccount() async -> Bool {
+        await onSignedOut?()
         guard isEnabled, sessionToken != nil else { signOutLocally(); return true }
         let result = await request("/me", method: "DELETE", body: EmptyBody?.none,
                                     auth: true, as: EmptyResponse.self)

@@ -3,20 +3,29 @@ main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
 # ── Secrets (never committed) — set once with `wrangler secret put <NAME>`: ──
-#   SESSION_SECRET      long random string used to HMAC-sign session tokens.
-#                       ROTATING THIS INVALIDATES EVERY EXISTING SESSION.
-#   APP_SHARED_SECRET   optional; if set, admin endpoints (e.g. /admin/users)
-#                       require it in the Authorization header. Same convention
-#                       as the other Workers so ops uses one secret.
+#   SESSION_SECRET       long random string used to HMAC-sign session tokens.
+#                        ROTATING THIS INVALIDATES EVERY EXISTING SESSION.
+#   APP_SHARED_SECRET    gates the admin push-send endpoint (POST /push/send).
+#                        Same convention as the other Workers so ops uses ONE
+#                        secret across every backend.
+#   APNS_AUTH_KEY_P8     Apple Push Auth Key contents (multi-line PEM,
+#                        -----BEGIN PRIVATE KEY-----…). Get this .p8 from
+#                        Apple Developer → Keys → + → APNs. Upload it via:
+#                          wrangler secret put APNS_AUTH_KEY_P8 < AuthKey_XXXX.p8
+#                        Apple lets you have max 2 active keys — rotate by
+#                        putting the new secret, then revoking the old on Apple.
+#   APNS_KEY_ID          10-char id printed alongside the .p8 (e.g. "ABC123DEFG")
+#   APNS_TEAM_ID         Your 10-char Apple Developer team id
 #
-# The Apple identity JWT is verified against Apple's PUBLIC JWKS
-# (https://appleid.apple.com/auth/keys) — no client-secret round-trip is
-# needed for the identity-token flow, so nothing Apple-side goes here.
+# The Apple IDENTITY JWT is verified against Apple's PUBLIC JWKS
+# (https://appleid.apple.com/auth/keys) — no client-secret needed for that.
+# The APNs JWT we SEND is signed with the .p8 above (ES256).
 
 [vars]
-# The app's bundle id, checked as the `aud` claim on the Apple identity JWT.
-# If it doesn't match, verification fails — this is the single check that
-# guarantees a token wasn't issued to a different app.
+# The app's bundle id, checked as the `aud` claim on the Apple identity JWT
+# AND used as the `apns-topic` on push sends. If it doesn't match either,
+# both flows fail — this is the single check that guarantees a token wasn't
+# issued to (or a push wasn't intended for) a different app.
 APPLE_CLIENT_ID = "com.valasek.auctionbaby"
 # JWTs older than SESSION_TTL_SECONDS are rejected. Balance UX (long enough
 # that users don't re-auth constantly) against blast radius on a leaked token.
