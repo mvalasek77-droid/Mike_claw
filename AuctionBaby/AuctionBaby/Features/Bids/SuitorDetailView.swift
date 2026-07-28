@@ -6,8 +6,20 @@ import SwiftUI
 struct SuitorDetailView: View {
     let bid: Bid
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var matching: MatchingService
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
+
+    // Slice 4b1b: route through the matching Worker when the bid came from
+    // the real inbox; fall back to the sim `accept`/`decline` otherwise.
+    private func doAccept() {
+        Task { await store.acceptRemote(bid, matching: matching) }
+        dismiss()
+    }
+    private func doDecline() {
+        Task { await store.declineRemote(bid, matching: matching) }
+        dismiss()
+    }
 
     private var man: Profile { bid.man }
     private var accepted: Bool { bid.status == .accepted }
@@ -39,9 +51,7 @@ struct SuitorDetailView: View {
             }
             if bid.status == .pending {
                 HStack(spacing: 12) {
-                    GhostButton(title: "Let it fade", systemImage: "xmark") {
-                        store.decline(bid); dismiss()
-                    }
+                    GhostButton(title: "Let it fade", systemImage: "xmark") { doDecline() }
                     PrimaryButton(title: "Nod back", systemImage: "hand.wave.fill",
                                   gradient: Theme.roseGradient) {
                         store.nodAtWhisper(bid); dismiss()
@@ -170,11 +180,9 @@ struct SuitorDetailView: View {
         .safeAreaInset(edge: .bottom) {
             if bid.status == .pending {
                 HStack(spacing: 12) {
-                    GhostButton(title: "Pass", systemImage: "xmark") { store.decline(bid); dismiss() }
+                    GhostButton(title: "Pass", systemImage: "xmark") { doDecline() }
                     PrimaryButton(title: "Accept \(Money.compact(bid.amount))", systemImage: "checkmark",
-                                  gradient: Theme.roseGradient) {
-                        store.accept(bid); dismiss()
-                    }
+                                  gradient: Theme.roseGradient) { doAccept() }
                 }
                 .screenPadding().padding(.bottom, 8)
                 .background(LinearGradient(colors: [.clear, Theme.bg], startPoint: .top, endPoint: .bottom))

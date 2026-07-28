@@ -4,16 +4,24 @@ import SwiftUI
 /// deadbeat score, reviews — but his photo stays locked until she accepts.
 struct IncomingBidsView: View {
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var matching: MatchingService
+    @EnvironmentObject private var auth: AuthService
     @State private var detail: Bid?
     @State private var showSummon = false
     @State private var showActivity = false
 
+    /// The inbox source — `remoteIncomingBids` when the woman is signed in
+    /// with the matching Worker configured (slice 4b1b), otherwise the sim
+    /// `incomingBids` (what Demo Mode uses).
+    private var source: [Bid] {
+        store.isRemoteInbox ? store.remoteIncomingBids : store.incomingBids
+    }
     private var pending: [Bid] {
-        store.incomingBids.filter { $0.status == .pending }
+        source.filter { $0.status == .pending }
             .sorted { ($0.gilded ? 1 : 0, $0.amount) > ($1.gilded ? 1 : 0, $1.amount) }
     }
     private var resolved: [Bid] {
-        store.incomingBids.filter { $0.status != .pending }
+        source.filter { $0.status != .pending }
     }
 
     var body: some View {
@@ -26,7 +34,9 @@ struct IncomingBidsView: View {
                     DailyClaimCard()
                     if pending.isEmpty && resolved.isEmpty {
                         EmptyStateView(icon: "hand.raised", title: "No bids yet",
-                                       message: "Bidders are finding their nerve. Summon one to see how it works.")
+                                       message: store.isRemoteInbox
+                                            ? "Bidders will land here when they place a real bid. Pull down to check for new ones."
+                                            : "Bidders are finding their nerve. Summon one to see how it works.")
                     }
                     ForEach(Array(pending.enumerated()), id: \.element.id) { i, bid in
                         Button { detail = bid } label: { BidRow(bid: bid) }.buttonStyle(.plain)
@@ -60,6 +70,14 @@ struct IncomingBidsView: View {
                     .presentationBackground(.ultraThinMaterial)
             }
             .sheet(isPresented: $showActivity) { ActivityView() }
+            // Slice 4b1b — pull the real inbox from the matching Worker on
+            // appear and via pull-to-refresh. No-op for Demo Mode / not-signed-in.
+            .task(id: auth.serverUserId) {
+                await store.refreshRemoteInbox(matching: matching)
+            }
+            .refreshable {
+                await store.refreshRemoteInbox(matching: matching)
+            }
         }
     }
 
@@ -216,13 +234,17 @@ struct BidRow: View {
                         }
                     } else {
                         HStack(spacing: 10) {
-                            Button { store.decline(bid) } label: {
+                            Button {
+                                Task { await store.declineRemote(bid, matching: matching) }
+                            } label: {
                                 Label("Pass", systemImage: "xmark")
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                                     .foregroundStyle(Theme.inkSoft).frame(maxWidth: .infinity).padding(.vertical, 11)
                                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                             }.buttonStyle(.plain)
-                            Button { store.accept(bid) } label: {
+                            Button {
+                                Task { await store.acceptRemote(bid, matching: matching) }
+                            } label: {
                                 Label("Accept", systemImage: "checkmark")
                                     .font(.system(size: 14, weight: .heavy, design: .rounded))
                                     .foregroundStyle(.black).frame(maxWidth: .infinity).padding(.vertical, 11)

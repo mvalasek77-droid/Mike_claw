@@ -60,6 +60,18 @@ final class AuctionStore: ObservableObject {
     /// user whose fetch returned zero real profiles stays on the sim so the
     /// UI isn't blank while the platform is bootstrapping.
     @Published private(set) var isRemoteFloor: Bool = false
+
+    /// Slice 4b1b — real bids in a signed-in woman's inbox, fetched from the
+    /// matching Worker's `GET /bids/incoming`. Populated by
+    /// `refreshRemoteInbox(matching:)` on foreground/appear + when a
+    /// bid-received push wakes the app. Empty otherwise → UI falls back to
+    /// the sim `incomingBids` (what Demo Mode uses).
+    @Published var remoteIncomingBids: [Bid] = []
+    /// Flipped once a signed-in user's fetch has been performed; then the
+    /// inbox UI reads from `remoteIncomingBids` even when it's empty (a signed
+    /// in user with zero real bids should see an empty inbox, not seeded sim
+    /// bids). Demo Mode + local-only sessions never flip this.
+    @Published private(set) var isRemoteInbox: Bool = false
     @Published var bidders: [Profile] = []      // the pool of men (suitors) — seeds the inbox
     @Published var incomingBids: [Bid] = []     // woman's inbox
     @Published var outgoingBids: [Bid] = []     // man's placed bids
@@ -637,6 +649,44 @@ final class AuctionStore: ObservableObject {
         let converted = page.profiles.map(Profile.init(from:))
         remoteFloor = converted
         isRemoteFloor = !converted.isEmpty
+    }
+
+    // MARK: - Remote inbox (slice 4b1b)
+
+    /// Pull the woman's real inbox (`GET /bids/incoming`) from the matching
+    /// Worker. Called from `IncomingBidsView.task` on appear, on foreground,
+    /// and when a `bid.received` push wakes the app.
+    ///
+    /// Demo Mode + local-only sessions are silent no-ops (they keep their
+    /// seeded sim bids). For a signed-in woman: the fetch always flips
+    /// `isRemoteInbox = true` — an empty real inbox is legitimate ("no bids
+    /// yet"), and we don't want stale sim bids leaking into it.
+    func refreshRemoteInbox(matching: MatchingService) async {
+        guard !demoMode, matching.isEnabled, role == .woman else { return }
+        let result = await matching.refreshIncoming()
+        guard case .success(let list) = result else { return }
+        // Direction is `.inbox` here — I'm the lot, peers are the bidders.
+        remoteIncomingBids = list.map { Bid(from: $0, mine: me, direction: .inbox) }
+        isRemoteInbox = true
+    }
+
+    /// Route accept through the matching Worker when the row is remote (came
+    /// from `remoteIncomingBids`). Falls through to the sim `accept(_:)` for
+    /// local rows so Demo Mode + backward compat still work.
+    func acceptRemote(_ bid: Bid, matching: MatchingService) async {
+        guard isRemoteInbox else { accept(bid); return }
+        // Optimistic UI: drop from the visible inbox immediately.
+        remoteIncomingBids.removeAll { $0.id == bid.id }
+        Haptics.commit()
+        _ = await matching.accept(bidId: bid.id.uuidString.lowercased())
+        // TODO(4b1c/4b1d): pull the resulting match into `matches` here.
+    }
+
+    func declineRemote(_ bid: Bid, matching: MatchingService) async {
+        guard isRemoteInbox else { decline(bid); return }
+        remoteIncomingBids.removeAll { $0.id == bid.id }
+        Haptics.tap()
+        _ = await matching.decline(bidId: bid.id.uuidString.lowercased())
     }
 
     // MARK: - Web Gavel shop sync (Stripe consumables Worker)

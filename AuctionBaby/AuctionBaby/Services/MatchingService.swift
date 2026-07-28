@@ -67,6 +67,11 @@ final class MatchingService: ObservableObject {
         return result
     }
 
+    // ── Peer profile decoding note ────────────────────────────────────────────
+    // `/bids/incoming` returns `bidder` on each row; `/bids/outgoing` returns
+    // `lot`. Both decode into `RemoteBid.peer` — the receiving-side interpretation
+    // is unambiguous per endpoint, so we don't duplicate the field.
+
     func accept(bidId: String) async -> ServiceResult<RemoteMatch> {
         struct Response: Decodable { let match: RemoteMatch }
         return await post("/bids/\(bidId)/accept", body: [:], as: Response.self).map(\.match)
@@ -177,6 +182,12 @@ final class MatchingService: ObservableObject {
 // MARK: - Wire shapes (mirror the Worker's public*() functions)
 
 /// The public bid shape returned by the matching Worker.
+///
+/// `peer` is the OTHER party's minimal profile snapshot, embedded by the
+/// Worker on `/bids/incoming` (as `bidder`) and `/bids/outgoing` (as `lot`).
+/// Which one is present is unambiguous per endpoint, so we normalize them
+/// into a single `peer` field on decode — the receiving side already knows
+/// whether it's looking at inbox or outbox.
 struct RemoteBid: Codable, Identifiable, Equatable {
     let id: String
     let bidderId: String
@@ -190,6 +201,64 @@ struct RemoteBid: Codable, Identifiable, Equatable {
     let promptRef: String?
     let createdAt: Double
     let resolvedAt: Double?
+    /// The other party's minimal public snapshot, when the endpoint that
+    /// returned this bid was scoped to a specific side. Nil in contexts where
+    /// the Worker didn't ship it (e.g. a plain `POST /bids` response).
+    let peer: RemotePeer?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, bidderId, lotId, amount, note, status, gilded, insured
+        case isWhisper, promptRef, createdAt, resolvedAt
+        case bidder, lot   // synonyms in the wire; normalized into `peer`
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        bidderId = try c.decode(String.self, forKey: .bidderId)
+        lotId = try c.decode(String.self, forKey: .lotId)
+        amount = try c.decode(Int.self, forKey: .amount)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
+        status = try c.decode(String.self, forKey: .status)
+        gilded = try c.decode(Bool.self, forKey: .gilded)
+        insured = try c.decode(Bool.self, forKey: .insured)
+        isWhisper = try c.decode(Bool.self, forKey: .isWhisper)
+        promptRef = try c.decodeIfPresent(String.self, forKey: .promptRef)
+        createdAt = try c.decode(Double.self, forKey: .createdAt)
+        resolvedAt = try c.decodeIfPresent(Double.self, forKey: .resolvedAt)
+        peer = try c.decodeIfPresent(RemotePeer.self, forKey: .bidder)
+            ?? c.decodeIfPresent(RemotePeer.self, forKey: .lot)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(bidderId, forKey: .bidderId)
+        try c.encode(lotId, forKey: .lotId)
+        try c.encode(amount, forKey: .amount)
+        try c.encodeIfPresent(note, forKey: .note)
+        try c.encode(status, forKey: .status)
+        try c.encode(gilded, forKey: .gilded)
+        try c.encode(insured, forKey: .insured)
+        try c.encode(isWhisper, forKey: .isWhisper)
+        try c.encodeIfPresent(promptRef, forKey: .promptRef)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encodeIfPresent(resolvedAt, forKey: .resolvedAt)
+        try c.encodeIfPresent(peer, forKey: .bidder)
+    }
+}
+
+/// The minimal profile snapshot embedded on `/bids/incoming` (as `bidder`)
+/// and `/bids/outgoing` (as `lot`). Just enough for the UI to render the
+/// row without a per-item profile round-trip.
+struct RemotePeer: Codable, Equatable, Hashable {
+    let id: String
+    let name: String?
+    let hue: Double?
+    let archetype: String?
+    let verifiedAt: Double?
+
+    var isVerified: Bool { verifiedAt != nil }
 }
 
 struct RemoteMatch: Codable, Identifiable, Equatable {

@@ -275,24 +275,74 @@ async function handlePlaceBid(request: Request, env: Env): Promise<Response> {
   return json({ bid: publicBid(bid) }, 201);
 }
 
-/** GET /bids/incoming  [auth]  — my pending inbox, newest first. */
+/** Minimal profile fields we ship inline with a bid so the UI can render
+ *  "who's bidding" without a per-row round-trip. `verified_at` from `users`
+ *  drives the blue check. `name` may be null before the peer sets a profile. */
+interface PeerRow {
+  peer_id: string;
+  peer_name: string | null;
+  peer_hue: number | null;
+  peer_archetype: string | null;
+  peer_verified_at: number | null;
+}
+
+function publicPeer(r: PeerRow) {
+  return {
+    id: r.peer_id,
+    name: r.peer_name,
+    hue: r.peer_hue,
+    archetype: r.peer_archetype,
+    verifiedAt: r.peer_verified_at,
+  };
+}
+
+/** GET /bids/incoming  [auth]  — my pending inbox, newest first. Each row
+ *  ships a minimal `bidder` profile snapshot (LEFT JOIN) so the UI can render
+ *  who's bidding without a per-row profile fetch. */
 async function handleIncoming(request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
   const rows = await env.DB.prepare(
-    "SELECT * FROM bids WHERE lot_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 100",
-  ).bind(userId).all<BidRow>();
-  return json({ bids: (rows.results ?? []).map(publicBid) });
+    `SELECT b.*,
+            b.bidder_id AS peer_id,
+            p.name      AS peer_name,
+            p.hue       AS peer_hue,
+            p.archetype AS peer_archetype,
+            u.verified_at AS peer_verified_at
+       FROM bids b
+       LEFT JOIN profiles p ON p.user_id = b.bidder_id
+       LEFT JOIN users u    ON u.id      = b.bidder_id
+      WHERE b.lot_id = ? AND b.status = 'pending'
+      ORDER BY b.created_at DESC LIMIT 100`,
+  ).bind(userId).all<BidRow & PeerRow>();
+  const results = rows.results ?? [];
+  return json({
+    bids: results.map((r) => ({ ...publicBid(r), bidder: publicPeer(r) })),
+  });
 }
 
-/** GET /bids/outgoing  [auth]  — my outgoing, newest first. */
+/** GET /bids/outgoing  [auth]  — my outgoing, newest first. Symmetric to
+ *  `/bids/incoming`: each row ships a minimal `lot` profile snapshot. */
 async function handleOutgoing(request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
   const rows = await env.DB.prepare(
-    "SELECT * FROM bids WHERE bidder_id = ? ORDER BY created_at DESC LIMIT 100",
-  ).bind(userId).all<BidRow>();
-  return json({ bids: (rows.results ?? []).map(publicBid) });
+    `SELECT b.*,
+            b.lot_id    AS peer_id,
+            p.name      AS peer_name,
+            p.hue       AS peer_hue,
+            p.archetype AS peer_archetype,
+            u.verified_at AS peer_verified_at
+       FROM bids b
+       LEFT JOIN profiles p ON p.user_id = b.lot_id
+       LEFT JOIN users u    ON u.id      = b.lot_id
+      WHERE b.bidder_id = ?
+      ORDER BY b.created_at DESC LIMIT 100`,
+  ).bind(userId).all<BidRow & PeerRow>();
+  const results = rows.results ?? [];
+  return json({
+    bids: results.map((r) => ({ ...publicBid(r), lot: publicPeer(r) })),
+  });
 }
 
 /** POST /bids/:id/accept  [auth]  — the LOT accepts. Creates a match. */
