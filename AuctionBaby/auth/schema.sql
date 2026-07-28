@@ -66,3 +66,56 @@ CREATE TABLE IF NOT EXISTS device_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens(user_id);
+
+-- ── Slice 4: matching backend ────────────────────────────────────────────────
+-- Bids, matches, and messages — the "two phones actually see each other" layer.
+-- Written to by the matching Worker (AuctionBaby/matching/), which shares this
+-- D1 database with the auth Worker (single source of truth for user identity).
+CREATE TABLE IF NOT EXISTS bids (
+  id           TEXT PRIMARY KEY,
+  bidder_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  lot_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount       INTEGER NOT NULL,
+  note         TEXT,
+  status       TEXT NOT NULL DEFAULT 'pending',   -- pending | accepted | declined | withdrawn
+  gilded       INTEGER NOT NULL DEFAULT 0,        -- 0/1 bool
+  insured      INTEGER NOT NULL DEFAULT 0,        -- 0/1 bool
+  is_whisper   INTEGER NOT NULL DEFAULT 0,        -- 0/1 bool
+  prompt_ref   TEXT,                              -- optional quote of her prompt answer
+  created_at   INTEGER NOT NULL,
+  resolved_at  INTEGER
+);
+-- The inbox query — "her pending bids, newest first" — hits this hard.
+CREATE INDEX IF NOT EXISTS idx_bids_lot_status ON bids(lot_id, status, created_at DESC);
+-- Bidder's outgoing history.
+CREATE INDEX IF NOT EXISTS idx_bids_bidder ON bids(bidder_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS matches (
+  id           TEXT PRIMARY KEY,
+  -- One accepted bid = one match. UNIQUE enforces that on the DB, not just app.
+  bid_id       TEXT NOT NULL UNIQUE REFERENCES bids(id) ON DELETE CASCADE,
+  bidder_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  lot_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount       INTEGER NOT NULL,
+  phase        TEXT NOT NULL DEFAULT 'chatting', -- chatting | dateDone | closed
+  created_at   INTEGER NOT NULL,
+  -- Bumble-style 24h freshness clock; cleared on the receiver's first reply.
+  expires_at   INTEGER,
+  -- Slice 3-adjacent — the "Reserve the date" fee state, if paid.
+  reserved_amount_cents  INTEGER,
+  reserved_at            INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_matches_bidder ON matches(bidder_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_matches_lot ON matches(lot_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id           TEXT PRIMARY KEY,
+  match_id     TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  from_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text         TEXT NOT NULL,
+  created_at   INTEGER NOT NULL,
+  -- When the OTHER side loaded messages past this one (drives read receipts).
+  seen_at      INTEGER
+);
+-- The chat-view query — "messages in this match, oldest first" — is the hot path.
+CREATE INDEX IF NOT EXISTS idx_messages_match ON messages(match_id, created_at);

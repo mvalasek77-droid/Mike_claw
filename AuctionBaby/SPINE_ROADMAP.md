@@ -17,7 +17,7 @@ opt into it (Sign in with Apple); demo/preview users never touch it.
 | 1 | **Server-side user identity** (Sign in with Apple + D1 users) | ✅ shipped | Every real user has a durable server identity; foundation for everything below |
 | 2 | **Push notifications** (APNs via the auth Worker) | ✅ shipped | A new bid, an accepted bid, or a message wakes the phone even when the app is closed |
 | 3 | **Real verification** (server-owned truth, vendor for liveness/ID) | ✅ shipped | The blue check *means* something; fake selfies can't get through |
-| 4 | **Matching backend** (bids/matches/messages server-side) | ⏳ planned | Two real phones actually see each other. Where safety, rate-limiting, and reports live. |
+| 4 | **Matching backend** (bids/matches/messages server-side) | 🔨 4a shipped (data plane); 4b UI migration next | Two real phones actually see each other. Where safety, rate-limiting, and reports live. |
 | 5 | **Server-enforced moderation** (reports → admin queue → blocks) | ⏳ planned | User reports actually reach the admin queue; blocks enforced server-side |
 
 Rough scope per slice: **1–4 focused code sessions of mine + a few hours of
@@ -165,21 +165,65 @@ making the first successful pass free-forever per user.
 
 ---
 
-## Slice 4 — Matching backend  ⏳ (the big one)
+## Slice 4 — Matching backend  🔨
 
-Everything the app does with `matches`, `outgoingBids`, `incomingBids`,
-`messages` becomes a server round-trip. This is where the app finally
-becomes multiplayer.
+The big one. Broken into three sub-slices:
 
-**Approach:**
-- Durable Objects for per-user inbox + per-match chat room (real-time
-  fan-out to two devices via WebSocket).
-- D1 for the durable record of bids/matches/reviews (source of truth).
-- Rate-limiting: bids per hour, messages per minute (spam control).
-- The existing on-device `AuctionStore` becomes a **cache + optimistic UI
-  layer** over the server — its logic doesn't change, just its source.
+### 4a — Data plane  ✅
 
-**Scope estimate:** 3–4 focused sessions plus a real test with two phones.
+**What shipped:**
+
+- **New Cloudflare Worker** at `AuctionBaby/matching/`, sharing the
+  `auctionbaby-users` D1 with the auth Worker so `bidder_id` / `lot_id` are
+  foreign keys into `users` — one identity, one database.
+- **Schema:** three tables — `bids`, `matches`, `messages`. Indexed for the
+  hot paths (her pending inbox, his outgoing history, chat scrollback).
+- **Endpoints, all session-authed:**
+  - Bids: `POST /bids`, `GET /bids/incoming`, `GET /bids/outgoing`,
+    `POST /bids/:id/{accept,decline,withdraw}`.
+  - Matches: `GET /matches`, `GET /matches/:id`,
+    `POST /matches/:id/messages`, `.../mark-seen`, `.../mark-date-done`.
+- **Stateless auth** via the same HMAC session tokens the auth Worker
+  issues — shared `SESSION_SECRET`, no cross-Worker round-trip per request.
+- **Push triggers** for every event that matters to the other party (bid
+  received, bid accepted, whisper nodded, message received, date-done
+  advanced) — dispatched to the auth Worker's `/push/send`, so the
+  notification pipe from slice 2 is the single owner of APNs.
+- **Server-side guards:** ownership check on every match-scoped write,
+  UNIQUE(bid_id) on matches (double-tap accept can't dupe), self-bid
+  rejected, 1B amount ceiling as defense-in-depth.
+- **Client `MatchingService`:** typed calls for every endpoint, injected at
+  app root. Doesn't yet replace the on-device sim — this is the plumbing.
+
+**Verifiable today:** the full bid → accept → message flow runs
+end-to-end via curl between two signed-in users, and pushes wake both
+phones. See `AuctionBaby/matching/README.md` for the curl script.
+
+### 4b — UI migration  ⏳ (next slice)
+
+Wire the SwiftUI screens (`AuctionFeedView`, `IncomingBidsView`, `BidSheet`,
+`ChatView`, `MatchesView`) to consume `MatchingService` for signed-in users.
+The existing on-device sim stays as the fallback for Demo Mode + local-only
+sessions, so a fresh checkout still works.
+
+Rough shape:
+- `AuctionStore` gets a `RemoteMode` flag: when true (signed-in + Worker
+  wired), reads come from `MatchingService` and writes route through it
+  optimistically (with rollback on failure).
+- A **browse-other-users floor endpoint** — the app currently uses
+  `SampleData.floor()`; real multiplayer needs a `GET /users/floor`
+  paginated feed of real signed-in women. Small addition to the auth
+  Worker.
+- Refresh-on-foreground per screen (paired with push nudges from 4a).
+
+### 4c — Real-time + safety hardening  ⏳ (after 4b)
+
+- **Durable Objects** for per-user inbox + per-match chat room →
+  WebSocket fan-out for real-time chat / bid arrival while both apps are
+  open. Push handles the "app is closed" case; DOs handle "app is open."
+- **Rate-limiting:** bids/hour, messages/minute — real when there are real
+  users trying things.
+- **Block enforcement** at the Worker (dovetails with slice 5).
 
 ---
 
@@ -230,3 +274,4 @@ them in parallel — by the time slice 4 ships, you need answers.
 - **2026-07-28** — Slice 1 shipped (SIWA + D1 users).
 - **2026-07-28** — Slice 2 shipped (push notifications).
 - **2026-07-28** — Slice 3 shipped (verification: manual mode default, vendor adapters pluggable).
+- **2026-07-28** — Slice 4a shipped (matching data plane: Worker, schema, endpoints, push wiring, client service). 4b (UI migration) is next.

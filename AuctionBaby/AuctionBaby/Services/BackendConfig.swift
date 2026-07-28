@@ -47,6 +47,14 @@ enum BackendConfig {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
+    /// The matching Worker (real bids/matches/messages between signed-in
+    /// users). Slice 4 of the spine. Absent → the app runs its on-device
+    /// simulation for those flows.
+    static var matchingURL: String {
+        (Bundle.main.object(forInfoDictionaryKey: "AB_MATCHING_URL") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
     /// True iff a Worker has been wired into the build. The admin backend
     /// panel checks this to decide whether the config card needs attention.
     static var isBundled: Bool { !workerURL.isEmpty && !sharedSecret.isEmpty }

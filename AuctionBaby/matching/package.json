@@ -1,0 +1,17 @@
+{
+  "name": "auctionbaby-matching",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Matching Worker for Auction Baby — bids, matches, and messages between real users.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241224.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^3.99.0"
+  }
+}

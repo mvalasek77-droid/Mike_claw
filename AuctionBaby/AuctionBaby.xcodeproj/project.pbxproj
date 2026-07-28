@@ -38,6 +38,7 @@
 		A17E10002CE1A502C0E1A502 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20003CE2A503D0E2A503 /* AppDelegate.swift */; };
 		A17E10003CE1A503C0E1A503 /* PushService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20004CE2A504D0E2A504 /* PushService.swift */; };
 		A17E10004CE1A504C0E1A504 /* VerificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20005CE2A505D0E2A505 /* VerificationService.swift */; };
+		A17E10005CE1A505C0E1A505 /* MatchingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20006CE2A506D0E2A506 /* MatchingService.swift */; };
 		7FD8C049B6A88A1218D8FCD8 /* BugReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5478C7DA9664C0A6CE4361FD /* BugReport.swift */; };
 		802AD0B86BCF68206A12E772 /* AuctionFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B50AA90FC7FD4052035CBC09 /* AuctionFeedView.swift */; };
 		88AAAAE1BD5856BD0EB03D07 /* MatchCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 897DE9D862AF234FCD793BD2 /* MatchCelebrationView.swift */; };
@@ -139,6 +140,7 @@
 		A17F20003CE2A503D0E2A503 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A17F20004CE2A504D0E2A504 /* PushService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushService.swift; sourceTree = "<group>"; };
 		A17F20005CE2A505D0E2A505 /* VerificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationService.swift; sourceTree = "<group>"; };
+		A17F20006CE2A506D0E2A506 /* MatchingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchingService.swift; sourceTree = "<group>"; };
 		C3C1B67E57A3FD2E51FE6391 /* DailyClaimCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyClaimCard.swift; sourceTree = "<group>"; };
 		C6BDD580D9E566334FED2120 /* CopycatPortrait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopycatPortrait.swift; sourceTree = "<group>"; };
 		C6ED05FFE0CD5124AEA3A06F /* Commerce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Commerce.swift; sourceTree = "<group>"; };
@@ -264,6 +266,7 @@
 				54B0390B0BFB1AE1474BB964 /* BackendService.swift */,
 				5478C7DA9664C0A6CE4361FD /* BugReport.swift */,
 				0340D44C7440B0EC73DEC041 /* ErrorMonitor.swift */,
+				A17F20006CE2A506D0E2A506 /* MatchingService.swift */,
 				A17F20004CE2A504D0E2A504 /* PushService.swift */,
 				4CAD6C814DA9F0C3DD74423B /* SecureStore.swift */,
 				16CD24D07EE3C970832CD4A5 /* StoreKitService.swift */,
@@ -527,6 +530,7 @@
 				A17E10002CE1A502C0E1A502 /* AppDelegate.swift in Sources */,
 				A17E10003CE1A503C0E1A503 /* PushService.swift in Sources */,
 				A17E10004CE1A504C0E1A504 /* VerificationService.swift in Sources */,
+				A17E10005CE1A505C0E1A505 /* MatchingService.swift in Sources */,
 				802AD0B86BCF68206A12E772 /* AuctionFeedView.swift in Sources */,
 				41F2ADC3E29735CA9E070FC8 /* AuctionStore.swift in Sources */,
 				9F3284028C5C4AA82C373EB0 /* AuctioneeDetailView.swift in Sources */,

@@ -17,6 +17,10 @@ struct AuctionBabyApp: App {
     // Slice 3: real (server-owned) verification. Coordinates with AuthService
     // — the blue check flips when the server reports verifiedAt is present.
     @StateObject private var verification = VerificationService()
+    // Slice 4: the matching backend (real bids/matches/messages between two
+    // signed-in users). Wired at app root; UI migration is 4b+ (today the
+    // on-device sim is still what the screens read from).
+    @StateObject private var matching = MatchingService()
     /// Minimal UIKit AppDelegate — the only way to receive APNs device tokens
     /// in a SwiftUI app. Its sole job is to forward the token to PushService.
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -31,6 +35,7 @@ struct AuctionBabyApp: App {
                 .environmentObject(auth)
                 .environmentObject(push)
                 .environmentObject(verification)
+                .environmentObject(matching)
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .task {

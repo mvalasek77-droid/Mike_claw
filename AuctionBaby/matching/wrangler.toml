@@ -1,0 +1,41 @@
+name = "auctionbaby-matching"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# ── Secrets (never committed) — set once with `wrangler secret put <NAME>`: ──
+#   SESSION_SECRET       must MATCH the auth Worker's — this Worker verifies
+#                        session tokens issued there (same HMAC key). Rotating
+#                        it in one place without the other invalidates every
+#                        signed-in session for THAT Worker.
+#   AUTH_ADMIN_SECRET    the auth Worker's APP_SHARED_SECRET. Used to call
+#                        auth's POST /push/send whenever a bid/accept/message
+#                        should fan out a notification. The push pipe is
+#                        owned by the auth Worker; this one just triggers it.
+
+[vars]
+# The auth Worker's public URL. This Worker POSTs to <AUTH_URL>/push/send when
+# a bid, accept, or message needs to notify a user. If unset, matching still
+# works but nothing wakes the other phone — set it as soon as auth is deployed.
+AUTH_URL = "https://auctionbaby-auth.YOUR-SUBDOMAIN.workers.dev"
+
+# ── D1: SHARED WITH THE AUTH WORKER ──────────────────────────────────────────
+# Bidders/lots FK into `users` (from auth), so bids/matches/messages must live
+# in the SAME D1. Use the same database_id you pasted into auth/wrangler.toml.
+#   wrangler d1 create auctionbaby-users     # (already done for auth)
+[[d1_databases]]
+binding = "DB"
+database_name = "auctionbaby-users"
+database_id = "REPLACE_WITH_SAME_D1_DATABASE_ID_AS_AUTH_WORKER"
+
+# ── STAGING ──────────────────────────────────────────────────────────────────
+# Deploy: `wrangler deploy --env staging`
+[env.staging]
+name = "auctionbaby-matching-staging"
+
+[env.staging.vars]
+AUTH_URL = "https://auctionbaby-auth-staging.YOUR-SUBDOMAIN.workers.dev"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "auctionbaby-users-staging"
+database_id = "REPLACE_WITH_STAGING_D1_DATABASE_ID"

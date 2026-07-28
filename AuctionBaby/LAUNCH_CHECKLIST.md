@@ -243,6 +243,47 @@ construction) and you only store the pass/fail + a reference id. Either way,
 disclose "identity verification: performed by \[vendor\] for safety" in
 your privacy nutrition labels.
 
+## Phase 2.8 — Spine Slice 4a: Matching backend (data plane) — ~20 min
+
+Ships the DATA plane — every endpoint two real users need to bid, accept,
+chat. iOS UI still uses the on-device simulation by default; the app's
+SwiftUI screens are migrated to the server in Slice 4b (a later session).
+You can prove the full server pipeline works today via curl.
+
+- [ ] ⚙️ Apply the migration (or if fresh install, `schema.sql` already
+      includes these tables):
+      ```bash
+      cd AuctionBaby/matching
+      npm install
+      # SAME D1 as auth — paste the auctionbaby-users database_id from
+      # ../auth/wrangler.toml into this wrangler.toml under [[d1_databases]].
+      wrangler d1 execute auctionbaby-users --file=../auth/migrations/003_add_matching.sql
+      ```
+- [ ] ⚙️ Shared secrets. `SESSION_SECRET` must match the auth Worker's
+      exact value (that's how this Worker verifies tokens issued there).
+      `AUTH_ADMIN_SECRET` is auth's `APP_SHARED_SECRET`.
+      ```bash
+      wrangler secret put SESSION_SECRET      # same string as auth
+      wrangler secret put AUTH_ADMIN_SECRET   # auth's APP_SHARED_SECRET
+      ```
+- [ ] ⚙️ Set `AUTH_URL` in `wrangler.toml` to the deployed auth Worker.
+      Then `wrangler deploy`.
+- [ ] Health check: `curl <matching-url>/health` — `dbBound` + `push.
+      configured` + `sessionSecretConfigured` should all be true.
+- [ ] End-to-end test between two signed-in devices — full curl script
+      in `AuctionBaby/matching/README.md`. You should see: bid POST → 201
+      + push on the lot's phone → accept POST → 201 + push on the bidder's
+      phone → message POST → 201 + push on the other.
+- [ ] Paste the deployed URL into `Config/Secrets.xcconfig` as
+      `AB_MATCHING_URL`. This ONLY registers the service — no in-app UI
+      change happens yet (that's Slice 4b).
+
+**Legal note:** you're now persisting free-text messages between users.
+Update your Privacy Policy to disclose "user-generated content: messages
+between matched users, retained for the life of the account." Also start
+thinking about your DMCA + safety takedown process — Slice 5 wires the
+enforcement, but the policy needs to exist before the endpoint does.
+
 ## Phase 3 — App Store Connect — ~2 hours
 
 - [ ] Create the app record: bundle id `com.valasek.auctionbaby`, name
