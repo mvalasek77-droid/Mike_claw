@@ -7,6 +7,10 @@ struct AuctionBabyApp: App {
     // Payout-Worker client — owned at app root so the admin console and any
     // payout screens share one configuration.
     @StateObject private var backend = BackendService()
+    // Slice 1 of the spine: Sign in with Apple → server user identity. Owned
+    // at app root so onboarding, settings, and every later slice observe the
+    // same auth state. Falls back to no-op when AB_AUTH_URL isn't configured.
+    @StateObject private var auth = AuthService()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -15,6 +19,7 @@ struct AuctionBabyApp: App {
                 .environmentObject(store)
                 .environmentObject(storeKit)
                 .environmentObject(backend)
+                .environmentObject(auth)
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .task {
@@ -32,10 +37,15 @@ struct AuctionBabyApp: App {
                     store.autoRebidEnabled = tier == .reserve || tier == .blackcard
                     store.priorityPlacementEnabled = tier == .blackcard
                     await store.refreshPendingRefunds(storeKit: storeKit, backend: backend)
+                    // Quiet server-identity ping — proves the stored session
+                    // is still valid; drops it locally on 401 so we never
+                    // present a phantom signed-in state after a secret rotate.
+                    if auth.isSignedIn { await auth.refreshMe() }
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         Task { await store.refreshPendingRefunds(storeKit: storeKit, backend: backend) }
+                        if auth.isSignedIn { Task { await auth.refreshMe() } }
                     }
                 }
                 .onChange(of: storeKit.activeTier) { _, tier in

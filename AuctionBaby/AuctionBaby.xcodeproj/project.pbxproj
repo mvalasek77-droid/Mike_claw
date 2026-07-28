@@ -20,6 +20,7 @@
 		2BED096F2573F4D11A5670CE /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03B33158B1778EA745A4A42A /* MainTabView.swift */; };
 		372F999B080D062AD184ECD5 /* ErrorMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0340D44C7440B0EC73DEC041 /* ErrorMonitor.swift */; };
 		3B4ED8E27D69B92DBBD752C3 /* BackendService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54B0390B0BFB1AE1474BB964 /* BackendService.swift */; };
+		A17E10001CE1A501C0E1A501 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20002CE2A502D0E2A502 /* AuthService.swift */; };
 		41F2ADC3E29735CA9E070FC8 /* AuctionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F42021173930A873E4999D /* AuctionStore.swift */; };
 		46DDB8409A88907F5EFB46D3 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CAD6C814DA9F0C3DD74423B /* SecureStore.swift */; };
 		54C318C006E0CD5E0504B739 /* AdminBackendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF2FC41F5F9300274A8183E2 /* AdminBackendView.swift */; };
@@ -109,6 +110,7 @@
 		4CAD6C814DA9F0C3DD74423B /* SecureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStore.swift; sourceTree = "<group>"; };
 		5478C7DA9664C0A6CE4361FD /* BugReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReport.swift; sourceTree = "<group>"; };
 		54B0390B0BFB1AE1474BB964 /* BackendService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendService.swift; sourceTree = "<group>"; };
+		A17F20002CE2A502D0E2A502 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		5F5047C830BB39E2636804FE /* AdminModerationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModerationView.swift; sourceTree = "<group>"; };
 		608C2DD7FF5ADECC41F432C7 /* RateDateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateDateView.swift; sourceTree = "<group>"; };
 		654A555029B9837013124FC7 /* CreditScoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditScoreView.swift; sourceTree = "<group>"; };
@@ -250,6 +252,7 @@
 		76C9BF1F4D24F6B013309428 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				A17F20002CE2A502D0E2A502 /* AuthService.swift */,
 				EA1DE67092EEC2E1AD934BAA /* BackendConfig.swift */,
 				54B0390B0BFB1AE1474BB964 /* BackendService.swift */,
 				5478C7DA9664C0A6CE4361FD /* BugReport.swift */,
@@ -518,6 +521,7 @@
 				8A16A15F11060D839D18211E /* AvatarView.swift in Sources */,
 				0E15E1A63D77DF63FFCF2F3D /* BackendConfig.swift in Sources */,
 				3B4ED8E27D69B92DBBD752C3 /* BackendService.swift in Sources */,
+				A17E10001CE1A501C0E1A501 /* AuthService.swift in Sources */,
 				586DD77BB019BAC71B1B94EE /* Badges.swift in Sources */,
 				90D9CD22AA4D587A3D465A88 /* Bid.swift in Sources */,
 				B21E39DA755A9CE3F4165934 /* BidSheet.swift in Sources */,

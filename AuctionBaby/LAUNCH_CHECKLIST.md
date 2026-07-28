@@ -95,6 +95,49 @@ The code currently points at **placeholder** URLs that Apple will check.
 - [ ] Confirm `OPERATOR_EMAIL` in `backend/wrangler.toml`
       (`mvalasek77@gmail.com`) for payout digests/alerts
 
+## Phase 2.5 — Spine Slice 1: Sign in with Apple + user identity — ~45 min
+
+The first slice of the [spine](SPINE_ROADMAP.md). Adds real accounts (Sign in
+with Apple → Cloudflare D1 user records). Fully optional to ship — leaving
+`AB_AUTH_URL` blank keeps the app local-only, exactly as it works today.
+
+- [ ] In your Apple Developer account: enable the **Sign in with Apple**
+      capability for identifier `com.valasek.auctionbaby`.
+- [ ] In Xcode → Signing & Capabilities → **+ Capability → Sign in with
+      Apple**. Rebuild.
+- [ ] ⚙️ Create the D1 database (once per environment):
+      ```bash
+      cd AuctionBaby/auth
+      npx wrangler d1 create auctionbaby-users
+      ```
+      Paste the printed `database_id` into `AuctionBaby/auth/wrangler.toml`
+      under `[[d1_databases]]`. Do the same for staging with `--env staging`.
+- [ ] ⚙️ Apply the schema:
+      ```bash
+      npx wrangler d1 execute auctionbaby-users --file=schema.sql
+      ```
+- [ ] ⚙️ Set the session-signing secret (any long random string):
+      ```bash
+      npx wrangler secret put SESSION_SECRET
+      ```
+- [ ] ⚙️ Deploy: `npx wrangler deploy` (production) or `--env staging`.
+- [ ] Paste the deployed URL into `Config/Secrets.xcconfig` as
+      `AB_AUTH_URL`. Rebuild the app — the "Save your account" card now
+      appears above the Photos step in onboarding.
+- [ ] Test on a real device: fresh install → pick a role → Sign in with
+      Apple → the card shows "Signed in with Apple" and the name is
+      pre-filled if you granted it. Complete onboarding, kill the app,
+      relaunch: the session should still be there (Keychain-persisted).
+- [ ] Sign out test (once you build a settings surface for it) or wipe the
+      Keychain via a fresh install to confirm the sign-in flow re-runs.
+
+**Legal note:** the moment you enable this, you're storing an email (or
+Apple's private-relay address) and an internal user id server-side. That
+brings light-touch GDPR/CCPA/PIPEDA responsibilities (subject-delete is
+already wired via `DELETE /me`; a UI to trigger it will land with a settings
+screen). Update your Privacy Policy to disclose Apple-issued email/name +
+last-seen timestamp as "data collected for authentication."
+
 ## Phase 3 — App Store Connect — ~2 hours
 
 - [ ] Create the app record: bundle id `com.valasek.auctionbaby`, name

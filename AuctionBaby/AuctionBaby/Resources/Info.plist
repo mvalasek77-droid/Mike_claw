@@ -26,6 +26,8 @@
 	<string>$(AB_SHARED_SECRET)</string>
 	<key>AB_CONSUMABLES_URL</key>
 	<string>$(AB_CONSUMABLES_URL)</string>
+	<key>AB_AUTH_URL</key>
+	<string>$(AB_AUTH_URL)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSPhotoLibraryUsageDescription</key>

@@ -56,6 +56,45 @@ enum SecureStore {
         SecItemDelete(query as CFDictionary)
         SecItemAdd(query as CFDictionary, nil)
     }
+
+    // MARK: - Generic string secrets (session tokens, per-user server ids)
+
+    /// Store a small string under a named key in the Keychain (auth-service
+    /// scope), overwriting any existing value. Used for the auth session token
+    /// and the server user id so an attacker with disk access can't read them.
+    /// Pass `nil` to delete.
+    ///
+    /// Uses `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` (same as the
+    /// master encryption key) so restored-to-a-new-device backups don't leak
+    /// the value and the app can read it before the user unlocks the phone.
+    static func setString(_ value: String?, forKey key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+        ]
+        SecItemDelete(query as CFDictionary)
+        guard let value, !value.isEmpty else { return }
+        var attrs = query
+        attrs[kSecValueData as String] = Data(value.utf8)
+        attrs[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(attrs as CFDictionary, nil)
+    }
+
+    /// Read a small string previously stored with `setString(_:forKey:)`.
+    static func string(forKey key: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
 }
 
 struct EncryptedArchive {

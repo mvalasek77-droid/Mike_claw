@@ -1,0 +1,49 @@
+name = "auctionbaby-auth"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# ── Secrets (never committed) — set once with `wrangler secret put <NAME>`: ──
+#   SESSION_SECRET      long random string used to HMAC-sign session tokens.
+#                       ROTATING THIS INVALIDATES EVERY EXISTING SESSION.
+#   APP_SHARED_SECRET   optional; if set, admin endpoints (e.g. /admin/users)
+#                       require it in the Authorization header. Same convention
+#                       as the other Workers so ops uses one secret.
+#
+# The Apple identity JWT is verified against Apple's PUBLIC JWKS
+# (https://appleid.apple.com/auth/keys) — no client-secret round-trip is
+# needed for the identity-token flow, so nothing Apple-side goes here.
+
+[vars]
+# The app's bundle id, checked as the `aud` claim on the Apple identity JWT.
+# If it doesn't match, verification fails — this is the single check that
+# guarantees a token wasn't issued to a different app.
+APPLE_CLIENT_ID = "com.valasek.auctionbaby"
+# JWTs older than SESSION_TTL_SECONDS are rejected. Balance UX (long enough
+# that users don't re-auth constantly) against blast radius on a leaked token.
+# Default: 30 days.
+SESSION_TTL_SECONDS = "2592000"
+
+# D1: the users table. `wrangler d1 create auctionbaby-users` gives you an id;
+# paste it in below. Schema lives in ./schema.sql — apply it with:
+#   wrangler d1 execute auctionbaby-users --file=schema.sql
+# ⚠️  MUST BE REPLACED BEFORE FIRST DEPLOY.
+[[d1_databases]]
+binding = "DB"
+database_name = "auctionbaby-users"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# ── STAGING (test bundle id / test database) ─────────────────────────────────
+# Deploy: `wrangler deploy --env staging`
+[env.staging]
+name = "auctionbaby-auth-staging"
+
+[env.staging.vars]
+APPLE_CLIENT_ID = "com.valasek.auctionbaby"
+SESSION_TTL_SECONDS = "2592000"
+
+# Same rule: create a staging DB and paste it here.
+#   wrangler d1 create auctionbaby-users-staging
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "auctionbaby-users-staging"
+database_id = "REPLACE_WITH_STAGING_D1_DATABASE_ID"

@@ -38,6 +38,15 @@ enum BackendConfig {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
+    /// The auth Worker (Sign in with Apple → server user identity). Optional —
+    /// absent means real-user accounts are off; onboarding falls back to the
+    /// local-only path (which is also what Demo Mode uses). Slice 1 of the
+    /// spine, see SPINE_ROADMAP.md.
+    static var authURL: String {
+        (Bundle.main.object(forInfoDictionaryKey: "AB_AUTH_URL") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
     /// True iff a Worker has been wired into the build. The admin backend
     /// panel checks this to decide whether the config card needs attention.
     static var isBundled: Bool { !workerURL.isEmpty && !sharedSecret.isEmpty }
