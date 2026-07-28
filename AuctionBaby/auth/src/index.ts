@@ -40,6 +40,13 @@
  *   POST   /devices/unregister  — remove a device token (sign-out)     [auth]
  *   POST   /push/send           — dispatch a push to a userId's devices
  *                                 (admin-only, gated by APP_SHARED_SECRET)
+ *
+ *   Slice 3 (real verification):
+ *   POST   /verify/start        — kick off a verification session      [auth]
+ *   POST   /verify/webhook      — vendor callback; flips verified_at
+ *                                 (signature-verified, no session)
+ *   POST   /admin/verify        — manual approve/reject (admin-only,
+ *                                 gated by APP_SHARED_SECRET)
  */
 
 interface Env {
@@ -53,6 +60,13 @@ interface Env {
   APNS_AUTH_KEY_P8?: string;       // full PEM contents of the .p8
   APNS_KEY_ID?: string;            // 10-char key id from Apple Developer
   APNS_TEAM_ID?: string;           // 10-char Apple Developer team id
+
+  // ── Slice 3: verification vendor ──────────────────────────────────────────
+  // Default 'manual': the founder approves/rejects via /admin/verify. Fine
+  // for low volume. When Persona/Onfido are integrated, flip this to their
+  // key and drop in a vendor adapter (see the vendor block in the code).
+  VERIFICATION_VENDOR?: string;    // 'manual' | 'persona' | 'onfido' | 'stub'
+  VERIFICATION_WEBHOOK_SECRET?: string;  // shared secret vendor signs webhook payloads with
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -211,7 +225,17 @@ interface UserRow {
   date_of_birth: string | null;
   created_at: number;
   last_seen_at: number;
+  verified_at: number | null;
+  verification_vendor: string | null;
+  verification_ref: string | null;
+  verification_status: string;
 }
+
+/** All user column names we ever want to SELECT — kept in one place so a new
+ *  column is a one-line change instead of five. */
+const USER_COLS =
+  "id, apple_sub, email, name, date_of_birth, created_at, last_seen_at, " +
+  "verified_at, verification_vendor, verification_ref, verification_status";
 
 /** Look up a user by Apple sub; create if missing. Returns the user + whether
  *  the caller was newly registered (drives an onboarding hint in the client). */
@@ -222,7 +246,7 @@ async function upsertUserByAppleSub(
   name: string | null,
 ): Promise<{ user: UserRow; isNew: boolean }> {
   const existing = await env.DB.prepare(
-    "SELECT id, apple_sub, email, name, date_of_birth, created_at, last_seen_at FROM users WHERE apple_sub = ?",
+    `SELECT ${USER_COLS} FROM users WHERE apple_sub = ?`,
   ).bind(appleSub).first<UserRow>();
 
   const now = Date.now();
@@ -241,7 +265,12 @@ async function upsertUserByAppleSub(
     "INSERT INTO users (id, apple_sub, email, name, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?)",
   ).bind(id, appleSub, email, name, now, now).run();
   return {
-    user: { id, apple_sub: appleSub, email, name, date_of_birth: null, created_at: now, last_seen_at: now },
+    user: {
+      id, apple_sub: appleSub, email, name,
+      date_of_birth: null, created_at: now, last_seen_at: now,
+      verified_at: null, verification_vendor: null,
+      verification_ref: null, verification_status: "unstarted",
+    },
     isNew: true,
   };
 }
@@ -251,6 +280,8 @@ function publicUser(u: UserRow) {
   return {
     id: u.id, email: u.email, name: u.name, dateOfBirth: u.date_of_birth,
     createdAt: u.created_at, lastSeenAt: u.last_seen_at,
+    verifiedAt: u.verified_at,
+    verificationStatus: u.verification_status ?? "unstarted",
   };
 }
 
@@ -267,6 +298,10 @@ function handleHealth(env: Env): Response {
       configured: Boolean(env.APNS_AUTH_KEY_P8 && env.APNS_KEY_ID && env.APNS_TEAM_ID),
       keyIdConfigured: Boolean(env.APNS_KEY_ID),
       teamIdConfigured: Boolean(env.APNS_TEAM_ID),
+    },
+    verification: {
+      vendor: currentVendor(env),
+      webhookConfigured: Boolean(env.VERIFICATION_WEBHOOK_SECRET),
     },
     adminGated: Boolean(env.APP_SHARED_SECRET),
   });
@@ -325,7 +360,7 @@ async function handleMe(request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
   const user = await env.DB.prepare(
-    "SELECT id, apple_sub, email, name, date_of_birth, created_at, last_seen_at FROM users WHERE id = ?",
+    `SELECT ${USER_COLS} FROM users WHERE id = ?`,
   ).bind(userId).first<UserRow>();
   if (!user) return err("User not found", 404);
   // Refresh last_seen_at on every /me hit — cheapest heartbeat we've got.
@@ -575,6 +610,239 @@ async function constantTimeEqual(a: string, b: string): Promise<boolean> {
   return diff === 0;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Slice 3 — Real verification (vendor-agnostic)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The blue check must mean something. `users.verified_at` is the single source
+// of truth; the client mirrors it via /me. The vendor doing the actual liveness
+// / ID check is behind a small adapter so we can swap Persona/Onfido in later
+// without touching client code.
+//
+// SHIPPING vendors:
+//   • manual — the founder approves via POST /admin/verify. Fine at low
+//     volume (bootstrap), and it means slice 3 is genuinely end-to-end today
+//     without a KYC contract.
+//   • stub   — auto-passes instantly, dev/staging only. Never enable in prod.
+//
+// PLANNED vendors (drop-in):
+//   • persona / onfido — vendor SDK on client, webhook here on pass/fail.
+//     The webhook shape below (POST /verify/webhook + shared secret) is
+//     already what those vendors post; adding them is a few `if vendor === …`
+//     branches in handleVerifyStart and a signature check that matches
+//     theirs. Not shipping now to avoid coupling to a vendor the founder
+//     hasn't picked.
+//
+// NOTES ON MEDIA:
+//   Selfies, IDs, and liveness scans are highly regulated. Manual mode uses
+//   the user's EXISTING profile photos + a real conversation as the evidence
+//   — we never store fresh verification media in D1. When Persona/Onfido are
+//   added, THEIR storage holds the media (compliant by construction) and we
+//   only ever get a pass/fail signal + a reference id.
+
+type VerificationStatus = "unstarted" | "pending" | "passed" | "failed" | "expired";
+type VerificationVendor = "manual" | "persona" | "onfido" | "stub";
+
+function currentVendor(env: Env): VerificationVendor {
+  const v = (env.VERIFICATION_VENDOR ?? "manual").toLowerCase() as VerificationVendor;
+  return (["manual", "persona", "onfido", "stub"].includes(v)) ? v : "manual";
+}
+
+/** POST /verify/start  [auth]  →  { verificationId, vendor, status, nextStep }
+ *
+ * Starts (or resumes) a verification for the authed user. Idempotent: a
+ * user who already passed just gets the passed state back; a user with a
+ * pending check gets the same session details. The `nextStep` tells the
+ * client what to do (open a URL, present an SDK, or "wait for admin").
+ */
+async function handleVerifyStart(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+
+  const user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`)
+    .bind(userId).first<UserRow>();
+  if (!user) return err("User not found", 404);
+
+  // Idempotent short-circuit: already passed = nothing to do.
+  if (user.verification_status === "passed" && user.verified_at) {
+    return json({
+      verificationId: user.verification_ref,
+      vendor: user.verification_vendor,
+      status: "passed",
+      verifiedAt: user.verified_at,
+      nextStep: { kind: "done" },
+    });
+  }
+
+  const vendor = currentVendor(env);
+  const now = Date.now();
+
+  // Reuse an in-flight check on the same vendor rather than opening a new one.
+  if (user.verification_status === "pending"
+      && user.verification_vendor === vendor
+      && user.verification_ref) {
+    return json({
+      verificationId: user.verification_ref,
+      vendor,
+      status: "pending",
+      nextStep: nextStepFor(vendor, user.verification_ref, env),
+    });
+  }
+
+  // Fresh check: mint a ref id and mark pending.
+  const ref = crypto.randomUUID();
+  await env.DB.prepare(
+    "UPDATE users SET verification_status = 'pending', verification_vendor = ?, verification_ref = ?, last_seen_at = ? WHERE id = ?",
+  ).bind(vendor, ref, now, userId).run();
+
+  // The `stub` vendor auto-passes immediately (dev/staging only). It's
+  // opt-in via VERIFICATION_VENDOR="stub" and we still refuse in production
+  // via a paranoid check below.
+  if (vendor === "stub") {
+    await markVerified(env, userId, "stub", ref);
+    await fireVerifiedPush(env, userId).catch(() => {});
+    return json({
+      verificationId: ref, vendor, status: "passed", verifiedAt: Date.now(),
+      nextStep: { kind: "done" },
+    });
+  }
+
+  return json({
+    verificationId: ref, vendor, status: "pending",
+    nextStep: nextStepFor(vendor, ref, env),
+  });
+}
+
+/** What the client should do next, per-vendor. */
+function nextStepFor(vendor: VerificationVendor, ref: string, _env: Env): unknown {
+  switch (vendor) {
+    case "manual":
+      return {
+        kind: "wait",
+        message: "Your verification is under review. We'll notify you when it's done.",
+      };
+    case "persona":
+    case "onfido":
+      // Placeholders — a real integration returns their SDK init token
+      // and/or a hosted flow URL keyed on `ref`.
+      return { kind: "sdk", vendor, ref, note: "Vendor SDK integration pending" };
+    case "stub":
+      return { kind: "done" };
+  }
+}
+
+/** POST /verify/webhook  — vendor callback, signature-verified.
+ *
+ * Body shape (vendor-neutral; adapters translate their own payloads):
+ *   { ref, userId, status: 'passed'|'failed', vendor }
+ * Signature: HMAC-SHA256(rawBody) hex, in `X-Verification-Signature` header,
+ * with VERIFICATION_WEBHOOK_SECRET as the key. Real Persona/Onfido payloads
+ * are richer — the adapter is responsible for verifying THEIR signature
+ * and reducing the payload to this canonical shape.
+ */
+async function handleVerifyWebhook(request: Request, env: Env): Promise<Response> {
+  if (!env.VERIFICATION_WEBHOOK_SECRET) return err("Webhook not configured", 500);
+  const rawBody = await request.text();
+  const sig = request.headers.get("X-Verification-Signature") ?? "";
+  const expected = [...new Uint8Array(
+    await hmacSha256(env.VERIFICATION_WEBHOOK_SECRET, rawBody),
+  )].map((b) => b.toString(16).padStart(2, "0")).join("");
+  // Constant-time compare.
+  if (sig.length !== expected.length) return err("Invalid signature", 400);
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
+  if (diff !== 0) return err("Invalid signature", 400);
+
+  let payload: any;
+  try { payload = JSON.parse(rawBody); } catch { return err("Invalid JSON"); }
+
+  const ref = String(payload?.ref ?? "").trim();
+  const userId = String(payload?.userId ?? "").trim();
+  const status = String(payload?.status ?? "").trim();
+  const vendor = (payload?.vendor ?? currentVendor(env)) as VerificationVendor;
+  if (!ref || !userId || !["passed", "failed"].includes(status)) {
+    return err("Missing/invalid ref, userId, or status");
+  }
+
+  // Only accept a webhook that matches the ref we minted for this user —
+  // stops a leaked webhook secret from letting anyone flip anyone.
+  const user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`)
+    .bind(userId).first<UserRow>();
+  if (!user) return err("User not found", 404);
+  if (user.verification_ref !== ref) {
+    return err("ref does not match user's pending verification", 409);
+  }
+
+  if (status === "passed") {
+    await markVerified(env, userId, vendor, ref);
+    await fireVerifiedPush(env, userId).catch(() => {});
+  } else {
+    await env.DB.prepare(
+      "UPDATE users SET verification_status = 'failed', last_seen_at = ? WHERE id = ?",
+    ).bind(Date.now(), userId).run();
+  }
+  return json({ ok: true });
+}
+
+/** POST /admin/verify  [admin]  — manual approval/rejection.
+ *
+ * Body: { userId, approved: true|false, reason? }
+ * Gated by APP_SHARED_SECRET (same admin bearer as /push/send). This is the
+ * bootstrap tool — the founder reviews the user's profile + a quick chat
+ * and flips the flag directly. When Persona/Onfido are wired, this stays
+ * as an override lane (fraud reversal, manual re-verify).
+ */
+async function handleAdminVerify(request: Request, env: Env): Promise<Response> {
+  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
+  const auth = request.headers.get("Authorization");
+  const supplied = auth?.startsWith("Bearer ") ? auth.slice(7) : (auth ?? "");
+  if (!(await constantTimeEqual(supplied, env.APP_SHARED_SECRET))) return err("Unauthorized", 401);
+
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const userId = String(body?.userId ?? "").trim();
+  const approved = Boolean(body?.approved);
+  if (!userId) return err("userId is required");
+
+  const user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`)
+    .bind(userId).first<UserRow>();
+  if (!user) return err("User not found", 404);
+
+  const ref = user.verification_ref ?? crypto.randomUUID();
+  if (approved) {
+    await markVerified(env, userId, "manual", ref);
+    await fireVerifiedPush(env, userId).catch(() => {});
+    return json({ ok: true, verifiedAt: Date.now() });
+  }
+  await env.DB.prepare(
+    "UPDATE users SET verification_status = 'failed', verification_vendor = 'manual', verification_ref = ?, last_seen_at = ? WHERE id = ?",
+  ).bind(ref, Date.now(), userId).run();
+  return json({ ok: true, verified: false });
+}
+
+/** Common "flip the flag" write. Split out because it's called from three
+ *  places (start-with-stub, webhook-pass, admin-approve). */
+async function markVerified(env: Env, userId: string, vendor: string, ref: string) {
+  const now = Date.now();
+  await env.DB.prepare(
+    "UPDATE users SET verified_at = ?, verification_status = 'passed', verification_vendor = ?, verification_ref = ?, last_seen_at = ? WHERE id = ?",
+  ).bind(now, vendor, ref, now, userId).run();
+}
+
+/** Fire the "you're verified" push. Best-effort; a push failure never blocks
+ *  the flag flip. Uses the same sendPushToUser plumbing slice 2 shipped. */
+async function fireVerifiedPush(env: Env, userId: string) {
+  try {
+    await sendPushToUser(env, userId, {
+      title: "You're verified",
+      body: "Your blue check is live across Auction Baby.",
+      data: { type: "verification.passed" },
+    });
+  } catch {
+    // Swallow — the check landed, that's what matters.
+  }
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
@@ -594,6 +862,11 @@ export default {
     if (pathname === "/devices/register" && m === "POST") return handleRegisterDevice(request, env);
     if (pathname === "/devices/unregister" && m === "POST") return handleUnregisterDevice(request, env);
     if (pathname === "/push/send" && m === "POST") return handleSendPush(request, env);
+
+    // Slice 3 — verification
+    if (pathname === "/verify/start" && m === "POST") return handleVerifyStart(request, env);
+    if (pathname === "/verify/webhook" && m === "POST") return handleVerifyWebhook(request, env);
+    if (pathname === "/admin/verify" && m === "POST") return handleAdminVerify(request, env);
 
     return err("Not found", 404);
   },

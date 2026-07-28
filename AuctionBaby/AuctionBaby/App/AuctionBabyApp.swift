@@ -14,6 +14,9 @@ struct AuctionBabyApp: App {
     // Slice 2: push notifications. Singleton because AppDelegate needs a
     // stable reference before SwiftUI @StateObject wiring has run.
     @StateObject private var push = PushService.shared
+    // Slice 3: real (server-owned) verification. Coordinates with AuthService
+    // — the blue check flips when the server reports verifiedAt is present.
+    @StateObject private var verification = VerificationService()
     /// Minimal UIKit AppDelegate — the only way to receive APNs device tokens
     /// in a SwiftUI app. Its sole job is to forward the token to PushService.
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -27,6 +30,7 @@ struct AuctionBabyApp: App {
                 .environmentObject(backend)
                 .environmentObject(auth)
                 .environmentObject(push)
+                .environmentObject(verification)
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .task {
@@ -34,6 +38,9 @@ struct AuctionBabyApp: App {
                     // signed-out user never keeps receiving pushes on their
                     // still-installed app.
                     auth.onSignedOut = { [weak push] in await push?.onSignedOut() }
+                    // Server flipped verified_at (via webhook / admin / push)
+                    // → flip the local blue check to match, in one place.
+                    auth.onVerified = { [weak store] in store?.verifyMe() }
                     storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
                     storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
                     storeKit.onBoost = { [weak store] in store?.activateBoost() }

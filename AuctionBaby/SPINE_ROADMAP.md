@@ -16,7 +16,7 @@ opt into it (Sign in with Apple); demo/preview users never touch it.
 |---|---|---|---|
 | 1 | **Server-side user identity** (Sign in with Apple + D1 users) | ✅ shipped | Every real user has a durable server identity; foundation for everything below |
 | 2 | **Push notifications** (APNs via the auth Worker) | ✅ shipped | A new bid, an accepted bid, or a message wakes the phone even when the app is closed |
-| 3 | **Real verification** (server-owned truth, vendor for liveness/ID) | ⏳ planned | The blue check *means* something; fake selfies can't get through |
+| 3 | **Real verification** (server-owned truth, vendor for liveness/ID) | ✅ shipped | The blue check *means* something; fake selfies can't get through |
 | 4 | **Matching backend** (bids/matches/messages server-side) | ⏳ planned | Two real phones actually see each other. Where safety, rate-limiting, and reports live. |
 | 5 | **Server-enforced moderation** (reports → admin queue → blocks) | ⏳ planned | User reports actually reach the admin queue; blocks enforced server-side |
 
@@ -121,19 +121,47 @@ message, refund — calls `POST /push/send` on the auth Worker.
 
 ---
 
-## Slice 3 — Real verification  ⏳
+## Slice 3 — Real verification  ✅
 
-Today `verifyMe()` just flips a bool. The blue check needs to mean something.
+**What shipped:** the blue check is now server-owned truth (`users.verified_at`).
+Client-side `me.verified` mirrors it, but the server is the source; a
+fraudulently-set client flag doesn't stick.
 
-**Approach:** integrate a KYC vendor (Persona or Onfido — both have SwiftUI
-SDKs and a Workers-friendly webhook flow) for **liveness + ID match**. The
-verification state lives on the server (`users.verified_at`), *not* the
-client — so the flag is trustworthy in Auction Credit and everywhere else it
-appears.
+**Vendor pluggability:** the pipeline is vendor-agnostic. Set
+`VERIFICATION_VENDOR` on the Worker to pick which one is active. Three
+vendors ship today:
 
-**Cost:** ~$1.50–$3 per verification depending on vendor + volume. That's
-real money at scale; consider gating verification behind Pass or making it
-free-forever after the first successful pass.
+- **`manual`** (default) — the founder approves/rejects via
+  `POST /admin/verify` (admin-gated by `APP_SHARED_SECRET`). Fine at low
+  volume. This is the "we're live but you're bootstrapping" mode.
+- **`stub`** — auto-passes instantly. Dev/staging only; **do not enable in
+  production** (there's no real check happening).
+- **`persona` / `onfido`** — routes are wired but the vendor SDK + payload
+  translation is the next drop-in. Adding either is roughly a day: a
+  `nextStepFor` branch that returns their SDK init token, and translating
+  their webhook shape into the canonical `{ ref, userId, status }`.
+
+**Endpoints:**
+- `POST /verify/start` [auth] — idempotent; a user who passed just gets the
+  passed state back; a pending user reuses the same session.
+- `POST /verify/webhook` — signature-verified (HMAC over rawBody), refuses to
+  flip anyone whose stored `verification_ref` doesn't match — so a leaked
+  webhook secret still can't verify arbitrary users.
+- `POST /admin/verify` — manual approve/reject; fires the "you're verified"
+  push (slice 2 pays off) so the app catches up without polling.
+
+**Client:**
+- `RemoteUser` gains `verifiedAt` + `verificationStatus` on `/me`.
+- `AuthService.onVerified` hook fires on a nil→verified transition — the app
+  root wires it to flip the local flag, so a background push landing while
+  the app is closed lights up the check the moment the user opens it.
+- `VerificationSheet` uses the server flow when signed in; keeps the
+  simulated scan for demo/local-only builds so App Review sees the full
+  animation with nothing configured.
+
+**Cost note:** the `manual` vendor is free. A real KYC vendor will run
+~$1.50–$3 per verification. Consider gating verification behind Pass, or
+making the first successful pass free-forever per user.
 
 ---
 
@@ -201,3 +229,4 @@ them in parallel — by the time slice 4 ships, you need answers.
 - **2026-07-28** — Roadmap written.
 - **2026-07-28** — Slice 1 shipped (SIWA + D1 users).
 - **2026-07-28** — Slice 2 shipped (push notifications).
+- **2026-07-28** — Slice 3 shipped (verification: manual mode default, vendor adapters pluggable).

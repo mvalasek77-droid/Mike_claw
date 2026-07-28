@@ -196,6 +196,53 @@ automatically; nothing to configure.
 device token (opaque 64-char hex, no PII) with a `platform` and timestamps.
 Disclosure category: "data collected for functionality (notifications)."
 
+## Phase 2.7 — Spine Slice 3: Real verification — ~15 min (manual mode)
+
+Rides the same auth Worker. Ships in **manual mode** by default — the founder
+reviews each user's photos + a quick chat and approves via a single curl.
+No KYC vendor contract needed to launch.
+
+- [ ] ⚙️ Apply the verification columns:
+      ```bash
+      cd AuctionBaby/auth
+      wrangler d1 execute auctionbaby-users --file=migrations/002_add_verification.sql
+      ```
+      (If this is a fresh install and you're running the current `schema.sql`
+      for the first time, the columns are already there — skip this.)
+- [ ] ⚙️ Redeploy: `wrangler deploy`. `curl <auth-url>/health` should show
+      `verification.vendor: "manual"`.
+- [ ] End-to-end test: on your phone, tap **Verify me** → sheet shows
+      "Verification submitted." Then approve yourself from a terminal:
+      ```bash
+      curl -X POST <auth-worker-url>/admin/verify \
+        -H "Authorization: Bearer <APP_SHARED_SECRET>" \
+        -H "Content-Type: application/json" \
+        -d '{"userId":"<YOUR_USER_ID>","approved":true}'
+      ```
+      A "You're verified" push should land within a second and the blue
+      check appears on your profile the next time the app foregrounds.
+- [ ] For a rejection: `{"userId": "…", "approved": false, "reason": "…"}`.
+      The status becomes `failed` and the user can retry.
+
+**Upgrading later to Persona / Onfido:**
+When you're ready to swap manual for a real KYC vendor:
+1. Sign a contract with the vendor + get their API keys.
+2. Add the SDK to the iOS app.
+3. `wrangler secret put VERIFICATION_WEBHOOK_SECRET` (their signing secret).
+4. Extend `nextStepFor()` in `auth/src/index.ts` to return the vendor's SDK
+   init token for the new vendor value.
+5. Extend `handleVerifyWebhook()` to translate the vendor's payload into
+   the canonical `{ ref, userId, status }` shape.
+6. Set `VERIFICATION_VENDOR="persona"` (or `"onfido"`) and redeploy.
+The client code and DB shape don't change; the vendor is behind an adapter.
+
+**Legal note (append to Privacy Policy):** in manual mode you don't store
+any new PII beyond what SIWA and the profile already contain. When a real
+KYC vendor is added, their storage holds the media (compliant by
+construction) and you only store the pass/fail + a reference id. Either way,
+disclose "identity verification: performed by \[vendor\] for safety" in
+your privacy nutrition labels.
+
 ## Phase 3 — App Store Connect — ~2 hours
 
 - [ ] Create the app record: bundle id `com.valasek.auctionbaby`, name

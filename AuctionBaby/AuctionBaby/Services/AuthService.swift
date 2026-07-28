@@ -33,6 +33,12 @@ final class AuthService: ObservableObject {
     /// PushService can unregister its APNs token without importing us.
     var onSignedOut: (() async -> Void)?
 
+    /// Fires when `refreshMe()` sees `verifiedAt` transition from nil → set.
+    /// Slice 3: the app root wires this to `AuctionStore.verifyMe()` so the
+    /// local blue check catches up the moment a background push flips the
+    /// server flag, without either side importing the other.
+    var onVerified: (() -> Void)?
+
     private var sessionToken: String? {
         get { SecureStore.string(forKey: Self.tokenKey) }
         set { SecureStore.setString(newValue, forKey: Self.tokenKey) }
@@ -106,9 +112,13 @@ final class AuthService: ObservableObject {
         switch await request("/me", method: "GET", body: EmptyBody?.none,
                               auth: true, as: Response.self) {
         case .success(let r):
+            let wasVerified = user?.isVerified == true
             self.user = r.user
             self.serverUserId = r.user.id
             SecureStore.setString(r.user.id, forKey: Self.userIdKey)
+            // Slice 3: on a nil→verified transition, let the app root nudge
+            // the local profile flag so the whole UI catches up in one place.
+            if !wasVerified, r.user.isVerified { onVerified?() }
             return true
         case .failure(let message):
             // Any auth failure => discard the session locally so the user
@@ -228,6 +238,41 @@ struct RemoteUser: Codable, Equatable {
     let dateOfBirth: String?
     let createdAt: Double
     let lastSeenAt: Double
+    /// Slice 3 — server-owned truth for the blue check. Nil until a
+    /// verification vendor (or the founder, in manual mode) flips it.
+    let verifiedAt: Double?
+    /// 'unstarted' | 'pending' | 'passed' | 'failed' | 'expired'. Drives
+    /// the verification screen's UI state.
+    let verificationStatus: String?
+
+    /// True when the server considers this account verified. Reading through
+    /// this property (not the raw field) means view code doesn't have to
+    /// care whether the field is missing on an older /me response.
+    var isVerified: Bool { verifiedAt != nil }
+
+    // Backward-compat: an older payload without the verification fields
+    // decodes as nil rather than throwing (same pattern the rest of the
+    // persistence layer uses).
+    init(id: String, email: String?, name: String?, dateOfBirth: String?,
+         createdAt: Double, lastSeenAt: Double,
+         verifiedAt: Double? = nil, verificationStatus: String? = nil) {
+        self.id = id; self.email = email; self.name = name
+        self.dateOfBirth = dateOfBirth
+        self.createdAt = createdAt; self.lastSeenAt = lastSeenAt
+        self.verifiedAt = verifiedAt; self.verificationStatus = verificationStatus
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        email = try c.decodeIfPresent(String.self, forKey: .email)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        dateOfBirth = try c.decodeIfPresent(String.self, forKey: .dateOfBirth)
+        createdAt = try c.decode(Double.self, forKey: .createdAt)
+        lastSeenAt = try c.decode(Double.self, forKey: .lastSeenAt)
+        verifiedAt = try c.decodeIfPresent(Double.self, forKey: .verifiedAt)
+        verificationStatus = try c.decodeIfPresent(String.self, forKey: .verificationStatus)
+    }
 }
 
 /// Outcome of a Sign in with Apple attempt.
