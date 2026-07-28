@@ -137,7 +137,7 @@ struct BidSheet: View {
                     whisperFallback
                 }
 
-                Text("Spend your bid on the date — the meal, the drinks, the night. She keeps the receipts and confirms it after. Never wire money or send a personal deposit — there's no way to through the app, by design.")
+                Text("Spend your bid on the date — the meal, the drinks, the night. She keeps the receipts and confirms it after. Never wire money or send a personal deposit; the app has no way to send money to another user, by design.")
                     .font(.system(size: 11)).foregroundStyle(Theme.inkFaint).multilineTextAlignment(.center)
                 Spacer(minLength: 20)
             }
