@@ -76,12 +76,22 @@ struct AuctionBabyApp: App {
                     // Quiet server-identity ping — proves the stored session
                     // is still valid; drops it locally on 401 so we never
                     // present a phantom signed-in state after a secret rotate.
-                    if auth.isSignedIn { await auth.refreshMe() }
+                    if auth.isSignedIn {
+                        await auth.refreshMe()
+                        // Slice 4b1a: seed the real floor at launch.
+                        await store.refreshRemoteFloor(profileSync: profileSync)
+                    }
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         Task { await store.refreshPendingRefunds(storeKit: storeKit, backend: backend) }
-                        if auth.isSignedIn { Task { await auth.refreshMe() } }
+                        if auth.isSignedIn {
+                            Task { await auth.refreshMe() }
+                            // Slice 4b1a: refresh the real floor on foreground
+                            // so a bidder's list catches up with any lots that
+                            // signed up while they were backgrounded.
+                            Task { await store.refreshRemoteFloor(profileSync: profileSync) }
+                        }
                     }
                 }
                 .onChange(of: storeKit.activeTier) { _, tier in

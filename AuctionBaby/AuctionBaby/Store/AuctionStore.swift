@@ -48,7 +48,18 @@ final class AuctionStore: ObservableObject {
     /// across launches; cleared by Reset account.
     @Published private(set) var demoMode = false
 
-    @Published var floor: [Profile] = []        // women a bidder browses
+    @Published var floor: [Profile] = []        // women a bidder browses (sim)
+    /// Slice 4b1a — real signed-in women fetched from the auth Worker's
+    /// `GET /users/floor` feed. Populated on foreground/appear by
+    /// `refreshRemoteFloor(profileSync:)` when the user is signed in and
+    /// the auth Worker is wired. Empty otherwise → the UI falls back to the
+    /// sim `floor` above, which is what Demo Mode + local-only sessions use.
+    @Published var remoteFloor: [Profile] = []
+    /// When true, `filteredFloor` sources from `remoteFloor`; when false,
+    /// from `floor` (the sim). Flipped by the refresh cycle — a signed-in
+    /// user whose fetch returned zero real profiles stays on the sim so the
+    /// UI isn't blank while the platform is bootstrapping.
+    @Published private(set) var isRemoteFloor: Bool = false
     @Published var bidders: [Profile] = []      // the pool of men (suitors) — seeds the inbox
     @Published var incomingBids: [Bid] = []     // woman's inbox
     @Published var outgoingBids: [Bid] = []     // man's placed bids
@@ -102,9 +113,14 @@ final class AuctionStore: ObservableObject {
     var totalOnTable: Int { livePending.map(\.amount).reduce(0, +) }
     var acceptedCount: Int { incomingBids.filter { $0.status == .accepted && !$0.isWhisper }.count }
 
-    /// The floor after blocks + filters are applied — what the bidder actually sees.
+    /// The floor after blocks + filters are applied — what the bidder actually
+    /// sees. Sources from `remoteFloor` (real signed-in women) when it's
+    /// active, otherwise `floor` (the sim). Demo Mode + local-only sessions
+    /// always see the sim — `isRemoteFloor` only ever flips true for a
+    /// signed-in user whose fetch returned real profiles.
     var filteredFloor: [Profile] {
-        floor.filter { !blockedIDs.contains($0.id) && filters.matches($0) }
+        let source = isRemoteFloor ? remoteFloor : floor
+        return source.filter { !blockedIDs.contains($0.id) && filters.matches($0) }
     }
 
     /// The Lot of the Day — a real (non-copycat) lot, rotating daily and
@@ -599,6 +615,28 @@ final class AuctionStore: ObservableObject {
         await applyWorkerRefunds(backend: backend)
         await syncWebGavels(backend: backend)
         await refreshReservations(backend: backend)
+    }
+
+    // MARK: - Remote floor (slice 4b1a)
+
+    /// Pull the real signed-in floor from the auth Worker. Called from
+    /// `AuctionFeedView.task` on appear and on foreground. Demo Mode and
+    /// unsigned-in users are silent no-ops — they keep seeing the sim.
+    ///
+    /// The flip to `isRemoteFloor = true` happens only when the fetch
+    /// returned at least one real profile, so a signed-in user on a fresh
+    /// platform (nobody else has joined yet) still sees the sim rather than
+    /// a blank screen. As soon as ONE other real user exists, they take over.
+    func refreshRemoteFloor(profileSync: ProfileService) async {
+        guard !demoMode, profileSync.isEnabled, let role else { return }
+        // A bidder browses women; a lot's own "floor" isn't a fetch surface
+        // (she reads her incoming inbox, wired in later slices).
+        let feedRole: Role = role == .man ? .woman : .man
+        let result = await profileSync.fetchFloor(role: feedRole, limit: 60)
+        guard case .success(let page) = result else { return }
+        let converted = page.profiles.map(Profile.init(from:))
+        remoteFloor = converted
+        isRemoteFloor = !converted.isEmpty
     }
 
     // MARK: - Web Gavel shop sync (Stripe consumables Worker)

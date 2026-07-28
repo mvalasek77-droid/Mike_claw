@@ -41,6 +41,7 @@
 		A17E10005CE1A505C0E1A505 /* MatchingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20006CE2A506D0E2A506 /* MatchingService.swift */; };
 		A17E10006CE1A506C0E1A506 /* SaveAccountCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20007CE2A507D0E2A507 /* SaveAccountCard.swift */; };
 		A17E10007CE1A507C0E1A507 /* ProfileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20008CE2A508D0E2A508 /* ProfileService.swift */; };
+		A17E10008CE1A508C0E1A508 /* Profile+Remote.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20009CE2A509D0E2A509 /* Profile+Remote.swift */; };
 		7FD8C049B6A88A1218D8FCD8 /* BugReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5478C7DA9664C0A6CE4361FD /* BugReport.swift */; };
 		802AD0B86BCF68206A12E772 /* AuctionFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B50AA90FC7FD4052035CBC09 /* AuctionFeedView.swift */; };
 		88AAAAE1BD5856BD0EB03D07 /* MatchCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 897DE9D862AF234FCD793BD2 /* MatchCelebrationView.swift */; };
@@ -145,6 +146,7 @@
 		A17F20006CE2A506D0E2A506 /* MatchingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchingService.swift; sourceTree = "<group>"; };
 		A17F20007CE2A507D0E2A507 /* SaveAccountCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveAccountCard.swift; sourceTree = "<group>"; };
 		A17F20008CE2A508D0E2A508 /* ProfileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileService.swift; sourceTree = "<group>"; };
+		A17F20009CE2A509D0E2A509 /* Profile+Remote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Profile+Remote.swift"; sourceTree = "<group>"; };
 		C3C1B67E57A3FD2E51FE6391 /* DailyClaimCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyClaimCard.swift; sourceTree = "<group>"; };
 		C6BDD580D9E566334FED2120 /* CopycatPortrait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopycatPortrait.swift; sourceTree = "<group>"; };
 		C6ED05FFE0CD5124AEA3A06F /* Commerce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Commerce.swift; sourceTree = "<group>"; };
@@ -371,6 +373,7 @@
 				CA6A10D06DE85339F8CDDE96 /* FilterPreferences.swift */,
 				3020E6F97EBBB4654BE7E4E8 /* Match.swift */,
 				406D9ADA1C8C7B31B8BE87ED /* Profile.swift */,
+				A17F20009CE2A509D0E2A509 /* Profile+Remote.swift */,
 				4063630A1E441DE0E336A912 /* Role.swift */,
 			);
 			path = Models;
@@ -539,6 +542,7 @@
 				A17E10005CE1A505C0E1A505 /* MatchingService.swift in Sources */,
 				A17E10006CE1A506C0E1A506 /* SaveAccountCard.swift in Sources */,
 				A17E10007CE1A507C0E1A507 /* ProfileService.swift in Sources */,
+				A17E10008CE1A508C0E1A508 /* Profile+Remote.swift in Sources */,
 				802AD0B86BCF68206A12E772 /* AuctionFeedView.swift in Sources */,
 				41F2ADC3E29735CA9E070FC8 /* AuctionStore.swift in Sources */,
 				9F3284028C5C4AA82C373EB0 /* AuctioneeDetailView.swift in Sources */,

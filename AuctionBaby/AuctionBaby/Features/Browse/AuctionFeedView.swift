@@ -6,6 +6,8 @@ import UIKit
 /// the house rule is no pre-bid labelling; the reveal fires after the bid.
 struct AuctionFeedView: View {
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var profileSync: ProfileService
+    @EnvironmentObject private var auth: AuthService
     @State private var bidTarget: Profile?
     @State private var showFilters = false
     @State private var showActivity = false
@@ -18,6 +20,9 @@ struct AuctionFeedView: View {
             ScrollView {
                 LazyVStack(spacing: 18) {
                     header
+                    if store.isRemoteFloor {
+                        realFloorChip
+                    }
                     LiveTicker()
                     DailyClaimCard()
                     if let star = store.lotOfTheDay {
@@ -92,7 +97,35 @@ struct AuctionFeedView: View {
                     store.markLotOfDaySeen()
                 }
             }
+            // Slice 4b1a — fetch the real signed-in floor. Demo Mode + local-
+            // only sessions no-op inside refreshRemoteFloor.
+            .task(id: auth.serverUserId) {
+                await store.refreshRemoteFloor(profileSync: profileSync)
+            }
+            .refreshable {
+                await store.refreshRemoteFloor(profileSync: profileSync)
+            }
         }
+    }
+
+    /// The "you're seeing real bidders" chip. Renders only when `isRemoteFloor`
+    /// is true (signed-in + at least one other real user has joined). A
+    /// signed-in user on a fresh platform still sees the sim as bootstrap;
+    /// this chip is the visual signal that the switch has flipped.
+    private var realFloorChip: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "person.2.wave.2.fill")
+                .font(.system(size: 10, weight: .bold))
+            Text("Real people on the floor")
+                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                .tracking(0.4)
+        }
+        .foregroundStyle(Theme.verify)
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.verify.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: 10)
+            .strokeBorder(Theme.verify.opacity(0.30), lineWidth: 0.8))
     }
 
     private var header: some View {
