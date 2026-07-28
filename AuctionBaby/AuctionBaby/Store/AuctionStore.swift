@@ -72,6 +72,15 @@ final class AuctionStore: ObservableObject {
     /// in user with zero real bids should see an empty inbox, not seeded sim
     /// bids). Demo Mode + local-only sessions never flip this.
     @Published private(set) var isRemoteInbox: Bool = false
+
+    /// Slice 4b1c — outgoing bids the signed-in bidder has placed via the
+    /// matching Worker. Optimistically appended on `placeRemoteBid` success;
+    /// full refresh from `GET /bids/outgoing` lands here in slice 4b1d.
+    @Published var remoteOutgoingBids: [Bid] = []
+    /// Same semantics as `isRemoteInbox` — once a signed-in bidder has placed
+    /// any real bid, MyBidsView reads from the remote list. Sim-only sessions
+    /// never flip it, so Demo Mode keeps the sim outgoing behavior.
+    @Published private(set) var isRemoteOutgoing: Bool = false
     @Published var bidders: [Profile] = []      // the pool of men (suitors) — seeds the inbox
     @Published var incomingBids: [Bid] = []     // woman's inbox
     @Published var outgoingBids: [Bid] = []     // man's placed bids
@@ -687,6 +696,70 @@ final class AuctionStore: ObservableObject {
         remoteIncomingBids.removeAll { $0.id == bid.id }
         Haptics.tap()
         _ = await matching.decline(bidId: bid.id.uuidString.lowercased())
+    }
+
+    // MARK: - Remote bid write (slice 4b1c)
+
+    /// Place a real bid on a signed-in woman via the matching Worker.
+    /// Falls through to the sim `placeBid` when the target isn't a remote
+    /// profile (Demo Mode, local-only, or a summoned/lot-of-the-day figure).
+    ///
+    /// **Gavel accounting rolls back on server failure.** Gild + Bid Insurance
+    /// still cost Gavels locally (real money via IAP), and we deduct them
+    /// BEFORE the network call so a user can see the intent lock in. If the
+    /// Worker rejects the bid — network failure, invalid target, rate-limit
+    /// once we add one — we refund the debit and toast the error. The bid
+    /// itself never moves money in either direction.
+    func placeRemoteBid(on woman: Profile, amount: Int, note: String,
+                        gilded: Bool = false, insured: Bool = false,
+                        promptRef: String? = nil,
+                        matching: MatchingService) async {
+        guard role == .man, amount > 0 else { return }
+
+        // Match the sim path's Gavel debits — real users never copycat, so
+        // we don't need the sim's copycat-skip guard here.
+        var didGild = false
+        var didInsure = false
+        if gilded {
+            if wallet >= Self.gildedBidCost { wallet -= Self.gildedBidCost; didGild = true }
+            else { toastFlash("Not enough Gavels to gild — sent a standard bid.") }
+        }
+        if insured {
+            if wallet >= Self.bidInsuranceCost { wallet -= Self.bidInsuranceCost; didInsure = true }
+        }
+
+        let lotId = woman.id.uuidString.lowercased()
+        let result = await matching.placeBid(
+            lotId: lotId, amount: amount, note: note,
+            gilded: didGild, insured: didInsure, isWhisper: false,
+            promptRef: promptRef,
+        )
+        switch result {
+        case .success(let remoteBid):
+            // Optimistic entry into the outbox so MyBidsView shows it right
+            // away without a round-trip. The full outbox refresh will land it
+            // with the peer snapshot once slice 4b1d wires that up.
+            let bid = Bid(from: remoteBid, mine: me, direction: .outbox)
+            remoteOutgoingBids.insert(bid, at: 0)
+            isRemoteOutgoing = true
+            Haptics.commit()
+            toastFlash(didGild ? "✦ Gilded Bid sent to \(woman.name) — top of her inbox."
+                               : "Bid sent to \(woman.name). She'll get a notification.")
+            save()
+        case .failure(let message):
+            // Roll back the Gavel debits — the bid didn't reach the server.
+            if didGild { wallet += Self.gildedBidCost }
+            if didInsure { wallet += Self.bidInsuranceCost }
+            Haptics.warning()
+            toastFlash(message)
+            save()
+        case .notConfigured:
+            // Shouldn't happen — BidSheet only routes here when remote mode
+            // is active. Refund defensively so a race can't strand Gavels.
+            if didGild { wallet += Self.gildedBidCost }
+            if didInsure { wallet += Self.bidInsuranceCost }
+            save()
+        }
     }
 
     // MARK: - Web Gavel shop sync (Stripe consumables Worker)

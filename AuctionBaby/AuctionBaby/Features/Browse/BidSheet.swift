@@ -7,6 +7,7 @@ struct BidSheet: View {
     let promptContext: Prompt?
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
+    @EnvironmentObject private var matching: MatchingService
     @Environment(\.dismiss) private var dismiss
 
     @State private var amount: Int
@@ -134,8 +135,7 @@ struct BidSheet: View {
                                   systemImage: gild ? "seal.fill" : "hand.raised.fill",
                                   gradient: gild ? Theme.prestigeGradient : Theme.goldGradient,
                                   enabled: amount > 0) {
-                        store.placeBid(on: woman, amount: amount, note: note, gilded: gild,
-                                       insured: insure, promptRef: promptContext?.question)
+                        placeBid()
                         dismiss()
                     }
                     whisperFallback
@@ -151,6 +151,28 @@ struct BidSheet: View {
         .motion(Motion.snap, value: amount)
         .motion(Motion.snap, value: gild)
         .sheet(isPresented: $showStore) { PaywallView(trigger: .bidLimit) }
+    }
+
+    /// Dispatch the bid to the matching Worker (slice 4b1c) when the target
+    /// came from the remote floor, otherwise run the on-device sim. The
+    /// remote flag lives on AuctionStore — flipped when at least one real
+    /// signed-in woman has been fetched — so Demo Mode + local-only sessions
+    /// always take the sim branch.
+    private func placeBid() {
+        if store.isRemoteFloor {
+            Task {
+                await store.placeRemoteBid(
+                    on: woman, amount: amount, note: note,
+                    gilded: gild, insured: insure,
+                    promptRef: promptContext?.question,
+                    matching: matching,
+                )
+            }
+        } else {
+            store.placeBid(on: woman, amount: amount, note: note,
+                           gilded: gild, insured: insure,
+                           promptRef: promptContext?.question)
+        }
     }
 
     /// The commitment reminder shown right at the point of placing a bid: what
