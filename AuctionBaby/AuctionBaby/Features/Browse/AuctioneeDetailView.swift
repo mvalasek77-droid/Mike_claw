@@ -79,13 +79,18 @@ struct AuctioneeDetailView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             PromptBubble(prompt: prompt)
                             Button { bidPrompt = prompt } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "hand.raised.fill")
-                                    Text("Bid on this answer")
-                                    Spacer()
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "hand.raised.fill")
+                                        Text("Bid & mention this answer")
+                                        Spacer()
+                                    }
+                                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(Theme.rose)
+                                    Text("A regular bid — this quote just rides along so she knows what caught your eye.")
+                                        .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
-                                .font(.system(size: 13, weight: .heavy, design: .rounded))
-                                .foregroundStyle(Theme.rose)
                                 .padding(.horizontal, 12).padding(.vertical, 9)
                                 .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.rose.opacity(0.14)))
                             }

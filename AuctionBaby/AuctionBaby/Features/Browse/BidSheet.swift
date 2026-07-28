@@ -50,12 +50,16 @@ struct BidSheet: View {
 
                 if let prompt = promptContext {
                     VStack(alignment: .leading, spacing: 4) {
-                        Label("Bidding on her answer", systemImage: "quote.opening")
+                        Label("Your bid will mention this answer", systemImage: "quote.opening")
                             .font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1)
                             .foregroundStyle(Theme.rose)
                         Text(prompt.question).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkSoft)
                         Text(prompt.answer).font(.system(size: 15, weight: .bold, design: .serif)).foregroundStyle(Theme.ink)
                             .fixedSize(horizontal: false, vertical: true)
+                        Text("Same as any other bid — the money, the rules, the ratings are identical. Her answer just rides along at the top of your bid so she knows what caught your eye.")
+                            .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 4)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
