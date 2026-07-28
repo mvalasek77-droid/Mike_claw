@@ -199,21 +199,49 @@ The big one. Broken into three sub-slices:
 end-to-end via curl between two signed-in users, and pushes wake both
 phones. See `AuctionBaby/matching/README.md` for the curl script.
 
-### 4b — UI migration  ⏳ (next slice)
+### 4b — UI migration  🔨
+
+#### 4b0 — Public profile sync  ✅
+
+**What shipped:** the *missing piece* before UI migration can be useful —
+two real users can't see each other on the floor unless their profiles
+have been mirrored to the server. Purely additive; UI is untouched.
+
+- **New D1 table** `profiles`, split from `users` so a delete-my-account
+  cascade wipes the public face too, and so a future "hide my profile"
+  flag is a soft-delete here rather than on the identity row.
+- **Endpoints on the auth Worker:**
+  - `PUT /me/profile` — upsert my public profile (name/bio/hue/prompts/
+    interests/starting_bid/archetype/opening_bid_script). Idempotent.
+    Refuses role-flip (409).
+  - `GET /me/profile` — my current server view.
+  - `GET /users/:id/profile` — peer lookup for match/chat displays.
+  - `GET /users/floor?role=&limit=&cursor=` — the paginated feed. Cursor
+    is the last item's `updated_at` — no OFFSET drift as writes happen.
+    Excludes the caller.
+- **Age derived** from `users.date_of_birth` on read via JOIN — one query,
+  never stored twice. Photos NOT in slice 4b0 (needs R2 + moderation).
+- **Client `ProfileService`** with typed calls for all four endpoints.
+  `AuctionStore.onProfileChanged` hook fires at every mutation point
+  (register, updateOpeningBidScript, equipArchetype, setStartingBid);
+  app root wires it to `profileSync.uploadMyProfile(from:)` — Demo Mode
+  is skipped, local-only sessions are a silent no-op inside the service.
+
+**Not in 4b0:** the SwiftUI screens still read from the on-device sim.
+Wiring `AuctionFeedView` etc. to consume `fetchFloor()` when signed in is
+slice 4b1.
+
+#### 4b1 — UI wiring  ⏳ (next slice)
 
 Wire the SwiftUI screens (`AuctionFeedView`, `IncomingBidsView`, `BidSheet`,
-`ChatView`, `MatchesView`) to consume `MatchingService` for signed-in users.
-The existing on-device sim stays as the fallback for Demo Mode + local-only
-sessions, so a fresh checkout still works.
+`ChatView`, `MatchesView`) to consume `MatchingService` + `ProfileService`
+for signed-in users. The on-device sim stays as fallback for Demo Mode +
+local-only sessions.
 
 Rough shape:
 - `AuctionStore` gets a `RemoteMode` flag: when true (signed-in + Worker
-  wired), reads come from `MatchingService` and writes route through it
+  wired), reads come from the services and writes route through them
   optimistically (with rollback on failure).
-- A **browse-other-users floor endpoint** — the app currently uses
-  `SampleData.floor()`; real multiplayer needs a `GET /users/floor`
-  paginated feed of real signed-in women. Small addition to the auth
-  Worker.
 - Refresh-on-foreground per screen (paired with push nudges from 4a).
 
 ### 4c — Real-time + safety hardening  ⏳ (after 4b)
@@ -275,3 +303,4 @@ them in parallel — by the time slice 4 ships, you need answers.
 - **2026-07-28** — Slice 2 shipped (push notifications).
 - **2026-07-28** — Slice 3 shipped (verification: manual mode default, vendor adapters pluggable).
 - **2026-07-28** — Slice 4a shipped (matching data plane: Worker, schema, endpoints, push wiring, client service). 4b (UI migration) is next.
+- **2026-07-28** — Slice 4b0 shipped (public profile sync: new profiles table, /me/profile PUT/GET, /users/:id/profile, /users/floor paginated feed, client ProfileService). Unblocks 4b1 (UI wiring).

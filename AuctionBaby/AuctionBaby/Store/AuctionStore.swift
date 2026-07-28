@@ -34,6 +34,13 @@ final class AuctionStore: ObservableObject {
     /// can route refunds to the correct wallet. Generated once, persisted forever.
     @Published private(set) var appAccountToken: UUID = UUID()
 
+    /// Fires after any explicit profile-mutating function (register, edit-name,
+    /// updateProfilePhotos, updateOpeningBidScript, updateArchetype-adjacent).
+    /// Wired at app root to `ProfileService.uploadMyProfile(from:)` so signed-in
+    /// users' server-side public profile stays in sync with the local record.
+    /// Absent hook / local-only session → nothing happens.
+    var onProfileChanged: ((Profile) -> Void)?
+
     /// Demo Mode for Apple App Review. Activated by registering with the name
     /// "demo" (case-insensitive) — see DEMO_MODE.md. Free demo top-ups and a
     /// free demo Pass appear in the store surfaces; everything else (bidding,
@@ -353,6 +360,7 @@ final class AuctionStore: ObservableObject {
                           : (role == .woman ? "Your lot is live on the floor."
                                             : "You're on the floor. Start bidding."))
         save()
+        onProfileChanged?(me)
     }
 
     /// Wipe everything and return to onboarding (Settings → Reset).
@@ -532,6 +540,7 @@ final class AuctionStore: ObservableObject {
         }
         creditPing(before: before)
         save()
+        onProfileChanged?(me)
     }
 
     /// A status purchase was refunded. Drop the badge to the best rating the
@@ -917,6 +926,7 @@ final class AuctionStore: ObservableObject {
     func updateOpeningBidScript(_ script: String?) {
         me.openingBidScript = script
         save()
+        onProfileChanged?(me)
         toastFlash(script == nil ? "Opener cleared." : "Opener saved.")
     }
 
@@ -924,6 +934,7 @@ final class AuctionStore: ObservableObject {
         guard role == .woman else { return }
         me.startingBid = value.map { max(0, min($0, Self.maxStartingBid)) }
         save()
+        onProfileChanged?(me)
     }
 
     func accept(_ bid: Bid) {

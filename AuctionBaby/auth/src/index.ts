@@ -49,6 +49,12 @@
  *                                 (signature-verified, no session)
  *   POST   /admin/verify        — manual approve/reject (admin-only,
  *                                 gated by APP_SHARED_SECRET)
+ *
+ *   Slice 4b0 (public profiles):
+ *   PUT    /me/profile          — upsert the authed user's profile    [auth]
+ *   GET    /me/profile          — my current profile                   [auth]
+ *   GET    /users/:id/profile   — another user's profile               [auth]
+ *   GET    /users/floor         — paginated feed by role & recency     [auth]
  */
 
 interface Env {
@@ -83,7 +89,7 @@ const JWKS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
+  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
   "Access-Control-Allow-Headers": "Authorization,Content-Type",
 };
 
@@ -894,6 +900,212 @@ async function fireVerifiedPush(env: Env, userId: string) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Slice 4b0 — Public profiles
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// A user's profile as seen by OTHER users. Kept in its own table so that a
+// delete-my-account cascade wipes the public face too, and so a future "hide
+// my profile" flag is a soft-delete here rather than on the identity row.
+//
+// Age is derived from `users.date_of_birth` on read — never stored twice.
+// Photos live outside D1 (R2 + moderation, a slice on its own).
+
+const FLOOR_PAGE_SIZE_DEFAULT = 30;
+const FLOOR_PAGE_SIZE_MAX = 100;
+
+interface ProfileRow {
+  user_id: string;
+  role: string;
+  name: string;
+  location: string | null;
+  bio: string | null;
+  hue: number;
+  starting_bid: number | null;
+  archetype: string | null;
+  opening_bid_script: string | null;
+  prompts_json: string | null;
+  interests_json: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+/** Derived-age columns are joined in via LEFT JOIN when we return public
+ *  profiles — one query, no round-trip. */
+interface ProfileWithAge extends ProfileRow {
+  date_of_birth: string | null;
+  verified_at: number | null;
+}
+
+/** Compute whole-year age from a YYYY-MM-DD string; null if we don't have one. */
+function ageFrom(dob: string | null): number | null {
+  if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return null;
+  const d = new Date(`${dob}T00:00:00Z`);
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  let age = now.getUTCFullYear() - d.getUTCFullYear();
+  const monthDelta = now.getUTCMonth() - d.getUTCMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && now.getUTCDate() < d.getUTCDate())) age--;
+  return age >= 0 && age <= 120 ? age : null;
+}
+
+function safeParseJsonArray(s: string | null): unknown[] {
+  if (!s) return [];
+  try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+
+/** Public shape returned by every profile endpoint. */
+function publicProfile(p: ProfileWithAge) {
+  return {
+    userId: p.user_id,
+    role: p.role,
+    name: p.name,
+    age: ageFrom(p.date_of_birth),
+    location: p.location,
+    bio: p.bio,
+    hue: p.hue,
+    startingBid: p.starting_bid,
+    archetype: p.archetype,
+    openingBidScript: p.opening_bid_script,
+    prompts: safeParseJsonArray(p.prompts_json),
+    interests: safeParseJsonArray(p.interests_json),
+    verifiedAt: p.verified_at,
+    createdAt: p.created_at,
+    updatedAt: p.updated_at,
+  };
+}
+
+const PROFILE_SELECT = `
+  SELECT p.user_id, p.role, p.name, p.location, p.bio, p.hue,
+         p.starting_bid, p.archetype, p.opening_bid_script,
+         p.prompts_json, p.interests_json, p.created_at, p.updated_at,
+         u.date_of_birth, u.verified_at
+    FROM profiles p JOIN users u ON u.id = p.user_id`;
+
+/** PUT /me/profile  [auth]
+ *
+ * Body accepts the same shape publicProfile() returns (minus derived fields).
+ * Idempotent: upsert on user_id. On first write, created_at = now; on
+ * subsequent writes, only updated_at moves. Refuses to write a role that
+ * would disagree with the client's current sign-in state — we don't want
+ * a bug on one device flipping a woman's account to a man's. */
+async function handleUpsertMyProfile(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+
+  const role = String(body?.role ?? "").toLowerCase();
+  if (role !== "man" && role !== "woman") return err("role must be 'man' or 'woman'");
+  const name = String(body?.name ?? "").trim().slice(0, 60);
+  if (!name) return err("name is required");
+  const hueRaw = Number(body?.hue ?? 0.6);
+  const hue = Number.isFinite(hueRaw) ? Math.min(1, Math.max(0, hueRaw)) : 0.6;
+
+  const location = body?.location ? String(body.location).slice(0, 80) : null;
+  const bio = body?.bio ? String(body.bio).slice(0, 500) : null;
+  const startingBid = body?.startingBid == null ? null : Math.max(0, Math.round(Number(body.startingBid)));
+  const archetype = body?.archetype ? String(body.archetype).slice(0, 40) : null;
+  const openingBidScript = body?.openingBidScript ? String(body.openingBidScript).slice(0, 240) : null;
+
+  // Prompts + interests: accept only well-formed arrays; anything else drops
+  // to null (safer than reflecting user junk back to other users).
+  const prompts = Array.isArray(body?.prompts) ? body.prompts.slice(0, 5).map((p: any) => ({
+    question: String(p?.question ?? "").slice(0, 100),
+    answer: String(p?.answer ?? "").slice(0, 300),
+  })).filter((p: any) => p.question && p.answer) : null;
+  const interests = Array.isArray(body?.interests) ? body.interests.slice(0, 20)
+    .map((s: any) => String(s).slice(0, 30)).filter(Boolean) : null;
+
+  // Guard against role-flip: if a row already exists with a DIFFERENT role,
+  // reject. A user who wants to switch sides should go through /admin.
+  const existing = await env.DB.prepare("SELECT role FROM profiles WHERE user_id = ?")
+    .bind(userId).first<{ role: string }>();
+  if (existing && existing.role !== role) {
+    return err("Profile role is already set and cannot be changed here", 409);
+  }
+
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO profiles (user_id, role, name, location, bio, hue, starting_bid, archetype, opening_bid_script, prompts_json, interests_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET
+       name = excluded.name,
+       location = excluded.location,
+       bio = excluded.bio,
+       hue = excluded.hue,
+       starting_bid = excluded.starting_bid,
+       archetype = excluded.archetype,
+       opening_bid_script = excluded.opening_bid_script,
+       prompts_json = excluded.prompts_json,
+       interests_json = excluded.interests_json,
+       updated_at = excluded.updated_at`,
+  ).bind(
+    userId, role, name, location, bio, hue, startingBid, archetype, openingBidScript,
+    prompts ? JSON.stringify(prompts) : null,
+    interests ? JSON.stringify(interests) : null,
+    existing ? Date.now() : now,   // don't overwrite created_at on updates
+    now,
+  ).run();
+
+  const row = await env.DB.prepare(`${PROFILE_SELECT} WHERE p.user_id = ?`)
+    .bind(userId).first<ProfileWithAge>();
+  return json({ profile: row ? publicProfile(row) : null });
+}
+
+/** GET /me/profile  [auth] */
+async function handleGetMyProfile(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+  const row = await env.DB.prepare(`${PROFILE_SELECT} WHERE p.user_id = ?`)
+    .bind(userId).first<ProfileWithAge>();
+  if (!row) return err("Profile not set yet", 404);
+  return json({ profile: publicProfile(row) });
+}
+
+/** GET /users/:id/profile  [auth] — peer lookup for match/chat displays. */
+async function handleGetUserProfile(peerId: string, request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+  const row = await env.DB.prepare(`${PROFILE_SELECT} WHERE p.user_id = ?`)
+    .bind(peerId).first<ProfileWithAge>();
+  if (!row) return err("Profile not found", 404);
+  return json({ profile: publicProfile(row) });
+}
+
+/** GET /users/floor?role=woman&limit=&cursor=  [auth]
+ *
+ * Paginated feed by (role, updated_at DESC). Cursor is the last item's
+ * `updated_at` timestamp — simple and doesn't drift as writes happen (unlike
+ * OFFSET, which would skip newly-written rows). Excludes the caller. */
+async function handleFloor(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+
+  const url = new URL(request.url);
+  const roleParam = (url.searchParams.get("role") ?? "").toLowerCase();
+  if (roleParam !== "man" && roleParam !== "woman") return err("role must be 'man' or 'woman'");
+  const limitRaw = Number(url.searchParams.get("limit") ?? FLOOR_PAGE_SIZE_DEFAULT);
+  const limit = Math.min(FLOOR_PAGE_SIZE_MAX,
+    Math.max(1, Number.isFinite(limitRaw) ? Math.floor(limitRaw) : FLOOR_PAGE_SIZE_DEFAULT));
+  const cursorRaw = url.searchParams.get("cursor");
+  const cursor = cursorRaw != null && cursorRaw !== "" ? Number(cursorRaw) : null;
+
+  let sql = `${PROFILE_SELECT} WHERE p.role = ? AND p.user_id != ?`;
+  const params: unknown[] = [roleParam, userId];
+  if (cursor != null && Number.isFinite(cursor)) {
+    sql += " AND p.updated_at < ?";
+    params.push(cursor);
+  }
+  sql += " ORDER BY p.updated_at DESC LIMIT ?";
+  params.push(limit);
+
+  const rows = await env.DB.prepare(sql).bind(...params).all<ProfileWithAge>();
+  const list = (rows.results ?? []).map(publicProfile);
+  const nextCursor = list.length === limit ? list[list.length - 1].updatedAt : null;
+  return json({ profiles: list, nextCursor });
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
@@ -919,6 +1131,13 @@ export default {
     if (pathname === "/verify/start" && m === "POST") return handleVerifyStart(request, env);
     if (pathname === "/verify/webhook" && m === "POST") return handleVerifyWebhook(request, env);
     if (pathname === "/admin/verify" && m === "POST") return handleAdminVerify(request, env);
+
+    // Slice 4b0 — public profiles
+    if (pathname === "/me/profile" && m === "PUT") return handleUpsertMyProfile(request, env);
+    if (pathname === "/me/profile" && m === "GET") return handleGetMyProfile(request, env);
+    if (pathname === "/users/floor" && m === "GET") return handleFloor(request, env);
+    const userProfile = pathname.match(/^\/users\/([A-Za-z0-9-]{36})\/profile$/);
+    if (userProfile && m === "GET") return handleGetUserProfile(userProfile[1], request, env);
 
     return err("Not found", 404);
   },

@@ -21,6 +21,10 @@ struct AuctionBabyApp: App {
     // signed-in users). Wired at app root; UI migration is 4b+ (today the
     // on-device sim is still what the screens read from).
     @StateObject private var matching = MatchingService()
+    // Slice 4b0: syncs the local Profile to the server-side public profile
+    // so OTHER users' floor feeds can see it. Register + updateProfile
+    // trigger uploads when signed in; local-only sessions are untouched.
+    @StateObject private var profileSync = ProfileService()
     /// Minimal UIKit AppDelegate — the only way to receive APNs device tokens
     /// in a SwiftUI app. Its sole job is to forward the token to PushService.
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -36,6 +40,7 @@ struct AuctionBabyApp: App {
                 .environmentObject(push)
                 .environmentObject(verification)
                 .environmentObject(matching)
+                .environmentObject(profileSync)
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .task {
@@ -46,6 +51,14 @@ struct AuctionBabyApp: App {
                     // Server flipped verified_at (via webhook / admin / push)
                     // → flip the local blue check to match, in one place.
                     auth.onVerified = { [weak store] in store?.verifyMe() }
+                    // Slice 4b0: any profile mutation → mirror it to the
+                    // server so OTHER users' floors see the change. Demo Mode
+                    // is skipped (no real account), and local-only sessions
+                    // are a silent no-op inside ProfileService.
+                    store.onProfileChanged = { [weak profileSync, weak store] profile in
+                        guard let store, !store.demoMode else { return }
+                        Task { _ = await profileSync?.uploadMyProfile(from: profile) }
+                    }
                     storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
                     storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
                     storeKit.onBoost = { [weak store] in store?.activateBoost() }

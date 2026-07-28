@@ -119,3 +119,30 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 -- The chat-view query — "messages in this match, oldest first" — is the hot path.
 CREATE INDEX IF NOT EXISTS idx_messages_match ON messages(match_id, created_at);
+
+-- ── Slice 4b0: public profiles ───────────────────────────────────────────────
+-- A user's profile as seen by OTHER users — bio, prompts, starting bid, etc.
+-- Split from `users` (which is auth identity) so a delete-my-account cascade
+-- also clears the public face; and so a future "hide my profile" flag is a
+-- simple soft-delete on this table rather than surgery on the identity row.
+--
+-- Age is NOT stored here — it's derived from `users.date_of_birth` at query
+-- time to keep the single source of truth. Photos are NOT stored here
+-- either — that needs R2 + moderation and is a slice on its own.
+CREATE TABLE IF NOT EXISTS profiles (
+  user_id             TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  role                TEXT NOT NULL,             -- 'man' | 'woman'
+  name                TEXT NOT NULL,
+  location            TEXT,
+  bio                 TEXT,
+  hue                 REAL NOT NULL DEFAULT 0.6, -- 0..1 portrait tone
+  starting_bid        INTEGER,                   -- women only, dollars
+  archetype           TEXT,                      -- men only: 'none' | 'goodGuy' | ... | 'trillionaire'
+  opening_bid_script  TEXT,                      -- women only, canned first message
+  prompts_json        TEXT,                      -- JSON: [{"question":"…","answer":"…"}]
+  interests_json      TEXT,                      -- JSON: ["Art","Travel",…]
+  created_at          INTEGER NOT NULL,
+  updated_at          INTEGER NOT NULL
+);
+-- Floor feed (`GET /users/floor?role=woman`) hits this hard, newest first.
+CREATE INDEX IF NOT EXISTS idx_profiles_role_updated ON profiles(role, updated_at DESC);
