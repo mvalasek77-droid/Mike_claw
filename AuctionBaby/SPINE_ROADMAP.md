@@ -257,14 +257,24 @@ local-only sessions.
 Closes the two-sided loop end-to-end: bid → accept → chat, all through
 the matching Worker for signed-in users.
 
-### 4c — Real-time + safety hardening  ⏳ (after 4b)
+### 4c — Real-time + safety hardening
 
-- **Durable Objects** for per-user inbox + per-match chat room →
-  WebSocket fan-out for real-time chat / bid arrival while both apps are
-  open. Push handles the "app is closed" case; DOs handle "app is open."
-- **Rate-limiting:** bids/hour, messages/minute — real when there are real
-  users trying things.
-- **Block enforcement** at the Worker (dovetails with slice 5).
+- **4c1a — Server-enforced blocks.** ✅ Shipped. New `blocks(blocker_id,
+  blocked_id, reason, created_at)` table in the shared D1; auth Worker
+  exposes `POST /me/blocks`, `DELETE /me/blocks/:userId`,
+  `GET /me/blocks`. Auth Worker's `/users/floor` and matching Worker's
+  inbox / outgoing / matches queries filter blocked pairs both directions;
+  `POST /bids` and `POST /matches/:id/messages` return 403 on either-side
+  block. Client wires `AuctionStore.blockAndReport` to the auth Worker via
+  `AuthService.blockUser(userId:reason:)` when signed in (Demo Mode +
+  local-only sessions stay local-block only).
+- **4c1b — Rate limiting.** ⏳ Next. Bids/hour, messages/minute — real
+  when there are real users trying things. Cloudflare's per-Worker rate
+  limiter or a small D1-backed counter, depending on what pattern lands.
+- **4c2 — Real-time via Durable Objects.** ⏳ Per-user inbox + per-match
+  chat room, WebSocket fan-out for real-time chat / bid arrival while
+  both apps are open. Push handles the "app is closed" case; DOs handle
+  "app is open."
 
 ---
 
@@ -318,3 +328,4 @@ them in parallel — by the time slice 4 ships, you need answers.
 - **2026-07-28** — Slice 4a shipped (matching data plane: Worker, schema, endpoints, push wiring, client service). 4b (UI migration) is next.
 - **2026-07-28** — Slice 4b0 shipped (public profile sync: new profiles table, /me/profile PUT/GET, /users/:id/profile, /users/floor paginated feed, client ProfileService). Unblocks 4b1 (UI wiring).
 - **2026-07-28** — Slice 4b1 shipped in four sub-slices (a: real floor; b: real inbox + accept/decline; c: real bid write; d: matches list + chat). Two-sided loop complete for signed-in users. Next: 4c real-time + safety hardening.
+- **2026-07-28** — Slice 4c1a shipped (server-enforced blocks: blocks table, /me/blocks endpoints on auth Worker, both-direction filtering on floor + matching Worker's list/write endpoints, client wire-up). Report & Block is now honored across devices.

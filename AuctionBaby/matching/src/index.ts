@@ -35,6 +35,11 @@
  *   POST /matches/:id/messages             send a message                  [auth]
  *   POST /matches/:id/mark-seen            mark other side's msgs as read  [auth]
  *   POST /matches/:id/mark-date-done       both sides move to review phase [auth]
+ *
+ * Slice 4c1a — block enforcement lives here. Blocks are OWNED by the auth
+ * Worker (`/me/blocks/*`), stored in the shared `blocks` table, and read
+ * from every list/write endpoint above: a blocked pair (either direction)
+ * gets 403 on writes and their rows are hidden from lists.
  */
 
 interface Env {
@@ -189,6 +194,19 @@ function otherOf(match: MatchRow, userId: string): string {
   return match.bidder_id === userId ? match.lot_id : match.bidder_id;
 }
 
+/** Slice 4c1a — true iff EITHER side of the pair has an active block on the
+ *  other. Reads the shared `blocks` table (owned by the auth Worker). One
+ *  query, both directions — cheap against the PK / index shape. */
+async function isBlockedEitherWay(env: Env, a: string, b: string): Promise<boolean> {
+  const row = await env.DB.prepare(
+    `SELECT 1 FROM blocks
+      WHERE (blocker_id = ?1 AND blocked_id = ?2)
+         OR (blocker_id = ?2 AND blocked_id = ?1)
+      LIMIT 1`,
+  ).bind(a, b).first();
+  return row != null;
+}
+
 /** Compact money display for push copy — "$1K", "$1.2M", plain dollars below 1K. */
 function moneyCompact(n: number): string {
   if (n >= 1_000_000) {
@@ -238,6 +256,12 @@ async function handlePlaceBid(request: Request, env: Env): Promise<Response> {
   // against enumeration or a leaked userId being used to spam.
   const lotExists = await env.DB.prepare("SELECT 1 FROM users WHERE id = ?").bind(lotId).first();
   if (!lotExists) return err("Lot not found", 404);
+
+  // Server-enforced blocks: either direction stops the bid. Deliberately
+  // vague error to avoid leaking who blocked whom.
+  if (await isBlockedEitherWay(env, bidderId, lotId)) {
+    return err("Bid can't be delivered", 403);
+  }
 
   const isWhisper = Boolean(body?.isWhisper);
   const bid: BidRow = {
@@ -302,6 +326,8 @@ function publicPeer(r: PeerRow) {
 async function handleIncoming(request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
+  // Block-aware inbox: hide rows where either side of the pair has an active
+  // block. A bid placed BEFORE the block was set is filtered out on read.
   const rows = await env.DB.prepare(
     `SELECT b.*,
             b.bidder_id AS peer_id,
@@ -312,7 +338,9 @@ async function handleIncoming(request: Request, env: Env): Promise<Response> {
        FROM bids b
        LEFT JOIN profiles p ON p.user_id = b.bidder_id
        LEFT JOIN users u    ON u.id      = b.bidder_id
-      WHERE b.lot_id = ? AND b.status = 'pending'
+      WHERE b.lot_id = ?1 AND b.status = 'pending'
+        AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = ?1 AND blocked_id = b.bidder_id)
+        AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = b.bidder_id AND blocked_id = ?1)
       ORDER BY b.created_at DESC LIMIT 100`,
   ).bind(userId).all<BidRow & PeerRow>();
   const results = rows.results ?? [];
@@ -326,6 +354,7 @@ async function handleIncoming(request: Request, env: Env): Promise<Response> {
 async function handleOutgoing(request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
+  // Symmetric filter for the bidder's outgoing list.
   const rows = await env.DB.prepare(
     `SELECT b.*,
             b.lot_id    AS peer_id,
@@ -336,7 +365,9 @@ async function handleOutgoing(request: Request, env: Env): Promise<Response> {
        FROM bids b
        LEFT JOIN profiles p ON p.user_id = b.lot_id
        LEFT JOIN users u    ON u.id      = b.lot_id
-      WHERE b.bidder_id = ?
+      WHERE b.bidder_id = ?1
+        AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = ?1 AND blocked_id = b.lot_id)
+        AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = b.lot_id AND blocked_id = ?1)
       ORDER BY b.created_at DESC LIMIT 100`,
   ).bind(userId).all<BidRow & PeerRow>();
   const results = rows.results ?? [];
@@ -471,7 +502,12 @@ async function handleListMatches(request: Request, env: Env): Promise<Response> 
          ON peer_p.user_id = (CASE WHEN m.bidder_id = ?1 THEN m.lot_id ELSE m.bidder_id END)
        LEFT JOIN users peer_u
          ON peer_u.id = (CASE WHEN m.bidder_id = ?1 THEN m.lot_id ELSE m.bidder_id END)
-      WHERE m.bidder_id = ?1 OR m.lot_id = ?1
+      WHERE (m.bidder_id = ?1 OR m.lot_id = ?1)
+        AND NOT EXISTS (
+          SELECT 1 FROM blocks
+           WHERE (blocker_id = ?1 AND blocked_id = CASE WHEN m.bidder_id = ?1 THEN m.lot_id ELSE m.bidder_id END)
+              OR (blocked_id = ?1 AND blocker_id = CASE WHEN m.bidder_id = ?1 THEN m.lot_id ELSE m.bidder_id END)
+        )
       ORDER BY m.created_at DESC LIMIT 100`,
   ).bind(userId).all<MatchRow & PeerRow>();
   const results = rows.results ?? [];
@@ -526,6 +562,14 @@ async function handleSendMessage(matchId: string, request: Request, env: Env): P
   const match = await fetchMatchIfParticipant(env, matchId, userId);
   if (!match) return err("Match not found", 404);
   if (match.phase !== "chatting") return err(`Match is ${match.phase} — no more messages`, 409);
+
+  // Block enforcement — a block placed AFTER the match freezes new messages
+  // in either direction. Existing history stays visible on the reader side
+  // for context (report evidence), but nothing new lands.
+  const otherIdEarly = otherOf(match, userId);
+  if (await isBlockedEitherWay(env, userId, otherIdEarly)) {
+    return err("Message can't be delivered", 403);
+  }
 
   const now = Date.now();
   const msg: MessageRow = {

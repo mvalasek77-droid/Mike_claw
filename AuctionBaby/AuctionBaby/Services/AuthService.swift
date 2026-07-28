@@ -185,6 +185,37 @@ final class AuthService: ObservableObject {
         return true
     }
 
+    // MARK: - Blocks (slice 4c1a)
+
+    /// Block another user server-side. Fire-and-forget from the caller's
+    /// perspective — returns true iff the Worker accepted the write. Failure
+    /// is logged (not toasted) because the local block already went through in
+    /// `AuctionStore.blockAndReport` and the user shouldn't be blamed for a
+    /// server hiccup; the next foreground can re-emit.
+    @discardableResult
+    func blockUser(userId: String, reason: String?) async -> Bool {
+        guard isEnabled, sessionToken != nil else { return false }
+        struct Body: Encodable { let userId: String; let reason: String? }
+        struct Response: Decodable { struct Block: Decodable { let blockedId: String } ; let block: Block }
+        let body = Body(userId: userId, reason: reason?.isEmpty == true ? nil : reason)
+        switch await request("/me/blocks", method: "POST", body: body,
+                              auth: true, as: Response.self) {
+        case .success: return true
+        case .failure: return false
+        }
+    }
+
+    /// Unblock a user. Idempotent.
+    @discardableResult
+    func unblockUser(userId: String) async -> Bool {
+        guard isEnabled, sessionToken != nil else { return false }
+        switch await request("/me/blocks/\(userId)", method: "DELETE",
+                              body: EmptyBody?.none, auth: true, as: EmptyResponse.self) {
+        case .success: return true
+        case .failure: return false
+        }
+    }
+
     // MARK: - Internals
 
     private func signOutLocally() {

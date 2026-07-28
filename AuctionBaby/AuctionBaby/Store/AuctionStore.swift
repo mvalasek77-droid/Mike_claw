@@ -269,13 +269,27 @@ final class AuctionStore: ObservableObject {
     func blockAndReport(_ profile: Profile, reason: String) {
         blockedIDs.insert(profile.id)
         floor.removeAll { $0.id == profile.id }
+        remoteFloor.removeAll { $0.id == profile.id }
         incomingBids.removeAll { $0.man.id == profile.id }
+        remoteIncomingBids.removeAll { $0.man.id == profile.id }
         outgoingBids.removeAll { $0.woman.id == profile.id }
+        remoteOutgoingBids.removeAll { $0.woman.id == profile.id }
         matches.removeAll { $0.bid.man.id == profile.id || $0.bid.woman.id == profile.id }
+        remoteMatches.removeAll { $0.bid.man.id == profile.id || $0.bid.woman.id == profile.id }
         Haptics.warning()
         toastFlash("Reported \(profile.name) (\(reason)) and removed them.")
+        // Server enforcement (slice 4c1a): mirror the block to the auth Worker
+        // so the pair can't see each other, bid, or message on any device.
+        // Fire-and-forget; the local state above is authoritative for this
+        // session even if the network hiccups.
+        onBlockRequested?(profile.id.uuidString.lowercased(), reason)
         save()
     }
+
+    /// Wired at app root to `AuthService.blockUser(userId:reason:)`. Absent
+    /// hook = local-only block (Demo Mode + unsigned-in). Async closure so
+    /// the store doesn't import AuthService directly.
+    var onBlockRequested: ((String, String) -> Void)?
 
     // MARK: - Admin (roster management)
 

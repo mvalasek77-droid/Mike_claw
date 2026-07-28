@@ -146,3 +146,17 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 -- Floor feed (`GET /users/floor?role=woman`) hits this hard, newest first.
 CREATE INDEX IF NOT EXISTS idx_profiles_role_updated ON profiles(role, updated_at DESC);
+
+-- ── Slice 4c1a: server-enforced blocks ───────────────────────────────────────
+-- A directional edge from blocker → blocked. A blocked pair (either direction)
+-- can't see each other on the floor, can't place bids either way, and can't
+-- send new messages on existing matches. Enforcement lives in the auth
+-- Worker (floor) and matching Worker (bids/messages).
+CREATE TABLE IF NOT EXISTS blocks (
+  blocker_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  blocked_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason      TEXT,
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (blocker_id, blocked_id)
+);
+CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON blocks(blocked_id);

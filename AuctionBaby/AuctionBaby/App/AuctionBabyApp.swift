@@ -59,6 +59,14 @@ struct AuctionBabyApp: App {
                         guard let store, !store.demoMode else { return }
                         Task { _ = await profileSync?.uploadMyProfile(from: profile) }
                     }
+                    // Slice 4c1a: mirror local Report & Block actions to the
+                    // auth Worker so the pair can't see, bid, or message
+                    // across devices. Local block already fired above; this
+                    // is fire-and-forget.
+                    store.onBlockRequested = { [weak auth, weak store] userId, reason in
+                        guard let store, !store.demoMode else { return }
+                        Task { _ = await auth?.blockUser(userId: userId, reason: reason) }
+                    }
                     storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
                     storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
                     storeKit.onBoost = { [weak store] in store?.activateBoost() }

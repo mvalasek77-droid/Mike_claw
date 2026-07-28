@@ -55,6 +55,11 @@
  *   GET    /me/profile          — my current profile                   [auth]
  *   GET    /users/:id/profile   — another user's profile               [auth]
  *   GET    /users/floor         — paginated feed by role & recency     [auth]
+ *
+ *   Slice 4c1a (server-enforced blocks):
+ *   POST   /me/blocks           — block another user (idempotent)      [auth]
+ *   DELETE /me/blocks/:userId   — unblock                              [auth]
+ *   GET    /me/blocks           — my active blocks                     [auth]
  */
 
 interface Env {
@@ -1091,8 +1096,16 @@ async function handleFloor(request: Request, env: Env): Promise<Response> {
   const cursorRaw = url.searchParams.get("cursor");
   const cursor = cursorRaw != null && cursorRaw !== "" ? Number(cursorRaw) : null;
 
-  let sql = `${PROFILE_SELECT} WHERE p.role = ? AND p.user_id != ?`;
-  const params: unknown[] = [roleParam, userId];
+  // Server-enforced blocks (slice 4c1a): a floor row is hidden when EITHER
+  // side of the pair has an active block. Two NOT EXISTS clauses cover both
+  // directions — one filters people I've blocked, the other filters people
+  // who blocked me. Cheap against the (blocker_id PK, blocked_id index)
+  // shape and clearer than a UNION.
+  let sql = `${PROFILE_SELECT}
+    WHERE p.role = ? AND p.user_id != ?
+      AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = ? AND blocked_id = p.user_id)
+      AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = p.user_id AND blocked_id = ?)`;
+  const params: unknown[] = [roleParam, userId, userId, userId];
   if (cursor != null && Number.isFinite(cursor)) {
     sql += " AND p.updated_at < ?";
     params.push(cursor);
@@ -1104,6 +1117,66 @@ async function handleFloor(request: Request, env: Env): Promise<Response> {
   const list = (rows.results ?? []).map(publicProfile);
   const nextCursor = list.length === limit ? list[list.length - 1].updatedAt : null;
   return json({ profiles: list, nextCursor });
+}
+
+// ── Slice 4c1a: blocks ───────────────────────────────────────────────────────
+
+interface BlockRow {
+  blocker_id: string; blocked_id: string; reason: string | null; created_at: number;
+}
+
+/** POST /me/blocks  { userId, reason? }  [auth]  — block another user.
+ *  Idempotent (INSERT OR IGNORE); returns the effective row either way. */
+async function handleAddBlock(request: Request, env: Env): Promise<Response> {
+  const me = await authenticate(request, env);
+  if (!me) return err("Unauthorized", 401);
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const targetId = String(body?.userId ?? "").trim().toLowerCase();
+  if (!targetId) return err("userId is required");
+  if (targetId === me) return err("You can't block yourself", 400);
+  const reason = body?.reason ? String(body.reason).slice(0, 300) : null;
+
+  // Confirm the target actually exists — stops enumeration.
+  const exists = await env.DB.prepare("SELECT 1 FROM users WHERE id = ?")
+    .bind(targetId).first();
+  if (!exists) return err("User not found", 404);
+
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO blocks (blocker_id, blocked_id, reason, created_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(blocker_id, blocked_id) DO UPDATE SET
+       reason = COALESCE(excluded.reason, blocks.reason)`,
+  ).bind(me, targetId, reason, now).run();
+  return json({
+    block: { blockerId: me, blockedId: targetId, reason, createdAt: now },
+  }, 201);
+}
+
+/** DELETE /me/blocks/:userId  [auth]  — unblock. Idempotent. */
+async function handleRemoveBlock(targetId: string, request: Request, env: Env): Promise<Response> {
+  const me = await authenticate(request, env);
+  if (!me) return err("Unauthorized", 401);
+  await env.DB.prepare(
+    "DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?",
+  ).bind(me, targetId.toLowerCase()).run();
+  return json({ ok: true });
+}
+
+/** GET /me/blocks  [auth]  — my active blocks, newest first. */
+async function handleListBlocks(request: Request, env: Env): Promise<Response> {
+  const me = await authenticate(request, env);
+  if (!me) return err("Unauthorized", 401);
+  const rows = await env.DB.prepare(
+    "SELECT * FROM blocks WHERE blocker_id = ? ORDER BY created_at DESC LIMIT 500",
+  ).bind(me).all<BlockRow>();
+  return json({
+    blocks: (rows.results ?? []).map((r) => ({
+      blockerId: r.blocker_id, blockedId: r.blocked_id,
+      reason: r.reason, createdAt: r.created_at,
+    })),
+  });
 }
 
 // ── Router ───────────────────────────────────────────────────────────────────
@@ -1138,6 +1211,12 @@ export default {
     if (pathname === "/users/floor" && m === "GET") return handleFloor(request, env);
     const userProfile = pathname.match(/^\/users\/([A-Za-z0-9-]{36})\/profile$/);
     if (userProfile && m === "GET") return handleGetUserProfile(userProfile[1], request, env);
+
+    // Slice 4c1a — blocks
+    if (pathname === "/me/blocks" && m === "POST") return handleAddBlock(request, env);
+    if (pathname === "/me/blocks" && m === "GET") return handleListBlocks(request, env);
+    const blockDelete = pathname.match(/^\/me\/blocks\/([A-Za-z0-9-]{36})$/);
+    if (blockDelete && m === "DELETE") return handleRemoveBlock(blockDelete[1], request, env);
 
     return err("Not found", 404);
   },
