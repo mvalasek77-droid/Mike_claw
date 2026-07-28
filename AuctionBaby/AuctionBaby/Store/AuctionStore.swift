@@ -81,6 +81,16 @@ final class AuctionStore: ObservableObject {
     /// any real bid, MyBidsView reads from the remote list. Sim-only sessions
     /// never flip it, so Demo Mode keeps the sim outgoing behavior.
     @Published private(set) var isRemoteOutgoing: Bool = false
+
+    /// Slice 4b1d — the matches list (both sides) fetched from the matching
+    /// Worker's `GET /matches`. Populated by `refreshRemoteMatches(matching:)`.
+    /// Empty for Demo Mode + local-only sessions (they see sim `matches`).
+    @Published var remoteMatches: [Match] = []
+    /// Flipped once a signed-in user's fetch has been performed. Once true,
+    /// MatchesView reads from `remoteMatches` even when empty (a fresh
+    /// signed-in user with no matches yet should see empty state, not sim
+    /// bleed-through). Local sessions never flip it.
+    @Published private(set) var isRemoteMatches: Bool = false
     @Published var bidders: [Profile] = []      // the pool of men (suitors) — seeds the inbox
     @Published var incomingBids: [Bid] = []     // woman's inbox
     @Published var outgoingBids: [Bid] = []     // man's placed bids
@@ -687,8 +697,17 @@ final class AuctionStore: ObservableObject {
         // Optimistic UI: drop from the visible inbox immediately.
         remoteIncomingBids.removeAll { $0.id == bid.id }
         Haptics.commit()
-        _ = await matching.accept(bidId: bid.id.uuidString.lowercased())
-        // TODO(4b1c/4b1d): pull the resulting match into `matches` here.
+        earnings += bid.amount   // parity with sim accept — she sees her ledger move
+        let result = await matching.accept(bidId: bid.id.uuidString.lowercased())
+        if case .success(let remoteMatch) = result {
+            let match = Match(from: remoteMatch, mine: me)
+            remoteMatches.insert(match, at: 0)
+            isRemoteMatches = true
+            celebrate(with: bid.man, amount: bid.amount,
+                      copycat: false, masterpiece: bid.qualifiesForMasterpiece)
+            log(.bidAccepted, "You accepted \(bid.man.name)'s \(Money.compact(bid.amount)) bid.")
+            save()
+        }
     }
 
     func declineRemote(_ bid: Bid, matching: MatchingService) async {
@@ -759,6 +778,110 @@ final class AuctionStore: ObservableObject {
             if didGild { wallet += Self.gildedBidCost }
             if didInsure { wallet += Self.bidInsuranceCost }
             save()
+        }
+    }
+
+    // MARK: - Remote matches + chat (slice 4b1d)
+
+    /// The effective matches list — remote for signed-in users once the
+    /// matching Worker has answered at least once, sim otherwise. Chat and
+    /// list surfaces read through this so the sim keeps working for Demo
+    /// Mode + local-only sessions.
+    var effectiveMatches: [Match] {
+        isRemoteMatches ? remoteMatches : matches
+    }
+
+    /// Find a match by id across both remote and sim rosters.
+    func match(withId id: UUID) -> Match? {
+        remoteMatches.first(where: { $0.id == id }) ?? matches.first(where: { $0.id == id })
+    }
+
+    /// Pull the signed-in user's real matches (both sides) from the matching
+    /// Worker. Called on MatchesView appear/foreground. Demo Mode + local-only
+    /// sessions are silent no-ops.
+    ///
+    /// The fetch always flips `isRemoteMatches = true` — an empty real list is
+    /// legitimate (no matches yet), same reasoning as the inbox in 4b1b.
+    func refreshRemoteMatches(matching: MatchingService) async {
+        guard !demoMode, matching.isEnabled, role != nil else { return }
+        let result = await matching.refreshMatches()
+        guard case .success(let list) = result else { return }
+        remoteMatches = list.map { Match(from: $0, mine: me) }
+        isRemoteMatches = true
+    }
+
+    /// Load messages + fresh state for one remote match. Called on ChatView
+    /// appear. Merges the message list into the existing row so we don't lose
+    /// scroll position on repeated fetches.
+    func refreshRemoteMatch(matchId: UUID, matching: MatchingService) async {
+        guard isRemoteMatches else { return }
+        let key = matchId.uuidString.lowercased()
+        let result = await matching.fetchMatch(key)
+        guard case .success(let bundle) = result else { return }
+        let mineId = me.id.uuidString.lowercased()
+        let messages = bundle.messages.map { ChatMessage(from: $0, mineId: mineId) }
+        if let i = remoteMatches.firstIndex(where: { $0.id == matchId }) {
+            remoteMatches[i].messages = messages
+            // Refresh volatile fields (phase, reservation) but keep the local
+            // bid we already rebuilt from the initial fetch.
+            if let phase = MatchPhase(rawValue: bundle.match.phase) { remoteMatches[i].phase = phase }
+            if let exp = bundle.match.expiresAt {
+                remoteMatches[i].expiresAt = Date(timeIntervalSince1970: exp / 1000)
+            } else {
+                remoteMatches[i].expiresAt = nil
+            }
+            remoteMatches[i].dateReserved = bundle.match.reservedAt != nil
+            remoteMatches[i].reservedAmountCents = bundle.match.reservedAmountCents
+        } else {
+            // Not in the roster yet (e.g. just accepted) — construct it fresh.
+            var m = Match(from: bundle.match, mine: me)
+            m.messages = messages
+            remoteMatches.insert(m, at: 0)
+            isRemoteMatches = true
+        }
+        // Ping the other side that we've read their latest.
+        _ = await matching.markSeen(matchId: key)
+    }
+
+    /// Send a message on a remote match. Optimistic — the bubble shows
+    /// immediately; on failure it's rolled back and the composer restores its
+    /// draft via the returned error signal (the caller re-shows `text`).
+    ///
+    /// Falls through to `send(_:in:)` (the sim path) for local matches so
+    /// Demo Mode still works.
+    @discardableResult
+    func sendRemoteMessage(matchId: UUID, text: String, matching: MatchingService) async -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        // Local match? Route to the sim path — same behavior as before.
+        guard let remoteIdx = remoteMatches.firstIndex(where: { $0.id == matchId }) else {
+            if let match = matches.first(where: { $0.id == matchId }) { send(trimmed, in: match) }
+            return true
+        }
+        let tempId = UUID()
+        let optimistic = ChatMessage(id: tempId, fromMe: true, text: trimmed, date: .now, isSystem: false)
+        remoteMatches[remoteIdx].messages.append(optimistic)
+        remoteMatches[remoteIdx].seenByOther = false
+        remoteMatches[remoteIdx].expiresAt = nil
+        Haptics.tap()
+
+        let result = await matching.sendMessage(matchId: matchId.uuidString.lowercased(), text: trimmed)
+        guard let idx = remoteMatches.firstIndex(where: { $0.id == matchId }) else { return true }
+        switch result {
+        case .success(let remote):
+            if let mIdx = remoteMatches[idx].messages.firstIndex(where: { $0.id == tempId }) {
+                remoteMatches[idx].messages[mIdx] = ChatMessage(from: remote,
+                                                                mineId: me.id.uuidString.lowercased())
+            }
+            return true
+        case .failure(let message):
+            remoteMatches[idx].messages.removeAll { $0.id == tempId }
+            Haptics.warning()
+            toastFlash(message)
+            return false
+        case .notConfigured:
+            remoteMatches[idx].messages.removeAll { $0.id == tempId }
+            return false
         }
     }
 

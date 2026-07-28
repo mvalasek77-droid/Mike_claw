@@ -231,18 +231,31 @@ have been mirrored to the server. Purely additive; UI is untouched.
 Wiring `AuctionFeedView` etc. to consume `fetchFloor()` when signed in is
 slice 4b1.
 
-#### 4b1 — UI wiring  ⏳ (next slice)
+#### 4b1 — UI wiring  ✅
 
 Wire the SwiftUI screens (`AuctionFeedView`, `IncomingBidsView`, `BidSheet`,
 `ChatView`, `MatchesView`) to consume `MatchingService` + `ProfileService`
 for signed-in users. The on-device sim stays as fallback for Demo Mode +
 local-only sessions.
 
-Rough shape:
-- `AuctionStore` gets a `RemoteMode` flag: when true (signed-in + Worker
-  wired), reads come from the services and writes route through them
-  optimistically (with rollback on failure).
-- Refresh-on-foreground per screen (paired with push nudges from 4a).
+- **4b1a** — Floor sourced from `/users/floor`; `AuctionStore.remoteFloor` +
+  `isRemoteFloor` flip once at least one real profile exists. Demo/local
+  sessions keep seeing the sim.
+- **4b1b** — Woman's inbox from `/bids/incoming` with LEFT-JOIN peer
+  snapshots; `acceptRemote` / `declineRemote` route through the Worker,
+  preserving optimistic UI.
+- **4b1c** — Bidder writes real bids via `POST /bids` from BidSheet, with
+  Gavel debit rollback on failure. Optimistic outbox entry lands in
+  `remoteOutgoingBids`.
+- **4b1d** — Matches list + chat via `/matches`, `/matches/:id`,
+  `/matches/:id/messages`. `AuctionStore.remoteMatches` /
+  `effectiveMatches` — MatchesView and ChatView read through them and
+  send goes through the Worker with optimistic bubble + rollback. Accept
+  writes the fresh match straight into `remoteMatches` so the woman sees
+  the conversation right after tapping accept.
+
+Closes the two-sided loop end-to-end: bid → accept → chat, all through
+the matching Worker for signed-in users.
 
 ### 4c — Real-time + safety hardening  ⏳ (after 4b)
 
@@ -304,3 +317,4 @@ them in parallel — by the time slice 4 ships, you need answers.
 - **2026-07-28** — Slice 3 shipped (verification: manual mode default, vendor adapters pluggable).
 - **2026-07-28** — Slice 4a shipped (matching data plane: Worker, schema, endpoints, push wiring, client service). 4b (UI migration) is next.
 - **2026-07-28** — Slice 4b0 shipped (public profile sync: new profiles table, /me/profile PUT/GET, /users/:id/profile, /users/floor paginated feed, client ProfileService). Unblocks 4b1 (UI wiring).
+- **2026-07-28** — Slice 4b1 shipped in four sub-slices (a: real floor; b: real inbox + accept/decline; c: real bid write; d: matches list + chat). Two-sided loop complete for signed-in users. Next: 4c real-time + safety hardening.

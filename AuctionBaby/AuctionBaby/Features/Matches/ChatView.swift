@@ -8,6 +8,7 @@ struct ChatView: View {
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
     @EnvironmentObject private var backend: BackendService
+    @EnvironmentObject private var matching: MatchingService
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @State private var draft = ""
@@ -18,8 +19,10 @@ struct ChatView: View {
     @State private var reserveTiers: [BackendService.ReservationTier] = []
     @State private var reserveEnabled = false
     @State private var selectedTierCents: Int?
+    @State private var sending = false
 
-    private var match: Match? { store.matches.first(where: { $0.id == matchID }) }
+    private var match: Match? { store.match(withId: matchID) }
+    private var isRemote: Bool { store.isRemoteMatches && store.remoteMatches.contains(where: { $0.id == matchID }) }
 
     var body: some View {
         Group {
@@ -57,7 +60,10 @@ struct ChatView: View {
                     composer(match)
                 }
                 .background(AppBackground())
-                .task(id: matchID) { await loadReserveInfo() }
+                .task(id: matchID) {
+                    await loadReserveInfo()
+                    if isRemote { await store.refreshRemoteMatch(matchId: matchID, matching: matching) }
+                }
                 .sheet(isPresented: $showReview) {
                     RateDateView(match: match).presentationDetents([.large])
                         .presentationBackground(.ultraThinMaterial)
@@ -303,6 +309,24 @@ struct ChatView: View {
         }
     }
 
+    /// Send the current draft. Remote matches go through the matching Worker
+    /// with optimistic UI + rollback on failure; sim matches use the local
+    /// `AuctionStore.send(_:in:)` path.
+    private func sendDraft(_ match: Match) {
+        let text = draft
+        draft = ""
+        if !isRemote {
+            store.send(text, in: match)
+            return
+        }
+        sending = true
+        Task {
+            let ok = await store.sendRemoteMessage(matchId: match.id, text: text, matching: matching)
+            sending = false
+            if !ok { draft = text }   // roll the composer back so the user can retry
+        }
+    }
+
     /// Demo → mark booked free. Live → open Stripe hosted Checkout at the chosen
     /// tier; the completed payment is reflected on next foreground via
     /// `store.refreshReservations`.
@@ -354,14 +378,14 @@ struct ChatView: View {
                         .padding(.horizontal, 14).padding(.vertical, 11)
                         .background(Capsule().fill(.white.opacity(0.08)))
                     Button {
-                        store.send(draft, in: match); draft = ""
+                        sendDraft(match)
                     } label: {
                         Image(systemName: "arrow.up").font(.system(size: 16, weight: .heavy))
                             .foregroundStyle(.black).frame(width: 40, height: 40)
                             .background(Circle().fill(Theme.goldGradient))
                     }
                     .buttonStyle(.plain)
-                    .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(sending || draft.trimmingCharacters(in: .whitespaces).isEmpty)
                     .opacity(draft.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
                 }
                 if !match.bid.onCopycat {

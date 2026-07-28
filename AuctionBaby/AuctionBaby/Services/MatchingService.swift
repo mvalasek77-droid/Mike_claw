@@ -272,6 +272,11 @@ struct RemoteMatch: Codable, Identifiable, Equatable {
     let expiresAt: Double?
     let reservedAmountCents: Int?
     let reservedAt: Double?
+    /// The OTHER participant's minimal snapshot. Present when the match came
+    /// from `GET /matches` (which JOINs) or `GET /matches/:id` (same); nil in
+    /// contexts where the Worker didn't ship it (e.g. the fresh match returned
+    /// by an accept).
+    let peer: RemotePeer?
 }
 
 struct RemoteMessage: Codable, Identifiable, Equatable {

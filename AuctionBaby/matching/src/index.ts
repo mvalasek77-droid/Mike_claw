@@ -449,27 +449,67 @@ async function handleWithdrawBid(bidId: string, request: Request, env: Env): Pro
   return json({ bid: publicBid({ ...bid, status: "withdrawn", resolved_at: now }) });
 }
 
-/** GET /matches  [auth]  — every match I'm part of, newest first. */
+/** GET /matches  [auth]  — every match I'm part of, newest first. Each row
+ *  ships a minimal `peer` snapshot (the OTHER participant, computed via
+ *  a CASE expression + LEFT JOIN) so `MatchesView` can render rows without
+ *  N+1 profile fetches. */
 async function handleListMatches(request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
+  // Bind userId three times: once to pick the peer column, twice to JOIN
+  // profiles / users on that column. Ugly but D1 supports it and it beats
+  // client-side N+1 fetches.
   const rows = await env.DB.prepare(
-    "SELECT * FROM matches WHERE bidder_id = ? OR lot_id = ? ORDER BY created_at DESC LIMIT 100",
-  ).bind(userId, userId).all<MatchRow>();
-  return json({ matches: (rows.results ?? []).map(publicMatch) });
+    `SELECT m.*,
+            CASE WHEN m.bidder_id = ?1 THEN m.lot_id ELSE m.bidder_id END AS peer_id,
+            peer_p.name       AS peer_name,
+            peer_p.hue        AS peer_hue,
+            peer_p.archetype  AS peer_archetype,
+            peer_u.verified_at AS peer_verified_at
+       FROM matches m
+       LEFT JOIN profiles peer_p
+         ON peer_p.user_id = (CASE WHEN m.bidder_id = ?1 THEN m.lot_id ELSE m.bidder_id END)
+       LEFT JOIN users peer_u
+         ON peer_u.id = (CASE WHEN m.bidder_id = ?1 THEN m.lot_id ELSE m.bidder_id END)
+      WHERE m.bidder_id = ?1 OR m.lot_id = ?1
+      ORDER BY m.created_at DESC LIMIT 100`,
+  ).bind(userId).all<MatchRow & PeerRow>();
+  const results = rows.results ?? [];
+  return json({
+    matches: results.map((r) => ({ ...publicMatch(r), peer: publicPeer(r) })),
+  });
 }
 
-/** GET /matches/:id  [auth]  — one match + its messages (oldest first). */
+/** GET /matches/:id  [auth]  — one match + its messages (oldest first).
+ *  Ships the peer snapshot alongside for the chat header to render without a
+ *  separate profile round-trip. */
 async function handleGetMatch(matchId: string, request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
   const match = await fetchMatchIfParticipant(env, matchId, userId);
   if (!match) return err("Match not found", 404);
-  const msgs = await env.DB.prepare(
-    "SELECT * FROM messages WHERE match_id = ? ORDER BY created_at ASC LIMIT 500",
-  ).bind(matchId).all<MessageRow>();
+  // Fetch the peer snapshot alongside the messages — one extra query, avoids
+  // a per-open round-trip for the chat header.
+  const peerId = match.bidder_id === userId ? match.lot_id : match.bidder_id;
+  const [peerRow, msgs] = await Promise.all([
+    env.DB.prepare(
+      `SELECT ? AS peer_id,
+              p.name       AS peer_name,
+              p.hue        AS peer_hue,
+              p.archetype  AS peer_archetype,
+              u.verified_at AS peer_verified_at
+         FROM users u LEFT JOIN profiles p ON p.user_id = u.id
+        WHERE u.id = ?`,
+    ).bind(peerId, peerId).first<PeerRow>(),
+    env.DB.prepare(
+      "SELECT * FROM messages WHERE match_id = ? ORDER BY created_at ASC LIMIT 500",
+    ).bind(matchId).all<MessageRow>(),
+  ]);
   return json({
-    match: publicMatch(match),
+    match: {
+      ...publicMatch(match),
+      peer: peerRow ? publicPeer(peerRow) : null,
+    },
     messages: (msgs.results ?? []).map(publicMessage),
   });
 }

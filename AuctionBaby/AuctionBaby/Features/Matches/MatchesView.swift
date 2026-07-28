@@ -2,19 +2,22 @@ import SwiftUI
 
 struct MatchesView: View {
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var matching: MatchingService
+
+    private var rows: [Match] { store.effectiveMatches }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    if store.matches.isEmpty {
+                    if rows.isEmpty {
                         EmptyStateView(icon: "bubble.left.and.bubble.right",
                                        title: "No matches yet",
                                        message: store.role == .man
                                         ? "Win a bid and she'll send the first invite."
                                         : "Accept a bid to open the conversation.")
                     }
-                    ForEach(store.matches) { match in
+                    ForEach(rows) { match in
                         NavigationLink(value: match.id) {
                             MatchRow(match: match)
                         }.buttonStyle(.plain)
@@ -25,8 +28,10 @@ struct MatchesView: View {
             }
             .background(AppBackground())
             .navigationTitle("Matches")
+            .task(id: matching.isEnabled) { await store.refreshRemoteMatches(matching: matching) }
+            .refreshable { await store.refreshRemoteMatches(matching: matching) }
             .navigationDestination(for: UUID.self) { id in
-                if let match = store.matches.first(where: { $0.id == id }) {
+                if let match = store.match(withId: id) {
                     ChatView(matchID: id).navigationTitle(match.other(for: store.role ?? .man).name)
                 }
             }
