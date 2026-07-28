@@ -15,7 +15,7 @@ final class AuctionStore: ObservableObject {
     @Published var role: Role?
     @Published var me: Profile = AuctionStore.blankProfile(.man)
     @Published var wallet: Int = 750           // Gavels (in-app currency, real money via IAP)
-    @Published var earnings: Int = 0            // woman side: bids actually paid out (real-world $)
+    @Published var earnings: Int = 0            // woman side: sum of accepted bids (a local display total, NOT payment; clawed back on a deadbeat verdict). Never networked.
     @Published var boostUntil: Date?           // active Spotlight Boost expiry, if any
     @Published var dailyStreak: Int = 0        // consecutive days claimed
     @Published var lastDailyClaim: Date?
@@ -948,6 +948,9 @@ final class AuctionStore: ObservableObject {
         match.messages = [
             ChatMessage(fromMe: true, text: opener, isSystem: false),
         ]
+        // 24h freshness clock (Bumble-style), cleared by the next activity —
+        // the sim suitor's reply or her next message. See
+        // testAcceptedMatchStartsWithA24HourClockAndCorrectSender.
         match.expiresAt = Date().addingTimeInterval(24 * 3600)
         matches.insert(match, at: 0)
         Haptics.success()
@@ -1218,16 +1221,20 @@ final class AuctionStore: ObservableObject {
 
         let showcaseBefore = me.showcaseCredit
         let tierBefore = me.artTier
-        // His simulated review of her → grows *her* Showcase score.
-        var traits: [String: Int] = [:]
-        for t in Trait.allCases { traits[t.rawValue] = Int.random(in: 4...5) }
-        var meRev = DateReview(authorName: bid.man.name, authorHue: bid.man.hue,
-                                stars: Int.random(in: 4...5),
-                                text: "Effortless company. Worth the bid.",
-                                traits: traits,
-                                interestCategories: Array(me.interests.prefix(2)))
-        meRev.gavelConfirmed = matches[idx].gavelConfirmed
-        me.reviews.insert(meRev, at: 0)
+        // His simulated review of her → grows *her* Showcase score. Only mint it
+        // when the date actually happened: if she flagged a no-show, there's no
+        // meetup to review, so a corroborating 5★ of her would be dishonest.
+        if confirmedMet {
+            var traits: [String: Int] = [:]
+            for t in Trait.allCases { traits[t.rawValue] = Int.random(in: 4...5) }
+            var meRev = DateReview(authorName: bid.man.name, authorHue: bid.man.hue,
+                                    stars: Int.random(in: 4...5),
+                                    text: "Effortless company. Worth the bid.",
+                                    traits: traits,
+                                    interestCategories: Array(me.interests.prefix(2)))
+            meRev.gavelConfirmed = matches[idx].gavelConfirmed
+            me.reviews.insert(meRev, at: 0)
+        }
 
         // Deadbeat: claw back earnings credited at acceptance.
         if !paid { earnings = max(0, earnings - bid.amount) }
@@ -1372,7 +1379,11 @@ final class AuctionStore: ObservableObject {
                 if self.autoRebidEnabled && !bid.onCopycat && bid.rebidDepth < 3 {
                     let raised = min(Int(Double(bid.amount) * 1.2), Self.maxStartingBid)
                     var rebid = Bid(man: self.me, woman: bid.woman, amount: raised, note: bid.note)
-                    rebid.gilded = bid.gilded
+                    // The auto-rebid is a courtesy re-bid — it must NOT inherit the
+                    // gild. Carrying gilded=true for free let a Pass user farm
+                    // Gavels: the free gild was refunded once by insurance on
+                    // decline AND a second time by rewindLastBid (which credits off
+                    // the flag). A plain rebid closes that and the free +gildPull.
                     rebid.rebidDepth = bid.rebidDepth + 1
                     self.outgoingBids.insert(rebid, at: 0)
                     Haptics.commit()

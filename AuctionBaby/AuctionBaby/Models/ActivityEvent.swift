@@ -48,4 +48,23 @@ struct ActivityEvent: Identifiable, Codable, Hashable {
     var date = Date()
     var kind: ActivityKind
     var text: String
+
+    init(id: UUID = UUID(), date: Date = Date(), kind: ActivityKind, text: String) {
+        self.id = id
+        self.date = date
+        self.kind = kind
+        self.text = text
+    }
+
+    // Tolerant decode — same persistence invariant as Profile/Bid/Match: a
+    // missing field never throws and wipes the snapshot. An unknown future
+    // ActivityKind (older build reading a newer store) falls back to .credit
+    // instead of failing the whole decode.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        date = try c.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+        kind = (try? c.decode(ActivityKind.self, forKey: .kind)) ?? .credit
+        text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
+    }
 }
