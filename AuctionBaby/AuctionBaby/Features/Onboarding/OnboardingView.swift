@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import AuthenticationServices
 
 /// Two-phase onboarding: choose your side of the floor, then build the profile.
 struct OnboardingView: View {
@@ -152,7 +151,7 @@ struct OnboardingView: View {
                         }
                     }
 
-                signInCard
+                SaveAccountCard(onSignedIn: onSignedInWithApple)
 
                 GlassCard(title: "Photos", icon: "photo.on.rectangle.angled", tint: Theme.gold) {
                     PhotoUploadStep(primary: $primaryPhoto, gallery: $photoGallery)
@@ -297,89 +296,18 @@ struct OnboardingView: View {
         return f
     }()
 
-    // MARK: Sign in with Apple (Slice 1 of the spine — see SPINE_ROADMAP.md)
-
-    /// The account-persistence card. Hidden entirely when the auth Worker
-    /// isn't configured — the app then stays local-only exactly as it does
-    /// today (which is also what Demo Mode always uses).
-    @ViewBuilder
-    private var signInCard: some View {
-        if auth.isEnabled {
-            GlassCard(title: "Save your account",
-                      icon: "person.crop.circle.badge.checkmark",
-                      tint: Theme.gold) {
-                if auth.isSignedIn {
-                    HStack(spacing: 10) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(Theme.verify)
-                            .font(.system(size: 18, weight: .bold))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Signed in with Apple")
-                                .font(.system(size: 14, weight: .heavy, design: .rounded))
-                                .foregroundStyle(Theme.ink)
-                            if let email = auth.user?.email, !email.isEmpty {
-                                Text(email)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(Theme.inkFaint)
-                                    .lineLimit(1)
-                            } else {
-                                Text("Your account will survive a reinstall.")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(Theme.inkFaint)
-                            }
-                        }
-                        Spacer()
-                    }
-                } else {
-                    Text("Optional. Sign in so your profile and matches survive a phone reset or reinstall. You still fill everything below.")
-                        .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
-                        .fixedSize(horizontal: false, vertical: true)
-                    SignInWithAppleButton(.signIn) { request in
-                        request.requestedScopes = [.fullName, .email]
-                    } onCompletion: { result in
-                        handleSIWA(result)
-                    }
-                    .signInWithAppleButtonStyle(.white)
-                    .frame(height: 44)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerS))
-                    .disabled(auth.inFlight)
-                    .opacity(auth.inFlight ? 0.6 : 1)
-                    if let error = auth.lastError {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Theme.danger)
-                    }
-                }
-            }
+    /// Post-sign-in wiring: seed the name Apple returned (if any + field is
+    /// empty), and kick off the push-registration handshake (slice 2). Wired
+    /// through `SaveAccountCard`'s `onSignedIn` callback so the SIWA button
+    /// itself lives in the extracted component and isn't duplicated here.
+    private func onSignedInWithApple(_ user: RemoteUser) {
+        if name.trimmingCharacters(in: .whitespaces).isEmpty,
+           let n = user.name, !n.isEmpty {
+            name = n
         }
-    }
-
-    private func handleSIWA(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
-            Task {
-                let outcome = await auth.signInWithApple(credential)
-                if case .success(_, let user) = outcome {
-                    // Apple returns the full name only on the FIRST sign-in.
-                    // If they gave us one and the field is empty, seed it —
-                    // never overwrite what the user has already typed.
-                    if name.trimmingCharacters(in: .whitespaces).isEmpty,
-                       let n = user.name, !n.isEmpty {
-                        name = n
-                    }
-                    // Slice 2 — ask for push permission now that we have a
-                    // server identity to attach the device token to. If they
-                    // deny, no-op; if they allow, PushService POSTs the
-                    // registration as soon as APNs hands us the token.
-                    await push.requestAuthorizationIfNeeded()
-                    await push.onSignedIn()
-                }
-            }
-        case .failure(let error):
-            // User-canceled = silent; anything else is an error worth surfacing.
-            if let asError = error as? ASAuthorizationError, asError.code == .canceled { return }
-            auth.lastError = "Sign in with Apple failed. Try again, or continue without it."
+        Task {
+            await push.requestAuthorizationIfNeeded()
+            await push.onSignedIn()
         }
     }
 

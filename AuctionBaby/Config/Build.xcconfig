@@ -21,3 +21,5 @@ SWIFT_VERSION = 5.0
 AB_WORKER_URL = $(inherited)
 AB_SHARED_SECRET = $(inherited)
 AB_CONSUMABLES_URL = $(inherited)
+AB_AUTH_URL = $(inherited)
+AB_MATCHING_URL = $(inherited)
