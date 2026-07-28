@@ -102,6 +102,31 @@ final class AuthService: ObservableObject {
         }
     }
 
+    /// Post the user's date of birth to the server. Apple doesn't share DOB in
+    /// the SIWA JWT, so it's collected at onboarding and validated here (the
+    /// Worker enforces 18+ and format YYYY-MM-DD, and refuses to overwrite an
+    /// already-set DOB — accidental resubmission is safe, deliberate changes
+    /// need admin). Called by onboarding right after `signInWithApple`.
+    @discardableResult
+    func setDateOfBirth(_ dob: String) async -> AuthResult {
+        guard isEnabled, sessionToken != nil else { return .notConfigured }
+        struct Body: Encodable { let dateOfBirth: String }
+        struct Response: Decodable { let ok: Bool; let dateOfBirth: String }
+        switch await request("/me/dob", method: "POST",
+                              body: Body(dateOfBirth: dob), auth: true, as: Response.self) {
+        case .success:
+            // Freshen `user` so views observe the new dateOfBirth.
+            _ = await refreshMe()
+            if let u = user { return .success(isNew: false, user: u) }
+            return .success(isNew: false, user: RemoteUser(id: serverUserId ?? "",
+                                                            email: nil, name: nil, dateOfBirth: dob,
+                                                            createdAt: 0, lastSeenAt: 0))
+        case .failure(let message):
+            self.lastError = message
+            return .failure(message)
+        }
+    }
+
     /// Refresh the server-side user record. Drops the local session on 401 so
     /// a rotated `SESSION_SECRET` (or a deleted account) doesn't leave the app
     /// in a phantom-signed-in state.

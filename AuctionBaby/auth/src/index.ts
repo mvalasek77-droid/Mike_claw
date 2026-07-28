@@ -34,6 +34,8 @@
  *   GET    /me                  — the authed user record             [auth]
  *   POST   /auth/logout         — client-side hint; refreshes last_seen [auth]
  *   DELETE /me                  — delete the account (GDPR/CCPA)     [auth]
+ *   POST   /me/dob              — set the account's date_of_birth   [auth]
+ *                                 (age-gate: rejects under-18)
  *
  *   Slice 2 (push notifications):
  *   POST   /devices/register    — register/upsert an APNs device token [auth]
@@ -376,6 +378,55 @@ async function handleLogout(request: Request, env: Env): Promise<Response> {
   if (!userId) return err("Unauthorized", 401);
   await env.DB.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").bind(Date.now(), userId).run();
   return json({ ok: true });
+}
+
+/** POST /me/dob  { dateOfBirth: "YYYY-MM-DD" }  [auth]
+ *
+ * Stores the account's date of birth and enforces the 18+ age gate. The DOB
+ * isn't in the Apple identity JWT (Apple doesn't share it), so we collect it
+ * at onboarding and validate here — client-side checks are advisory only.
+ *
+ * Idempotent: setting the SAME DOB is a no-op. Setting a DIFFERENT DOB on
+ * an account that already has one is rejected — accidental resubmission is
+ * safe, deliberate age-change (which is always fraud) requires admin.
+ *
+ * 400: bad format. 403: under 18. 409: DOB already set to a different value.
+ */
+async function handleSetDob(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const dob = String(body?.dateOfBirth ?? "").trim();
+
+  // Strict YYYY-MM-DD; a two-digit year here would silently pass Date parse.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    return err("dateOfBirth must be YYYY-MM-DD", 400);
+  }
+  const parsed = new Date(`${dob}T00:00:00Z`);
+  if (isNaN(parsed.getTime())) return err("dateOfBirth is not a valid date", 400);
+
+  // Age = whole years elapsed. Using UTC + a day-precision calc keeps
+  // timezone edge cases from letting someone slip through by 4 hours.
+  const now = new Date();
+  let age = now.getUTCFullYear() - parsed.getUTCFullYear();
+  const monthDelta = now.getUTCMonth() - parsed.getUTCMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && now.getUTCDate() < parsed.getUTCDate())) age--;
+
+  if (!Number.isFinite(age) || age < 18) return err("You must be 18 or older to use Auction Baby", 403);
+  if (age > 120) return err("dateOfBirth is not a valid date", 400);
+
+  const existing = await env.DB.prepare("SELECT date_of_birth FROM users WHERE id = ?")
+    .bind(userId).first<{ date_of_birth: string | null }>();
+  if (!existing) return err("User not found", 404);
+  if (existing.date_of_birth && existing.date_of_birth !== dob) {
+    return err("Date of birth is already set. Contact support to change it.", 409);
+  }
+
+  await env.DB.prepare(
+    "UPDATE users SET date_of_birth = ?, last_seen_at = ? WHERE id = ?",
+  ).bind(dob, Date.now(), userId).run();
+  return json({ ok: true, dateOfBirth: dob });
 }
 
 /** DELETE /me  [auth] — hard delete for GDPR/CCPA subject-delete requests.
@@ -856,6 +907,7 @@ export default {
     if (pathname === "/auth/apple" && m === "POST") return handleAppleAuth(request, env);
     if (pathname === "/me" && m === "GET") return handleMe(request, env);
     if (pathname === "/me" && m === "DELETE") return handleDeleteMe(request, env);
+    if (pathname === "/me/dob" && m === "POST") return handleSetDob(request, env);
     if (pathname === "/auth/logout" && m === "POST") return handleLogout(request, env);
 
     // Slice 2 — push

@@ -10,7 +10,11 @@ struct OnboardingView: View {
 
     @State private var role: Role?
     @State private var name = ""
-    @State private var ageText = "27"
+    /// Date of birth — a picker replaces the free-text age field. Server-side
+    /// truth (users.date_of_birth on the auth Worker) is set from this after
+    /// a successful sign-in; client-side we age-gate the "Step onto the
+    /// floor" button so an underage user can't even submit.
+    @State private var dob: Date = Calendar.current.date(byAdding: .year, value: -27, to: Date()) ?? Date()
     @State private var location = ""
     @State private var bio = ""
     @State private var hue: Double = 0.6
@@ -156,10 +160,8 @@ struct OnboardingView: View {
 
                 GlassCard(title: "Basics", icon: "person.text.rectangle.fill") {
                     field("Name", text: $name, placeholder: "Your name")
-                    HStack(spacing: 12) {
-                        field("Age", text: $ageText, placeholder: "27", keyboard: .numberPad)
-                        field("City", text: $location, placeholder: "Where you're based")
-                    }
+                    dobField
+                    field("City", text: $location, placeholder: "Where you're based")
                     VStack(alignment: .leading, spacing: 6) {
                         label("Portrait tone")
                         Slider(value: $hue, in: 0...1).tint(Color(hue: hue, saturation: 0.6, brightness: 0.8))
@@ -227,8 +229,45 @@ struct OnboardingView: View {
         .scrollDismissesKeyboard(.interactively)
     }
 
+    /// Whole years elapsed from `dob` until today, computed via `Calendar`
+    /// (respects month/day, doesn't drift on leap years). Matches the
+    /// Worker's UTC calc as closely as `Calendar` allows.
+    private var ageFromDob: Int {
+        Calendar.current.dateComponents([.year], from: dob, to: Date()).year ?? 0
+    }
+
     private var canSubmit: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty && (Int(ageText) ?? 0) >= 18
+        !name.trimmingCharacters(in: .whitespaces).isEmpty && ageFromDob >= 18
+    }
+
+    /// DOB picker with a visible age readout. The picker is capped at "today
+    /// minus 18 years" via `in:` so an underage date isn't selectable — the
+    /// server still enforces the gate as truth (client checks are advisory).
+    @ViewBuilder
+    private var dobField: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            label("Date of birth")
+            HStack {
+                DatePicker("", selection: $dob,
+                           in: ...Calendar.current.date(byAdding: .year, value: -18, to: Date())!,
+                           displayedComponents: .date)
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                    .tint(Theme.gold)
+                Spacer()
+                Text("\(ageFromDob)")
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.gold)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Capsule().fill(Theme.gold.opacity(0.12)))
+            }
+            if ageFromDob < 18 {
+                Label("You must be 18 or older to use Auction Baby.",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.danger)
+            }
+        }
     }
 
     private func submit() {
@@ -236,11 +275,27 @@ struct OnboardingView: View {
             .filter { !$0.1.trimmingCharacters(in: .whitespaces).isEmpty }
             .map { Prompt(question: $0.0, answer: $0.1) }
         let bid = (role == .woman && startingBidOn) ? Int(startingBidText) : nil
-        store.register(role: role!, name: name, age: Int(ageText) ?? 25, location: location,
+        store.register(role: role!, name: name, age: ageFromDob, location: location,
                        bio: bio, hue: hue, startingBid: bid, prompts: prompts,
                        interests: Array(selectedInterests),
                        photoData: primaryPhoto, photoGallery: photoGallery)
+        // If signed in, persist DOB server-side too. The Worker enforces 18+
+        // and refuses to overwrite an already-set value, so retries are safe.
+        if auth.isSignedIn {
+            let iso = Self.dobFormatter.string(from: dob)
+            Task { _ = await auth.setDateOfBirth(iso) }
+        }
     }
+
+    /// YYYY-MM-DD in POSIX locale — matches the Worker's strict-regex parse
+    /// (any locale-specific formatter would silently produce dd/mm/yyyy on
+    /// non-US devices).
+    private static let dobFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
 
     // MARK: Sign in with Apple (Slice 1 of the spine — see SPINE_ROADMAP.md)
 
