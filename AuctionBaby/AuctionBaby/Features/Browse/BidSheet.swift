@@ -137,7 +137,7 @@ struct BidSheet: View {
                     whisperFallback
                 }
 
-                Text("You pay her in person; she confirms (or flags you) after the date. Never wire money or send a deposit through the app — there's no way to, by design.")
+                Text("Spend your bid on the date — the meal, the drinks, the night. She keeps the receipts and confirms it after. Never wire money or send a personal deposit — there's no way to through the app, by design.")
                     .font(.system(size: 11)).foregroundStyle(Theme.inkFaint).multilineTextAlignment(.center)
                 Spacer(minLength: 20)
             }
@@ -149,18 +149,19 @@ struct BidSheet: View {
         .sheet(isPresented: $showStore) { PaywallView(trigger: .bidLimit) }
     }
 
-    /// The commitment reminder shown right at the point of placing a bid: the
-    /// number is a promise, not a charge, and the app never touches the money.
+    /// The commitment reminder shown right at the point of placing a bid: what
+    /// the number actually means — the money you'll spend on the date itself
+    /// (dinner, drinks, the experience) — and how she'll confirm it (receipts).
     private var intentCallout: some View {
         HStack(spacing: 10) {
             Image(systemName: "signature")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(Theme.gold)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Letter of intent · settled in person")
+                Text("The money you'll spend on the date")
                     .font(.system(size: 13, weight: .heavy, design: .serif))
                     .foregroundStyle(Theme.ink)
-                Text("This is what you'll pay her on the date — Auction Baby never handles this money.")
+                Text("Dinner, drinks, the experience — not a payment to her. She keeps the receipts so it can be confirmed after.")
                     .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -171,7 +172,7 @@ struct BidSheet: View {
         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.gold.opacity(0.08)))
         .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.gold.opacity(0.35), lineWidth: 1))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("A bid is a letter of intent, settled in person. Auction Baby never handles this money.")
+        .accessibilityLabel("Your bid is the money you'll spend on the date itself. She keeps the receipts so it can be confirmed after.")
     }
 
     /// Bid Insurance — small Gavel premium; if she declines you get it back

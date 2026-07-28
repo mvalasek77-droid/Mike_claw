@@ -156,10 +156,10 @@ struct MyProfileView: View {
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
             VStack(alignment: .leading, spacing: 10) {
                 gate(done: true, "Bought the Trillionaire tier ($9,999)")
-                gate(done: false, "Bid & pay the full $9,999 on a date")
-                gate(done: false, "She confirms you paid in full")
+                gate(done: false, "Bid & spend the full $9,999 on a date")
+                gate(done: false, "She confirms it against the receipts")
             }
-            Text("Then your badge flips to Trillionaire ✓. The Masterpiece is a different mountain: bid and pay $1,000,000 on a date, and she confirms it.")
+            Text("Then your badge flips to Trillionaire ✓. The Masterpiece is a different mountain: bid & spend $1,000,000 on a single date, and she confirms it.")
                 .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
         }
     }

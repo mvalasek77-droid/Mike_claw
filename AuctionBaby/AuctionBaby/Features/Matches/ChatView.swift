@@ -227,7 +227,7 @@ struct ChatView: View {
                             .font(.system(size: 15, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
                         Spacer()
                     }
-                    Text("A booking fee to lock in your in-person date. It goes to Auction Baby for the reservation — never to \(match.other(for: .man).name) — and unlocks nothing in the app. You still pay her what you bid, in person.")
+                    Text("A booking fee to lock in your in-person date. It goes to Auction Baby for the reservation — never to \(match.other(for: .man).name) — and unlocks nothing in the app. You still spend your bid on the date itself, and she keeps the receipts.")
                         .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                     tierPicker

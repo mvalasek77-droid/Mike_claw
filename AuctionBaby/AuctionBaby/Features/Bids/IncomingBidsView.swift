@@ -21,6 +21,7 @@ struct IncomingBidsView: View {
             ScrollView {
                 LazyVStack(spacing: 14) {
                     header
+                    receiptsTip
                     LiveTicker()
                     DailyClaimCard()
                     if pending.isEmpty && resolved.isEmpty {
@@ -60,6 +61,32 @@ struct IncomingBidsView: View {
             }
             .sheet(isPresented: $showActivity) { ActivityView() }
         }
+    }
+
+    /// A one-liner explaining what these numbers actually are: the money he's
+    /// promising to spend *on the date itself*, not a payment to her — with the
+    /// operational advice ("keep the receipts") delivered as the punchline.
+    private var receiptsTip: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Theme.gold)
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("What his bid actually means")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .tracking(0.4)
+                    .foregroundStyle(Theme.ink)
+                Text("It's what he'll spend on the date — dinner, drinks, the whole night. Not a payment to you. Keep the receipts (and enjoy them).")
+                    .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 6)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.gold.opacity(0.06)))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.gold.opacity(0.25), lineWidth: 1))
     }
 
     private var header: some View {

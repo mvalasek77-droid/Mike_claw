@@ -84,8 +84,8 @@ struct RateDateView: View {
                         FlowChips(items: categoryPool, selected: $categories)
                     }
 
-                    GlassCard(title: "What you paid her in person", icon: "creditcard.fill", tint: Theme.gold) {
-                        Text("You bid \(Money.full(match.bid.amount)). Log what you actually paid her in the real world — she confirms it. (No in-app charge.)")
+                    GlassCard(title: "What you spent on the date", icon: "creditcard.fill", tint: Theme.gold) {
+                        Text("You bid \(Money.full(match.bid.amount)). Log what you actually spent on the date — she confirms it against the receipts. (No in-app charge.)")
                             .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
                         Text(Money.full(spent))
                             .font(.system(size: 30, weight: .heavy, design: .rounded))
@@ -95,22 +95,22 @@ struct RateDateView: View {
                                               set: { spent = Int($0) }),
                                in: 0...Double(max(match.bid.amount, 1))).tint(Theme.gold)
                         if spent < match.bid.amount {
-                            Label("Paying under your bid flags you as a deadbeat.", systemImage: "exclamationmark.triangle.fill")
+                            Label("Spending under your bid flags you as a deadbeat.", systemImage: "exclamationmark.triangle.fill")
                                 .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.danger)
                         }
                     }
                 } else {
-                    GlassCard(title: "Did he spend it?", icon: "checkmark.shield.fill", tint: Theme.gold) {
-                        Text("He bid \(Money.full(match.bid.amount)). Did he actually pay it?")
+                    GlassCard(title: "Did he spend it on the date?", icon: "checkmark.shield.fill", tint: Theme.gold) {
+                        Text("He bid \(Money.full(match.bid.amount)) on the date itself. Check the receipts — did the night add up?")
                             .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.inkSoft)
                         Toggle(isOn: $paidInFull.animation(Motion.snap)) {
-                            Text(paidInFull ? "Paid in full — a gentleman" : "Deadbeat — talked big, paid small")
+                            Text(paidInFull ? "Spent it in full — a gentleman" : "Deadbeat — talked big, spent small")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(paidInFull ? Theme.success : Theme.danger)
                         }
                         .tint(Theme.success)
                         if match.bid.qualifiesForMasterpiece {
-                            Label(paidInFull ? "This mints your Masterpiece." : "No payment, no Masterpiece.",
+                            Label(paidInFull ? "This mints your Masterpiece." : "He didn't spend it — no Masterpiece.",
                                   systemImage: "rosette")
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(paidInFull ? Theme.rose : Theme.inkFaint)
