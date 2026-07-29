@@ -40,6 +40,11 @@
  * Worker (`/me/blocks/*`), stored in the shared `blocks` table, and read
  * from every list/write endpoint above: a blocked pair (either direction)
  * gets 403 on writes and their rows are hidden from lists.
+ *
+ * Slice 4c1b — rate limits on the spammable writes: 20 bids/hour per
+ * bidder (`POST /bids`) and 30 messages/minute per sender
+ * (`POST /matches/:id/messages`). Fixed-window counters in `rate_counters`
+ * (shared D1). Over-cap responses are 429 with `Retry-After`.
  */
 
 interface Env {
@@ -194,6 +199,37 @@ function otherOf(match: MatchRow, userId: string): string {
   return match.bidder_id === userId ? match.lot_id : match.bidder_id;
 }
 
+/** Slice 4c1b — fixed-window rate limit. Bumps then checks: two racers each
+ *  land their bump, only the one under cap succeeds; the loser burns quota
+ *  (fine trade-off for a spam defense). Returns `.ok = false` when the
+ *  effective count for this window is now over `cap`. */
+async function checkRate(env: Env, key: string, windowMs: number, cap: number): Promise<{ ok: boolean; retryAfterSec: number }> {
+  const now = Date.now();
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const row = await env.DB.prepare(
+    `INSERT INTO rate_counters (key, window_ms, count) VALUES (?, ?, 1)
+     ON CONFLICT(key, window_ms) DO UPDATE SET count = count + 1
+     RETURNING count AS count`,
+  ).bind(key, windowStart).first<{ count: number }>();
+  const count = row?.count ?? 1;
+  if (count <= cap) return { ok: true, retryAfterSec: 0 };
+  const retryAfterSec = Math.max(1, Math.ceil((windowStart + windowMs - now) / 1000));
+  return { ok: false, retryAfterSec };
+}
+
+/** 429 response with a `Retry-After` header — the standard signal the client
+ *  can key off for a "slow down" toast. */
+function tooManyRequests(message: string, retryAfterSec: number): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 429,
+    headers: {
+      "Content-Type": "application/json",
+      "Retry-After": String(retryAfterSec),
+      ...CORS,
+    },
+  });
+}
+
 /** Slice 4c1a — true iff EITHER side of the pair has an active block on the
  *  other. Reads the shared `blocks` table (owned by the auth Worker). One
  *  query, both directions — cheap against the PK / index shape. */
@@ -261,6 +297,15 @@ async function handlePlaceBid(request: Request, env: Env): Promise<Response> {
   // vague error to avoid leaking who blocked whom.
   if (await isBlockedEitherWay(env, bidderId, lotId)) {
     return err("Bid can't be delivered", 403);
+  }
+
+  // Rate limit: 20 bids/hour per bidder. Sized for real dating behavior
+  // (nobody legitimately writes 20 different bids in an hour) — anything
+  // above is spam / a rogue script. Bumps then checks so racers get
+  // deterministic enforcement.
+  const bidRate = await checkRate(env, `bid.place:${bidderId}`, 60 * 60 * 1000, 20);
+  if (!bidRate.ok) {
+    return tooManyRequests("Too many bids in a short time — take a breath.", bidRate.retryAfterSec);
   }
 
   const isWhisper = Boolean(body?.isWhisper);
@@ -569,6 +614,14 @@ async function handleSendMessage(matchId: string, request: Request, env: Env): P
   const otherIdEarly = otherOf(match, userId);
   if (await isBlockedEitherWay(env, userId, otherIdEarly)) {
     return err("Message can't be delivered", 403);
+  }
+
+  // Rate limit: 30 messages/minute per sender across ALL matches. A real
+  // conversation never comes close; a spam pattern (blast the same line to
+  // every match) trips instantly.
+  const msgRate = await checkRate(env, `message.send:${userId}`, 60 * 1000, 30);
+  if (!msgRate.ok) {
+    return tooManyRequests("Slow down — you're sending too fast.", msgRate.retryAfterSec);
   }
 
   const now = Date.now();

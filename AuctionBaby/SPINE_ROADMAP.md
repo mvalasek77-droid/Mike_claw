@@ -268,9 +268,13 @@ the matching Worker for signed-in users.
   block. Client wires `AuctionStore.blockAndReport` to the auth Worker via
   `AuthService.blockUser(userId:reason:)` when signed in (Demo Mode +
   local-only sessions stay local-block only).
-- **4c1b — Rate limiting.** ⏳ Next. Bids/hour, messages/minute — real
-  when there are real users trying things. Cloudflare's per-Worker rate
-  limiter or a small D1-backed counter, depending on what pattern lands.
+- **4c1b — Rate limiting.** ✅ Shipped. `rate_counters(key, window_ms,
+  count)` in the shared D1; `checkRate(...)` bumps-then-checks with
+  `INSERT ... ON CONFLICT DO UPDATE ... RETURNING count` so racers get
+  deterministic enforcement. Gated `POST /bids` at 20/hour per bidder and
+  `POST /matches/:id/messages` at 30/minute per sender. Over-cap = 429
+  with `Retry-After`; MatchingService surfaces the Worker's copy and
+  skips ErrorMonitor for 429s.
 - **4c2 — Real-time via Durable Objects.** ⏳ Per-user inbox + per-match
   chat room, WebSocket fan-out for real-time chat / bid arrival while
   both apps are open. Push handles the "app is closed" case; DOs handle
@@ -329,3 +333,4 @@ them in parallel — by the time slice 4 ships, you need answers.
 - **2026-07-28** — Slice 4b0 shipped (public profile sync: new profiles table, /me/profile PUT/GET, /users/:id/profile, /users/floor paginated feed, client ProfileService). Unblocks 4b1 (UI wiring).
 - **2026-07-28** — Slice 4b1 shipped in four sub-slices (a: real floor; b: real inbox + accept/decline; c: real bid write; d: matches list + chat). Two-sided loop complete for signed-in users. Next: 4c real-time + safety hardening.
 - **2026-07-28** — Slice 4c1a shipped (server-enforced blocks: blocks table, /me/blocks endpoints on auth Worker, both-direction filtering on floor + matching Worker's list/write endpoints, client wire-up). Report & Block is now honored across devices.
+- **2026-07-28** — Slice 4c1b shipped (rate limits: rate_counters table, 20 bids/hour per bidder, 30 messages/minute per sender, 429 + Retry-After on over-cap, client friendly-copy passthrough). Spam waves stop before they hit real users.

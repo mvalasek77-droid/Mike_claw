@@ -162,9 +162,15 @@ final class MatchingService: ObservableObject {
                 let decoded = try? JSONDecoder().decode(WorkerError.self, from: data)
                 let message = decoded?.error ?? "HTTP \(status)"
                 lastError = message
-                ErrorMonitor.shared.record(category: "Matching",
-                                           message: "\(method) \(path) failed",
-                                           detail: message)
+                // Rate-limit hits are expected UX signals, not errors — the
+                // Worker's copy ("Too many bids in a short time…") already
+                // tells the user to wait. Skip the ErrorMonitor entry so real
+                // failures don't get buried.
+                if status != 429 {
+                    ErrorMonitor.shared.record(category: "Matching",
+                                               message: "\(method) \(path) failed",
+                                               detail: message)
+                }
                 return .failure(message)
             }
             let decoded = try JSONDecoder().decode(T.self, from: data)

@@ -160,3 +160,15 @@ CREATE TABLE IF NOT EXISTS blocks (
   PRIMARY KEY (blocker_id, blocked_id)
 );
 CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON blocks(blocked_id);
+
+-- ── Slice 4c1b: rate-limit counters ──────────────────────────────────────────
+-- Fixed-window counters. `key` is a semantic slug (e.g. "bid.place:<userId>"),
+-- `window_ms` is the floor of Date.now() rounded down to the window size for
+-- that limit. Matching Worker bumps on writes; over cap → 429. Cleanup is a
+-- follow-up; old rows are cheap.
+CREATE TABLE IF NOT EXISTS rate_counters (
+  key         TEXT NOT NULL,
+  window_ms   INTEGER NOT NULL,
+  count       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (key, window_ms)
+);
