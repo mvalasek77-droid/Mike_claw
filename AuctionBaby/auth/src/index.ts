@@ -1027,6 +1027,17 @@ async function handleUpsertMyProfile(request: Request, env: Env): Promise<Respon
   const interests = Array.isArray(body?.interests) ? body.interests.slice(0, 20)
     .map((s: any) => String(s).slice(0, 30)).filter(Boolean) : null;
 
+  // Slice 8 — enforce the DOB gate at write time. /me/dob already rejects
+  // under-18s at the POST layer, so "DOB is set" is a proxy for "age is
+  // verified 18+". Refusing the profile write when DOB is null closes the
+  // path where a signed-in user could otherwise create a floor-visible
+  // profile without ever going through the age gate.
+  const dobRow = await env.DB.prepare("SELECT date_of_birth FROM users WHERE id = ?")
+    .bind(userId).first<{ date_of_birth: string | null }>();
+  if (!dobRow?.date_of_birth) {
+    return err("Set your date of birth first — the 18+ check runs against it.", 403);
+  }
+
   // Guard against role-flip: if a row already exists with a DIFFERENT role,
   // reject. A user who wants to switch sides should go through /admin.
   const existing = await env.DB.prepare("SELECT role FROM profiles WHERE user_id = ?")
@@ -1073,11 +1084,14 @@ async function handleGetMyProfile(request: Request, env: Env): Promise<Response>
   return json({ profile: publicProfile(row) });
 }
 
-/** GET /users/:id/profile  [auth] — peer lookup for match/chat displays. */
+/** GET /users/:id/profile  [auth] — peer lookup for match/chat displays.
+ *  Slice 8: hides profiles whose account has no DOB set. If somehow a profile
+ *  slipped in before the write-time gate landed, this makes it invisible to
+ *  every peer read. */
 async function handleGetUserProfile(peerId: string, request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
-  const row = await env.DB.prepare(`${PROFILE_SELECT} WHERE p.user_id = ?`)
+  const row = await env.DB.prepare(`${PROFILE_SELECT} WHERE p.user_id = ? AND u.date_of_birth IS NOT NULL`)
     .bind(peerId).first<ProfileWithAge>();
   if (!row) return err("Profile not found", 404);
   return json({ profile: publicProfile(row) });
@@ -1106,8 +1120,12 @@ async function handleFloor(request: Request, env: Env): Promise<Response> {
   // directions — one filters people I've blocked, the other filters people
   // who blocked me. Cheap against the (blocker_id PK, blocked_id index)
   // shape and clearer than a UNION.
+  //
+  // Slice 8: also require the peer's DOB is set. /me/dob enforces 18+ at
+  // POST time, so "DOB present" is a proxy for "age verified 18+"; a null
+  // DOB is treated as unverified and never surfaces on the floor.
   let sql = `${PROFILE_SELECT}
-    WHERE p.role = ? AND p.user_id != ?
+    WHERE p.role = ? AND p.user_id != ? AND u.date_of_birth IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = ? AND blocked_id = p.user_id)
       AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = p.user_id AND blocked_id = ?)`;
   const params: unknown[] = [roleParam, userId, userId, userId];
