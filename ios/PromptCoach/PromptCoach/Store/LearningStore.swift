@@ -88,7 +88,11 @@ final class LearningStore: ObservableObject {
 
     private var spec: SelfLearning? { pack.selfLearning }
 
-    var isSupported: Bool { spec != nil }
+    // Adaptive controls are paid-only. Gated here — the single choke point
+    // both the engine's `snapshot` consult and the Settings UI read — rather
+    // than at each call site, so Lite can't drift into partial learning
+    // behavior if a call site forgets the check.
+    var isSupported: Bool { !AppTier.isLite && spec != nil }
 
     var isEnabled: Bool { record.enabled }
 
@@ -145,7 +149,7 @@ final class LearningStore: ObservableObject {
     // MARK: Learned state out
 
     var snapshot: LearningSnapshot {
-        guard record.enabled, let spec else { return .none }
+        guard isSupported, record.enabled, let spec else { return .none }
         var snap = LearningSnapshot()
 
         // model_override — a task's default shifts to the model this user

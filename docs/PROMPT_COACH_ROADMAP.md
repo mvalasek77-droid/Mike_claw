@@ -6,6 +6,56 @@ behind every edit.
 
 ---
 
+## Two App Store listings, one codebase, no IAP
+
+**Prompt Coach** (paid, one-time purchase) and **Prompt Coach Lite** (free)
+are the same sources compiled with a build-time flag — `PromptCoachLite` in
+`project.yml` sets `SWIFT_ACTIVE_COMPILATION_CONDITIONS: LITE`, which flips
+`AppTier.isLite` (`App/AppTier.swift`). There is no StoreKit, no receipt
+check, no unlock flow inside either binary — the "upgrade" is a link to the
+paid app's own App Store page. This keeps the paid app's no-IAP, no-subscription
+commitment (see its Terms/Privacy) completely intact; Lite makes the same
+commitment for itself, just at $0.
+
+**What Lite cuts** — deliberately small, so the difference is felt in one
+session rather than discovered by reading a feature-comparison page:
+
+| Feature | Prompt Coach | Prompt Coach Lite |
+|---|---|---|
+| Models coachable | All 5 (Haiku 4.5, Sonnet 5, Opus 5, Opus 4.8, Fable 5) | 2 (Haiku 4.5, Sonnet 5) |
+| Model reference library | Full guidance for all 5 | Full guidance for the 2 unlocked; the other 3 show as locked rows linking out |
+| Sharpen (meta-prompting pass) | ✅ | ❌ |
+| Token & cost estimate | ✅ | ❌ |
+| Adaptive controls (self-learning) | ✅ | ❌ — Settings section doesn't appear at all |
+| Technique muting | ✅ | ❌ (follows from adaptive controls being off) |
+| History | Unlimited, on-device | Capped at 3 sessions (`AppState.liteHistoryLimit`) |
+| Technique library (browsing) | ✅ | ✅ — kept full; it's the best top-of-funnel argument for the paid app |
+| Task detection, rewrite, report card, retired-pattern stripping | ✅ | ✅ — the core loop stays intact so Lite still demonstrates real value |
+
+**Where the gate lives, so it can't drift:** `ModelPack.availableModels` /
+`.lockedModels` is the single source every screen reads instead of the raw
+`models` array; `CoachEngine.coach()` clamps model routing defensively even
+if a stale preference or override names a locked model; `LearningStore.isSupported`
+is the one choke point both the Settings UI and the engine's `snapshot`
+consult, so a hidden section can't coexist with active learning underneath
+it; `CoachEngine.sharpen()` and `buildTokenReport()` early-return on Lite
+rather than being gated only at the call site. All of this is enforced by
+contract tests in `Tests/validate_pack.py`, not just described here.
+
+**Known gap:** `PromptCoachTests` only compiles against the paid
+(`PromptCoach`) target — there is no `LITE`-flagged test target, so the
+gating is verified by source-text contract tests (does the guard exist,
+does it reference the right symbols) rather than by running Swift code
+under the `LITE` condition. Neither this repo nor the contract tests have
+been run through an actual `xcodebuild` — see the test report.
+
+**Before submission:** `AppTier.paidAppStoreURL` is a placeholder
+(`apps.apple.com/app/id0000000000`) — it must point at the real listing
+before Lite ships, and the paid app needs its own real App Store ID first.
+Lite also needs its own app icon, distinct from the paid app's.
+
+---
+
 ## v1.0 — Shipped in this branch
 
 The complete core loop, all on device, no network, no account.
@@ -34,6 +84,7 @@ The complete core loop, all on device, no network, no account.
 | Settings + in-app Terms & Privacy | ✅ |
 | Liquid Glass theme, per-model tint, Reduce Motion, Dynamic Type, dark mode | ✅ |
 | Refreshable model pack (new models without an App Store update) | ✅ (bundled + versioned; remote fetch is v1.1) |
+| Free tier — Prompt Coach Lite, same codebase, no IAP | ✅ (see "Two App Store listings" below) |
 
 **Not shipped, deliberately:** any jailbreak / guardrail-bypass capability. The
 refusal doctor helps *legitimate* requests read as legitimate; it will not help

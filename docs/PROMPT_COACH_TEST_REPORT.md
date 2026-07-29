@@ -16,7 +16,7 @@ of claim that gets a submission rejected.
 | Question | Answer |
 |---|---|
 | Is the feature set complete and coherent? | **Yes** — every feature in the v1.0 spec is implemented and reachable. |
-| Do the executable tests pass? | **Yes — 520/520 contract tests, 0 failures.** |
+| Do the executable tests pass? | **Yes — 550/550 contract tests, 0 failures.** |
 | Are there known bugs? | **None known.** Six real bugs were found and fixed during this pass (below). |
 | Is it *certified* zero-bug and submit-ready? | **No.** 58 XCTest cases are written but **have never been executed** — that needs Xcode. Until they run, "zero bugs" is unproven. |
 | Does it look senior-engineer-built? | **Yes**, by inspection: data-driven architecture, no fixed-size fonts, no debug prints, no force-unwraps, backward-compatible persistence, tests that assert behaviour rather than restating the code. |
@@ -27,7 +27,7 @@ green light.
 
 ---
 
-## 1. Executed tests — 520 passed, 0 failed
+## 1. Executed tests — 550 passed, 0 failed
 
 `python3 ios/PromptCoach/Tests/validate_pack.py` — runs anywhere Python does,
 including CI. This is the guardrail against the single worst failure mode: a
@@ -53,6 +53,7 @@ launch. Coverage:
 | **Learning honesty** | The pack's `self_learning.note` must say "not a trained model" and "local", and must state at least four guardrails including the per-model-suppression one. |
 | **Estimate honesty** | The result screen must label token figures as approximate, say "not an exact count", and surface `promptIsLonger`. |
 | **XCTest suite keeps up** | Test-method names are unique, and the Swift suite must reference every new surface (filler trim, token report, multipliers, learned preference, auto-sharpen, muting, lenient record decode). |
+| **Free-tier (Lite) gating** | `AppTier.isLite` is compile-time only (`#if LITE`), never a runtime toggle; `liteModelIDs` is a small fixed subset of the pack's real model ids and the fallback model is itself unlocked; `ModelPack.availableModels`/`.lockedModels` is the one list every screen must read; the engine clamps routing, gates Sharpen, and gates the token report; `LearningStore.isSupported` is the single choke point both the Settings UI and the engine's snapshot consult; history is capped, not just visually thinned; `project.yml` defines a `PromptCoachLite` target sharing the same sources with its own bundle id and its own Info.plist; Lite's legal text says the app is free and never carries the paid app's purchase-grants-license clause. |
 
 ## 2. Written but NOT executed — 58 XCTest cases
 
@@ -186,24 +187,48 @@ Then walk these manually — each is a category a static pass cannot cover:
 - [ ] **Adaptive controls** — drive the signals to their thresholds (override the
       same model 3×, sharpen 3×), confirm the adjustment appears in Settings in
       plain language, then Reset and confirm mutes and the on/off switch survive.
+- [ ] **`PromptCoachLite` scheme builds and runs.** `xcodegen generate` produces
+      both targets; run the `PromptCoachLite` scheme and confirm: only Haiku 4.5
+      and Sonnet 5 are offered anywhere in the coaching flow; the other 3 models
+      show as locked rows in Model reference that open the App Store link; no
+      Sharpen button; no token/cost card; no "Adaptive controls" row in Settings
+      at all; history stops growing past 3 entries; Settings shows the "Unlock
+      all 5 models" card; Terms/Privacy read as the free-app versions.
+- [ ] **`PromptCoach` (paid) scheme is unaffected by the Lite changes** — confirm
+      all 5 models, Sharpen, token card, and adaptive controls still work exactly
+      as before; the two targets sharing one source tree is the main regression
+      risk this refactor introduces.
 
 ## 6. Pre-submission blockers
 
-1. **The app icon is a generated placeholder.** Functional and coherent, but not
-   real branding. Replace before submission.
-2. **Set a real `DEVELOPMENT_TEAM`** in `project.yml` (currently `""`).
-3. **Decide the price** and confirm no IAP products exist in App Store Connect —
-   the app and its legal copy both state one-time purchase, no IAP.
-4. **App Review notes** should say the app is fully functional offline with no
+1. **The app icon is a generated placeholder** for the paid app, and **Lite has
+   no icon of its own yet** — it currently inherits the same placeholder.
+   Both need real, distinct icons before submission.
+2. **Set a real `DEVELOPMENT_TEAM`** in `project.yml` (currently `""`) — applies
+   to both targets.
+3. **Decide the paid app's price** and confirm no IAP products exist in App
+   Store Connect for *either* listing — both apps and their legal copy state
+   no IAP, no subscriptions.
+4. **`AppTier.paidAppStoreURL` is a placeholder** (`apps.apple.com/app/id0000000000`).
+   It must point at the real paid-app listing before Lite ships — and the paid
+   app needs a real App Store ID first, which means it should go live before
+   Lite's upsell links are meaningful.
+5. **App Review notes** should say the app is fully functional offline with no
    account and no API key required, so a reviewer doesn't go hunting for a login.
+   For Lite specifically, note that it is intentionally feature-limited and links
+   to a separate paid listing — reviewers sometimes flag an unexpectedly bare
+   free app as incomplete rather than intentional.
 
 ---
 
 ## Bottom line
 
-520 executable checks pass, 58 behavioural tests are written and waiting for a
+550 executable checks pass, 58 behavioural tests are written and waiting for a
 Mac, six real bugs were found and fixed, and the architecture is data-driven
 with the model facts sourced from Anthropic's current docs and dated in the pack.
+The free tier (Prompt Coach Lite) is a build-time flag over the same sources
+with no StoreKit and no new engineering surface beyond that flag, verified by
+contract tests but — like everything else in this report — never compiled.
 
 What I will not tell you is that it's "tested, zero bugs, ship it" — I have not
 pressed Build, and that distinction is the whole difference between engineering

@@ -11,6 +11,16 @@ struct SettingsView: View {
         ZStack {
             GlassBackground().ignoresSafeArea()
             List {
+                if AppTier.isLite {
+                    Section {
+                        UpsellCard(
+                            title: "Unlock all 5 models",
+                            detail: "Prompt Coach Lite coaches for Haiku 4.5 and Sonnet 5. The full app adds Opus 5, Opus 4.8, and Fable 5 — plus Sharpen, token cost, and adaptive controls.")
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                }
+
                 Section {
                     NavigationLink { ModelReferenceView() } label: {
                         row("Model reference", "cpu",
@@ -106,9 +116,15 @@ struct ModelReferenceView: View {
             GlassBackground().ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 14) {
-                    ForEach(app.pack.models) { model in
+                    ForEach(app.pack.availableModels) { model in
                         NavigationLink { ModelDetailView(model: model) } label: {
                             card(model)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    ForEach(app.pack.lockedModels) { model in
+                        Link(destination: AppTier.paidAppStoreURL) {
+                            lockedCard(model)
                         }
                         .buttonStyle(.plain)
                     }
@@ -148,6 +164,74 @@ struct ModelReferenceView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(model.name). \(model.oneLiner). \(model.priceLabel)")
         .accessibilityHint("Opens full prompting guidance")
+    }
+
+    /// A model Lite doesn't coach for. Shows the name so the library is
+    /// still an honest map of what Claude offers, but withholds the
+    /// prompting guidance itself — that's the paid app's content.
+    private func lockedCard(_ model: ModelProfile) -> some View {
+        GlassCard(corner: Glass.cornerMedium) {
+            HStack(spacing: 10) {
+                Circle().fill(Glass.tint(for: model.id).opacity(0.4)).frame(width: 10, height: 10)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.name)
+                        .font(Type.cardTitle)
+                        .foregroundStyle(Glass.primaryText.opacity(0.6))
+                    Text("In the full app")
+                        .font(Type.caption)
+                        .foregroundStyle(Glass.primaryText.opacity(0.45))
+                }
+                Spacer()
+                Image(systemName: "lock.fill")
+                    .font(Type.caption)
+                    .foregroundStyle(Glass.primaryText.opacity(0.4))
+            }
+            .padding(16)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(model.name), locked in Prompt Coach Lite")
+        .accessibilityHint("Opens Prompt Coach on the App Store")
+    }
+}
+
+// MARK: - Upsell (Lite only)
+
+/// The one place Lite asks for the sale. No IAP, no in-app paywall flow —
+/// just a link to the paid app's own App Store listing. Apple, not this
+/// app, handles the transaction.
+struct UpsellCard: View {
+    let title: String
+    let detail: String
+
+    var body: some View {
+        Link(destination: AppTier.paidAppStoreURL) {
+            GlassCard(corner: Glass.cornerMedium) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(Type.body)
+                        .foregroundStyle(Glass.accent)
+                        .padding(.top, 2)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
+                            .font(Type.bodyMed)
+                            .foregroundStyle(Glass.primaryText)
+                        Text(detail)
+                            .font(Type.caption)
+                            .foregroundStyle(Glass.primaryText.opacity(0.65))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(Type.caption)
+                        .foregroundStyle(Glass.primaryText.opacity(0.35))
+                }
+                .padding(16)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(detail)")
+        .accessibilityHint("Opens Prompt Coach on the App Store")
     }
 }
 
@@ -533,8 +617,100 @@ struct LegalView: View {
 /// docs/prompt-coach-terms.html and docs/prompt-coach-privacy.html.
 enum LegalText {
     static func body(for kind: LegalView.Kind) -> String {
-        kind == .terms ? terms : privacy
+        if AppTier.isLite {
+            return kind == .terms ? termsLite : privacyLite
+        }
+        return kind == .terms ? terms : privacy
     }
+
+    // MARK: Lite — free tier, no purchase at all
+
+    static let privacyLite = """
+    Effective date: July 20, 2026
+
+    THE SHORT VERSION
+    Prompt Coach Lite is a free app with no accounts, no analytics, no \
+    advertising, and no tracking. Everything you type stays on your iPhone.
+
+    WHAT WE COLLECT
+    Nothing on our own servers — we don't operate any. Your rambles, the \
+    rewritten prompts, and your (limited) history live only on your device.
+
+    THE FULL APP
+    Prompt Coach Lite links to "Prompt Coach" on the App Store, a separate, \
+    one-time-purchase app. Tapping that link opens Apple's App Store; we \
+    receive nothing about whether you view or buy it. If you do, the paid \
+    app's own Privacy Policy governs it, not this one.
+
+    WHAT WE DON'T DO
+    • No third-party analytics or advertising SDKs.
+    • No selling or sharing of data, ever.
+    • No user accounts, sign-ins, or profiles.
+    • No collection of location, contacts, or advertising identifiers.
+
+    CHILDREN
+    The app is not directed at children under 13 and collects no personal \
+    information from anyone.
+
+    YOUR CONTROL
+    Because all data is on your device, you control it completely: delete \
+    individual history entries or all of them from within the app, or delete \
+    the app to remove everything.
+
+    CONTACT
+    mvalasek77@gmail.com
+    """
+
+    static let termsLite = """
+    Effective date: July 20, 2026
+
+    1. ACCEPTANCE
+    By using Prompt Coach Lite you agree to these Terms. Apple's Standard \
+    End User License Agreement also applies; where it conflicts, the terms \
+    that give you greater protection govern.
+
+    2. WHAT THE APP DOES
+    Prompt Coach Lite takes rough prompts you write and rewrites them into \
+    cleaner prompts tailored to Claude Haiku 4.5 or Claude Sonnet 5, and \
+    explains the prompt-engineering techniques it applied. It is a free, \
+    reduced version of "Prompt Coach" — see that app's own listing for the \
+    full model set and feature list.
+
+    3. LICENSE
+    You may use the app on devices you own or control. You may not resell, \
+    redistribute, or reverse-engineer the app.
+
+    4. NO PURCHASE, NO IAP
+    Prompt Coach Lite is entirely free. It contains no in-app purchases, no \
+    subscriptions, and no paywall. Any link to "Prompt Coach" opens a \
+    separate App Store listing and a separate transaction, if you choose to \
+    make one — Apple handles that payment, not this app.
+
+    5. NO WARRANTY ON GENERATED PROMPTS
+    The app helps you improve prompts, but prompt quality and model output \
+    are inherently variable. The app is provided "as is" without \
+    warranties. We do not guarantee that a rewritten prompt will produce any \
+    particular result. You are responsible for reviewing prompts before \
+    relying on them.
+
+    6. ACCEPTABLE USE
+    You agree not to use the app to create prompts or content that are \
+    unlawful or that violate Anthropic's usage policies. The app does not \
+    assist in bypassing AI safety systems.
+
+    7. LIMITATION OF LIABILITY
+    To the maximum extent permitted by law, our total liability for any \
+    claim relating to the app will not exceed $10.
+
+    8. CHANGES
+    We may update these terms; the current version ships in the app with a \
+    new effective date.
+
+    9. CONTACT
+    mvalasek77@gmail.com
+    """
+
+    // MARK: Paid
 
     static let privacy = """
     Effective date: July 20, 2026

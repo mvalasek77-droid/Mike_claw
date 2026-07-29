@@ -20,7 +20,7 @@ struct ResultView: View {
                     reportCard
                     if let report = result.tokenReport { tokenCard(report) }
                     promptCard
-                    sharpenButton
+                    if !AppTier.isLite { sharpenButton }
                     if let schema = result.structuredSchema { schemaCard(schema) }
                     techniques
                 }
@@ -56,7 +56,7 @@ struct ResultView: View {
                 // Segmented override — user can pick any model.
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(app.pack.models) { m in
+                        ForEach(app.pack.availableModels) { m in
                             modelChip(m)
                         }
                     }

@@ -41,6 +41,37 @@ targets:
           DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
           SWIFT_COMPILATION_MODE: wholemodule
 
+  # Free, stripped-down listing. Same sources as PromptCoach, compiled with
+  # the LITE flag so AppTier.isLite is true — see App/AppTier.swift for what
+  # that gates. No IAP: the upgrade path is linking out to the paid app's own
+  # App Store page (AppTier.paidAppStoreURL), not a paywall in this binary.
+  PromptCoachLite:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PromptCoach
+    info:
+      path: PromptCoach/Resources/Info-Lite.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codegenie.promptcoach.lite
+        PRODUCT_NAME: PromptCoachLite
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+      configs:
+        Debug:
+          DEBUG_INFORMATION_FORMAT: dwarf
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG LITE"
+        Release:
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+          SWIFT_COMPILATION_MODE: wholemodule
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "LITE"
+
   PromptCoachTests:
     type: bundle.unit-test
     platform: iOS
@@ -70,5 +101,14 @@ schemes:
       gatherCoverageData: true
       targets:
         - PromptCoachTests
+    archive:
+      config: Release
+
+  PromptCoachLite:
+    build:
+      targets:
+        PromptCoachLite: all
+    run:
+      config: Debug
     archive:
       config: Release

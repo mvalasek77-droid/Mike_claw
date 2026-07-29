@@ -37,6 +37,22 @@ struct ModelPack: Codable {
     func technique(id: String) -> Technique? { techniques.library.first { $0.id == id } }
     func playbook(task: String) -> Playbook? { taskPlaybooks.playbooks.first { $0.task == task } }
 
+    /// The models this build can actually coach against. On the paid app
+    /// this is every model in the pack; on Lite it's the fixed subset in
+    /// `AppTier.liteModelIDs`. Every screen that lists models reads this,
+    /// not `models` directly, so a locked model can't leak into a chip row.
+    var availableModels: [ModelProfile] {
+        guard AppTier.isLite else { return models }
+        return models.filter { AppTier.liteModelIDs.contains($0.id) }
+    }
+
+    /// The models Lite deliberately withholds — used to render the locked
+    /// rows in the model reference library. Empty on the paid app.
+    var lockedModels: [ModelProfile] {
+        guard AppTier.isLite else { return [] }
+        return models.filter { !AppTier.liteModelIDs.contains($0.id) }
+    }
+
     /// Loads the pack bundled with the app. Traps only on a corrupt build —
     /// the JSON is validated in CI, so a decode failure means a broken bundle.
     static func loadBundled() -> ModelPack {

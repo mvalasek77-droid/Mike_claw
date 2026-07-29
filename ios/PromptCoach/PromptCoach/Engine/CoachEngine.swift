@@ -128,7 +128,19 @@ struct CoachEngine {
             learnedShift = true
         }
 
-        let chosen = overrideModelID ?? recommended
+        var chosen = overrideModelID ?? recommended
+
+        // Lite can only ever route to its two unlocked models. This is a
+        // defensive clamp, not the primary gate — the UI never offers a
+        // locked model in the first place — but it means a stale learned
+        // preference or an unexpected override can't silently coach against
+        // a model this build has no prompting guidance to show for.
+        if AppTier.isLite {
+            if !AppTier.liteModelIDs.contains(recommended) { recommended = AppTier.liteFallbackModelID }
+            if !AppTier.liteModelIDs.contains(chosen) { chosen = recommended }
+            learnedShift = false
+        }
+
         let model = pack.model(id: chosen)
 
         let card = buildReportCard(ramble: ramble)
@@ -187,7 +199,9 @@ struct CoachEngine {
 
     private func buildTokenReport(ramble: String, core: String, prompt: String,
                                   model: ModelProfile?, filler: [String]) -> TokenReport? {
-        guard estimator.isAvailable else { return nil }
+        // Cost accounting is a paid-app feature — it's the clearest evidence
+        // of the model-routing saving, which is exactly the reason to buy.
+        guard !AppTier.isLite, estimator.isAvailable else { return nil }
         let id = model?.id
         let promptTokens = estimator.estimate(prompt, modelID: id)
         // Priced against the most expensive model in the pack so the
@@ -217,6 +231,10 @@ struct CoachEngine {
     /// device and deterministic; the optional Test It path (user's own key)
     /// would layer a model-graded pass on top of this.
     func sharpen(_ result: CoachResult, automatic: Bool = false) -> CoachResult {
+        // Sharpen is paid-only. Defensive, matching buildTokenReport — the
+        // Lite UI never shows the button, and auto-sharpen can't fire
+        // because LearningStore.snapshot is always .none on Lite.
+        guard !AppTier.isLite else { return result }
         let task = TaskType(rawValue: result.taskType) ?? .code
         let model = pack.model(id: result.chosenModelID)
         let suppressed = model?.suppressed ?? []

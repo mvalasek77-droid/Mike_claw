@@ -26,6 +26,11 @@ MODELS_SWIFT = ROOT / "ios/PromptCoach/PromptCoach/Models/ModelPack.swift"
 ESTIMATOR = ROOT / "ios/PromptCoach/PromptCoach/Engine/TokenEstimator.swift"
 STORE = ROOT / "ios/PromptCoach/PromptCoach/Store/LearningStore.swift"
 RESULT_VIEW = ROOT / "ios/PromptCoach/PromptCoach/Views/ResultView.swift"
+APP_TIER = ROOT / "ios/PromptCoach/PromptCoach/App/AppTier.swift"
+APP_STATE = ROOT / "ios/PromptCoach/PromptCoach/Store/AppState.swift"
+SETTINGS_VIEW = ROOT / "ios/PromptCoach/PromptCoach/Views/SettingsView.swift"
+PROJECT_YML = ROOT / "ios/PromptCoach/project.yml"
+INFO_LITE = ROOT / "ios/PromptCoach/PromptCoach/Resources/Info-Lite.plist"
 
 failures: list[str] = []
 passes: list[str] = []
@@ -592,6 +597,102 @@ if XCTESTS.exists():
           "overrideModelID:" in xc_src and "adaptive_defaults" in xc_src)
     check("XCTest asserts muting can't re-enable a model suppression",
           "testMutingCanNeverReEnableAModelSuppression" in xc_src)
+
+# ------------------------------------------------- free tier (Prompt Coach Lite)
+# Two App Store listings, one codebase, no IAP: PromptCoachLite is the same
+# sources compiled with a LITE flag. These checks can't compile Swift, so they
+# verify the gate exists at the choke points that matter and that the two
+# tiers stay in sync with the pack.
+
+if APP_TIER.exists():
+    tier_src = APP_TIER.read_text()
+    check("AppTier declares a compile-time isLite flag", "static let isLite" in tier_src)
+    check("AppTier is driven by the #if LITE build condition",
+          "#if LITE" in tier_src, "must be compile-time, never a runtime toggle")
+    m = re.search(r'liteModelIDs:\s*Set<String>\s*=\s*\[(.*?)\]', tier_src)
+    check("AppTier declares liteModelIDs", m is not None)
+    lite_ids = set(re.findall(r'"([^"]+)"', m.group(1))) if m else set()
+    check("Lite offers a small, fixed subset of models (2, not the full 5)",
+          0 < len(lite_ids) < len(models), str(lite_ids))
+    check("every Lite model id is a real model in the pack",
+          lite_ids <= model_ids, str(lite_ids - model_ids))
+    fb = re.search(r'liteFallbackModelID\s*=\s*"([^"]+)"', tier_src)
+    check("AppTier declares a liteFallbackModelID", fb is not None)
+    if fb:
+        check("the Lite fallback model is itself one of the unlocked models",
+              fb.group(1) in lite_ids, fb.group(1))
+    check("a placeholder App Store URL is flagged for replacement before submission",
+          "paidAppStoreURL" in tier_src and "replace" in tier_src.lower())
+
+if MODELS_SWIFT.exists() and APP_TIER.exists():
+    check("ModelPack exposes availableModels so every screen reads the "
+          "same gated list instead of the raw model array",
+          "var availableModels" in models_src and "AppTier.isLite" in models_src)
+    check("ModelPack exposes lockedModels for the upsell rows",
+          "var lockedModels" in models_src)
+
+if ENGINE.exists():
+    check("the engine clamps model routing to the unlocked set on Lite",
+          "AppTier.isLite" in engine_src and "liteModelIDs" in engine_src)
+    check("Sharpen is gated off on Lite",
+          "func sharpen(" in engine_src and "guard !AppTier.isLite" in engine_src)
+    check("the token/cost report is gated off on Lite",
+          "guard !AppTier.isLite, estimator.isAvailable" in engine_src)
+
+if STORE.exists():
+    check("adaptive controls are unsupported on Lite (single choke point: isSupported)",
+          "!AppTier.isLite && spec != nil" in store_src)
+    check("the engine-facing snapshot also honours isSupported, not just the UI flag",
+          re.search(r'var snapshot:.*?\n\s*guard isSupported', store_src, re.S) is not None,
+          "if snapshot only checks `spec`, Lite could still learn even with the "
+          "Settings section hidden")
+
+if APP_STATE.exists():
+    app_state_src = APP_STATE.read_text()
+    check("Lite history is capped, not just thinned for display",
+          "AppTier.isLite" in app_state_src and "liteHistoryLimit" in app_state_src)
+
+if RESULT_VIEW.exists():
+    check("the model override chips only ever offer availableModels on Lite",
+          "app.pack.availableModels" in result_src)
+    check("the Sharpen button is hidden on Lite, not just disabled",
+          "if !AppTier.isLite { sharpenButton }" in result_src)
+
+if SETTINGS_VIEW.exists():
+    settings_src = SETTINGS_VIEW.read_text()
+    check("Settings shows an upsell card on Lite",
+          "AppTier.isLite" in settings_src and "struct UpsellCard" in settings_src)
+    check("the model reference library shows locked models rather than "
+          "hiding them outright (an honest map, not a bait-and-switch)",
+          "app.pack.lockedModels" in settings_src)
+    check("Lite ships its own Terms and Privacy text (no purchase to describe)",
+          "termsLite" in settings_src and "privacyLite" in settings_src)
+    lite_legal_block = settings_src.split("// MARK: Lite")[-1].split("// MARK: Paid")[0] \
+        if "// MARK: Lite" in settings_src and "// MARK: Paid" in settings_src else ""
+    check("Lite legal text says the app itself is free",
+          "entirely free" in lite_legal_block.lower())
+    check("Lite legal text never claims a purchase granted the license "
+          "(that's the paid app's license clause, not this one)",
+          "your one-time purchase grants" not in lite_legal_block.lower(),
+          "found the paid app's purchase-grants-license clause inside the Lite block")
+
+if PROJECT_YML.exists():
+    yml = PROJECT_YML.read_text()
+    check("project.yml defines a PromptCoachLite target", "PromptCoachLite:" in yml)
+    check("PromptCoachLite shares PromptCoach's sources (one codebase, not a fork)",
+          yml.count("path: PromptCoach\n") >= 2 or yml.count("path: PromptCoach") >= 2)
+    check("PromptCoachLite has its own bundle id, distinct from the paid app",
+          "com.codegenie.promptcoach.lite" in yml)
+    check("PromptCoachLite compiles with the LITE flag",
+          re.search(r'PromptCoachLite:.*?LITE', yml, re.S) is not None)
+    check("PromptCoachLite has its own Info.plist (distinct display name)",
+          "Info-Lite.plist" in yml)
+
+check("a Lite Info.plist exists with a distinct display name", INFO_LITE.exists())
+if INFO_LITE.exists():
+    info_lite = INFO_LITE.read_text()
+    check("Info-Lite.plist advertises the Lite name, not the paid app's name",
+          "Prompt Coach Lite" in info_lite)
 
 # The privacy claim is load-bearing for the Privacy Policy and for App Review.
 networked = [p.name for p in ALL_SWIFT if "URLSession" in p.read_text()]

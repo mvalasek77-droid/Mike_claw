@@ -86,6 +86,11 @@ final class AppState: ObservableObject {
 
     // MARK: History
 
+    /// The number of sessions Lite keeps. Not a marketing number — small
+    /// enough that "your history is limited" is felt within a normal
+    /// session, which is the point of a stripped-down free tier.
+    static let liteHistoryLimit = 3
+
     /// Upsert: replace an existing entry with the same id (e.g. after a model
     /// override re-coaches the same session) rather than duplicating it.
     func save(_ result: CoachResult) {
@@ -93,6 +98,9 @@ final class AppState: ObservableObject {
             history[i] = result
         } else {
             history.insert(result, at: 0)
+        }
+        if AppTier.isLite, history.count > Self.liteHistoryLimit {
+            history.removeLast(history.count - Self.liteHistoryLimit)
         }
         persist()
     }
