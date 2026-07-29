@@ -51,6 +51,32 @@ struct AuctionBabyApp: App {
                     // Server flipped verified_at (via webhook / admin / push)
                     // → flip the local blue check to match, in one place.
                     auth.onVerified = { [weak store] in store?.verifyMe() }
+                    // Slice 7: incoming push → refresh the affected screen so
+                    // the user doesn't have to pull-to-refresh. The router
+                    // reads only the event kind + ids the Worker ships in the
+                    // payload, so it stays stable even if we add new types.
+                    push.onEvent = { [weak store, weak matching, weak auth] event in
+                        guard let store, let matching, !store.demoMode,
+                              auth?.isSignedIn == true else { return }
+                        switch event {
+                        case .bidReceived, .whisperNodded:
+                            Task { await store.refreshRemoteInbox(matching: matching) }
+                        case .bidAccepted:
+                            Task { await store.refreshRemoteMatches(matching: matching) }
+                        case .messageReceived(let matchIdString, _):
+                            guard let matchIdString, let matchId = UUID(uuidString: matchIdString) else {
+                                Task { await store.refreshRemoteMatches(matching: matching) }
+                                return
+                            }
+                            Task { await store.refreshRemoteMatch(matchId: matchId, matching: matching) }
+                        case .matchDateDone:
+                            Task { await store.refreshRemoteMatches(matching: matching) }
+                        case .verified:
+                            Task { await auth?.refreshMe() }
+                        case .other:
+                            break
+                        }
+                    }
                     // Slice 4b0: any profile mutation → mirror it to the
                     // server so OTHER users' floors see the change. Demo Mode
                     // is skipped (no real account), and local-only sessions

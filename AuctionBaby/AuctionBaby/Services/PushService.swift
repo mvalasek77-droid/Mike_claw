@@ -39,6 +39,47 @@ final class PushService: NSObject, ObservableObject {
     /// (so views can show a subtle "notifications ready" hint if useful).
     @Published private(set) var isRegisteredWithServer = false
 
+    /// Fires when a push arrives (foreground) or the user taps a delivered
+    /// one (background). App root wires this to `AuctionStore` refreshers so
+    /// the relevant screen updates the moment we know something happened,
+    /// without depending on pull-to-refresh. Absent hook → no-op (a fresh
+    /// checkout compiles + runs local-only).
+    var onEvent: ((PushEvent) -> Void)?
+
+    /// The push payloads the matching + auth Workers emit today. The `data`
+    /// keys are set by the Worker (`data: { type: ..., bidId, matchId }`); we
+    /// decode into a strict enum so wildcards can't slip through as no-ops.
+    enum PushEvent: Equatable {
+        case bidReceived(bidId: String?)
+        case whisperNodded(bidId: String?)
+        case bidAccepted(bidId: String?, matchId: String?)
+        case messageReceived(matchId: String?, messageId: String?)
+        case matchDateDone(matchId: String?)
+        case verified
+        case other(type: String)
+
+        init?(userInfo: [AnyHashable: Any]) {
+            // Both APNs alert wrappers and our custom keys sit at the top; the
+            // Worker also nests keys under `data`. Peek in both places.
+            let flat = userInfo
+            let data = userInfo["data"] as? [AnyHashable: Any] ?? [:]
+            let type = (flat["type"] as? String) ?? (data["type"] as? String) ?? ""
+            let bidId = (flat["bidId"] as? String) ?? (data["bidId"] as? String)
+            let matchId = (flat["matchId"] as? String) ?? (data["matchId"] as? String)
+            let messageId = (flat["messageId"] as? String) ?? (data["messageId"] as? String)
+            switch type {
+            case "bid.received":     self = .bidReceived(bidId: bidId)
+            case "whisper.nodded":   self = .whisperNodded(bidId: bidId)
+            case "bid.accepted":     self = .bidAccepted(bidId: bidId, matchId: matchId)
+            case "message.received": self = .messageReceived(matchId: matchId, messageId: messageId)
+            case "match.dateDone":   self = .matchDateDone(matchId: matchId)
+            case "verified":         self = .verified
+            case "":                 return nil
+            default:                 self = .other(type: type)
+            }
+        }
+    }
+
     /// Same session-token key AuthService uses. Reading it directly keeps this
     /// service decoupled from AuthService — we don't need to import it.
     private static let sessionTokenKey = "com.valasek.auctionbaby.auth.sessionToken.v1"
@@ -187,18 +228,39 @@ final class PushService: NSObject, ObservableObject {
     }
 }
 
-// MARK: - Foreground presentation
+// MARK: - Foreground presentation + tap routing
 
 extension PushService: UNUserNotificationCenterDelegate {
     /// Show the banner + play the sound even when the app is foregrounded,
     /// rather than iOS's default (silently drop). For a dating app the
-    /// user wants to know a bid came in even if they're mid-scroll.
+    /// user wants to know a bid came in even if they're mid-scroll. Also
+    /// fire the event so the underlying data refreshes while the banner
+    /// plays.
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler:
             @escaping (UNNotificationPresentationOptions) -> Void,
     ) {
+        let userInfo = notification.request.content.userInfo
+        Task { @MainActor in
+            if let event = PushEvent(userInfo: userInfo) { self.onEvent?(event) }
+        }
         completionHandler([.banner, .sound, .badge])
+    }
+
+    /// A tap on a delivered notification (from lock screen / notification
+    /// center) wakes the app here. Same event fires so the destination
+    /// screen has fresh data by the time the user lands on it.
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void,
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        Task { @MainActor in
+            if let event = PushEvent(userInfo: userInfo) { self.onEvent?(event) }
+            completionHandler()
+        }
     }
 }
