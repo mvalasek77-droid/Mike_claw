@@ -56,6 +56,41 @@ def test_link_and_list_and_duplicate(api):
     assert len(children) == 1
 
 
+def test_installations_are_isolated_and_can_link_same_account(tmp_path):
+    fake = FakeRobloxClient()
+    fake.add_user(make_profile(user_id=1, username="my_kid", display_name="MyKid"))
+    settings = Settings(
+        db_path=str(tmp_path / "isolated.db"),
+        watchlist_path=str(tmp_path / "missing.json"),
+        api_token="app-token",
+    )
+    app = create_app(settings=settings, client=fake, start_monitor=False)
+    headers_a = {
+        "Authorization": "Bearer app-token",
+        "X-RobloxGuard-Client-ID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    }
+    headers_b = {
+        "Authorization": "Bearer app-token",
+        "X-RobloxGuard-Client-ID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    }
+    payload = {
+        "roblox_username": "my_kid",
+        "parent_attestation": True,
+        "parent_name": "Parent",
+    }
+
+    with TestClient(app) as client:
+        first = client.post("/children", headers=headers_a, json=payload)
+        second = client.post("/children", headers=headers_b, json=payload)
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert client.get("/children", headers=headers_a).json() == [first.json()]
+        assert client.get("/children", headers=headers_b).json() == [second.json()]
+        assert client.get(
+            f"/children/{first.json()['id']}/alerts", headers=headers_b
+        ).status_code == 404
+
+
 def test_refresh_and_alerts_flow(api):
     client, fake = api
     child_id = link(client).json()["id"]

@@ -12,11 +12,33 @@ struct EvidenceReportView: View {
     var body: some View {
         List {
             Section {
-                Link(destination: store.api.reportURL(childId: child.id)) {
-                    Label("Open incident report", systemImage: "doc.text")
-                }
-                ShareLink(item: store.api.reportURL(childId: child.id)) {
-                    Label("Share report", systemImage: "square.and.arrow.up")
+                if store.isDemoMode {
+                    NavigationLink {
+                        DemoIncidentReportView(
+                            child: child,
+                            alerts: store.alertsByChild[child.id] ?? [],
+                            evidence: evidence
+                        )
+                    } label: {
+                        Label("Open sample incident report", systemImage: "doc.text")
+                    }
+                } else {
+                    Link(
+                        destination: store.api.reportURL(
+                            childId: child.id,
+                            accessToken: child.reportAccessToken
+                        )
+                    ) {
+                        Label("Open incident report", systemImage: "doc.text")
+                    }
+                    ShareLink(
+                        item: store.api.reportURL(
+                            childId: child.id,
+                            accessToken: child.reportAccessToken
+                        )
+                    ) {
+                        Label("Share report", systemImage: "square.and.arrow.up")
+                    }
                 }
             } header: {
                 Text("Incident report")
@@ -62,8 +84,14 @@ struct EvidenceReportView: View {
                         Text("SHA-256 \(item.sha256.prefix(16))…")
                             .font(.caption2.monospaced())
                             .foregroundStyle(.tertiary)
-                        if item.kind != "data_snapshot" {
-                            Link("View file", destination: store.api.evidenceFileURL(evidenceId: item.id))
+                        if item.kind != "data_snapshot" && !store.isDemoMode {
+                            Link(
+                                "View file",
+                                destination: store.api.evidenceFileURL(
+                                    evidenceId: item.id,
+                                    accessToken: child.reportAccessToken
+                                )
+                            )
                                 .font(.caption)
                         }
                     }
@@ -88,23 +116,10 @@ struct EvidenceReportView: View {
     }
 
     private func load() async {
-        #if DEBUG
         if store.isDemoMode {
-            evidence = [
-                EvidenceItem(id: 200001, kind: "profile_screenshot",
-                             sha256: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-                             note: "Auto-captured profile of UnknownPlayer42 when elevated alert fired.",
-                             capturedAt: ISO8601DateFormatter().string(from: Date()),
-                             filename: "profile_UnknownPlayer42.png"),
-                EvidenceItem(id: 200002, kind: "parent_upload",
-                             sha256: "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5",
-                             note: "Screenshot of chat where account asks to move to Discord.",
-                             capturedAt: ISO8601DateFormatter().string(from: Date()),
-                             filename: "chat_screenshot.png"),
-            ]
+            evidence = store.demoEvidence(for: child)
             return
         }
-        #endif
         evidence = (try? await store.api.evidence(childId: child.id)) ?? []
     }
 }
@@ -182,6 +197,12 @@ struct EvidenceUploadSheet: View {
         guard let imageData else { return }
         isUploading = true
         defer { isUploading = false }
+        if store.isDemoMode {
+            store.addDemoEvidence(imageData: imageData, note: note, for: child)
+            await onDone()
+            dismiss()
+            return
+        }
         do {
             try await store.api.uploadEvidence(
                 childId: child.id, imageData: imageData,
@@ -191,5 +212,61 @@ struct EvidenceUploadSheet: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+/// An entirely local report for the reviewer demo. It is intentionally
+/// labeled as sample content and never exposes or writes customer data.
+private struct DemoIncidentReportView: View {
+    let child: Child
+    let alerts: [SafetyAlert]
+    let evidence: [EvidenceItem]
+
+    var body: some View {
+        List {
+            Section {
+                Label("SAMPLE — APP REVIEW DEMO", systemImage: "testtube.2")
+                    .font(.headline)
+                    .foregroundStyle(.orange)
+                Text("This report was generated from built-in sample data. No Roblox account was monitored.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Account") {
+                LabeledContent("Display name", value: child.displayName)
+                LabeledContent("Username", value: "@\(child.robloxUsername)")
+            }
+
+            Section("Alert timeline") {
+                ForEach(alerts) { alert in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(alert.title).font(.subheadline.weight(.semibold))
+                        Text(alert.severity.label)
+                            .font(.caption)
+                            .foregroundStyle(Theme.severityColor(alert.severity))
+                        Text(alert.guidance)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+
+            Section("Evidence inventory") {
+                ForEach(evidence) { item in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.kindLabel).font(.subheadline.weight(.medium))
+                        Text(item.note).font(.footnote)
+                        Text("SHA-256 \(item.sha256)")
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+        .navigationTitle("Sample Report")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

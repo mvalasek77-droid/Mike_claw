@@ -49,54 +49,23 @@ enum ProductID {
     }
 }
 
-/// A demo product used when StoreKit isn't configured (Simulator without
-/// .storekit scheme, or App Review before ASC products are approved).
-/// Has the same display properties as StoreKit's `Product` so the paywall
-/// looks identical to production.
-struct DemoProduct: Identifiable, Hashable {
-    let id: String
-    let displayName: String
-    let displayPrice: String
-    let tier: SubscriptionTier
-    let isAnnual: Bool
-
-    static let all: [DemoProduct] = [
-        DemoProduct(id: ProductID.singleAnnual, displayName: "Single Child (Annual)",
-                    displayPrice: "$34.00", tier: .single, isAnnual: true),
-        DemoProduct(id: ProductID.singleMonthly, displayName: "Single Child (Monthly)",
-                    displayPrice: "$3.99", tier: .single, isAnnual: false),
-        DemoProduct(id: ProductID.familyAnnual, displayName: "Family (Annual)",
-                    displayPrice: "$69.00", tier: .family, isAnnual: true),
-        DemoProduct(id: ProductID.familyMonthly, displayName: "Family (Monthly)",
-                    displayPrice: "$8.99", tier: .family, isAnnual: false),
-    ]
-}
-
 @MainActor
 final class PurchaseManager: ObservableObject {
     @Published private(set) var products: [Product] = []
-    @Published var demoProducts: [DemoProduct] = []
     @Published private(set) var activeTier: SubscriptionTier = .none
     @Published var errorMessage: String?
 
-    /// True when using demo products instead of real StoreKit products.
-    /// Happens on Simulator without .storekit scheme config, or in App
-    /// Review before ASC products are approved.
-    private(set) var isUsingDemoProducts = false
-
     /// Demo mode for Apple App Review. When enabled via Settings or launch
     /// argument, the app auto-links a demo child with sample alerts and
-    /// bypasses the paywall so the reviewer can test every flow.
-    #if DEBUG
-    @AppStorage("demoMode") var demoMode = false
-    #else
-    let demoMode = false
-    #endif
+    /// grants access only to that local sample data. It never creates a
+    /// StoreKit entitlement and cannot monitor a real Roblox account.
+    @Published private(set) var demoMode: Bool
 
     private var transactionListener: Task<Void, Never>?
     private var didStart = false
 
     init() {
+        demoMode = UserDefaults.standard.bool(forKey: "demoMode")
         transactionListener = listenForTransactions()
     }
 
@@ -106,39 +75,39 @@ final class PurchaseManager: ObservableObject {
 
     /// Idempotent — safe to call from `.task` on every appearance.
     func start() async {
-        guard !didStart else { return await refreshEntitlements() }
+        guard !didStart else {
+            await refreshEntitlements()
+            return
+        }
         didStart = true
         await loadProducts()
         await refreshEntitlements()
     }
 
     func loadProducts() async {
-        #if DEBUG
-        if demoMode {
-            demoProducts = DemoProduct.all
-            isUsingDemoProducts = true
-            if activeTier == .none { activeTier = .single }
-            return
-        }
-        #endif
-
+        errorMessage = nil
         do {
             let real = try await Product.products(for: ProductID.all)
                 .sorted { $0.price < $1.price }
             if real.isEmpty {
-                // StoreKit returned no products — fall back to demo products
-                // so the paywall still shows prices and is tappable.
-                demoProducts = DemoProduct.all
-                isUsingDemoProducts = true
+                products = []
+                errorMessage = "Subscription options are temporarily unavailable. Please try again."
             } else {
                 products = real
-                isUsingDemoProducts = false
             }
         } catch {
+            products = []
             errorMessage = "Couldn't load subscription options: \(error.localizedDescription)"
-            demoProducts = DemoProduct.all
-            isUsingDemoProducts = true
         }
+    }
+
+    /// Enables the sample-data-only App Review path. This deliberately does
+    /// not call StoreKit or persist a paid entitlement.
+    func setDemoMode(_ enabled: Bool) async {
+        UserDefaults.standard.set(enabled, forKey: "demoMode")
+        demoMode = enabled
+        errorMessage = nil
+        await refreshEntitlements()
     }
 
     /// Purchase a real StoreKit product.
@@ -164,21 +133,8 @@ final class PurchaseManager: ObservableObject {
         }
     }
 
-    /// Purchase a demo product (Simulator / App Review fallback).
-    func purchaseDemo(_ product: DemoProduct) async {
-        errorMessage = nil
-        activeTier = product.tier
-    }
-
     func restore() async {
         errorMessage = nil
-
-        #if DEBUG
-        if demoMode {
-            activeTier = .single
-            return
-        }
-        #endif
 
         do {
             try await AppStore.sync()
@@ -190,9 +146,10 @@ final class PurchaseManager: ObservableObject {
 
     /// Highest active, non-revoked entitlement wins (family > single).
     func refreshEntitlements() async {
-        #if DEBUG
-        if demoMode && activeTier != .none { return }
-        #endif
+        if demoMode {
+            activeTier = .family
+            return
+        }
 
         var highest: SubscriptionTier = .none
         for await result in Transaction.currentEntitlements {
@@ -201,10 +158,6 @@ final class PurchaseManager: ObservableObject {
             let tier = ProductID.tier(for: transaction.productID)
             if tier > highest { highest = tier }
         }
-        // Don't overwrite a demo-mode entitlement with .none
-        #if DEBUG
-        if demoMode && highest == .none && activeTier != .none { return }
-        #endif
         activeTier = highest
     }
 

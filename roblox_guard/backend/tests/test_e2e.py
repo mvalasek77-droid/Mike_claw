@@ -206,4 +206,7 @@ class TestAuth:
                               headers={"Authorization": "Bearer wrong"}).status_code == 401
             assert client.get(
                 "/children",
-                headers={"Authorization": "Bearer s3cret-token"}).status_code == 200
+                headers={
+                    "Authorization": "Bearer s3cret-token",
+                    "X-RobloxGuard-Client-ID": "11111111-1111-4111-8111-111111111111",
+                }).status_code == 200

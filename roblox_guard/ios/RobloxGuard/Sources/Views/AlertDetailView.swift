@@ -70,7 +70,7 @@ struct AlertDetailView: View {
             Section {
                 Button {
                     Task {
-                        try? await store.api.sendFeedback(alertId: alert.id, verdict: "confirmed")
+                        await store.sendFeedback(alertId: alert.id, verdict: "confirmed")
                         await store.loadAll()
                         dismiss()
                     }
@@ -80,7 +80,7 @@ struct AlertDetailView: View {
                 }
                 Button {
                     Task {
-                        try? await store.api.sendFeedback(alertId: alert.id, verdict: "dismissed")
+                        await store.sendFeedback(alertId: alert.id, verdict: "dismissed")
                         await store.loadAll()
                         dismiss()
                     }

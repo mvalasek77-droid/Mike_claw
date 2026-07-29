@@ -187,8 +187,12 @@ class Monitor:
             return
         name = child["display_name"] or child["roblox_username"]
         try:
-            await self.push.send_to_all(self.db, title=f"{s.severity.value.title()} alert: {name}",
-                                        body=s.title)
+            await self.push.send_to_all(
+                self.db,
+                title=f"{s.severity.value.title()} alert: {name}",
+                body=s.title,
+                client_id=child["client_id"],
+            )
         except Exception:
             log.exception("push notification failed for alert on child %s", child["id"])
 

@@ -7,6 +7,7 @@ content (none is collected anywhere in the app).
 """
 
 import json
+import secrets
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -15,7 +16,9 @@ from typing import Any, Iterator, Optional
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS children (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    roblox_user_id INTEGER NOT NULL UNIQUE,
+    client_id TEXT NOT NULL,
+    share_token TEXT NOT NULL UNIQUE,
+    roblox_user_id INTEGER NOT NULL,
     roblox_username TEXT NOT NULL,
     display_name TEXT NOT NULL DEFAULT '',
     -- Verifiable-parental-consent record: who attested, and when.
@@ -23,7 +26,8 @@ CREATE TABLE IF NOT EXISTS children (
     consent_attested_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     last_poll_at TEXT,
-    last_poll_status TEXT NOT NULL DEFAULT ''
+    last_poll_status TEXT NOT NULL DEFAULT '',
+    UNIQUE(client_id, roblox_user_id)
 );
 
 CREATE TABLE IF NOT EXISTS snapshots (
@@ -81,6 +85,7 @@ CREATE TABLE IF NOT EXISTS alerts (
 
 CREATE TABLE IF NOT EXISTS bug_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL DEFAULT 'system',
     created_at TEXT NOT NULL,
     source TEXT NOT NULL,               -- 'customer' | 'backend_error'
     summary TEXT NOT NULL,
@@ -92,6 +97,7 @@ CREATE TABLE IF NOT EXISTS bug_reports (
 
 CREATE TABLE IF NOT EXISTS device_tokens (
     token TEXT PRIMARY KEY,
+    client_id TEXT NOT NULL,
     platform TEXT NOT NULL DEFAULT 'ios',
     registered_at TEXT NOT NULL,
     last_seen_at TEXT NOT NULL
@@ -103,6 +109,10 @@ MIGRATIONS = [
     "ALTER TABLE children ADD COLUMN last_poll_at TEXT",
     "ALTER TABLE children ADD COLUMN last_poll_status TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE alerts ADD COLUMN feedback TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE children ADD COLUMN client_id TEXT NOT NULL DEFAULT 'legacy'",
+    "ALTER TABLE children ADD COLUMN share_token TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE bug_reports ADD COLUMN client_id TEXT NOT NULL DEFAULT 'system'",
+    "ALTER TABLE device_tokens ADD COLUMN client_id TEXT NOT NULL DEFAULT 'legacy'",
 ]
 
 
@@ -120,6 +130,14 @@ class Database:
                     conn.execute(statement)
                 except sqlite3.OperationalError:
                     pass  # column already exists (fresh schema or migrated)
+            rows = conn.execute(
+                "SELECT id FROM children WHERE share_token = ''"
+            ).fetchall()
+            for row in rows:
+                conn.execute(
+                    "UPDATE children SET share_token = ? WHERE id = ?",
+                    (secrets.token_urlsafe(32), row["id"]),
+                )
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
@@ -135,31 +153,61 @@ class Database:
     # -- children ----------------------------------------------------------
 
     def add_child(self, roblox_user_id: int, username: str, display_name: str,
-                  consent_attested_by: str) -> int:
+                  consent_attested_by: str,
+                  client_id: str = "local-development") -> int:
         with self._connect() as conn:
             cur = conn.execute(
-                "INSERT INTO children (roblox_user_id, roblox_username, display_name,"
+                "INSERT INTO children (client_id, share_token, roblox_user_id,"
+                " roblox_username, display_name,"
                 " consent_attested_by, consent_attested_at, created_at)"
-                " VALUES (?, ?, ?, ?, ?, ?)",
-                (roblox_user_id, username, display_name, consent_attested_by, utcnow(), utcnow()),
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    client_id,
+                    secrets.token_urlsafe(32),
+                    roblox_user_id,
+                    username,
+                    display_name,
+                    consent_attested_by,
+                    utcnow(),
+                    utcnow(),
+                ),
             )
             return cur.lastrowid
 
-    def get_child(self, child_id: int) -> Optional[dict]:
+    def get_child(self, child_id: int, client_id: Optional[str] = None,
+                  share_token: Optional[str] = None) -> Optional[dict]:
+        query = "SELECT * FROM children WHERE id = ?"
+        params: list[Any] = [child_id]
+        if client_id is not None:
+            query += " AND client_id = ?"
+            params.append(client_id)
+        if share_token is not None:
+            query += " AND share_token = ?"
+            params.append(share_token)
         with self._connect() as conn:
-            row = conn.execute("SELECT * FROM children WHERE id = ?", (child_id,)).fetchone()
+            row = conn.execute(query, params).fetchone()
             return dict(row) if row else None
 
-    def get_child_by_roblox_id(self, roblox_user_id: int) -> Optional[dict]:
+    def get_child_by_roblox_id(self, roblox_user_id: int,
+                               client_id: Optional[str] = None) -> Optional[dict]:
+        query = "SELECT * FROM children WHERE roblox_user_id = ?"
+        params: list[Any] = [roblox_user_id]
+        if client_id is not None:
+            query += " AND client_id = ?"
+            params.append(client_id)
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM children WHERE roblox_user_id = ?", (roblox_user_id,)
-            ).fetchone()
+            row = conn.execute(query, params).fetchone()
             return dict(row) if row else None
 
-    def list_children(self) -> list[dict]:
+    def list_children(self, client_id: Optional[str] = None) -> list[dict]:
+        query = "SELECT * FROM children"
+        params: tuple = ()
+        if client_id is not None:
+            query += " WHERE client_id = ?"
+            params = (client_id,)
+        query += " ORDER BY id"
         with self._connect() as conn:
-            return [dict(r) for r in conn.execute("SELECT * FROM children ORDER BY id")]
+            return [dict(r) for r in conn.execute(query, params)]
 
     def update_child_poll_status(self, child_id: int, status: str) -> None:
         with self._connect() as conn:
@@ -168,10 +216,15 @@ class Database:
                 (utcnow(), status, child_id),
             )
 
-    def remove_child(self, child_id: int) -> None:
+    def remove_child(self, child_id: int, client_id: Optional[str] = None) -> None:
         """Full erasure — removes the child and all derived data (COPPA deletion right)."""
+        query = "DELETE FROM children WHERE id = ?"
+        params: list[Any] = [child_id]
+        if client_id is not None:
+            query += " AND client_id = ?"
+            params.append(client_id)
         with self._connect() as conn:
-            conn.execute("DELETE FROM children WHERE id = ?", (child_id,))
+            conn.execute(query, params)
 
     # -- snapshots ---------------------------------------------------------
 
@@ -251,9 +304,22 @@ class Database:
                 "SELECT * FROM evidence WHERE child_id = ? ORDER BY id DESC", (child_id,)
             )]
 
-    def get_evidence(self, evidence_id: int) -> Optional[dict]:
+    def get_evidence(self, evidence_id: int, client_id: Optional[str] = None,
+                     share_token: Optional[str] = None) -> Optional[dict]:
+        query = (
+            "SELECT evidence.* FROM evidence"
+            " JOIN children ON children.id = evidence.child_id"
+            " WHERE evidence.id = ?"
+        )
+        params: list[Any] = [evidence_id]
+        if client_id is not None:
+            query += " AND children.client_id = ?"
+            params.append(client_id)
+        if share_token is not None:
+            query += " AND children.share_token = ?"
+            params.append(share_token)
         with self._connect() as conn:
-            row = conn.execute("SELECT * FROM evidence WHERE id = ?", (evidence_id,)).fetchone()
+            row = conn.execute(query, params).fetchone()
             return dict(row) if row else None
 
     # -- intel runs ----------------------------------------------------------
@@ -324,21 +390,36 @@ class Database:
             row["acknowledged"] = bool(row["acknowledged"])
         return rows
 
-    def acknowledge_alert(self, alert_id: int) -> bool:
+    def acknowledge_alert(self, alert_id: int,
+                          client_id: Optional[str] = None) -> bool:
+        query = "UPDATE alerts SET acknowledged = 1 WHERE id = ?"
+        params: list[Any] = [alert_id]
+        if client_id is not None:
+            query += (
+                " AND child_id IN"
+                " (SELECT id FROM children WHERE client_id = ?)"
+            )
+            params.append(client_id)
         with self._connect() as conn:
-            cur = conn.execute("UPDATE alerts SET acknowledged = 1 WHERE id = ?", (alert_id,))
+            cur = conn.execute(query, params)
             return cur.rowcount > 0
 
     # -- parent feedback (adaptive tuning) -------------------------------------
 
-    def set_alert_feedback(self, alert_id: int, verdict: str) -> bool:
+    def set_alert_feedback(self, alert_id: int, verdict: str,
+                           client_id: Optional[str] = None) -> bool:
         if verdict not in ("confirmed", "dismissed"):
             raise ValueError("verdict must be 'confirmed' or 'dismissed'")
-        with self._connect() as conn:
-            cur = conn.execute(
-                "UPDATE alerts SET feedback = ?, acknowledged = 1 WHERE id = ?",
-                (verdict, alert_id),
+        query = "UPDATE alerts SET feedback = ?, acknowledged = 1 WHERE id = ?"
+        params: list[Any] = [verdict, alert_id]
+        if client_id is not None:
+            query += (
+                " AND child_id IN"
+                " (SELECT id FROM children WHERE client_id = ?)"
             )
+            params.append(client_id)
+        with self._connect() as conn:
+            cur = conn.execute(query, params)
             return cur.rowcount > 0
 
     def feedback_counts(self, child_id: int, signal_type: str) -> tuple[int, int]:
@@ -379,14 +460,15 @@ class Database:
     # succeeds, so nothing depends on SMTP being configured to not be lost.
 
     def add_bug_report(self, source: str, summary: str, details: str = "",
-                       context: Optional[dict] = None, contact_email: str = "") -> int:
+                       context: Optional[dict] = None, contact_email: str = "",
+                       client_id: str = "system") -> int:
         if source not in ("customer", "backend_error"):
             raise ValueError("source must be 'customer' or 'backend_error'")
         with self._connect() as conn:
             cur = conn.execute(
-                "INSERT INTO bug_reports (created_at, source, summary, details,"
-                " context, contact_email) VALUES (?, ?, ?, ?, ?, ?)",
-                (utcnow(), source, summary, details,
+                "INSERT INTO bug_reports (client_id, created_at, source, summary,"
+                " details, context, contact_email) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (client_id, utcnow(), source, summary, details,
                  json.dumps(context or {}), contact_email),
             )
             return cur.lastrowid
@@ -422,32 +504,56 @@ class Database:
         return self.add_bug_report("backend_error", summary, details, context)
 
     # -- push notification device tokens ----------------------------------------
-    # No parent-account system yet (v0.1 uses one shared API token per
-    # deployment — see README), so every registered device gets every push;
-    # this matches the single-family-per-backend model everywhere else here.
+    # Tokens are bound to the same random installation id as child records.
 
-    def register_device_token(self, token: str, platform: str = "ios") -> None:
+    def register_device_token(self, token: str, platform: str = "ios",
+                              client_id: str = "local-development") -> None:
         now = utcnow()
         with self._connect() as conn:
             conn.execute(
-                "INSERT INTO device_tokens (token, platform, registered_at, last_seen_at)"
-                " VALUES (?, ?, ?, ?)"
-                " ON CONFLICT(token) DO UPDATE SET last_seen_at = excluded.last_seen_at",
-                (token, platform, now, now),
+                "INSERT INTO device_tokens"
+                " (token, client_id, platform, registered_at, last_seen_at)"
+                " VALUES (?, ?, ?, ?, ?)"
+                " ON CONFLICT(token) DO UPDATE SET"
+                " client_id = excluded.client_id,"
+                " platform = excluded.platform,"
+                " last_seen_at = excluded.last_seen_at",
+                (token, client_id, platform, now, now),
             )
 
-    def list_device_tokens(self) -> list[str]:
+    def list_device_tokens(self, client_id: Optional[str] = None) -> list[str]:
+        query = "SELECT token FROM device_tokens"
+        params: tuple = ()
+        if client_id is not None:
+            query += " WHERE client_id = ?"
+            params = (client_id,)
         with self._connect() as conn:
-            return [r["token"] for r in conn.execute("SELECT token FROM device_tokens")]
+            return [r["token"] for r in conn.execute(query, params)]
 
-    def remove_device_token(self, token: str) -> None:
+    def remove_device_token(self, token: str,
+                            client_id: Optional[str] = None) -> None:
+        query = "DELETE FROM device_tokens WHERE token = ?"
+        params: list[Any] = [token]
+        if client_id is not None:
+            query += " AND client_id = ?"
+            params.append(client_id)
         with self._connect() as conn:
-            conn.execute("DELETE FROM device_tokens WHERE token = ?", (token,))
+            conn.execute(query, params)
 
-    def total_unacknowledged_alerts(self) -> int:
-        """Across every linked child — used as the push notification badge count."""
+    def total_unacknowledged_alerts(self,
+                                    client_id: Optional[str] = None) -> int:
+        """Badge count for one installation, or all installations for ops."""
+        query = "SELECT COUNT(*) AS n FROM alerts"
+        params: tuple = ()
+        if client_id is not None:
+            query = (
+                "SELECT COUNT(*) AS n FROM alerts"
+                " JOIN children ON children.id = alerts.child_id"
+                " WHERE alerts.acknowledged = 0 AND children.client_id = ?"
+            )
+            params = (client_id,)
+        else:
+            query += " WHERE acknowledged = 0"
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT COUNT(*) AS n FROM alerts WHERE acknowledged = 0"
-            ).fetchone()
+            row = conn.execute(query, params).fetchone()
             return int(row["n"])

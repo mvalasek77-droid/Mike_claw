@@ -190,8 +190,8 @@ class RecordingPush:
         self.calls = []
         self.configured = True
 
-    async def send_to_all(self, db, title, body):
-        self.calls.append((title, body))
+    async def send_to_all(self, db, title, body, client_id=None):
+        self.calls.append((title, body, client_id))
         return {"sent": 1, "failed": 0, "pruned": 0, "configured": True}
 
 
@@ -211,6 +211,7 @@ async def test_monitor_pushes_for_non_info_alert(tmp_path, fake_client):
 
     assert len(push.calls) == 1
     assert "MyKid" in push.calls[0][0]
+    assert push.calls[0][2] == "local-development"
 
 
 @pytest.mark.asyncio

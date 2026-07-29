@@ -17,7 +17,11 @@
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
-    <string>2</string>
+    <string>3</string>
+    <key>RGAPIBaseURL</key>
+    <string>$(RG_API_BASE_URL)</string>
+    <key>RGAPIToken</key>
+    <string>$(RG_API_TOKEN)</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIApplicationSceneManifest</key>

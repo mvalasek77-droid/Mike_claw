@@ -11,6 +11,7 @@ import os
 import traceback
 from contextlib import asynccontextmanager
 from typing import Optional
+from uuid import UUID
 
 import hmac
 
@@ -53,6 +54,7 @@ class ChildResponse(BaseModel):
     display_name: str
     last_poll_at: Optional[str] = None
     last_poll_status: str = ""
+    report_access_token: str
 
 
 class FeedbackRequest(BaseModel):
@@ -98,17 +100,64 @@ def create_app(settings: Optional[Settings] = None,
         await roblox.aclose()
 
     async def require_auth(request: Request):
-        """Bearer-token auth for every endpoint except /health.
+        """Authenticate the app and bind each request to one installation.
 
-        Enabled whenever RG_API_TOKEN is set; the health probe stays open for
-        load balancers. Comparison is constant-time.
+        The API bearer token limits generic abuse; the random per-installation
+        UUID provides tenant isolation. Report/evidence share links carry a
+        narrower per-child token and validate it inside their route.
         """
-        if not settings.api_token or request.url.path == "/health":
+        if request.url.path == "/health":
             return
+
+        share_path = (
+            request.url.path.startswith("/children/")
+            and request.url.path.endswith("/report")
+        ) or (
+            request.url.path.startswith("/evidence/")
+            and request.url.path.endswith("/file")
+        )
+        if share_path and request.query_params.get("share_token"):
+            return
+
         header = request.headers.get("Authorization", "")
-        expected = f"Bearer {settings.api_token}"
+        if settings.admin_token:
+            expected_admin = f"Bearer {settings.admin_token}"
+            if hmac.compare_digest(header.encode(), expected_admin.encode()):
+                request.state.client_id = "operator"
+                return
+
+        if settings.api_token:
+            expected = f"Bearer {settings.api_token}"
+            if not hmac.compare_digest(header.encode(), expected.encode()):
+                raise HTTPException(status_code=401, detail="Missing or invalid API token.")
+
+        raw_client_id = request.headers.get("X-RobloxGuard-Client-ID", "")
+        if not raw_client_id:
+            if settings.api_token:
+                raise HTTPException(status_code=400, detail="Missing installation identifier.")
+            request.state.client_id = "local-development"
+            return
+        try:
+            request.state.client_id = str(UUID(raw_client_id))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid installation identifier.")
+
+    async def require_admin(request: Request):
+        """Protect operator-wide endpoints with a credential not in the app."""
+        if not settings.api_token and not settings.admin_token:
+            return
+        if not settings.admin_token:
+            raise HTTPException(status_code=503, detail="Operator access is not configured.")
+        header = request.headers.get("Authorization", "")
+        expected = f"Bearer {settings.admin_token}"
         if not hmac.compare_digest(header.encode(), expected.encode()):
-            raise HTTPException(status_code=401, detail="Missing or invalid API token.")
+            raise HTTPException(status_code=401, detail="Missing or invalid operator token.")
+
+    def client_id(request: Request) -> str:
+        value = getattr(request.state, "client_id", None)
+        if not value or value == "operator":
+            raise HTTPException(status_code=400, detail="Missing installation identifier.")
+        return value
 
     app = FastAPI(title="RobloxGuard", version="0.1.0", lifespan=lifespan,
                   dependencies=[Depends(require_auth)])
@@ -145,7 +194,8 @@ def create_app(settings: Optional[Settings] = None,
         return monitor.feeds.status()
 
     @app.post("/children", response_model=ChildResponse, status_code=201)
-    async def link_child(req: LinkChildRequest):
+    async def link_child(req: LinkChildRequest, request: Request):
+        owner = client_id(request)
         if not req.parent_attestation:
             raise HTTPException(
                 status_code=422,
@@ -157,29 +207,40 @@ def create_app(settings: Optional[Settings] = None,
             raise HTTPException(status_code=502, detail="Roblox API unavailable; try again.")
         if user_id is None:
             raise HTTPException(status_code=404, detail="No Roblox account with that username.")
-        if db.get_child_by_roblox_id(user_id):
+        if db.get_child_by_roblox_id(user_id, client_id=owner):
             raise HTTPException(status_code=409, detail="That account is already linked.")
         try:
             profile = await roblox.get_profile(user_id)
         except httpx.HTTPError:
             raise HTTPException(status_code=502, detail="Roblox API unavailable; try again.")
-        child_id = db.add_child(user_id, profile.username, profile.display_name, req.parent_name)
+        child_id = db.add_child(
+            user_id,
+            profile.username,
+            profile.display_name,
+            req.parent_name,
+            client_id=owner,
+        )
+        child = db.get_child(child_id, client_id=owner)
         return ChildResponse(id=child_id, roblox_user_id=user_id,
                              roblox_username=profile.username,
-                             display_name=profile.display_name)
+                             display_name=profile.display_name,
+                             report_access_token=child["share_token"])
 
     @app.get("/children", response_model=list[ChildResponse])
-    async def list_children():
+    async def list_children(request: Request):
+        owner = client_id(request)
         return [ChildResponse(id=c["id"], roblox_user_id=c["roblox_user_id"],
                               roblox_username=c["roblox_username"],
                               display_name=c["display_name"],
                               last_poll_at=c.get("last_poll_at"),
-                              last_poll_status=c.get("last_poll_status") or "")
-                for c in db.list_children()]
+                              last_poll_status=c.get("last_poll_status") or "",
+                              report_access_token=c["share_token"])
+                for c in db.list_children(owner)]
 
     @app.delete("/children/{child_id}", status_code=204)
-    async def unlink_child(child_id: int):
-        if not db.get_child(child_id):
+    async def unlink_child(child_id: int, request: Request):
+        owner = client_id(request)
+        if not db.get_child(child_id, client_id=owner):
             raise HTTPException(status_code=404, detail="Unknown child.")
         # Full erasure includes evidence files on disk, not just DB rows.
         for item in db.list_evidence(child_id):
@@ -187,11 +248,12 @@ def create_app(settings: Optional[Settings] = None,
                 os.remove(item["path"])
             except OSError:
                 pass
-        db.remove_child(child_id)
+        db.remove_child(child_id, client_id=owner)
 
     @app.post("/children/{child_id}/refresh")
-    async def refresh_child(child_id: int):
-        if not db.get_child(child_id):
+    async def refresh_child(child_id: int, request: Request):
+        owner = client_id(request)
+        if not db.get_child(child_id, client_id=owner):
             raise HTTPException(status_code=404, detail="Unknown child.")
         try:
             created = await monitor.poll_child(child_id)
@@ -200,8 +262,10 @@ def create_app(settings: Optional[Settings] = None,
         return {"new_alerts": created}
 
     @app.get("/children/{child_id}/alerts")
-    async def list_alerts(child_id: int, include_acknowledged: bool = False):
-        if not db.get_child(child_id):
+    async def list_alerts(child_id: int, request: Request,
+                          include_acknowledged: bool = False):
+        owner = client_id(request)
+        if not db.get_child(child_id, client_id=owner):
             raise HTTPException(status_code=404, detail="Unknown child.")
         alerts = db.list_alerts(child_id, include_acknowledged)
         # Attach plain-language definitions for every Roblox term an alert
@@ -213,20 +277,23 @@ def create_app(settings: Optional[Settings] = None,
         return {"alerts": alerts}
 
     @app.post("/alerts/{alert_id}/acknowledge")
-    async def acknowledge(alert_id: int):
-        if not db.acknowledge_alert(alert_id):
+    async def acknowledge(alert_id: int, request: Request):
+        if not db.acknowledge_alert(alert_id, client_id=client_id(request)):
             raise HTTPException(status_code=404, detail="Unknown alert.")
         return {"acknowledged": True}
 
     @app.post("/alerts/{alert_id}/feedback")
-    async def alert_feedback(alert_id: int, req: FeedbackRequest):
+    async def alert_feedback(alert_id: int, req: FeedbackRequest,
+                             request: Request):
         """Parent verdict on an alert; drives adaptive tuning.
 
         'dismissed' x3 (with no confirms) mutes that signal type for that
         child at info/watch level; any 'confirmed' switches the child to
         heightened monitoring. Elevated alerts are never muted.
         """
-        if not db.set_alert_feedback(alert_id, req.verdict):
+        if not db.set_alert_feedback(
+            alert_id, req.verdict, client_id=client_id(request)
+        ):
             raise HTTPException(status_code=404, detail="Unknown alert.")
         return {"feedback": req.verdict}
 
@@ -247,7 +314,7 @@ def create_app(settings: Optional[Settings] = None,
                 "auto_apply": intel.auto_apply,
                 "sources_configured": len(intel.sources)}
 
-    @app.post("/intel/run")
+    @app.post("/intel/run", dependencies=[Depends(require_admin)])
     async def intel_run_now():
         """Run the daily threat search immediately (also fires on schedule)."""
         if not intel.sources:
@@ -258,7 +325,7 @@ def create_app(settings: Optional[Settings] = None,
     # -- bug reports -----------------------------------------------------------
 
     @app.post("/support/bug-report", status_code=201)
-    async def submit_bug_report(payload: BugReportRequest):
+    async def submit_bug_report(payload: BugReportRequest, request: Request):
         """Customer-facing 'Report a Bug' entry point (see Settings in the app).
 
         Always persisted to the durable bug log first; email relay to
@@ -271,6 +338,7 @@ def create_app(settings: Optional[Settings] = None,
             details=payload.details,
             context={"app_version": payload.app_version, "platform": payload.platform},
             contact_email=payload.contact_email,
+            client_id=client_id(request),
         )
         report = db.get_bug_report(report_id)
         emailed = mailer.send_bug_report_email(settings, report)
@@ -278,7 +346,7 @@ def create_app(settings: Optional[Settings] = None,
             db.mark_bug_report_emailed(report_id)
         return {"id": report_id, "emailed": emailed, "support_email": settings.support_email}
 
-    @app.get("/support/bug-reports")
+    @app.get("/support/bug-reports", dependencies=[Depends(require_admin)])
     async def list_bug_reports(limit: int = 100):
         """Operator view of the bug log — customer reports and backend errors."""
         return {"reports": db.list_bug_reports(limit=limit)}
@@ -286,27 +354,29 @@ def create_app(settings: Optional[Settings] = None,
     # -- push notifications ------------------------------------------------------
 
     @app.post("/devices/register", status_code=201)
-    async def register_device(payload: DeviceRegisterRequest):
+    async def register_device(payload: DeviceRegisterRequest, request: Request):
         """Called once the app has an APNs device token (Settings > Notifications).
 
-        No parent-account system yet, so every registered device receives
-        every push for this deployment — see db.py's device_tokens note.
+        Device tokens are scoped to the same installation as child records.
         """
-        db.register_device_token(payload.token, payload.platform)
+        db.register_device_token(
+            payload.token, payload.platform, client_id=client_id(request)
+        )
         return {"registered": True}
 
     @app.delete("/devices/{token}", status_code=204)
-    async def unregister_device(token: str):
-        db.remove_device_token(token)
+    async def unregister_device(token: str, request: Request):
+        db.remove_device_token(token, client_id=client_id(request))
 
     @app.get("/notifications/status")
-    async def notifications_status():
+    async def notifications_status(request: Request):
+        owner = client_id(request)
         return {"configured": push.configured, "sandbox": settings.apns_use_sandbox,
-                "registered_devices": len(db.list_device_tokens())}
+                "registered_devices": len(db.list_device_tokens(owner))}
 
     @app.post("/notifications/test")
-    async def send_test_notification():
-        """Fires one push to every registered device on demand.
+    async def send_test_notification(request: Request):
+        """Fires one push to this installation's registered devices on demand.
 
         For testing: without this, the only way to see a real push is to
         wait for monitor.py to detect an actual risky signal on a real
@@ -315,17 +385,23 @@ def create_app(settings: Optional[Settings] = None,
         if not push.configured:
             raise HTTPException(status_code=409,
                                 detail="APNs not configured — set RG_APNS_KEY_* env vars first.")
-        if not db.list_device_tokens():
+        owner = client_id(request)
+        if not db.list_device_tokens(owner):
             raise HTTPException(status_code=409,
                                 detail="No devices registered — enable notifications in the app first.")
         return await push.send_to_all(
-            db, title="RobloxGuard test", body="If you see this, push notifications are working.")
+            db,
+            title="RobloxGuard test",
+            body="If you see this, push notifications are working.",
+            client_id=owner,
+        )
 
     # -- evidence ------------------------------------------------------------
 
     @app.get("/children/{child_id}/evidence")
-    async def list_evidence(child_id: int):
-        if not db.get_child(child_id):
+    async def list_evidence(child_id: int, request: Request):
+        owner = client_id(request)
+        if not db.get_child(child_id, client_id=owner):
             raise HTTPException(status_code=404, detail="Unknown child.")
         items = db.list_evidence(child_id)
         for item in items:
@@ -333,21 +409,28 @@ def create_app(settings: Optional[Settings] = None,
         return {"evidence": items}
 
     @app.get("/evidence/{evidence_id}/file")
-    async def get_evidence_file(evidence_id: int):
-        item = db.get_evidence(evidence_id)
+    async def get_evidence_file(evidence_id: int, request: Request,
+                                share_token: Optional[str] = None):
+        item = (
+            db.get_evidence(evidence_id, share_token=share_token)
+            if share_token
+            else db.get_evidence(evidence_id, client_id=client_id(request))
+        )
         if not item or not os.path.exists(item["path"]):
             raise HTTPException(status_code=404, detail="Unknown evidence.")
         return FileResponse(item["path"], filename=os.path.basename(item["path"]))
 
     @app.post("/children/{child_id}/evidence/upload", status_code=201)
-    async def upload_evidence(child_id: int, file: UploadFile = File(...),
+    async def upload_evidence(child_id: int, request: Request,
+                              file: UploadFile = File(...),
                               note: str = Form("")):
         """Store a screenshot the parent took on the child's device.
 
         The iOS upload screen shows the CSAM warning before this is called;
         the server cannot inspect content, so the guardrail is procedural.
         """
-        if not db.get_child(child_id):
+        owner = client_id(request)
+        if not db.get_child(child_id, client_id=owner):
             raise HTTPException(status_code=404, detail="Unknown child.")
         content = await file.read()
         if len(content) > MAX_UPLOAD_BYTES:
@@ -364,8 +447,14 @@ def create_app(settings: Optional[Settings] = None,
     # -- incident report -----------------------------------------------------
 
     @app.get("/children/{child_id}/report")
-    async def incident_report(child_id: int, format: str = "html"):
-        child = db.get_child(child_id)
+    async def incident_report(child_id: int, request: Request,
+                              format: str = "html",
+                              share_token: Optional[str] = None):
+        child = (
+            db.get_child(child_id, share_token=share_token)
+            if share_token
+            else db.get_child(child_id, client_id=client_id(request))
+        )
         if not child:
             raise HTTPException(status_code=404, detail="Unknown child.")
         alerts = db.list_alerts(child_id, include_acknowledged=True)

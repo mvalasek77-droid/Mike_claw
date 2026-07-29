@@ -7,6 +7,7 @@ struct Child: Identifiable, Codable, Hashable {
     let displayName: String
     let lastPollAt: String?
     let lastPollStatus: String?
+    let reportAccessToken: String
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -15,6 +16,7 @@ struct Child: Identifiable, Codable, Hashable {
         case displayName = "display_name"
         case lastPollAt = "last_poll_at"
         case lastPollStatus = "last_poll_status"
+        case reportAccessToken = "report_access_token"
     }
 }
 

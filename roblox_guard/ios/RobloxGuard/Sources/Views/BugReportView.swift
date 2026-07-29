@@ -91,6 +91,12 @@ struct BugReportView: View {
         Task {
             isSubmitting = true
             submitError = nil
+            if store.isDemoMode {
+                Haptics.success()
+                didSubmit = true
+                isSubmitting = false
+                return
+            }
             do {
                 try await store.api.submitBugReport(
                     summary: summary.trimmingCharacters(in: .whitespaces),

@@ -20,17 +20,26 @@ struct SettingsView: View {
             List {
                 // MARK: - Subscription
                 Section {
-                    LabeledContent("Plan", value: purchases.activeTier.displayName)
-                    if purchases.activeTier != .none {
+                    LabeledContent(
+                        "Plan",
+                        value: purchases.demoMode ? "App Review Demo" : purchases.activeTier.displayName
+                    )
+                    if purchases.demoMode {
+                        Text("Sample data only — no purchase or live monitoring is active.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else if purchases.activeTier != .none {
                         LabeledContent("Children covered", value: "\(store.children.count) of \(purchases.activeTier.maxChildren)")
                     }
-                    if purchases.activeTier == .none {
+                    if purchases.demoMode {
+                        Button("Exit Demo Mode") {
+                            setDemoMode(false)
+                        }
+                    } else if purchases.activeTier == .none {
                         Button("Subscribe") { showPaywall = true }
                     } else {
                         Button("Change plan") { showPaywall = true }
-                        if !purchases.isUsingDemoProducts {
-                            Button("Manage subscription") { showManageSubscriptions = true }
-                        }
+                        Button("Manage subscription") { showManageSubscriptions = true }
                     }
                 } header: {
                     Text("Subscription")
@@ -42,12 +51,10 @@ struct SettingsView: View {
                     if push.isRegistered {
                         Button("Send test notification") {
                             Task {
-                                #if DEBUG
                                 if store.isDemoMode {
                                     testNotificationResult = "Demo mode: test notification sent (visual only)"
                                     return
                                 }
-                                #endif
                                 do {
                                     let result = try await store.api.sendTestNotification()
                                     testNotificationResult = "Sent to \(result.sent) device(s)"
@@ -108,16 +115,12 @@ struct SettingsView: View {
                                 .font(.footnote)
                         }
                     } else {
-                        #if DEBUG
                         if store.isDemoMode {
                             LabeledContent("Threat definitions", value: "v1 · demo")
                             LabeledContent("Updates from", value: "built-in (demo)")
                         } else {
                             Text("Loading…").foregroundStyle(.secondary)
                         }
-                        #else
-                        Text("Loading…").foregroundStyle(.secondary)
-                        #endif
                     }
                 } header: {
                     Text("Protection updates")
@@ -147,39 +150,30 @@ struct SettingsView: View {
                     Text("Reports go to \(BugReportView.supportEmail) and are logged for the team to review.")
                 }
 
-                // MARK: - Demo Mode (DEBUG only)
-                #if DEBUG
+                // MARK: - App Review demo
                 Section {
-                    Toggle("Demo Mode", isOn: Binding(
+                    Toggle("App Review Demo", isOn: Binding(
                         get: { purchases.demoMode },
                         set: { newValue in
-                            purchases.demoMode = newValue
-                            UserDefaults.standard.set(newValue, forKey: "demoMode")
-                            Task { await store.loadAll() }
-                            Task { await purchases.start() }
+                            setDemoMode(newValue)
                         }
                     ))
                     if purchases.demoMode {
-                        Text("Demo mode is ON. The app uses sample data — no backend required. All features are testable: link a child, view alerts with glossary explainers, upload evidence, generate an incident report, send bug reports, and test push notifications.")
+                        Text("Demo mode is ON. The app uses clearly labeled sample data stored only on this device. It does not monitor a real Roblox account or create a paid subscription.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 } header: {
                     Text("App Review")
                 } footer: {
-                    Text("Demo mode provides sample alerts and a demo child (builderman) so Apple reviewers can test every feature without a running backend. Toggle off to use a live server.")
+                    Text("Reviewers can inspect sample alerts, explainers, guidance, evidence, incident reporting, and education without credentials. Turn this off to use live monitoring and StoreKit.")
                 }
-                #endif
             }
             .navigationTitle("Settings")
             .task {
-                #if DEBUG
                 if !store.isDemoMode {
                     protection = try? await store.api.protectionStatus()
                 }
-                #else
-                protection = try? await store.api.protectionStatus()
-                #endif
             }
             .task { await push.refreshStatus() }
             .sheet(isPresented: $showPaywall) { PaywallView() }
@@ -197,6 +191,18 @@ struct SettingsView: View {
                     }
                     childToUnlink = nil
                 }
+            }
+        }
+    }
+
+    private func setDemoMode(_ enabled: Bool) {
+        Task {
+            await purchases.setDemoMode(enabled)
+            await store.setDemoMode(enabled)
+            if enabled {
+                protection = nil
+            } else {
+                protection = try? await store.api.protectionStatus()
             }
         }
     }

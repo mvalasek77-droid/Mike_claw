@@ -72,7 +72,7 @@ struct KnowTheDangersView: View {
         }
         .navigationTitle("Know the Dangers")
         .task {
-            content = try? await store.api.education()
+            content = try? await store.education()
         }
     }
 }

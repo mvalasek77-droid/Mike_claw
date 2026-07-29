@@ -31,6 +31,8 @@ targets:
         # Local dev talks to http://localhost:8000; production must use HTTPS
         # (no ATS exceptions shipped in release builds).
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        RG_API_BASE_URL: ""
+        RG_API_TOKEN: ""
 
         # Sources/Assets.xcassets/AppIcon.appiconset — original shield + block
         # mark, not derived from Roblox's own logo/branding (see README).

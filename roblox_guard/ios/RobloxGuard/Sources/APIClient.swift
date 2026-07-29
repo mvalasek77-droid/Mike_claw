@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import UIKit
 
 /// Thin client for the RobloxGuard backend. The app never talks to Roblox
@@ -9,14 +10,35 @@ struct APIClient {
     /// Bearer token matching the backend's RG_API_TOKEN. In production this
     /// is provisioned at build time; empty only for local development.
     var apiToken: String
+    var clientID: String
 
-    init(baseURL: URL = URL(string: "http://localhost:8000")!,
-         apiToken: String = "") {
-        self.baseURL = baseURL
-        self.apiToken = apiToken
+    init(baseURL: URL? = nil, apiToken: String? = nil,
+         clientID: String = ClientIdentity.current) {
+        let configuredURL: URL? = (Bundle.main.object(
+            forInfoDictionaryKey: "RGAPIBaseURL"
+        ) as? String)
+            .flatMap(URL.init(string:))
+            .flatMap { (url: URL) -> URL? in
+                guard url.scheme == "https" || url.scheme == "http",
+                      url.host != nil else { return nil }
+                return url
+            }
+        let configuredToken = Bundle.main.object(
+            forInfoDictionaryKey: "RGAPIToken"
+        ) as? String
+
+        #if DEBUG
+        self.baseURL = baseURL ?? configuredURL ?? URL(string: "http://localhost:8000")!
+        #else
+        self.baseURL = baseURL ?? configuredURL
+            ?? URL(string: "https://configuration.invalid")!
+        #endif
+        self.apiToken = apiToken ?? configuredToken ?? ""
+        self.clientID = clientID
     }
 
     private func authorize(_ request: inout URLRequest) {
+        request.setValue(clientID, forHTTPHeaderField: "X-RobloxGuard-Client-ID")
         if !apiToken.isEmpty {
             request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         }
@@ -139,13 +161,20 @@ struct APIClient {
 
     /// URL the incident report is served from — openable in Safari, printable,
     /// and shareable with investigators.
-    func reportURL(childId: Int, format: String = "html") -> URL {
+    func reportURL(childId: Int, accessToken: String,
+                   format: String = "html") -> URL {
         baseURL.appendingPathComponent("children/\(childId)/report")
-            .appending(queryItems: [URLQueryItem(name: "format", value: format)])
+            .appending(queryItems: [
+                URLQueryItem(name: "format", value: format),
+                URLQueryItem(name: "share_token", value: accessToken),
+            ])
     }
 
-    func evidenceFileURL(evidenceId: Int) -> URL {
+    func evidenceFileURL(evidenceId: Int, accessToken: String) -> URL {
         baseURL.appendingPathComponent("evidence/\(evidenceId)/file")
+            .appending(queryItems: [
+                URLQueryItem(name: "share_token", value: accessToken),
+            ])
     }
 
     /// Submits a "Report a Bug" entry (Settings). Always persisted server-side
@@ -206,5 +235,43 @@ struct APIClient {
             }
             throw APIError(message: "Upload failed")
         }
+    }
+}
+
+/// Stable, random per-installation identifier used to isolate each family's
+/// records. It is stored in the Keychain so app updates do not silently
+/// orphan linked accounts. It is not an advertising identifier.
+private enum ClientIdentity {
+    private static let service = "com.mikeclaw.robloxguard.installation"
+    private static let account = "client-id"
+
+    static var current: String {
+        let baseQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        var lookup = baseQuery
+        lookup[kSecReturnData as String] = true
+        lookup[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        if SecItemCopyMatching(lookup as CFDictionary, &result) == errSecSuccess,
+           let data = result as? Data,
+           let stored = String(data: data, encoding: .utf8),
+           UUID(uuidString: stored) != nil {
+            return stored
+        }
+
+        let generated = UUID().uuidString.lowercased()
+        let insert: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: Data(generated.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        SecItemDelete(baseQuery as CFDictionary)
+        SecItemAdd(insert as CFDictionary, nil)
+        return generated
     }
 }

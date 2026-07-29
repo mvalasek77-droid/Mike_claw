@@ -46,7 +46,7 @@ struct Roblox101View: View {
         }
         .navigationTitle("Roblox 101")
         .task {
-            content = try? await store.api.education()
+            content = try? await store.education()
         }
     }
 }

@@ -93,16 +93,13 @@ class APNsService:
                    device_token[:8], resp.status_code, resp.text[:200])
         return False, gone
 
-    async def send_to_all(self, db: Database, title: str, body: str) -> dict:
-        """Pushes to every registered device; prunes tokens Apple reports as dead.
-
-        No parent-account system yet, so every registered device gets every
-        alert push — see db.py's device_tokens note.
-        """
+    async def send_to_all(self, db: Database, title: str, body: str,
+                          client_id: Optional[str] = None) -> dict:
+        """Pushes only to the requested installation's registered devices."""
         if not self.configured:
             return {"sent": 0, "failed": 0, "pruned": 0, "configured": False}
-        tokens = db.list_device_tokens()
-        badge = db.total_unacknowledged_alerts()
+        tokens = db.list_device_tokens(client_id)
+        badge = db.total_unacknowledged_alerts(client_id)
         sent = failed = pruned = 0
         for token in tokens:
             ok, gone = await self._send(token, title, body, badge)
@@ -111,6 +108,6 @@ class APNsService:
             else:
                 failed += 1
                 if gone:
-                    db.remove_device_token(token)
+                    db.remove_device_token(token, client_id)
                     pruned += 1
         return {"sent": sent, "failed": failed, "pruned": pruned, "configured": True}

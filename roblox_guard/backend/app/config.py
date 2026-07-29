@@ -54,6 +54,10 @@ class Settings:
     # auth (local development only) — production MUST set RG_API_TOKEN.
     api_token: str = os.environ.get("RG_API_TOKEN", "")
 
+    # Separate operator credential for cross-tenant routes such as the bug
+    # log and an on-demand intelligence run. This must never ship in the app.
+    admin_token: str = os.environ.get("RG_ADMIN_TOKEN", "")
+
     # Directory for the persistent rotating bug/error log. Empty disables the
     # file handler (console-only, e.g. in tests).
     log_dir: str = os.environ.get("RG_LOG_DIR", "")
