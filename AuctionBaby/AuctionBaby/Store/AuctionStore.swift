@@ -983,13 +983,15 @@ final class AuctionStore: ObservableObject {
     /// (Apple: a real-world service fee must not gate digital features). Called
     /// by the demo path and after the Worker confirms a completed web checkout.
     func markDateReserved(_ matchID: UUID, amountCents: Int? = nil) {
-        guard let idx = matches.firstIndex(where: { $0.id == matchID }),
-              !matches[idx].dateReserved else { return }
-        matches[idx].dateReserved = true
-        matches[idx].reservedAmountCents = amountCents
+        guard let slot = matchSlot(id: matchID) else { return }
+        var row = matchRow(at: slot)
+        guard !row.dateReserved else { return }
+        row.dateReserved = true
+        row.reservedAmountCents = amountCents
+        writeMatchRow(row, at: slot)
         Haptics.success()
         toastFlash("Date reserved — you're locked in. Pay her in person as agreed.")
-        log(.bidAccepted, "You reserved your date with \(matches[idx].bid.woman.name).")
+        log(.bidAccepted, "You reserved your date with \(row.bid.woman.name).")
         save()
     }
 
@@ -1005,7 +1007,11 @@ final class AuctionStore: ObservableObject {
     /// looked. Only checks the bidder's own un-reserved live matches.
     func refreshReservations(backend: BackendService) async {
         guard role == .man, backend.isConsumablesConfigured else { return }
-        let pending = matches.filter { $0.phase == .chatting && !$0.dateReserved }
+        // Check both the sim rosters (Demo Mode) and the signed-in user's
+        // real matches — a Stripe reservation paid on the web could belong
+        // to either. `markDateReserved` writes back through `matchSlot` so
+        // whichever array holds the id gets the flag flip.
+        let pending = (matches + remoteMatches).filter { $0.phase == .chatting && !$0.dateReserved }
         for match in pending {
             if case .success(let state) = await backend.reservationStatus(matchID: match.id),
                state.reserved {
@@ -1394,10 +1400,12 @@ final class AuctionStore: ObservableObject {
     /// Double-tap a bubble to react (iMessage-style). Toggles off if it's
     /// already that emoji, otherwise sets/replaces the reaction.
     func toggleReaction(_ emoji: String, on messageID: UUID, in match: Match) {
-        guard let mIdx = matches.firstIndex(where: { $0.id == match.id }),
-              let msgIdx = matches[mIdx].messages.firstIndex(where: { $0.id == messageID }) else { return }
-        let current = matches[mIdx].messages[msgIdx].reaction
-        matches[mIdx].messages[msgIdx].reaction = (current == emoji) ? nil : emoji
+        guard let slot = matchSlot(id: match.id) else { return }
+        var row = matchRow(at: slot)
+        guard let msgIdx = row.messages.firstIndex(where: { $0.id == messageID }) else { return }
+        let current = row.messages[msgIdx].reaction
+        row.messages[msgIdx].reaction = (current == emoji) ? nil : emoji
+        writeMatchRow(row, at: slot)
         Haptics.selection()
         save()
     }
@@ -1431,13 +1439,44 @@ final class AuctionStore: ObservableObject {
         }
     }
 
-    func markDateDone(_ match: Match) {
-        guard let idx = matches.firstIndex(where: { $0.id == match.id }) else { return }
-        guard matches[idx].phase == .chatting else { return }
-        matches[idx].phase = .dateDone
-        matches[idx].messages.append(
+    /// Find which store array a match id lives in. Returns `(isRemote, index)`
+    /// or nil. Every mutator on a match must read through this so a signed-in
+    /// user's real matches (in `remoteMatches`) get the change too — the sim
+    /// `matches` array is a strict subset of the state to mutate.
+    private func matchSlot(id: UUID) -> (isRemote: Bool, index: Int)? {
+        if let i = remoteMatches.firstIndex(where: { $0.id == id }) { return (true, i) }
+        if let i = matches.firstIndex(where: { $0.id == id }) { return (false, i) }
+        return nil
+    }
+
+    /// Read the current row from whichever array holds it.
+    private func matchRow(at slot: (isRemote: Bool, index: Int)) -> Match {
+        slot.isRemote ? remoteMatches[slot.index] : matches[slot.index]
+    }
+
+    /// Write the mutated row back to whichever array it came from.
+    private func writeMatchRow(_ match: Match, at slot: (isRemote: Bool, index: Int)) {
+        if slot.isRemote { remoteMatches[slot.index] = match }
+        else             { matches[slot.index] = match }
+    }
+
+    /// Mark a match's date as done — moves the row to `.dateDone` so both
+    /// sides can review. Slice-P0-#3: when the match is remote, also POST
+    /// `/matches/:id/mark-date-done` on the matching Worker so the OTHER
+    /// side's state (and their push) reflects the transition. `matching` is
+    /// optional so Demo / sim call sites can invoke this without wiring it up.
+    func markDateDone(_ match: Match, matching: MatchingService? = nil) {
+        guard let slot = matchSlot(id: match.id) else { return }
+        var row = matchRow(at: slot)
+        guard row.phase == .chatting else { return }
+        row.phase = .dateDone
+        row.messages.append(
             ChatMessage(fromMe: true, text: "Date completed — leave your review.", isSystem: true))
+        writeMatchRow(row, at: slot)
         Haptics.commit()
+        if slot.isRemote, let matching {
+            Task { _ = await matching.markDateDone(matchId: match.id.uuidString.lowercased()) }
+        }
         save()
     }
 
@@ -1449,13 +1488,14 @@ final class AuctionStore: ObservableObject {
     func completeAsMan(_ match: Match, stars: Int, traits: [Trait: Int],
                        categories: [String], text: String, actuallySpent: Int,
                        confirmedMet: Bool = true) {
-        guard let idx = matches.firstIndex(where: { $0.id == match.id }),
-              !matches[idx].manReviewedWoman else { return }   // one review per date
-        matches[idx].manConfirmedMet = confirmedMet
+        guard let slot = matchSlot(id: match.id) else { return }
+        var row = matchRow(at: slot)
+        guard !row.manReviewedWoman else { return }   // one review per date
+        row.manConfirmedMet = confirmedMet
         // Sim woman corroborates when he confirmed — that's what makes the
         // signal Gavel Confirmed. If he says they didn't meet, no corroboration.
-        if confirmedMet { matches[idx].womanConfirmedMet = true }
-        let bid = matches[idx].bid
+        if confirmedMet { row.womanConfirmedMet = true }
+        let bid = row.bid
 
         let creditBefore = me.auctionCredit
         // NOTE: no in-app debit here. A bid is a letter of intent — the date
@@ -1468,7 +1508,7 @@ final class AuctionStore: ObservableObject {
         for (t, v) in traits { traitDict[t.rawValue] = v }
         var review = DateReview(authorName: me.name, authorHue: me.hue, stars: stars, text: text,
                                 traits: traitDict, interestCategories: categories)
-        review.gavelConfirmed = matches[idx].gavelConfirmed
+        review.gavelConfirmed = row.gavelConfirmed
         // The woman's verdict on him → updates *his* deadbeat / credit score.
         let paid = actuallySpent >= bid.amount
 
@@ -1477,7 +1517,7 @@ final class AuctionStore: ObservableObject {
             // She only mints a Masterpiece if he actually paid the full $1,000,000.
             if bid.qualifiesForMasterpiece && paid { floor[f].masterpiece = true }
         }
-        matches[idx].manReviewedWoman = true
+        row.manReviewedWoman = true
         // Her written verdict is chosen to match his credit, so the comment and
         // the number never contradict each other: paying short always reads bad,
         // and among men who paid, the praise scales with his standing.
@@ -1486,8 +1526,12 @@ final class AuctionStore: ObservableObject {
         var wReview = DateReview(authorName: bid.woman.name, authorHue: bid.woman.hue,
                                   stars: verdict.stars, text: verdict.text,
                                   paidBid: paid, bidAmount: bid.amount, spentAmount: actuallySpent)
-        wReview.gavelConfirmed = matches[idx].gavelConfirmed
+        wReview.gavelConfirmed = row.gavelConfirmed
         me.reviews.insert(wReview, at: 0)
+
+        // Persist the row mutations back to whichever array holds it — the
+        // subsequent closeMatch(at:) reads through the same slot.
+        writeMatchRow(row, at: slot)
 
         // Trillionaire is earned here: he bought the badge, bid & paid the full
         // $9,999, and the woman (sim) confirmed it. That's the third gate.
@@ -1495,7 +1539,7 @@ final class AuctionStore: ObservableObject {
             && bid.amount >= Archetype.trillionaireDateGateUSD
             && actuallySpent >= Archetype.trillionaireDateGateUSD && paid {
             me.trillionaireVerified = true
-            closeMatch(idx)
+            closeMatch(at: slot)
             Haptics.success()
             toastFlash("✦ TRILLIONAIRE VERIFIED — she confirmed your $9,999.")
             log(.trillionaire, "You're a verified Trillionaire — \(bid.woman.name) confirmed your $9,999.")
@@ -1503,8 +1547,8 @@ final class AuctionStore: ObservableObject {
             return
         }
 
-        let confirmed = matches[idx].gavelConfirmed
-        closeMatch(idx)
+        let confirmed = row.gavelConfirmed
+        closeMatch(at: slot)
         Haptics.success()
         if confirmed {
             toastFlash(paid ? "✓ Gavel Confirmed. Your credit just moved."
@@ -1521,20 +1565,21 @@ final class AuctionStore: ObservableObject {
     /// deadbeat verdict; a paid Trillionaire mints her Masterpiece.
     func completeAsWoman(_ match: Match, paid: Bool, stars: Int, text: String,
                          confirmedMet: Bool = true) {
-        guard let idx = matches.firstIndex(where: { $0.id == match.id }),
-              !matches[idx].womanReviewedMan else { return }   // one review per date
-        matches[idx].womanConfirmedMet = confirmedMet
+        guard let slot = matchSlot(id: match.id) else { return }
+        var row = matchRow(at: slot)
+        guard !row.womanReviewedMan else { return }   // one review per date
+        row.womanConfirmedMet = confirmedMet
         // Sim man corroborates when she confirmed the meetup.
-        if confirmedMet { matches[idx].manConfirmedMet = true }
-        let bid = matches[idx].bid
+        if confirmedMet { row.manConfirmedMet = true }
+        let bid = row.bid
 
         // Her verdict on him — stored on the match. The woman's stars and text
         // feed into the man's record (cosmetic — he isn't the user).
-        matches[idx].womanReviewedMan = true
+        row.womanReviewedMan = true
         if let manIdx = bidders.firstIndex(where: { $0.id == bid.man.id }) {
             var mReview = DateReview(authorName: me.name, authorHue: me.hue, stars: stars, text: text,
                                      paidBid: paid, bidAmount: bid.amount)
-            mReview.gavelConfirmed = matches[idx].gavelConfirmed
+            mReview.gavelConfirmed = row.gavelConfirmed
             bidders[manIdx].reviews.insert(mReview, at: 0)
         }
 
@@ -1551,7 +1596,7 @@ final class AuctionStore: ObservableObject {
                                     text: "Effortless company. Worth the bid.",
                                     traits: traits,
                                     interestCategories: Array(me.interests.prefix(2)))
-            meRev.gavelConfirmed = matches[idx].gavelConfirmed
+            meRev.gavelConfirmed = row.gavelConfirmed
             me.reviews.insert(meRev, at: 0)
         }
 
@@ -1562,7 +1607,7 @@ final class AuctionStore: ObservableObject {
             // Her confirmation is also what verifies his Trillionaire status —
             // on the match snapshot AND the live roster, or he'd read
             // "Pending" everywhere else he appears.
-            matches[idx].bid.man.trillionaireVerified = true
+            row.bid.man.trillionaireVerified = true
             if let rosterIdx = bidders.firstIndex(where: { $0.id == bid.man.id }) {
                 bidders[rosterIdx].trillionaireVerified = true
             }
@@ -1582,14 +1627,20 @@ final class AuctionStore: ObservableObject {
             toastFlash("🖼 You've been rehung: you're now a \(me.artTier.title).")
             log(.honors, "Climbed the honors ladder — now a \(me.artTier.title).")
         }
-        closeMatch(idx)
+        writeMatchRow(row, at: slot)
+        closeMatch(at: slot)
         save()
     }
 
-    private func closeMatch(_ idx: Int) {
-        matches[idx].phase = .closed
-        matches[idx].messages.append(
+    /// Close a match at a specific slot (remote or sim). The two review
+    /// completion paths call this at the end so both sides see the "lot
+    /// closed" system message.
+    private func closeMatch(at slot: (isRemote: Bool, index: Int)) {
+        var row = matchRow(at: slot)
+        row.phase = .closed
+        row.messages.append(
             ChatMessage(fromMe: true, text: "Reviews are in. This lot is closed.", isSystem: true))
+        writeMatchRow(row, at: slot)
     }
 
     /// Log a credit movement whenever a headline score shifts — the "your

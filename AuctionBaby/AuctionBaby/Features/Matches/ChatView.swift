@@ -391,7 +391,7 @@ struct ChatView: View {
                 if !match.bid.onCopycat {
                     reserveCard(match)
                     GhostButton(title: "We went on the date", systemImage: "checkmark.circle") {
-                        store.markDateDone(match)
+                        store.markDateDone(match, matching: matching)
                     }
                 }
             case .dateDone:

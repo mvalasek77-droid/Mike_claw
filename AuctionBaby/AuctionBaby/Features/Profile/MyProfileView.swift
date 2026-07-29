@@ -5,9 +5,13 @@ import SwiftUI
 struct MyProfileView: View {
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
+    @EnvironmentObject private var auth: AuthService
     @State private var editingBid = false
     @State private var bidText = ""
     @State private var showReset = false
+    @State private var showSignOut = false
+    @State private var showDelete = false
+    @State private var deleting = false
     @State private var showVerify = false
     @State private var showSafety = false
     @State private var showAdmin = false
@@ -56,6 +60,28 @@ struct MyProfileView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: { Text("Clears your profile, bids, matches and reviews, and returns to onboarding.") }
+            .alert("Sign out?", isPresented: $showSignOut) {
+                Button("Sign out", role: .destructive) {
+                    Task { await auth.signOut() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Your account stays. You can sign back in with Apple to pick up where you left off.")
+            }
+            .alert("Delete account?", isPresented: $showDelete) {
+                Button("Delete permanently", role: .destructive) {
+                    deleting = true
+                    Task {
+                        _ = await auth.deleteAccount()
+                        storeKit.demoTier = nil
+                        store.resetAccount()
+                        deleting = false
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Permanently deletes your account and everything tied to it — profile, bids, matches, messages, blocks, reports. This cannot be undone.")
+            }
         }
     }
 
@@ -527,11 +553,38 @@ struct MyProfileView: View {
                     .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
                 Spacer()
             }
+            if auth.isSignedIn {
+                Button { showSignOut = true } label: {
+                    Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity).padding(.vertical, 11)
+                        .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
+            }
             Button(role: .destructive) { showReset = true } label: {
                 Label("Reset account", systemImage: "trash")
                     .font(.system(size: 14, weight: .bold, design: .rounded)).foregroundStyle(Theme.danger)
                     .frame(maxWidth: .infinity).padding(.vertical, 11)
                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.danger.opacity(0.12)))
+            }
+            if auth.isSignedIn {
+                Button(role: .destructive) { showDelete = true } label: {
+                    HStack(spacing: 6) {
+                        if deleting { ProgressView().tint(Theme.danger) }
+                        Label("Delete account permanently", systemImage: "xmark.octagon.fill")
+                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Theme.danger)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 11)
+                    .background(RoundedRectangle(cornerRadius: Theme.cornerM).strokeBorder(Theme.danger.opacity(0.5), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .disabled(deleting)
+                Text("Required by Apple: signed-in users can permanently delete their account from here. GDPR/CCPA compliant.")
+                    .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                    .padding(.top, 2)
             }
         }
     }

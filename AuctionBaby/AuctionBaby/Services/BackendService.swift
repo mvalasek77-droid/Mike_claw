@@ -194,7 +194,9 @@ final class BackendService: ObservableObject {
         }
     }
 
-    /// GET /moderation/reports?status=…
+    /// GET /moderation/reports?status=…  (legacy payout-Worker path; kept
+    /// around for a fallback surface — nothing on the client POSTs to this
+    /// queue anymore. `fetchAuthReports` is the current truth.)
     func fetchReports(resolved: Bool) async -> BackendResult<[Report]> {
         struct Wrapper: Decodable { let reports: [Report] }
         return await get("/moderation/reports?status=\(resolved ? "resolved" : "pending")",
@@ -207,6 +209,45 @@ final class BackendService: ObservableObject {
         switch await post("/moderation/reports/\(id)/resolve",
                           body: ["disposition": disposition, "note": note],
                           as: Response.self) {
+        case .success: return nil
+        case .failure(let message): return message
+        }
+    }
+
+    // MARK: - Auth Worker admin reports (slice 5, wired here for the console)
+
+    /// A row from the auth Worker's `/admin/reports`. Reporter and target are
+    /// server user ids (no name lookup here — the admin queue is a triage
+    /// tool, not a profile browser; the founder can dig deeper if needed).
+    struct AuthReport: Decodable, Identifiable, Equatable {
+        let id: String
+        let reporterId: String
+        let targetId: String
+        let reason: String
+        let context: String?
+        let createdAt: Double
+        let status: String
+        let resolvedAt: Double?
+        let resolvedBy: String?
+    }
+
+    /// GET /admin/reports?status=&limit=&cursor=  on the AUTH Worker.
+    /// Shares the operator-carried `sharedSecret` — same string is expected
+    /// to be `APP_SHARED_SECRET` on both Workers by convention.
+    func fetchAuthReports(status: String = "open", limit: Int = 50,
+                          cursor: Double? = nil) async -> BackendResult<[AuthReport]> {
+        var path = "/admin/reports?status=\(status)&limit=\(limit)"
+        if let cursor { path += "&cursor=\(Int(cursor))" }
+        struct Wrapper: Decodable { let reports: [AuthReport] }
+        return await getAuth(path, as: Wrapper.self).map(\.reports)
+    }
+
+    /// POST /admin/reports/:id/resolve  { status, note? }  on the AUTH Worker.
+    /// `status` must be `reviewed` | `actioned` | `dismissed`.
+    func resolveAuthReport(id: String, status: String, note: String) async -> String? {
+        struct Response: Decodable { let ok: Bool; let updated: Int? }
+        switch await postAuth("/admin/reports/\(id)/resolve",
+                              body: ["status": status, "note": note], as: Response.self) {
         case .success: return nil
         case .failure(let message): return message
         }
@@ -341,6 +382,18 @@ final class BackendService: ObservableObject {
 
     private func post<T: Decodable>(_ path: String, base: String? = nil, body: [String: Any], as type: T.Type) async -> BackendResult<T> {
         await request(path: path, method: "POST", body: body, baseOverride: base, as: type)
+    }
+
+    /// Same admin bearer, different Worker. Auth Worker's admin endpoints
+    /// (/admin/reports*) are gated by APP_SHARED_SECRET, by convention the
+    /// same string set on `sharedSecret` here.
+    private func getAuth<T: Decodable>(_ path: String, as type: T.Type) async -> BackendResult<T> {
+        await request(path: path, method: "GET", body: nil,
+                      baseOverride: BackendConfig.authURL, as: type)
+    }
+    private func postAuth<T: Decodable>(_ path: String, body: [String: Any], as type: T.Type) async -> BackendResult<T> {
+        await request(path: path, method: "POST", body: body,
+                      baseOverride: BackendConfig.authURL, as: type)
     }
 
     private func request<T: Decodable>(path: String, method: String,

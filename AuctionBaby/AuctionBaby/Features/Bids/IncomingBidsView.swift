@@ -140,6 +140,7 @@ struct IncomingBidsView: View {
 /// A row in the inbox — stats forward, face hidden.
 struct BidRow: View {
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var matching: MatchingService
     let bid: Bid
     var dimmed: Bool = false
 
