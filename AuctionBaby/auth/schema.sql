@@ -172,3 +172,19 @@ CREATE TABLE IF NOT EXISTS rate_counters (
   count       INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (key, window_ms)
 );
+
+-- ── Slice 5: server-side reports ─────────────────────────────────────────────
+-- Blocks stop reach; reports flag content for admin review. Same shared D1.
+CREATE TABLE IF NOT EXISTS reports (
+  id           TEXT PRIMARY KEY,
+  reporter_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason       TEXT NOT NULL,
+  context      TEXT,
+  created_at   INTEGER NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'open',
+  resolved_at  INTEGER,
+  resolved_by  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reports_open_created ON reports(status, created_at DESC);

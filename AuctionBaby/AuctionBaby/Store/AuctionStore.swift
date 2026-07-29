@@ -282,7 +282,13 @@ final class AuctionStore: ObservableObject {
         // so the pair can't see each other, bid, or message on any device.
         // Fire-and-forget; the local state above is authoritative for this
         // session even if the network hiccups.
-        onBlockRequested?(profile.id.uuidString.lowercased(), reason)
+        let targetId = profile.id.uuidString.lowercased()
+        onBlockRequested?(targetId, reason)
+        // Slice 5: also file a report so the admin queue sees it. Report and
+        // block are one action from the user's perspective (the ReportSheet
+        // button labels combine "report + remove"), so we mirror that server
+        // side. Separate hook keeps the store from importing AuthService.
+        onReportRequested?(targetId, reason)
         save()
     }
 
@@ -290,6 +296,10 @@ final class AuctionStore: ObservableObject {
     /// hook = local-only block (Demo Mode + unsigned-in). Async closure so
     /// the store doesn't import AuthService directly.
     var onBlockRequested: ((String, String) -> Void)?
+    /// Wired at app root to `AuthService.reportUser(userId:reason:context:)`.
+    /// Fires alongside `onBlockRequested` so a "Report & Block" tap files
+    /// both the block AND the moderator-visible report.
+    var onReportRequested: ((String, String) -> Void)?
 
     // MARK: - Admin (roster management)
 

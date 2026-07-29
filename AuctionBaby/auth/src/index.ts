@@ -60,6 +60,11 @@
  *   POST   /me/blocks           — block another user (idempotent)      [auth]
  *   DELETE /me/blocks/:userId   — unblock                              [auth]
  *   GET    /me/blocks           — my active blocks                     [auth]
+ *
+ *   Slice 5 (server-side reports):
+ *   POST   /me/reports          — file a report on another user        [auth]
+ *   GET    /admin/reports       — admin triage queue                   [admin]
+ *   POST   /admin/reports/:id/resolve — mark a report resolved         [admin]
  */
 
 interface Env {
@@ -1179,6 +1184,130 @@ async function handleListBlocks(request: Request, env: Env): Promise<Response> {
   });
 }
 
+// ── Slice 5: reports ─────────────────────────────────────────────────────────
+
+interface ReportRow {
+  id: string; reporter_id: string; target_id: string;
+  reason: string; context: string | null; created_at: number;
+  status: string; resolved_at: number | null; resolved_by: string | null;
+}
+
+/** POST /me/reports  { userId, reason, context? }  [auth]
+ *  Rate-limited (30/day per reporter) — a real user won't legitimately file
+ *  30 reports in 24h; anything above is either abuse or an automation bug.
+ *  Rate table lives in the shared D1 (rate_counters), added in 4c1b. */
+async function handleCreateReport(request: Request, env: Env): Promise<Response> {
+  const me = await authenticate(request, env);
+  if (!me) return err("Unauthorized", 401);
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const targetId = String(body?.userId ?? "").trim().toLowerCase();
+  const reason = String(body?.reason ?? "").trim().slice(0, 100);
+  const context = body?.context ? String(body.context).trim().slice(0, 2000) : null;
+  if (!targetId) return err("userId is required");
+  if (targetId === me) return err("You can't report yourself", 400);
+  if (!reason) return err("reason is required");
+
+  const exists = await env.DB.prepare("SELECT 1 FROM users WHERE id = ?")
+    .bind(targetId).first();
+  if (!exists) return err("User not found", 404);
+
+  // 30 reports / 24h per reporter. Bumps then checks — same shape as the
+  // matching Worker's checkRate.
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const windowStart = Math.floor(now / dayMs) * dayMs;
+  const rateRow = await env.DB.prepare(
+    `INSERT INTO rate_counters (key, window_ms, count) VALUES (?, ?, 1)
+     ON CONFLICT(key, window_ms) DO UPDATE SET count = count + 1
+     RETURNING count AS count`,
+  ).bind(`report.create:${me}`, windowStart).first<{ count: number }>();
+  const count = rateRow?.count ?? 1;
+  if (count > 30) {
+    const retryAfterSec = Math.max(1, Math.ceil((windowStart + dayMs - now) / 1000));
+    return new Response(JSON.stringify({ error: "You've reported a lot today — take a breath." }), {
+      status: 429,
+      headers: { "Content-Type": "application/json", "Retry-After": String(retryAfterSec), ...CORS },
+    });
+  }
+
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO reports (id, reporter_id, target_id, reason, context, created_at, status)
+     VALUES (?, ?, ?, ?, ?, ?, 'open')`,
+  ).bind(id, me, targetId, reason, context, now).run();
+  return json({
+    report: {
+      id, reporterId: me, targetId, reason, context, createdAt: now, status: "open",
+    },
+  }, 201);
+}
+
+/** GET /admin/reports?status=open&limit=&cursor=  [admin]
+ *  APP_SHARED_SECRET-gated triage queue. Cursor is the last row's
+ *  `created_at` (descending pagination). */
+async function handleAdminListReports(request: Request, env: Env): Promise<Response> {
+  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
+  const auth = request.headers.get("Authorization");
+  const supplied = auth?.startsWith("Bearer ") ? auth.slice(7) : (auth ?? "");
+  if (!(await constantTimeEqual(supplied, env.APP_SHARED_SECRET))) return err("Unauthorized", 401);
+
+  const url = new URL(request.url);
+  const status = url.searchParams.get("status") ?? "open";
+  if (!["open", "reviewed", "actioned", "dismissed", "all"].includes(status)) {
+    return err("status must be open|reviewed|actioned|dismissed|all");
+  }
+  const limitRaw = Number(url.searchParams.get("limit") ?? 50);
+  const limit = Math.min(200, Math.max(1, Number.isFinite(limitRaw) ? Math.floor(limitRaw) : 50));
+  const cursorRaw = url.searchParams.get("cursor");
+  const cursor = cursorRaw != null && cursorRaw !== "" ? Number(cursorRaw) : null;
+
+  let sql = "SELECT * FROM reports";
+  const params: unknown[] = [];
+  const where: string[] = [];
+  if (status !== "all") { where.push("status = ?"); params.push(status); }
+  if (cursor != null && Number.isFinite(cursor)) { where.push("created_at < ?"); params.push(cursor); }
+  if (where.length > 0) sql += " WHERE " + where.join(" AND ");
+  sql += " ORDER BY created_at DESC LIMIT ?";
+  params.push(limit);
+
+  const rows = await env.DB.prepare(sql).bind(...params).all<ReportRow>();
+  const list = rows.results ?? [];
+  const nextCursor = list.length === limit ? list[list.length - 1].created_at : null;
+  return json({
+    reports: list.map((r) => ({
+      id: r.id, reporterId: r.reporter_id, targetId: r.target_id,
+      reason: r.reason, context: r.context, createdAt: r.created_at,
+      status: r.status, resolvedAt: r.resolved_at, resolvedBy: r.resolved_by,
+    })),
+    nextCursor,
+  });
+}
+
+/** POST /admin/reports/:id/resolve  { status, note? }  [admin]
+ *  status must be one of reviewed|actioned|dismissed. Stamps resolved_at
+ *  and resolved_by (the admin's short name, in the body's note field). */
+async function handleAdminResolveReport(reportId: string, request: Request, env: Env): Promise<Response> {
+  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
+  const auth = request.headers.get("Authorization");
+  const supplied = auth?.startsWith("Bearer ") ? auth.slice(7) : (auth ?? "");
+  if (!(await constantTimeEqual(supplied, env.APP_SHARED_SECRET))) return err("Unauthorized", 401);
+
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const status = String(body?.status ?? "").trim();
+  if (!["reviewed", "actioned", "dismissed"].includes(status)) {
+    return err("status must be reviewed|actioned|dismissed");
+  }
+  const resolvedBy = body?.note ? String(body.note).slice(0, 80) : "admin";
+
+  const now = Date.now();
+  const result = await env.DB.prepare(
+    "UPDATE reports SET status = ?, resolved_at = ?, resolved_by = ? WHERE id = ? AND status = 'open'",
+  ).bind(status, now, resolvedBy, reportId).run();
+  return json({ ok: true, updated: result.meta?.changes ?? 0 });
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
@@ -1217,6 +1346,12 @@ export default {
     if (pathname === "/me/blocks" && m === "GET") return handleListBlocks(request, env);
     const blockDelete = pathname.match(/^\/me\/blocks\/([A-Za-z0-9-]{36})$/);
     if (blockDelete && m === "DELETE") return handleRemoveBlock(blockDelete[1], request, env);
+
+    // Slice 5 — reports
+    if (pathname === "/me/reports" && m === "POST") return handleCreateReport(request, env);
+    if (pathname === "/admin/reports" && m === "GET") return handleAdminListReports(request, env);
+    const reportResolve = pathname.match(/^\/admin\/reports\/([A-Za-z0-9-]{36})\/resolve$/);
+    if (reportResolve && m === "POST") return handleAdminResolveReport(reportResolve[1], request, env);
 
     return err("Not found", 404);
   },

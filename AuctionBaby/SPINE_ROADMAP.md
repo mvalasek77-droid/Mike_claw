@@ -282,19 +282,25 @@ the matching Worker for signed-in users.
 
 ---
 
-## Slice 5 — Server-enforced moderation  ⏳
+## Slice 5 — Server-enforced moderation  ✅
 
-Today `ReportSheet` exists as UI but has no submit path. Blocks are
-client-filtered `blockedIDs`, so a blocked user can still see and message
-you if their client is honest.
+Report + block are the moderation dyad. Blocks (4c1a) cut off reach;
+reports (this slice) flag content for admin review.
 
-**Approach:**
-- `POST /moderation/report` — writes to a `reports` D1 table with
-  reason, reporter, target, evidence pointer.
-- The existing `AdminModerationView` gets fed by a `GET /admin/moderation`
-  the founder can hit through the admin console.
-- Blocks are enforced at the matching-backend Worker layer (slice 4) —
-  a blocked bidder's bids are never delivered to the blocker's inbox.
+**Shipped:**
+- `reports(id, reporter_id, target_id, reason, context?, created_at,
+  status, resolved_at, resolved_by)` table in the shared D1 (migration
+  007).
+- Auth Worker `POST /me/reports { userId, reason, context? }`,
+  rate-limited to 30/day per reporter via the 4c1b `rate_counters` table.
+- Admin `GET /admin/reports?status=&limit=&cursor=` triage queue and
+  `POST /admin/reports/:id/resolve { status, note? }`, both gated by
+  `APP_SHARED_SECRET` (same admin bearer as `/push/send`).
+- Client: `AuthService.reportUser(userId:reason:context:)`, new
+  `AuctionStore.onReportRequested` hook fires alongside `onBlockRequested`
+  inside `blockAndReport`, wired at app root — one tap on ReportSheet
+  files both the block AND the moderator-visible report.
+- Blocks (from 4c1a) are already enforced at the matching Worker layer.
 
 ---
 
@@ -334,3 +340,4 @@ them in parallel — by the time slice 4 ships, you need answers.
 - **2026-07-28** — Slice 4b1 shipped in four sub-slices (a: real floor; b: real inbox + accept/decline; c: real bid write; d: matches list + chat). Two-sided loop complete for signed-in users. Next: 4c real-time + safety hardening.
 - **2026-07-28** — Slice 4c1a shipped (server-enforced blocks: blocks table, /me/blocks endpoints on auth Worker, both-direction filtering on floor + matching Worker's list/write endpoints, client wire-up). Report & Block is now honored across devices.
 - **2026-07-28** — Slice 4c1b shipped (rate limits: rate_counters table, 20 bids/hour per bidder, 30 messages/minute per sender, 429 + Retry-After on over-cap, client friendly-copy passthrough). Spam waves stop before they hit real users.
+- **2026-07-28** — Slice 5 shipped (server-side reports: reports table, POST /me/reports rate-limited to 30/day, admin triage + resolve endpoints APP_SHARED_SECRET-gated, ReportSheet fires both block and report in one tap). Moderation dyad complete.

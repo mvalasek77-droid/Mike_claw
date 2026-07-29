@@ -216,6 +216,26 @@ final class AuthService: ObservableObject {
         }
     }
 
+    // MARK: - Reports (slice 5)
+
+    /// File a report on another user. Fire-and-forget from the caller's
+    /// perspective — the local block already went through in
+    /// `AuctionStore.blockAndReport`. A failure here is logged (not toasted);
+    /// legally we still have the block, and the report can be re-filed.
+    @discardableResult
+    func reportUser(userId: String, reason: String, context: String? = nil) async -> Bool {
+        guard isEnabled, sessionToken != nil else { return false }
+        struct Body: Encodable { let userId: String; let reason: String; let context: String? }
+        struct Response: Decodable { struct Report: Decodable { let id: String } ; let report: Report }
+        let body = Body(userId: userId, reason: reason,
+                        context: (context?.isEmpty ?? true) ? nil : context)
+        switch await request("/me/reports", method: "POST", body: body,
+                              auth: true, as: Response.self) {
+        case .success: return true
+        case .failure: return false
+        }
+    }
+
     // MARK: - Internals
 
     private func signOutLocally() {

@@ -67,6 +67,12 @@ struct AuctionBabyApp: App {
                         guard let store, !store.demoMode else { return }
                         Task { _ = await auth?.blockUser(userId: userId, reason: reason) }
                     }
+                    // Slice 5: file the report alongside the block so admin
+                    // moderation has the flag, not just the reach cutoff.
+                    store.onReportRequested = { [weak auth, weak store] userId, reason in
+                        guard let store, !store.demoMode else { return }
+                        Task { _ = await auth?.reportUser(userId: userId, reason: reason) }
+                    }
                     storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
                     storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
                     storeKit.onBoost = { [weak store] in store?.activateBoost() }
