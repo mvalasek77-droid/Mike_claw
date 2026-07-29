@@ -216,6 +216,18 @@ final class AuthService: ObservableObject {
         }
     }
 
+    /// The signed-in user's active blocks. Returns nil when not signed in or
+    /// on network failure — the caller should render an empty/error state.
+    func listBlocks() async -> [RemoteBlock]? {
+        guard isEnabled, sessionToken != nil else { return nil }
+        struct Response: Decodable { let blocks: [RemoteBlock] }
+        switch await request("/me/blocks", method: "GET", body: EmptyBody?.none,
+                              auth: true, as: Response.self) {
+        case .success(let r): return r.blocks
+        case .failure: return nil
+        }
+    }
+
     // MARK: - Reports (slice 5)
 
     /// File a report on another user. Fire-and-forget from the caller's
@@ -303,6 +315,18 @@ final class AuthService: ObservableObject {
             return .failure(error.localizedDescription)
         }
     }
+}
+
+/// A row from `GET /me/blocks` — just the ids and reason. The blocked user's
+/// name/hue is a separate profile fetch on demand (BlockedUsersView does that
+/// once per row so the list stays cheap on the wire).
+struct RemoteBlock: Codable, Equatable, Identifiable {
+    let blockerId: String
+    let blockedId: String
+    let reason: String?
+    let createdAt: Double
+
+    var id: String { blockedId }
 }
 
 /// The public shape of a signed-in user, mirroring the Worker's `publicUser`.

@@ -17,6 +17,12 @@ struct SafetyCenterView: View {
 
     private var bugReportURL: URL? { BugReport.mailtoURL() }
 
+    private var blockedSubtitle: String {
+        let n = store.blockedIDs.count
+        return n == 0 ? "Nobody blocked yet. Report anyone who feels off — they'll land here."
+                      : "\(n) profile\(n == 1 ? "" : "s") blocked. Tap to review or unblock."
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -74,11 +80,29 @@ struct SafetyCenterView: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel("Report a bug via email")
                     }
-                    if !store.blockedIDs.isEmpty {
-                        Text("\(store.blockedIDs.count) profile\(store.blockedIDs.count == 1 ? "" : "s") blocked")
-                            .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
-                            .padding(.top, 4)
+                    NavigationLink {
+                        BlockedUsersView()
+                    } label: {
+                        GlassSurface(corner: Theme.cornerL) {
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: "hand.raised.slash.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(Theme.rose).frame(width: 30)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Blocked users")
+                                        .font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.ink)
+                                    Text(blockedSubtitle)
+                                        .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(Theme.inkFaint)
+                            }
+                            .padding(14)
+                        }
                     }
+                    .buttonStyle(.plain)
                     Spacer(minLength: 24)
                 }
                 .screenPadding().padding(.top, 8)
@@ -145,5 +169,158 @@ struct ReportSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Blocked users (slice 6)
+
+/// Signed-in users see their server-persisted block list here and can unblock
+/// with one tap. Demo Mode + local-only sessions show whatever's in the local
+/// `blockedIDs` set as read-only names (there's no server record to remove;
+/// their blocks live for the session only).
+struct BlockedUsersView: View {
+    @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var auth: AuthService
+    @EnvironmentObject private var profileSync: ProfileService
+    @State private var blocks: [BlockedRow] = []
+    @State private var loading = false
+    @State private var unblockingId: String?
+
+    struct BlockedRow: Identifiable, Equatable {
+        let id: String            // blockedId, lowercase uuid
+        var name: String
+        var hue: Double
+        let reason: String?
+        let createdAt: Double
+    }
+
+    var body: some View {
+        Group {
+            if loading && blocks.isEmpty {
+                ProgressView().tint(Theme.gold)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if blocks.isEmpty {
+                EmptyStateView(icon: "hand.raised.slash",
+                               title: "Nobody blocked",
+                               message: store.demoMode
+                                ? "Demo Mode is local-only — blocks don't sync here."
+                                : (auth.isSignedIn
+                                    ? "Anyone you Report & Block will show up here so you can undo it."
+                                    : "Sign in to see your blocks synced across devices."))
+                    .background(AppBackground())
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(blocks) { row in
+                            blockedCard(row)
+                        }
+                        Spacer(minLength: 20)
+                    }
+                    .screenPadding().padding(.top, 8)
+                }
+                .background(AppBackground())
+            }
+        }
+        .navigationTitle("Blocked users")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+        .refreshable { await load() }
+    }
+
+    @ViewBuilder
+    private func blockedCard(_ row: BlockedRow) -> some View {
+        GlassSurface(corner: Theme.cornerL) {
+            HStack(spacing: 12) {
+                AvatarCircle(name: row.name, hue: row.hue, photoName: nil, size: 44, revealed: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.name).font(.system(size: 14, weight: .heavy, design: .serif))
+                        .foregroundStyle(Theme.ink)
+                    if let reason = row.reason, !reason.isEmpty {
+                        Text(reason).font(.system(size: 11)).foregroundStyle(Theme.inkFaint).lineLimit(1)
+                    }
+                }
+                Spacer()
+                Button {
+                    Task { await unblock(row.id) }
+                } label: {
+                    HStack(spacing: 4) {
+                        if unblockingId == row.id { ProgressView().tint(Theme.ink) }
+                        else { Text("Unblock") }
+                    }
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Capsule().fill(.white.opacity(0.10)))
+                }
+                .buttonStyle(.plain)
+                .disabled(unblockingId != nil)
+            }
+            .padding(12)
+        }
+    }
+
+    private func load() async {
+        loading = true
+        defer { loading = false }
+        // Signed-in path: authoritative list from the server. Local-only path:
+        // fall back to whatever the store already knows.
+        if auth.isSignedIn, !store.demoMode, let remote = await auth.listBlocks() {
+            var rows: [BlockedRow] = remote.map { r in
+                BlockedRow(id: r.blockedId, name: "Someone", hue: 0.6,
+                           reason: r.reason, createdAt: r.createdAt)
+            }
+            // Hydrate names + hues from the profile endpoint. One roundtrip per
+            // row; small in practice (a user rarely blocks dozens). If the peer
+            // never set a public profile, the "Someone" default sticks.
+            await withTaskGroup(of: (Int, PublicProfile?).self) { group in
+                for (i, row) in rows.enumerated() {
+                    group.addTask { [row] in
+                        if case .success(let p) = await profileSync.fetchProfile(userId: row.id) {
+                            return (i, p)
+                        }
+                        return (i, nil)
+                    }
+                }
+                for await (i, p) in group {
+                    guard let p else { continue }
+                    rows[i].name = p.name
+                    rows[i].hue = p.hue
+                }
+            }
+            rows.sort { $0.createdAt > $1.createdAt }
+            blocks = rows
+            return
+        }
+        // Local-only fallback — surface whatever the sim knows.
+        let ids = store.blockedIDs
+        blocks = ids.compactMap { id in
+            let name = localName(for: id) ?? "Someone"
+            let hue = localHue(for: id) ?? 0.6
+            return BlockedRow(id: id.uuidString.lowercased(), name: name, hue: hue,
+                              reason: nil, createdAt: 0)
+        }
+    }
+
+    private func unblock(_ id: String) async {
+        unblockingId = id
+        defer { unblockingId = nil }
+        if auth.isSignedIn, !store.demoMode {
+            _ = await auth.unblockUser(userId: id)
+        }
+        // Also clear the local mirror so the user immediately sees the change
+        // in both the list and (later) their floor. UUID round-trip is fine —
+        // the server stores lowercase; UUID parsing is case-insensitive.
+        if let uuid = UUID(uuidString: id) { store.blockedIDs.remove(uuid) }
+        blocks.removeAll { $0.id == id }
+        store.toastFlash("Unblocked. They can see your profile again.")
+    }
+
+    private func localName(for id: UUID) -> String? {
+        store.floor.first(where: { $0.id == id })?.name
+            ?? store.bidders.first(where: { $0.id == id })?.name
+    }
+    private func localHue(for id: UUID) -> Double? {
+        store.floor.first(where: { $0.id == id })?.hue
+            ?? store.bidders.first(where: { $0.id == id })?.hue
     }
 }
