@@ -54,7 +54,10 @@ struct SuitorDetailView: View {
                     GhostButton(title: "Let it fade", systemImage: "xmark") { doDecline() }
                     PrimaryButton(title: "Nod back", systemImage: "hand.wave.fill",
                                   gradient: Theme.roseGradient) {
-                        store.nodAtWhisper(bid); dismiss()
+                        // acceptRemote special-cases whispers server-side —
+                        // it calls nodRemoteWhisper for the correct response
+                        // shape; sim path stays local via the same method.
+                        doAccept()
                     }
                 }
                 .screenPadding()

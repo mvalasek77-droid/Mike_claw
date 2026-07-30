@@ -274,15 +274,20 @@ struct OnboardingView: View {
             .filter { !$0.1.trimmingCharacters(in: .whitespaces).isEmpty }
             .map { Prompt(question: $0.0, answer: $0.1) }
         let bid = (role == .woman && startingBidOn) ? Int(startingBidText) : nil
-        store.register(role: role!, name: name, age: ageFromDob, location: location,
-                       bio: bio, hue: hue, startingBid: bid, prompts: prompts,
-                       interests: Array(selectedInterests),
-                       photoData: primaryPhoto, photoGallery: photoGallery)
-        // If signed in, persist DOB server-side too. The Worker enforces 18+
-        // and refuses to overwrite an already-set value, so retries are safe.
-        if auth.isSignedIn {
-            let iso = Self.dobFormatter.string(from: dob)
-            Task { _ = await auth.setDateOfBirth(iso) }
+        let iso = Self.dobFormatter.string(from: dob)
+        // Order matters for signed-in users: the auth Worker's slice-8 DOB
+        // gate rejects `PUT /me/profile` with 403 when `date_of_birth` is
+        // null. `store.register` fires `onProfileChanged` synchronously,
+        // which spawns the profile upload — so DOB must be set on the
+        // server FIRST. For local-only sessions we just run register.
+        Task { @MainActor in
+            if auth.isSignedIn {
+                _ = await auth.setDateOfBirth(iso)
+            }
+            store.register(role: role!, name: name, age: ageFromDob, location: location,
+                           bio: bio, hue: hue, startingBid: bid, prompts: prompts,
+                           interests: Array(selectedInterests),
+                           photoData: primaryPhoto, photoGallery: photoGallery)
         }
     }
 

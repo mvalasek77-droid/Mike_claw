@@ -5,11 +5,17 @@ import SwiftUI
 struct MyBidsView: View {
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
+    @EnvironmentObject private var matching: MatchingService
     @State private var showStore = false
     @State private var showRewindPaywall = false
 
-    private var live: [Bid] { store.outgoingBids.filter { $0.status == .pending } }
-    private var settled: [Bid] { store.outgoingBids.filter { $0.status != .pending } }
+    /// Read from whichever list is active — signed-in bidder sees his real
+    /// bids, Demo / local sessions see the sim.
+    private var source: [Bid] {
+        store.isRemoteOutgoing ? store.remoteOutgoingBids : store.outgoingBids
+    }
+    private var live: [Bid] { source.filter { $0.status == .pending } }
+    private var settled: [Bid] { source.filter { $0.status != .pending } }
     private var hasRewind: Bool {
         storeKit.isSubscribed(to: .reserve) || storeKit.isSubscribed(to: .blackcard)
     }
@@ -27,10 +33,10 @@ struct MyBidsView: View {
                         SectionHeader(title: "Live bids").padding(.top, 4)
                         ForEach(live) { bid in
                             OutgoingBidRow(bid: bid, locked: !storeKit.hasPass,
-                                          canRewind: store.canRewindLastBid() && bid.id == store.outgoingBids.first?.id,
+                                          canRewind: store.canRewindLastBid() && bid.id == source.first?.id,
                                           rewindUnlocked: hasRewind,
                                           onUnlock: { showStore = true },
-                                          onRewind: { store.rewindLastBid() },
+                                          onRewind: { store.rewindLastBid(matching: matching) },
                                           onRewindLocked: { showRewindPaywall = true })
                         }
                     }
@@ -183,7 +189,7 @@ struct OutgoingBidRow: View {
                                tint: Theme.warning)
                     // The addictive loop: one tap puts you back on top.
                     Button {
-                        store.raiseBid(bid.id, to: leader)
+                        store.raiseBid(bid.id, to: leader, matching: matching)
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.up.circle.fill")

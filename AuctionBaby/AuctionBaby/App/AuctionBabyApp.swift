@@ -59,8 +59,13 @@ struct AuctionBabyApp: App {
                         guard let store, let matching, !store.demoMode,
                               auth?.isSignedIn == true else { return }
                         switch event {
-                        case .bidReceived, .whisperNodded:
+                        case .bidReceived:
                             Task { await store.refreshRemoteInbox(matching: matching) }
+                        case .whisperNodded:
+                            // The nod push is delivered to the WHISPERER — the
+                            // bidder whose whisper got answered — so refresh
+                            // his outgoing, not the inbox (which is her side).
+                            Task { await store.refreshRemoteOutgoing(matching: matching) }
                         case .bidAccepted:
                             Task { await store.refreshRemoteMatches(matching: matching) }
                         case .messageReceived(let matchIdString, _):
@@ -100,7 +105,9 @@ struct AuctionBabyApp: App {
                         Task { _ = await auth?.reportUser(userId: userId, reason: reason) }
                     }
                     storeKit.onCredit = { [weak store] gavels in store?.creditGavels(gavels) }
-                    storeKit.onRevoke = { [weak store] gavels in store?.revokeGavels(gavels) }
+                    storeKit.onRevoke = { [weak store] gavels, txID in
+                        store?.revokeGavels(gavels, txID: txID)
+                    }
                     storeKit.onBoost = { [weak store] in store?.activateBoost() }
                     storeKit.onStatusPurchased = { [weak store] tier in store?.equipArchetype(tier) }
                     storeKit.onStatusRevoked = { [weak store, weak storeKit] tier in

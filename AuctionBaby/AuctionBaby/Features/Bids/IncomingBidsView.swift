@@ -220,13 +220,19 @@ struct BidRow: View {
                 if bid.status == .pending {
                     if bid.isWhisper {
                         HStack(spacing: 10) {
-                            Button { store.decline(bid) } label: {
+                            Button {
+                                Task { await store.declineRemote(bid, matching: matching) }
+                            } label: {
                                 Label("Let it fade", systemImage: "xmark")
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                                     .foregroundStyle(Theme.inkSoft).frame(maxWidth: .infinity).padding(.vertical, 11)
                                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                             }.buttonStyle(.plain)
-                            Button { store.nodAtWhisper(bid) } label: {
+                            Button {
+                                // `acceptRemote` special-cases whispers → nodRemoteWhisper
+                                // when the inbox is remote; sim path stays on nodAtWhisper.
+                                Task { await store.acceptRemote(bid, matching: matching) }
+                            } label: {
                                 Label("Nod back", systemImage: "hand.wave.fill")
                                     .font(.system(size: 14, weight: .heavy, design: .rounded))
                                     .foregroundStyle(.black).frame(maxWidth: .infinity).padding(.vertical, 11)

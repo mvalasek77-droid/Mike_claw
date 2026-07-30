@@ -289,9 +289,20 @@ async function handlePlaceBid(request: Request, env: Env): Promise<Response> {
   if (amount > 1_000_000_000) return err("amount is out of range");
 
   // Refuse to write a bid pointing at a non-existent user — cheap defense
-  // against enumeration or a leaked userId being used to spam.
-  const lotExists = await env.DB.prepare("SELECT 1 FROM users WHERE id = ?").bind(lotId).first();
-  if (!lotExists) return err("Lot not found", 404);
+  // against enumeration or a leaked userId being used to spam. Both sides
+  // must also have their DOB set on the auth-Worker `users` table — /me/dob
+  // is where the 18+ check runs, so "DOB present" is the age-verified
+  // proxy. Applies to both the bidder and the lot so a null-DOB user can
+  // neither send nor receive.
+  const parties = await env.DB.prepare(
+    "SELECT id, date_of_birth FROM users WHERE id IN (?, ?)",
+  ).bind(bidderId, lotId).all<{ id: string; date_of_birth: string | null }>();
+  const rows = parties.results ?? [];
+  const lotRow = rows.find((r) => r.id === lotId);
+  const bidderRow = rows.find((r) => r.id === bidderId);
+  if (!lotRow) return err("Lot not found", 404);
+  if (!bidderRow?.date_of_birth) return err("Set your date of birth first — the 18+ check runs against it.", 403);
+  if (!lotRow.date_of_birth) return err("Bid can't be delivered", 403);
 
   // Server-enforced blocks: either direction stops the bid. Deliberately
   // vague error to avoid leaking who blocked whom.
@@ -431,6 +442,13 @@ async function handleAcceptBid(bidId: string, request: Request, env: Env): Promi
   if (!bid) return err("Bid not found", 404);
   if (bid.lot_id !== userId) return err("Only the lot can accept this bid", 403);
   if (bid.status !== "pending") return err(`Bid is already ${bid.status}`, 409);
+
+  // Block enforcement — a block placed AFTER the bid landed must prevent
+  // the match from minting. Deliberately vague error to avoid leaking who
+  // blocked whom.
+  if (await isBlockedEitherWay(env, userId, bid.bidder_id)) {
+    return err("This bid can't be accepted", 403);
+  }
 
   const now = Date.now();
   // Whispers resolve softly — a nod is a signal, not a match. Match creation
@@ -671,11 +689,17 @@ async function handleMarkDateDone(matchId: string, request: Request, env: Env): 
   const match = await fetchMatchIfParticipant(env, matchId, userId);
   if (!match) return err("Match not found", 404);
   if (match.phase === "closed") return err("Match is already closed", 409);
+  // Block enforcement — freezing the phase transition still allows the state
+  // change locally, but no push wakes the blocker on the other side. Return
+  // 403 instead so both clients agree the match is inert.
+  const otherId = otherOf(match, userId);
+  if (await isBlockedEitherWay(env, userId, otherId)) {
+    return err("This match can't be advanced", 403);
+  }
   await env.DB.prepare(
     "UPDATE matches SET phase = 'dateDone' WHERE id = ? AND phase = 'chatting'",
   ).bind(matchId).run();
   // Nudge the other side to leave their review too.
-  const otherId = otherOf(match, userId);
   const advancerName = await getUserName(env, userId);
   await firePush(env, {
     userId: otherId,

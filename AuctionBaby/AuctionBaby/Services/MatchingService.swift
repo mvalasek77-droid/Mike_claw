@@ -77,6 +77,14 @@ final class MatchingService: ObservableObject {
         return await post("/bids/\(bidId)/accept", body: [:], as: Response.self).map(\.match)
     }
 
+    /// Whisper "nod" — same endpoint as accept, but the Worker returns a
+    /// `{ bid: ... }` shape (no match is minted; the nod invites the whisperer
+    /// to come back with a real bid). Decoding a `{ match: ... }` here fails.
+    func nodWhisper(bidId: String) async -> ServiceResult<RemoteBid> {
+        struct Response: Decodable { let bid: RemoteBid }
+        return await post("/bids/\(bidId)/accept", body: [:], as: Response.self).map(\.bid)
+    }
+
     func decline(bidId: String) async -> ServiceResult<RemoteBid> {
         struct Response: Decodable { let bid: RemoteBid }
         return await post("/bids/\(bidId)/decline", body: [:], as: Response.self).map(\.bid)

@@ -131,8 +131,15 @@ final class AuctionStore: ObservableObject {
     static let bidInsuranceCost = 200
     /// Free live-bid ceiling: only real bids count. Whispers are a
     /// zero-Gavel signal that shouldn't sink you into the paywall.
+    ///
+    /// Includes BOTH sim `outgoingBids` and `remoteOutgoingBids` — a
+    /// signed-in bidder's active bids are on the server, and gating only
+    /// the sim path let free users place unlimited real bids and bypass
+    /// the Pass paywall entirely.
     var activePendingBidCount: Int {
-        outgoingBids.filter { $0.status == .pending && !$0.isWhisper }.count
+        let sim = outgoingBids.filter { $0.status == .pending && !$0.isWhisper }
+        let remote = remoteOutgoingBids.filter { $0.status == .pending && !$0.isWhisper }
+        return sim.count + remote.count
     }
 
     // MARK: Woman-side insights ("what you're worth")
@@ -549,18 +556,37 @@ final class AuctionStore: ObservableObject {
     }
 
     /// Raise a live bid — the one-tap answer to "you've been outbid". The raised
-    /// amount gets a fresh decision from the (simulated) woman.
-    func raiseBid(_ bidID: UUID, to newAmount: Int) {
-        guard let idx = outgoingBids.firstIndex(where: { $0.id == bidID }),
-              outgoingBids[idx].status == .pending,
-              !outgoingBids[idx].isWhisper,   // whispers have no amount to raise
-              newAmount > outgoingBids[idx].amount else { return }
-        outgoingBids[idx].amount = newAmount
-        Haptics.commit()
-        toastFlash("Raised to \(Money.compact(newAmount)) on \(outgoingBids[idx].woman.name).")
-        log(.rebid, "You raised your bid on \(outgoingBids[idx].woman.name) to \(Money.compact(newAmount)).")
-        save()
-        scheduleWomanDecision(bidID: bidID)
+    /// amount gets a fresh decision from the (simulated) woman on the sim path;
+    /// on the remote path it withdraws the old bid and places a new one at the
+    /// higher amount (there's no atomic "raise" endpoint on the matching Worker).
+    func raiseBid(_ bidID: UUID, to newAmount: Int, matching: MatchingService? = nil) {
+        // Sim path — direct mutation, sim scheduler picks it up.
+        if let idx = outgoingBids.firstIndex(where: { $0.id == bidID }),
+           outgoingBids[idx].status == .pending,
+           !outgoingBids[idx].isWhisper,
+           newAmount > outgoingBids[idx].amount {
+            outgoingBids[idx].amount = newAmount
+            Haptics.commit()
+            toastFlash("Raised to \(Money.compact(newAmount)) on \(outgoingBids[idx].woman.name).")
+            log(.rebid, "You raised your bid on \(outgoingBids[idx].woman.name) to \(Money.compact(newAmount)).")
+            save()
+            scheduleWomanDecision(bidID: bidID)
+            return
+        }
+        // Remote path — needs a matching service. Withdraw then re-place.
+        guard let matching,
+              let idx = remoteOutgoingBids.firstIndex(where: { $0.id == bidID }),
+              remoteOutgoingBids[idx].status == .pending,
+              !remoteOutgoingBids[idx].isWhisper,
+              newAmount > remoteOutgoingBids[idx].amount else { return }
+        let bid = remoteOutgoingBids[idx]
+        Task {
+            _ = await matching.withdraw(bidId: bid.id.uuidString.lowercased())
+            remoteOutgoingBids.removeAll { $0.id == bid.id }
+            await placeRemoteBid(on: bid.woman, amount: newAmount, note: bid.note,
+                                 gilded: false, insured: false, promptRef: bid.promptRef,
+                                 matching: matching)
+        }
     }
 
     /// Buy (or switch to) a status archetype. The price is the point — it's how
@@ -645,10 +671,22 @@ final class AuctionStore: ObservableObject {
         save()
     }
 
-    /// Claw Gavels back when Apple refunds a pack. Floors at zero.
-    func revokeGavels(_ amount: Int) {
+    /// Claw Gavels back when Apple refunds a pack. Floors at zero — and
+    /// records the ACTUAL amount clawed under `clawed[txID]` when a txId is
+    /// provided, so a later REFUND_REVERSED via the Worker restores exactly
+    /// that (not the full pack price when the wallet was already near empty
+    /// at claw time). A nil txId means the caller synthesised a revocation
+    /// without one (Demo/test paths) — safe to skip the ledger update.
+    func revokeGavels(_ amount: Int, txID: String? = nil) {
+        let before = wallet
         wallet = max(0, wallet - amount)
-        toastFlash("Refund processed — \(Tally.compact(amount)) Gavels removed.")
+        let actuallyClawed = before - wallet
+        toastFlash("Refund processed — \(Tally.compact(actuallyClawed)) Gavels removed.")
+        if let txID {
+            var clawed = UserDefaults.standard.dictionary(forKey: Self.clawedKey) as? [String: Int] ?? [:]
+            clawed[txID] = actuallyClawed
+            UserDefaults.standard.set(clawed, forKey: Self.clawedKey)
+        }
         save()
     }
 
@@ -707,38 +745,133 @@ final class AuctionStore: ObservableObject {
     func refreshRemoteInbox(matching: MatchingService) async {
         guard !demoMode, matching.isEnabled, role == .woman else { return }
         let result = await matching.refreshIncoming()
-        guard case .success(let list) = result else { return }
-        // Direction is `.inbox` here — I'm the lot, peers are the bidders.
-        remoteIncomingBids = list.map { Bid(from: $0, mine: me, direction: .inbox) }
-        isRemoteInbox = true
+        switch result {
+        case .success(let list):
+            // Direction is `.inbox` here — I'm the lot, peers are the bidders.
+            remoteIncomingBids = list.map { Bid(from: $0, mine: me, direction: .inbox) }
+            isRemoteInbox = true
+        case .failure(let message):
+            // Don't wipe the existing inbox on a transient failure — show a
+            // toast so the user knows something's off (but only for the
+            // non-429 case; 429 already surfaces its own message).
+            toastFlash(message)
+        case .notConfigured:
+            break
+        }
     }
 
     /// Route accept through the matching Worker when the row is remote (came
     /// from `remoteIncomingBids`). Falls through to the sim `accept(_:)` for
     /// local rows so Demo Mode + backward compat still work.
+    ///
+    /// Whispers ARE routed through here — the Worker special-cases them
+    /// server-side (marks accepted + fires the "nodded" push, no match). We
+    /// dispatch to `nodWhisper` for the correct response shape.
     func acceptRemote(_ bid: Bid, matching: MatchingService) async {
-        guard isRemoteInbox else { accept(bid); return }
+        guard isRemoteInbox else {
+            if bid.isWhisper { nodAtWhisper(bid) } else { accept(bid) }
+            return
+        }
+        if bid.isWhisper { await nodRemoteWhisper(bid, matching: matching); return }
+
         // Optimistic UI: drop from the visible inbox immediately.
         remoteIncomingBids.removeAll { $0.id == bid.id }
         Haptics.commit()
-        earnings += bid.amount   // parity with sim accept — she sees her ledger move
         let result = await matching.accept(bidId: bid.id.uuidString.lowercased())
-        if case .success(let remoteMatch) = result {
-            let match = Match(from: remoteMatch, mine: me)
+        switch result {
+        case .success(let remoteMatch):
+            var match = Match(from: remoteMatch, mine: me)
+            // Parity with sim `accept`: she always sends the first invite —
+            // Opening Bid Script if set, canned line otherwise.
+            let opener = openerFor(bid: bid)
+            match.messages = [ChatMessage(fromMe: true, text: opener, isSystem: false)]
             remoteMatches.insert(match, at: 0)
             isRemoteMatches = true
+            // Ledger moves ONLY on server-confirmed success. Rollback path
+            // (failure branch) must not stack a credit that never landed.
+            earnings += bid.amount
             celebrate(with: bid.man, amount: bid.amount,
                       copycat: false, masterpiece: bid.qualifiesForMasterpiece)
             log(.bidAccepted, "You accepted \(bid.man.name)'s \(Money.compact(bid.amount)) bid.")
             save()
+            // Fire-and-forget the opener to the server so the bidder receives
+            // it too. Local state above is authoritative for this session; a
+            // subsequent refreshRemoteMatch will reconcile the id if needed.
+            Task { _ = await matching.sendMessage(matchId: remoteMatch.id, text: opener) }
+        case .failure(let message):
+            // Server refused — restore the row so she can see + try again.
+            remoteIncomingBids.insert(bid, at: 0)
+            Haptics.warning()
+            toastFlash(message)
+        case .notConfigured:
+            remoteIncomingBids.insert(bid, at: 0)
         }
+    }
+
+    /// Nod at a whisper on the remote path — the matching Worker marks the
+    /// bid `accepted` and pushes the whisperer to come back with a real
+    /// number. No match is minted.
+    private func nodRemoteWhisper(_ bid: Bid, matching: MatchingService) async {
+        remoteIncomingBids.removeAll { $0.id == bid.id }
+        Haptics.tap()
+        let result = await matching.nodWhisper(bidId: bid.id.uuidString.lowercased())
+        switch result {
+        case .success:
+            toastFlash("You nodded back — watch for his real bid.")
+            log(.bidReceived, "\(bid.man.name) will get the nod. Your move next.")
+        case .failure(let message):
+            remoteIncomingBids.insert(bid, at: 0)
+            Haptics.warning()
+            toastFlash(message)
+        case .notConfigured:
+            remoteIncomingBids.insert(bid, at: 0)
+        }
+    }
+
+    /// Build the opener line an accepted bid should insert as the first
+    /// message. Prefer the woman's Opening Bid Script when set, canned
+    /// fallback otherwise. Parity with the sim `accept(_:)` path.
+    private func openerFor(bid: Bid) -> String {
+        if let scripted = me.openingBidScript,
+           !scripted.trimmingCharacters(in: .whitespaces).isEmpty {
+            return scripted
+        }
+        return "You're in. \(bid.man.name) — let's set a date. 🍸"
     }
 
     func declineRemote(_ bid: Bid, matching: MatchingService) async {
         guard isRemoteInbox else { decline(bid); return }
         remoteIncomingBids.removeAll { $0.id == bid.id }
         Haptics.tap()
-        _ = await matching.decline(bidId: bid.id.uuidString.lowercased())
+        let result = await matching.decline(bidId: bid.id.uuidString.lowercased())
+        switch result {
+        case .success: break
+        case .failure(let message):
+            remoteIncomingBids.insert(bid, at: 0)
+            Haptics.warning()
+            toastFlash(message)
+        case .notConfigured:
+            remoteIncomingBids.insert(bid, at: 0)
+        }
+    }
+
+    /// Pull the bidder's outgoing feed (`GET /bids/outgoing`) — every real
+    /// bid he's placed, with peer snapshots for the row rendering. Called
+    /// when a `whisper.nodded` push wakes him (so the whisper flips from
+    /// pending to accepted in his outbox without a manual refresh) and on
+    /// MyBidsView appear.
+    func refreshRemoteOutgoing(matching: MatchingService) async {
+        guard !demoMode, matching.isEnabled, role == .man else { return }
+        let result = await matching.refreshOutgoing()
+        switch result {
+        case .success(let list):
+            remoteOutgoingBids = list.map { Bid(from: $0, mine: me, direction: .outbox) }
+            isRemoteOutgoing = true
+        case .failure(let message):
+            toastFlash(message)
+        case .notConfigured:
+            break
+        }
     }
 
     // MARK: - Remote bid write (slice 4b1c)
@@ -837,8 +970,14 @@ final class AuctionStore: ObservableObject {
     /// Load messages + fresh state for one remote match. Called on ChatView
     /// appear. Merges the message list into the existing row so we don't lose
     /// scroll position on repeated fetches.
+    ///
+    /// Does NOT gate on `isRemoteMatches` — a `message.received` push after
+    /// install can wake the app before MatchesView has ever been visited,
+    /// and we still want the chat to hydrate. Instead we gate on the same
+    /// "matching Worker wired + signed-in" preconditions as the other
+    /// remote refreshes; that keeps Demo/local-only sessions silent.
     func refreshRemoteMatch(matchId: UUID, matching: MatchingService) async {
-        guard isRemoteMatches else { return }
+        guard !demoMode, matching.isEnabled, role != nil else { return }
         let key = matchId.uuidString.lowercased()
         let result = await matching.fetchMatch(key)
         guard case .success(let bundle) = result else { return }
@@ -857,7 +996,10 @@ final class AuctionStore: ObservableObject {
             remoteMatches[i].dateReserved = bundle.match.reservedAt != nil
             remoteMatches[i].reservedAmountCents = bundle.match.reservedAmountCents
         } else {
-            // Not in the roster yet (e.g. just accepted) — construct it fresh.
+            // Not in the roster yet (e.g. just accepted, or first message-
+            // push after install before MatchesView ever loaded) — construct
+            // it fresh and flip `isRemoteMatches` so the list view reads from
+            // remote on next appear.
             var m = Match(from: bundle.match, mine: me)
             m.messages = messages
             remoteMatches.insert(m, at: 0)
@@ -882,6 +1024,12 @@ final class AuctionStore: ObservableObject {
             if let match = matches.first(where: { $0.id == matchId }) { send(trimmed, in: match) }
             return true
         }
+        // Capture the pre-mutation state so a failure can restore both the
+        // 24h freshness clock and the read-receipt marker exactly. Without
+        // this a 429 mid-send permanently clears them locally.
+        let priorExpiresAt = remoteMatches[remoteIdx].expiresAt
+        let priorSeenByOther = remoteMatches[remoteIdx].seenByOther
+
         let tempId = UUID()
         let optimistic = ChatMessage(id: tempId, fromMe: true, text: trimmed, date: .now, isSystem: false)
         remoteMatches[remoteIdx].messages.append(optimistic)
@@ -900,11 +1048,15 @@ final class AuctionStore: ObservableObject {
             return true
         case .failure(let message):
             remoteMatches[idx].messages.removeAll { $0.id == tempId }
+            remoteMatches[idx].expiresAt = priorExpiresAt
+            remoteMatches[idx].seenByOther = priorSeenByOther
             Haptics.warning()
             toastFlash(message)
             return false
         case .notConfigured:
             remoteMatches[idx].messages.removeAll { $0.id == tempId }
+            remoteMatches[idx].expiresAt = priorExpiresAt
+            remoteMatches[idx].seenByOther = priorSeenByOther
             return false
         }
     }
@@ -921,6 +1073,14 @@ final class AuctionStore: ObservableObject {
     /// wallet credit is saved. A crash in between re-runs the drain; the
     /// Worker replies `replay` without double-spending the web balance.
     private static let pendingDrainKey = "auctionbaby.webgavels.pendingdrain.v1"
+    /// Idempotency keys for drains we have ALREADY credited to `wallet`. The
+    /// consumables Worker is replay-safe (returns the prior `spent` for a
+    /// repeated `idempotencyKey`), but a crash between `wallet += drained`
+    /// and clearing the pending key would re-run the drain, get a `replay`,
+    /// and credit again. This set is the second lock: we consult it before
+    /// the credit and skip when we've already paid ourselves. Capped at 200
+    /// entries; oldest evicted first.
+    private static let creditedDrainKeysKey = "auctionbaby.webgavels.credited.v1"
 
     /// Re-entrancy guard: launch (.task) and foreground (.onChange scenePhase)
     /// both fire refreshPendingRefunds almost simultaneously on cold start.
@@ -955,6 +1115,24 @@ final class AuctionStore: ObservableObject {
         switch await backend.drainWebGavels(appAccountToken: appAccountToken,
                                             gavels: amount, idempotencyKey: key) {
         case .success(let drained):
+            // Second lock — has THIS drain key already been credited locally?
+            // Worker is replay-safe; without this the client would still
+            // double-credit on a mid-write crash between +wallet and clear.
+            var credited = Set(UserDefaults.standard.array(forKey: Self.creditedDrainKeysKey) as? [String] ?? [])
+            if credited.contains(key) {
+                UserDefaults.standard.removeObject(forKey: Self.pendingDrainKey)
+                ErrorMonitor.shared.record(category: "Backend",
+                                           message: "Web Gavel drain replay ignored",
+                                           detail: "key \(key)")
+                return
+            }
+            credited.insert(key)
+            // Cap the set so we don't leak UserDefaults space forever. FIFO
+            // eviction is fine — a drain key ~24h old will never be replayed.
+            if credited.count > 200 {
+                credited = Set(credited.suffix(150))
+            }
+            UserDefaults.standard.set(Array(credited), forKey: Self.creditedDrainKeysKey)
             wallet += drained
             save()   // credit first…
             UserDefaults.standard.removeObject(forKey: Self.pendingDrainKey)  // …then clear
@@ -1415,14 +1593,45 @@ final class AuctionStore: ObservableObject {
     /// decided; her simulated decision task checks the array by id, so
     /// removing it here makes any in-flight decision a silent no-op.
     func canRewindLastBid() -> Bool {
-        guard let latest = outgoingBids.first else { return false }
-        return latest.status == .pending
+        // Reserve/Black Card perk: whichever list has the more-recent live
+        // bid is the one that gets rewound. `createdAt` order on both arrays
+        // is newest-first (both prepend on write), so `.first` compares
+        // directly — pick the newer of the two firsts.
+        let simFirst = outgoingBids.first(where: { $0.status == .pending })
+        let remoteFirst = remoteOutgoingBids.first(where: { $0.status == .pending })
+        return simFirst != nil || remoteFirst != nil
     }
 
-    func rewindLastBid() {
-        guard canRewindLastBid(), let latest = outgoingBids.first else { return }
-        if latest.gilded { wallet += Self.gildedBidCost }   // refund the Gavel spend
-        outgoingBids.removeFirst()
+    /// Rewind the most recent live bid — refunds any Gavels spent on top
+    /// (gild + Bid Insurance premium) so the perk actually undoes the whole
+    /// transaction. On remote, also calls `matching.withdraw` so the row
+    /// disappears from the woman's inbox.
+    func rewindLastBid(matching: MatchingService? = nil) {
+        let simFirst = outgoingBids.first(where: { $0.status == .pending })
+        let remoteFirst = remoteOutgoingBids.first(where: { $0.status == .pending })
+        // Newest-first ordering on both arrays; pick whichever has the more
+        // recent bid to rewind.
+        let simDate = simFirst?.createdAt ?? .distantPast
+        let remoteDate = remoteFirst?.createdAt ?? .distantPast
+        let useRemote = remoteFirst != nil && remoteDate >= simDate
+
+        if useRemote, let latest = remoteFirst {
+            if latest.gilded { wallet += Self.gildedBidCost }
+            if latest.insured { wallet += Self.bidInsuranceCost }
+            remoteOutgoingBids.removeAll { $0.id == latest.id }
+            Haptics.tap()
+            toastFlash("Bid on \(latest.woman.name) recalled — \(Money.compact(latest.amount)) rewound.")
+            save()
+            if let matching {
+                Task { _ = await matching.withdraw(bidId: latest.id.uuidString.lowercased()) }
+            }
+            return
+        }
+        guard let latest = simFirst,
+              let idx = outgoingBids.firstIndex(where: { $0.id == latest.id }) else { return }
+        if latest.gilded { wallet += Self.gildedBidCost }
+        if latest.insured { wallet += Self.bidInsuranceCost }
+        outgoingBids.remove(at: idx)
         Haptics.tap()
         toastFlash("Bid on \(latest.woman.name) recalled — \(Money.compact(latest.amount)) rewound.")
         save()

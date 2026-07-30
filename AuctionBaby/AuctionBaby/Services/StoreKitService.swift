@@ -91,8 +91,13 @@ final class StoreKitService: ObservableObject {
     var onCredit: ((Int) -> Void)? {
         didSet { if onCredit != nil { Task { await drainPending() } } }
     }
-    /// Called when a previously-granted Gavel pack is refunded.
-    var onRevoke: ((Int) -> Void)?
+    /// Called when a previously-granted Gavel pack is refunded. Second arg
+    /// is the StoreKit transaction id when the revocation came from Apple
+    /// (the `checkRevocation` path); nil when the caller synthesises a
+    /// revocation locally without one. AuctionStore uses the id to record
+    /// how much was actually clawed under `clawed[txID]` so a later
+    /// REFUND_REVERSED restores exactly that.
+    var onRevoke: ((Int, String?) -> Void)?
     /// Called when a Spotlight Boost is purchased.
     var onBoost: (() -> Void)?
     /// Called when a status archetype is bought with real money, so the
@@ -327,7 +332,11 @@ final class StoreKitService: ObservableObject {
             let gavels = Self.gavels(for: transaction.productID)
             if gavels > 0 {
                 guard let onRevoke else { return }
-                onRevoke(gavels)
+                // Pass the tx id so the store can record the ACTUAL amount
+                // clawed (floored at zero) under `clawed[txID]`; a later
+                // REFUND_REVERSED from the Worker restores exactly that,
+                // not the full pack price.
+                onRevoke(gavels, "\(transaction.id)")
                 ErrorMonitor.shared.record(category: "StoreKit",
                                            message: "Refund clawback: \(gavels) Gavels",
                                            detail: "txn \(transaction.id), product \(transaction.productID)")
@@ -385,7 +394,7 @@ final class StoreKitService: ObservableObject {
     func simulateRefundForTesting(productID: String) {
         let gavels = Self.gavels(for: productID)
         guard gavels > 0 else { return }
-        onRevoke?(gavels)
+        onRevoke?(gavels, nil)
         ErrorMonitor.shared.record(category: "StoreKit",
                                    message: "[TEST] Simulated refund: \(gavels) Gavels")
     }
