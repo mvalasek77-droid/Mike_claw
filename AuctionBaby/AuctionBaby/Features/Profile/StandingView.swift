@@ -116,7 +116,7 @@ struct StandingView: View {
     }
 
     private var footer: some View {
-        Text("Cosmetic only. Ranks refresh every week. Turn this off from Profile → Settings if you'd rather not appear.")
+        Text("Cosmetic only. Ranks refresh every week from your Auction Credit and Showcase score — nothing you do here can move them directly.")
             .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
             .multilineTextAlignment(.center)
             .padding(.top, 4)

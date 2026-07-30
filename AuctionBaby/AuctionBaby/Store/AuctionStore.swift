@@ -774,8 +774,11 @@ final class AuctionStore: ObservableObject {
         }
         if bid.isWhisper { await nodRemoteWhisper(bid, matching: matching); return }
 
-        // Optimistic UI: drop from the visible inbox immediately.
-        remoteIncomingBids.removeAll { $0.id == bid.id }
+        // Optimistic UI: flip status so the row moves from Pending to History
+        // (parity with sim `accept`). Restore prior status on failure.
+        guard let idx = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) else { return }
+        let priorStatus = remoteIncomingBids[idx].status
+        remoteIncomingBids[idx].status = .accepted
         Haptics.commit()
         let result = await matching.accept(bidId: bid.id.uuidString.lowercased())
         switch result {
@@ -799,12 +802,15 @@ final class AuctionStore: ObservableObject {
             // subsequent refreshRemoteMatch will reconcile the id if needed.
             Task { _ = await matching.sendMessage(matchId: remoteMatch.id, text: opener) }
         case .failure(let message):
-            // Server refused — restore the row so she can see + try again.
-            remoteIncomingBids.insert(bid, at: 0)
+            if let i = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) {
+                remoteIncomingBids[i].status = priorStatus
+            }
             Haptics.warning()
             toastFlash(message)
         case .notConfigured:
-            remoteIncomingBids.insert(bid, at: 0)
+            if let i = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) {
+                remoteIncomingBids[i].status = priorStatus
+            }
         }
     }
 
@@ -812,7 +818,9 @@ final class AuctionStore: ObservableObject {
     /// bid `accepted` and pushes the whisperer to come back with a real
     /// number. No match is minted.
     private func nodRemoteWhisper(_ bid: Bid, matching: MatchingService) async {
-        remoteIncomingBids.removeAll { $0.id == bid.id }
+        guard let idx = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) else { return }
+        let priorStatus = remoteIncomingBids[idx].status
+        remoteIncomingBids[idx].status = .accepted
         Haptics.tap()
         let result = await matching.nodWhisper(bidId: bid.id.uuidString.lowercased())
         switch result {
@@ -820,11 +828,15 @@ final class AuctionStore: ObservableObject {
             toastFlash("You nodded back — watch for his real bid.")
             log(.bidReceived, "\(bid.man.name) will get the nod. Your move next.")
         case .failure(let message):
-            remoteIncomingBids.insert(bid, at: 0)
+            if let i = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) {
+                remoteIncomingBids[i].status = priorStatus
+            }
             Haptics.warning()
             toastFlash(message)
         case .notConfigured:
-            remoteIncomingBids.insert(bid, at: 0)
+            if let i = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) {
+                remoteIncomingBids[i].status = priorStatus
+            }
         }
     }
 
@@ -841,17 +853,25 @@ final class AuctionStore: ObservableObject {
 
     func declineRemote(_ bid: Bid, matching: MatchingService) async {
         guard isRemoteInbox else { decline(bid); return }
-        remoteIncomingBids.removeAll { $0.id == bid.id }
+        guard let idx = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) else { return }
+        let priorStatus = remoteIncomingBids[idx].status
+        // Flip in-place so the row moves from Pending → History (parity with
+        // sim `decline`). Restore prior status on failure.
+        remoteIncomingBids[idx].status = .declined
         Haptics.tap()
         let result = await matching.decline(bidId: bid.id.uuidString.lowercased())
         switch result {
         case .success: break
         case .failure(let message):
-            remoteIncomingBids.insert(bid, at: 0)
+            if let i = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) {
+                remoteIncomingBids[i].status = priorStatus
+            }
             Haptics.warning()
             toastFlash(message)
         case .notConfigured:
-            remoteIncomingBids.insert(bid, at: 0)
+            if let i = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) {
+                remoteIncomingBids[i].status = priorStatus
+            }
         }
     }
 

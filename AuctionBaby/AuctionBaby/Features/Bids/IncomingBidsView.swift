@@ -56,13 +56,20 @@ struct IncomingBidsView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     ActivityBell(isPresented: $showActivity)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button { store.summonBidder() } label: { Label("Summon a bidder", systemImage: "person.badge.plus") }
-                        Button { store.summonBidder(trillionaire: true) } label: {
-                            Label("Summon the Trillionaire ($1M bid)", systemImage: "crown.fill")
-                        }
-                    } label: { Image(systemName: "plus.circle.fill").foregroundStyle(Theme.gold) }
+                // Summon is a sim/Demo affordance — it mutates the sim
+                // `incomingBids` array. On the remote inbox it would appear
+                // to do nothing (the view reads `remoteIncomingBids`). Hide
+                // the menu entirely when the inbox is remote so a signed-in
+                // woman doesn't tap it and report a phantom bug.
+                if !store.isRemoteInbox {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            Button { store.summonBidder() } label: { Label("Summon a bidder", systemImage: "person.badge.plus") }
+                            Button { store.summonBidder(trillionaire: true) } label: {
+                                Label("Summon the Trillionaire ($1M bid)", systemImage: "crown.fill")
+                            }
+                        } label: { Image(systemName: "plus.circle.fill").foregroundStyle(Theme.gold) }
+                    }
                 }
             }
             .sheet(item: $detail) { bid in

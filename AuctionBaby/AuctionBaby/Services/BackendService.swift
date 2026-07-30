@@ -43,9 +43,12 @@ final class BackendService: ObservableObject {
     @Published var workerURL: String {
         didSet { UserDefaults.standard.set(workerURL, forKey: Self.urlKey) }
     }
-    /// Must match APP_SHARED_SECRET on the Worker.
+    /// Must match APP_SHARED_SECRET on the Worker. Persisted to the Keychain
+    /// via `SecureStore` — not `UserDefaults` — because it's an admin
+    /// credential; a jailbroken read of `.plist` files shouldn't hand out
+    /// god-mode. Migrated on init from any legacy UserDefaults slot.
     @Published var sharedSecret: String {
-        didSet { UserDefaults.standard.set(sharedSecret, forKey: Self.secretKey) }
+        didSet { SecureStore.setString(sharedSecret, forKey: Self.secretKey) }
     }
     /// Stripe consumables Worker (the web Gavel shop), e.g.
     /// "https://auctionbaby-consumables.you.workers.dev". Optional — empty
@@ -61,12 +64,24 @@ final class BackendService: ObservableObject {
 
     init() {
         let savedURL = UserDefaults.standard.string(forKey: Self.urlKey) ?? ""
-        let savedSecret = UserDefaults.standard.string(forKey: Self.secretKey) ?? ""
         let savedConsumables = UserDefaults.standard.string(forKey: Self.consumablesKey) ?? ""
+        // Legacy secret slot (UserDefaults) → Keychain migration on first
+        // launch after this change. Drop the plaintext from defaults so a
+        // later crash-dump / plist-copy can't hand it back out.
+        let keychainSecret = SecureStore.string(forKey: Self.secretKey) ?? ""
+        let legacyDefaultsSecret = UserDefaults.standard.string(forKey: Self.secretKey) ?? ""
+        if keychainSecret.isEmpty, !legacyDefaultsSecret.isEmpty {
+            SecureStore.setString(legacyDefaultsSecret, forKey: Self.secretKey)
+        }
+        if !legacyDefaultsSecret.isEmpty {
+            UserDefaults.standard.removeObject(forKey: Self.secretKey)
+        }
+        let effectiveSecret = keychainSecret.isEmpty ? legacyDefaultsSecret : keychainSecret
+
         // Baked build config wins only when nothing was saved locally, so a
         // staging URL typed into the admin console survives relaunch.
         workerURL = savedURL.isEmpty ? BackendConfig.workerURL : savedURL
-        sharedSecret = savedSecret.isEmpty ? BackendConfig.sharedSecret : savedSecret
+        sharedSecret = effectiveSecret.isEmpty ? BackendConfig.sharedSecret : effectiveSecret
         consumablesURL = savedConsumables.isEmpty ? BackendConfig.consumablesURL : savedConsumables
     }
 

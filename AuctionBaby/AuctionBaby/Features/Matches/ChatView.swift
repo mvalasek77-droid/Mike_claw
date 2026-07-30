@@ -95,7 +95,10 @@ struct ChatView: View {
     }
 
     /// Black Card read receipt under your latest message — or a one-tap teaser
-    /// for everyone else (a peak-intent paywall moment).
+    /// for everyone else (a peak-intent paywall moment). The paywall pitch
+    /// itself is bidder-facing (`PaywallView.readReceipts` copy uses "she
+    /// read it"); on the woman side we still show the delivered/seen state
+    /// for Black Card holders but skip the paywall CTA and its awkward copy.
     @ViewBuilder
     private func readReceipt(_ match: Match) -> some View {
         if match.phase == .chatting, match.messages.last?.fromMe == true {
@@ -108,7 +111,7 @@ struct ChatView: View {
                     }
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(match.seenByOther ? Theme.verify : Theme.inkFaint)
-                } else {
+                } else if store.role == .man {
                     Button { showReceiptPaywall = true } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "lock.fill")

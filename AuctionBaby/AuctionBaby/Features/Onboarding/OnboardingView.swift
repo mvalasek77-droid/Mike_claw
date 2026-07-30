@@ -288,6 +288,13 @@ struct OnboardingView: View {
                            bio: bio, hue: hue, startingBid: bid, prompts: prompts,
                            interests: Array(selectedInterests),
                            photoData: primaryPhoto, photoGallery: photoGallery)
+            // Now the user is a real user — this is the right moment for the
+            // iOS notifications modal. Firing it earlier (mid-onboarding,
+            // before role choice) trips App Review's "premature prompt"
+            // guidance and users decline more often. Silent no-op for
+            // local-only sessions (no auth token → no server registration).
+            await push.requestAuthorizationIfNeeded()
+            if auth.isSignedIn { await push.onSignedIn() }
         }
     }
 
@@ -302,17 +309,14 @@ struct OnboardingView: View {
     }()
 
     /// Post-sign-in wiring: seed the name Apple returned (if any + field is
-    /// empty), and kick off the push-registration handshake (slice 2). Wired
-    /// through `SaveAccountCard`'s `onSignedIn` callback so the SIWA button
-    /// itself lives in the extracted component and isn't duplicated here.
+    /// empty). The push authorization prompt has moved to `submit()` — firing
+    /// it here (mid-onboarding, before role choice) trips App Review's
+    /// premature-prompt guidance. Push registration handshake still runs
+    /// after submit for signed-in users.
     private func onSignedInWithApple(_ user: RemoteUser) {
         if name.trimmingCharacters(in: .whitespaces).isEmpty,
            let n = user.name, !n.isEmpty {
             name = n
-        }
-        Task {
-            await push.requestAuthorizationIfNeeded()
-            await push.onSignedIn()
         }
     }
 

@@ -55,8 +55,16 @@ struct MyProfileView: View {
             .sheet(isPresented: $showAdmin) { AdminGateView() }
             .alert("Reset account?", isPresented: $showReset) {
                 Button("Reset", role: .destructive) {
-                    storeKit.demoTier = nil   // demo Pass dies with the account
-                    store.resetAccount()
+                    Task {
+                        // Sign the server session out first — otherwise the
+                        // new local identity (with a fresh appAccountToken)
+                        // orphans any refund queue keyed on the old token.
+                        // signOut is a no-op when not signed in / not
+                        // configured, so this stays safe for local sessions.
+                        if auth.isSignedIn { await auth.signOut() }
+                        storeKit.demoTier = nil   // demo Pass dies with the account
+                        store.resetAccount()
+                    }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: { Text("Clears your profile, bids, matches and reviews, and returns to onboarding.") }
