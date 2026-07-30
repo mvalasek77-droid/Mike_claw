@@ -49,7 +49,10 @@ final class PushManager: NSObject, ObservableObject {
         observers.append(NotificationCenter.default.addObserver(
             forName: .rgDeviceTokenRegistrationFailed, object: nil, queue: .main
         ) { [weak self] note in
-            self?.errorMessage = (note.object as? Error)?.localizedDescription
+            let message = (note.object as? Error)?.localizedDescription
+            Task { @MainActor [weak self] in
+                self?.errorMessage = message
+            }
         })
     }
 

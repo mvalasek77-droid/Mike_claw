@@ -43,22 +43,28 @@ targets:
       path: RobloxGuard.entitlements
       properties:
         aps-environment: production
+    scheme:
+      storeKitConfiguration: RobloxGuard.storekit
+      testTargets:
+        - RobloxGuardUITests
 
   RobloxGuardUITests:
     type: bundle.ui-testing
     platform: iOS
-    sources: [UITests]
+    sources:
+      - path: UITests
+      - path: RobloxGuard.storekit
+        buildPhase: resources
     settings:
       base:
+        GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: RobloxGuard
         BUNDLE_LOADER: ''
         TEST_HOST: ''
     dependencies:
       - target: RobloxGuard
 
-    # StoreKit 2 subscriptions (PurchaseManager.swift, PaywallView.swift).
-    # RobloxGuard.storekit is a local test configuration (no App Store Connect
-    # needed for Simulator testing): after `xcodegen generate`, in Xcode set
-    # Product > Scheme > Edit Scheme > Run > Options > StoreKit Configuration
-    # to RobloxGuard.storekit. Real product IDs must also be created in App
-    # Store Connect before release (see README "Pricing").
+    # StoreKit 2 subscriptions (PurchaseManager.swift, PaywallView.swift) use
+    # RobloxGuard.storekit through the generated shared scheme. Real product
+    # IDs must also exist in App Store Connect before release (see README
+    # "Pricing").

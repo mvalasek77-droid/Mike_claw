@@ -1,3 +1,4 @@
+import StoreKitTest
 import XCTest
 
 final class RobloxGuardUITests: XCTestCase {
@@ -6,43 +7,105 @@ final class RobloxGuardUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testCaptureScreenshotsForAppStore() throws {
+    func testAppReviewDemoRoute() throws {
         let app = XCUIApplication()
         app.launch()
-        sleep(5)
+        completeOnboardingIfNeeded(in: app)
 
-        // If onboarding is shown, complete it. If already skipped (UserDefaults), move on.
-        let firstSwitch = app.switches.firstMatch
-        if firstSwitch.waitForExistence(timeout: 5) {
-            for _ in 0..<4 {
-                app.switches.firstMatch.tap()
-                sleep(1)
-            }
-            let agree = app.buttons["buttonAgreeContinue"]
-            if agree.waitForExistence(timeout: 5) { agree.tap() }
-            sleep(3)
+        app.buttons["Settings"].tap()
+        if app.buttons["Exit Demo Mode"].waitForExistence(timeout: 2) {
+            app.buttons["Exit Demo Mode"].tap()
+            XCTAssertTrue(
+                app.buttons["Subscribe"].waitForExistence(timeout: 5),
+                "Demo mode did not finish turning off"
+            )
         }
 
-        // 2. Wait for Dashboard and capture it
-        let noAccounts = app.staticTexts["No accounts linked"]
-        XCTAssertTrue(noAccounts.waitForExistence(timeout: 10), "Dashboard not loaded: \(app.debugDescription)")
-        let dashboardAttachment = XCTAttachment(screenshot: app.screenshot())
-        dashboardAttachment.name = "Dashboard Empty State"
-        dashboardAttachment.lifetime = .keepAlways
-        add(dashboardAttachment)
+        let demoToggle = app.switches["App Review Demo"]
+        for _ in 0..<4 where !demoToggle.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(
+            demoToggle.waitForExistence(timeout: 5) && demoToggle.isHittable,
+            "App Review Demo toggle was not reachable: \(app.debugDescription)"
+        )
+        demoToggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        expectation(
+            for: NSPredicate(format: "value == %@", "1"),
+            evaluatedWith: demoToggle
+        )
+        waitForExpectations(timeout: 5)
+        app.buttons["Home"].tap()
 
-        // 3. Open the paywall
+        XCTAssertTrue(app.staticTexts["builderman"].waitForExistence(timeout: 8))
+        let elevatedAlert = app.buttons[
+            "Talk soon alert: New friend's bio contains gaming-adjacent contact handle"
+        ]
+        XCTAssertTrue(elevatedAlert.exists)
+        keepScreenshot(named: "App Review Demo Dashboard", from: app)
+
+        elevatedAlert.tap()
+        XCTAssertTrue(app.staticTexts["What we observed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["What you can do"].exists)
+        keepScreenshot(named: "App Review Demo Alert", from: app)
+
+        app.buttons["Get Help"].tap()
+        XCTAssertTrue(app.staticTexts["Roblox 101"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Know the Dangers"].exists)
+        keepScreenshot(named: "Parent Safety Resources", from: app)
+    }
+
+    func testCapturePaywallForAppStore() throws {
+        let session = try SKTestSession(configurationFileNamed: "RobloxGuard")
+        session.resetToDefaultState()
+        session.clearTransactions()
+        session.disableDialogs = true
+
+        let app = XCUIApplication()
+        app.launch()
+        completeOnboardingIfNeeded(in: app)
+
+        app.buttons["Settings"].tap()
+        if app.buttons["Exit Demo Mode"].waitForExistence(timeout: 2) {
+            app.buttons["Exit Demo Mode"].tap()
+            XCTAssertTrue(
+                app.buttons["Subscribe"].waitForExistence(timeout: 5),
+                "Demo mode did not finish turning off"
+            )
+        }
         let subscribe = app.buttons["Subscribe"]
         XCTAssertTrue(subscribe.waitForExistence(timeout: 5))
         subscribe.tap()
-        sleep(3)
 
-        // 4. Wait for paywall and capture it
         let title = app.staticTexts["Choose your plan"]
         XCTAssertTrue(title.waitForExistence(timeout: 10), "Paywall not loaded: \(app.debugDescription)")
-        let paywallAttachment = XCTAttachment(screenshot: app.screenshot())
-        paywallAttachment.name = "Paywall"
-        paywallAttachment.lifetime = .keepAlways
-        add(paywallAttachment)
+        XCTAssertTrue(app.staticTexts["Single Child"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Family"].exists)
+        keepScreenshot(named: "Subscription Paywall", from: app)
+    }
+
+    private func completeOnboardingIfNeeded(in app: XCUIApplication) {
+        let parentToggle = app.switches["toggleParent"]
+        guard parentToggle.waitForExistence(timeout: 3) else { return }
+
+        for identifier in [
+            "toggleParent",
+            "toggleScope",
+            "toggleData",
+            "toggleLimits",
+        ] {
+            app.switches[identifier].tap()
+        }
+        let agree = app.buttons["buttonAgreeContinue"]
+        XCTAssertTrue(agree.isEnabled)
+        agree.tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 8))
+    }
+
+    private func keepScreenshot(named name: String, from app: XCUIApplication) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }
