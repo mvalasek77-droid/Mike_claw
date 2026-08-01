@@ -1,22 +1,55 @@
 {
-  "generated_for": "2026-08-01T08",
+  "generated_for": "2026-08-01T10",
   "posts": [
     {
       "community": {
-        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
-        "name": "Iron Bro-hood",
-        "slug": "fitness",
-        "member_count": 182000,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
         "is_joined": true
       },
-      "title": "PSA: warm up your rotator cuffs, bros",
-      "body": "Saved my bench after years of nagging pain. Here's the routine.",
-      "score": 118,
+      "title": "Manual or auto for a first project car?",
+      "body": "Want something I can wrench on cheaply. Thoughts?",
+      "score": 104,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "2f061f9a-fa06-cd5f-4ee4-17207291fb75",
+      "id": "13a3cb81-1fe4-d268-a089-8b42ef1efeaa",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 42,
+      "created_at": "2026-08-01T10:30:57+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "Memento mori \u2014 keeps me grounded",
+      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
+      "score": 259,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "8e33210f-ab35-e58c-f43d-503f63779673",
       "author": {
         "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
         "handle": "@you",
@@ -25,19 +58,19 @@
         "bro_cred": 1280
       },
       "image_url": null,
-      "comment_count": 64,
-      "created_at": "2026-08-01T05:28:53+00:00",
+      "comment_count": 58,
+      "created_at": "2026-08-01T07:19:57+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
       "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 79,
+      "score": 20,
       "reactions": [
         {
           "kind": "respect",
-          "count": 14
+          "count": 32
         },
         {
           "kind": "strong",
@@ -45,22 +78,22 @@
         },
         {
           "kind": "like",
-          "count": 23
+          "count": 8
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "94a27c8c-ad44-2ea2-9077-025eec968360",
+      "id": "450cd64c-00b3-8086-201f-6a1c8a31fdf4",
       "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 113,
-      "created_at": "2026-08-01T04:32:53+00:00",
+      "comment_count": 70,
+      "created_at": "2026-08-01T07:22:57+00:00",
       "my_vote": 0
     },
     {
@@ -74,41 +107,16 @@
       },
       "title": "Best cheap smoker under $300?",
       "body": "Looking to upgrade from the kettle. What are you bros running?",
-      "score": 138,
+      "score": 96,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "b65caee0-041e-ef51-e836-9eaca67f2f60",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 70,
-      "created_at": "2026-08-01T04:51:53+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 73,
-      "reactions": [
+      "awards": [
         {
-          "kind": "strong",
-          "count": 39
-        },
-        {
-          "kind": "like",
-          "count": 42
+          "kind": "champ",
+          "count": 1
         }
       ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "b553a93c-fee3-3bcd-bf2d-bfd575d8c772",
+      "id": "7abae74a-2d8b-b5ce-5f19-29c0953f9fab",
       "author": {
         "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
         "handle": "@newbro",
@@ -117,32 +125,59 @@
         "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 108,
-      "created_at": "2026-08-01T04:39:53+00:00",
+      "comment_count": 4,
+      "created_at": "2026-08-01T07:55:57+00:00",
       "my_vote": 0
     },
     {
-      "community": null,
-      "title": null,
-      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 19,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 4
-        },
-        {
-          "kind": "respect",
-          "count": 32
-        },
-        {
-          "kind": "lol",
-          "count": 27
-        }
-      ],
+      "community": {
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "is_joined": true
+      },
+      "title": "Best cheap smoker under $300?",
+      "body": "Looking to upgrade from the kettle. What are you bros running?",
+      "score": 216,
+      "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "1d47b789-f6e8-1991-9676-01bfa386d348",
+      "id": "eb791b31-841f-cd5b-4a35-e8f5b1de2386",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 110,
+      "created_at": "2026-08-01T06:17:57+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Hit a new deadlift PR today",
+      "body": "405 for a clean triple. Sleep and protein, that's the whole secret.",
+      "score": 273,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 2
+        }
+      ],
+      "id": "50c9f04d-7892-0b72-15ed-c2f2a6b025fa",
       "author": {
         "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
         "handle": "@you",
@@ -151,38 +186,8 @@
         "bro_cred": 1280
       },
       "image_url": null,
-      "comment_count": 53,
-      "created_at": "2026-08-01T01:49:53+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 76,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 27
-        },
-        {
-          "kind": "strong",
-          "count": 37
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "eaf13803-67c6-42de-a0db-3b5a8386c904",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 103,
-      "created_at": "2026-08-01T04:28:53+00:00",
+      "comment_count": 101,
+      "created_at": "2026-08-01T06:15:57+00:00",
       "my_vote": 0
     }
   ],
