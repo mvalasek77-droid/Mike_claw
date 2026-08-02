@@ -2,6 +2,13 @@ name = "auctionbaby-matching"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
+# ── Scheduled cleanup ────────────────────────────────────────────────────────
+# Every 6 hours: prune rate_counters rows whose window closed more than 48h
+# ago. Cheap D1 delete; keeps the table bounded even at scale. See the
+# scheduled() handler in src/index.ts for the query.
+[triggers]
+crons = ["17 */6 * * *"]
+
 # ── Secrets (never committed) — set once with `wrangler secret put <NAME>`: ──
 #   SESSION_SECRET       must MATCH the auth Worker's — this Worker verifies
 #                        session tokens issued there (same HMAC key). Rotating

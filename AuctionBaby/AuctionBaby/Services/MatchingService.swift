@@ -123,6 +123,17 @@ final class MatchingService: ObservableObject {
                           body: [:], as: Response.self).map { $0.updated ?? 0 }
     }
 
+    /// Set (or clear) the single-slot reaction on a message. Nil emoji
+    /// clears. Overwrites are visible to both participants — matches the
+    /// existing local ChatMessage.reaction model.
+    @discardableResult
+    func setReaction(matchId: String, messageId: String, emoji: String?) async -> ServiceResult<String?> {
+        struct Response: Decodable { let ok: Bool; let reaction: String? }
+        let body: [String: Any] = emoji.map { ["emoji": $0] } ?? [:]
+        return await post("/matches/\(matchId)/messages/\(messageId)/react",
+                          body: body, as: Response.self).map(\.reaction)
+    }
+
     @discardableResult
     func markDateDone(matchId: String) async -> ServiceResult<Bool> {
         struct Response: Decodable { let ok: Bool }
@@ -300,6 +311,10 @@ struct RemoteMessage: Codable, Identifiable, Equatable {
     let text: String
     let createdAt: Double
     let seenAt: Double?
+    /// Single-slot reaction, either participant. Nil = no reaction. Present
+    /// only on server builds that shipped migration 008 — older builds
+    /// decode as nil (Swift optional tolerance).
+    let reaction: String?
 }
 
 struct MatchWithMessages: Codable, Equatable {

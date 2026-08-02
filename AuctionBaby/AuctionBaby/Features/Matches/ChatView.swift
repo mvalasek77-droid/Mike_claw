@@ -57,7 +57,7 @@ struct ChatView: View {
                                     // conservative — .man means the "other" resolves to the
                                     // woman, which is the more common label at rest.
                                     MessageBubble(message: msg, otherName: match.other(for: store.role ?? .man).name) { emoji in
-                                        store.toggleReaction(emoji, on: msg.id, in: match)
+                                        store.toggleReaction(emoji, on: msg.id, in: match, matching: matching)
                                     }
                                     .id(msg.id)
                                 }

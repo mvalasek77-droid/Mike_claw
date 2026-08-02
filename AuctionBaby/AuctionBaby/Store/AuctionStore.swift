@@ -1610,15 +1610,29 @@ final class AuctionStore: ObservableObject {
 
     /// Double-tap a bubble to react (iMessage-style). Toggles off if it's
     /// already that emoji, otherwise sets/replaces the reaction.
-    func toggleReaction(_ emoji: String, on messageID: UUID, in match: Match) {
+    func toggleReaction(_ emoji: String, on messageID: UUID, in match: Match,
+                        matching: MatchingService? = nil) {
         guard let slot = matchSlot(id: match.id) else { return }
         var row = matchRow(at: slot)
         guard let msgIdx = row.messages.firstIndex(where: { $0.id == messageID }) else { return }
         let current = row.messages[msgIdx].reaction
-        row.messages[msgIdx].reaction = (current == emoji) ? nil : emoji
+        let next: String? = (current == emoji) ? nil : emoji
+        row.messages[msgIdx].reaction = next
         writeMatchRow(row, at: slot)
         Haptics.selection()
         save()
+        // Batch J — sync to server for remote matches. Fire-and-forget; the
+        // local mutation is authoritative for this session and a subsequent
+        // refreshRemoteMatch will reconcile from the server truth.
+        if slot.isRemote, let matching {
+            Task {
+                _ = await matching.setReaction(
+                    matchId: match.id.uuidString.lowercased(),
+                    messageId: messageID.uuidString.lowercased(),
+                    emoji: next,
+                )
+            }
+        }
     }
 
     /// Undo your most recent live bid — a Reserve / Black Card Pass perk. Only

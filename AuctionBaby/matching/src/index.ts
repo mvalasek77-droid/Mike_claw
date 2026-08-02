@@ -153,7 +153,7 @@ interface MatchRow {
 
 interface MessageRow {
   id: string; match_id: string; from_id: string; text: string;
-  created_at: number; seen_at: number | null;
+  created_at: number; seen_at: number | null; reaction: string | null;
 }
 
 /** Public bid shape — booleans instead of 0/1, no extra fields to leak. */
@@ -177,7 +177,7 @@ function publicMatch(m: MatchRow) {
 function publicMessage(m: MessageRow) {
   return {
     id: m.id, matchId: m.match_id, fromId: m.from_id, text: m.text,
-    createdAt: m.created_at, seenAt: m.seen_at,
+    createdAt: m.created_at, seenAt: m.seen_at, reaction: m.reaction,
   };
 }
 
@@ -685,7 +685,7 @@ async function handleSendMessage(matchId: string, request: Request, env: Env): P
   const now = Date.now();
   const msg: MessageRow = {
     id: crypto.randomUUID(), match_id: matchId, from_id: userId,
-    text, created_at: now, seen_at: null,
+    text, created_at: now, seen_at: null, reaction: null,
   };
   // Sending clears the freshness clock — the ball moves to the other side.
   await env.DB.batch([
@@ -719,6 +719,32 @@ async function handleMarkSeen(matchId: string, request: Request, env: Env): Prom
     "UPDATE messages SET seen_at = ? WHERE match_id = ? AND from_id != ? AND seen_at IS NULL",
   ).bind(now, matchId, userId).run();
   return json({ ok: true, updated: result.meta?.changes ?? 0 });
+}
+
+/** POST /matches/:matchId/messages/:messageId/react  { emoji?: string }  [auth]
+ *  Set (or clear) the single-slot reaction on a message. Either participant
+ *  may react; overwrites are visible to both — matches ChatMessage.reaction
+ *  on the client. Nil / empty `emoji` clears the reaction. Blocked pairs
+ *  can't react either (403). */
+async function handleReactMessage(matchId: string, messageId: string,
+                                  request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+  let body: any;
+  try { body = await request.json(); } catch { body = {}; }
+  const raw = body?.emoji;
+  const emoji = raw == null ? null : String(raw).slice(0, 10);
+
+  const match = await fetchMatchIfParticipant(env, matchId, userId);
+  if (!match) return err("Match not found", 404);
+  const otherId = otherOf(match, userId);
+  if (await isBlockedEitherWay(env, userId, otherId)) {
+    return err("Reaction can't be delivered", 403);
+  }
+  const result = await env.DB.prepare(
+    "UPDATE messages SET reaction = ? WHERE id = ? AND match_id = ?",
+  ).bind(emoji && emoji.length > 0 ? emoji : null, messageId, matchId).run();
+  return json({ ok: true, updated: result.meta?.changes ?? 0, reaction: emoji });
 }
 
 /** POST /matches/:id/mark-date-done  [auth]  — either side advances the match
@@ -786,9 +812,28 @@ export default {
     if (match && m === "POST") return handleSendMessage(match[1], request, env);
     match = pathname.match(/^\/matches\/([A-Za-z0-9-]{36})\/mark-seen$/);
     if (match && m === "POST") return handleMarkSeen(match[1], request, env);
+    match = pathname.match(/^\/matches\/([A-Za-z0-9-]{36})\/messages\/([A-Za-z0-9-]{36})\/react$/);
+    if (match && m === "POST") return handleReactMessage(match[1], match[2], request, env);
     match = pathname.match(/^\/matches\/([A-Za-z0-9-]{36})\/mark-date-done$/);
     if (match && m === "POST") return handleMarkDateDone(match[1], request, env);
 
     return err("Not found", 404);
+  },
+
+  // Cron trigger (see wrangler.toml [triggers].crons).
+  // Prune rate_counters rows whose window closed more than 48h ago. Only
+  // historical windows are safe to delete — anything within 48h could still
+  // be re-consulted by an in-flight burst. Cheap D1 delete; bounded blast
+  // radius by the WHERE clause.
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+    try {
+      const result = await env.DB.prepare(
+        "DELETE FROM rate_counters WHERE window_ms < ?",
+      ).bind(cutoff).run();
+      console.log(`rate_counters cleanup: pruned ${result.meta?.changes ?? 0} rows older than ${new Date(cutoff).toISOString()}`);
+    } catch (e) {
+      console.log(`rate_counters cleanup failed: ${String(e)}`);
+    }
   },
 };

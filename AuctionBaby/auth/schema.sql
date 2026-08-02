@@ -115,7 +115,10 @@ CREATE TABLE IF NOT EXISTS messages (
   text         TEXT NOT NULL,
   created_at   INTEGER NOT NULL,
   -- When the OTHER side loaded messages past this one (drives read receipts).
-  seen_at      INTEGER
+  seen_at      INTEGER,
+  -- Single-slot emoji reaction (either party writes; overwrites are visible
+  -- to both). Nil = no reaction. Matches ChatMessage.reaction on the client.
+  reaction     TEXT
 );
 -- The chat-view query — "messages in this match, oldest first" — is the hot path.
 CREATE INDEX IF NOT EXISTS idx_messages_match ON messages(match_id, created_at);

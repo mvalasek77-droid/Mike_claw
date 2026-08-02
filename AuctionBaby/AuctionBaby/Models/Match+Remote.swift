@@ -61,7 +61,7 @@ extension ChatMessage {
             text: remote.text,
             date: Date(timeIntervalSince1970: remote.createdAt / 1000),
             isSystem: false,
-            reaction: nil,
+            reaction: remote.reaction,
         )
     }
 }
