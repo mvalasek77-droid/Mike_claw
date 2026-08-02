@@ -52,6 +52,10 @@ interface Env {
   SESSION_SECRET: string;
   AUTH_URL?: string;
   AUTH_ADMIN_SECRET?: string;
+  /** Batch I — shared bearer used by the consumables Worker's reservation
+   *  webhook to stamp `matches.reserved_at`. Same value as
+   *  APP_SHARED_SECRET on the consumables Worker by convention. */
+  APP_SHARED_SECRET?: string;
 }
 
 // ── Response helpers ─────────────────────────────────────────────────────────
@@ -269,6 +273,42 @@ function handleHealth(env: Env): Response {
       authUrlSet: Boolean(env.AUTH_URL),
     },
   });
+}
+
+/** Constant-time compare for a bearer secret. Same shape as auth Worker. */
+async function constantTimeEqual(a: string, b: string): Promise<boolean> {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
+/** POST /internal/reservations/mark  { matchId, amountCents, at }
+ *  Called by the consumables Worker's reservation webhook after a paid
+ *  Stripe checkout completes (or is refunded). Stamps
+ *  `matches.reserved_at` + `reserved_amount_cents` so every device sees
+ *  the state via GET /matches. `at: null` clears the flag (refund path).
+ *
+ *  Bearer-gated with the shared APP_SHARED_SECRET convention. NOT a
+ *  session-authed endpoint — the consumables Worker doesn't have session
+ *  tokens, only the operator's admin bearer. */
+async function handleInternalReservationMark(request: Request, env: Env): Promise<Response> {
+  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
+  const auth = request.headers.get("Authorization");
+  const supplied = auth?.startsWith("Bearer ") ? auth.slice(7) : (auth ?? "");
+  if (!(await constantTimeEqual(supplied, env.APP_SHARED_SECRET))) return err("Unauthorized", 401);
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const matchId = String(body?.matchId ?? "").trim();
+  if (!matchId) return err("matchId is required");
+  const amountCentsRaw = Number(body?.amountCents ?? 0);
+  const amountCents = Number.isFinite(amountCentsRaw) ? Math.round(amountCentsRaw) : 0;
+  const atRaw = body?.at;
+  const at = atRaw == null ? null : Number(atRaw);
+  await env.DB.prepare(
+    "UPDATE matches SET reserved_at = ?, reserved_amount_cents = ? WHERE id = ?",
+  ).bind(at, at == null ? null : amountCents, matchId).run();
+  return json({ ok: true });
 }
 
 /** POST /bids  { lotId, amount, note?, gilded?, insured?, isWhisper?, promptRef? }
@@ -721,6 +761,11 @@ export default {
     const m = request.method;
 
     if (pathname === "/health" && m === "GET") return handleHealth(env);
+
+    // Internal: reservation mirror from the consumables Worker.
+    if (pathname === "/internal/reservations/mark" && m === "POST") {
+      return handleInternalReservationMark(request, env);
+    }
 
     // Bids
     if (pathname === "/bids" && m === "POST") return handlePlaceBid(request, env);

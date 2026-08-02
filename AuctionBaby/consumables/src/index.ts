@@ -69,6 +69,12 @@ interface Env {
   RESERVE_ENABLED?: string;     // "false" turns the whole feature off remotely (kill-switch)
   RESERVE_TIERS_CENTS?: string; // allowed booking-fee amounts, CSV of cents
   KV?: KVNamespace;
+  /** Matching Worker base URL, e.g. https://auctionbaby-matching.you.workers.dev
+   *  Optional — when set, a paid reservation POSTs the matching Worker's
+   *  internal endpoint so `matches.reserved_at` is stamped and every other
+   *  device sees the reservation on next GET /matches. Without it the flag
+   *  stays device-local (Batch I fallback). */
+  MATCHING_URL?: string;
 }
 
 // ── Gavel catalog ────────────────────────────────────────────────────────────
@@ -203,6 +209,32 @@ const piKey = (paymentIntent: string) => `pi:${paymentIntent}`;
 // matchId → {userId, paidAt, sessionId, refunded} — the booking record for a
 // single date. Presence + !refunded means the date is reserved.
 const reserveKey = (matchId: string) => `res:${matchId}`;
+
+/** Fire-and-forget the reservation state into the matching Worker so
+ *  `matches.reserved_at` is stamped and every other device sees the flag
+ *  via GET /matches. Gated by `MATCHING_URL` + `APP_SHARED_SECRET` (same
+ *  bearer convention across all Workers). Logs, never throws. */
+async function notifyMatchingReservation(
+  env: Env, matchId: string, amountCents: number, at: number | null,
+): Promise<void> {
+  if (!env.MATCHING_URL) return;
+  const url = env.MATCHING_URL.replace(/\/$/, "") + "/internal/reservations/mark";
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${env.APP_SHARED_SECRET}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ matchId, amountCents, at }),
+    });
+    if (!res.ok) {
+      console.log(`reservation mirror ${res.status} for match ${matchId}`);
+    }
+  } catch (e) {
+    console.log(`reservation mirror transport: ${String(e)}`);
+  }
+}
 
 /** Remote kill-switch. Set RESERVE_ENABLED="false" to disable reservations
  *  fleet-wide without an app update — the app hides the card when this is off. */
@@ -393,6 +425,10 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
         }
         await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
       }
+      // Batch I — mirror the reservation state onto the matching Worker so
+      // it's visible across devices (GET /matches ships reservedAt from D1).
+      // Best-effort: failure is logged but never fails the webhook.
+      await notifyMatchingReservation(env, matchId, amountCents, Date.now());
       console.log(`Reservation paid for match ${matchId} by ${bookedBy}`);
       return json({ received: true, reserved: true });
     }
@@ -440,6 +476,9 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
     // were never credited). Idempotent: refunding again just re-sets the flag.
     if (record.kind === "reservation") {
       if (record.matchId) {
+        // Clear the matching-Worker mirror on refund so the "Reserved" pill
+        // disappears on every device (not just the one that KV-marked it).
+        await notifyMatchingReservation(env, record.matchId, 0, null);
         const rraw = await env.KV.get(reserveKey(record.matchId));
         if (rraw) {
           await env.KV.put(reserveKey(record.matchId),

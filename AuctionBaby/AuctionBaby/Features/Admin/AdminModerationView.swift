@@ -139,6 +139,19 @@ struct AdminModerationView: View {
                     Text(ctx).font(.system(size: 12))
                         .foregroundStyle(Theme.inkSoft).lineLimit(6)
                 }
+                // Batch H — repeat-offender signal. A target with a lot of
+                // open reports or blocks against them is worth prioritising.
+                if (r.targetReportCount ?? 0) > 1 || (r.targetBlockCount ?? 0) > 0 {
+                    HStack(spacing: 6) {
+                        if let n = r.targetReportCount, n > 1 {
+                            Chip(text: "\(n) reports on target", color: Theme.danger)
+                        }
+                        if let n = r.targetBlockCount, n > 0 {
+                            Chip(text: "\(n) block\(n == 1 ? "" : "s")", color: Theme.warning)
+                        }
+                        Spacer()
+                    }
+                }
                 HStack(spacing: 6) {
                     Text("From").font(.system(size: 9, weight: .heavy, design: .rounded))
                         .tracking(1).foregroundStyle(Theme.inkFaint)

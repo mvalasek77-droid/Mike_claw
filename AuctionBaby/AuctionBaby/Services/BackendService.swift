@@ -244,6 +244,11 @@ final class BackendService: ObservableObject {
         let status: String
         let resolvedAt: Double?
         let resolvedBy: String?
+        /// Total reports filed against this target (across all reporters,
+        /// including this row). Populated on /admin/reports; nil elsewhere.
+        let targetReportCount: Int?
+        /// Users who currently have this target blocked. Nil elsewhere.
+        let targetBlockCount: Int?
     }
 
     /// GET /admin/reports?status=&limit=&cursor=  on the AUTH Worker.
@@ -281,6 +286,10 @@ final class BackendService: ObservableObject {
         let lastSeenAt: Double
         let verifiedAt: Double?
         let verificationStatus: String?
+        /// Batch H — reports filed against this user + users who have them
+        /// blocked. Nil on old server builds.
+        let reportsAgainst: Int?
+        let blocksAgainst: Int?
     }
 
     /// GET /admin/users?limit=&cursor=  — paginated user list, newest first.

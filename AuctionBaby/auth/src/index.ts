@@ -1280,16 +1280,24 @@ async function handleAdminListReports(request: Request, env: Env): Promise<Respo
   const cursorRaw = url.searchParams.get("cursor");
   const cursor = cursorRaw != null && cursorRaw !== "" ? Number(cursorRaw) : null;
 
-  let sql = "SELECT * FROM reports";
+  // Enrich each report row with target counts so the queue rows carry
+  // "this user has 12 open reports against them" at a glance, without a
+  // per-row round-trip. Same subquery shape used in /admin/users.
+  let sql =
+    "SELECT r.*, " +
+    "(SELECT COUNT(*) FROM reports r2 WHERE r2.target_id = r.target_id) AS target_report_count, " +
+    "(SELECT COUNT(*) FROM blocks b WHERE b.blocked_id = r.target_id) AS target_block_count " +
+    "FROM reports r";
   const params: unknown[] = [];
   const where: string[] = [];
-  if (status !== "all") { where.push("status = ?"); params.push(status); }
-  if (cursor != null && Number.isFinite(cursor)) { where.push("created_at < ?"); params.push(cursor); }
+  if (status !== "all") { where.push("r.status = ?"); params.push(status); }
+  if (cursor != null && Number.isFinite(cursor)) { where.push("r.created_at < ?"); params.push(cursor); }
   if (where.length > 0) sql += " WHERE " + where.join(" AND ");
-  sql += " ORDER BY created_at DESC LIMIT ?";
+  sql += " ORDER BY r.created_at DESC LIMIT ?";
   params.push(limit);
 
-  const rows = await env.DB.prepare(sql).bind(...params).all<ReportRow>();
+  type ReportWithCounts = ReportRow & { target_report_count: number; target_block_count: number };
+  const rows = await env.DB.prepare(sql).bind(...params).all<ReportWithCounts>();
   const list = rows.results ?? [];
   const nextCursor = list.length === limit ? list[list.length - 1].created_at : null;
   return json({
@@ -1297,6 +1305,8 @@ async function handleAdminListReports(request: Request, env: Env): Promise<Respo
       id: r.id, reporterId: r.reporter_id, targetId: r.target_id,
       reason: r.reason, context: r.context, createdAt: r.created_at,
       status: r.status, resolvedAt: r.resolved_at, resolvedBy: r.resolved_by,
+      targetReportCount: r.target_report_count,
+      targetBlockCount: r.target_block_count,
     })),
     nextCursor,
   });
@@ -1343,11 +1353,18 @@ interface AdminUserRow {
   id: string; email: string | null; name: string | null;
   date_of_birth: string | null; created_at: number; last_seen_at: number;
   verified_at: number | null; verification_status: string;
+  reports_against: number; blocks_against: number;
 }
 
 /** GET /admin/users?limit=&cursor=  [admin]
  *  Paginated user list for the moderation console. Cursor is the last row's
- *  `created_at`. Ships minimal fields — no apple_sub, no session tokens. */
+ *  `created_at`. Ships minimal fields — no apple_sub, no session tokens.
+ *
+ *  Includes two moderator-focused counts per row: `reportsAgainst` (open +
+ *  resolved reports where this user is the target) and `blocksAgainst`
+ *  (users who have this user blocked). Correlated subqueries — cheap on the
+ *  current row counts, and lets a founder spot serial offenders without a
+ *  per-row round-trip. */
 async function handleAdminListUsers(request: Request, env: Env): Promise<Response> {
   const denied = await ensureAdmin(request, env);
   if (denied) return denied;
@@ -1358,14 +1375,17 @@ async function handleAdminListUsers(request: Request, env: Env): Promise<Respons
   const cursor = cursorRaw != null && cursorRaw !== "" ? Number(cursorRaw) : null;
 
   let sql =
-    "SELECT id, email, name, date_of_birth, created_at, last_seen_at, " +
-    "verified_at, verification_status FROM users";
+    "SELECT u.id, u.email, u.name, u.date_of_birth, u.created_at, u.last_seen_at, " +
+    "u.verified_at, u.verification_status, " +
+    "(SELECT COUNT(*) FROM reports r WHERE r.target_id = u.id) AS reports_against, " +
+    "(SELECT COUNT(*) FROM blocks b WHERE b.blocked_id = u.id) AS blocks_against " +
+    "FROM users u";
   const params: unknown[] = [];
   if (cursor != null && Number.isFinite(cursor)) {
-    sql += " WHERE created_at < ?";
+    sql += " WHERE u.created_at < ?";
     params.push(cursor);
   }
-  sql += " ORDER BY created_at DESC LIMIT ?";
+  sql += " ORDER BY u.created_at DESC LIMIT ?";
   params.push(limit);
 
   const rows = await env.DB.prepare(sql).bind(...params).all<AdminUserRow>();
@@ -1376,6 +1396,7 @@ async function handleAdminListUsers(request: Request, env: Env): Promise<Respons
       id: u.id, email: u.email, name: u.name, dateOfBirth: u.date_of_birth,
       createdAt: u.created_at, lastSeenAt: u.last_seen_at,
       verifiedAt: u.verified_at, verificationStatus: u.verification_status,
+      reportsAgainst: u.reports_against, blocksAgainst: u.blocks_against,
     })),
     nextCursor,
   });

@@ -86,6 +86,19 @@ struct AdminRealUsersView: View {
                         Chip(text: "verified", color: Theme.verify)
                     }
                 }
+                // Batch H — surface moderator counts so serial offenders
+                // are visible without opening the reports queue.
+                if (u.reportsAgainst ?? 0) > 0 || (u.blocksAgainst ?? 0) > 0 {
+                    HStack(spacing: 6) {
+                        if let n = u.reportsAgainst, n > 0 {
+                            Chip(text: "\(n) report\(n == 1 ? "" : "s")", color: Theme.danger)
+                        }
+                        if let n = u.blocksAgainst, n > 0 {
+                            Chip(text: "\(n) block\(n == 1 ? "" : "s")", color: Theme.warning)
+                        }
+                        Spacer()
+                    }
+                }
                 HStack(spacing: 12) {
                     if let email = u.email, !email.isEmpty {
                         Text(email)
