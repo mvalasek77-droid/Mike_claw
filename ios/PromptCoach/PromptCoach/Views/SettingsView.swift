@@ -674,7 +674,8 @@ enum LegalText {
     cleaner prompts tailored to Claude Haiku 4.5 or Claude Sonnet 5, and \
     explains the prompt-engineering techniques it applied. It is a free, \
     reduced version of "Prompt Coach" — see that app's own listing for the \
-    full model set and feature list.
+    full model set and feature list. Prompt Coach Lite is not affiliated \
+    with, endorsed by, or sponsored by Anthropic.
 
     3. LICENSE
     You may use the app on devices you own or control. You may not resell, \
@@ -759,7 +760,8 @@ enum LegalText {
     2. WHAT THE APP DOES
     Prompt Coach takes rough prompts you write and rewrites them into cleaner \
     prompts tailored to a Claude model you choose, and explains the \
-    prompt-engineering techniques it applied.
+    prompt-engineering techniques it applied. Prompt Coach is not affiliated \
+    with, endorsed by, or sponsored by Anthropic.
 
     3. LICENSE
     Your one-time purchase grants you a personal, non-exclusive, \

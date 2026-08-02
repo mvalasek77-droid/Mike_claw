@@ -31,6 +31,11 @@ APP_STATE = ROOT / "ios/PromptCoach/PromptCoach/Store/AppState.swift"
 SETTINGS_VIEW = ROOT / "ios/PromptCoach/PromptCoach/Views/SettingsView.swift"
 PROJECT_YML = ROOT / "ios/PromptCoach/project.yml"
 INFO_LITE = ROOT / "ios/PromptCoach/PromptCoach/Resources/Info-Lite.plist"
+HOSTED_TERMS = ROOT / "docs/prompt-coach-terms.html"
+HOSTED_PRIVACY = ROOT / "docs/prompt-coach-privacy.html"
+HOSTED_LITE_TERMS = ROOT / "docs/prompt-coach-lite-terms.html"
+HOSTED_LITE_PRIVACY = ROOT / "docs/prompt-coach-lite-privacy.html"
+HOSTED_SUPPORT = ROOT / "docs/prompt-coach-support.html"
 
 failures: list[str] = []
 passes: list[str] = []
@@ -693,6 +698,79 @@ if INFO_LITE.exists():
     info_lite = INFO_LITE.read_text()
     check("Info-Lite.plist advertises the Lite name, not the paid app's name",
           "Prompt Coach Lite" in info_lite)
+
+# ------------------------------------- hosted legal/support pages (ASC links)
+# App Review actually opens these — App Store Connect requires a live Privacy
+# Policy URL, and a description that doesn't match what's found there is a
+# real rejection risk (Guideline 2.3.1). The pages must describe only what
+# v1.0 ships, not the roadmap.
+
+for path, label in ((HOSTED_TERMS, "hosted Terms"), (HOSTED_PRIVACY, "hosted Privacy"),
+                    (HOSTED_LITE_TERMS, "hosted Lite Terms"),
+                    (HOSTED_LITE_PRIVACY, "hosted Lite Privacy"),
+                    (HOSTED_SUPPORT, "hosted Support")):
+    check(f"{label} page exists", path.exists())
+
+if HOSTED_TERMS.exists() and HOSTED_PRIVACY.exists():
+    hosted_legal = HOSTED_TERMS.read_text() + HOSTED_PRIVACY.read_text()
+    check("hosted paid-app legal pages don't describe the unshipped Test It "
+          "feature (v1.1 roadmap, not in this build)",
+          "Test It" not in hosted_legal)
+    check("hosted paid-app legal pages don't mention an Anthropic API key "
+          "(no such field exists in v1.0)",
+          "API key" not in hosted_legal)
+
+# The non-affiliation disclaimer has to exist in all four places (hosted +
+# in-app, both tiers) or App Review sees it in the app but not on the
+# hosted page it actually opens, or vice versa.
+disclaimer = "not affiliated with, endorsed by, or sponsored by anthropic"
+if HOSTED_TERMS.exists():
+    check("hosted paid Terms carries the Anthropic non-affiliation disclaimer",
+          disclaimer in HOSTED_TERMS.read_text().lower())
+if HOSTED_LITE_TERMS.exists():
+    check("hosted Lite Terms carries the Anthropic non-affiliation disclaimer",
+          disclaimer in HOSTED_LITE_TERMS.read_text().lower())
+if SETTINGS_VIEW.exists():
+    # Swift multi-line string literals use trailing `\` + newline for line
+    # continuation — join those the way the compiler would before searching,
+    # or a disclaimer that happens to wrap a line looks "missing".
+    joined = re.sub(r'\\\n\s*', '', settings_src.lower())
+    check("in-app Terms (both tiers) carry the Anthropic non-affiliation "
+          "disclaimer at least twice (paid + Lite)",
+          joined.count(disclaimer) >= 2)
+
+if HOSTED_LITE_TERMS.exists() and HOSTED_LITE_PRIVACY.exists():
+    hosted_lite_legal = HOSTED_LITE_TERMS.read_text() + HOSTED_LITE_PRIVACY.read_text()
+    check("hosted Lite legal pages say the app is free, not purchased",
+          "free" in hosted_lite_legal.lower())
+    check("hosted Lite legal pages link back to the paid app's own pages "
+          "rather than restating its terms",
+          "prompt-coach-privacy.html" in hosted_lite_legal
+          or "prompt-coach-terms.html" in hosted_lite_legal)
+
+if HOSTED_SUPPORT.exists():
+    hosted_support = HOSTED_SUPPORT.read_text()
+    check("support page tells users how Apple refunds work "
+          "(we can't issue them directly)",
+          "reportaproblem.apple.com" in hosted_support)
+    check("support page states the app isn't from Anthropic "
+          "(trademark/endorsement clarity)",
+          "not" in hosted_support.lower() and "anthropic" in hosted_support.lower())
+    check("support page covers both listings, not just one",
+          "Prompt Coach Lite" in hosted_support and "Prompt Coach" in hosted_support)
+
+if PROJECT_YML.exists():
+    check("no hosted page claims a feature this app doesn't have: "
+          "grep the whole docs/ prompt-coach-*.html set for 'Test It' once more",
+          not any("Test It" in p.read_text()
+                  for p in (ROOT / "docs").glob("prompt-coach*.html")))
+
+DEPLOY_WORKFLOW = ROOT / ".github/workflows/deploy-pages.yml"
+if DEPLOY_WORKFLOW.exists():
+    wf = DEPLOY_WORKFLOW.read_text()
+    check("the Pages deploy workflow actually triggers on this branch "
+          "(it shipped scoped to a different branch — dead pages otherwise)",
+          "claude/prompt-coach-github-search-zxwm0e" in wf)
 
 # The privacy claim is load-bearing for the Privacy Policy and for App Review.
 networked = [p.name for p in ALL_SWIFT if "URLSession" in p.read_text()]
