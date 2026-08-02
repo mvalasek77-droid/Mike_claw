@@ -16,6 +16,9 @@ struct AdminModerationView: View {
     @State private var loading = false
     @State private var lastError: String?
     @State private var resolving: BackendService.AuthReport?
+    @State private var pendingAction: (report: BackendService.AuthReport, kind: TargetAction)?
+
+    enum TargetAction { case unverify, ban }
 
     private let statusOptions: [(String, String)] = [
         ("open", "Open"),
@@ -77,6 +80,40 @@ struct AdminModerationView: View {
         } message: {
             Text("Resolves the report on the server. The reporter isn't notified — this is triage state, not user comms.")
         }
+        .alert(actionAlertTitle,
+               isPresented: .init(get: { pendingAction != nil },
+                                  set: { if !$0 { pendingAction = nil } })) {
+            Button(actionAlertConfirm, role: .destructive) { performAction() }
+            Button("Cancel", role: .cancel) { pendingAction = nil }
+        } message: {
+            Text(actionAlertMessage)
+        }
+    }
+
+    private var actionAlertTitle: String {
+        switch pendingAction?.kind {
+        case .unverify: return "Unverify target?"
+        case .ban:      return "Delete target account?"
+        case nil:       return ""
+        }
+    }
+    private var actionAlertConfirm: String {
+        switch pendingAction?.kind {
+        case .unverify: return "Unverify"
+        case .ban:      return "Delete permanently"
+        case nil:       return ""
+        }
+    }
+    private var actionAlertMessage: String {
+        let idPrefix = (pendingAction?.report.targetId.prefix(8)).map(String.init) ?? ""
+        switch pendingAction?.kind {
+        case .unverify:
+            return "Removes the blue check on user \(idPrefix)…. They can re-verify through the normal flow."
+        case .ban:
+            return "Hard-deletes user \(idPrefix)… and every bid, match, message, block, and report tied to them. This cannot be undone."
+        case nil:
+            return ""
+        }
     }
 
     private func row(_ r: BackendService.AuthReport) -> some View {
@@ -126,9 +163,56 @@ struct AdminModerationView: View {
                             .background(Capsule().fill(Theme.gold))
                     }
                     .buttonStyle(.plain)
+                    HStack(spacing: 8) {
+                        Button {
+                            pendingAction = (r, .unverify)
+                        } label: {
+                            Label("Unverify", systemImage: "checkmark.seal")
+                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Theme.warning)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(Theme.warning.opacity(0.14)))
+                        }
+                        .buttonStyle(.plain)
+                        Button {
+                            pendingAction = (r, .ban)
+                        } label: {
+                            Label("Delete", systemImage: "xmark.octagon.fill")
+                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Theme.danger)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(Theme.danger.opacity(0.14)))
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
             .padding(14)
+        }
+    }
+
+    private func performAction() {
+        guard let pending = pendingAction else { return }
+        let (report, kind) = pending
+        pendingAction = nil
+        Task {
+            let err: String?
+            switch kind {
+            case .unverify: err = await backend.adminUnverifyUser(id: report.targetId)
+            case .ban:      err = await backend.adminDeleteUser(id: report.targetId)
+            }
+            if let err {
+                lastError = err
+                Haptics.warning()
+            } else {
+                // Auto-resolve the report as "actioned" so the queue clears
+                // — the moderator just took action on the target.
+                _ = await backend.resolveAuthReport(id: report.id, status: "actioned", note: "admin")
+                reports.removeAll { $0.id == report.id }
+                Haptics.success()
+            }
         }
     }
 

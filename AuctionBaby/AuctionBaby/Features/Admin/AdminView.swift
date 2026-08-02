@@ -14,12 +14,16 @@ struct AdminView: View {
         case edit(Profile)
         case editMe
         case backend
+        case realUsers
+        case moderation
         var id: String {
             switch self {
             case .addLot: return "addLot"
             case .addBidder: return "addBidder"
             case .editMe: return "editMe"
             case .backend: return "backend"
+            case .realUsers: return "realUsers"
+            case .moderation: return "moderation"
             case .edit(let p): return "edit-\(p.id)"
             }
         }
@@ -34,6 +38,8 @@ struct AdminView: View {
                     headerCard
                     myAccountCard
                     backendCard
+                    realUsersCard
+                    moderationCard
 
                     rosterSection(title: "Lots · \(store.adminRoster.count)",
                                   empty: "No lots on the floor yet.",
@@ -63,6 +69,8 @@ struct AdminView: View {
                 case .addBidder:   ProfileFormSheet(role: .man)
                 case .editMe:      ProfileFormSheet(role: store.me.role, existing: store.me, isCurrentUser: true)
                 case .backend:     AdminBackendView()
+                case .realUsers:   NavigationStack { AdminRealUsersView() }
+                case .moderation:  NavigationStack { AdminModerationView() }
                 case .edit(let p): ProfileFormSheet(role: p.role, existing: p)
                 }
             }
@@ -88,8 +96,7 @@ struct AdminView: View {
         }
     }
 
-    /// Doorway into the money console: float funding, ledger, owed women,
-    /// moderation queue — everything the payout Worker exposes.
+    /// Doorway into the money console: float funding, ledger, owed women.
     private var backendCard: some View {
         Button { sheet = .backend } label: {
             GlassSurface(corner: Theme.cornerL) {
@@ -102,7 +109,60 @@ struct AdminView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Money & backend").font(.system(size: 15, weight: .heavy, design: .serif))
                             .foregroundStyle(Theme.ink)
-                        Text("Float, ledger, payouts, moderation queue")
+                        Text("Float, ledger, payouts, backend URLs")
+                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                }
+                .padding(14)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Doorway into the real user roster (auth Worker) — search, unverify,
+    /// hard-delete. Distinct from `rosterSection` which manages sim data.
+    private var realUsersCard: some View {
+        Button { sheet = .realUsers } label: {
+            GlassSurface(corner: Theme.cornerL) {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.3.sequence.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.gold)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Theme.gold.opacity(0.14)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Signed-in users").font(.system(size: 15, weight: .heavy, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                        Text("Real accounts from Sign in with Apple. Unverify or delete.")
+                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                }
+                .padding(14)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Doorway into the report queue — user-filed Report & Block actions.
+    private var moderationCard: some View {
+        Button { sheet = .moderation } label: {
+            GlassSurface(corner: Theme.cornerL) {
+                HStack(spacing: 12) {
+                    Image(systemName: "flag.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.warning)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Theme.warning.opacity(0.14)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Moderation queue").font(.system(size: 15, weight: .heavy, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                        Text("User reports. Resolve, unverify, or delete the target.")
                             .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
                     }
                     Spacer()

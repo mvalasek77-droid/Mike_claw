@@ -22,7 +22,20 @@ struct ChatView: View {
     @State private var sending = false
 
     private var match: Match? { store.match(withId: matchID) }
-    private var isRemote: Bool { store.isRemoteMatches && store.remoteMatches.contains(where: { $0.id == matchID }) }
+    /// True iff this match is (or should be) authoritative on the server.
+    /// We can't rely on `store.remoteMatches.contains(...)` alone — a cold
+    /// tap-through-push can land us here before refreshRemoteMatch has
+    /// populated the row. Any signed-in session with matching wired treats
+    /// the chat as remote by default; the sim path fires only for Demo /
+    /// local-only sessions.
+    private var isRemote: Bool {
+        if store.demoMode { return false }
+        return matching.isEnabled
+    }
+    /// Frozen by C6 when the server refuses a send with 403 (block, DOB
+    /// gate). Composer locks with a static banner so the user isn't stuck
+    /// retrying against a wall.
+    @State private var chatFrozen: String?
 
     var body: some View {
         Group {
@@ -38,6 +51,11 @@ struct ChatView: View {
                                     expiredBanner
                                 }
                                 ForEach(match.messages) { msg in
+                                    // Role should always be set once we've reached ChatView
+                                    // (RootView gates on isRegistered); the fallback matters
+                                    // only during a transient tear-down and is deliberately
+                                    // conservative — .man means the "other" resolves to the
+                                    // woman, which is the more common label at rest.
                                     MessageBubble(message: msg, otherName: match.other(for: store.role ?? .man).name) { emoji in
                                         store.toggleReaction(emoji, on: msg.id, in: match)
                                     }
@@ -62,6 +80,10 @@ struct ChatView: View {
                 .background(AppBackground())
                 .task(id: matchID) {
                     await loadReserveInfo()
+                    // Always fire when signed in — refreshRemoteMatch is a
+                    // no-op for Demo / local-only, and it will insert the
+                    // row even if the match was previously unknown locally
+                    // (tap-through-push on a cold app).
                     if isRemote { await store.refreshRemoteMatch(matchId: matchID, matching: matching) }
                 }
                 .sheet(isPresented: $showReview) {
@@ -86,8 +108,12 @@ struct ChatView: View {
             }
         }
         .sheet(isPresented: $showReport) {
-            if let match {
-                ReportSheet(profile: match.other(for: store.role ?? .man)) { dismiss() }
+            if let match, let role = store.role {
+                // ReportSheet's onReported dismisses the sheet AND pops us
+                // out of ChatView — the match is scrubbed from remoteMatches
+                // by blockAndReport, so staying here would render the
+                // "Match closed" empty state.
+                ReportSheet(profile: match.other(for: role)) { dismiss() }
                     .presentationDetents([.medium, .large])
             }
         }
@@ -315,6 +341,10 @@ struct ChatView: View {
     /// Send the current draft. Remote matches go through the matching Worker
     /// with optimistic UI + rollback on failure; sim matches use the local
     /// `AuctionStore.send(_:in:)` path.
+    ///
+    /// C6: when the Worker returns 403 (block placed mid-chat, DOB gate
+    /// tripped, etc.), freeze the composer with a "can no longer be
+    /// messaged" banner instead of leaving the user retrying against a wall.
     private func sendDraft(_ match: Match) {
         let text = draft
         draft = ""
@@ -326,7 +356,12 @@ struct ChatView: View {
         Task {
             let ok = await store.sendRemoteMessage(matchId: match.id, text: text, matching: matching)
             sending = false
-            if !ok { draft = text }   // roll the composer back so the user can retry
+            if !ok {
+                draft = text
+                if let last = matching.lastError, last.contains("can't be delivered") {
+                    chatFrozen = "This match can no longer be messaged."
+                }
+            }
         }
     }
 
@@ -363,6 +398,14 @@ struct ChatView: View {
     private func composer(_ match: Match) -> some View {
         VStack(spacing: 10) {
             switch match.phase {
+            case _ where chatFrozen != nil:
+                HStack(spacing: 8) {
+                    Image(systemName: "hand.raised.slash.fill").font(.system(size: 13, weight: .bold))
+                    Text(chatFrozen ?? "This match can no longer be messaged.")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundStyle(Theme.inkFaint)
+                .frame(maxWidth: .infinity).padding(.vertical, 12)
             case .chatting where match.isExpired:
                 HStack(spacing: 8) {
                     Image(systemName: "snowflake").font(.system(size: 13, weight: .bold))

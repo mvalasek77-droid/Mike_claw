@@ -1326,6 +1326,86 @@ async function handleAdminResolveReport(reportId: string, request: Request, env:
   return json({ ok: true, updated: result.meta?.changes ?? 0 });
 }
 
+// ── Slice: admin user actions (unverify, delete, list) ───────────────────────
+
+/** Shared bearer gate for /admin/* endpoints. Same convention as
+ *  handleSendPush / handleAdminVerify / handleAdminListReports. Returns null
+ *  when authorized; a Response when not. */
+async function ensureAdmin(request: Request, env: Env): Promise<Response | null> {
+  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
+  const auth = request.headers.get("Authorization");
+  const supplied = auth?.startsWith("Bearer ") ? auth.slice(7) : (auth ?? "");
+  if (!(await constantTimeEqual(supplied, env.APP_SHARED_SECRET))) return err("Unauthorized", 401);
+  return null;
+}
+
+interface AdminUserRow {
+  id: string; email: string | null; name: string | null;
+  date_of_birth: string | null; created_at: number; last_seen_at: number;
+  verified_at: number | null; verification_status: string;
+}
+
+/** GET /admin/users?limit=&cursor=  [admin]
+ *  Paginated user list for the moderation console. Cursor is the last row's
+ *  `created_at`. Ships minimal fields — no apple_sub, no session tokens. */
+async function handleAdminListUsers(request: Request, env: Env): Promise<Response> {
+  const denied = await ensureAdmin(request, env);
+  if (denied) return denied;
+  const url = new URL(request.url);
+  const limitRaw = Number(url.searchParams.get("limit") ?? 50);
+  const limit = Math.min(200, Math.max(1, Number.isFinite(limitRaw) ? Math.floor(limitRaw) : 50));
+  const cursorRaw = url.searchParams.get("cursor");
+  const cursor = cursorRaw != null && cursorRaw !== "" ? Number(cursorRaw) : null;
+
+  let sql =
+    "SELECT id, email, name, date_of_birth, created_at, last_seen_at, " +
+    "verified_at, verification_status FROM users";
+  const params: unknown[] = [];
+  if (cursor != null && Number.isFinite(cursor)) {
+    sql += " WHERE created_at < ?";
+    params.push(cursor);
+  }
+  sql += " ORDER BY created_at DESC LIMIT ?";
+  params.push(limit);
+
+  const rows = await env.DB.prepare(sql).bind(...params).all<AdminUserRow>();
+  const list = rows.results ?? [];
+  const nextCursor = list.length === limit ? list[list.length - 1].created_at : null;
+  return json({
+    users: list.map((u) => ({
+      id: u.id, email: u.email, name: u.name, dateOfBirth: u.date_of_birth,
+      createdAt: u.created_at, lastSeenAt: u.last_seen_at,
+      verifiedAt: u.verified_at, verificationStatus: u.verification_status,
+    })),
+    nextCursor,
+  });
+}
+
+/** POST /admin/users/:id/unverify  [admin]
+ *  Nulls verified_at + resets verification_status → 'unstarted'. Reversible
+ *  via the existing /admin/verify path. */
+async function handleAdminUnverifyUser(userId: string, request: Request, env: Env): Promise<Response> {
+  const denied = await ensureAdmin(request, env);
+  if (denied) return denied;
+  const result = await env.DB.prepare(
+    "UPDATE users SET verified_at = NULL, verification_status = 'unstarted' WHERE id = ?",
+  ).bind(userId).run();
+  return json({ ok: true, updated: result.meta?.changes ?? 0 });
+}
+
+/** DELETE /admin/users/:id  [admin]
+ *  Hard-delete an account. Cascades scrub profiles, device_tokens, bids,
+ *  matches, messages, blocks, reports via the FK ON DELETE CASCADE
+ *  declarations on the schema. This is the "ban" primitive — no soft-delete
+ *  column added; if you want reversibility, use unverify + no further
+ *  action instead. */
+async function handleAdminDeleteUser(userId: string, request: Request, env: Env): Promise<Response> {
+  const denied = await ensureAdmin(request, env);
+  if (denied) return denied;
+  const result = await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+  return json({ ok: true, deleted: result.meta?.changes ?? 0 });
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
@@ -1370,6 +1450,13 @@ export default {
     if (pathname === "/admin/reports" && m === "GET") return handleAdminListReports(request, env);
     const reportResolve = pathname.match(/^\/admin\/reports\/([A-Za-z0-9-]{36})\/resolve$/);
     if (reportResolve && m === "POST") return handleAdminResolveReport(reportResolve[1], request, env);
+
+    // Admin user actions
+    if (pathname === "/admin/users" && m === "GET") return handleAdminListUsers(request, env);
+    const userUnverify = pathname.match(/^\/admin\/users\/([A-Za-z0-9-]{36})\/unverify$/);
+    if (userUnverify && m === "POST") return handleAdminUnverifyUser(userUnverify[1], request, env);
+    const userDelete = pathname.match(/^\/admin\/users\/([A-Za-z0-9-]{36})$/);
+    if (userDelete && m === "DELETE") return handleAdminDeleteUser(userDelete[1], request, env);
 
     return err("Not found", 404);
   },

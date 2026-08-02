@@ -787,7 +787,8 @@ final class AuctionStore: ObservableObject {
             // Parity with sim `accept`: she always sends the first invite —
             // Opening Bid Script if set, canned line otherwise.
             let opener = openerFor(bid: bid)
-            match.messages = [ChatMessage(fromMe: true, text: opener, isSystem: false)]
+            let localOpener = ChatMessage(fromMe: true, text: opener, isSystem: false)
+            match.messages = [localOpener]
             remoteMatches.insert(match, at: 0)
             isRemoteMatches = true
             // Ledger moves ONLY on server-confirmed success. Rollback path
@@ -797,10 +798,22 @@ final class AuctionStore: ObservableObject {
                       copycat: false, masterpiece: bid.qualifiesForMasterpiece)
             log(.bidAccepted, "You accepted \(bid.man.name)'s \(Money.compact(bid.amount)) bid.")
             save()
-            // Fire-and-forget the opener to the server so the bidder receives
-            // it too. Local state above is authoritative for this session; a
-            // subsequent refreshRemoteMatch will reconcile the id if needed.
-            Task { _ = await matching.sendMessage(matchId: remoteMatch.id, text: opener) }
+            // Await the opener send so we can reconcile the local placeholder
+            // with the server's assigned id. Fire-and-forget lost the opener
+            // whenever a subsequent refreshRemoteMatch overwrote the local
+            // list with the server's (empty-of-opener) list.
+            if case .success(let remote) = await matching.sendMessage(matchId: remoteMatch.id, text: opener) {
+                if let idx = remoteMatches.firstIndex(where: { $0.id == match.id }),
+                   let mIdx = remoteMatches[idx].messages.firstIndex(where: { $0.id == localOpener.id }) {
+                    remoteMatches[idx].messages[mIdx] = ChatMessage(from: remote,
+                                                                     mineId: me.id.uuidString.lowercased())
+                    save()
+                }
+            }
+            // If the send failed — 429, transient network — the local
+            // placeholder stays. The next refreshRemoteMatch will overwrite
+            // and lose it, which is a known gap; a proper retry queue is a
+            // follow-up.
         case .failure(let message):
             if let i = remoteIncomingBids.firstIndex(where: { $0.id == bid.id }) {
                 remoteIncomingBids[i].status = priorStatus

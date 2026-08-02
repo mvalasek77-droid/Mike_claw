@@ -268,6 +268,53 @@ final class BackendService: ObservableObject {
         }
     }
 
+    // MARK: - Auth Worker admin user actions (batch G)
+
+    /// A minimal user row for the admin console. No apple_sub, no session
+    /// tokens — the console shouldn't handle those.
+    struct AdminUser: Decodable, Identifiable, Equatable {
+        let id: String
+        let email: String?
+        let name: String?
+        let dateOfBirth: String?
+        let createdAt: Double
+        let lastSeenAt: Double
+        let verifiedAt: Double?
+        let verificationStatus: String?
+    }
+
+    /// GET /admin/users?limit=&cursor=  — paginated user list, newest first.
+    func fetchAdminUsers(limit: Int = 50,
+                        cursor: Double? = nil) async -> BackendResult<[AdminUser]> {
+        var path = "/admin/users?limit=\(limit)"
+        if let cursor { path += "&cursor=\(Int(cursor))" }
+        struct Wrapper: Decodable { let users: [AdminUser] }
+        return await getAuth(path, as: Wrapper.self).map(\.users)
+    }
+
+    /// POST /admin/users/:id/unverify — nulls verified_at + resets status.
+    func adminUnverifyUser(id: String) async -> String? {
+        struct Response: Decodable { let ok: Bool; let updated: Int? }
+        switch await postAuth("/admin/users/\(id)/unverify",
+                              body: [:], as: Response.self) {
+        case .success: return nil
+        case .failure(let message): return message
+        }
+    }
+
+    /// DELETE /admin/users/:id — hard delete. Cascades scrub profiles,
+    /// bids, matches, messages, blocks, reports via FK ON DELETE CASCADE.
+    /// This is the "ban" primitive; irreversible.
+    func adminDeleteUser(id: String) async -> String? {
+        struct Response: Decodable { let ok: Bool; let deleted: Int? }
+        switch await request(path: "/admin/users/\(id)", method: "DELETE",
+                             body: nil, baseOverride: BackendConfig.authURL,
+                             as: Response.self) {
+        case .success: return nil
+        case .failure(let message): return message
+        }
+    }
+
     /// POST /payouts/topup — manually run the float top-up (also on cron).
     func triggerTopUp() async -> BackendResult<String> {
         struct Response: Decodable { let toppedUp: Double; let availableUSD: Double }
