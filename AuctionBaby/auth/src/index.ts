@@ -860,11 +860,8 @@ async function handleVerifyWebhook(request: Request, env: Env): Promise<Response
  * as an override lane (fraud reversal, manual re-verify).
  */
 async function handleAdminVerify(request: Request, env: Env): Promise<Response> {
-  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
-  const auth = request.headers.get("Authorization");
-  const supplied = auth?.startsWith("Bearer ") ? auth.slice(7) : (auth ?? "");
-  if (!(await constantTimeEqual(supplied, env.APP_SHARED_SECRET))) return err("Unauthorized", 401);
-
+  const denied = await ensureAdminSession(request, env);
+  if (denied) return denied;
   let body: any;
   try { body = await request.json(); } catch { return err("Invalid JSON body"); }
   const userId = String(body?.userId ?? "").trim();
@@ -1265,11 +1262,8 @@ async function handleCreateReport(request: Request, env: Env): Promise<Response>
  *  APP_SHARED_SECRET-gated triage queue. Cursor is the last row's
  *  `created_at` (descending pagination). */
 async function handleAdminListReports(request: Request, env: Env): Promise<Response> {
-  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
-  const auth = request.headers.get("Authorization");
-  const supplied = auth?.startsWith("Bearer ") ? auth.slice(7) : (auth ?? "");
-  if (!(await constantTimeEqual(supplied, env.APP_SHARED_SECRET))) return err("Unauthorized", 401);
-
+  const denied = await ensureAdminSession(request, env);
+  if (denied) return denied;
   const url = new URL(request.url);
   const status = url.searchParams.get("status") ?? "open";
   if (!["open", "reviewed", "actioned", "dismissed", "all"].includes(status)) {
@@ -1316,11 +1310,8 @@ async function handleAdminListReports(request: Request, env: Env): Promise<Respo
  *  status must be one of reviewed|actioned|dismissed. Stamps resolved_at
  *  and resolved_by (the admin's short name, in the body's note field). */
 async function handleAdminResolveReport(reportId: string, request: Request, env: Env): Promise<Response> {
-  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
-  const auth = request.headers.get("Authorization");
-  const supplied = auth?.startsWith("Bearer ") ? auth.slice(7) : (auth ?? "");
-  if (!(await constantTimeEqual(supplied, env.APP_SHARED_SECRET))) return err("Unauthorized", 401);
-
+  const denied = await ensureAdminSession(request, env);
+  if (denied) return denied;
   let body: any;
   try { body = await request.json(); } catch { return err("Invalid JSON body"); }
   const status = String(body?.status ?? "").trim();
@@ -1338,9 +1329,30 @@ async function handleAdminResolveReport(reportId: string, request: Request, env:
 
 // ── Slice: admin user actions (unverify, delete, list) ───────────────────────
 
-/** Shared bearer gate for /admin/* endpoints. Same convention as
- *  handleSendPush / handleAdminVerify / handleAdminListReports. Returns null
- *  when authorized; a Response when not. */
+/** Session-based gate for user-facing /admin/* endpoints.
+ *
+ *  Batch L — replaces the static-bearer gate that shipped in Batches G/H.
+ *  Requires a valid session token AND `users.is_admin = 1` on the
+ *  authenticated user. Anyone with the app can no longer become admin by
+ *  discovering the static bearer; they'd need to compromise a specific
+ *  admin account.
+ *
+ *  Internal Worker-to-Worker calls (/push/send from matching, and
+ *  /internal/reservations/mark on matching Worker) still use the static
+ *  bearer — they don't have session tokens. Kept for compatibility as
+ *  `ensureAdminBearer` below. Returns null on success, a Response on deny. */
+async function ensureAdminSession(request: Request, env: Env): Promise<Response | null> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+  const row = await env.DB.prepare("SELECT is_admin FROM users WHERE id = ?")
+    .bind(userId).first<{ is_admin: number }>();
+  if (!row || row.is_admin !== 1) return err("Admin only", 403);
+  return null;
+}
+
+/** Legacy static-bearer gate — kept for Worker-to-Worker calls that don't
+ *  ship a session token. New user-facing admin endpoints must use
+ *  ensureAdminSession instead. */
 async function ensureAdmin(request: Request, env: Env): Promise<Response | null> {
   if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
   const auth = request.headers.get("Authorization");
@@ -1366,7 +1378,7 @@ interface AdminUserRow {
  *  current row counts, and lets a founder spot serial offenders without a
  *  per-row round-trip. */
 async function handleAdminListUsers(request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdmin(request, env);
+  const denied = await ensureAdminSession(request, env);
   if (denied) return denied;
   const url = new URL(request.url);
   const limitRaw = Number(url.searchParams.get("limit") ?? 50);
@@ -1406,7 +1418,7 @@ async function handleAdminListUsers(request: Request, env: Env): Promise<Respons
  *  Nulls verified_at + resets verification_status → 'unstarted'. Reversible
  *  via the existing /admin/verify path. */
 async function handleAdminUnverifyUser(userId: string, request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdmin(request, env);
+  const denied = await ensureAdminSession(request, env);
   if (denied) return denied;
   const result = await env.DB.prepare(
     "UPDATE users SET verified_at = NULL, verification_status = 'unstarted' WHERE id = ?",
@@ -1421,7 +1433,7 @@ async function handleAdminUnverifyUser(userId: string, request: Request, env: En
  *  column added; if you want reversibility, use unverify + no further
  *  action instead. */
 async function handleAdminDeleteUser(userId: string, request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdmin(request, env);
+  const denied = await ensureAdminSession(request, env);
   if (denied) return denied;
   const result = await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
   return json({ ok: true, deleted: result.meta?.changes ?? 0 });

@@ -42,7 +42,14 @@ CREATE TABLE IF NOT EXISTS users (
   -- check id, or a UUID we mint for manual mode). Lets support look it up.
   verification_ref       TEXT,
   -- 'unstarted' | 'pending' | 'passed' | 'failed' | 'expired'
-  verification_status    TEXT NOT NULL DEFAULT 'unstarted'
+  verification_status    TEXT NOT NULL DEFAULT 'unstarted',
+
+  -- ── Batch L: session-based admin auth ──────────────────────────────────────
+  -- 0 = normal user. 1 = admin (can hit /admin/*). Flipped out-of-band via
+  --   wrangler d1 execute — no in-app self-grant. Complements the static
+  --   APP_SHARED_SECRET which is now only used for Worker-to-Worker calls
+  --   (push send, reservation mirror).
+  is_admin               INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_apple_sub ON users(apple_sub);

@@ -27,7 +27,7 @@ struct AdminGateView: View {
                         Text("Founder sign-in")
                             .font(.system(size: 22, weight: .heavy, design: .serif))
                             .foregroundStyle(Theme.ink)
-                        Text("The admin console can move real money.\nCredentials required every time.")
+                        Text("The admin console can move real money.\nCredentials required every time.\n\nUser & report actions ALSO require you to be signed in with an admin account (set `is_admin = 1` on your user row).")
                             .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
                             .multilineTextAlignment(.center)
 

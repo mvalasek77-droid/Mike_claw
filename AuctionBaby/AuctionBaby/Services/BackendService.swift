@@ -315,9 +315,13 @@ final class BackendService: ObservableObject {
     /// bids, matches, messages, blocks, reports via FK ON DELETE CASCADE.
     /// This is the "ban" primitive; irreversible.
     func adminDeleteUser(id: String) async -> String? {
+        guard let bearer = adminSessionBearer() else {
+            return "Sign in as an admin first — this action needs your account."
+        }
         struct Response: Decodable { let ok: Bool; let deleted: Int? }
         switch await request(path: "/admin/users/\(id)", method: "DELETE",
                              body: nil, baseOverride: BackendConfig.authURL,
+                             bearerOverride: bearer,
                              as: Response.self) {
         case .success: return nil
         case .failure(let message): return message
@@ -455,24 +459,40 @@ final class BackendService: ObservableObject {
         await request(path: path, method: "POST", body: body, baseOverride: base, as: type)
     }
 
-    /// Same admin bearer, different Worker. Auth Worker's admin endpoints
-    /// (/admin/reports*) are gated by APP_SHARED_SECRET, by convention the
-    /// same string set on `sharedSecret` here.
+    /// Auth Worker's user-facing admin endpoints (/admin/reports*,
+    /// /admin/users*, /admin/verify) — Batch L switched these from the
+    /// static APP_SHARED_SECRET bearer to a session-token gate that also
+    /// requires `users.is_admin = 1`. We read the session token from the
+    /// same Keychain slot AuthService owns, so a signed-in admin's session
+    /// carries the right bearer without importing AuthService here.
+    private static let sessionTokenKey = "com.valasek.auctionbaby.auth.sessionToken.v1"
+    private func adminSessionBearer() -> String? { SecureStore.string(forKey: Self.sessionTokenKey) }
+
     private func getAuth<T: Decodable>(_ path: String, as type: T.Type) async -> BackendResult<T> {
-        await request(path: path, method: "GET", body: nil,
-                      baseOverride: BackendConfig.authURL, as: type)
+        guard let bearer = adminSessionBearer() else {
+            return .failure("Sign in as an admin first — this action needs your account.")
+        }
+        return await request(path: path, method: "GET", body: nil,
+                             baseOverride: BackendConfig.authURL,
+                             bearerOverride: bearer, as: type)
     }
     private func postAuth<T: Decodable>(_ path: String, body: [String: Any], as type: T.Type) async -> BackendResult<T> {
-        await request(path: path, method: "POST", body: body,
-                      baseOverride: BackendConfig.authURL, as: type)
+        guard let bearer = adminSessionBearer() else {
+            return .failure("Sign in as an admin first — this action needs your account.")
+        }
+        return await request(path: path, method: "POST", body: body,
+                             baseOverride: BackendConfig.authURL,
+                             bearerOverride: bearer, as: type)
     }
 
     private func request<T: Decodable>(path: String, method: String,
                                        body: [String: Any]?, baseOverride: String? = nil,
+                                       bearerOverride: String? = nil,
                                        as type: T.Type) async -> BackendResult<T> {
         let rawBase = baseOverride ?? workerURL
+        let usingBearer = bearerOverride ?? sharedSecret
         guard !rawBase.trimmingCharacters(in: .whitespaces).isEmpty,
-              !sharedSecret.trimmingCharacters(in: .whitespaces).isEmpty else {
+              !usingBearer.trimmingCharacters(in: .whitespaces).isEmpty else {
             return .failure("Backend not configured — set the Worker URL and shared secret first.")
         }
         let base = rawBase.hasSuffix("/") ? String(rawBase.dropLast()) : rawBase
@@ -482,7 +502,7 @@ final class BackendService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.timeoutInterval = 20
-        request.setValue("Bearer \(sharedSecret)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(usingBearer)", forHTTPHeaderField: "Authorization")
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try? JSONSerialization.data(withJSONObject: body)
