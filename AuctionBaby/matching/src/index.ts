@@ -666,6 +666,15 @@ async function handleSendMessage(matchId: string, request: Request, env: Env): P
   if (!match) return err("Match not found", 404);
   if (match.phase !== "chatting") return err(`Match is ${match.phase} — no more messages`, 409);
 
+  // Batch M — server enforcement of the 24h freshness clock. The client
+  // already renders a "match has gone cold" banner and locks the composer
+  // when Match.isExpired is true, but the Worker previously accepted the
+  // write regardless. Match parity here — reject with 409 so no push fires
+  // and the sender's optimistic bubble rolls back with the right message.
+  if (match.expires_at != null && match.expires_at < Date.now()) {
+    return err("This match has gone cold — nobody replied in time.", 409);
+  }
+
   // Block enforcement — a block placed AFTER the match freezes new messages
   // in either direction. Existing history stays visible on the reader side
   // for context (report evidence), but nothing new lands.
@@ -821,19 +830,31 @@ export default {
   },
 
   // Cron trigger (see wrangler.toml [triggers].crons).
-  // Prune rate_counters rows whose window closed more than 48h ago. Only
-  // historical windows are safe to delete — anything within 48h could still
-  // be re-consulted by an in-flight burst. Cheap D1 delete; bounded blast
-  // radius by the WHERE clause.
+  // Two housekeeping passes on each fire:
+  //   1. rate_counters — drop windows that closed >48h ago (Batch K).
+  //   2. stale cold matches — close chatting rows whose 24h clock lapsed
+  //      more than 30 days ago (Batch M). We leave the 30-day tail so a
+  //      user opening the app after a break still sees the recent history
+  //      (dimmed) before the row moves to phase='closed'.
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+    const now = Date.now();
+    const rateCutoff = now - 48 * 60 * 60 * 1000;
+    const coldCutoff = now - 30 * 24 * 60 * 60 * 1000;
     try {
-      const result = await env.DB.prepare(
+      const rateResult = await env.DB.prepare(
         "DELETE FROM rate_counters WHERE window_ms < ?",
-      ).bind(cutoff).run();
-      console.log(`rate_counters cleanup: pruned ${result.meta?.changes ?? 0} rows older than ${new Date(cutoff).toISOString()}`);
+      ).bind(rateCutoff).run();
+      console.log(`rate_counters cleanup: pruned ${rateResult.meta?.changes ?? 0} rows older than ${new Date(rateCutoff).toISOString()}`);
     } catch (e) {
       console.log(`rate_counters cleanup failed: ${String(e)}`);
+    }
+    try {
+      const coldResult = await env.DB.prepare(
+        "UPDATE matches SET phase = 'closed' WHERE phase = 'chatting' AND expires_at IS NOT NULL AND expires_at < ?",
+      ).bind(coldCutoff).run();
+      console.log(`stale-match cleanup: closed ${coldResult.meta?.changes ?? 0} matches cold >30 days`);
+    } catch (e) {
+      console.log(`stale-match cleanup failed: ${String(e)}`);
     }
   },
 };
