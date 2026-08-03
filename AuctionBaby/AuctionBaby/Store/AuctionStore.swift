@@ -805,8 +805,13 @@ final class AuctionStore: ObservableObject {
             if case .success(let remote) = await matching.sendMessage(matchId: remoteMatch.id, text: opener) {
                 if let idx = remoteMatches.firstIndex(where: { $0.id == match.id }),
                    let mIdx = remoteMatches[idx].messages.firstIndex(where: { $0.id == localOpener.id }) {
-                    remoteMatches[idx].messages[mIdx] = ChatMessage(from: remote,
-                                                                     mineId: me.id.uuidString.lowercased())
+                    // Adopt server id, keep the local date (C4) so the
+                    // opener doesn't visually jump if the server clock
+                    // differs from the phone.
+                    let existingDate = remoteMatches[idx].messages[mIdx].date
+                    var reconciled = ChatMessage(from: remote, mineId: me.id.uuidString.lowercased())
+                    reconciled.date = existingDate
+                    remoteMatches[idx].messages[mIdx] = reconciled
                     save()
                 }
             }
@@ -1075,8 +1080,15 @@ final class AuctionStore: ObservableObject {
         switch result {
         case .success(let remote):
             if let mIdx = remoteMatches[idx].messages.firstIndex(where: { $0.id == tempId }) {
-                remoteMatches[idx].messages[mIdx] = ChatMessage(from: remote,
-                                                                mineId: me.id.uuidString.lowercased())
+                // Adopt the server's id (so a subsequent refreshRemoteMatch
+                // reconciles cleanly) but PRESERVE the client-side date the
+                // optimistic bubble already showed. Otherwise a server clock
+                // skew or slow network would jump the message in the ForEach
+                // ordering the moment success returns.
+                let existingDate = remoteMatches[idx].messages[mIdx].date
+                var reconciled = ChatMessage(from: remote, mineId: me.id.uuidString.lowercased())
+                reconciled.date = existingDate
+                remoteMatches[idx].messages[mIdx] = reconciled
             }
             return true
         case .failure(let message):
