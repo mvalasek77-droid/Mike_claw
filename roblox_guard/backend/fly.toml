@@ -1,38 +1,41 @@
 # Fly.io configuration for RobloxGuard backend
-app = "robloxguard-api"
-primary_region = "sjc"
+app = "robloxguard-api-shimmering-log-3796"
+primary_region = "iad"
 
 [build]
   dockerfile = "Dockerfile"
 
 [http_service]
-  internal_port = 8000
+  internal_port = 8080
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = "suspend"
   auto_start_machines = true
   min_machines_running = 1
 
-[http_service.concurrency]
-  type = "requests"
-  hard_limit = 25
-  soft_limit = 20
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
 
 [[http_service.checks]]
-  interval = "30s"
-  timeout = "5s"
   grace_period = "10s"
+  interval = "30s"
   method = "GET"
   path = "/health"
+  timeout = "5s"
 
 [[vm]]
   size = "shared-cpu-1x"
   memory = "256mb"
+  memory_mb = 256
 
 [mounts]
-  source = "robloxguard_data"
+  source = "rg_data"
   destination = "/data"
 
 [env]
+  RG_DB_PATH = "/data/roblox_guard.db"
+  RG_LOG_DIR = "/data/logs"
+  RG_EVIDENCE_DIR = "/data/evidence"
   RG_APNS_SANDBOX = "0"
   RG_SUPPORT_EMAIL = "mvalasek@gmail.com"
-  RG_DB_PATH = "/data/roblox_guard.db"

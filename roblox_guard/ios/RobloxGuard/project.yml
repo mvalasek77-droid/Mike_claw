@@ -31,7 +31,7 @@ targets:
         # Production backend on Fly.io — Apple reviewer must be able to reach it.
         # Local dev can override with a launch argument or xcconfig.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
-        RG_API_BASE_URL: "https://robloxguard-api.fly.dev"
+        RG_API_BASE_URL: "https://robloxguard-api-shimmering-log-3796.fly.dev"
         RG_API_TOKEN: ""
 
         # Sources/Assets.xcassets/AppIcon.appiconset — original shield + block
