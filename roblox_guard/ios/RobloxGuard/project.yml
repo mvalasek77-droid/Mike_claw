@@ -32,7 +32,7 @@ targets:
         # Local dev can override with a launch argument or xcconfig.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         RG_API_BASE_URL: "https://robloxguard-api-shimmering-log-3796.fly.dev"
-        RG_API_TOKEN: ""
+        RG_API_TOKEN: "87554174d37fc059d024220fcb7fc633e7d4e9052594659a88aec4905114d97c"
 
         # Sources/Assets.xcassets/AppIcon.appiconset — original shield + block
         # mark, not derived from Roblox's own logo/branding (see README).
