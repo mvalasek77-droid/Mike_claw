@@ -2,19 +2,22 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip uninstall -y pytest pytest-asyncio \
-    && rm -rf /root/.cache
+# Install system deps for playwright (evidence screenshots)
+# Keep it minimal — playwright is optional, app degrades gracefully without it
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
+# Install runtime deps only (strip test packages)
+RUN pip install --no-cache-dir fastapi uvicorn httpx[http2] python-multipart pyjwt cryptography
+
+# Copy the app
 COPY . .
 
-RUN mkdir -p /data /data/evidence /data/logs
+# Persistent volume at /data for SQLite DB + evidence files
+ENV RG_DB_PATH=/data/roblox_guard.db
+ENV RG_API_TOKEN=""
+ENV RG_ADMIN_TOKEN=""
 
-ENV RG_DB_PATH=/data/roblox_guard.db \
-    RG_LOG_DIR=/data/logs \
-    RG_EVIDENCE_DIR=/data/evidence
+EXPOSE 8000
 
-EXPOSE 8080
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
