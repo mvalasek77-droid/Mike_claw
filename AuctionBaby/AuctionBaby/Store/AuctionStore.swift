@@ -34,12 +34,16 @@ final class AuctionStore: ObservableObject {
     /// can route refunds to the correct wallet. Generated once, persisted forever.
     @Published private(set) var appAccountToken: UUID = UUID()
 
-    /// Fires after any explicit profile-mutating function (register, edit-name,
-    /// updateProfilePhotos, updateOpeningBidScript, updateArchetype-adjacent).
-    /// Wired at app root to `ProfileService.uploadMyProfile(from:)` so signed-in
-    /// users' server-side public profile stays in sync with the local record.
-    /// Absent hook / local-only session → nothing happens.
+    /// Fires after any profile-mutating function that changes TEXT fields
+    /// (register, updateOpeningBidScript, setStartingBid, equipArchetype).
+    /// Wired at app root to `ProfileService.uploadMyProfile(from:)` so
+    /// signed-in users' server-side public profile stays in sync.
     var onProfileChanged: ((Profile) -> Void)?
+
+    /// Fires after photo data changes (updateProfilePhotos, register with
+    /// photos). Wired at app root to `ProfileService.syncPhotos(from:)` so
+    /// local JPEG bytes are pushed to R2 and visible to other users.
+    var onPhotosChanged: ((Profile) -> Void)?
 
     /// Demo Mode for Apple App Review. Activated by registering with the name
     /// "demo" (case-insensitive) — see DEMO_MODE.md. Free demo top-ups and a
@@ -439,6 +443,9 @@ final class AuctionStore: ObservableObject {
                                             : "You're on the floor. Start bidding."))
         save()
         onProfileChanged?(me)
+        if me.photoData != nil || !me.photoGallery.isEmpty {
+            onPhotosChanged?(me)
+        }
     }
 
     /// Wipe everything and return to onboarding (Settings → Reset).
@@ -1467,6 +1474,7 @@ final class AuctionStore: ObservableObject {
         me.photoData = primary
         me.photoGallery = gallery
         save()
+        onPhotosChanged?(me)
         toastFlash(primary == nil ? "Photos cleared." : "Photos updated.")
     }
 

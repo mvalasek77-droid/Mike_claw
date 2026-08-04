@@ -36,7 +36,7 @@ final class ProfileService: ObservableObject {
     /// after `register()` and any profile edit that changes public-visible
     /// fields (name, bio, prompts, interests, hue, starting bid, archetype).
     ///
-    /// Photos are NOT sent (that's a follow-up slice with R2 + moderation).
+    /// Photos sync separately via `syncPhotos(from:)` (Batch V).
     /// Age is not sent — the Worker derives it from `users.date_of_birth`.
     @discardableResult
     func uploadMyProfile(from profile: Profile) async -> ServiceResult<PublicProfile> {
@@ -135,6 +135,29 @@ final class ProfileService: ObservableObject {
     func reorderPhotos(ids: [String]) async -> ServiceResult<PhotosResponse> {
         guard isEnabled else { return .notConfigured }
         await put("/me/photos/order", body: ["ids": ids], as: PhotosResponse.self)
+    }
+
+    /// Replace the full server photo set with whatever the local profile holds.
+    /// Called from the `onPhotosChanged` callback after the photo editor saves
+    /// or after registration when photos are present. Strategy: delete every
+    /// existing server photo, upload each local photo in order, then refresh
+    /// `myServerProfile` so callers see the new CDN URLs.
+    func syncPhotos(from profile: Profile) async {
+        guard isEnabled else { return }
+        var localPhotos: [Data] = []
+        if let primary = profile.photoData { localPhotos.append(primary) }
+        localPhotos.append(contentsOf: profile.photoGallery)
+
+        let current = myServerProfile?.photos ?? []
+        for photo in current {
+            _ = await deletePhoto(id: photo.id)
+        }
+
+        for jpeg in localPhotos {
+            _ = await uploadPhoto(jpeg: jpeg)
+        }
+
+        _ = await refreshMyProfile()
     }
 
     // MARK: - Transport

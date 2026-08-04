@@ -90,6 +90,10 @@ struct AuctionBabyApp: App {
                         guard let store, !store.demoMode else { return }
                         Task { _ = await profileSync?.uploadMyProfile(from: profile) }
                     }
+                    store.onPhotosChanged = { [weak profileSync, weak store] profile in
+                        guard let store, !store.demoMode else { return }
+                        Task { await profileSync?.syncPhotos(from: profile) }
+                    }
                     // Slice 4c1a: mirror local Report & Block actions to the
                     // auth Worker so the pair can't see, bid, or message
                     // across devices. Local block already fired above; this
