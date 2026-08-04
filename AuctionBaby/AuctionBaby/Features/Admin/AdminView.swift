@@ -123,6 +123,11 @@ struct AdminView: View {
                             trail: "\(s.matchesClosed) closed")
                     statRow("Last 24h", value: "\(s.bids24h) bids",
                             trail: "\(s.messages24h) messages")
+                    if let n = s.suspended, n > 0 {
+                        statRow("Suspended", value: "\(n)",
+                                trail: "Users under active soft-ban.",
+                                highlight: Theme.warning)
+                    }
                     if s.noDob > 0 {
                         statRow("No DOB", value: "\(s.noDob)",
                                 trail: "Should be zero — DOB gate is enforced.",

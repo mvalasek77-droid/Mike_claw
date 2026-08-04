@@ -14,7 +14,7 @@ struct AdminRealUsersView: View {
     @State private var lastError: String?
     @State private var pending: (user: BackendService.AdminUser, kind: Action)?
 
-    enum Action { case unverify, delete }
+    enum Action { case unverify, delete, suspend1d, suspend7d, suspend30d, unsuspend }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -82,9 +82,17 @@ struct AdminRealUsersView: View {
                             .foregroundStyle(Theme.inkFaint)
                     }
                     Spacer()
+                    if isSuspended(u) {
+                        Chip(text: "suspended", color: Theme.warning)
+                    }
                     if u.verifiedAt != nil {
                         Chip(text: "verified", color: Theme.verify)
                     }
+                }
+                if isSuspended(u), let until = u.suspendedUntil {
+                    Text("Suspended until \(fullDate(until))")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.warning)
                 }
                 // Batch H — surface moderator counts so serial offenders
                 // are visible without opening the reports queue.
@@ -122,6 +130,32 @@ struct AdminRealUsersView: View {
                     .buttonStyle(.plain)
                     .disabled(u.verifiedAt == nil)
                     .opacity(u.verifiedAt == nil ? 0.4 : 1)
+                    // Suspend menu — presets keep the flow one tap most of
+                    // the time; unsuspend replaces the menu when active.
+                    if isSuspended(u) {
+                        Button {
+                            pending = (u, .unsuspend)
+                        } label: {
+                            Label("Unsuspend", systemImage: "clock.arrow.circlepath")
+                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Theme.success)
+                                .frame(maxWidth: .infinity).padding(.vertical, 8)
+                                .background(Capsule().fill(Theme.success.opacity(0.14)))
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Menu {
+                            Button("Suspend 24 hours") { pending = (u, .suspend1d) }
+                            Button("Suspend 7 days") { pending = (u, .suspend7d) }
+                            Button("Suspend 30 days") { pending = (u, .suspend30d) }
+                        } label: {
+                            Label("Suspend", systemImage: "clock.badge.exclamationmark")
+                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Theme.warning)
+                                .frame(maxWidth: .infinity).padding(.vertical, 8)
+                                .background(Capsule().fill(Theme.warning.opacity(0.14)))
+                        }
+                    }
                     Button {
                         pending = (u, .delete)
                     } label: {
@@ -139,9 +173,12 @@ struct AdminRealUsersView: View {
     }
 
     private var alertTitle: String {
+        let name = pending?.user.name ?? "user"
         switch pending?.kind {
-        case .unverify: return "Unverify \(pending?.user.name ?? "user")?"
-        case .delete:   return "Delete \(pending?.user.name ?? "user")?"
+        case .unverify: return "Unverify \(name)?"
+        case .delete:   return "Delete \(name)?"
+        case .suspend1d, .suspend7d, .suspend30d: return "Suspend \(name)?"
+        case .unsuspend: return "Unsuspend \(name)?"
         case nil:       return ""
         }
     }
@@ -149,6 +186,10 @@ struct AdminRealUsersView: View {
         switch pending?.kind {
         case .unverify: return "Unverify"
         case .delete:   return "Delete permanently"
+        case .suspend1d: return "Suspend 24h"
+        case .suspend7d: return "Suspend 7 days"
+        case .suspend30d: return "Suspend 30 days"
+        case .unsuspend: return "Unsuspend"
         case nil:       return ""
         }
     }
@@ -158,8 +199,17 @@ struct AdminRealUsersView: View {
             return "Removes their blue check. They can re-verify through the normal flow."
         case .delete:
             return "Hard-deletes the account and every bid, match, message, block, and report tied to it. This cannot be undone."
+        case .suspend1d, .suspend7d, .suspend30d:
+            return "Blocks new sign-ins, profile writes, and bids for the chosen window. Existing sessions run to their normal expiry. Reversible with Unsuspend."
+        case .unsuspend:
+            return "Lifts the suspension immediately. Sign-ins and bids resume."
         case nil: return ""
         }
+    }
+
+    private func isSuspended(_ u: BackendService.AdminUser) -> Bool {
+        guard let until = u.suspendedUntil else { return false }
+        return until > Date().timeIntervalSince1970 * 1000
     }
 
     private func shortDate(_ ms: Double) -> String {
@@ -167,6 +217,14 @@ struct AdminRealUsersView: View {
         let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .none
         return f.string(from: d)
     }
+
+    private func fullDate(_ ms: Double) -> String {
+        let d = Date(timeIntervalSince1970: ms / 1000)
+        let f = DateFormatter(); f.dateStyle = .medium; f.timeStyle = .short
+        return f.string(from: d)
+    }
+
+    private static let dayMs: Double = 24 * 60 * 60 * 1000
 
     private func refresh() async {
         loading = true
@@ -183,9 +241,20 @@ struct AdminRealUsersView: View {
         pending = nil
         Task {
             let err: String?
+            let now = Date().timeIntervalSince1970 * 1000
             switch p.kind {
-            case .unverify: err = await backend.adminUnverifyUser(id: p.user.id)
-            case .delete:   err = await backend.adminDeleteUser(id: p.user.id)
+            case .unverify:
+                err = await backend.adminUnverifyUser(id: p.user.id)
+            case .delete:
+                err = await backend.adminDeleteUser(id: p.user.id)
+            case .suspend1d:
+                err = await backend.adminSuspendUser(id: p.user.id, untilMs: now + Self.dayMs)
+            case .suspend7d:
+                err = await backend.adminSuspendUser(id: p.user.id, untilMs: now + 7 * Self.dayMs)
+            case .suspend30d:
+                err = await backend.adminSuspendUser(id: p.user.id, untilMs: now + 30 * Self.dayMs)
+            case .unsuspend:
+                err = await backend.adminUnsuspendUser(id: p.user.id)
             }
             if let err {
                 lastError = err

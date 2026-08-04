@@ -334,15 +334,27 @@ async function handlePlaceBid(request: Request, env: Env): Promise<Response> {
   // is where the 18+ check runs, so "DOB present" is the age-verified
   // proxy. Applies to both the bidder and the lot so a null-DOB user can
   // neither send nor receive.
+  //
+  // Batch R — same query pulls suspended_until so a soft-banned user can't
+  // send or receive new bids while the suspension is active.
+  const now = Date.now();
   const parties = await env.DB.prepare(
-    "SELECT id, date_of_birth FROM users WHERE id IN (?, ?)",
-  ).bind(bidderId, lotId).all<{ id: string; date_of_birth: string | null }>();
+    "SELECT id, date_of_birth, suspended_until FROM users WHERE id IN (?, ?)",
+  ).bind(bidderId, lotId).all<{
+    id: string; date_of_birth: string | null; suspended_until: number | null;
+  }>();
   const rows = parties.results ?? [];
   const lotRow = rows.find((r) => r.id === lotId);
   const bidderRow = rows.find((r) => r.id === bidderId);
   if (!lotRow) return err("Lot not found", 404);
   if (!bidderRow?.date_of_birth) return err("Set your date of birth first — the 18+ check runs against it.", 403);
   if (!lotRow.date_of_birth) return err("Bid can't be delivered", 403);
+  if (bidderRow.suspended_until != null && bidderRow.suspended_until > now) {
+    return err("Your account is suspended.", 403);
+  }
+  if (lotRow.suspended_until != null && lotRow.suspended_until > now) {
+    return err("Bid can't be delivered", 403);
+  }
 
   // Server-enforced blocks: either direction stops the bid. Deliberately
   // vague error to avoid leaking who blocked whom.

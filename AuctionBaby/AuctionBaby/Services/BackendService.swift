@@ -290,6 +290,9 @@ final class BackendService: ObservableObject {
         /// blocked. Nil on old server builds.
         let reportsAgainst: Int?
         let blocksAgainst: Int?
+        /// Batch R — suspension cutoff (epoch ms). Nil = not suspended.
+        /// UI treats "in the past" the same as nil.
+        let suspendedUntil: Double?
     }
 
     /// Batch P — platform heartbeat for the admin console home screen.
@@ -305,6 +308,9 @@ final class BackendService: ObservableObject {
         let bids24h: Int
         let messages24h: Int
         let blocks: Int
+        /// Batch R — users currently under active suspension. Nil on older
+        /// server builds.
+        let suspended: Int?
         let generatedAt: Double
     }
 
@@ -363,6 +369,28 @@ final class BackendService: ObservableObject {
                              body: nil, baseOverride: BackendConfig.authURL,
                              bearerOverride: bearer,
                              as: Response.self) {
+        case .success: return nil
+        case .failure(let message): return message
+        }
+    }
+
+    /// POST /admin/users/:id/suspend { untilMs, note? } — soft-ban until
+    /// `untilMs` (epoch ms in the future). Rejects new sign-ins, profile
+    /// writes, and new bids from OR to this user.
+    func adminSuspendUser(id: String, untilMs: Double, note: String? = nil) async -> String? {
+        struct Response: Decodable { let ok: Bool; let suspendedUntil: Double? }
+        var body: [String: Any] = ["untilMs": untilMs]
+        if let note, !note.isEmpty { body["note"] = note }
+        switch await postAuth("/admin/users/\(id)/suspend", body: body, as: Response.self) {
+        case .success: return nil
+        case .failure(let message): return message
+        }
+    }
+
+    /// POST /admin/users/:id/unsuspend — lift a suspension immediately.
+    func adminUnsuspendUser(id: String) async -> String? {
+        struct Response: Decodable { let ok: Bool; let updated: Int? }
+        switch await postAuth("/admin/users/\(id)/unsuspend", body: [:], as: Response.self) {
         case .success: return nil
         case .failure(let message): return message
         }

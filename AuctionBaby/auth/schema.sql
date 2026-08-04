@@ -49,7 +49,16 @@ CREATE TABLE IF NOT EXISTS users (
   --   wrangler d1 execute — no in-app self-grant. Complements the static
   --   APP_SHARED_SECRET which is now only used for Worker-to-Worker calls
   --   (push send, reservation mirror).
-  is_admin               INTEGER NOT NULL DEFAULT 0
+  is_admin               INTEGER NOT NULL DEFAULT 0,
+
+  -- ── Batch R: reversible ban ────────────────────────────────────────────────
+  -- Epoch-ms cutoff. When set + in the future the user is soft-banned:
+  --   handleAppleAuth  rejects new sign-ins with 403
+  --   handleUpsertMyProfile  rejects profile writes
+  --   matching Worker handlePlaceBid  rejects bids from OR to this user
+  -- Existing sessions run to their TTL — this isn't a hard ban. Use
+  -- DELETE /admin/users/:id for that. Lift with POST /admin/users/:id/unsuspend.
+  suspended_until        INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_apple_sub ON users(apple_sub);

@@ -247,13 +247,15 @@ interface UserRow {
   verification_vendor: string | null;
   verification_ref: string | null;
   verification_status: string;
+  suspended_until: number | null;
 }
 
 /** All user column names we ever want to SELECT — kept in one place so a new
  *  column is a one-line change instead of five. */
 const USER_COLS =
   "id, apple_sub, email, name, date_of_birth, created_at, last_seen_at, " +
-  "verified_at, verification_vendor, verification_ref, verification_status";
+  "verified_at, verification_vendor, verification_ref, verification_status, " +
+  "suspended_until";
 
 /** Look up a user by Apple sub; create if missing. Returns the user + whether
  *  the caller was newly registered (drives an onboarding hint in the client). */
@@ -288,6 +290,7 @@ async function upsertUserByAppleSub(
       date_of_birth: null, created_at: now, last_seen_at: now,
       verified_at: null, verification_vendor: null,
       verification_ref: null, verification_status: "unstarted",
+      suspended_until: null,
     },
     isNew: true,
   };
@@ -346,6 +349,11 @@ async function handleAppleAuth(request: Request, env: Env): Promise<Response> {
   const { user, isNew } = await upsertUserByAppleSub(
     env, claims.sub, claims.email ?? null, isNew_seedName(suppliedName, claims),
   );
+  // Batch R — soft-ban check on new sign-ins. Existing sessions run to their
+  // TTL; if you need to yank now, use `DELETE /admin/users/:id`.
+  if (user.suspended_until != null && user.suspended_until > Date.now()) {
+    return err("Your account is suspended. Try again later.", 403);
+  }
   const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
   const sessionToken = await issueSessionToken(user.id, ttl, env.SESSION_SECRET);
 
@@ -1031,10 +1039,16 @@ async function handleUpsertMyProfile(request: Request, env: Env): Promise<Respon
   // verified 18+". Refusing the profile write when DOB is null closes the
   // path where a signed-in user could otherwise create a floor-visible
   // profile without ever going through the age gate.
-  const dobRow = await env.DB.prepare("SELECT date_of_birth FROM users WHERE id = ?")
-    .bind(userId).first<{ date_of_birth: string | null }>();
-  if (!dobRow?.date_of_birth) {
+  // Batch R — same query also reads suspended_until so a soft-banned user
+  // can't tweak their public profile while suspended.
+  const gateRow = await env.DB.prepare(
+    "SELECT date_of_birth, suspended_until FROM users WHERE id = ?",
+  ).bind(userId).first<{ date_of_birth: string | null; suspended_until: number | null }>();
+  if (!gateRow?.date_of_birth) {
     return err("Set your date of birth first — the 18+ check runs against it.", 403);
+  }
+  if (gateRow.suspended_until != null && gateRow.suspended_until > Date.now()) {
+    return err("Your account is suspended.", 403);
   }
 
   // Guard against role-flip: if a row already exists with a DIFFERENT role,
@@ -1387,6 +1401,7 @@ interface AdminUserRow {
   id: string; email: string | null; name: string | null;
   date_of_birth: string | null; created_at: number; last_seen_at: number;
   verified_at: number | null; verification_status: string;
+  suspended_until: number | null;
   reports_against: number; blocks_against: number;
 }
 
@@ -1410,7 +1425,7 @@ async function handleAdminListUsers(request: Request, env: Env): Promise<Respons
 
   let sql =
     "SELECT u.id, u.email, u.name, u.date_of_birth, u.created_at, u.last_seen_at, " +
-    "u.verified_at, u.verification_status, " +
+    "u.verified_at, u.verification_status, u.suspended_until, " +
     "(SELECT COUNT(*) FROM reports r WHERE r.target_id = u.id) AS reports_against, " +
     "(SELECT COUNT(*) FROM blocks b WHERE b.blocked_id = u.id) AS blocks_against " +
     "FROM users u";
@@ -1430,6 +1445,7 @@ async function handleAdminListUsers(request: Request, env: Env): Promise<Respons
       id: u.id, email: u.email, name: u.name, dateOfBirth: u.date_of_birth,
       createdAt: u.created_at, lastSeenAt: u.last_seen_at,
       verifiedAt: u.verified_at, verificationStatus: u.verification_status,
+      suspendedUntil: u.suspended_until,
       reportsAgainst: u.reports_against, blocksAgainst: u.blocks_against,
     })),
     nextCursor,
@@ -1464,6 +1480,40 @@ async function handleAdminDeleteUser(userId: string, request: Request, env: Env)
   // deleted user's id stays queryable in the audit trail.
   await writeAudit(env, gate.ok, "delete_user", userId, null);
   return json({ ok: true, deleted: result.meta?.changes ?? 0 });
+}
+
+/** POST /admin/users/:id/suspend  { untilMs, note? }  [admin]
+ *  Batch R — soft-ban the target until `untilMs` (epoch ms in the future).
+ *  Rejects new sign-ins, profile writes, and new bids. Existing sessions
+ *  run to their TTL (30 days by default); use DELETE /admin/users/:id
+ *  when you need an immediate hard-yank. */
+async function handleAdminSuspendUser(userId: string, request: Request, env: Env): Promise<Response> {
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const untilMs = Number(body?.untilMs ?? 0);
+  if (!Number.isFinite(untilMs) || untilMs <= Date.now()) {
+    return err("untilMs must be an epoch ms in the future");
+  }
+  const note = body?.note ? String(body.note).slice(0, 200) : null;
+  const result = await env.DB.prepare(
+    "UPDATE users SET suspended_until = ? WHERE id = ?",
+  ).bind(untilMs, userId).run();
+  await writeAudit(env, gate.ok, "suspend", userId, note);
+  return json({ ok: true, updated: result.meta?.changes ?? 0, suspendedUntil: untilMs });
+}
+
+/** POST /admin/users/:id/unsuspend  [admin]
+ *  Lift a suspension immediately. Nulls `suspended_until`. */
+async function handleAdminUnsuspendUser(userId: string, request: Request, env: Env): Promise<Response> {
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
+  const result = await env.DB.prepare(
+    "UPDATE users SET suspended_until = NULL WHERE id = ?",
+  ).bind(userId).run();
+  await writeAudit(env, gate.ok, "unsuspend", userId, null);
+  return json({ ok: true, updated: result.meta?.changes ?? 0 });
 }
 
 /** GET /admin/audit?limit=&cursor=  [admin]
@@ -1528,6 +1578,7 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
     env.DB.prepare("SELECT COUNT(*) AS n FROM bids WHERE created_at >= ?").bind(dayAgo),
     env.DB.prepare("SELECT COUNT(*) AS n FROM messages WHERE created_at >= ?").bind(dayAgo),
     env.DB.prepare("SELECT COUNT(*) AS n FROM blocks"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE suspended_until IS NOT NULL AND suspended_until > ?").bind(now),
   ]);
   const n = (i: number): number => Number((rows[i].results?.[0] as any)?.n ?? 0);
   return json({
@@ -1542,6 +1593,7 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
     bids24h: n(8),
     messages24h: n(9),
     blocks: n(10),
+    suspended: n(11),
     generatedAt: now,
   });
 }
@@ -1597,6 +1649,10 @@ export default {
     if (pathname === "/admin/users" && m === "GET") return handleAdminListUsers(request, env);
     const userUnverify = pathname.match(/^\/admin\/users\/([A-Za-z0-9-]{36})\/unverify$/);
     if (userUnverify && m === "POST") return handleAdminUnverifyUser(userUnverify[1], request, env);
+    const userSuspend = pathname.match(/^\/admin\/users\/([A-Za-z0-9-]{36})\/suspend$/);
+    if (userSuspend && m === "POST") return handleAdminSuspendUser(userSuspend[1], request, env);
+    const userUnsuspend = pathname.match(/^\/admin\/users\/([A-Za-z0-9-]{36})\/unsuspend$/);
+    if (userUnsuspend && m === "POST") return handleAdminUnsuspendUser(userUnsuspend[1], request, env);
     const userDelete = pathname.match(/^\/admin\/users\/([A-Za-z0-9-]{36})$/);
     if (userDelete && m === "DELETE") return handleAdminDeleteUser(userDelete[1], request, env);
 
