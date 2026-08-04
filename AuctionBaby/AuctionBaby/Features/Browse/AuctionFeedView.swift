@@ -81,6 +81,15 @@ struct AuctionFeedView: View {
             .sheet(isPresented: $showFilters) {
                 FiltersView().presentationDetents([.large])
             }
+            // Batch T — when the filters sheet closes, refetch the floor so
+            // the server sees the new age/verifiedOnly bounds. A local
+            // Equatable check on `filters` here would fire on every slider
+            // tick; dismissal is the natural commit point.
+            .onChange(of: showFilters) { _, isOpen in
+                if !isOpen {
+                    Task { await store.refreshRemoteFloor(profileSync: profileSync) }
+                }
+            }
             .sheet(isPresented: $showActivity) { ActivityView() }
             .sheet(isPresented: $showLotOfDay) {
                 if let lot = store.lotOfTheDay {

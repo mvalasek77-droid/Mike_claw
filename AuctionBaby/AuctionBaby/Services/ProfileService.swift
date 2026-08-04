@@ -89,11 +89,23 @@ final class ProfileService: ObservableObject {
     /// The paginated floor feed — signed-in women (or men, depending on
     /// `role`) other than the caller, newest first. `cursor` is the last
     /// item's `updatedAt` from the previous page; nil for the first page.
+    ///
+    /// Batch T: age + verifiedOnly are pushed down to the Worker so a bidder
+    /// with a narrow filter doesn't burn their page budget on ineligible
+    /// rows. The client still applies `filters.matches()` locally afterward
+    /// because Reserve Requirements (height/lifestyle/interests) aren't in
+    /// the profiles table yet — no columns to filter on server-side.
     func fetchFloor(role: Role, limit: Int = 30,
-                    cursor: Double? = nil) async -> ServiceResult<FloorPage> {
+                    cursor: Double? = nil,
+                    minAge: Int? = nil,
+                    maxAge: Int? = nil,
+                    verifiedOnly: Bool = false) async -> ServiceResult<FloorPage> {
         guard isEnabled else { return .notConfigured }
         var path = "/users/floor?role=\(role.rawValue)&limit=\(limit)"
         if let cursor { path += "&cursor=\(Int(cursor))" }
+        if let minAge { path += "&minAge=\(minAge)" }
+        if let maxAge { path += "&maxAge=\(maxAge)" }
+        if verifiedOnly { path += "&verifiedOnly=1" }
         return await get(path, as: FloorPage.self)
     }
 

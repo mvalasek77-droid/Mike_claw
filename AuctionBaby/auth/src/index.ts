@@ -1110,11 +1110,16 @@ async function handleGetUserProfile(peerId: string, request: Request, env: Env):
   return json({ profile: publicProfile(row) });
 }
 
-/** GET /users/floor?role=woman&limit=&cursor=  [auth]
+/** GET /users/floor?role=woman&limit=&cursor=&minAge=&maxAge=&verifiedOnly=  [auth]
  *
  * Paginated feed by (role, updated_at DESC). Cursor is the last item's
  * `updated_at` timestamp — simple and doesn't drift as writes happen (unlike
- * OFFSET, which would skip newly-written rows). Excludes the caller. */
+ * OFFSET, which would skip newly-written rows). Excludes the caller.
+ *
+ * Batch T: server-side filter push-down for the bidder's floor filters. Age
+ * uses SQLite `date('now', '-N years')` arithmetic on the TEXT DOB column
+ * (YYYY-MM-DD). Reserve Requirements (height/lifestyle/interests) aren't
+ * pushed down yet — they need columns the profiles table doesn't carry. */
 async function handleFloor(request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
@@ -1127,6 +1132,17 @@ async function handleFloor(request: Request, env: Env): Promise<Response> {
     Math.max(1, Number.isFinite(limitRaw) ? Math.floor(limitRaw) : FLOOR_PAGE_SIZE_DEFAULT));
   const cursorRaw = url.searchParams.get("cursor");
   const cursor = cursorRaw != null && cursorRaw !== "" ? Number(cursorRaw) : null;
+
+  // Filter params (all optional — a missing param means "no restriction").
+  // Clamp to sane ranges so a malformed client can't slip in `-1` etc.
+  const minAgeRaw = url.searchParams.get("minAge");
+  const maxAgeRaw = url.searchParams.get("maxAge");
+  const minAge = minAgeRaw != null && minAgeRaw !== ""
+    ? Math.max(18, Math.min(120, Math.floor(Number(minAgeRaw)))) : null;
+  const maxAge = maxAgeRaw != null && maxAgeRaw !== ""
+    ? Math.max(18, Math.min(120, Math.floor(Number(maxAgeRaw)))) : null;
+  const verifiedOnly = url.searchParams.get("verifiedOnly") === "1"
+    || url.searchParams.get("verifiedOnly") === "true";
 
   // Server-enforced blocks (slice 4c1a): a floor row is hidden when EITHER
   // side of the pair has an active block. Two NOT EXISTS clauses cover both
@@ -1142,6 +1158,19 @@ async function handleFloor(request: Request, env: Env): Promise<Response> {
       AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = ? AND blocked_id = p.user_id)
       AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = p.user_id AND blocked_id = ?)`;
   const params: unknown[] = [roleParam, userId, userId, userId];
+  // Age: minAge X → DOB must be at least X years ago; maxAge X → user is
+  // still X (i.e., DOB > the X+1-years-ago cutoff so they haven't turned X+1
+  // yet). Ints are safe-embedded — Number cast happened above and NaN got
+  // dropped via Number.isFinite when we clamped.
+  if (minAge != null && Number.isFinite(minAge)) {
+    sql += ` AND u.date_of_birth <= date('now', '-${minAge} years')`;
+  }
+  if (maxAge != null && Number.isFinite(maxAge)) {
+    sql += ` AND u.date_of_birth > date('now', '-${maxAge + 1} years')`;
+  }
+  if (verifiedOnly) {
+    sql += " AND u.verified_at IS NOT NULL";
+  }
   if (cursor != null && Number.isFinite(cursor)) {
     sql += " AND p.updated_at < ?";
     params.push(cursor);

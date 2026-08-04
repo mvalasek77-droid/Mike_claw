@@ -725,7 +725,18 @@ final class AuctionStore: ObservableObject {
         // A bidder browses women; a lot's own "floor" isn't a fetch surface
         // (she reads her incoming inbox, wired in later slices).
         let feedRole: Role = role == .man ? .woman : .man
-        let result = await profileSync.fetchFloor(role: feedRole, limit: 60)
+        // Push age + verifiedOnly down to the Worker so a narrow filter
+        // doesn't chew through the page budget on rows we'd toss locally.
+        // Only send bounds that actually diverge from the defaults, so an
+        // untouched filter stays a plain feed query. Reserve Requirements
+        // still filter locally via `filters.matches`.
+        let minAge = filters.minAge > 18 ? filters.minAge : nil
+        let maxAge = filters.maxAge < 60 ? filters.maxAge : nil
+        let result = await profileSync.fetchFloor(
+            role: feedRole, limit: 60,
+            minAge: minAge, maxAge: maxAge,
+            verifiedOnly: filters.verifiedOnly
+        )
         guard case .success(let page) = result else { return }
         let converted = page.profiles.map(Profile.init(from:))
         remoteFloor = converted
