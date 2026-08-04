@@ -17,7 +17,7 @@
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
-    <string>4</string>
+    <string>5</string>
     <key>RGAPIBaseURL</key>
     <string>$(RG_API_BASE_URL)</string>
     <key>RGAPIToken</key>
