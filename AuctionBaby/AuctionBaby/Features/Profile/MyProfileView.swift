@@ -556,6 +556,35 @@ struct MyProfileView: View {
                 .accessibilityLabel("Report a bug via email")
                 Divider().overlay(Theme.hairline)
             }
+            // App Store 5.1.1 requires ToS + Privacy Policy links reachable
+            // from within the app for any account-creation flow. Rows only
+            // render when the URLs are configured in Secrets.xcconfig.
+            if let url = BackendConfig.termsURL {
+                Link(destination: url) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "doc.text.fill").foregroundStyle(Theme.inkSoft)
+                        Text("Terms of Service").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Spacer()
+                        Image(systemName: "arrow.up.right").font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                Divider().overlay(Theme.hairline)
+            }
+            if let url = BackendConfig.privacyURL {
+                Link(destination: url) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "hand.raised.fill").foregroundStyle(Theme.inkSoft)
+                        Text("Privacy Policy").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Spacer()
+                        Image(systemName: "arrow.up.right").font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                Divider().overlay(Theme.hairline)
+            }
             HStack {
                 Text("Reduce Motion / Dark Mode honored system-wide")
                     .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)

@@ -58,4 +58,21 @@ enum BackendConfig {
     /// True iff a Worker has been wired into the build. The admin backend
     /// panel checks this to decide whether the config card needs attention.
     static var isBundled: Bool { !workerURL.isEmpty && !sharedSecret.isEmpty }
+
+    /// Public Terms of Service URL. App Store 5.1.1 requires the ToS is
+    /// linked from within the app for any account-creation flow. Absent →
+    /// the Settings row is hidden (fresh checkout still compiles).
+    static var termsURL: URL? {
+        let raw = (Bundle.main.object(forInfoDictionaryKey: "AB_TERMS_URL") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return raw.isEmpty ? nil : URL(string: raw)
+    }
+
+    /// Public Privacy Policy URL. Same App Store gate as Terms; both must
+    /// be present for a real store submission.
+    static var privacyURL: URL? {
+        let raw = (Bundle.main.object(forInfoDictionaryKey: "AB_PRIVACY_URL") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return raw.isEmpty ? nil : URL(string: raw)
+    }
 }

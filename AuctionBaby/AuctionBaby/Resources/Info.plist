@@ -30,6 +30,10 @@
 	<string>$(AB_AUTH_URL)</string>
 	<key>AB_MATCHING_URL</key>
 	<string>$(AB_MATCHING_URL)</string>
+	<key>AB_TERMS_URL</key>
+	<string>$(AB_TERMS_URL)</string>
+	<key>AB_PRIVACY_URL</key>
+	<string>$(AB_PRIVACY_URL)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSPhotoLibraryUsageDescription</key>
