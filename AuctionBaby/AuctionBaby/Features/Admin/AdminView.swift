@@ -6,7 +6,10 @@ import SwiftUI
 /// routes through `AuctionStore` so state stays in one place and persists.
 struct AdminView: View {
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var backend: BackendService
     @Environment(\.dismiss) private var dismiss
+    @State private var stats: BackendService.AdminStats?
+    @State private var statsError: String?
 
     /// What the form sheet is currently doing, if anything.
     private enum Sheet: Identifiable {
@@ -36,6 +39,7 @@ struct AdminView: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     headerCard
+                    statsCard
                     myAccountCard
                     backendCard
                     realUsersCard
@@ -63,6 +67,8 @@ struct AdminView: View {
                     Button("Done") { dismiss() }.foregroundStyle(Theme.gold)
                 }
             }
+            .task { await loadStats() }
+            .refreshable { await loadStats() }
             .sheet(item: $sheet) { which in
                 switch which {
                 case .addLot:      ProfileFormSheet(role: .woman)
@@ -93,6 +99,71 @@ struct AdminView: View {
             Text("Add, edit or remove lots and bidders. Changes go live immediately and persist across launches.")
                 .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
                 .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Batch P — platform heartbeat at a glance. Signed-in admin only; free
+    /// users see it disabled if the auth Worker returns 403 (which is what
+    /// happens before the founder gets is_admin flipped).
+    @ViewBuilder
+    private var statsCard: some View {
+        GlassCard(title: "Platform · live", icon: "waveform.path.ecg", tint: Theme.gold) {
+            if let s = stats {
+                VStack(spacing: 10) {
+                    statRow("Users", value: "\(s.users)",
+                            trail: "\(s.verified) verified · \(s.admins) admin")
+                    statRow("Reports", value: "\(s.reportsOpen) open",
+                            trail: "\(s.reportsResolved) resolved · \(s.blocks) blocks",
+                            highlight: s.reportsOpen > 0 ? Theme.danger : nil)
+                    statRow("Matches", value: "\(s.matchesChatting) chatting",
+                            trail: "\(s.matchesClosed) closed")
+                    statRow("Last 24h", value: "\(s.bids24h) bids",
+                            trail: "\(s.messages24h) messages")
+                    if s.noDob > 0 {
+                        statRow("No DOB", value: "\(s.noDob)",
+                                trail: "Should be zero — DOB gate is enforced.",
+                                highlight: Theme.warning)
+                    }
+                }
+            } else if let err = statsError {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(err).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.danger)
+                    Text("Sign in with an admin account (is_admin = 1) to see the platform heartbeat.")
+                        .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ProgressView().tint(Theme.gold)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+            }
+        }
+    }
+
+    private func statRow(_ label: String, value: String, trail: String,
+                         highlight: Color? = nil) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(label.uppercased())
+                .font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
+                .foregroundStyle(Theme.inkFaint)
+                .frame(width: 68, alignment: .leading)
+            Text(value)
+                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                .foregroundStyle(highlight ?? Theme.ink)
+            Spacer()
+            Text(trail)
+                .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                .lineLimit(1)
+        }
+    }
+
+    private func loadStats() async {
+        switch await backend.fetchAdminStats() {
+        case .success(let s):
+            stats = s
+            statsError = nil
+        case .failure(let message):
+            stats = nil
+            statsError = message
         }
     }
 

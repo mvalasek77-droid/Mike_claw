@@ -1439,6 +1439,48 @@ async function handleAdminDeleteUser(userId: string, request: Request, env: Env)
   return json({ ok: true, deleted: result.meta?.changes ?? 0 });
 }
 
+/** GET /admin/stats  [admin]
+ *  A one-glance platform heartbeat. Everything the founder wants to see the
+ *  second they land on the console: how many users, how many verified, open
+ *  moderation queue, recent activity, cold-vs-live matches. Cheap SELECT
+ *  COUNTs; if any of these get slow later, cache in KV. */
+async function handleAdminStats(request: Request, env: Env): Promise<Response> {
+  const denied = await ensureAdminSession(request, env);
+  if (denied) return denied;
+  const now = Date.now();
+  const dayAgo = now - 24 * 60 * 60 * 1000;
+  // One batched read — D1 handles this cheaply for a founder-only endpoint,
+  // and it keeps the round-trip count to one.
+  const rows = await env.DB.batch([
+    env.DB.prepare("SELECT COUNT(*) AS n FROM users"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE verified_at IS NOT NULL"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE is_admin = 1"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE date_of_birth IS NULL"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM reports WHERE status = 'open'"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM reports WHERE status != 'open'"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM matches WHERE phase = 'chatting'"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM matches WHERE phase != 'chatting'"),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM bids WHERE created_at >= ?").bind(dayAgo),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM messages WHERE created_at >= ?").bind(dayAgo),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM blocks"),
+  ]);
+  const n = (i: number): number => Number((rows[i].results?.[0] as any)?.n ?? 0);
+  return json({
+    users: n(0),
+    verified: n(1),
+    admins: n(2),
+    noDob: n(3),
+    reportsOpen: n(4),
+    reportsResolved: n(5),
+    matchesChatting: n(6),
+    matchesClosed: n(7),
+    bids24h: n(8),
+    messages24h: n(9),
+    blocks: n(10),
+    generatedAt: now,
+  });
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
@@ -1485,6 +1527,7 @@ export default {
     if (reportResolve && m === "POST") return handleAdminResolveReport(reportResolve[1], request, env);
 
     // Admin user actions
+    if (pathname === "/admin/stats" && m === "GET") return handleAdminStats(request, env);
     if (pathname === "/admin/users" && m === "GET") return handleAdminListUsers(request, env);
     const userUnverify = pathname.match(/^\/admin\/users\/([A-Za-z0-9-]{36})\/unverify$/);
     if (userUnverify && m === "POST") return handleAdminUnverifyUser(userUnverify[1], request, env);

@@ -292,6 +292,27 @@ final class BackendService: ObservableObject {
         let blocksAgainst: Int?
     }
 
+    /// Batch P — platform heartbeat for the admin console home screen.
+    struct AdminStats: Decodable, Equatable {
+        let users: Int
+        let verified: Int
+        let admins: Int
+        let noDob: Int
+        let reportsOpen: Int
+        let reportsResolved: Int
+        let matchesChatting: Int
+        let matchesClosed: Int
+        let bids24h: Int
+        let messages24h: Int
+        let blocks: Int
+        let generatedAt: Double
+    }
+
+    /// GET /admin/stats — one-glance platform totals for the founder card.
+    func fetchAdminStats() async -> BackendResult<AdminStats> {
+        return await getAuth("/admin/stats", as: AdminStats.self)
+    }
+
     /// GET /admin/users?limit=&cursor=  — paginated user list, newest first.
     func fetchAdminUsers(limit: Int = 50,
                         cursor: Double? = nil) async -> BackendResult<[AdminUser]> {
