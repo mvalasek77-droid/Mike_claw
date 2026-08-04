@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -10,15 +10,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
 import {
   channels,
   videos,
-  formatSubscribers,
   THEME,
   type Video,
-  type Channel,
 } from "../lib/data";
 
 interface SubscriptionsScreenProps {
@@ -38,28 +37,43 @@ export default function SubscriptionsScreen({
     ? videos.filter((v) => v.channel.id === selectedChannel)
     : videos;
 
-  const sortedVideos = [...filteredVideos].sort(() => Math.random() - 0.5);
+  const sortedVideos = useMemo(
+    () => [...filteredVideos].sort((a, b) => a.id.localeCompare(b.id)),
+    [selectedChannel]
+  );
+
+  function selectChannel(id: string | null) {
+    Haptics.selectionAsync();
+    setSelectedChannel(id);
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
+        <LinearGradient
+          colors={["rgba(255,68,68,0.06)", "transparent"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <Ionicons name="people" size={24} color={THEME.accent} />
-        <Text style={styles.headerTitle}>Subscriptions</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          Subscriptions
+        </Text>
       </View>
 
-      {/* Channel avatar strip */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.channelStrip}
       >
         <TouchableOpacity
-          style={[
-            styles.channelChip,
-            !selectedChannel && styles.channelChipActive,
-          ]}
-          onPress={() => setSelectedChannel(null)}
+          style={styles.channelChip}
+          onPress={() => selectChannel(null)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Show all subscriptions"
+          accessibilityState={{ selected: !selectedChannel }}
         >
           <View
             style={[
@@ -86,14 +100,14 @@ export default function SubscriptionsScreen({
         {subscribedChannels.map((ch) => (
           <TouchableOpacity
             key={ch.id}
-            style={[
-              styles.channelChip,
-              selectedChannel === ch.id && styles.channelChipActive,
-            ]}
+            style={styles.channelChip}
             onPress={() =>
-              setSelectedChannel(selectedChannel === ch.id ? null : ch.id)
+              selectChannel(selectedChannel === ch.id ? null : ch.id)
             }
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Filter by ${ch.name}`}
+            accessibilityState={{ selected: selectedChannel === ch.id }}
           >
             <View
               style={[
@@ -157,6 +171,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 10,
+    overflow: "hidden",
   },
   headerTitle: {
     color: THEME.textPrimary,
@@ -173,7 +188,6 @@ const styles = StyleSheet.create({
     gap: 6,
     width: 64,
   },
-  channelChipActive: {},
   channelAvatarWrapper: {
     borderRadius: 24,
     borderWidth: 2,

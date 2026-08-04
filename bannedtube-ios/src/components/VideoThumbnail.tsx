@@ -18,7 +18,11 @@ export default function VideoThumbnail({
   height = 200,
 }: VideoThumbnailProps) {
   return (
-    <View style={[styles.container, { height }]}>
+    <View
+      style={[styles.container, { height }]}
+      accessibilityRole="image"
+      accessibilityLabel={`Thumbnail for ${title}`}
+    >
       <LinearGradient
         colors={[colors[0], colors[1]]}
         start={{ x: 0, y: 0 }}
@@ -26,48 +30,56 @@ export default function VideoThumbnail({
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Top vignette mask */}
       <LinearGradient
-        colors={["rgba(0,0,0,0.3)", "transparent"]}
+        colors={["rgba(0,0,0,0.35)", "transparent"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 0.4 }}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Bottom mask for title */}
       <LinearGradient
-        colors={["transparent", "rgba(0,0,0,0.7)"]}
+        colors={["transparent", "rgba(0,0,0,0.75)"]}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Play icon with glow */}
       <View style={styles.playContainer}>
         <View style={styles.playGlow} />
         <View style={styles.playButton}>
-          <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 3 }} />
+          <Ionicons
+            name="play"
+            size={24}
+            color="#fff"
+            style={{ marginLeft: 3 }}
+          />
         </View>
       </View>
 
-      {/* Title at bottom with mask */}
       <View style={styles.titleBar}>
         <Text style={styles.titleText} numberOfLines={1}>
           {title}
         </Text>
       </View>
 
-      {/* Duration badge */}
-      <View style={styles.durationBadge}>
+      <View
+        style={styles.durationBadge}
+        accessibilityLabel={`Duration: ${duration}`}
+      >
         <Text style={styles.durationText}>{duration}</Text>
       </View>
 
-      {/* Corner mask accents */}
       <LinearGradient
-        colors={["rgba(255,68,68,0.15)", "transparent"]}
+        colors={["rgba(255,68,68,0.12)", "transparent"]}
         start={{ x: 0, y: 0 }}
-        end={{ x: 0.3, y: 0.3 }}
+        end={{ x: 0.35, y: 0.35 }}
         style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 12 }]}
+      />
+      <LinearGradient
+        colors={["rgba(255,68,68,0.06)", "transparent"]}
+        start={{ x: 1, y: 1 }}
+        end={{ x: 0.7, y: 0.7 }}
+        style={[StyleSheet.absoluteFill, { borderBottomRightRadius: 12 }]}
       />
     </View>
   );
@@ -86,22 +98,22 @@ const styles = StyleSheet.create({
   },
   playGlow: {
     position: "absolute",
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(255,68,68,0.25)",
-    top: -6,
-    left: -6,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,68,68,0.2)",
+    top: -8,
+    left: -8,
   },
   playButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.12)",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.18)",
   },
   titleBar: {
     position: "absolute",
@@ -110,13 +122,13 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 10,
     paddingBottom: 8,
-    paddingTop: 20,
+    paddingTop: 24,
   },
   titleText: {
     color: "#fff",
     fontSize: 13,
     fontWeight: "600",
-    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowColor: "rgba(0,0,0,0.9)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
@@ -125,7 +137,7 @@ const styles = StyleSheet.create({
     bottom: 8,
     right: 8,
     backgroundColor: "rgba(0,0,0,0.85)",
-    paddingHorizontal: 5,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },

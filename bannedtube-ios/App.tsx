@@ -1,41 +1,83 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
+  Animated,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import HomeScreen from "./src/screens/HomeScreen";
 import WatchScreen from "./src/screens/WatchScreen";
 import ChannelScreen from "./src/screens/ChannelScreen";
 import SearchScreen from "./src/screens/SearchScreen";
 import TrendingScreen from "./src/screens/TrendingScreen";
 import SubscriptionsScreen from "./src/screens/SubscriptionsScreen";
+import AIStudioScreen from "./src/screens/AIStudioScreen";
 import { THEME, type Video } from "./src/lib/data";
 
-type Tab = "home" | "trending" | "subscriptions" | "search";
+type Tab = "home" | "trending" | "subscriptions" | "studio" | "search";
 
 type Overlay =
   | { type: "none" }
   | { type: "watch"; video: Video }
   | { type: "channel"; channelId: string };
 
-const TAB_CONFIG: { key: Tab; icon: string; iconActive: string; label: string }[] = [
+const TAB_CONFIG: {
+  key: Tab;
+  icon: string;
+  iconActive: string;
+  label: string;
+}[] = [
   { key: "home", icon: "home-outline", iconActive: "home", label: "Home" },
-  { key: "trending", icon: "flame-outline", iconActive: "flame", label: "Trending" },
-  { key: "subscriptions", icon: "people-outline", iconActive: "people", label: "Subscriptions" },
-  { key: "search", icon: "search-outline", iconActive: "search", label: "Search" },
+  {
+    key: "trending",
+    icon: "flame-outline",
+    iconActive: "flame",
+    label: "Trending",
+  },
+  {
+    key: "studio",
+    icon: "sparkles-outline",
+    iconActive: "sparkles",
+    label: "AI Studio",
+  },
+  {
+    key: "subscriptions",
+    icon: "people-outline",
+    iconActive: "people",
+    label: "Subs",
+  },
+  {
+    key: "search",
+    icon: "search-outline",
+    iconActive: "search",
+    label: "Search",
+  },
 ];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [overlay, setOverlay] = useState<Overlay>({ type: "none" });
   const [overlayHistory, setOverlayHistory] = useState<Overlay[]>([]);
+
+  const tabIndicatorAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const idx = TAB_CONFIG.findIndex((t) => t.key === activeTab);
+    Animated.spring(tabIndicatorAnim, {
+      toValue: idx,
+      useNativeDriver: true,
+      tension: 80,
+      friction: 12,
+    }).start();
+  }, [activeTab]);
 
   function openOverlay(next: Overlay) {
     if (overlay.type !== "none") {
@@ -59,22 +101,27 @@ export default function App() {
   const handleChannelPress = (id: string) =>
     openOverlay({ type: "channel", channelId: id });
 
+  function handleTabPress(tab: Tab) {
+    Haptics.selectionAsync();
+    setActiveTab(tab);
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
       <View style={styles.root}>
-        {/* Tab content */}
         <View style={styles.content}>
           {activeTab === "home" && (
             <HomeScreen
               onVideoPress={handleVideoPress}
               onChannelPress={handleChannelPress}
-              onSearchPress={() => setActiveTab("search")}
+              onSearchPress={() => handleTabPress("search")}
             />
           )}
           {activeTab === "trending" && (
             <TrendingScreen onVideoPress={handleVideoPress} />
           )}
+          {activeTab === "studio" && <AIStudioScreen />}
           {activeTab === "subscriptions" && (
             <SubscriptionsScreen
               onVideoPress={handleVideoPress}
@@ -83,13 +130,12 @@ export default function App() {
           )}
           {activeTab === "search" && (
             <SearchScreen
-              onBack={() => setActiveTab("home")}
+              onBack={() => handleTabPress("home")}
               onVideoPress={handleVideoPress}
             />
           )}
         </View>
 
-        {/* Overlay screens (watch/channel) sit on top */}
         {overlay.type === "watch" && (
           <View style={styles.overlay}>
             <WatchScreen
@@ -110,37 +156,61 @@ export default function App() {
           </View>
         )}
 
-        {/* Bottom tab bar */}
         {overlay.type === "none" && (
-          <View style={styles.tabBarContainer}>
+          <View style={styles.tabBarOuter}>
+            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
             <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.85)", "rgba(0,0,0,0.95)"]}
-              style={styles.tabBarGradient}
+              colors={[
+                "rgba(15,15,15,0.7)",
+                "rgba(15,15,15,0.92)",
+              ]}
+              style={StyleSheet.absoluteFill}
             />
+            <View style={styles.tabBarBorderTop} />
             <View style={styles.tabBar}>
-              {TAB_CONFIG.map((tab) => {
+              {TAB_CONFIG.map((tab, idx) => {
                 const isActive = activeTab === tab.key;
+                const isStudio = tab.key === "studio";
                 return (
                   <TouchableOpacity
                     key={tab.key}
                     style={styles.tabItem}
-                    onPress={() => setActiveTab(tab.key)}
+                    onPress={() => handleTabPress(tab.key)}
                     activeOpacity={0.6}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`${tab.label} tab`}
                   >
-                    <Ionicons
-                      name={(isActive ? tab.iconActive : tab.icon) as any}
-                      size={22}
-                      color={isActive ? THEME.accent : THEME.textSecondary}
-                    />
+                    {isStudio ? (
+                      <View
+                        style={[
+                          styles.studioIconWrap,
+                          isActive && styles.studioIconWrapActive,
+                        ]}
+                      >
+                        <Ionicons
+                          name={(isActive ? tab.iconActive : tab.icon) as any}
+                          size={20}
+                          color={isActive ? "#fff" : THEME.textSecondary}
+                        />
+                      </View>
+                    ) : (
+                      <Ionicons
+                        name={(isActive ? tab.iconActive : tab.icon) as any}
+                        size={22}
+                        color={isActive ? THEME.accent : THEME.textSecondary}
+                      />
+                    )}
                     <Text
                       style={[
                         styles.tabLabel,
-                        isActive && styles.tabLabelActive,
+                        isActive && !isStudio && styles.tabLabelActive,
+                        isActive && isStudio && styles.tabLabelStudio,
                       ]}
                     >
                       {tab.label}
                     </Text>
-                    {isActive && <View style={styles.tabDot} />}
+                    {isActive && !isStudio && <View style={styles.tabDot} />}
                   </TouchableOpacity>
                 );
               })}
@@ -168,39 +238,40 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: THEME.bgPrimary,
   },
-  tabBarContainer: {
+  tabBarOuter: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
+    overflow: "hidden",
   },
-  tabBarGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 100,
+  tabBarBorderTop: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   tabBar: {
     flexDirection: "row",
     paddingBottom: 28,
     paddingTop: 8,
-    paddingHorizontal: 8,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 4,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
-    gap: 3,
+    gap: 2,
     position: "relative",
   },
   tabLabel: {
     color: THEME.textSecondary,
     fontSize: 10,
     fontWeight: "500",
+    marginTop: 1,
   },
   tabLabelActive: {
+    color: THEME.accent,
+    fontWeight: "600",
+  },
+  tabLabelStudio: {
     color: THEME.accent,
     fontWeight: "600",
   },
@@ -210,5 +281,20 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: THEME.accent,
     marginTop: 2,
+  },
+  studioIconWrap: {
+    width: 36,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  studioIconWrapActive: {
+    backgroundColor: THEME.accent,
+    shadowColor: THEME.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
   },
 });

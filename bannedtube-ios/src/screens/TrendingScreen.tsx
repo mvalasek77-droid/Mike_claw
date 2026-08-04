@@ -3,7 +3,6 @@ import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,21 +21,30 @@ export default function TrendingScreen({ onVideoPress }: TrendingScreenProps) {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
+        <LinearGradient
+          colors={["rgba(255,68,68,0.06)", "transparent"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <Ionicons name="trending-up" size={24} color={THEME.accent} />
-        <Text style={styles.headerTitle}>Trending</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          Trending
+        </Text>
       </View>
 
       <FlatList
         data={trending}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
-          <View style={styles.row}>
+          <View
+            style={styles.row}
+            accessibilityLabel={`Number ${index + 1} trending: ${item.title}`}
+          >
             <View style={styles.rankContainer}>
               <Text
-                style={[
-                  styles.rank,
-                  index < 3 && { color: THEME.accent },
-                ]}
+                style={[styles.rank, index < 3 && { color: THEME.accent }]}
+                allowFontScaling={false}
               >
                 {index + 1}
               </Text>
@@ -70,6 +78,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: THEME.border,
+    overflow: "hidden",
   },
   headerTitle: {
     color: THEME.textPrimary,

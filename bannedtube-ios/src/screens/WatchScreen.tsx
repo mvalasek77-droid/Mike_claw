@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
 import {
@@ -30,9 +31,15 @@ interface WatchScreenProps {
 
 function CommentItem({ comment }: { comment: Comment }) {
   const [showReplies, setShowReplies] = useState(false);
+  const [liked, setLiked] = useState(false);
+
+  function handleLike() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setLiked(!liked);
+  }
 
   return (
-    <View style={styles.commentRow}>
+    <View style={styles.commentRow} accessibilityRole="text">
       <Avatar color={comment.avatarColor} initial={comment.initial} size={32} />
       <View style={styles.commentContent}>
         <View style={styles.commentHeader}>
@@ -41,16 +48,35 @@ function CommentItem({ comment }: { comment: Comment }) {
         </View>
         <Text style={styles.commentText}>{comment.text}</Text>
         <View style={styles.commentActions}>
-          <TouchableOpacity style={styles.commentAction}>
-            <Ionicons name="thumbs-up-outline" size={14} color={THEME.textSecondary} />
-            <Text style={styles.commentActionText}>
-              {comment.likes.toLocaleString()}
+          <TouchableOpacity
+            style={styles.commentAction}
+            onPress={handleLike}
+            accessibilityRole="button"
+            accessibilityLabel={`Like comment, ${comment.likes} likes`}
+          >
+            <Ionicons
+              name={liked ? "thumbs-up" : "thumbs-up-outline"}
+              size={14}
+              color={liked ? THEME.accent : THEME.textSecondary}
+            />
+            <Text
+              style={[
+                styles.commentActionText,
+                liked && { color: THEME.accent },
+              ]}
+            >
+              {(liked ? comment.likes + 1 : comment.likes).toLocaleString()}
             </Text>
           </TouchableOpacity>
           {comment.replies && comment.replies.length > 0 && (
             <TouchableOpacity
-              onPress={() => setShowReplies(!showReplies)}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setShowReplies(!showReplies);
+              }}
               style={styles.commentAction}
+              accessibilityRole="button"
+              accessibilityLabel={`${showReplies ? "Hide" : "Show"} ${comment.replies.length} replies`}
             >
               <Ionicons
                 name={showReplies ? "chevron-up" : "chevron-down"}
@@ -82,22 +108,43 @@ export default function WatchScreen({
   onChannelPress,
 }: WatchScreenProps) {
   const [playing, setPlaying] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
   const relatedVideos = videos.filter((v) => v.id !== video.id).slice(0, 6);
   const comments = getComments();
 
+  function handleLike() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLiked(!liked);
+  }
+
+  function handleSubscribe() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setSubscribed(!subscribed);
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Back button */}
-      <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.6}>
+      <TouchableOpacity
+        style={styles.backBtn}
+        onPress={onBack}
+        activeOpacity={0.6}
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+      >
         <Ionicons name="chevron-back" size={24} color={THEME.textPrimary} />
       </TouchableOpacity>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Video player */}
         <TouchableOpacity
           style={styles.player}
-          onPress={() => setPlaying(!playing)}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setPlaying(!playing);
+          }}
           activeOpacity={0.9}
+          accessibilityRole="button"
+          accessibilityLabel={playing ? "Pause video" : "Play video"}
         >
           <LinearGradient
             colors={[video.thumbnailColors[0], video.thumbnailColors[1]]}
@@ -105,7 +152,6 @@ export default function WatchScreen({
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          {/* Vignette masks */}
           <LinearGradient
             colors={["rgba(0,0,0,0.4)", "transparent", "rgba(0,0,0,0.5)"]}
             locations={[0, 0.4, 1]}
@@ -116,12 +162,16 @@ export default function WatchScreen({
             <View style={styles.playOverlay}>
               <View style={styles.playGlow} />
               <View style={styles.playCircle}>
-                <Ionicons name="play" size={32} color="#fff" style={{ marginLeft: 4 }} />
+                <Ionicons
+                  name="play"
+                  size={32}
+                  color="#fff"
+                  style={{ marginLeft: 4 }}
+                />
               </View>
             </View>
           )}
 
-          {/* Progress bar */}
           <View style={styles.progressContainer}>
             <View style={styles.progressTrack}>
               <View
@@ -135,15 +185,17 @@ export default function WatchScreen({
         </TouchableOpacity>
 
         <View style={styles.content}>
-          {/* Title */}
-          <Text style={styles.title}>{video.title}</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            {video.title}
+          </Text>
 
-          {/* Channel row */}
           <View style={styles.channelRow}>
             <TouchableOpacity
               style={styles.channelInfo}
               onPress={() => onChannelPress(video.channel.id)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`View ${video.channel.name} channel`}
             >
               <Avatar
                 color={video.channel.avatarColor}
@@ -167,43 +219,103 @@ export default function WatchScreen({
                 </Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.subscribeBtn} activeOpacity={0.7}>
-              <Text style={styles.subscribeBtnText}>Subscribe</Text>
+            <TouchableOpacity
+              style={[
+                styles.subscribeBtn,
+                subscribed && styles.subscribedBtn,
+              ]}
+              onPress={handleSubscribe}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={subscribed ? "Unsubscribe" : "Subscribe"}
+            >
+              <Text
+                style={[
+                  styles.subscribeBtnText,
+                  subscribed && styles.subscribedBtnText,
+                ]}
+              >
+                {subscribed ? "Subscribed" : "Subscribe"}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Action buttons */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.actionsRow}
           >
-            <TouchableOpacity style={styles.actionPill}>
-              <Ionicons name="thumbs-up-outline" size={18} color={THEME.textPrimary} />
-              <Text style={styles.actionPillText}>
-                {(video.likes / 1000).toFixed(0)}K
+            <TouchableOpacity
+              style={[styles.actionPill, liked && styles.actionPillActive]}
+              onPress={handleLike}
+              accessibilityRole="button"
+              accessibilityLabel={`Like, ${video.likes} likes`}
+            >
+              <Ionicons
+                name={liked ? "thumbs-up" : "thumbs-up-outline"}
+                size={18}
+                color={liked ? THEME.accent : THEME.textPrimary}
+              />
+              <Text
+                style={[
+                  styles.actionPillText,
+                  liked && { color: THEME.accent },
+                ]}
+              >
+                {((liked ? video.likes + 1 : video.likes) / 1000).toFixed(0)}K
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionPill}>
-              <Ionicons name="thumbs-down-outline" size={18} color={THEME.textPrimary} />
+            <TouchableOpacity
+              style={styles.actionPill}
+              accessibilityRole="button"
+              accessibilityLabel="Dislike"
+            >
+              <Ionicons
+                name="thumbs-down-outline"
+                size={18}
+                color={THEME.textPrimary}
+              />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionPill}>
-              <Ionicons name="share-outline" size={18} color={THEME.textPrimary} />
+            <TouchableOpacity
+              style={styles.actionPill}
+              accessibilityRole="button"
+              accessibilityLabel="Share"
+            >
+              <Ionicons
+                name="share-outline"
+                size={18}
+                color={THEME.textPrimary}
+              />
               <Text style={styles.actionPillText}>Share</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionPill}>
-              <Ionicons name="download-outline" size={18} color={THEME.textPrimary} />
+            <TouchableOpacity
+              style={styles.actionPill}
+              accessibilityRole="button"
+              accessibilityLabel="Save"
+            >
+              <Ionicons
+                name="download-outline"
+                size={18}
+                color={THEME.textPrimary}
+              />
               <Text style={styles.actionPillText}>Save</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionPill}>
-              <Ionicons name="flag-outline" size={18} color={THEME.textPrimary} />
+            <TouchableOpacity
+              style={styles.actionPill}
+              accessibilityRole="button"
+              accessibilityLabel="Report"
+            >
+              <Ionicons
+                name="flag-outline"
+                size={18}
+                color={THEME.textPrimary}
+              />
             </TouchableOpacity>
           </ScrollView>
 
-          {/* Description card with masked edges */}
           <View style={styles.descriptionCard}>
             <LinearGradient
-              colors={["rgba(255,68,68,0.05)", "transparent"]}
+              colors={["rgba(255,68,68,0.04)", "transparent"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -221,7 +333,6 @@ export default function WatchScreen({
             </View>
           </View>
 
-          {/* Comments */}
           <Text style={styles.commentsHeader}>
             {comments.length} Comments
           </Text>
@@ -229,7 +340,6 @@ export default function WatchScreen({
             <CommentItem key={comment.id} comment={comment} />
           ))}
 
-          {/* Related videos */}
           <Text style={styles.relatedHeader}>Up next</Text>
           {relatedVideos.map((v) => (
             <VideoCard
@@ -288,13 +398,16 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,68,68,0.85)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: THEME.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
   },
   progressContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 0,
   },
   progressTrack: {
     height: 3,
@@ -348,10 +461,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
+  subscribedBtn: {
+    backgroundColor: THEME.bgTertiary,
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
   subscribeBtnText: {
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
+  },
+  subscribedBtnText: {
+    color: THEME.textSecondary,
   },
   actionsRow: {
     gap: 8,
@@ -365,6 +486,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
+  },
+  actionPillActive: {
+    backgroundColor: "rgba(255,68,68,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,68,68,0.25)",
   },
   actionPillText: {
     color: THEME.textPrimary,

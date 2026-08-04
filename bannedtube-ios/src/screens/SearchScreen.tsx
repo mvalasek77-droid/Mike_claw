@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import VideoCard from "../components/VideoCard";
 import { searchVideos, THEME, type Video } from "../lib/data";
 
@@ -27,7 +28,12 @@ export default function SearchScreen({
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} activeOpacity={0.6}>
+        <TouchableOpacity
+          onPress={onBack}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Ionicons name="arrow-back" size={24} color={THEME.textPrimary} />
         </TouchableOpacity>
         <View style={styles.searchBar}>
@@ -40,18 +46,32 @@ export default function SearchScreen({
             onChangeText={setQuery}
             autoFocus
             returnKeyType="search"
+            accessibilityLabel="Search input"
+            accessibilityHint="Type to search videos, channels, or topics"
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery("")}>
-              <Ionicons name="close-circle" size={18} color={THEME.textSecondary} />
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.selectionAsync();
+                setQuery("");
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={THEME.textSecondary}
+              />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
       {query.trim() && (
-        <Text style={styles.resultCount}>
-          {results.length} results for "{query}"
+        <Text style={styles.resultCount} accessibilityRole="text">
+          {results.length} result{results.length !== 1 ? "s" : ""} for "
+          {query}"
         </Text>
       )}
 
@@ -65,14 +85,13 @@ export default function SearchScreen({
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
         ListEmptyComponent={
           query.trim() ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="search" size={48} color={THEME.bgTertiary} />
               <Text style={styles.emptyText}>No results found</Text>
-              <Text style={styles.emptySubtext}>
-                Try different keywords
-              </Text>
+              <Text style={styles.emptySubtext}>Try different keywords</Text>
             </View>
           ) : (
             <View style={styles.emptyContainer}>
@@ -127,7 +146,7 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   list: {
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   cardWrapper: {
     paddingHorizontal: 14,

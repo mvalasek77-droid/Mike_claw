@@ -5,6 +5,8 @@
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
     "expo": "~57.0.10",
+    "expo-blur": "^57.0.2",
+    "expo-haptics": "^57.0.1",
     "expo-linear-gradient": "^57.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",

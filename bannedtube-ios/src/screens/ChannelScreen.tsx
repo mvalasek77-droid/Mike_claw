@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,11 +9,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
 import {
   type Video,
-  type Channel,
   getChannelById,
   getVideosByChannel,
   formatSubscribers,
@@ -34,6 +34,8 @@ export default function ChannelScreen({
 }: ChannelScreenProps) {
   const channel = getChannelById(channelId);
   const channelVideos = getVideosByChannel(channelId);
+  const [subscribed, setSubscribed] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
 
   if (!channel) {
     return (
@@ -45,10 +47,14 @@ export default function ChannelScreen({
 
   const tabs = ["Videos", "Playlists", "Community", "About"];
 
+  function handleSubscribe() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setSubscribed(!subscribed);
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Banner with gradient masks */}
         <View style={styles.banner}>
           <LinearGradient
             colors={channel.bannerColors || ["#1a1a1a", "#0f0f0f", "#1a1a1a"]}
@@ -56,34 +62,40 @@ export default function ChannelScreen({
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          {/* Top fade mask */}
           <LinearGradient
             colors={["rgba(0,0,0,0.3)", "transparent"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 0.5 }}
             style={StyleSheet.absoluteFill}
           />
-          {/* Bottom fade to content */}
           <LinearGradient
             colors={["transparent", THEME.bgPrimary]}
             start={{ x: 0, y: 0.6 }}
             end={{ x: 0, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          {/* Watermark name */}
-          <Text style={styles.bannerWatermark}>{channel.name}</Text>
+          <Text
+            style={styles.bannerWatermark}
+            allowFontScaling={false}
+          >
+            {channel.name}
+          </Text>
 
-          {/* Back button */}
           <TouchableOpacity
             style={styles.backBtn}
             onPress={onBack}
             activeOpacity={0.6}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
-            <Ionicons name="chevron-back" size={24} color={THEME.textPrimary} />
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={THEME.textPrimary}
+            />
           </TouchableOpacity>
         </View>
 
-        {/* Channel info */}
         <View style={styles.channelInfo}>
           <View style={styles.avatarContainer}>
             <Avatar
@@ -92,7 +104,6 @@ export default function ChannelScreen({
               size={72}
               borderColor="rgba(255,68,68,0.3)"
             />
-            {/* Avatar glow */}
             <View
               style={[
                 styles.avatarGlow,
@@ -102,7 +113,12 @@ export default function ChannelScreen({
           </View>
           <View style={styles.infoText}>
             <View style={styles.nameRow}>
-              <Text style={styles.channelName}>{channel.name}</Text>
+              <Text
+                style={styles.channelName}
+                accessibilityRole="header"
+              >
+                {channel.name}
+              </Text>
               {channel.verified && (
                 <Ionicons
                   name="checkmark-circle"
@@ -126,41 +142,75 @@ export default function ChannelScreen({
           </View>
         </View>
 
-        {/* Action buttons */}
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.subscribeBtn} activeOpacity={0.7}>
-            <Text style={styles.subscribeBtnText}>Subscribe</Text>
+          <TouchableOpacity
+            style={[
+              styles.subscribeBtn,
+              subscribed && styles.subscribedBtn,
+            ]}
+            onPress={handleSubscribe}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={subscribed ? "Unsubscribe" : "Subscribe"}
+          >
+            <Text
+              style={[
+                styles.subscribeBtnText,
+                subscribed && styles.subscribedBtnText,
+              ]}
+            >
+              {subscribed ? "Subscribed" : "Subscribe"}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bellBtn} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.bellBtn}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Notification settings"
+          >
             <Ionicons
-              name="notifications-outline"
+              name={
+                subscribed ? "notifications" : "notifications-outline"
+              }
               size={20}
               color={THEME.textPrimary}
             />
           </TouchableOpacity>
         </View>
 
-        {/* Tabs */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsRow}
         >
           {tabs.map((tab, i) => (
-            <TouchableOpacity key={tab} style={styles.tab} activeOpacity={0.7}>
+            <TouchableOpacity
+              key={tab}
+              style={styles.tab}
+              activeOpacity={0.7}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setActiveTab(i);
+              }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === i }}
+              accessibilityLabel={`${tab} tab`}
+            >
               <Text
-                style={[styles.tabText, i === 0 && styles.tabTextActive]}
+                style={[
+                  styles.tabText,
+                  activeTab === i && styles.tabTextActive,
+                ]}
               >
                 {tab}
               </Text>
-              {i === 0 && <View style={styles.tabIndicator} />}
+              {activeTab === i && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           ))}
         </ScrollView>
 
         <View style={styles.divider} />
 
-        {/* Videos */}
         <View style={styles.videosContainer}>
           {channelVideos.map((video) => (
             <VideoCard
@@ -269,11 +319,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 22,
+    shadowColor: THEME.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  subscribedBtn: {
+    backgroundColor: THEME.bgTertiary,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    shadowOpacity: 0,
   },
   subscribeBtnText: {
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
+  },
+  subscribedBtnText: {
+    color: THEME.textSecondary,
   },
   bellBtn: {
     width: 40,

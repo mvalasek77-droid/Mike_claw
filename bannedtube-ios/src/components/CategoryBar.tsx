@@ -5,6 +5,7 @@ import {
   Text,
   StyleSheet,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { THEME, categories } from "../lib/data";
 
 interface CategoryBarProps {
@@ -22,9 +23,15 @@ export default function CategoryBar({ active, onChange }: CategoryBarProps) {
       {categories.map((cat) => (
         <TouchableOpacity
           key={cat}
-          onPress={() => onChange(cat)}
+          onPress={() => {
+            Haptics.selectionAsync();
+            onChange(cat);
+          }}
           style={[styles.pill, active === cat && styles.pillActive]}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityState={{ selected: active === cat }}
+          accessibilityLabel={`${cat} category`}
         >
           <Text
             style={[styles.pillText, active === cat && styles.pillTextActive]}

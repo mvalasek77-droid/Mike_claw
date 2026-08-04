@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { THEME } from "../lib/data";
 
@@ -12,17 +13,21 @@ interface HeaderProps {
 export default function Header({ onSearch, onNotification }: HeaderProps) {
   return (
     <View style={styles.wrapper}>
-      {/* Frosted glass mask effect */}
+      <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
       <LinearGradient
-        colors={[THEME.bgPrimary, "rgba(15,15,15,0.95)"]}
+        colors={[THEME.bgPrimary, "rgba(15,15,15,0.92)"]}
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.container}>
-        <View style={styles.logoRow}>
+        <View
+          style={styles.logoRow}
+          accessibilityRole="header"
+          accessibilityLabel="BannedTube"
+        >
           <View style={styles.logoIcon}>
             <Ionicons name="flame" size={18} color="#fff" />
           </View>
-          <Text style={styles.logoText}>
+          <Text style={styles.logoText} allowFontScaling={false}>
             Banned<Text style={styles.logoAccent}>Tube</Text>
           </Text>
         </View>
@@ -32,6 +37,8 @@ export default function Header({ onSearch, onNotification }: HeaderProps) {
             style={styles.actionBtn}
             onPress={onSearch}
             activeOpacity={0.6}
+            accessibilityRole="button"
+            accessibilityLabel="Search"
           >
             <Ionicons name="search" size={22} color={THEME.textPrimary} />
           </TouchableOpacity>
@@ -39,6 +46,8 @@ export default function Header({ onSearch, onNotification }: HeaderProps) {
             style={styles.actionBtn}
             onPress={onNotification}
             activeOpacity={0.6}
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
           >
             <Ionicons
               name="notifications-outline"
@@ -47,14 +56,17 @@ export default function Header({ onSearch, onNotification }: HeaderProps) {
             />
             <View style={styles.notifDot} />
           </TouchableOpacity>
-          <View style={styles.profileBtn}>
+          <View
+            style={styles.profileBtn}
+            accessibilityRole="image"
+            accessibilityLabel="Profile"
+          >
             <Ionicons name="person" size={14} color="#fff" />
           </View>
         </View>
       </View>
-      {/* Bottom border with gradient mask */}
       <LinearGradient
-        colors={["transparent", "rgba(255,68,68,0.1)", "transparent"]}
+        colors={["transparent", "rgba(255,68,68,0.08)", "transparent"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.borderGradient}
@@ -66,6 +78,7 @@ export default function Header({ onSearch, onNotification }: HeaderProps) {
 const styles = StyleSheet.create({
   wrapper: {
     position: "relative",
+    overflow: "hidden",
   },
   container: {
     flexDirection: "row",

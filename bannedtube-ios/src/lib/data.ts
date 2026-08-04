@@ -37,6 +37,32 @@ export interface Comment {
   replies?: Comment[];
 }
 
+export interface AIContentSuggestion {
+  id: string;
+  type: "title" | "thumbnail" | "script" | "hashtag" | "schedule";
+  content: string;
+  confidence: number;
+  reasoning: string;
+}
+
+export interface AITrendingTopic {
+  id: string;
+  topic: string;
+  growth: number;
+  category: string;
+  relatedKeywords: string[];
+  suggestedAngle: string;
+}
+
+export interface CreatorInsight {
+  id: string;
+  metric: string;
+  value: string;
+  change: number;
+  trend: "up" | "down" | "stable";
+  suggestion: string;
+}
+
 export const THEME = {
   bgPrimary: "#0f0f0f",
   bgSecondary: "#1a1a1a",
@@ -47,6 +73,12 @@ export const THEME = {
   accent: "#ff4444",
   accentHover: "#ff6666",
   border: "#3a3a3a",
+  glass: "rgba(255,255,255,0.06)",
+  glassBorder: "rgba(255,255,255,0.1)",
+  accentGlow: "rgba(255,68,68,0.15)",
+  success: "#34d399",
+  warning: "#fbbf24",
+  info: "#60a5fa",
 };
 
 export const channels: Channel[] = [
@@ -382,6 +414,12 @@ export function formatSubscribers(subs: number): string {
   return `${subs} subscribers`;
 }
 
+export function formatCompact(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+  return `${n}`;
+}
+
 export function getVideoById(id: string): Video | undefined {
   return videos.find((v) => v.id === id);
 }
@@ -482,6 +520,122 @@ export function getComments(): Comment[] {
       text: "The production quality keeps getting better. Keep it up!",
       likes: 567,
       timeAgo: "2 days ago",
+    },
+  ];
+}
+
+export function getAITitleSuggestions(topic: string): AIContentSuggestion[] {
+  const base = topic.toLowerCase();
+  return [
+    {
+      id: "t1",
+      type: "title",
+      content: `BREAKING: ${topic} - What They're Not Telling You`,
+      confidence: 0.94,
+      reasoning: "High-urgency titles with revelation hooks drive 3.2x higher CTR on this platform.",
+    },
+    {
+      id: "t2",
+      type: "title",
+      content: `I Investigated ${topic} for 30 Days. Here's What I Found.`,
+      confidence: 0.89,
+      reasoning: "Personal investigation format builds trust and averages 2.8x watch time.",
+    },
+    {
+      id: "t3",
+      type: "title",
+      content: `The ${topic} They Banned Me For Talking About`,
+      confidence: 0.87,
+      reasoning: "Platform-specific censorship angle resonates strongly with BannedTube audience.",
+    },
+    {
+      id: "t4",
+      type: "title",
+      content: `${topic}: A Deep Dive Into the Evidence`,
+      confidence: 0.82,
+      reasoning: "Evidence-focused framing attracts higher-quality engagement and longer sessions.",
+    },
+  ];
+}
+
+export function getAITrendingTopics(): AITrendingTopic[] {
+  return [
+    {
+      id: "tr1",
+      topic: "Platform Migration Wave",
+      growth: 340,
+      category: "Tech & Media",
+      relatedKeywords: ["deplatforming", "alt-tech", "creator exodus", "free speech"],
+      suggestedAngle: "Document creators' experiences moving between platforms. Interview 3-5 creators about their journey.",
+    },
+    {
+      id: "tr2",
+      topic: "AI Content Moderation",
+      growth: 280,
+      category: "Technology",
+      relatedKeywords: ["algorithm", "shadow ban", "AI censorship", "content policy"],
+      suggestedAngle: "Investigate how AI moderation systems make decisions. Use screen recordings to show real examples.",
+    },
+    {
+      id: "tr3",
+      topic: "Independent Journalism Revival",
+      growth: 195,
+      category: "News & Media",
+      relatedKeywords: ["citizen journalism", "media trust", "grassroots", "reporting"],
+      suggestedAngle: "Highlight the rise of independent newsrooms. Compare coverage quality vs legacy media.",
+    },
+    {
+      id: "tr4",
+      topic: "Digital Rights & Privacy",
+      growth: 160,
+      category: "Policy",
+      relatedKeywords: ["data privacy", "surveillance", "encryption", "digital freedom"],
+      suggestedAngle: "Practical guide to protecting online privacy as a creator. Step-by-step tutorial format.",
+    },
+    {
+      id: "tr5",
+      topic: "Creator Economy Shifts",
+      growth: 145,
+      category: "Business",
+      relatedKeywords: ["monetization", "direct support", "membership", "sponsorship"],
+      suggestedAngle: "Break down alternative monetization models that don't rely on platform ad revenue.",
+    },
+  ];
+}
+
+export function getCreatorInsights(): CreatorInsight[] {
+  return [
+    {
+      id: "i1",
+      metric: "Avg. Watch Time",
+      value: "8:42",
+      change: 12,
+      trend: "up",
+      suggestion: "Your longer-form content (20+ min) retains 40% better. Consider extending your next video.",
+    },
+    {
+      id: "i2",
+      metric: "Subscriber Growth",
+      value: "+2.4K",
+      change: 8,
+      trend: "up",
+      suggestion: "Tuesday/Thursday uploads drive 2x more subscriptions. Optimize your schedule.",
+    },
+    {
+      id: "i3",
+      metric: "Engagement Rate",
+      value: "6.8%",
+      change: -3,
+      trend: "down",
+      suggestion: "Add a question in your first 30 seconds to boost comments. Top creators see 15% lift.",
+    },
+    {
+      id: "i4",
+      metric: "Click-Through Rate",
+      value: "11.2%",
+      change: 5,
+      trend: "up",
+      suggestion: "Your high-contrast thumbnails perform 2.5x better. Keep using bold text overlays.",
     },
   ];
 }

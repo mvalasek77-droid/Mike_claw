@@ -24,6 +24,8 @@ export default function VideoCard({
         style={styles.listContainer}
         onPress={() => onPress(video)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`${video.title} by ${video.channel.name}, ${formatViews(video.views)}`}
       >
         <View style={styles.listThumbnail}>
           <VideoThumbnail
@@ -37,9 +39,7 @@ export default function VideoCard({
           <Text style={styles.listTitle} numberOfLines={2}>
             {video.title}
           </Text>
-          <Text style={styles.listMeta}>
-            {video.channel.name}
-          </Text>
+          <Text style={styles.listMeta}>{video.channel.name}</Text>
           <Text style={styles.listMeta}>
             {formatViews(video.views)} · {video.uploadedAt}
           </Text>
@@ -53,6 +53,8 @@ export default function VideoCard({
       style={styles.gridContainer}
       onPress={() => onPress(video)}
       activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={`${video.title} by ${video.channel.name}, ${formatViews(video.views)}`}
     >
       <VideoThumbnail
         colors={video.thumbnailColors}
@@ -63,6 +65,8 @@ export default function VideoCard({
         <TouchableOpacity
           onPress={() => onChannelPress?.(video.channel.id)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`View ${video.channel.name} channel`}
         >
           <Avatar
             color={video.channel.avatarColor}
