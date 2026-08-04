@@ -9,6 +9,7 @@ struct SuitorDetailView: View {
     @EnvironmentObject private var matching: MatchingService
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
+    @State private var currentPhoto = 0
 
     // Slice 4b1b: route through the matching Worker when the bid came from
     // the real inbox; fall back to the sim `accept`/`decline` otherwise.
@@ -91,18 +92,49 @@ struct SuitorDetailView: View {
                 }
                 .padding(.top, 8)
 
-                AvatarView(name: man.name, hue: man.hue, photoName: man.photoName, locked: !accepted, corner: Theme.cornerXL)
-                    .frame(height: 300)
-                    .overlay(alignment: .bottomLeading) {
-                        if accepted {
-                            VStack(alignment: .leading) {
-                                Text(man.name).font(.system(size: 26, weight: .heavy, design: .serif))
-                                    .foregroundStyle(Theme.ink)
-                                Text("\(man.age) · \(man.location)").font(.system(size: 13))
-                                    .foregroundStyle(Theme.inkSoft)
-                            }.padding(16)
+                ZStack(alignment: .bottomLeading) {
+                    if accepted && man.remotePhotoURLs.count > 1 {
+                        TabView(selection: $currentPhoto) {
+                            ForEach(Array(man.remotePhotoURLs.enumerated()), id: \.offset) { index, urlString in
+                                Color.clear
+                                    .overlay(
+                                        AsyncImage(url: URL(string: urlString)) { phase in
+                                            switch phase {
+                                            case .success(let image):
+                                                image.resizable().scaledToFill()
+                                            default:
+                                                AvatarView(name: man.name, hue: man.hue, corner: Theme.cornerXL)
+                                            }
+                                        }
+                                    )
+                                    .clipped()
+                                    .tag(index)
+                            }
                         }
+                        .tabViewStyle(.page(indexDisplayMode: .never))
+                        .frame(height: 300)
+                    } else {
+                        AvatarView(name: man.name, hue: man.hue, photoName: man.photoName,
+                                   remotePhotoURL: accepted ? man.remotePhotoURLs.first : nil,
+                                   locked: !accepted, corner: Theme.cornerXL)
+                            .frame(height: 300)
                     }
+                    if accepted && man.remotePhotoURLs.count > 1 {
+                        PhotoPageDots(count: man.remotePhotoURLs.count, current: currentPhoto)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 12)
+                            .frame(maxHeight: .infinity, alignment: .top)
+                    }
+                    if accepted {
+                        VStack(alignment: .leading) {
+                            Text(man.name).font(.system(size: 26, weight: .heavy, design: .serif))
+                                .foregroundStyle(Theme.ink)
+                            Text("\(man.age) · \(man.location)").font(.system(size: 13))
+                                .foregroundStyle(Theme.inkSoft)
+                        }.padding(16)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerXL, style: .continuous))
 
                 // The bid headline.
                 GlassCard(tint: Theme.gold) {

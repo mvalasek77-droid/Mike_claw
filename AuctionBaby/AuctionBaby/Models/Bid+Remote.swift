@@ -58,11 +58,12 @@ extension Profile {
         self.init(
             id: id,
             name: peer?.name ?? "Someone",
-            age: 0,               // not needed on the row; peer detail fetches profile
+            age: 0,
             role: role,
             location: "",
             bio: "",
             hue: peer?.hue ?? 0.6,
+            remotePhotoURLs: peer?.photos.map(\.url) ?? [],
         )
         self.verified = peer?.isVerified ?? false
         if let a = peer?.archetype { self.archetype = Archetype(fromRemoteString: a) }

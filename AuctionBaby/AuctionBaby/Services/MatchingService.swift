@@ -282,8 +282,24 @@ struct RemotePeer: Codable, Equatable, Hashable {
     let hue: Double?
     let archetype: String?
     let verifiedAt: Double?
+    let photos: [RemotePeerPhoto]
 
     var isVerified: Bool { verifiedAt != nil }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        hue = try c.decodeIfPresent(Double.self, forKey: .hue)
+        archetype = try c.decodeIfPresent(String.self, forKey: .archetype)
+        verifiedAt = try c.decodeIfPresent(Double.self, forKey: .verifiedAt)
+        photos = try c.decodeIfPresent([RemotePeerPhoto].self, forKey: .photos) ?? []
+    }
+}
+
+struct RemotePeerPhoto: Codable, Equatable, Hashable {
+    let id: String
+    let url: String
 }
 
 struct RemoteMatch: Codable, Identifiable, Equatable {

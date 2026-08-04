@@ -24,6 +24,9 @@ crons = ["17 */6 * * *"]
 # a bid, accept, or message needs to notify a user. If unset, matching still
 # works but nothing wakes the other phone — set it as soon as auth is deployed.
 AUTH_URL = "https://auctionbaby-auth.YOUR-SUBDOMAIN.workers.dev"
+# CDN base for R2 profile photos (same value as auth Worker's PHOTOS_PUBLIC_URL).
+# Peer snapshots on bids/matches resolve photo keys to full URLs when set.
+PHOTOS_PUBLIC_URL = ""
 
 # ── D1: SHARED WITH THE AUTH WORKER ──────────────────────────────────────────
 # Bidders/lots FK into `users` (from auth), so bids/matches/messages must live

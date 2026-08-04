@@ -56,6 +56,9 @@ interface Env {
    *  webhook to stamp `matches.reserved_at`. Same value as
    *  APP_SHARED_SECRET on the consumables Worker by convention. */
   APP_SHARED_SECRET?: string;
+  /** Batch Z — CDN base for R2 photos, same value as the auth Worker's
+   *  PHOTOS_PUBLIC_URL. Peer snapshots resolve photo keys to full URLs. */
+  PHOTOS_PUBLIC_URL?: string;
 }
 
 // ── Response helpers ─────────────────────────────────────────────────────────
@@ -416,15 +419,26 @@ interface PeerRow {
   peer_hue: number | null;
   peer_archetype: string | null;
   peer_verified_at: number | null;
+  peer_photos_json: string | null;
 }
 
-function publicPeer(r: PeerRow) {
+function publicPeer(r: PeerRow, photosBaseUrl?: string) {
+  let photos: Array<{ id: string; url: string }> = [];
+  if (r.peer_photos_json && photosBaseUrl) {
+    try {
+      const raw = JSON.parse(r.peer_photos_json) as Array<{ id: string; key: string }>;
+      photos = raw
+        .filter((e) => e && typeof e.id === "string" && typeof e.key === "string")
+        .map((e) => ({ id: e.id, url: `${photosBaseUrl}/${e.key}` }));
+    } catch { /* malformed JSON → empty array, safe */ }
+  }
   return {
     id: r.peer_id,
     name: r.peer_name,
     hue: r.peer_hue,
     archetype: r.peer_archetype,
     verifiedAt: r.peer_verified_at,
+    photos,
   };
 }
 
@@ -442,6 +456,7 @@ async function handleIncoming(request: Request, env: Env): Promise<Response> {
             p.name      AS peer_name,
             p.hue       AS peer_hue,
             p.archetype AS peer_archetype,
+            p.photos_json AS peer_photos_json,
             u.verified_at AS peer_verified_at
        FROM bids b
        LEFT JOIN profiles p ON p.user_id = b.bidder_id
@@ -452,8 +467,9 @@ async function handleIncoming(request: Request, env: Env): Promise<Response> {
       ORDER BY b.created_at DESC LIMIT 100`,
   ).bind(userId).all<BidRow & PeerRow>();
   const results = rows.results ?? [];
+  const base = env.PHOTOS_PUBLIC_URL ?? undefined;
   return json({
-    bids: results.map((r) => ({ ...publicBid(r), bidder: publicPeer(r) })),
+    bids: results.map((r) => ({ ...publicBid(r), bidder: publicPeer(r, base) })),
   });
 }
 
@@ -469,6 +485,7 @@ async function handleOutgoing(request: Request, env: Env): Promise<Response> {
             p.name      AS peer_name,
             p.hue       AS peer_hue,
             p.archetype AS peer_archetype,
+            p.photos_json AS peer_photos_json,
             u.verified_at AS peer_verified_at
        FROM bids b
        LEFT JOIN profiles p ON p.user_id = b.lot_id
@@ -479,8 +496,9 @@ async function handleOutgoing(request: Request, env: Env): Promise<Response> {
       ORDER BY b.created_at DESC LIMIT 100`,
   ).bind(userId).all<BidRow & PeerRow>();
   const results = rows.results ?? [];
+  const base = env.PHOTOS_PUBLIC_URL ?? undefined;
   return json({
-    bids: results.map((r) => ({ ...publicBid(r), lot: publicPeer(r) })),
+    bids: results.map((r) => ({ ...publicBid(r), lot: publicPeer(r, base) })),
   });
 }
 
@@ -611,6 +629,7 @@ async function handleListMatches(request: Request, env: Env): Promise<Response> 
             peer_p.name       AS peer_name,
             peer_p.hue        AS peer_hue,
             peer_p.archetype  AS peer_archetype,
+            peer_p.photos_json AS peer_photos_json,
             peer_u.verified_at AS peer_verified_at
        FROM matches m
        LEFT JOIN profiles peer_p
@@ -626,8 +645,9 @@ async function handleListMatches(request: Request, env: Env): Promise<Response> 
       ORDER BY m.created_at DESC LIMIT 100`,
   ).bind(userId).all<MatchRow & PeerRow>();
   const results = rows.results ?? [];
+  const base = env.PHOTOS_PUBLIC_URL ?? undefined;
   return json({
-    matches: results.map((r) => ({ ...publicMatch(r), peer: publicPeer(r) })),
+    matches: results.map((r) => ({ ...publicMatch(r), peer: publicPeer(r, base) })),
   });
 }
 
@@ -648,6 +668,7 @@ async function handleGetMatch(matchId: string, request: Request, env: Env): Prom
               p.name       AS peer_name,
               p.hue        AS peer_hue,
               p.archetype  AS peer_archetype,
+              p.photos_json AS peer_photos_json,
               u.verified_at AS peer_verified_at
          FROM users u LEFT JOIN profiles p ON p.user_id = u.id
         WHERE u.id = ?`,
@@ -656,10 +677,11 @@ async function handleGetMatch(matchId: string, request: Request, env: Env): Prom
       "SELECT * FROM messages WHERE match_id = ? ORDER BY created_at ASC LIMIT 500",
     ).bind(matchId).all<MessageRow>(),
   ]);
+  const base = env.PHOTOS_PUBLIC_URL ?? undefined;
   return json({
     match: {
       ...publicMatch(match),
-      peer: peerRow ? publicPeer(peerRow) : null,
+      peer: peerRow ? publicPeer(peerRow, base) : null,
     },
     messages: (msgs.results ?? []).map(publicMessage),
   });
