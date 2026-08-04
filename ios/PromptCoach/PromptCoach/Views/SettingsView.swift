@@ -699,15 +699,20 @@ enum LegalText {
     unlawful or that violate Anthropic's usage policies. The app does not \
     assist in bypassing AI safety systems.
 
-    7. LIMITATION OF LIABILITY
+    7. TRADEMARK NOTICE
+    Prompt Coach is not affiliated with, endorsed by, or sponsored by \
+    Anthropic. Claude, Sonnet, Opus, Haiku, and Fable are trademarks of \
+    Anthropic. Apple and the App Store are trademarks of Apple Inc.
+
+    8. LIMITATION OF LIABILITY
     To the maximum extent permitted by law, our total liability for any \
     claim relating to the app will not exceed $10.
 
-    8. CHANGES
+    9. CHANGES
     We may update these terms; the current version ships in the app with a \
     new effective date.
 
-    9. CONTACT
+    10. CONTACT
     mvalasek77@gmail.com
     """
 
@@ -784,15 +789,20 @@ enum LegalText {
     unlawful or that violate Anthropic's usage policies. The app does not \
     assist in bypassing AI safety systems.
 
-    7. LIMITATION OF LIABILITY
+    7. TRADEMARK NOTICE
+    Prompt Coach is not affiliated with, endorsed by, or sponsored by \
+    Anthropic. Claude, Sonnet, Opus, Haiku, and Fable are trademarks of \
+    Anthropic. Apple and the App Store are trademarks of Apple Inc.
+
+    8. LIMITATION OF LIABILITY
     To the maximum extent permitted by law, our total liability for any claim \
     relating to the app will not exceed the amount you paid for it.
 
-    8. CHANGES
+    9. CHANGES
     We may update these terms; the current version ships in the app with a \
     new effective date.
 
-    9. CONTACT
+    10. CONTACT
     mvalasek77@gmail.com
     """
 }
