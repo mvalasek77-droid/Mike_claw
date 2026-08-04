@@ -1479,6 +1479,18 @@ final class AuctionStore: ObservableObject {
         toastFlash(primary == nil ? "Photos cleared." : "Photos updated.")
     }
 
+    func updateMyProfile(name: String, location: String, bio: String,
+                          prompts: [Prompt], interests: [String]) {
+        me.name = name
+        me.location = location
+        me.bio = bio
+        me.prompts = prompts
+        me.interests = interests
+        save()
+        onProfileChanged?(me)
+        toastFlash("Profile updated.")
+    }
+
     /// Save the woman's Opening Bid Script. Passing nil clears it.
     func updateOpeningBidScript(_ script: String?) {
         me.openingBidScript = script

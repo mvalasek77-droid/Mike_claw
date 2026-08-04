@@ -18,6 +18,7 @@ struct MyProfileView: View {
     @State private var showPhotoEditor = false
     @State private var showOpeningScript = false
     @State private var showStanding = false
+    @State private var showEditProfile = false
 
     private var me: Profile { store.me }
     private var isMan: Bool { store.role == .man }
@@ -51,6 +52,7 @@ struct MyProfileView: View {
             .sheet(isPresented: $showSafety) { SafetyCenterView() }
             .sheet(isPresented: $showPhotoEditor) { PhotoEditorSheet() }
             .sheet(isPresented: $showOpeningScript) { OpeningBidScriptSheet() }
+            .sheet(isPresented: $showEditProfile) { EditProfileSheet() }
             .sheet(isPresented: $showStanding) { StandingView() }
             .sheet(isPresented: $showAdmin) { AdminGateView() }
             .alert("Reset account?", isPresented: $showReset) {
@@ -466,8 +468,181 @@ struct MyProfileView: View {
         }
     }
 
+    private struct EditProfileSheet: View {
+        @EnvironmentObject private var store: AuctionStore
+        @Environment(\.dismiss) private var dismiss
+        @State private var name = ""
+        @State private var location = ""
+        @State private var bio = ""
+        @State private var promptQuestions: [String] = ["", "", ""]
+        @State private var promptAnswers: [String] = ["", "", ""]
+        @State private var selectedInterests: Set<String> = []
+
+        private let promptPool = [
+            "The way to win me over is", "My simple pleasures",
+            "I geek out on", "Together we could", "Dating me is like",
+            "My most controversial opinion", "Green flags I look for",
+            "Best travel story", "I'm weirdly good at", "My love language"
+        ]
+        private let interestPool = [
+            "Art", "Travel", "Food", "Fitness", "Music", "Startups",
+            "Wine", "Film", "Reading", "Dogs", "Nightlife", "Design"
+        ]
+
+        private func commit() {
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedName.isEmpty else { return }
+            var prompts: [Prompt] = []
+            for i in 0..<3 {
+                let q = promptQuestions[i]
+                let a = promptAnswers[i].trimmingCharacters(in: .whitespacesAndNewlines)
+                if !q.isEmpty && !a.isEmpty { prompts.append(Prompt(question: q, answer: a)) }
+            }
+            store.updateMyProfile(
+                name: trimmedName,
+                location: location.trimmingCharacters(in: .whitespacesAndNewlines),
+                bio: bio.trimmingCharacters(in: .whitespacesAndNewlines),
+                prompts: prompts,
+                interests: Array(selectedInterests)
+            )
+            dismiss()
+        }
+
+        var body: some View {
+            NavigationStack {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        GlassCard(title: "Basics", icon: "person.fill") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                profileField("Name", text: $name)
+                                profileField("Location", text: $location, prompt: "e.g. New York")
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("BIO").font(.system(size: 10, weight: .heavy, design: .rounded))
+                                        .tracking(1).foregroundStyle(Theme.inkFaint)
+                                    TextField("", text: $bio,
+                                              prompt: Text("A few words about you")
+                                                .foregroundStyle(Theme.inkFaint), axis: .vertical)
+                                        .textFieldStyle(.plain).font(.system(size: 15))
+                                        .foregroundStyle(Theme.ink)
+                                        .lineLimit(2...6)
+                                        .padding(12)
+                                        .background(RoundedRectangle(cornerRadius: Theme.cornerM)
+                                            .fill(.white.opacity(0.06)))
+                                }
+                                Text("\(bio.count) / 300")
+                                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(bio.count > 300 ? Theme.danger : Theme.inkFaint)
+                                    .onChange(of: bio) { _, v in if v.count > 300 { bio = String(v.prefix(300)) } }
+                            }
+                        }
+
+                        GlassCard(title: "Prompts", icon: "text.bubble.fill", tint: Theme.rose) {
+                            Text("Pick a question and write your answer.")
+                                .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                            VStack(spacing: 14) {
+                                ForEach(0..<3, id: \.self) { i in
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Menu {
+                                            ForEach(promptPool, id: \.self) { q in
+                                                Button(q) { promptQuestions[i] = q }
+                                            }
+                                        } label: {
+                                            HStack {
+                                                Text(promptQuestions[i].isEmpty ? "Choose a question" : promptQuestions[i])
+                                                    .font(.system(size: 13, weight: .semibold))
+                                                    .foregroundStyle(promptQuestions[i].isEmpty ? Theme.inkFaint : Theme.gold)
+                                                    .lineLimit(1)
+                                                Spacer()
+                                                Image(systemName: "chevron.up.chevron.down")
+                                                    .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                                            }
+                                            .padding(10)
+                                            .background(RoundedRectangle(cornerRadius: Theme.cornerS)
+                                                .fill(.white.opacity(0.06)))
+                                        }
+                                        if !promptQuestions[i].isEmpty {
+                                            TextField("", text: $promptAnswers[i],
+                                                      prompt: Text("Your answer").foregroundStyle(Theme.inkFaint),
+                                                      axis: .vertical)
+                                                .textFieldStyle(.plain).font(.system(size: 14))
+                                                .foregroundStyle(Theme.ink)
+                                                .lineLimit(1...4)
+                                                .padding(10)
+                                                .background(RoundedRectangle(cornerRadius: Theme.cornerS)
+                                                    .fill(.white.opacity(0.04)))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        GlassCard(title: "Interests", icon: "sparkles", tint: Theme.gold) {
+                            FlowChips(items: interestPool, selected: $selectedInterests)
+                        }
+
+                        Spacer(minLength: 20)
+                    }
+                    .screenPadding().padding(.top, 8)
+                }
+                .background(AppBackground())
+                .navigationTitle("Edit profile")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") { dismiss() }.foregroundStyle(Theme.inkSoft)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Save") { commit() }
+                            .foregroundStyle(Theme.gold).fontWeight(.bold)
+                            .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+                .onAppear {
+                    let me = store.me
+                    name = me.name
+                    location = me.location
+                    bio = me.bio
+                    selectedInterests = Set(me.interests)
+                    for i in 0..<3 {
+                        if i < me.prompts.count {
+                            promptQuestions[i] = me.prompts[i].question
+                            promptAnswers[i] = me.prompts[i].answer
+                        }
+                    }
+                }
+            }
+        }
+
+        private func profileField(_ label: String, text: Binding<String>,
+                                   prompt: String? = nil) -> some View {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label.uppercased())
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .tracking(1).foregroundStyle(Theme.inkFaint)
+                TextField("", text: text,
+                          prompt: Text(prompt ?? label).foregroundStyle(Theme.inkFaint))
+                    .textFieldStyle(.plain).font(.system(size: 15))
+                    .foregroundStyle(Theme.ink)
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: Theme.cornerM)
+                        .fill(.white.opacity(0.06)))
+            }
+        }
+    }
+
     private var settingsCard: some View {
         GlassCard(title: "Settings", icon: "gearshape.fill") {
+            Button { showEditProfile = true } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "pencil.line").foregroundStyle(Theme.gold)
+                    Text("Edit profile").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                }
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(.plain)
+            Divider().overlay(Theme.hairline)
             Button { showPhotoEditor = true } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "photo.on.rectangle.angled").foregroundStyle(Theme.gold)
