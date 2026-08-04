@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import GlassCard from "../components/GlassCard";
+import RoadmapScreen from "./RoadmapScreen";
 import {
   THEME,
   getAITitleSuggestions,
@@ -28,7 +29,7 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-type StudioTab = "create" | "trends" | "insights";
+type StudioTab = "create" | "trends" | "insights" | "roadmap";
 
 function ConfidenceBar({ value }: { value: number }) {
   const width = useRef(new Animated.Value(0)).current;
@@ -171,6 +172,7 @@ export default function AIStudioScreen() {
   const [suggestions, setSuggestions] = useState<AIContentSuggestion[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showRoadmap, setShowRoadmap] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -216,7 +218,8 @@ export default function AIStudioScreen() {
     { key: "create", icon: "sparkles", label: "Create" },
     { key: "trends", icon: "analytics", label: "Trends" },
     { key: "insights", icon: "bar-chart", label: "Insights" },
-  ];
+    { key: "roadmap", icon: "map", label: "Roadmap" },
+  ] as const;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -278,6 +281,11 @@ export default function AIStudioScreen() {
         </View>
       </View>
 
+      {activeTab === "roadmap" ? (
+        <View style={{ flex: 1 }}>
+          <RoadmapScreen />
+        </View>
+      ) : (
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -523,6 +531,7 @@ export default function AIStudioScreen() {
 
         <View style={{ height: 120 }} />
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
