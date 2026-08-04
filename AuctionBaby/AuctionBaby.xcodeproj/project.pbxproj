@@ -45,6 +45,7 @@
 		A17E10009CE1A509C0E1A509 /* Bid+Remote.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20010CE2A510D0E2A510 /* Bid+Remote.swift */; };
 		A17E10010CE1A510C0E1A510 /* Match+Remote.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20011CE2A511D0E2A511 /* Match+Remote.swift */; };
 		A17E10011CE1A511C0E1A511 /* AdminRealUsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20012CE2A512D0E2A512 /* AdminRealUsersView.swift */; };
+		A17E10012CE1A512C0E1A512 /* AdminAuditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17F20013CE2A513D0E2A513 /* AdminAuditView.swift */; };
 		7FD8C049B6A88A1218D8FCD8 /* BugReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5478C7DA9664C0A6CE4361FD /* BugReport.swift */; };
 		802AD0B86BCF68206A12E772 /* AuctionFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B50AA90FC7FD4052035CBC09 /* AuctionFeedView.swift */; };
 		88AAAAE1BD5856BD0EB03D07 /* MatchCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 897DE9D862AF234FCD793BD2 /* MatchCelebrationView.swift */; };
@@ -153,6 +154,7 @@
 		A17F20010CE2A510D0E2A510 /* Bid+Remote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bid+Remote.swift"; sourceTree = "<group>"; };
 		A17F20011CE2A511D0E2A511 /* Match+Remote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Match+Remote.swift"; sourceTree = "<group>"; };
 		A17F20012CE2A512D0E2A512 /* AdminRealUsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminRealUsersView.swift; sourceTree = "<group>"; };
+		A17F20013CE2A513D0E2A513 /* AdminAuditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAuditView.swift; sourceTree = "<group>"; };
 		C3C1B67E57A3FD2E51FE6391 /* DailyClaimCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyClaimCard.swift; sourceTree = "<group>"; };
 		C6BDD580D9E566334FED2120 /* CopycatPortrait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopycatPortrait.swift; sourceTree = "<group>"; };
 		C6ED05FFE0CD5124AEA3A06F /* Commerce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Commerce.swift; sourceTree = "<group>"; };
@@ -210,6 +212,7 @@
 				CE2FBD37FF5B9541BBD2EFE4 /* AdminLedgerView.swift */,
 				5F5047C830BB39E2636804FE /* AdminModerationView.swift */,
 				A17F20012CE2A512D0E2A512 /* AdminRealUsersView.swift */,
+				A17F20013CE2A513D0E2A513 /* AdminAuditView.swift */,
 				A3D6598B9F062FD7930AB05A /* AdminView.swift */,
 			);
 			path = Admin;
@@ -555,6 +558,7 @@
 				A17E10009CE1A509C0E1A509 /* Bid+Remote.swift in Sources */,
 				A17E10010CE1A510C0E1A510 /* Match+Remote.swift in Sources */,
 				A17E10011CE1A511C0E1A511 /* AdminRealUsersView.swift in Sources */,
+				A17E10012CE1A512C0E1A512 /* AdminAuditView.swift in Sources */,
 				802AD0B86BCF68206A12E772 /* AuctionFeedView.swift in Sources */,
 				41F2ADC3E29735CA9E070FC8 /* AuctionStore.swift in Sources */,
 				9F3284028C5C4AA82C373EB0 /* AuctioneeDetailView.swift in Sources */,

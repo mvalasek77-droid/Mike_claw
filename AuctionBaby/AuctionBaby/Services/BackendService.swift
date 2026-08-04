@@ -313,6 +313,25 @@ final class BackendService: ObservableObject {
         return await getAuth("/admin/stats", as: AdminStats.self)
     }
 
+    /// Batch Q — one row per admin mutation for accountability.
+    struct AdminAuditEntry: Decodable, Identifiable, Equatable {
+        let id: String
+        let actorId: String
+        let action: String
+        let targetId: String?
+        let note: String?
+        let createdAt: Double
+    }
+
+    /// GET /admin/audit — paginated newest-first audit trail.
+    func fetchAdminAudit(limit: Int = 100,
+                        cursor: Double? = nil) async -> BackendResult<[AdminAuditEntry]> {
+        var path = "/admin/audit?limit=\(limit)"
+        if let cursor { path += "&cursor=\(Int(cursor))" }
+        struct Wrapper: Decodable { let entries: [AdminAuditEntry] }
+        return await getAuth(path, as: Wrapper.self).map(\.entries)
+    }
+
     /// GET /admin/users?limit=&cursor=  — paginated user list, newest first.
     func fetchAdminUsers(limit: Int = 50,
                         cursor: Double? = nil) async -> BackendResult<[AdminUser]> {

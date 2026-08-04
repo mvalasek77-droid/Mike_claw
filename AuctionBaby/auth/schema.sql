@@ -198,3 +198,16 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_reports_open_created ON reports(status, created_at DESC);
+
+-- ── Batch Q: admin audit log ─────────────────────────────────────────────────
+-- One row per /admin/* mutation. Answers "who did what to whom, and when."
+CREATE TABLE IF NOT EXISTS admin_audit (
+  id          TEXT PRIMARY KEY,
+  actor_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  action      TEXT NOT NULL,
+  target_id   TEXT,
+  note        TEXT,
+  created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_target ON admin_audit(target_id, created_at DESC);

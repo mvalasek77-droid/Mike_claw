@@ -19,6 +19,7 @@ struct AdminView: View {
         case backend
         case realUsers
         case moderation
+        case audit
         var id: String {
             switch self {
             case .addLot: return "addLot"
@@ -27,6 +28,7 @@ struct AdminView: View {
             case .backend: return "backend"
             case .realUsers: return "realUsers"
             case .moderation: return "moderation"
+            case .audit: return "audit"
             case .edit(let p): return "edit-\(p.id)"
             }
         }
@@ -44,6 +46,7 @@ struct AdminView: View {
                     backendCard
                     realUsersCard
                     moderationCard
+                    auditCard
 
                     rosterSection(title: "Lots · \(store.adminRoster.count)",
                                   empty: "No lots on the floor yet.",
@@ -77,6 +80,7 @@ struct AdminView: View {
                 case .backend:     AdminBackendView()
                 case .realUsers:   NavigationStack { AdminRealUsersView() }
                 case .moderation:  NavigationStack { AdminModerationView() }
+                case .audit:       NavigationStack { AdminAuditView() }
                 case .edit(let p): ProfileFormSheet(role: p.role, existing: p)
                 }
             }
@@ -208,6 +212,33 @@ struct AdminView: View {
                         Text("Signed-in users").font(.system(size: 15, weight: .heavy, design: .serif))
                             .foregroundStyle(Theme.ink)
                         Text("Real accounts from Sign in with Apple. Unverify or delete.")
+                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                }
+                .padding(14)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Doorway into the admin audit trail — every mutation the console fires
+    /// leaves a row here (Batch Q).
+    private var auditCard: some View {
+        Button { sheet = .audit } label: {
+            GlassSurface(corner: Theme.cornerL) {
+                HStack(spacing: 12) {
+                    Image(systemName: "list.bullet.rectangle.portrait")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.inkSoft)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Theme.inkSoft.opacity(0.14)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Audit trail").font(.system(size: 15, weight: .heavy, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                        Text("Every admin action, newest first — who did what to whom.")
                             .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
                     }
                     Spacer()

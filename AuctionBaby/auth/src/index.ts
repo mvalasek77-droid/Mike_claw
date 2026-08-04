@@ -860,8 +860,8 @@ async function handleVerifyWebhook(request: Request, env: Env): Promise<Response
  * as an override lane (fraud reversal, manual re-verify).
  */
 async function handleAdminVerify(request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdminSession(request, env);
-  if (denied) return denied;
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
   let body: any;
   try { body = await request.json(); } catch { return err("Invalid JSON body"); }
   const userId = String(body?.userId ?? "").trim();
@@ -876,11 +876,13 @@ async function handleAdminVerify(request: Request, env: Env): Promise<Response> 
   if (approved) {
     await markVerified(env, userId, "manual", ref);
     await fireVerifiedPush(env, userId).catch(() => {});
+    await writeAudit(env, gate.ok, "verify", userId, null);
     return json({ ok: true, verifiedAt: Date.now() });
   }
   await env.DB.prepare(
     "UPDATE users SET verification_status = 'failed', verification_vendor = 'manual', verification_ref = ?, last_seen_at = ? WHERE id = ?",
   ).bind(ref, Date.now(), userId).run();
+  await writeAudit(env, gate.ok, "verify_failed", userId, null);
   return json({ ok: true, verified: false });
 }
 
@@ -1262,8 +1264,8 @@ async function handleCreateReport(request: Request, env: Env): Promise<Response>
  *  APP_SHARED_SECRET-gated triage queue. Cursor is the last row's
  *  `created_at` (descending pagination). */
 async function handleAdminListReports(request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdminSession(request, env);
-  if (denied) return denied;
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
   const url = new URL(request.url);
   const status = url.searchParams.get("status") ?? "open";
   if (!["open", "reviewed", "actioned", "dismissed", "all"].includes(status)) {
@@ -1310,8 +1312,8 @@ async function handleAdminListReports(request: Request, env: Env): Promise<Respo
  *  status must be one of reviewed|actioned|dismissed. Stamps resolved_at
  *  and resolved_by (the admin's short name, in the body's note field). */
 async function handleAdminResolveReport(reportId: string, request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdminSession(request, env);
-  if (denied) return denied;
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
   let body: any;
   try { body = await request.json(); } catch { return err("Invalid JSON body"); }
   const status = String(body?.status ?? "").trim();
@@ -1324,6 +1326,9 @@ async function handleAdminResolveReport(reportId: string, request: Request, env:
   const result = await env.DB.prepare(
     "UPDATE reports SET status = ?, resolved_at = ?, resolved_by = ? WHERE id = ? AND status = 'open'",
   ).bind(status, now, resolvedBy, reportId).run();
+  // Audit: log resolve with the disposition baked into the action name so a
+  // single index scan can filter by kind ("resolve_report:actioned").
+  await writeAudit(env, gate.ok, `resolve_report:${status}`, reportId, resolvedBy);
   return json({ ok: true, updated: result.meta?.changes ?? 0 });
 }
 
@@ -1337,17 +1342,34 @@ async function handleAdminResolveReport(reportId: string, request: Request, env:
  *  discovering the static bearer; they'd need to compromise a specific
  *  admin account.
  *
+ *  Batch Q — returns the actor's userId on success (as `.ok`), so callers
+ *  can write the admin_audit row without a second `authenticate()` round.
+ *
  *  Internal Worker-to-Worker calls (/push/send from matching, and
  *  /internal/reservations/mark on matching Worker) still use the static
  *  bearer — they don't have session tokens. Kept for compatibility as
- *  `ensureAdminBearer` below. Returns null on success, a Response on deny. */
-async function ensureAdminSession(request: Request, env: Env): Promise<Response | null> {
+ *  `ensureAdmin` below. */
+type AdminGate = { ok: string; denied?: never } | { ok?: never; denied: Response };
+async function ensureAdminSession(request: Request, env: Env): Promise<AdminGate> {
   const userId = await authenticate(request, env);
-  if (!userId) return err("Unauthorized", 401);
+  if (!userId) return { denied: err("Unauthorized", 401) };
   const row = await env.DB.prepare("SELECT is_admin FROM users WHERE id = ?")
     .bind(userId).first<{ is_admin: number }>();
-  if (!row || row.is_admin !== 1) return err("Admin only", 403);
-  return null;
+  if (!row || row.is_admin !== 1) return { denied: err("Admin only", 403) };
+  return { ok: userId };
+}
+
+/** Log an admin action to the audit table. Fire-and-forget from callers'
+ *  perspective; failure never fails the primary action but is logged. */
+async function writeAudit(env: Env, actorId: string, action: string,
+                          targetId: string | null, note: string | null): Promise<void> {
+  try {
+    await env.DB.prepare(
+      "INSERT INTO admin_audit (id, actor_id, action, target_id, note, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    ).bind(crypto.randomUUID(), actorId, action, targetId, note, Date.now()).run();
+  } catch (e) {
+    console.log(`audit write failed: action=${action} target=${targetId} err=${String(e)}`);
+  }
 }
 
 /** Legacy static-bearer gate — kept for Worker-to-Worker calls that don't
@@ -1378,8 +1400,8 @@ interface AdminUserRow {
  *  current row counts, and lets a founder spot serial offenders without a
  *  per-row round-trip. */
 async function handleAdminListUsers(request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdminSession(request, env);
-  if (denied) return denied;
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
   const url = new URL(request.url);
   const limitRaw = Number(url.searchParams.get("limit") ?? 50);
   const limit = Math.min(200, Math.max(1, Number.isFinite(limitRaw) ? Math.floor(limitRaw) : 50));
@@ -1418,11 +1440,12 @@ async function handleAdminListUsers(request: Request, env: Env): Promise<Respons
  *  Nulls verified_at + resets verification_status → 'unstarted'. Reversible
  *  via the existing /admin/verify path. */
 async function handleAdminUnverifyUser(userId: string, request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdminSession(request, env);
-  if (denied) return denied;
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
   const result = await env.DB.prepare(
     "UPDATE users SET verified_at = NULL, verification_status = 'unstarted' WHERE id = ?",
   ).bind(userId).run();
+  await writeAudit(env, gate.ok, "unverify", userId, null);
   return json({ ok: true, updated: result.meta?.changes ?? 0 });
 }
 
@@ -1433,10 +1456,52 @@ async function handleAdminUnverifyUser(userId: string, request: Request, env: En
  *  column added; if you want reversibility, use unverify + no further
  *  action instead. */
 async function handleAdminDeleteUser(userId: string, request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdminSession(request, env);
-  if (denied) return denied;
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
   const result = await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+  // Audit AFTER success so a failed delete never leaves a bogus log entry.
+  // `admin_audit.target_id` has no FK (deliberate — TEXT column only), so a
+  // deleted user's id stays queryable in the audit trail.
+  await writeAudit(env, gate.ok, "delete_user", userId, null);
   return json({ ok: true, deleted: result.meta?.changes ?? 0 });
+}
+
+/** GET /admin/audit?limit=&cursor=  [admin]
+ *  Newest-first audit trail of every mutating /admin/* call. Cursor is the
+ *  last row's `created_at`. Actor + target ids returned raw so an operator
+ *  can copy-paste them into other admin surfaces. */
+async function handleAdminAudit(request: Request, env: Env): Promise<Response> {
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
+  const url = new URL(request.url);
+  const limitRaw = Number(url.searchParams.get("limit") ?? 100);
+  const limit = Math.min(500, Math.max(1, Number.isFinite(limitRaw) ? Math.floor(limitRaw) : 100));
+  const cursorRaw = url.searchParams.get("cursor");
+  const cursor = cursorRaw != null && cursorRaw !== "" ? Number(cursorRaw) : null;
+
+  let sql = "SELECT id, actor_id, action, target_id, note, created_at FROM admin_audit";
+  const params: unknown[] = [];
+  if (cursor != null && Number.isFinite(cursor)) {
+    sql += " WHERE created_at < ?";
+    params.push(cursor);
+  }
+  sql += " ORDER BY created_at DESC LIMIT ?";
+  params.push(limit);
+
+  interface AuditRow {
+    id: string; actor_id: string; action: string;
+    target_id: string | null; note: string | null; created_at: number;
+  }
+  const rows = await env.DB.prepare(sql).bind(...params).all<AuditRow>();
+  const list = rows.results ?? [];
+  const nextCursor = list.length === limit ? list[list.length - 1].created_at : null;
+  return json({
+    entries: list.map((r) => ({
+      id: r.id, actorId: r.actor_id, action: r.action,
+      targetId: r.target_id, note: r.note, createdAt: r.created_at,
+    })),
+    nextCursor,
+  });
 }
 
 /** GET /admin/stats  [admin]
@@ -1445,8 +1510,8 @@ async function handleAdminDeleteUser(userId: string, request: Request, env: Env)
  *  moderation queue, recent activity, cold-vs-live matches. Cheap SELECT
  *  COUNTs; if any of these get slow later, cache in KV. */
 async function handleAdminStats(request: Request, env: Env): Promise<Response> {
-  const denied = await ensureAdminSession(request, env);
-  if (denied) return denied;
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
   const now = Date.now();
   const dayAgo = now - 24 * 60 * 60 * 1000;
   // One batched read — D1 handles this cheaply for a founder-only endpoint,
@@ -1528,6 +1593,7 @@ export default {
 
     // Admin user actions
     if (pathname === "/admin/stats" && m === "GET") return handleAdminStats(request, env);
+    if (pathname === "/admin/audit" && m === "GET") return handleAdminAudit(request, env);
     if (pathname === "/admin/users" && m === "GET") return handleAdminListUsers(request, env);
     const userUnverify = pathname.match(/^\/admin\/users\/([A-Za-z0-9-]{36})\/unverify$/);
     if (userUnverify && m === "POST") return handleAdminUnverifyUser(userUnverify[1], request, env);
