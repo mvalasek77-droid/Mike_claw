@@ -53,6 +53,7 @@ struct APIClient {
                                        body: [String: Any]? = nil) async throws -> T {
         var req = URLRequest(url: baseURL.appendingPathComponent(path))
         req.httpMethod = method
+        req.timeoutInterval = 30
         authorize(&req)
         if let body {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -89,6 +90,7 @@ struct APIClient {
         struct Empty: Decodable {}
         var req = URLRequest(url: baseURL.appendingPathComponent("children/\(id)"))
         req.httpMethod = "DELETE"
+        req.timeoutInterval = 30
         authorize(&req)
         let (_, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, http.statusCode == 204 else {
@@ -215,6 +217,7 @@ struct APIClient {
         let boundary = "rg-\(UUID().uuidString)"
         var req = URLRequest(url: baseURL.appendingPathComponent("children/\(childId)/evidence/upload"))
         req.httpMethod = "POST"
+        req.timeoutInterval = 60
         authorize(&req)
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 

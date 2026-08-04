@@ -6,6 +6,7 @@ import SwiftUI
 struct KnowTheDangersView: View {
     @EnvironmentObject var store: Store
     @State private var content: EducationContent?
+    @State private var loadFailed = false
 
     var body: some View {
         List {
@@ -66,13 +67,21 @@ struct KnowTheDangersView: View {
                         }
                     }
                 } header: {    Text("If something has happened: the playbook")}
+            } else if loadFailed {
+                ContentUnavailableView("Could not load content",
+                                       systemImage: "exclamationmark.triangle",
+                                       description: Text("Check your connection and try again."))
             } else {
                 ProgressView("Loading…")
             }
         }
         .navigationTitle("Know the Dangers")
         .task {
-            content = try? await store.education()
+            do {
+                content = try await store.education()
+            } catch {
+                loadFailed = true
+            }
         }
     }
 }

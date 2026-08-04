@@ -5,6 +5,7 @@ import SwiftUI
 struct Roblox101View: View {
     @EnvironmentObject var store: Store
     @State private var content: EducationContent?
+    @State private var loadFailed = false
 
     var body: some View {
         List {
@@ -40,13 +41,21 @@ struct Roblox101View: View {
                         .padding(.vertical, 2)
                     }
                 } header: {    Text("Every term, explained")}
+            } else if loadFailed {
+                ContentUnavailableView("Could not load content",
+                                       systemImage: "exclamationmark.triangle",
+                                       description: Text("Check your connection and try again."))
             } else {
                 ProgressView("Loading…")
             }
         }
         .navigationTitle("Roblox 101")
         .task {
-            content = try? await store.education()
+            do {
+                content = try await store.education()
+            } catch {
+                loadFailed = true
+            }
         }
     }
 }

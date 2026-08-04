@@ -6,6 +6,7 @@ struct AlertDetailView: View {
 
     let child: Child
     let alert: SafetyAlert
+    @State private var isProcessing = false
 
     var body: some View {
         List {
@@ -70,32 +71,41 @@ struct AlertDetailView: View {
             Section {
                 Button {
                     Task {
+                        isProcessing = true
                         await store.sendFeedback(alertId: alert.id, verdict: "confirmed")
                         await store.loadAll()
+                        isProcessing = false
                         dismiss()
                     }
                 } label: {
                     Label("This was a real problem", systemImage: "exclamationmark.bubble")
                         .foregroundStyle(.red)
                 }
+                .disabled(isProcessing)
                 Button {
                     Task {
+                        isProcessing = true
                         await store.sendFeedback(alertId: alert.id, verdict: "dismissed")
                         await store.loadAll()
+                        isProcessing = false
                         dismiss()
                     }
                 } label: {
                     Label("Not relevant for us", systemImage: "hand.thumbsdown")
                 }
+                .disabled(isProcessing)
                 Button {
                     Task {
+                        isProcessing = true
                         await store.acknowledge(alert, for: child)
                         Haptics.success()
+                        isProcessing = false
                         dismiss()
                     }
                 } label: {
                     Label("Mark as handled", systemImage: "checkmark.circle")
                 }
+                .disabled(isProcessing)
             } header: {
                 Text("Your verdict tunes future alerts")
             } footer: {

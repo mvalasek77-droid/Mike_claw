@@ -57,9 +57,7 @@ struct PaywallView: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
 
-                    // Required by App Store guideline 3.1.2(b): functional links to
-                    // Terms of Use and Privacy Policy must be visible at the point of
-                    // purchase. PRIVACY_POLICY_URL is a placeholder — see docs/PRIVACY_POLICY.md.
+                    // Required by App Store guideline 3.1.2(b).
                     HStack(spacing: 16) {
                         Link("Terms of Use (EULA)",
                              destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)

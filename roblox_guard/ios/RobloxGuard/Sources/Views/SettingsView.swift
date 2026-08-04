@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @State private var childToUnlink: Child?
     @State private var protection: ProtectionStatus?
+    @State private var protectionLoadFailed = false
     @State private var showPaywall = false
     @State private var showManageSubscriptions = false
     @State private var showBugReport = false
@@ -118,6 +119,11 @@ struct SettingsView: View {
                         if store.isDemoMode {
                             LabeledContent("Threat definitions", value: "v1 · demo")
                             LabeledContent("Updates from", value: "built-in (demo)")
+                        } else if protectionLoadFailed {
+                            Label("Could not load protection status",
+                                  systemImage: "exclamationmark.triangle")
+                                .font(.footnote)
+                                .foregroundStyle(.red)
                         } else {
                             Text("Loading…").foregroundStyle(.secondary)
                         }
@@ -172,7 +178,11 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .task {
                 if !store.isDemoMode {
-                    protection = try? await store.api.protectionStatus()
+                    do {
+                        protection = try await store.api.protectionStatus()
+                    } catch {
+                        protectionLoadFailed = true
+                    }
                 }
             }
             .task { await push.refreshStatus() }
@@ -201,8 +211,14 @@ struct SettingsView: View {
             await store.setDemoMode(enabled)
             if enabled {
                 protection = nil
+                protectionLoadFailed = false
             } else {
-                protection = try? await store.api.protectionStatus()
+                do {
+                    protection = try await store.api.protectionStatus()
+                    protectionLoadFailed = false
+                } catch {
+                    protectionLoadFailed = true
+                }
             }
         }
     }

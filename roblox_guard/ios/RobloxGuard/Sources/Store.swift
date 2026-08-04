@@ -128,7 +128,11 @@ final class Store: ObservableObject {
 
     func sendFeedback(alertId: Int, verdict: String) async {
         if isDemoMode { return }
-        try? await api.sendFeedback(alertId: alertId, verdict: verdict)
+        do {
+            try await api.sendFeedback(alertId: alertId, verdict: verdict)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func education() async throws -> EducationContent {

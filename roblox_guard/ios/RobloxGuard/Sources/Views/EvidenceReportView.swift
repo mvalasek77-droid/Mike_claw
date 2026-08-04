@@ -7,6 +7,7 @@ struct EvidenceReportView: View {
     let child: Child
 
     @State private var evidence: [EvidenceItem] = []
+    @State private var evidenceLoadFailed = false
     @State private var showUploadSheet = false
 
     var body: some View {
@@ -59,7 +60,12 @@ struct EvidenceReportView: View {
             }
 
             Section {
-                if evidence.isEmpty {
+                if evidenceLoadFailed {
+                    Label("Could not load evidence. Check your connection.",
+                          systemImage: "exclamationmark.triangle")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                } else if evidence.isEmpty {
                     Text("No evidence captured yet. Watch-level and elevated alerts automatically capture the public profile involved.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -118,9 +124,15 @@ struct EvidenceReportView: View {
     private func load() async {
         if store.isDemoMode {
             evidence = store.demoEvidence(for: child)
+            evidenceLoadFailed = false
             return
         }
-        evidence = (try? await store.api.evidence(childId: child.id)) ?? []
+        do {
+            evidence = try await store.api.evidence(childId: child.id)
+            evidenceLoadFailed = false
+        } catch {
+            evidenceLoadFailed = true
+        }
     }
 }
 
