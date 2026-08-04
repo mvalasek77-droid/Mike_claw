@@ -9,6 +9,7 @@ struct AuctioneeDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showReport = false
     @State private var bidPrompt: Prompt?
+    @State private var currentPhoto = 0
 
     private var hasReserve: Bool {
         guard let tier = storeKit.activeTier else { return false }
@@ -26,12 +27,41 @@ struct AuctioneeDetailView: View {
         ScrollView {
             VStack(spacing: 16) {
                 ZStack(alignment: .bottomLeading) {
-                    AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName,
-                               remotePhotoURL: woman.remotePhotoURLs.first,
-                               corner: Theme.cornerXL)
+                    if woman.remotePhotoURLs.count > 1 {
+                        TabView(selection: $currentPhoto) {
+                            ForEach(Array(woman.remotePhotoURLs.enumerated()), id: \.offset) { index, urlString in
+                                Color.clear
+                                    .overlay(
+                                        AsyncImage(url: URL(string: urlString)) { phase in
+                                            switch phase {
+                                            case .success(let image):
+                                                image.resizable().scaledToFill()
+                                            default:
+                                                AvatarView(name: woman.name, hue: woman.hue,
+                                                           corner: Theme.cornerXL)
+                                            }
+                                        }
+                                    )
+                                    .clipped()
+                                    .tag(index)
+                            }
+                        }
+                        .tabViewStyle(.page(indexDisplayMode: .never))
                         .frame(height: 380)
+                    } else {
+                        AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName,
+                                   remotePhotoURL: woman.remotePhotoURLs.first,
+                                   corner: Theme.cornerXL)
+                            .frame(height: 380)
+                    }
                     LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
                         .frame(height: 380).allowsHitTesting(false)
+                    if woman.remotePhotoURLs.count > 1 {
+                        PhotoPageDots(count: woman.remotePhotoURLs.count, current: currentPhoto)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 12)
+                            .frame(maxHeight: .infinity, alignment: .top)
+                    }
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
                             Text(woman.name).font(.system(size: 30, weight: .heavy, design: .serif))
@@ -237,5 +267,24 @@ struct ReviewRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.04)))
+    }
+}
+
+/// Segmented bar indicators for the photo pager — Hinge-style pill dots
+/// above the hero image. Active segment is bright; others are dimmed.
+struct PhotoPageDots: View {
+    let count: Int
+    let current: Int
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<count, id: \.self) { i in
+                Capsule()
+                    .fill(.white.opacity(i == current ? 0.9 : 0.35))
+                    .frame(height: 3)
+            }
+        }
+        .padding(.horizontal, 16)
+        .animation(.easeInOut(duration: 0.2), value: current)
     }
 }
