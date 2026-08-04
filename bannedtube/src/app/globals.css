@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #272727;
+  --bg-hover: #3a3a3a;
+  --text-primary: #f1f1f1;
+  --text-secondary: #aaaaaa;
+  --accent: #ff4444;
+  --accent-hover: #ff6666;
+  --border: #3a3a3a;
+}
+
+@theme inline {
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-surface: var(--bg-secondary);
+  --color-surface-hover: var(--bg-tertiary);
+  --color-muted: var(--text-secondary);
+  --color-border: var(--border);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Roboto", "Arial", sans-serif;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-tertiary) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+.category-pill {
+  white-space: nowrap;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: none;
+}
+
+.category-pill:hover {
+  background: var(--bg-hover);
+}
+
+.category-pill.active {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+.video-card {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.video-card:hover {
+  transform: scale(1.02);
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.sidebar-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.sidebar-item.active {
+  background: var(--bg-tertiary);
+  font-weight: 500;
+}
+
+.btn-subscribe {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-subscribe:hover {
+  background: var(--accent-hover);
+}
+
+.btn-subscribe.subscribed {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.like-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.like-btn:hover {
+  background: var(--bg-hover);
+}
+
+.search-bar {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: 20px 0 0 20px;
+  outline: none;
+  font-size: 16px;
+  width: 100%;
+}
+
+.search-bar:focus {
+  border-color: #555;
+}
+
+.search-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-left: none;
+  color: var(--text-primary);
+  padding: 8px 20px;
+  border-radius: 0 20px 20px 0;
+  cursor: pointer;
+}
+
+.search-btn:hover {
+  background: var(--bg-hover);
+}
