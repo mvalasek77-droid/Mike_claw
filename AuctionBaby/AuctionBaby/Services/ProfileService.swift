@@ -109,6 +109,34 @@ final class ProfileService: ObservableObject {
         return await get(path, as: FloorPage.self)
     }
 
+    // MARK: - Photos (Batch U)
+
+    struct PhotosResponse: Decodable {
+        let photos: [PublicPhoto]
+        let photo: PublicPhoto?
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            photos = try c.decodeIfPresent([PublicPhoto].self, forKey: .photos) ?? []
+            photo = try c.decodeIfPresent(PublicPhoto.self, forKey: .photo)
+        }
+    }
+
+    func uploadPhoto(jpeg: Data) async -> ServiceResult<PhotosResponse> {
+        guard isEnabled else { return .notConfigured }
+        await uploadRaw("/me/photos", jpeg: jpeg, as: PhotosResponse.self)
+    }
+
+    func deletePhoto(id: String) async -> ServiceResult<PhotosResponse> {
+        guard isEnabled else { return .notConfigured }
+        await delete("/me/photos/\(id)", as: PhotosResponse.self)
+    }
+
+    func reorderPhotos(ids: [String]) async -> ServiceResult<PhotosResponse> {
+        guard isEnabled else { return .notConfigured }
+        await put("/me/photos/order", body: ["ids": ids], as: PhotosResponse.self)
+    }
+
     // MARK: - Transport
 
     private func get<T: Decodable>(_ path: String, as type: T.Type) async -> ServiceResult<T> {
@@ -116,6 +144,43 @@ final class ProfileService: ObservableObject {
     }
     private func put<T: Decodable>(_ path: String, body: [String: Any], as type: T.Type) async -> ServiceResult<T> {
         await request(path: path, method: "PUT", body: body, as: type)
+    }
+    private func delete<T: Decodable>(_ path: String, as type: T.Type) async -> ServiceResult<T> {
+        await request(path: path, method: "DELETE", body: nil, as: type)
+    }
+
+    private func uploadRaw<T: Decodable>(_ path: String, jpeg: Data, as type: T.Type) async -> ServiceResult<T> {
+        guard let session = sessionToken() else { return .notConfigured }
+        let base = BackendConfig.authURL.trimmingCharacters(in: .whitespaces)
+        let trimmed = base.hasSuffix("/") ? String(base.dropLast()) : base
+        guard let url = URL(string: "\(trimmed)\(path)") else {
+            return .failure("Auth Worker URL looks malformed.")
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 30
+        req.setValue("Bearer \(session)", forHTTPHeaderField: "Authorization")
+        req.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        req.setValue("\(jpeg.count)", forHTTPHeaderField: "Content-Length")
+        req.httpBody = jpeg
+        inFlight = true
+        defer { inFlight = false }
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard (200..<300).contains(status) else {
+                struct WorkerError: Decodable { let error: String? }
+                let decoded = try? JSONDecoder().decode(WorkerError.self, from: data)
+                let message = decoded?.error ?? "HTTP \(status)"
+                lastError = message
+                return .failure(message)
+            }
+            let decoded = try JSONDecoder().decode(T.self, from: data)
+            lastError = nil
+            return .success(decoded)
+        } catch {
+            return .failure(error.localizedDescription)
+        }
     }
 
     private func request<T: Decodable>(path: String, method: String,
@@ -180,11 +245,37 @@ struct PublicProfile: Codable, Equatable, Identifiable {
     let openingBidScript: String?
     let prompts: [PublicPrompt]
     let interests: [String]
+    let photos: [PublicPhoto]
     let verifiedAt: Double?
     let createdAt: Double
     let updatedAt: Double
 
     var isVerified: Bool { verifiedAt != nil }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try c.decode(String.self, forKey: .userId)
+        role = try c.decode(String.self, forKey: .role)
+        name = try c.decode(String.self, forKey: .name)
+        age = try c.decodeIfPresent(Int.self, forKey: .age)
+        location = try c.decodeIfPresent(String.self, forKey: .location)
+        bio = try c.decodeIfPresent(String.self, forKey: .bio)
+        hue = try c.decode(Double.self, forKey: .hue)
+        startingBid = try c.decodeIfPresent(Int.self, forKey: .startingBid)
+        archetype = try c.decodeIfPresent(String.self, forKey: .archetype)
+        openingBidScript = try c.decodeIfPresent(String.self, forKey: .openingBidScript)
+        prompts = try c.decodeIfPresent([PublicPrompt].self, forKey: .prompts) ?? []
+        interests = try c.decodeIfPresent([String].self, forKey: .interests) ?? []
+        photos = try c.decodeIfPresent([PublicPhoto].self, forKey: .photos) ?? []
+        verifiedAt = try c.decodeIfPresent(Double.self, forKey: .verifiedAt)
+        createdAt = try c.decode(Double.self, forKey: .createdAt)
+        updatedAt = try c.decode(Double.self, forKey: .updatedAt)
+    }
+}
+
+struct PublicPhoto: Codable, Equatable, Hashable, Identifiable {
+    let id: String
+    let url: String
 }
 
 struct PublicPrompt: Codable, Equatable, Hashable {

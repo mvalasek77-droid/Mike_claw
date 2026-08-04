@@ -27,6 +27,7 @@ struct AuctioneeDetailView: View {
             VStack(spacing: 16) {
                 ZStack(alignment: .bottomLeading) {
                     AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName,
+                               remotePhotoURL: woman.remotePhotoURLs.first,
                                corner: Theme.cornerXL)
                         .frame(height: 380)
                     LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)

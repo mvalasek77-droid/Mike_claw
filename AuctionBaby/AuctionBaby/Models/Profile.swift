@@ -156,6 +156,10 @@ struct Profile: Identifiable, Codable, Hashable {
     /// Hinge). Kept as [Data] rather than paths because `EncryptedArchive`
     /// already serialises the whole `Profile` Codable.
     var photoGallery: [Data] = []
+    /// Server-hosted photo URLs from R2 (Batch U). NOT persisted — populated
+    /// only when the profile is converted from a `PublicProfile` (remote floor /
+    /// peer lookup). The UI prefers these over `photoData` when present.
+    var remotePhotoURLs: [String] = []
     var prompts: [Prompt] = []
     var interests: [String] = []
     /// Height + smoking/drinking/kids/education used by the bidder-side Reserve
@@ -192,7 +196,8 @@ struct Profile: Identifiable, Codable, Hashable {
     // everywhere. Parameter order mirrors property order exactly.
     init(id: UUID = UUID(), name: String, age: Int, role: Role, location: String,
          bio: String, hue: Double, photoName: String? = nil, photoData: Data? = nil,
-         photoGallery: [Data] = [], prompts: [Prompt] = [], interests: [String] = [],
+         photoGallery: [Data] = [], remotePhotoURLs: [String] = [],
+         prompts: [Prompt] = [], interests: [String] = [],
          lifestyle: Lifestyle = Lifestyle(), openingBidScript: String? = nil,
          reviews: [DateReview] = [], verified: Bool = false, startingBid: Int? = nil,
          isCopycat: Bool = false, copycatStyle: CopycatStyle = .glam,
@@ -208,6 +213,7 @@ struct Profile: Identifiable, Codable, Hashable {
         self.photoName = photoName
         self.photoData = photoData
         self.photoGallery = photoGallery
+        self.remotePhotoURLs = remotePhotoURLs
         self.prompts = prompts
         self.interests = interests
         self.lifestyle = lifestyle
@@ -240,6 +246,7 @@ struct Profile: Identifiable, Codable, Hashable {
         photoName = try c.decodeIfPresent(String.self, forKey: .photoName)
         photoData = try c.decodeIfPresent(Data.self, forKey: .photoData)
         photoGallery = try c.decodeIfPresent([Data].self, forKey: .photoGallery) ?? []
+        remotePhotoURLs = try c.decodeIfPresent([String].self, forKey: .remotePhotoURLs) ?? []
         prompts = try c.decodeIfPresent([Prompt].self, forKey: .prompts) ?? []
         interests = try c.decodeIfPresent([String].self, forKey: .interests) ?? []
         lifestyle = try c.decodeIfPresent(Lifestyle.self, forKey: .lifestyle) ?? Lifestyle()

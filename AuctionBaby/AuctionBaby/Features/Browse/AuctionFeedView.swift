@@ -191,7 +191,8 @@ struct LotOfTheDayBanner: View {
             .background(Theme.goldGradient)
 
             ZStack(alignment: .bottomLeading) {
-                AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName, corner: 0)
+                AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName,
+                           remotePhotoURL: woman.remotePhotoURLs.first, corner: 0)
                     .frame(height: 240)
                 LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
                     .frame(height: 240).allowsHitTesting(false)
@@ -265,6 +266,7 @@ struct LotOfTheDayIntroSheet: View {
                 ZStack(alignment: .bottomLeading) {
                     AvatarView(name: woman.name, hue: woman.hue,
                                photoName: woman.photoName, photoData: woman.photoData,
+                               remotePhotoURL: woman.remotePhotoURLs.first,
                                corner: Theme.cornerXL)
                         .frame(height: 380)
                     LinearGradient(colors: [.clear, .black.opacity(0.85)],
@@ -359,6 +361,7 @@ struct FloorCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .topLeading) {
                     AvatarView(name: woman.name, hue: woman.hue, photoName: woman.photoName,
+                               remotePhotoURL: woman.remotePhotoURLs.first,
                                corner: Theme.cornerXL)
                         .frame(height: 360)
 

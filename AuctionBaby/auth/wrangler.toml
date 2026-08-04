@@ -31,6 +31,12 @@ APPLE_CLIENT_ID = "com.valasek.auctionbaby"
 # that users don't re-auth constantly) against blast radius on a leaked token.
 # Default: 30 days.
 SESSION_TTL_SECONDS = "2592000"
+# Public base URL for the R2 photos bucket. Set to your r2.dev subdomain
+# (e.g. https://pub-abc123.r2.dev) OR a custom domain fronting the bucket.
+# Photo URLs returned to clients are this + "/" + object key. Leave empty
+# to disable the photo upload endpoints; the app already tolerates no
+# photos and shows the monogram fallback.
+PHOTOS_PUBLIC_URL = ""
 
 # D1: the users table. `wrangler d1 create auctionbaby-users` gives you an id;
 # paste it in below. Schema lives in ./schema.sql — apply it with:
@@ -41,6 +47,15 @@ binding = "DB"
 database_name = "auctionbaby-users"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
 
+# R2: profile photo bytes. Provision with:
+#   wrangler r2 bucket create auctionbaby-photos
+# Then enable public access (dashboard → the bucket → Settings → Public
+# access) and paste the r2.dev subdomain into PHOTOS_PUBLIC_URL above.
+# Optional but recommended: attach a custom domain for a stable CDN URL.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "auctionbaby-photos"
+
 # ── STAGING (test bundle id / test database) ─────────────────────────────────
 # Deploy: `wrangler deploy --env staging`
 [env.staging]
@@ -49,6 +64,7 @@ name = "auctionbaby-auth-staging"
 [env.staging.vars]
 APPLE_CLIENT_ID = "com.valasek.auctionbaby"
 SESSION_TTL_SECONDS = "2592000"
+PHOTOS_PUBLIC_URL = ""
 
 # Same rule: create a staging DB and paste it here.
 #   wrangler d1 create auctionbaby-users-staging
@@ -56,3 +72,10 @@ SESSION_TTL_SECONDS = "2592000"
 binding = "DB"
 database_name = "auctionbaby-users-staging"
 database_id = "REPLACE_WITH_STAGING_D1_DATABASE_ID"
+
+# Staging R2 bucket (recommended so a staging test upload can't polluted the
+# prod bucket). Create with:
+#   wrangler r2 bucket create auctionbaby-photos-staging
+[[env.staging.r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "auctionbaby-photos-staging"

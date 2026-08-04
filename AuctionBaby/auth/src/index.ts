@@ -56,6 +56,11 @@
  *   GET    /users/:id/profile   — another user's profile               [auth]
  *   GET    /users/floor         — paginated feed by role & recency     [auth]
  *
+ *   Batch U (R2 profile photos):
+ *   POST   /me/photos           — upload JPEG (raw binary body)        [auth]
+ *   DELETE /me/photos/:photoId  — remove one photo                     [auth]
+ *   PUT    /me/photos/order     — reorder (body: {ids:[...]})          [auth]
+ *
  *   Slice 4c1a (server-enforced blocks):
  *   POST   /me/blocks           — block another user (idempotent)      [auth]
  *   DELETE /me/blocks/:userId   — unblock                              [auth]
@@ -85,6 +90,10 @@ interface Env {
   // key and drop in a vendor adapter (see the vendor block in the code).
   VERIFICATION_VENDOR?: string;    // 'manual' | 'persona' | 'onfido' | 'stub'
   VERIFICATION_WEBHOOK_SECRET?: string;  // shared secret vendor signs webhook payloads with
+
+  // ── Batch U: R2 profile photos ────────────────────────────────────────────
+  PHOTOS?: R2Bucket;               // bound in wrangler.toml; absent = uploads disabled
+  PHOTOS_PUBLIC_URL?: string;      // e.g. "https://pub-abc123.r2.dev"
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -460,6 +469,17 @@ async function handleSetDob(request: Request, env: Env): Promise<Response> {
 async function handleDeleteMe(request: Request, env: Env): Promise<Response> {
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
+  // Clean up R2 photos before nuking the DB row (CASCADE will wipe
+  // the profiles row that holds the photos_json pointer).
+  if (env.PHOTOS) {
+    const profileRow = await env.DB.prepare(
+      "SELECT photos_json FROM profiles WHERE user_id = ?"
+    ).bind(userId).first<{ photos_json: string | null }>();
+    const photos = parsePhotos(profileRow?.photos_json ?? null);
+    if (photos.length > 0) {
+      await Promise.all(photos.map(p => env.PHOTOS!.delete(p.key)));
+    }
+  }
   await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
   return json({ ok: true, deleted: userId });
 }
@@ -943,6 +963,7 @@ interface ProfileRow {
   opening_bid_script: string | null;
   prompts_json: string | null;
   interests_json: string | null;
+  photos_json: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -971,8 +992,23 @@ function safeParseJsonArray(s: string | null): unknown[] {
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
 }
 
-/** Public shape returned by every profile endpoint. */
-function publicProfile(p: ProfileWithAge) {
+function photosBase(env: Env): string | undefined {
+  const raw = (env.PHOTOS_PUBLIC_URL ?? "").trim();
+  return raw ? raw.replace(/\/+$/, "") : undefined;
+}
+
+/** Public shape returned by every profile endpoint.
+ *  `photosBaseUrl` is threaded through so photo keys can be resolved to full
+ *  URLs without leaking internal R2 structure. When absent (no PHOTOS_PUBLIC_URL
+ *  configured), the `photos` array stays empty and the client falls back to the
+ *  monogram. */
+function publicProfile(p: ProfileWithAge, photosBaseUrl?: string) {
+  const rawPhotos = safeParseJsonArray(p.photos_json) as Array<{ id: string; key: string }>;
+  const photos = photosBaseUrl
+    ? rawPhotos
+        .filter(e => e && typeof e.key === "string")
+        .map(e => ({ id: e.id, url: `${photosBaseUrl}/${e.key}` }))
+    : [];
   return {
     userId: p.user_id,
     role: p.role,
@@ -986,6 +1022,7 @@ function publicProfile(p: ProfileWithAge) {
     openingBidScript: p.opening_bid_script,
     prompts: safeParseJsonArray(p.prompts_json),
     interests: safeParseJsonArray(p.interests_json),
+    photos,
     verifiedAt: p.verified_at,
     createdAt: p.created_at,
     updatedAt: p.updated_at,
@@ -995,7 +1032,8 @@ function publicProfile(p: ProfileWithAge) {
 const PROFILE_SELECT = `
   SELECT p.user_id, p.role, p.name, p.location, p.bio, p.hue,
          p.starting_bid, p.archetype, p.opening_bid_script,
-         p.prompts_json, p.interests_json, p.created_at, p.updated_at,
+         p.prompts_json, p.interests_json, p.photos_json,
+         p.created_at, p.updated_at,
          u.date_of_birth, u.verified_at
     FROM profiles p JOIN users u ON u.id = p.user_id`;
 
@@ -1084,7 +1122,7 @@ async function handleUpsertMyProfile(request: Request, env: Env): Promise<Respon
 
   const row = await env.DB.prepare(`${PROFILE_SELECT} WHERE p.user_id = ?`)
     .bind(userId).first<ProfileWithAge>();
-  return json({ profile: row ? publicProfile(row) : null });
+  return json({ profile: row ? publicProfile(row, photosBase(env)) : null });
 }
 
 /** GET /me/profile  [auth] */
@@ -1094,7 +1132,7 @@ async function handleGetMyProfile(request: Request, env: Env): Promise<Response>
   const row = await env.DB.prepare(`${PROFILE_SELECT} WHERE p.user_id = ?`)
     .bind(userId).first<ProfileWithAge>();
   if (!row) return err("Profile not set yet", 404);
-  return json({ profile: publicProfile(row) });
+  return json({ profile: publicProfile(row, photosBase(env)) });
 }
 
 /** GET /users/:id/profile  [auth] — peer lookup for match/chat displays.
@@ -1107,7 +1145,7 @@ async function handleGetUserProfile(peerId: string, request: Request, env: Env):
   const row = await env.DB.prepare(`${PROFILE_SELECT} WHERE p.user_id = ? AND u.date_of_birth IS NOT NULL`)
     .bind(peerId).first<ProfileWithAge>();
   if (!row) return err("Profile not found", 404);
-  return json({ profile: publicProfile(row) });
+  return json({ profile: publicProfile(row, photosBase(env)) });
 }
 
 /** GET /users/floor?role=woman&limit=&cursor=&minAge=&maxAge=&verifiedOnly=  [auth]
@@ -1179,7 +1217,8 @@ async function handleFloor(request: Request, env: Env): Promise<Response> {
   params.push(limit);
 
   const rows = await env.DB.prepare(sql).bind(...params).all<ProfileWithAge>();
-  const list = (rows.results ?? []).map(publicProfile);
+  const base = photosBase(env);
+  const list = (rows.results ?? []).map(r => publicProfile(r, base));
   const nextCursor = list.length === limit ? list[list.length - 1].updatedAt : null;
   return json({ profiles: list, nextCursor });
 }
@@ -1627,6 +1666,148 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
   });
 }
 
+// ── Batch U: R2 profile photos ───────────────────────────────────────────────
+//
+// Three endpoints:
+//   POST   /me/photos          — upload a JPEG (binary body, max 5 MB)
+//   DELETE /me/photos/:photoId — remove one photo by id
+//   PUT    /me/photos/order    — reorder: body = { ids: ["id1","id2",...] }
+//
+// Each mutation round-trips to the `photos_json` column on `profiles` so the
+// DB is always the authoritative order list. R2 stores the bytes keyed under
+// `photos/<userId>/<photoId>.jpg`. PHOTOS_PUBLIC_URL + "/" + key = public CDN.
+//
+// Max 6 photos per user (matches the client grid). Upload is raw JPEG bytes
+// (Content-Type: image/jpeg) so the client can stream straight from its JPEG
+// encoder with no multipart overhead.
+
+const MAX_PHOTOS = 6;
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB
+
+interface PhotoEntry { id: string; key: string }
+
+function parsePhotos(raw: string | null): PhotoEntry[] {
+  if (!raw) return [];
+  try { const v = JSON.parse(raw); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+
+// POST /me/photos  [auth]  — body is raw JPEG bytes
+async function handleUploadPhoto(request: Request, env: Env): Promise<Response> {
+  if (!env.PHOTOS) return err("Photo uploads are not configured", 501);
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+
+  const ct = (request.headers.get("Content-Type") ?? "").toLowerCase();
+  if (!ct.startsWith("image/jpeg")) return err("Content-Type must be image/jpeg");
+  const length = Number(request.headers.get("Content-Length") ?? 0);
+  if (length > MAX_PHOTO_BYTES) return err("Photo exceeds 5 MB limit", 413);
+
+  const profileRow = await env.DB.prepare(
+    "SELECT photos_json FROM profiles WHERE user_id = ?"
+  ).bind(userId).first<{ photos_json: string | null }>();
+  if (!profileRow) return err("Create your profile before uploading photos", 400);
+
+  const existing = parsePhotos(profileRow.photos_json);
+  if (existing.length >= MAX_PHOTOS) return err(`Max ${MAX_PHOTOS} photos`, 400);
+
+  const photoId = crypto.randomUUID();
+  const key = `photos/${userId}/${photoId}.jpg`;
+
+  const body = await request.arrayBuffer();
+  if (body.byteLength < 30 * 1024) return err("Photo too small (min ~30 KB)");
+  if (body.byteLength > MAX_PHOTO_BYTES) return err("Photo exceeds 5 MB limit", 413);
+
+  await env.PHOTOS.put(key, body, {
+    httpMetadata: { contentType: "image/jpeg" },
+  });
+
+  existing.push({ id: photoId, key });
+  const now = Date.now();
+  await env.DB.prepare(
+    "UPDATE profiles SET photos_json = ?, updated_at = ? WHERE user_id = ?"
+  ).bind(JSON.stringify(existing), now, userId).run();
+
+  const base = photosBase(env);
+  return json({
+    photo: { id: photoId, url: base ? `${base}/${key}` : key },
+    photos: existing.map(e => ({ id: e.id, url: base ? `${base}/${e.key}` : e.key })),
+  }, 201);
+}
+
+// DELETE /me/photos/:photoId  [auth]
+async function handleDeletePhoto(photoId: string, request: Request, env: Env): Promise<Response> {
+  if (!env.PHOTOS) return err("Photo uploads are not configured", 501);
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+
+  const profileRow = await env.DB.prepare(
+    "SELECT photos_json FROM profiles WHERE user_id = ?"
+  ).bind(userId).first<{ photos_json: string | null }>();
+  if (!profileRow) return err("Profile not found", 404);
+
+  const existing = parsePhotos(profileRow.photos_json);
+  const idx = existing.findIndex(e => e.id === photoId);
+  if (idx === -1) return err("Photo not found", 404);
+
+  const removed = existing.splice(idx, 1)[0];
+
+  // Delete from R2 + update D1 in parallel
+  await Promise.all([
+    env.PHOTOS.delete(removed.key),
+    env.DB.prepare(
+      "UPDATE profiles SET photos_json = ?, updated_at = ? WHERE user_id = ?"
+    ).bind(JSON.stringify(existing), Date.now(), userId).run(),
+  ]);
+
+  const base = photosBase(env);
+  return json({
+    photos: existing.map(e => ({ id: e.id, url: base ? `${base}/${e.key}` : e.key })),
+  });
+}
+
+// PUT /me/photos/order  [auth]  body = { ids: ["id1","id2",...] }
+async function handleReorderPhotos(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const ids = body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0) return err("ids must be a non-empty array");
+
+  const profileRow = await env.DB.prepare(
+    "SELECT photos_json FROM profiles WHERE user_id = ?"
+  ).bind(userId).first<{ photos_json: string | null }>();
+  if (!profileRow) return err("Profile not found", 404);
+
+  const existing = parsePhotos(profileRow.photos_json);
+  const byId = new Map(existing.map(e => [e.id, e]));
+
+  // Reorder: walk the supplied ids array; unknown ids are silently dropped,
+  // photos not mentioned keep their relative tail order.
+  const reordered: PhotoEntry[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    const entry = byId.get(String(id));
+    if (entry && !seen.has(entry.id)) {
+      reordered.push(entry);
+      seen.add(entry.id);
+    }
+  }
+  for (const e of existing) {
+    if (!seen.has(e.id)) reordered.push(e);
+  }
+
+  await env.DB.prepare(
+    "UPDATE profiles SET photos_json = ?, updated_at = ? WHERE user_id = ?"
+  ).bind(JSON.stringify(reordered), Date.now(), userId).run();
+
+  const base = photosBase(env);
+  return json({
+    photos: reordered.map(e => ({ id: e.id, url: base ? `${base}/${e.key}` : e.key })),
+  });
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
@@ -1659,6 +1840,12 @@ export default {
     if (pathname === "/users/floor" && m === "GET") return handleFloor(request, env);
     const userProfile = pathname.match(/^\/users\/([A-Za-z0-9-]{36})\/profile$/);
     if (userProfile && m === "GET") return handleGetUserProfile(userProfile[1], request, env);
+
+    // Batch U — photos
+    if (pathname === "/me/photos" && m === "POST") return handleUploadPhoto(request, env);
+    if (pathname === "/me/photos/order" && m === "PUT") return handleReorderPhotos(request, env);
+    const photoDelete = pathname.match(/^\/me\/photos\/([A-Za-z0-9-]{36})$/);
+    if (photoDelete && m === "DELETE") return handleDeletePhoto(photoDelete[1], request, env);
 
     // Slice 4c1a — blocks
     if (pathname === "/me/blocks" && m === "POST") return handleAddBlock(request, env);

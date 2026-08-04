@@ -16,6 +16,10 @@ struct AvatarView: View {
     /// gradient fallback. Kept optional so bundled/sample profiles keep
     /// rendering their asset-catalog photos unchanged.
     var photoData: Data? = nil
+    /// R2 CDN photo URL (Batch U). When set, wins over `photoData` and
+    /// `photoName`. Populated from `Profile.remotePhotoURLs[0]` by callers
+    /// on the remote-floor path.
+    var remotePhotoURL: String? = nil
     var locked: Bool = false
     var copycat: Bool = false
     /// Copycats are indistinguishable on the floor — the synthetic-glam
@@ -34,6 +38,25 @@ struct AvatarView: View {
     private var base: Color { Color(hue: hue, saturation: 0.55, brightness: 0.85) }
     private var deep: Color { Color(hue: (hue + 0.08).truncatingRemainder(dividingBy: 1),
                                     saturation: 0.7, brightness: 0.45) }
+
+    @ViewBuilder
+    private var gradientMonogram: some View {
+        LinearGradient(colors: [base, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
+        RadialGradient(colors: [.white.opacity(0.35), .clear],
+                       center: .init(x: 0.3, y: 0.22), startRadius: 0, endRadius: 180)
+        if !locked {
+            Image(systemName: "person.fill")
+                .resizable().scaledToFit()
+                .foregroundStyle(.white.opacity(0.16))
+                .padding(.top, 26)
+                .scaleEffect(1.7)
+                .offset(y: 18)
+            Text(initials)
+                .font(.system(size: 34, weight: .heavy, design: .serif))
+                .foregroundStyle(.white.opacity(0.9))
+                .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
+        }
+    }
 
     /// The real photo. User-uploaded JPEG bytes win over an asset-catalog
     /// name; if neither resolves we fall through to the gradient monogram.
@@ -74,7 +97,22 @@ struct AvatarView: View {
 
     private var standardBody: some View {
         ZStack {
-            if let photo, !locked {
+            if let remotePhotoURL, let url = URL(string: remotePhotoURL), !locked {
+                Color.clear
+                    .overlay(
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().scaledToFill()
+                            default:
+                                gradientMonogram
+                            }
+                        }
+                    )
+                    .clipped()
+                LinearGradient(colors: [.clear, .black.opacity(0.25)],
+                               startPoint: .center, endPoint: .bottom)
+            } else if let photo, !locked {
                 // Real photo path — fills the frame, cropped from the center.
                 Color.clear
                     .overlay(
@@ -87,25 +125,7 @@ struct AvatarView: View {
                 LinearGradient(colors: [.clear, .black.opacity(0.25)],
                                startPoint: .center, endPoint: .bottom)
             } else {
-                LinearGradient(colors: [base, deep], startPoint: .topLeading, endPoint: .bottomTrailing)
-
-                // Soft studio highlight.
-                RadialGradient(colors: [.white.opacity(0.35), .clear],
-                               center: .init(x: 0.3, y: 0.22), startRadius: 0, endRadius: 180)
-
-                if !locked {
-                    Image(systemName: "person.fill")
-                        .resizable().scaledToFit()
-                        .foregroundStyle(.white.opacity(0.16))
-                        .padding(.top, 26)
-                        .scaleEffect(1.7)
-                        .offset(y: 18)
-
-                    Text(initials)
-                        .font(.system(size: 34, weight: .heavy, design: .serif))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
-                }
+                gradientMonogram
             }
 
             if locked {
@@ -138,6 +158,7 @@ struct AvatarCircle: View {
     let hue: Double
     var photoName: String? = nil
     var photoData: Data? = nil
+    var remotePhotoURL: String? = nil
     var size: CGFloat = 44
     var locked: Bool = false
     var copycat: Bool = false
@@ -146,6 +167,7 @@ struct AvatarCircle: View {
 
     var body: some View {
         AvatarView(name: name, hue: hue, photoName: photoName, photoData: photoData,
+                   remotePhotoURL: remotePhotoURL,
                    locked: locked, copycat: copycat,
                    revealed: revealed, copycatStyle: copycatStyle, corner: size)
             .frame(width: size, height: size)

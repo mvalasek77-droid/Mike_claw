@@ -262,7 +262,7 @@ If every checkbox lands, the spine is live.
 ## 8 — Things this guide deliberately doesn't do
 
 - **Custom domains** for the Workers. `.workers.dev` is fine for TestFlight; add domains via Cloudflare Zero Trust when you point real DNS at prod.
-- **Photo hosting.** No R2 setup — the app currently ships without server-side photos (roadmap item; local `photoData` is per-device).
+- **Photo hosting.** Batch U added the R2 endpoints to the auth Worker. To provision: `wrangler r2 bucket create auctionbaby-photos`, enable public access in the Cloudflare dashboard (Settings → Public access), and paste the r2.dev subdomain into `PHOTOS_PUBLIC_URL` in `wrangler.toml`. Run migration 012. A custom domain is recommended for a stable CDN URL.
 - **Real KYC verification.** Slice 3 landed with `VERIFICATION_VENDOR="manual"` as default. Persona / Onfido integration is separate work.
 - **App Store submission.** See `APP_STORE_SUBMISSION.md` for that walkthrough — this guide gets you to TestFlight, not to the store.
 

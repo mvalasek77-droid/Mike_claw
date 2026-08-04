@@ -160,6 +160,11 @@ CREATE TABLE IF NOT EXISTS profiles (
   opening_bid_script  TEXT,                      -- women only, canned first message
   prompts_json        TEXT,                      -- JSON: [{"question":"…","answer":"…"}]
   interests_json      TEXT,                      -- JSON: ["Art","Travel",…]
+  -- Batch U: R2-hosted photos. JSON array of {id, key}. Ordering is
+  -- positional (index 0 = primary). Bytes live in the PHOTOS R2 bucket;
+  -- the public URL is PHOTOS_PUBLIC_URL + "/" + key, resolved at read time
+  -- so the CDN domain is swappable without a DB rewrite.
+  photos_json         TEXT,
   created_at          INTEGER NOT NULL,
   updated_at          INTEGER NOT NULL
 );

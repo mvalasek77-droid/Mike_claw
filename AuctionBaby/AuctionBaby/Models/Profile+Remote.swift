@@ -15,7 +15,6 @@ extension Profile {
     /// server can't route the bid — safer than crashing.
     ///
     /// Fields NOT carried over (default to their `Profile` defaults):
-    /// - Photos (out until slice 4b2 wires R2 + moderation)
     /// - past bids / reviews / credit history (derived from server data
     ///   that later slices will surface separately)
     /// - `isCopycat` (real signed-in users are never copycats)
@@ -30,8 +29,9 @@ extension Profile {
             location: remote.location ?? "",
             bio: remote.bio ?? "",
             hue: remote.hue,
+            remotePhotoURLs: remote.photos.map(\.url),
             prompts: remote.prompts.map { Prompt(question: $0.question, answer: $0.answer) },
-            interests: remote.interests,
+            interests: remote.interests
         )
         self.startingBid = remote.startingBid
         self.openingBidScript = remote.openingBidScript
