@@ -33,7 +33,7 @@ const libraryItems = [
 export default function Sidebar({ open }: SidebarProps) {
   return (
     <aside
-      className={`fixed top-14 left-0 bottom-0 z-40 bg-[var(--bg-primary)] overflow-y-auto transition-all duration-200 ${
+      className={`fixed top-[56px] left-0 bottom-0 z-40 bg-[var(--bg-primary)] overflow-y-auto transition-all duration-200 ${
         open ? "w-56 p-3" : "w-0 p-0 overflow-hidden"
       }`}
     >
@@ -100,7 +100,7 @@ export default function Sidebar({ open }: SidebarProps) {
       </nav>
 
       <div className="px-3 pb-4 text-xs text-[var(--text-secondary)]">
-        <p>&copy; 2024 BannedTube</p>
+        <p>&copy; 2025 BannedTube</p>
         <p className="mt-1">Free Speech. No Censorship.</p>
       </div>
     </aside>

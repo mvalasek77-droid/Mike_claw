@@ -50,15 +50,16 @@ body {
 
 .category-pill {
   white-space: nowrap;
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 7px 14px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border: none;
+  user-select: none;
 }
 
 .category-pill:hover {
@@ -68,21 +69,24 @@ body {
 .category-pill.active {
   background: var(--text-primary);
   color: var(--bg-primary);
+  font-weight: 600;
 }
 
 .video-card {
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  border-radius: 12px;
 }
 
 .video-card:hover {
   transform: scale(1.02);
+  box-shadow: 0 4px 20px rgba(255, 68, 68, 0.08);
 }
 
 .sidebar-item {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   padding: 8px 12px;
   border-radius: 10px;
   cursor: pointer;
@@ -147,12 +151,17 @@ body {
   padding: 8px 16px;
   border-radius: 20px 0 0 20px;
   outline: none;
-  font-size: 16px;
+  font-size: 15px;
   width: 100%;
+  transition: border-color 0.15s;
 }
 
 .search-bar:focus {
-  border-color: #555;
+  border-color: #666;
+}
+
+.search-bar::placeholder {
+  color: #666;
 }
 
 .search-btn {

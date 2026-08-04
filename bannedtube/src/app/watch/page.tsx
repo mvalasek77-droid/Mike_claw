@@ -103,7 +103,7 @@ function WatchContent() {
             </div>
           </div>
 
-          <div className="bg-[var(--bg-tertiary)] rounded-xl p-3 mb-4">
+          <div className="bg-[var(--bg-tertiary)] rounded-xl p-4 mb-6">
             <p className="text-sm font-medium mb-1">
               {formatViews(video.views)} &middot; {video.uploadedAt}
             </p>

@@ -24,8 +24,8 @@ export default function VideoPlayer({ thumbnail, title }: VideoPlayerProps) {
           className="absolute inset-0 flex items-center justify-center bg-black/30"
           onClick={() => setPlaying(true)}
         >
-          <div className="w-16 h-16 bg-[var(--accent)]/90 rounded-full flex items-center justify-center hover:bg-[var(--accent)] transition-colors">
-            <Play size={28} className="text-white ml-1" fill="white" />
+          <div className="w-[68px] h-[68px] rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ background: "rgba(255, 68, 68, 0.85)" }}>
+            <Play size={30} className="text-white ml-1" fill="white" />
           </div>
         </div>
       )}
@@ -38,7 +38,7 @@ export default function VideoPlayer({ thumbnail, title }: VideoPlayerProps) {
       )}
 
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="w-full bg-[var(--text-secondary)]/30 h-1 rounded-full mb-3">
+        <div className="w-full h-1 rounded-full mb-3" style={{ background: "rgba(255,255,255,0.2)" }}>
           <div
             className="bg-[var(--accent)] h-1 rounded-full"
             style={{ width: playing ? "35%" : "0%" }}

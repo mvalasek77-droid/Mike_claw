@@ -19,7 +19,7 @@ export default function VideoCard({ video, layout = "grid" }: VideoCardProps) {
             alt={video.title}
             className="w-full h-full object-cover"
           />
-          <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
+          <span className="absolute bottom-1 right-1 bg-black/85 text-white text-[11px] px-1 rounded font-semibold tracking-wide">
             {video.duration}
           </span>
         </div>
@@ -49,7 +49,7 @@ export default function VideoCard({ video, layout = "grid" }: VideoCardProps) {
           alt={video.title}
           className="w-full h-full object-cover"
         />
-        <span className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-medium">
+        <span className="absolute bottom-2 right-2 bg-black/85 text-white text-[11px] px-1.5 py-0.5 rounded font-semibold tracking-wide">
           {video.duration}
         </span>
       </div>

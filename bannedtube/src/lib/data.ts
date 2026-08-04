@@ -55,11 +55,12 @@ function generateThumbnail(title: string, hue: number): string {
         <stop offset="0%" style="stop-color:hsl(${hue},70%,15%)"/>
         <stop offset="100%" style="stop-color:hsl(${(hue + 40) % 360},60%,25%)"/>
       </linearGradient>
+      <filter id="shadow"><feDropShadow dx="0" dy="1" stdDeviation="3" flood-opacity="0.5"/></filter>
     </defs>
     <rect width="640" height="360" fill="url(#bg)"/>
-    <rect x="0" y="300" width="640" height="60" fill="rgba(0,0,0,0.5)"/>
-    <text x="320" y="180" text-anchor="middle" dominant-baseline="central" fill="white" font-size="28" font-family="Arial,sans-serif" font-weight="bold" opacity="0.9">${title.length > 35 ? title.slice(0, 35) + "..." : title}</text>
-    <polygon points="290,140 290,220 340,180" fill="rgba(255,255,255,0.3)"/>
+    <rect x="0" y="290" width="640" height="70" fill="rgba(0,0,0,0.45)"/>
+    <text x="320" y="325" text-anchor="middle" dominant-baseline="central" fill="white" font-size="22" font-family="Arial,sans-serif" font-weight="600" filter="url(#shadow)">${title.length > 40 ? title.slice(0, 40) + "..." : title}</text>
+    <polygon points="300,130 300,210 350,170" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
   </svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }

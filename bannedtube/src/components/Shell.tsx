@@ -12,7 +12,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <Header onToggleSidebar={() => setSidebarOpen((o) => !o)} />
       <Sidebar open={sidebarOpen} />
       <main
-        className={`pt-14 transition-all duration-200 ${
+        className={`pt-[56px] transition-all duration-200 ${
           sidebarOpen ? "ml-56" : "ml-0"
         }`}
       >

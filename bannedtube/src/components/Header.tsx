@@ -28,7 +28,7 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-14 bg-[var(--bg-primary)] border-b border-[var(--border)]">
+    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-[56px] bg-[var(--bg-primary)] border-b border-[var(--border)]">
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleSidebar}
@@ -37,11 +37,11 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
         >
           <Menu size={20} />
         </button>
-        <Link href="/" className="flex items-center gap-1 no-underline">
-          <div className="bg-[var(--accent)] rounded-lg p-1.5">
+        <Link href="/" className="flex items-center gap-1.5 no-underline">
+          <div className="bg-[var(--accent)] rounded-lg p-1.5 shadow-[0_0_8px_rgba(255,68,68,0.4)]">
             <Flame size={18} className="text-white" />
           </div>
-          <span className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
+          <span className="text-[17px] font-bold text-[var(--text-primary)] tracking-tight">
             Banned<span className="text-[var(--accent)]">Tube</span>
           </span>
         </Link>
@@ -74,7 +74,7 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
           <Bell size={20} />
           <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--accent)] rounded-full" />
         </button>
-        <button className="ml-2 w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center">
+        <button className="ml-2 w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center hover:bg-purple-500 transition-colors">
           <User size={16} className="text-white" />
         </button>
       </div>
