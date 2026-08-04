@@ -1148,7 +1148,7 @@ async function handleGetUserProfile(peerId: string, request: Request, env: Env):
   return json({ profile: publicProfile(row, photosBase(env)) });
 }
 
-/** GET /users/floor?role=woman&limit=&cursor=&minAge=&maxAge=&verifiedOnly=  [auth]
+/** GET /users/floor?role=woman&limit=&cursor=&minAge=&maxAge=&verifiedOnly=&location=  [auth]
  *
  * Paginated feed by (role, updated_at DESC). Cursor is the last item's
  * `updated_at` timestamp — simple and doesn't drift as writes happen (unlike
@@ -1181,6 +1181,9 @@ async function handleFloor(request: Request, env: Env): Promise<Response> {
     ? Math.max(18, Math.min(120, Math.floor(Number(maxAgeRaw)))) : null;
   const verifiedOnly = url.searchParams.get("verifiedOnly") === "1"
     || url.searchParams.get("verifiedOnly") === "true";
+  const locationRaw = (url.searchParams.get("location") ?? "").trim();
+  const location = locationRaw.length > 0 && locationRaw.length <= 200
+    ? locationRaw : null;
 
   // Server-enforced blocks (slice 4c1a): a floor row is hidden when EITHER
   // side of the pair has an active block. Two NOT EXISTS clauses cover both
@@ -1208,6 +1211,10 @@ async function handleFloor(request: Request, env: Env): Promise<Response> {
   }
   if (verifiedOnly) {
     sql += " AND u.verified_at IS NOT NULL";
+  }
+  if (location != null) {
+    sql += " AND LOWER(p.location) = LOWER(?)";
+    params.push(location);
   }
   if (cursor != null && Number.isFinite(cursor)) {
     sql += " AND p.updated_at < ?";

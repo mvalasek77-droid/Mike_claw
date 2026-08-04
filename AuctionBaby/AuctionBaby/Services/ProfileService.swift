@@ -99,13 +99,18 @@ final class ProfileService: ObservableObject {
                     cursor: Double? = nil,
                     minAge: Int? = nil,
                     maxAge: Int? = nil,
-                    verifiedOnly: Bool = false) async -> ServiceResult<FloorPage> {
+                    verifiedOnly: Bool = false,
+                    location: String? = nil) async -> ServiceResult<FloorPage> {
         guard isEnabled else { return .notConfigured }
         var path = "/users/floor?role=\(role.rawValue)&limit=\(limit)"
         if let cursor { path += "&cursor=\(Int(cursor))" }
         if let minAge { path += "&minAge=\(minAge)" }
         if let maxAge { path += "&maxAge=\(maxAge)" }
         if verifiedOnly { path += "&verifiedOnly=1" }
+        if let location, !location.isEmpty,
+           let encoded = location.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            path += "&location=\(encoded)"
+        }
         return await get(path, as: FloorPage.self)
     }
 
