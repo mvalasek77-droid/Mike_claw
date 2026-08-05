@@ -52,6 +52,13 @@ struct FilterPreferences: Codable, Equatable {
         return n
     }
 
+    /// True when any Pass-gated filter (verified-only, interest matching, or a
+    /// Reserve Requirement) is set — independent of the free age range. Drives
+    /// the "Clear premium filters" affordance a lapsed subscriber sees.
+    var hasPremiumFilters: Bool {
+        verifiedOnly || !interests.isEmpty || reserveRequirementCount > 0
+    }
+
     var reserveRequirementCount: Int {
         var n = 0
         if minHeightCm > 0 { n += 1 }

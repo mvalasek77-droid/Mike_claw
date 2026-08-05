@@ -96,7 +96,7 @@ struct FiltersView: View {
                     .disabled(!hasReserve)
                     .opacity(hasReserve ? 1 : 0.45)
             }
-            if !hasReserve && store.filters.activeCount > (store.filters.minAge > 18 || store.filters.maxAge < 60 ? 1 : 0) {
+            if !hasReserve && store.filters.hasPremiumFilters {
                 Button {
                     Motion.run(Motion.snap) {
                         store.filters.verifiedOnly = false

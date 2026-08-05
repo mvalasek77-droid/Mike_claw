@@ -198,13 +198,18 @@ struct ChatView: View {
     /// (the human hasn't sent a real message yet). Tapping fills the draft.
     @ViewBuilder
     private func icebreakers(_ match: Match) -> some View {
-        if !match.messages.contains(where: { $0.fromMe && !$0.isSystem }) {
+        let other = match.other(for: store.role ?? .man)
+        // Only offer openers when the other party actually has some AND the
+        // human hasn't sent a real message yet — otherwise the header renders
+        // above an empty chip row (common for men, who rarely set icebreakers).
+        if !other.icebreakers.isEmpty,
+           !match.messages.contains(where: { $0.fromMe && !$0.isSystem }) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("NEED AN OPENER?").font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
                     .foregroundStyle(Theme.inkFaint)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(match.other(for: store.role ?? .man).icebreakers, id: \.self) { line in
+                        ForEach(other.icebreakers, id: \.self) { line in
                             Button { draft = line } label: {
                                 Text(line)
                                     .font(.system(size: 12, weight: .semibold))
