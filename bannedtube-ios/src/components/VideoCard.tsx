@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Avatar from "./Avatar";
 import VideoThumbnail from "./VideoThumbnail";
 import { type Video, formatViews, THEME } from "../lib/data";
+import { useApp } from "../lib/AppContext";
 
 interface VideoCardProps {
   video: Video;
@@ -18,6 +19,10 @@ export default function VideoCard({
   onChannelPress,
   layout = "grid",
 }: VideoCardProps) {
+  const { getWatchProgress, isSaved } = useApp();
+  const progress = getWatchProgress(video.id);
+  const saved = isSaved(video.id);
+
   if (layout === "list") {
     return (
       <TouchableOpacity
@@ -25,7 +30,7 @@ export default function VideoCard({
         onPress={() => onPress(video)}
         activeOpacity={0.7}
         accessibilityRole="button"
-        accessibilityLabel={`${video.title} by ${video.channel.name}, ${formatViews(video.views)}`}
+        accessibilityLabel={`${video.title} by ${video.channel.name}, ${formatViews(video.views)}${saved ? ", saved" : ""}${progress > 0 ? `, ${Math.round(progress)}% watched` : ""}`}
       >
         <View style={styles.listThumbnail}>
           <VideoThumbnail
@@ -33,13 +38,25 @@ export default function VideoCard({
             duration={video.duration}
             title={video.title}
             height={90}
+            progressPercent={progress}
+            saved={saved}
           />
         </View>
         <View style={styles.listInfo}>
           <Text style={styles.listTitle} numberOfLines={2}>
             {video.title}
           </Text>
-          <Text style={styles.listMeta}>{video.channel.name}</Text>
+          <View style={styles.listMetaRow}>
+            <Text style={styles.listChannel}>{video.channel.name}</Text>
+            {video.channel.verified && (
+              <Ionicons
+                name="checkmark-circle"
+                size={12}
+                color={THEME.textSecondary}
+                style={{ marginLeft: 4 }}
+              />
+            )}
+          </View>
           <Text style={styles.listMeta}>
             {formatViews(video.views)} · {video.uploadedAt}
           </Text>
@@ -52,21 +69,21 @@ export default function VideoCard({
     <TouchableOpacity
       style={styles.gridContainer}
       onPress={() => onPress(video)}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel={`${video.title} by ${video.channel.name}, ${formatViews(video.views)}`}
+      accessibilityLabel={`${video.title} by ${video.channel.name}, ${formatViews(video.views)}${saved ? ", saved" : ""}${progress > 0 ? `, ${Math.round(progress)}% watched` : ""}`}
     >
       <VideoThumbnail
         colors={video.thumbnailColors}
         duration={video.duration}
         title={video.title}
+        progressPercent={progress}
+        saved={saved}
       />
       <View style={styles.gridInfo}>
         <TouchableOpacity
           onPress={() => onChannelPress?.(video.channel.id)}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={`View ${video.channel.name} channel`}
+          accessibilityLabel={`${video.channel.name} channel`}
         >
           <Avatar
             color={video.channel.avatarColor}
@@ -152,6 +169,14 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     lineHeight: 19,
     marginBottom: 4,
+  },
+  listMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  listChannel: {
+    color: THEME.textSecondary,
+    fontSize: 12,
   },
   listMeta: {
     color: THEME.textSecondary,

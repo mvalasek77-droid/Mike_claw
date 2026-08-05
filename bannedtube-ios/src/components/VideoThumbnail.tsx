@@ -9,6 +9,8 @@ interface VideoThumbnailProps {
   duration: string;
   title: string;
   height?: number;
+  progressPercent?: number;
+  saved?: boolean;
 }
 
 export default function VideoThumbnail({
@@ -16,6 +18,8 @@ export default function VideoThumbnail({
   duration,
   title,
   height = 200,
+  progressPercent = 0,
+  saved = false,
 }: VideoThumbnailProps) {
   return (
     <View
@@ -62,12 +66,26 @@ export default function VideoThumbnail({
         </Text>
       </View>
 
+      {saved && (
+        <View style={styles.savedBadge}>
+          <Ionicons name="bookmark" size={12} color="#fff" />
+        </View>
+      )}
+
       <View
         style={styles.durationBadge}
         accessibilityLabel={`Duration: ${duration}`}
       >
         <Text style={styles.durationText}>{duration}</Text>
       </View>
+
+      {progressPercent > 0 && (
+        <View style={styles.progressTrack}>
+          <View
+            style={[styles.progressFill, { width: `${Math.min(progressPercent, 100)}%` }]}
+          />
+        </View>
+      )}
 
       <LinearGradient
         colors={["rgba(255,68,68,0.12)", "transparent"]}
@@ -132,6 +150,17 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
+  savedBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(255,68,68,0.9)",
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   durationBadge: {
     position: "absolute",
     bottom: 8,
@@ -146,5 +175,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.3,
+  },
+  progressTrack: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  progressFill: {
+    height: 3,
+    backgroundColor: THEME.accent,
   },
 });
