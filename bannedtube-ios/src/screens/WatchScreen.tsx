@@ -31,9 +31,11 @@ interface WatchScreenProps {
   onChannelPress: (channelId: string) => void;
 }
 
-function CommentItem({ comment }: { comment: Comment }) {
+function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (parentId: string, text: string) => void }) {
   const [showReplies, setShowReplies] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [replying, setReplying] = useState(false);
+  const [replyText, setReplyText] = useState("");
 
   function handleLike() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -70,6 +72,19 @@ function CommentItem({ comment }: { comment: Comment }) {
               {(liked ? comment.likes + 1 : comment.likes).toLocaleString()}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.commentAction}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setReplying(!replying);
+              if (replying) setReplyText("");
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Reply to comment"
+          >
+            <Ionicons name="chatbubble-outline" size={14} color={THEME.textSecondary} />
+            <Text style={styles.commentActionText}>Reply</Text>
+          </TouchableOpacity>
           {comment.replies && comment.replies.length > 0 && (
             <TouchableOpacity
               onPress={() => {
@@ -95,9 +110,48 @@ function CommentItem({ comment }: { comment: Comment }) {
         {showReplies &&
           comment.replies?.map((reply) => (
             <View key={reply.id} style={styles.replyRow}>
-              <CommentItem comment={reply} />
+              <CommentItem comment={reply} onReply={onReply} />
             </View>
           ))}
+        {replying && (
+          <View style={styles.replyInputRow}>
+            <TextInput
+              style={styles.replyInput}
+              placeholder={`Reply to ${comment.author}...`}
+              placeholderTextColor="#666"
+              value={replyText}
+              onChangeText={setReplyText}
+              autoFocus
+              returnKeyType="send"
+              onSubmitEditing={() => {
+                if (replyText.trim() && onReply) {
+                  onReply(comment.id, replyText.trim());
+                  setReplyText("");
+                  setReplying(false);
+                }
+              }}
+              accessibilityLabel="Reply input"
+            />
+            <TouchableOpacity
+              onPress={() => {
+                if (replyText.trim() && onReply) {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onReply(comment.id, replyText.trim());
+                  setReplyText("");
+                  setReplying(false);
+                }
+              }}
+              disabled={!replyText.trim()}
+              style={[
+                styles.commentSendBtn,
+                !replyText.trim() && { opacity: 0.3 },
+              ]}
+              accessibilityLabel="Post reply"
+            >
+              <Ionicons name="send" size={16} color={THEME.accent} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -145,6 +199,11 @@ export default function WatchScreen({
 
   async function handleSave() {
     await toggleSaved(video.id);
+  }
+
+  async function handleReply(parentId: string, text: string) {
+    await addComment(video.id, text, parentId);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
   async function handleSubmitComment() {
@@ -402,7 +461,7 @@ export default function WatchScreen({
           </View>
 
           {allComments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} />
+            <CommentItem key={comment.id} comment={comment} onReply={handleReply} />
           ))}
 
           <Text style={styles.relatedHeader}>Up next</Text>
@@ -644,6 +703,24 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: THEME.border,
     paddingLeft: 12,
+  },
+  replyInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+    marginLeft: 36,
+  },
+  replyInput: {
+    flex: 1,
+    backgroundColor: THEME.bgSecondary,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: THEME.textPrimary,
+    fontSize: 13,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   commentInputRow: {
     flexDirection: "row",

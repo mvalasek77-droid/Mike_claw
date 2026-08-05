@@ -31,6 +31,7 @@ export interface UserComment {
   videoId: string;
   text: string;
   createdAt: string;
+  parentId?: string;
 }
 
 export interface NotificationPrefs {
@@ -170,13 +171,14 @@ export const Storage = {
     return getJSON(KEYS.USER_COMMENTS, []);
   },
 
-  async addComment(videoId: string, text: string): Promise<UserComment> {
+  async addComment(videoId: string, text: string, parentId?: string): Promise<UserComment> {
     const comments = await this.getUserComments();
     const comment: UserComment = {
       id: `uc_${Date.now()}`,
       videoId,
       text,
       createdAt: new Date().toISOString(),
+      parentId,
     };
     comments.unshift(comment);
     await setJSON(KEYS.USER_COMMENTS, comments);

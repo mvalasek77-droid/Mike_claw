@@ -35,7 +35,7 @@ interface AppActions {
   toggleSubscription: (channelId: string) => Promise<boolean>;
   toggleSaved: (videoId: string) => Promise<boolean>;
   addWatchHistory: (videoId: string, progress: number) => Promise<void>;
-  addComment: (videoId: string, text: string) => Promise<UserComment>;
+  addComment: (videoId: string, text: string, parentId?: string) => Promise<UserComment>;
   getVideoComments: (videoId: string) => Comment[];
   isLiked: (videoId: string) => boolean;
   isDisliked: (videoId: string) => boolean;
@@ -184,7 +184,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const addComment = useCallback(
-    async (videoId: string, text: string) => {
+    async (videoId: string, text: string, parentId?: string) => {
       const comment = await Storage.addComment(videoId, text);
       setState((s) => ({
         ...s,
@@ -198,17 +198,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getVideoComments = useCallback(
     (videoId: string): Comment[] => {
-      return state.userComments
-        .filter((c) => c.videoId === videoId)
-        .map((c) => ({
-          id: c.id,
-          author: state.profile?.displayName || "You",
-          avatarColor: state.profile?.avatarColor || "#805ad5",
-          initial: state.profile?.initial || "Y",
-          text: c.text,
-          likes: 0,
-          timeAgo: formatTimeAgo(c.createdAt),
-        }));
+      const topLevel = state.userComments
+        .filter((c) => c.videoId === videoId && !c.parentId)
+        .map((c) => {
+          const replies = state.userComments
+            .filter((r) => r.parentId === c.id)
+            .map((r) => ({
+              id: r.id,
+              author: state.profile?.displayName || "You",
+              avatarColor: state.profile?.avatarColor || "#805ad5",
+              initial: state.profile?.initial || "Y",
+              text: r.text,
+              likes: 0,
+              timeAgo: formatTimeAgo(r.createdAt),
+            }));
+          return {
+            id: c.id,
+            author: state.profile?.displayName || "You",
+            avatarColor: state.profile?.avatarColor || "#805ad5",
+            initial: state.profile?.initial || "Y",
+            text: c.text,
+            likes: 0,
+            timeAgo: formatTimeAgo(c.createdAt),
+            replies: replies.length > 0 ? replies : undefined,
+          };
+        });
+      return topLevel;
     },
     [state.userComments, state.profile]
   );
