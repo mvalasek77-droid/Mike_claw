@@ -24,6 +24,7 @@ import AIStudioScreen from "./src/screens/AIStudioScreen";
 import LibraryScreen from "./src/screens/LibraryScreen";
 import ShortsScreen from "./src/screens/ShortsScreen";
 import YouScreen from "./src/screens/YouScreen";
+import ErrorBoundary from "./src/components/ErrorBoundary";
 import { THEME, type Video, videos } from "./src/lib/data";
 
 type Tab = "home" | "shorts" | "trending" | "subscriptions" | "studio" | "search" | "library" | "you";
@@ -278,7 +279,9 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="light" />
       <AppProvider>
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </AppProvider>
     </SafeAreaProvider>
   );
