@@ -48,7 +48,8 @@ struct MatchRow: View {
     var body: some View {
         GlassSurface(corner: Theme.cornerL) {
             HStack(spacing: 12) {
-                AvatarCircle(name: other.name, hue: other.hue, photoName: other.photoName, size: 56,
+                AvatarCircle(name: other.name, hue: other.hue, photoName: other.photoName,
+                             remotePhotoURL: other.remotePhotoURLs.first, size: 56,
                              revealed: true)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {

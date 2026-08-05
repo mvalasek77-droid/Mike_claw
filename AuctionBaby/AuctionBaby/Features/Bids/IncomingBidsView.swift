@@ -174,8 +174,9 @@ struct BidRow: View {
                     .background(Capsule().fill(Theme.gold.opacity(0.14)))
                 }
                 HStack(spacing: 12) {
-                    AvatarCircle(name: bid.man.name, hue: bid.man.hue, photoName: bid.man.photoName, size: 52,
-                                 locked: bid.status != .accepted || bid.isWhisper, copycat: false)
+                    AvatarCircle(name: bid.man.name, hue: bid.man.hue, photoName: bid.man.photoName,
+                                 remotePhotoURL: (bid.status == .accepted && !bid.isWhisper) ? bid.man.remotePhotoURLs.first : nil,
+                                 size: 52, locked: bid.status != .accepted || bid.isWhisper, copycat: false)
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
                             Text(bid.isWhisper ? "Someone whispered"

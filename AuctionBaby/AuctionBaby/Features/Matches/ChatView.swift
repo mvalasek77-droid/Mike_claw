@@ -97,7 +97,20 @@ struct ChatView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if match != nil {
+            if let match {
+                ToolbarItem(placement: .principal) {
+                    let other = match.other(for: store.role ?? .man)
+                    HStack(spacing: 8) {
+                        AvatarCircle(name: other.name, hue: other.hue,
+                                     photoName: other.photoName,
+                                     remotePhotoURL: other.remotePhotoURLs.first,
+                                     size: 32, revealed: true)
+                        Text(other.name)
+                            .font(.system(size: 16, weight: .heavy, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                        if other.verified { VerifiedBadge(size: 13) }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button(role: .destructive) { showReport = true } label: {
