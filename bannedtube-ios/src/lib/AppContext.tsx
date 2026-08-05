@@ -19,6 +19,12 @@ interface AppState {
   savedVideos: Set<string>;
   watchHistory: WatchHistoryEntry[];
   userComments: UserComment[];
+  notifications: {
+    push: boolean;
+    darkMode: boolean;
+    autoplayMuted: boolean;
+    autoplayNext: boolean;
+  };
 }
 
 interface AppActions {
@@ -35,6 +41,7 @@ interface AppActions {
   isSubscribed: (channelId: string) => boolean;
   isSaved: (videoId: string) => boolean;
   getWatchProgress: (videoId: string) => number;
+  setNotifications: (prefs: { push: boolean; darkMode: boolean; autoplayMuted: boolean; autoplayNext: boolean }) => void;
 }
 
 type AppContextType = AppState & AppActions;
@@ -57,11 +64,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savedVideos: new Set(),
     watchHistory: [],
     userComments: [],
+    notifications: { push: true, darkMode: true, autoplayMuted: true, autoplayNext: false },
   });
 
   useEffect(() => {
     (async () => {
-      const [profile, liked, disliked, subs, saved, history, comments] =
+      const [profile, liked, disliked, subs, saved, history, comments, notifPrefs] =
         await Promise.all([
           Storage.getUserProfile(),
           Storage.getLikedVideos(),
@@ -70,6 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           Storage.getSavedVideos(),
           Storage.getWatchHistory(),
           Storage.getUserComments(),
+          Storage.getNotificationPrefs(),
         ]);
 
       setState({
@@ -81,6 +90,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         savedVideos: new Set(saved),
         watchHistory: history,
         userComments: comments,
+      notifications: notifPrefs,
       });
     })();
   }, []);
@@ -225,6 +235,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [state.watchHistory]
   );
 
+  const setNotifications = useCallback(
+    (prefs: { push: boolean; darkMode: boolean; autoplayMuted: boolean; autoplayNext: boolean }) => {
+      setState((prev) => ({ ...prev, notifications: prefs }));
+      Storage.setNotificationPrefs(prefs);
+    },
+    []
+  );
+
   const value: AppContextType = {
     ...state,
     setProfile,
@@ -240,6 +258,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isSubscribed,
     isSaved,
     getWatchProgress,
+    setNotifications,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -21,9 +21,12 @@ import SearchScreen from "./src/screens/SearchScreen";
 import TrendingScreen from "./src/screens/TrendingScreen";
 import SubscriptionsScreen from "./src/screens/SubscriptionsScreen";
 import AIStudioScreen from "./src/screens/AIStudioScreen";
-import { THEME, type Video } from "./src/lib/data";
+import LibraryScreen from "./src/screens/LibraryScreen";
+import ShortsScreen from "./src/screens/ShortsScreen";
+import YouScreen from "./src/screens/YouScreen";
+import { THEME, type Video, videos } from "./src/lib/data";
 
-type Tab = "home" | "trending" | "subscriptions" | "studio" | "search";
+type Tab = "home" | "shorts" | "trending" | "subscriptions" | "studio" | "search" | "library" | "you";
 
 type Overlay =
   | { type: "none" }
@@ -37,6 +40,12 @@ const TAB_CONFIG: {
   label: string;
 }[] = [
   { key: "home", icon: "home-outline", iconActive: "home", label: "Home" },
+  {
+    key: "shorts",
+    icon: "flash-outline",
+    iconActive: "flash",
+    label: "Shorts",
+  },
   {
     key: "trending",
     icon: "flame-outline",
@@ -60,6 +69,18 @@ const TAB_CONFIG: {
     icon: "search-outline",
     iconActive: "search",
     label: "Search",
+  },
+  {
+    key: "library",
+    icon: "library-outline",
+    iconActive: "library",
+    label: "Library",
+  },
+  {
+    key: "you",
+    icon: "person-circle-outline",
+    iconActive: "person-circle",
+    label: "You",
   },
 ];
 
@@ -136,6 +157,9 @@ function AppContent() {
             onSearchPress={() => handleTabPress("search")}
           />
         )}
+        {activeTab === "shorts" && (
+          <ShortsScreen videos={videos.slice(0, 10)} />
+        )}
         {activeTab === "trending" && (
           <TrendingScreen onVideoPress={handleVideoPress} />
         )}
@@ -151,6 +175,15 @@ function AppContent() {
             onBack={() => handleTabPress("home")}
             onVideoPress={handleVideoPress}
           />
+        )}
+        {activeTab === "library" && (
+          <LibraryScreen
+            onVideoPress={handleVideoPress}
+            onChannelPress={handleChannelPress}
+          />
+        )}
+        {activeTab === "you" && (
+          <YouScreen onChannelPress={handleChannelPress} />
         )}
       </View>
 

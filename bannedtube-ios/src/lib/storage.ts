@@ -33,7 +33,10 @@ export interface UserComment {
 }
 
 export interface NotificationPrefs {
-  [channelId: string]: "all" | "personalized" | "none";
+  push: boolean;
+  darkMode: boolean;
+  autoplayMuted: boolean;
+  autoplayNext: boolean;
 }
 
 async function getJSON<T>(key: string, fallback: T): Promise<T> {
@@ -180,15 +183,15 @@ export const Storage = {
   },
 
   async getNotificationPrefs(): Promise<NotificationPrefs> {
-    return getJSON(KEYS.NOTIFICATION_PREFS, {});
+    return getJSON(KEYS.NOTIFICATION_PREFS, {
+      push: true,
+      darkMode: true,
+      autoplayMuted: true,
+      autoplayNext: false,
+    });
   },
 
-  async setNotificationPref(
-    channelId: string,
-    pref: "all" | "personalized" | "none"
-  ): Promise<void> {
-    const prefs = await this.getNotificationPrefs();
-    prefs[channelId] = pref;
+  async setNotificationPrefs(prefs: NotificationPrefs): Promise<void> {
     await setJSON(KEYS.NOTIFICATION_PREFS, prefs);
   },
 
