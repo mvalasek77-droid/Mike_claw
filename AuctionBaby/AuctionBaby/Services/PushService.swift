@@ -38,6 +38,10 @@ final class PushService: NSObject, ObservableObject {
     /// Whether we've successfully told the server about the current token
     /// (so views can show a subtle "notifications ready" hint if useful).
     @Published private(set) var isRegisteredWithServer = false
+    /// Set when the user taps a delivered notification (not on foreground
+    /// banners). `MainTabView` observes this to switch tabs and open the
+    /// relevant screen; it clears the value after consuming it.
+    @Published var deepLinkEvent: PushEvent?
 
     /// Fires when a push arrives (foreground) or the user taps a delivered
     /// one (background). App root wires this to `AuctionStore` refreshers so
@@ -250,8 +254,9 @@ extension PushService: UNUserNotificationCenterDelegate {
     }
 
     /// A tap on a delivered notification (from lock screen / notification
-    /// center) wakes the app here. Same event fires so the destination
-    /// screen has fresh data by the time the user lands on it.
+    /// center) wakes the app here. Fires both the data refresh (`onEvent`)
+    /// AND sets `deepLinkEvent` so `MainTabView` can navigate to the right
+    /// screen by the time the animation completes.
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
@@ -259,7 +264,10 @@ extension PushService: UNUserNotificationCenterDelegate {
     ) {
         let userInfo = response.notification.request.content.userInfo
         Task { @MainActor in
-            if let event = PushEvent(userInfo: userInfo) { self.onEvent?(event) }
+            if let event = PushEvent(userInfo: userInfo) {
+                self.onEvent?(event)
+                self.deepLinkEvent = event
+            }
             completionHandler()
         }
     }

@@ -3,11 +3,18 @@ import SwiftUI
 struct MatchesView: View {
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var matching: MatchingService
+    /// Driven externally by `MainTabView` when a push tap targets a specific
+    /// match. Defaults to `.constant([])` so existing callers need no changes.
+    @Binding var navPath: [UUID]
+
+    init(navPath: Binding<[UUID]> = .constant([])) {
+        _navPath = navPath
+    }
 
     private var rows: [Match] { store.effectiveMatches }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navPath) {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     if rows.isEmpty {
