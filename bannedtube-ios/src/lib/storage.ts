@@ -10,6 +10,7 @@ const KEYS = {
   USER_COMMENTS: "bt_user_comments",
   NOTIFICATION_PREFS: "bt_notif_prefs",
   ONBOARDED: "bt_onboarded",
+  RECENT_SEARCHES: "bt_recent_searches",
 } as const;
 
 export interface UserProfile {
@@ -193,6 +194,21 @@ export const Storage = {
 
   async setNotificationPrefs(prefs: NotificationPrefs): Promise<void> {
     await setJSON(KEYS.NOTIFICATION_PREFS, prefs);
+  },
+
+  async getRecentSearches(): Promise<string[]> {
+    return getJSON(KEYS.RECENT_SEARCHES, []);
+  },
+
+  async addRecentSearch(query: string): Promise<void> {
+    const recent = await this.getRecentSearches();
+    const filtered = recent.filter((q) => q !== query);
+    filtered.unshift(query);
+    await setJSON(KEYS.RECENT_SEARCHES, filtered.slice(0, 10));
+  },
+
+  async clearRecentSearches(): Promise<void> {
+    await setJSON(KEYS.RECENT_SEARCHES, []);
   },
 
   async isOnboarded(): Promise<boolean> {

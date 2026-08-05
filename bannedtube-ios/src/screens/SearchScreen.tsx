@@ -6,12 +6,25 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import VideoCard from "../components/VideoCard";
+import { useApp } from "../lib/AppContext";
 import { searchVideos, THEME, type Video } from "../lib/data";
+
+const TRENDING_SEARCHES = [
+  "documentary",
+  "comedy",
+  "investigation",
+  "independent media",
+  "censorship",
+  "free speech",
+  "wellness",
+  "technology",
+];
 
 interface SearchScreenProps {
   onBack: () => void;
@@ -22,8 +35,25 @@ export default function SearchScreen({
   onBack,
   onVideoPress,
 }: SearchScreenProps) {
+  const { recentSearches, addRecentSearch, clearRecentSearches } = useApp();
   const [query, setQuery] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
   const results = query.trim() ? searchVideos(query) : [];
+
+  function handleSubmit() {
+    if (query.trim()) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      addRecentSearch(query.trim());
+      setHasSearched(true);
+    }
+  }
+
+  function quickSearch(term: string) {
+    setQuery(term);
+    addRecentSearch(term);
+    setHasSearched(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -43,66 +73,116 @@ export default function SearchScreen({
             placeholder="Search BannedTube"
             placeholderTextColor="#666"
             value={query}
-            onChangeText={setQuery}
+            onChangeText={(t) => {
+              setQuery(t);
+              if (!t.trim()) setHasSearched(false);
+            }}
             autoFocus
             returnKeyType="search"
+            onSubmitEditing={handleSubmit}
             accessibilityLabel="Search input"
             accessibilityHint="Type to search videos, channels, or topics"
           />
           {query.length > 0 && (
             <TouchableOpacity
               onPress={() => {
-                Haptics.selectionAsync();
                 setQuery("");
+                setHasSearched(false);
               }}
-              accessibilityRole="button"
               accessibilityLabel="Clear search"
             >
-              <Ionicons
-                name="close-circle"
-                size={18}
-                color={THEME.textSecondary}
-              />
+              <Ionicons name="close-circle" size={18} color={THEME.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {query.trim() && (
-        <Text style={styles.resultCount} accessibilityRole="text">
-          {results.length} result{results.length !== 1 ? "s" : ""} for "
-          {query}"
-        </Text>
-      )}
-
-      <FlatList
-        data={results}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.cardWrapper}>
-            <VideoCard video={item} onPress={onVideoPress} layout="list" />
+      {!hasSearched && !query.trim() ? (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {recentSearches.length > 0 && (
+            <View style={styles.suggestionSection}>
+              <View style={styles.suggestionHeader}>
+                <Text style={styles.suggestionTitle}>Recent searches</Text>
+                <TouchableOpacity
+                  onPress={clearRecentSearches}
+                  accessibilityLabel="Clear recent searches"
+                >
+                  <Text style={styles.clearText}>Clear</Text>
+                </TouchableOpacity>
+              </View>
+              {recentSearches.map((term, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={styles.recentItem}
+                  onPress={() => quickSearch(term)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Search for ${term}`}
+                >
+                  <Ionicons name="time-outline" size={18} color={THEME.textSecondary} />
+                  <Text style={styles.recentText}>{term}</Text>
+                  <Ionicons name="arrow-forward" size={14} color={THEME.bgTertiary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          <View style={styles.suggestionSection}>
+            <Text style={styles.suggestionTitle}>Trending searches</Text>
+            {TRENDING_SEARCHES.map((term, i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.recentItem}
+                onPress={() => quickSearch(term)}
+                accessibilityRole="button"
+                accessibilityLabel={`Search for ${term}`}
+              >
+                <Ionicons name="trending-up" size={18} color={THEME.accent} />
+                <Text style={styles.recentText}>{term}</Text>
+                <Ionicons name="arrow-forward" size={14} color={THEME.bgTertiary} />
+              </TouchableOpacity>
+            ))}
           </View>
-        )}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        keyboardDismissMode="on-drag"
-        ListEmptyComponent={
-          query.trim() ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="search" size={48} color={THEME.bgTertiary} />
-              <Text style={styles.emptyText}>No results found</Text>
-              <Text style={styles.emptySubtext}>Try different keywords</Text>
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.cardWrapper}>
+              <VideoCard
+                video={item}
+                onPress={onVideoPress}
+                layout="list"
+              />
             </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="search" size={48} color={THEME.bgTertiary} />
-              <Text style={styles.emptyText}>
-                Search for videos, channels, or topics
+          )}
+          ListHeaderComponent={
+            results.length > 0 ? (
+              <Text style={styles.resultCount}>
+                {results.length} {results.length === 1 ? "result" : "results"}
               </Text>
-            </View>
-          )
-        }
-      />
+            ) : null
+          }
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode="on-drag"
+          ListEmptyComponent={
+            query.trim() ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search" size={48} color={THEME.bgTertiary} />
+                <Text style={styles.emptyText}>No results found</Text>
+                <Text style={styles.emptySubtext}>Try different keywords</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search" size={48} color={THEME.bgTertiary} />
+                <Text style={styles.emptyText}>
+                  Search for videos, channels, or topics
+                </Text>
+              </View>
+            )
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -165,5 +245,38 @@ const styles = StyleSheet.create({
     color: THEME.textSecondary,
     fontSize: 13,
     opacity: 0.7,
+  },
+  suggestionSection: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+  suggestionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  suggestionTitle: {
+    color: THEME.textPrimary,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  clearText: {
+    color: THEME.accent,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  recentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.border,
+  },
+  recentText: {
+    color: THEME.textPrimary,
+    fontSize: 14,
+    flex: 1,
   },
 });

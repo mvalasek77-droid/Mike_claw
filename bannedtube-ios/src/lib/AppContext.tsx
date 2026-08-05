@@ -25,6 +25,7 @@ interface AppState {
     autoplayMuted: boolean;
     autoplayNext: boolean;
   };
+  recentSearches: string[];
 }
 
 interface AppActions {
@@ -42,6 +43,8 @@ interface AppActions {
   isSaved: (videoId: string) => boolean;
   getWatchProgress: (videoId: string) => number;
   setNotifications: (prefs: { push: boolean; darkMode: boolean; autoplayMuted: boolean; autoplayNext: boolean }) => void;
+  addRecentSearch: (query: string) => void;
+  clearRecentSearches: () => void;
 }
 
 type AppContextType = AppState & AppActions;
@@ -65,11 +68,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     watchHistory: [],
     userComments: [],
     notifications: { push: true, darkMode: true, autoplayMuted: true, autoplayNext: false },
+    recentSearches: [],
   });
 
   useEffect(() => {
     (async () => {
-      const [profile, liked, disliked, subs, saved, history, comments, notifPrefs] =
+      const [profile, liked, disliked, subs, saved, history, comments, notifPrefs, recentSearches] =
         await Promise.all([
           Storage.getUserProfile(),
           Storage.getLikedVideos(),
@@ -79,6 +83,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           Storage.getWatchHistory(),
           Storage.getUserComments(),
           Storage.getNotificationPrefs(),
+          Storage.getRecentSearches(),
         ]);
 
       setState({
@@ -91,7 +96,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         watchHistory: history,
         userComments: comments,
       notifications: notifPrefs,
-      });
+      recentSearches,
+    });
     })();
   }, []);
 
@@ -243,6 +249,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const addRecentSearch = useCallback(
+    (query: string) => {
+      setState((prev) => {
+        const filtered = prev.recentSearches.filter((q) => q !== query);
+        return { ...prev, recentSearches: [query, ...filtered].slice(0, 10) };
+      });
+      Storage.addRecentSearch(query);
+    },
+    []
+  );
+
+  const clearRecentSearches = useCallback(() => {
+    setState((prev) => ({ ...prev, recentSearches: [] }));
+    Storage.clearRecentSearches();
+  }, []);
+
   const value: AppContextType = {
     ...state,
     setProfile,
@@ -259,6 +281,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isSaved,
     getWatchProgress,
     setNotifications,
+    addRecentSearch,
+    clearRecentSearches,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
