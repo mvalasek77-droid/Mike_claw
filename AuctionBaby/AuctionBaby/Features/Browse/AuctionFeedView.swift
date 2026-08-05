@@ -40,7 +40,10 @@ struct AuctionFeedView: View {
                             FloorCard(woman: woman) { bidTarget = woman }
                         }
                         .buttonStyle(ScaleButtonStyle(scale: 0.975))
-                        .riseIn(Double(min(i, 6)) * 0.06)
+                        // FloorCards are tall — only the first ~3 are ever in
+                        // the initial viewport. Rows past that render statically
+                        // so the entrance animation never fires mid-scroll.
+                        .riseIn(Double(i) * 0.05, active: i < 3)
                     }
                     Spacer(minLength: 24)
                 }

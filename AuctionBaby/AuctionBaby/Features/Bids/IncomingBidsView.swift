@@ -40,7 +40,10 @@ struct IncomingBidsView: View {
                     }
                     ForEach(Array(pending.enumerated()), id: \.element.id) { i, bid in
                         Button { detail = bid } label: { BidRow(bid: bid) }.buttonStyle(.plain)
-                            .riseIn(Double(min(i, 6)) * 0.06)
+                            // Only the first screen of rows animates in; later
+                            // rows render statically so the rise-in never fires
+                            // while the user is scrolling (that reads as jitter).
+                            .riseIn(Double(i) * 0.05, active: i < 7)
                     }
                     if !resolved.isEmpty {
                         SectionHeader(title: "History").padding(.top, 8)

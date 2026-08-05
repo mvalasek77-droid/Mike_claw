@@ -86,7 +86,21 @@ extension View {
 
     /// Entrance: content rises and fades in on first appearance. Staggering
     /// the `delay` per row gives lists a lively, orchestrated arrival.
-    func riseIn(_ delay: Double = 0) -> some View { modifier(RiseIn(delay: delay)) }
+    ///
+    /// Pass `active: false` for rows *outside* the initial viewport. In a
+    /// LazyVStack `onAppear` fires as each cell scrolls into view, so a
+    /// rise-in on a mid-list row animates a 22pt slide while the user is
+    /// actively scrolling — it fights the scroll and reads as jitter. Only
+    /// the first on-screen batch should animate; everything scrolled into
+    /// view later renders statically.
+    @ViewBuilder
+    func riseIn(_ delay: Double = 0, active: Bool = true) -> some View {
+        if active {
+            modifier(RiseIn(delay: delay))
+        } else {
+            self
+        }
+    }
 
     /// Sweeping highlight shimmer — shown while async content is loading.
     /// Automatically suppressed when Reduce Motion is on.
