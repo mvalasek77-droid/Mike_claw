@@ -197,8 +197,12 @@ struct GavelStoreView: View {
             Text("Gavels are a one-time purchase of in-app currency. Passes are auto-renewable subscriptions billed to your Apple ID; they renew unless canceled at least 24h before the period ends. Manage or cancel in Settings.")
                 .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
             HStack(spacing: 14) {
-                Link("Terms", destination: URL(string: "https://auctionbaby.app/terms")!)
-                Link("Privacy", destination: URL(string: "https://auctionbaby.app/privacy")!)
+                if let termsURL = BackendConfig.termsURL {
+                    Link("Terms", destination: termsURL)
+                }
+                if let privacyURL = BackendConfig.privacyURL {
+                    Link("Privacy", destination: privacyURL)
+                }
             }
             .font(.system(size: 11, weight: .semibold)).tint(Theme.gold)
         }

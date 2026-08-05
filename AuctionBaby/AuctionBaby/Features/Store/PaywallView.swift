@@ -262,8 +262,12 @@ struct PaywallView: View {
                 .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
                 .multilineTextAlignment(.center)
             HStack(spacing: 14) {
-                Link("Terms", destination: URL(string: "https://auctionbaby.app/terms")!)
-                Link("Privacy", destination: URL(string: "https://auctionbaby.app/privacy")!)
+                if let termsURL = BackendConfig.termsURL {
+                    Link("Terms", destination: termsURL)
+                }
+                if let privacyURL = BackendConfig.privacyURL {
+                    Link("Privacy", destination: privacyURL)
+                }
             }
             .font(.system(size: 11, weight: .semibold)).tint(Theme.gold)
         }
