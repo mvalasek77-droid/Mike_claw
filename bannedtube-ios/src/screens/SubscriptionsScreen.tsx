@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
+import { useApp } from "../lib/AppContext";
 import {
   channels,
   videos,
@@ -29,17 +30,30 @@ export default function SubscriptionsScreen({
   onVideoPress,
   onChannelPress,
 }: SubscriptionsScreenProps) {
+  const { subscriptions } = useApp();
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
 
-  const subscribedChannels = channels.slice(0, 6);
+  const subscribedChannels = useMemo(
+    () => channels.filter((ch) => subscriptions.has(ch.id)),
+    [subscriptions]
+  );
+
+  const subscribedIds = subscriptions;
+  const subVideos = useMemo(
+    () =>
+      subscribedIds.size > 0
+        ? videos.filter((v) => subscribedIds.has(v.channel.id))
+        : videos,
+    [subscribedIds]
+  );
 
   const filteredVideos = selectedChannel
-    ? videos.filter((v) => v.channel.id === selectedChannel)
-    : videos;
+    ? subVideos.filter((v) => v.channel.id === selectedChannel)
+    : subVideos;
 
   const sortedVideos = useMemo(
     () => [...filteredVideos].sort((a, b) => a.id.localeCompare(b.id)),
-    [selectedChannel]
+    [filteredVideos]
   );
 
   function selectChannel(id: string | null) {
@@ -150,8 +164,16 @@ export default function SubscriptionsScreen({
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="videocam-off" size={48} color={THEME.bgTertiary} />
-            <Text style={styles.emptyText}>No videos from this channel</Text>
+            <Ionicons
+              name={subscribedIds.size === 0 ? "people-outline" : "videocam-off"}
+              size={48}
+              color={THEME.bgTertiary}
+            />
+            <Text style={styles.emptyText}>
+              {subscribedIds.size === 0
+                ? "Subscribe to channels to see their videos here"
+                : "No videos from this channel"}
+            </Text>
           </View>
         }
       />

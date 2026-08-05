@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
+import { useApp } from "../lib/AppContext";
 import {
   type Video,
   getChannelById,
@@ -32,9 +33,10 @@ export default function ChannelScreen({
   onBack,
   onVideoPress,
 }: ChannelScreenProps) {
+  const { isSubscribed, toggleSubscription } = useApp();
   const channel = getChannelById(channelId);
   const channelVideos = getVideosByChannel(channelId);
-  const [subscribed, setSubscribed] = useState(false);
+  const subscribed = isSubscribed(channelId);
   const [activeTab, setActiveTab] = useState(0);
 
   if (!channel) {
@@ -47,9 +49,8 @@ export default function ChannelScreen({
 
   const tabs = ["Videos", "Playlists", "Community", "About"];
 
-  function handleSubscribe() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setSubscribed(!subscribed);
+  async function handleSubscribe() {
+    await toggleSubscription(channelId);
   }
 
   return (

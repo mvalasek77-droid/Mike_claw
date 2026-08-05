@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   ScrollView,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
@@ -12,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
+import { useApp } from "../lib/AppContext";
 import {
   type Video,
   type Comment,
@@ -107,20 +109,49 @@ export default function WatchScreen({
   onVideoPress,
   onChannelPress,
 }: WatchScreenProps) {
-  const [playing, setPlaying] = useState(false);
-  const [liked, setLiked] = useState(false);
-  const [subscribed, setSubscribed] = useState(false);
-  const relatedVideos = videos.filter((v) => v.id !== video.id).slice(0, 6);
-  const comments = getComments();
+  const {
+    isLiked, isDisliked, toggleLike, toggleDislike,
+    isSubscribed, toggleSubscription,
+    isSaved, toggleSaved,
+    addWatchHistory, addComment, getVideoComments,
+  } = useApp();
 
-  function handleLike() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setLiked(!liked);
+  const [playing, setPlaying] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const liked = isLiked(video.id);
+  const disliked = isDisliked(video.id);
+  const subscribed = isSubscribed(video.channel.id);
+  const saved = isSaved(video.id);
+  const relatedVideos = videos.filter((v) => v.id !== video.id).slice(0, 6);
+  const builtInComments = getComments();
+  const userComments = getVideoComments(video.id);
+  const allComments = [...userComments, ...builtInComments];
+
+  useEffect(() => {
+    addWatchHistory(video.id, 0);
+  }, [video.id]);
+
+  async function handleLike() {
+    await toggleLike(video.id);
   }
 
-  function handleSubscribe() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setSubscribed(!subscribed);
+  async function handleDislike() {
+    await toggleDislike(video.id);
+  }
+
+  async function handleSubscribe() {
+    await toggleSubscription(video.channel.id);
+  }
+
+  async function handleSave() {
+    await toggleSaved(video.id);
+  }
+
+  async function handleSubmitComment() {
+    const trimmed = commentText.trim();
+    if (!trimmed) return;
+    await addComment(video.id, trimmed);
+    setCommentText("");
   }
 
   return (
@@ -266,14 +297,15 @@ export default function WatchScreen({
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.actionPill}
+              style={[styles.actionPill, disliked && styles.actionPillActive]}
+              onPress={handleDislike}
               accessibilityRole="button"
-              accessibilityLabel="Dislike"
+              accessibilityLabel={disliked ? "Remove dislike" : "Dislike"}
             >
               <Ionicons
-                name="thumbs-down-outline"
+                name={disliked ? "thumbs-down" : "thumbs-down-outline"}
                 size={18}
-                color={THEME.textPrimary}
+                color={disliked ? THEME.accent : THEME.textPrimary}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -289,16 +321,24 @@ export default function WatchScreen({
               <Text style={styles.actionPillText}>Share</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.actionPill}
+              style={[styles.actionPill, saved && styles.actionPillActive]}
+              onPress={handleSave}
               accessibilityRole="button"
-              accessibilityLabel="Save"
+              accessibilityLabel={saved ? "Unsave" : "Save"}
             >
               <Ionicons
-                name="download-outline"
+                name={saved ? "bookmark" : "bookmark-outline"}
                 size={18}
-                color={THEME.textPrimary}
+                color={saved ? THEME.accent : THEME.textPrimary}
               />
-              <Text style={styles.actionPillText}>Save</Text>
+              <Text
+                style={[
+                  styles.actionPillText,
+                  saved && { color: THEME.accent },
+                ]}
+              >
+                {saved ? "Saved" : "Save"}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionPill}
@@ -334,9 +374,34 @@ export default function WatchScreen({
           </View>
 
           <Text style={styles.commentsHeader}>
-            {comments.length} Comments
+            {allComments.length} Comments
           </Text>
-          {comments.map((comment) => (
+
+          <View style={styles.commentInputRow}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Add a comment..."
+              placeholderTextColor={THEME.textSecondary}
+              value={commentText}
+              onChangeText={setCommentText}
+              returnKeyType="send"
+              onSubmitEditing={handleSubmitComment}
+            />
+            <TouchableOpacity
+              onPress={handleSubmitComment}
+              disabled={!commentText.trim()}
+              style={[
+                styles.commentSendBtn,
+                !commentText.trim() && { opacity: 0.3 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Post comment"
+            >
+              <Ionicons name="send" size={18} color={THEME.accent} />
+            </TouchableOpacity>
+          </View>
+
+          {allComments.map((comment) => (
             <CommentItem key={comment.id} comment={comment} />
           ))}
 
@@ -579,6 +644,25 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: THEME.border,
     paddingLeft: 12,
+  },
+  commentInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+    backgroundColor: THEME.bgTertiary,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+  },
+  commentInput: {
+    flex: 1,
+    color: THEME.textPrimary,
+    fontSize: 14,
+    paddingVertical: 8,
+  },
+  commentSendBtn: {
+    padding: 4,
   },
   relatedHeader: {
     color: THEME.textPrimary,

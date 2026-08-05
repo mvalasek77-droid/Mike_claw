@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { AppProvider, useApp } from "./src/lib/AppContext";
 import HomeScreen from "./src/screens/HomeScreen";
 import WatchScreen from "./src/screens/WatchScreen";
 import ChannelScreen from "./src/screens/ChannelScreen";
@@ -62,7 +63,8 @@ const TAB_CONFIG: {
   },
 ];
 
-export default function App() {
+function AppContent() {
+  const { ready } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [overlay, setOverlay] = useState<Overlay>({ type: "none" });
   const [overlayHistory, setOverlayHistory] = useState<Overlay[]>([]);
@@ -78,6 +80,24 @@ export default function App() {
       friction: 12,
     }).start();
   }, [activeTab]);
+
+  if (!ready) {
+    return (
+      <View style={styles.loadingScreen}>
+        <View style={styles.loadingLogo}>
+          <Ionicons name="flame" size={32} color="#fff" />
+        </View>
+        <Text style={styles.loadingText}>
+          Banned<Text style={{ color: THEME.accent }}>Tube</Text>
+        </Text>
+        <ActivityIndicator
+          color={THEME.accent}
+          size="small"
+          style={{ marginTop: 24 }}
+        />
+      </View>
+    );
+  }
 
   function openOverlay(next: Overlay) {
     if (overlay.type !== "none") {
@@ -107,117 +127,126 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
-      <View style={styles.root}>
-        <View style={styles.content}>
-          {activeTab === "home" && (
-            <HomeScreen
-              onVideoPress={handleVideoPress}
-              onChannelPress={handleChannelPress}
-              onSearchPress={() => handleTabPress("search")}
-            />
-          )}
-          {activeTab === "trending" && (
-            <TrendingScreen onVideoPress={handleVideoPress} />
-          )}
-          {activeTab === "studio" && <AIStudioScreen />}
-          {activeTab === "subscriptions" && (
-            <SubscriptionsScreen
-              onVideoPress={handleVideoPress}
-              onChannelPress={handleChannelPress}
-            />
-          )}
-          {activeTab === "search" && (
-            <SearchScreen
-              onBack={() => handleTabPress("home")}
-              onVideoPress={handleVideoPress}
-            />
-          )}
-        </View>
-
-        {overlay.type === "watch" && (
-          <View style={styles.overlay}>
-            <WatchScreen
-              video={overlay.video}
-              onBack={closeOverlay}
-              onVideoPress={handleVideoPress}
-              onChannelPress={handleChannelPress}
-            />
-          </View>
+    <View style={styles.root}>
+      <View style={styles.content}>
+        {activeTab === "home" && (
+          <HomeScreen
+            onVideoPress={handleVideoPress}
+            onChannelPress={handleChannelPress}
+            onSearchPress={() => handleTabPress("search")}
+          />
         )}
-        {overlay.type === "channel" && (
-          <View style={styles.overlay}>
-            <ChannelScreen
-              channelId={overlay.channelId}
-              onBack={closeOverlay}
-              onVideoPress={handleVideoPress}
-            />
-          </View>
+        {activeTab === "trending" && (
+          <TrendingScreen onVideoPress={handleVideoPress} />
         )}
-
-        {overlay.type === "none" && (
-          <View style={styles.tabBarOuter}>
-            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
-            <LinearGradient
-              colors={[
-                "rgba(15,15,15,0.7)",
-                "rgba(15,15,15,0.92)",
-              ]}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.tabBarBorderTop} />
-            <View style={styles.tabBar}>
-              {TAB_CONFIG.map((tab, idx) => {
-                const isActive = activeTab === tab.key;
-                const isStudio = tab.key === "studio";
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    style={styles.tabItem}
-                    onPress={() => handleTabPress(tab.key)}
-                    activeOpacity={0.6}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: isActive }}
-                    accessibilityLabel={`${tab.label} tab`}
-                  >
-                    {isStudio ? (
-                      <View
-                        style={[
-                          styles.studioIconWrap,
-                          isActive && styles.studioIconWrapActive,
-                        ]}
-                      >
-                        <Ionicons
-                          name={(isActive ? tab.iconActive : tab.icon) as any}
-                          size={20}
-                          color={isActive ? "#fff" : THEME.textSecondary}
-                        />
-                      </View>
-                    ) : (
-                      <Ionicons
-                        name={(isActive ? tab.iconActive : tab.icon) as any}
-                        size={22}
-                        color={isActive ? THEME.accent : THEME.textSecondary}
-                      />
-                    )}
-                    <Text
-                      style={[
-                        styles.tabLabel,
-                        isActive && !isStudio && styles.tabLabelActive,
-                        isActive && isStudio && styles.tabLabelStudio,
-                      ]}
-                    >
-                      {tab.label}
-                    </Text>
-                    {isActive && !isStudio && <View style={styles.tabDot} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+        {activeTab === "studio" && <AIStudioScreen />}
+        {activeTab === "subscriptions" && (
+          <SubscriptionsScreen
+            onVideoPress={handleVideoPress}
+            onChannelPress={handleChannelPress}
+          />
+        )}
+        {activeTab === "search" && (
+          <SearchScreen
+            onBack={() => handleTabPress("home")}
+            onVideoPress={handleVideoPress}
+          />
         )}
       </View>
+
+      {overlay.type === "watch" && (
+        <View style={styles.overlay}>
+          <WatchScreen
+            video={overlay.video}
+            onBack={closeOverlay}
+            onVideoPress={handleVideoPress}
+            onChannelPress={handleChannelPress}
+          />
+        </View>
+      )}
+      {overlay.type === "channel" && (
+        <View style={styles.overlay}>
+          <ChannelScreen
+            channelId={overlay.channelId}
+            onBack={closeOverlay}
+            onVideoPress={handleVideoPress}
+          />
+        </View>
+      )}
+
+      {overlay.type === "none" && (
+        <View style={styles.tabBarOuter}>
+          <BlurView
+            intensity={60}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={["rgba(15,15,15,0.7)", "rgba(15,15,15,0.92)"]}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.tabBarBorderTop} />
+          <View style={styles.tabBar}>
+            {TAB_CONFIG.map((tab) => {
+              const isActive = activeTab === tab.key;
+              const isStudio = tab.key === "studio";
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={styles.tabItem}
+                  onPress={() => handleTabPress(tab.key)}
+                  activeOpacity={0.6}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`${tab.label} tab`}
+                >
+                  {isStudio ? (
+                    <View
+                      style={[
+                        styles.studioIconWrap,
+                        isActive && styles.studioIconWrapActive,
+                      ]}
+                    >
+                      <Ionicons
+                        name={(isActive ? tab.iconActive : tab.icon) as any}
+                        size={20}
+                        color={isActive ? "#fff" : THEME.textSecondary}
+                      />
+                    </View>
+                  ) : (
+                    <Ionicons
+                      name={(isActive ? tab.iconActive : tab.icon) as any}
+                      size={22}
+                      color={isActive ? THEME.accent : THEME.textSecondary}
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      isActive && !isStudio && styles.tabLabelActive,
+                      isActive && isStudio && styles.tabLabelStudio,
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                  {isActive && !isStudio && <View style={styles.tabDot} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <StatusBar style="light" />
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
     </SafeAreaProvider>
   );
 }
@@ -237,6 +266,31 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: THEME.bgPrimary,
+  },
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: THEME.bgPrimary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingLogo: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: THEME.accent,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: THEME.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+  },
+  loadingText: {
+    color: THEME.textPrimary,
+    fontSize: 28,
+    fontWeight: "800",
+    marginTop: 16,
+    letterSpacing: -0.5,
   },
   tabBarOuter: {
     position: "absolute",
