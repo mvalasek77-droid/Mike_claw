@@ -27,7 +27,7 @@ struct AuctionFeedView: View {
                     DailyClaimCard()
                     if let star = store.lotOfTheDay {
                         NavigationLink(value: star) { LotOfTheDayBanner(woman: star) }
-                            .buttonStyle(.plain)
+                            .buttonStyle(ScaleButtonStyle(scale: 0.98))
                             .riseIn(0.05)
                     }
                     if lots.isEmpty && store.lotOfTheDay == nil {
@@ -39,7 +39,7 @@ struct AuctionFeedView: View {
                         NavigationLink(value: woman) {
                             FloorCard(woman: woman) { bidTarget = woman }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(ScaleButtonStyle(scale: 0.975))
                         .riseIn(Double(min(i, 6)) * 0.06)
                     }
                     Spacer(minLength: 24)

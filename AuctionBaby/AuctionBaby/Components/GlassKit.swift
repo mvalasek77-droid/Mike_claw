@@ -129,13 +129,21 @@ struct EmptyStateView: View {
     let title: String
     let message: String
     var tint: Color = Theme.inkFaint
+    @State private var pulse: CGFloat = 1.0
 
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 42))
                 .foregroundStyle(tint)
+                .scaleEffect(pulse)
                 .accessibilityHidden(true)
+                .onAppear {
+                    guard !UIAccessibility.isReduceMotionEnabled else { return }
+                    withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+                        pulse = 1.10
+                    }
+                }
             Text(title)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundStyle(Theme.ink)

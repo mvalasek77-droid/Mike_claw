@@ -104,6 +104,8 @@ struct AvatarView: View {
                             switch phase {
                             case .success(let image):
                                 image.resizable().scaledToFill()
+                            case .empty:
+                                gradientMonogram.shimmer()
                             default:
                                 gradientMonogram
                             }

@@ -7,6 +7,14 @@ struct MainTabView: View {
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var push: PushService
     @State private var selection = 0
+
+    /// Live badge counts. Computed from published store state so they update
+    /// the moment a push arrives and the underlying arrays refresh.
+    private var pendingInboxCount: Int {
+        (store.isRemoteInbox ? store.remoteIncomingBids : store.incomingBids)
+            .filter { $0.status == .pending }.count
+    }
+    private var activeBidCount: Int { store.activePendingBidCount }
     /// Programmatic navigation path for the Matches tab. A push tap on a
     /// `message.received` event appends the match UUID so the chat opens
     /// immediately; the user presses Back to pop it.
@@ -21,6 +29,7 @@ struct MainTabView: View {
                 MyBidsView()
                     .tabItem { Label("My Bids", systemImage: "hand.raised.fill") }
                     .tag(4)
+                    .badge(activeBidCount)
                 ArchetypeStoreView()
                     .tabItem { Label("Status", systemImage: "crown.fill") }
                     .tag(1)
@@ -28,6 +37,7 @@ struct MainTabView: View {
                 IncomingBidsView()
                     .tabItem { Label("Bids", systemImage: "hand.raised.fill") }
                     .tag(0)
+                    .badge(pendingInboxCount)
             }
 
             MatchesView(navPath: $matchNavPath)

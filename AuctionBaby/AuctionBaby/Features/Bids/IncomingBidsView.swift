@@ -229,6 +229,7 @@ struct BidRow: View {
                     if bid.isWhisper {
                         HStack(spacing: 10) {
                             Button {
+                                Haptics.decline()
                                 Task { await store.declineRemote(bid, matching: matching) }
                             } label: {
                                 Label("Let it fade", systemImage: "xmark")
@@ -237,8 +238,7 @@ struct BidRow: View {
                                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                             }.buttonStyle(.plain)
                             Button {
-                                // `acceptRemote` special-cases whispers → nodRemoteWhisper
-                                // when the inbox is remote; sim path stays on nodAtWhisper.
+                                Haptics.accept()
                                 Task { await store.acceptRemote(bid, matching: matching) }
                             } label: {
                                 Label("Nod back", systemImage: "hand.wave.fill")
@@ -250,6 +250,7 @@ struct BidRow: View {
                     } else {
                         HStack(spacing: 10) {
                             Button {
+                                Haptics.decline()
                                 Task { await store.declineRemote(bid, matching: matching) }
                             } label: {
                                 Label("Pass", systemImage: "xmark")
@@ -258,6 +259,7 @@ struct BidRow: View {
                                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                             }.buttonStyle(.plain)
                             Button {
+                                Haptics.accept()
                                 Task { await store.acceptRemote(bid, matching: matching) }
                             } label: {
                                 Label("Accept", systemImage: "checkmark")

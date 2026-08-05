@@ -27,7 +27,7 @@ struct MatchesView: View {
                     ForEach(rows) { match in
                         NavigationLink(value: match.id) {
                             MatchRow(match: match)
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(ScaleButtonStyle())
                     }
                     Spacer(minLength: 20)
                 }

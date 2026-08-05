@@ -159,6 +159,7 @@ struct BidSheet: View {
     /// signed-in woman has been fetched — so Demo Mode + local-only sessions
     /// always take the sim branch.
     private func placeBid() {
+        Haptics.bidPlaced()
         if store.isRemoteFloor {
             Task {
                 await store.placeRemoteBid(
