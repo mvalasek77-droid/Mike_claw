@@ -25,7 +25,7 @@ struct MyBidsView: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     usageCard
-                    if store.outgoingBids.isEmpty {
+                    if source.isEmpty {
                         EmptyStateView(icon: "hand.raised", title: "No bids yet",
                                        message: "Find a lot on the floor and place your first bid.")
                     }
