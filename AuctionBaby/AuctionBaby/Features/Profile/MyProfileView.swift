@@ -37,7 +37,8 @@ struct MyProfileView: View {
                         }
                     }
                     settingsCard
-                    Text("Auction Baby · demo build · v1.0").font(.system(size: 11))
+                    Text("Auction Baby · v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
+                        .font(.system(size: 11))
                         .foregroundStyle(Theme.inkFaint)
                     Spacer(minLength: 24)
                 }

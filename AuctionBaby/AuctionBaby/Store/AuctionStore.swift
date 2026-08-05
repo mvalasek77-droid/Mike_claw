@@ -1568,7 +1568,7 @@ final class AuctionStore: ObservableObject {
     /// nod invites the whisperer to come back with a real number, which the
     /// simulation delivers a few seconds later.
     func nodAtWhisper(_ bid: Bid) {
-        guard role == .woman,
+        guard role == .woman, !isRemoteInbox,
               let idx = incomingBids.firstIndex(where: { $0.id == bid.id }),
               incomingBids[idx].status == .pending, incomingBids[idx].isWhisper else { return }
         incomingBids[idx].status = .accepted
@@ -2218,7 +2218,7 @@ final class AuctionStore: ObservableObject {
         earnings = snap.earnings
         boostUntil = snap.boostUntil
         floor = snap.floor.isEmpty ? SampleData.floor() : snap.floor
-        bidders = (snap.bidders?.isEmpty ?? true) ? SampleData.suitors() : snap.bidders!
+        bidders = snap.bidders.flatMap { $0.isEmpty ? nil : $0 } ?? SampleData.suitors()
         incomingBids = snap.incomingBids
         outgoingBids = snap.outgoingBids
         matches = snap.matches

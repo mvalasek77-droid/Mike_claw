@@ -149,6 +149,9 @@ final class ProfileService: ObservableObject {
     /// `myServerProfile` so callers see the new CDN URLs.
     func syncPhotos(from profile: Profile) async {
         guard isEnabled else { return }
+        inFlight = true
+        defer { inFlight = false }
+
         var localPhotos: [Data] = []
         if let primary = profile.photoData { localPhotos.append(primary) }
         localPhotos.append(contentsOf: profile.photoGallery)

@@ -23,3 +23,7 @@ AB_SHARED_SECRET = $(inherited)
 AB_CONSUMABLES_URL = $(inherited)
 AB_AUTH_URL = $(inherited)
 AB_MATCHING_URL = $(inherited)
+// ToS + Privacy Policy. Define real URLs in Secrets.xcconfig to override.
+// Non-empty fallbacks ensure App Store guideline 5.1.1 is always satisfied.
+AB_TERMS_URL = $(inherited)
+AB_PRIVACY_URL = $(inherited)

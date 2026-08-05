@@ -131,6 +131,18 @@ struct AuctionBabyApp: App {
                         await auth.refreshMe()
                         // Slice 4b1a: seed the real floor at launch.
                         await store.refreshRemoteFloor(profileSync: profileSync)
+                        // Seed bids + matches so the free-bid counter is
+                        // accurate before the user navigates anywhere, and
+                        // so push deep-links land on fresh data.
+                        await store.refreshRemoteMatches(matching: matching)
+                        if store.role == .man {
+                            await store.refreshRemoteOutgoing(matching: matching)
+                        } else {
+                            await store.refreshRemoteInbox(matching: matching)
+                        }
+                        // Re-register the APNs token in case it rotated since
+                        // the last session (OS update, app upgrade, etc.).
+                        await push.requestAuthorizationIfNeeded()
                     }
                 }
                 .onChange(of: scenePhase) { _, phase in
@@ -138,10 +150,16 @@ struct AuctionBabyApp: App {
                         Task { await store.refreshPendingRefunds(storeKit: storeKit, backend: backend) }
                         if auth.isSignedIn {
                             Task { await auth.refreshMe() }
-                            // Slice 4b1a: refresh the real floor on foreground
-                            // so a bidder's list catches up with any lots that
-                            // signed up while they were backgrounded.
+                            // Refresh floor, bids, and matches on foreground so
+                            // the user doesn't need to pull-to-refresh after
+                            // switching away and back.
                             Task { await store.refreshRemoteFloor(profileSync: profileSync) }
+                            Task { await store.refreshRemoteMatches(matching: matching) }
+                            if store.role == .man {
+                                Task { await store.refreshRemoteOutgoing(matching: matching) }
+                            } else {
+                                Task { await store.refreshRemoteInbox(matching: matching) }
+                            }
                         }
                     }
                 }

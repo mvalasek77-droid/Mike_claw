@@ -367,7 +367,6 @@ enforcement, but the policy needs to exist before the endpoint does.
 - [ ] Streak-freeze stockpiling has no cap (whales can buy unlimited at
       500 Gavels) — cap it or keep as monetization escape valve?
 - [ ] The woman side has no Lot-of-the-Day equivalent — fine for launch?
-- [ ] Admin password: `Crown-Ivory-23!Gavel77` (username `valasek`) —
-      memorize, then delete this line from the file
+- [x] Admin password committed — credential rotated and line removed
 - [ ] v1.1 backlog priorities: voice/video prompts, liveness verification,
       NSFW photo screening, background checks (see `ROADMAP.md`)
