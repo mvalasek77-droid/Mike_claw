@@ -22,8 +22,10 @@
       "supportsTablet": true,
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true
-      }
+      },
+      "associatedDomains": ["applinks:bannedtube.app"]
     },
+    "scheme": "bannedtube",
     "android": {
       "package": "com.bannedtube.app",
       "adaptiveIcon": {

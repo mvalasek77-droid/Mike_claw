@@ -6,6 +6,8 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -253,6 +255,11 @@ export default function WatchScreen({
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
+      >
       <TouchableOpacity
         style={styles.backBtn}
         onPress={onBack}
@@ -263,7 +270,7 @@ export default function WatchScreen({
         <Ionicons name="chevron-back" size={24} color={THEME.textPrimary} />
       </TouchableOpacity>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardDismissMode="interactive">
         <TouchableOpacity
           style={styles.player}
           onPress={() => {
@@ -517,6 +524,7 @@ export default function WatchScreen({
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

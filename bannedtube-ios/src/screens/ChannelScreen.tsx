@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
+import GlassCard from "../components/GlassCard";
 import { useApp } from "../lib/AppContext";
 import {
   type Video,
@@ -19,6 +20,7 @@ import {
   getVideosByChannel,
   formatSubscribers,
   formatViews,
+  formatCompact,
   THEME,
 } from "../lib/data";
 
@@ -212,18 +214,147 @@ export default function ChannelScreen({
 
         <View style={styles.divider} />
 
-        <View style={styles.videosContainer}>
-          {channelVideos.map((video) => (
-            <VideoCard
-              key={video.id}
-              video={video}
-              onPress={onVideoPress}
-            />
-          ))}
-          {channelVideos.length === 0 && (
-            <Text style={styles.emptyText}>No videos yet</Text>
-          )}
-        </View>
+        {activeTab === 0 && (
+          <View style={styles.videosContainer}>
+            {channelVideos.map((video) => (
+              <VideoCard
+                key={video.id}
+                video={video}
+                onPress={onVideoPress}
+              />
+            ))}
+            {channelVideos.length === 0 && (
+              <Text style={styles.emptyText}>No videos yet</Text>
+            )}
+          </View>
+        )}
+
+        {activeTab === 1 && (
+          <View style={styles.tabContent}>
+            <GlassCard style={styles.playlistCard}>
+              <View style={styles.playlistRow}>
+                <Ionicons name="list" size={20} color={THEME.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.playlistTitle}>All Uploads</Text>
+                  <Text style={styles.playlistMeta}>{channelVideos.length} videos</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={THEME.textSecondary} />
+              </View>
+            </GlassCard>
+            <GlassCard style={styles.playlistCard}>
+              <View style={styles.playlistRow}>
+                <Ionicons name="flame" size={20} color="#fbbf24" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.playlistTitle}>Most Popular</Text>
+                  <Text style={styles.playlistMeta}>{Math.min(channelVideos.length, 5)} videos</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={THEME.textSecondary} />
+              </View>
+            </GlassCard>
+            <GlassCard style={styles.playlistCard}>
+              <View style={styles.playlistRow}>
+                <Ionicons name="time" size={20} color="#60a5fa" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.playlistTitle}>Recently Uploaded</Text>
+                  <Text style={styles.playlistMeta}>{Math.min(channelVideos.length, 3)} videos</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={THEME.textSecondary} />
+              </View>
+            </GlassCard>
+          </View>
+        )}
+
+        {activeTab === 2 && (
+          <View style={styles.tabContent}>
+            <GlassCard style={styles.communityPost}>
+              <View style={styles.communityHeader}>
+                <Avatar color={channel.avatarColor} initial={channel.initial} size={32} />
+                <View>
+                  <Text style={styles.communityAuthor}>{channel.name}</Text>
+                  <Text style={styles.communityTime}>2 days ago</Text>
+                </View>
+              </View>
+              <Text style={styles.communityText}>
+                Big things coming this week! Stay tuned for a major announcement. Drop a fire emoji if you're ready.
+              </Text>
+              <View style={styles.communityActions}>
+                <View style={styles.communityAction}>
+                  <Ionicons name="thumbs-up-outline" size={16} color={THEME.textSecondary} />
+                  <Text style={styles.communityActionText}>842</Text>
+                </View>
+                <View style={styles.communityAction}>
+                  <Ionicons name="chatbubble-outline" size={16} color={THEME.textSecondary} />
+                  <Text style={styles.communityActionText}>56</Text>
+                </View>
+              </View>
+            </GlassCard>
+            <GlassCard style={styles.communityPost}>
+              <View style={styles.communityHeader}>
+                <Avatar color={channel.avatarColor} initial={channel.initial} size={32} />
+                <View>
+                  <Text style={styles.communityAuthor}>{channel.name}</Text>
+                  <Text style={styles.communityTime}>1 week ago</Text>
+                </View>
+              </View>
+              <Text style={styles.communityText}>
+                Thank you for {formatCompact(channel.subscribers)} subs! This community is incredible. What content do you want to see next?
+              </Text>
+              <View style={styles.communityActions}>
+                <View style={styles.communityAction}>
+                  <Ionicons name="thumbs-up-outline" size={16} color={THEME.textSecondary} />
+                  <Text style={styles.communityActionText}>1.2K</Text>
+                </View>
+                <View style={styles.communityAction}>
+                  <Ionicons name="chatbubble-outline" size={16} color={THEME.textSecondary} />
+                  <Text style={styles.communityActionText}>203</Text>
+                </View>
+              </View>
+            </GlassCard>
+          </View>
+        )}
+
+        {activeTab === 3 && (
+          <View style={styles.tabContent}>
+            <GlassCard style={styles.aboutCard}>
+              <Text style={styles.aboutLabel}>Description</Text>
+              <Text style={styles.aboutText}>
+                {channel.description || `Welcome to ${channel.name}. Subscribe for the latest content that the mainstream doesn't want you to see.`}
+              </Text>
+            </GlassCard>
+            <GlassCard style={styles.aboutCard}>
+              <Text style={styles.aboutLabel}>Stats</Text>
+              <View style={styles.aboutStatsGrid}>
+                <View style={styles.aboutStat}>
+                  <Text style={styles.aboutStatVal}>{formatSubscribers(channel.subscribers)}</Text>
+                  <Text style={styles.aboutStatKey}>Subscribers</Text>
+                </View>
+                <View style={styles.aboutStat}>
+                  <Text style={styles.aboutStatVal}>{channelVideos.length}</Text>
+                  <Text style={styles.aboutStatKey}>Videos</Text>
+                </View>
+                <View style={styles.aboutStat}>
+                  <Text style={styles.aboutStatVal}>{channel.totalViews ? formatViews(channel.totalViews) : "N/A"}</Text>
+                  <Text style={styles.aboutStatKey}>Total views</Text>
+                </View>
+              </View>
+            </GlassCard>
+            <GlassCard style={styles.aboutCard}>
+              <Text style={styles.aboutLabel}>Details</Text>
+              <View style={styles.aboutDetail}>
+                <Ionicons name="globe-outline" size={16} color={THEME.textSecondary} />
+                <Text style={styles.aboutDetailText}>bannedtube.app/{channel.name.toLowerCase().replace(/\s+/g, "")}</Text>
+              </View>
+              <View style={styles.aboutDetail}>
+                <Ionicons name="calendar-outline" size={16} color={THEME.textSecondary} />
+                <Text style={styles.aboutDetailText}>Joined Jan 2024</Text>
+              </View>
+              <View style={styles.aboutDetail}>
+                <Ionicons name="location-outline" size={16} color={THEME.textSecondary} />
+                <Text style={styles.aboutDetailText}>United States</Text>
+              </View>
+            </GlassCard>
+          </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -386,5 +517,110 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 40,
     fontSize: 15,
+  },
+  tabContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  playlistCard: {
+    padding: 0,
+  },
+  playlistRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+  },
+  playlistTitle: {
+    color: THEME.textPrimary,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  playlistMeta: {
+    color: THEME.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  communityPost: {
+    gap: 10,
+  },
+  communityHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  communityAuthor: {
+    color: THEME.textPrimary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  communityTime: {
+    color: THEME.textSecondary,
+    fontSize: 11,
+  },
+  communityText: {
+    color: THEME.textPrimary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  communityActions: {
+    flexDirection: "row",
+    gap: 20,
+    paddingTop: 4,
+  },
+  communityAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  communityActionText: {
+    color: THEME.textSecondary,
+    fontSize: 12,
+  },
+  aboutCard: {
+    gap: 10,
+  },
+  aboutLabel: {
+    color: THEME.textSecondary,
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  aboutText: {
+    color: THEME.textPrimary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  aboutStatsGrid: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  aboutStat: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 8,
+  },
+  aboutStatVal: {
+    color: THEME.textPrimary,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  aboutStatKey: {
+    color: THEME.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  aboutDetail: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 4,
+  },
+  aboutDetailText: {
+    color: THEME.textPrimary,
+    fontSize: 14,
   },
 });
