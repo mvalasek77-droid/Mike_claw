@@ -9,6 +9,7 @@ import React, {
 import * as Haptics from "expo-haptics";
 import { Storage, type UserProfile, type WatchHistoryEntry, type UserComment } from "./storage";
 import { type Comment } from "./data";
+import { Analytics } from "./analytics";
 
 interface AppState {
   ready: boolean;
@@ -109,6 +110,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const toggleLike = useCallback(async (videoId: string) => {
     const nowLiked = await Storage.toggleLike(videoId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (nowLiked) Analytics.videoLike(videoId);
     setState((s) => {
       const liked = new Set(s.likedVideos);
       const disliked = new Set(s.dislikedVideos);
@@ -143,6 +145,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const toggleSubscription = useCallback(async (channelId: string) => {
     const nowSubscribed = await Storage.toggleSubscription(channelId);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (nowSubscribed) Analytics.subscribe(channelId);
     setState((s) => {
       const subs = new Set(s.subscriptions);
       if (nowSubscribed) subs.add(channelId);
@@ -155,6 +158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const toggleSaved = useCallback(async (videoId: string) => {
     const nowSaved = await Storage.toggleSaved(videoId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (nowSaved) Analytics.videoSave(videoId);
     setState((s) => {
       const saved = new Set(s.savedVideos);
       if (nowSaved) saved.add(videoId);
@@ -167,6 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addWatchHistory = useCallback(
     async (videoId: string, progress: number) => {
       await Storage.addWatchHistory(videoId, progress);
+      if (progress === 0) Analytics.videoPlay(videoId, "");
       setState((s) => {
         const history = [...s.watchHistory];
         const idx = history.findIndex((h) => h.videoId === videoId);
@@ -185,12 +190,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addComment = useCallback(
     async (videoId: string, text: string, parentId?: string) => {
-      const comment = await Storage.addComment(videoId, text);
+      const comment = await Storage.addComment(videoId, text, parentId);
       setState((s) => ({
         ...s,
         userComments: [comment, ...s.userComments],
       }));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Analytics.commentPost(videoId);
       return comment;
     },
     []

@@ -14,6 +14,8 @@ import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppProvider, useApp } from "./src/lib/AppContext";
+import { Analytics } from "./src/lib/analytics";
+import { CrashReporter } from "./src/lib/crashReporter";
 import HomeScreen from "./src/screens/HomeScreen";
 import WatchScreen from "./src/screens/WatchScreen";
 import ChannelScreen from "./src/screens/ChannelScreen";
@@ -96,6 +98,11 @@ function AppContent() {
   const tabIndicatorAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    CrashReporter.init();
+    Analytics.appLaunch();
+  }, []);
+
+  useEffect(() => {
     const idx = TAB_CONFIG.findIndex((t) => t.key === activeTab);
     Animated.spring(tabIndicatorAnim, {
       toValue: idx,
@@ -103,6 +110,7 @@ function AppContent() {
       tension: 80,
       friction: 12,
     }).start();
+    Analytics.tabSwitch(activeTab);
   }, [activeTab]);
 
   if (ready && !onboarded && profile === null) {

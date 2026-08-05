@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Avatar from "./Avatar";
@@ -13,7 +13,7 @@ interface VideoCardProps {
   layout?: "grid" | "list";
 }
 
-export default function VideoCard({
+export default memo(function VideoCard({
   video,
   onPress,
   onChannelPress,
@@ -114,7 +114,7 @@ export default function VideoCard({
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   gridContainer: {

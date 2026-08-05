@@ -1,6 +1,8 @@
 import React, { Component, type ReactNode } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { CrashReporter } from "../lib/crashReporter";
+import { Analytics } from "../lib/analytics";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -21,6 +23,11 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error, reloading: false };
+  }
+
+  componentDidCatch(error: Error) {
+    CrashReporter.captureException(error, { source: "ErrorBoundary" });
+    Analytics.error(error.message, "ErrorBoundary");
   }
 
   handleReload = () => {

@@ -44,8 +44,17 @@
         "projectId": ""
       }
     },
+    "updates": {
+      "url": "https://u.expo.dev/bannedtube-ios",
+      "fallbackToCacheTimeout": 5000,
+      "checkAutomatically": "ON_LOAD"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "plugins": [
-      "expo-sharing"
+      "expo-sharing",
+      "expo-updates"
     ]
   }
 }

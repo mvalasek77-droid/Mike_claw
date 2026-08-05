@@ -24,3 +24,4 @@ jobs:
           cache-dependency-path: bannedtube-ios/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      - run: npm test -- --ci --passWithNoTests

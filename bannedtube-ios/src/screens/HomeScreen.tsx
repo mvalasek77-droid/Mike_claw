@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   FlatList,
@@ -25,10 +25,10 @@ export default function HomeScreen({
   const [category, setCategory] = useState("All");
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
-  };
+  }, []);
   const filteredVideos = getVideosByCategory(category);
 
   return (
