@@ -3,6 +3,7 @@ import {
   View,
   FlatList,
   StyleSheet,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../components/Header";
@@ -22,6 +23,12 @@ export default function HomeScreen({
   onSearchPress,
 }: HomeScreenProps) {
   const [category, setCategory] = useState("All");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  };
   const filteredVideos = getVideosByCategory(category);
 
   return (
@@ -44,6 +51,14 @@ export default function HomeScreen({
         )}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={THEME.accent}
+            colors={[THEME.accent]}
+          />
+        }
       />
     </SafeAreaView>
   );

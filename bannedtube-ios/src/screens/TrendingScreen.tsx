@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,7 +17,13 @@ interface TrendingScreenProps {
 }
 
 export default function TrendingScreen({ onVideoPress }: TrendingScreenProps) {
+  const [refreshing, setRefreshing] = useState(false);
   const trending = [...videos].sort((a, b) => b.views - a.views);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -60,6 +67,14 @@ export default function TrendingScreen({ onVideoPress }: TrendingScreenProps) {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={THEME.accent}
+            colors={[THEME.accent]}
+          />
+        }
       />
     </SafeAreaView>
   );
