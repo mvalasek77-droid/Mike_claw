@@ -25,6 +25,7 @@ import LibraryScreen from "./src/screens/LibraryScreen";
 import ShortsScreen from "./src/screens/ShortsScreen";
 import YouScreen from "./src/screens/YouScreen";
 import ErrorBoundary from "./src/components/ErrorBoundary";
+import OnboardingScreen from "./src/screens/OnboardingScreen";
 import { THEME, type Video, videos } from "./src/lib/data";
 
 type Tab = "home" | "shorts" | "trending" | "subscriptions" | "studio" | "search" | "library" | "you";
@@ -86,7 +87,8 @@ const TAB_CONFIG: {
 ];
 
 function AppContent() {
-  const { ready } = useApp();
+  const { ready, profile } = useApp();
+  const [onboarded, setOnboarded] = useState(profile !== null);
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [overlay, setOverlay] = useState<Overlay>({ type: "none" });
   const [overlayHistory, setOverlayHistory] = useState<Overlay[]>([]);
@@ -102,6 +104,12 @@ function AppContent() {
       friction: 12,
     }).start();
   }, [activeTab]);
+
+  if (ready && !onboarded && profile === null) {
+    return (
+      <OnboardingScreen onComplete={() => setOnboarded(true)} />
+    );
+  }
 
   if (!ready) {
     return (

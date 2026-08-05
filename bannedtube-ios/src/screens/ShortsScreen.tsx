@@ -12,6 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as Sharing from "expo-sharing";
+import { Alert, Share as RNShare } from "react-native";
 import { useApp } from "../lib/AppContext";
 import { THEME, type Video } from "../lib/data";
 
@@ -143,6 +145,13 @@ export default function ShortsScreen({ videos }: ShortsScreenProps) {
 
           <TouchableOpacity
             style={styles.actionButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              RNShare.share({
+                message: `Check out "${video.title}" on BannedTube`,
+                title: "BannedTube",
+              });
+            }}
             accessibilityLabel="Share"
           >
             <Ionicons name="share-outline" size={30} color="#fff" />

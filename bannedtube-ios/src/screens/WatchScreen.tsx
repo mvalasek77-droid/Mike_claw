@@ -11,6 +11,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
+import { Alert, Share as RNShare } from "react-native";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
 import { useApp } from "../lib/AppContext";
@@ -206,6 +209,41 @@ export default function WatchScreen({
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
+  async function handleShare() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const shareUrl = `https://bannedtube.app/watch/${video.id}`;
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(shareUrl, {
+          mimeType: "text/plain",
+          dialogTitle: "Share this video",
+        });
+      } else {
+        await RNShare.share({
+          message: `Check out "${video.title}" on BannedTube: ${shareUrl}`,
+          title: "BannedTube",
+        });
+      }
+    } catch {
+      // Fallback to clipboard
+      await Clipboard.setStringAsync(`https://bannedtube.app/watch/${video.id}`);
+      Alert.alert("Link copied", "Video link copied to clipboard");
+    }
+  }
+
+  function handleReport() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      "Report video",
+      "Help keep BannedTube safe. What's wrong with this video?",
+      [
+        { text: "Spam or misleading", onPress: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) },
+        { text: "Harmful content", onPress: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  }
+
   async function handleSubmitComment() {
     const trimmed = commentText.trim();
     if (!trimmed) return;
@@ -369,6 +407,7 @@ export default function WatchScreen({
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionPill}
+              onPress={handleShare}
               accessibilityRole="button"
               accessibilityLabel="Share"
             >
@@ -401,6 +440,7 @@ export default function WatchScreen({
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionPill}
+              onPress={handleReport}
               accessibilityRole="button"
               accessibilityLabel="Report"
             >
