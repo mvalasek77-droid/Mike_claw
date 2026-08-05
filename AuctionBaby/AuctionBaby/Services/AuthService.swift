@@ -96,7 +96,7 @@ final class AuthService: ObservableObject {
             self.serverUserId = r.userId
             self.user = r.user
             return .success(isNew: r.isNew, user: r.user)
-        case .failure(let message):
+        case .failure(let message, _):
             self.lastError = message
             return .failure(message)
         }
@@ -121,7 +121,7 @@ final class AuthService: ObservableObject {
             return .success(isNew: false, user: RemoteUser(id: serverUserId ?? "",
                                                             email: nil, name: nil, dateOfBirth: dob,
                                                             createdAt: 0, lastSeenAt: 0))
-        case .failure(let message):
+        case .failure(let message, _):
             self.lastError = message
             return .failure(message)
         }
@@ -145,12 +145,12 @@ final class AuthService: ObservableObject {
             // the local profile flag so the whole UI catches up in one place.
             if !wasVerified, r.user.isVerified { onVerified?() }
             return true
-        case .failure(let message):
-            // Any auth failure => discard the session locally so the user
-            // ends up on the sign-in flow instead of a broken signed-in one.
-            if message.contains("Unauthorized") || message.contains("401") {
-                signOutLocally()
-            }
+        case .failure(_, let status):
+            // A 401 means the session is dead (rotated SESSION_SECRET, deleted
+            // account). Drop it locally so the user lands on sign-in instead of
+            // a broken signed-in state. We key off the numeric status, not the
+            // error string, so the Worker can word its 401 body however it likes.
+            if status == 401 { signOutLocally() }
             return false
         }
     }
@@ -181,7 +181,7 @@ final class AuthService: ObservableObject {
         let result = await request("/me", method: "DELETE", body: EmptyBody?.none,
                                     auth: true, as: EmptyResponse.self)
         signOutLocally()
-        if case .failure(let m) = result { self.lastError = m; return false }
+        if case .failure(let m, _) = result { self.lastError = m; return false }
         return true
     }
 
@@ -269,17 +269,22 @@ final class AuthService: ObservableObject {
     private struct EmptyResponse: Decodable {}
 
     private enum TransportResult<T: Decodable> {
-        case success(T); case failure(String)
+        /// `status` is the HTTP status code (0 for pre-flight / transport
+        /// errors that never reached the server). Callers that care about a
+        /// specific code — e.g. `refreshMe` dropping the session on 401 —
+        /// read the number rather than string-matching the message, so the
+        /// Worker is free to word its error bodies however it likes.
+        case success(T); case failure(String, status: Int)
     }
 
     private func request<Body: Encodable, T: Decodable>(
         _ path: String, method: String, body: Body?, auth: Bool, as type: T.Type,
     ) async -> TransportResult<T> {
         let base = BackendConfig.authURL.trimmingCharacters(in: .whitespaces)
-        guard !base.isEmpty else { return .failure("Auth Worker not configured.") }
+        guard !base.isEmpty else { return .failure("Auth Worker not configured.", status: 0) }
         let trimmed = base.hasSuffix("/") ? String(base.dropLast()) : base
         guard let url = URL(string: "\(trimmed)\(path)") else {
-            return .failure("Auth Worker URL looks malformed.")
+            return .failure("Auth Worker URL looks malformed.", status: 0)
         }
         var req = URLRequest(url: url)
         req.httpMethod = method
@@ -301,7 +306,7 @@ final class AuthService: ObservableObject {
                 ErrorMonitor.shared.record(category: "Auth",
                                            message: "\(method) \(path) failed",
                                            detail: message)
-                return .failure(message)
+                return .failure(message, status: status)
             }
             if T.self == EmptyResponse.self {
                 return .success(EmptyResponse() as! T)
@@ -312,7 +317,7 @@ final class AuthService: ObservableObject {
             ErrorMonitor.shared.record(category: "Auth",
                                        message: "\(method) \(path) transport",
                                        detail: error.localizedDescription)
-            return .failure(error.localizedDescription)
+            return .failure(error.localizedDescription, status: 0)
         }
     }
 }
