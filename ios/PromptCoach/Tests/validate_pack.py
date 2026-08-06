@@ -692,12 +692,22 @@ if PROJECT_YML.exists():
           re.search(r'PromptCoachLite:.*?LITE', yml, re.S) is not None)
     check("PromptCoachLite has its own Info.plist (distinct display name)",
           "Info-Lite.plist" in yml)
+    check("PromptCoachLite uses a dedicated App Store icon, not the paid icon",
+          re.search(r'PromptCoachLite:.*?ASSETCATALOG_COMPILER_APPICON_NAME: AppIconLite',
+                    yml, re.S) is not None)
 
 check("a Lite Info.plist exists with a distinct display name", INFO_LITE.exists())
 if INFO_LITE.exists():
     info_lite = INFO_LITE.read_text()
     check("Info-Lite.plist advertises the Lite name, not the paid app's name",
           "Prompt Coach Lite" in info_lite)
+
+PAID_ICON = ROOT / "ios/PromptCoach/PromptCoach/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png"
+LITE_ICON = ROOT / "ios/PromptCoach/PromptCoach/Resources/Assets.xcassets/AppIconLite.appiconset/icon-1024.png"
+check("the paid target has a 1024px App Store icon", PAID_ICON.exists())
+check("the Lite target has its own 1024px App Store icon", LITE_ICON.exists())
+if PAID_ICON.exists() and LITE_ICON.exists():
+    check("paid and Lite App Store icons are distinct files", PAID_ICON.read_bytes() != LITE_ICON.read_bytes())
 
 # ------------------------------------- hosted legal/support pages (ASC links)
 # App Review actually opens these — App Store Connect requires a live Privacy

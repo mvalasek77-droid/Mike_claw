@@ -201,19 +201,14 @@ Then walk these manually — each is a category a static pass cannot cover:
 
 ## 6. Pre-submission blockers
 
-1. **The app icon is a generated placeholder** for the paid app, and **Lite has
-   no icon of its own yet** — it currently inherits the same placeholder.
-   Both need real, distinct icons before submission.
-2. **Set a real `DEVELOPMENT_TEAM`** in `project.yml` (currently `""`) — applies
-   to both targets.
-3. **Decide the paid app's price** and confirm no IAP products exist in App
+1. **Decide the paid app's price** and confirm no IAP products exist in App
    Store Connect for *either* listing — both apps and their legal copy state
    no IAP, no subscriptions.
-4. **`AppTier.paidAppStoreURL` is a placeholder** (`apps.apple.com/app/id0000000000`).
+2. **`AppTier.paidAppStoreURL` is a placeholder** (`apps.apple.com/app/id0000000000`).
    It must point at the real paid-app listing before Lite ships — and the paid
    app needs a real App Store ID first, which means it should go live before
    Lite's upsell links are meaningful.
-5. **App Review notes** should say the app is fully functional offline with no
+3. **App Review notes** should say the app is fully functional offline with no
    account and no API key required, so a reviewer doesn't go hunting for a login.
    For Lite specifically, note that it is intentionally feature-limited and links
    to a separate paid listing — reviewers sometimes flag an unexpectedly bare

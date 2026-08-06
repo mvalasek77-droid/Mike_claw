@@ -401,17 +401,12 @@ models the app's coaching guidance targets — not a claim of affiliation.
    can't confirm from here whether Pages has ever been turned on for this
    repo. If the URLs in §1–§2 don't resolve, this is why — fix Pages first,
    the ASC fields are correct once the pages are actually live.
-3. **`DEVELOPMENT_TEAM` is blank** in `project.yml` — needed to archive and
-   upload a build at all, separate from any of the metadata above.
-4. **Both apps need real icons.** Lite currently inherits the paid app's
-   placeholder icon (see `project.yml` — both targets point at the same
-   `AppIcon` asset catalog entry). They should look related but distinct —
-   a common pattern is the same mark with a visibly different treatment
-   (outline vs. filled, a corner badge) so both are recognizable as the same
-   family without being visually identical in a screenshot comparison.
-5. **Legal entity name for the copyright line** — nothing in the repo states
+3. **Archive and upload a signed build.** `DEVELOPMENT_TEAM` is configured in
+   `project.yml`, but archiving still requires a working Apple signing setup in
+   Xcode and an App Store Connect app record.
+4. **Legal entity name for the copyright line** — nothing in the repo states
    one; fill in `§1`/`§2`'s Copyright field before submitting.
-6. A minor test-infra note, not a submission blocker: the new contract check
+5. A minor test-infra note, not a submission blocker: the new contract check
    for the Anthropic disclaimer had to account for Swift's `\` line-
    continuation syntax splitting the phrase across lines in the source file.
    Worth remembering if you hand-edit `LegalText` later — a contract-test
@@ -420,8 +415,8 @@ models the app's coaching guidance targets — not a claim of affiliation.
    even when it's present.
 
 Everything above that's checkable from source **is** checked — run
-`python3 ios/PromptCoach/Tests/validate_pack.py` (567 checks as of this
-writing) before acting on any of this. It won't catch a dead Pages URL or a
-missing icon; it will catch the hosted legal pages drifting out of sync with
+`python3 ios/PromptCoach/Tests/validate_pack.py` (571 checks as of this
+writing) before acting on any of this. It won't catch a dead Pages URL; it
+will catch the hosted legal pages drifting out of sync with
 what the app actually does, which is the failure mode most likely to sink
 an actual review.

@@ -23,6 +23,23 @@ targets:
       - path: PromptCoach
     info:
       path: PromptCoach/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Prompt Coach
+        CFBundleName: PromptCoach
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: AccentColor
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIUserInterfaceStyle: Automatic
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.codegenie.promptcoach
@@ -53,11 +70,28 @@ targets:
       - path: PromptCoach
     info:
       path: PromptCoach/Resources/Info-Lite.plist
+      properties:
+        CFBundleDisplayName: Prompt Coach Lite
+        CFBundleName: PromptCoachLite
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: AccentColor
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIUserInterfaceStyle: Automatic
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.codegenie.promptcoach.lite
         PRODUCT_NAME: PromptCoachLite
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIconLite
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: "1"

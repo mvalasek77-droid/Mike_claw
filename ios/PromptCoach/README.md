@@ -41,12 +41,10 @@ Deployment target iOS 17. The iOS 26 `glassEffect` is availability-gated with an
 ## Assets
 
 `Resources/Assets.xcassets` has a real `AccentColor` (matches `Glass.accent`,
-identical light/dark pair to the CodeGenie app for family consistency) and an
-`AppIcon` with a **placeholder** 1024×1024 icon (generated programmatically —
-an aurora gradient + sparkle mark echoing the in-app "Coach It" glyph). It's
-there so the project has no missing-asset build warnings and looks coherent on
-a first run, but it is **not final branding** — swap it for real design before
-App Store submission.
+identical light/dark pair to the CodeGenie app for family consistency) and
+separate opaque 1024×1024 App Store icons for the paid and Lite targets. The
+two icons share the sparkle-and-prompt-card language while remaining visually
+distinct in App Store search results.
 
 ## Not verified here
 
