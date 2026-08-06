@@ -389,30 +389,22 @@ models the app's coaching guidance targets — not a claim of affiliation.
    App ID) before Lite's in-app link is meaningful. Submitting Lite first
    with the placeholder still live would ship a dead link inside the app —
    avoid that ordering.
-2. **Confirm GitHub Pages is actually serving `docs/` at the URL used
-   throughout this doc.** The deploy workflow
-   (`.github/workflows/deploy-pages.yml`) previously only triggered on a
-   different branch (`claude/ai-marketplace-ios-app-iUYui`); it's now been
-   updated to also trigger on this branch, but that only takes effect once
-   this branch is pushed and the workflow actually runs. Check
-   **Settings → Pages** in the GitHub repo to confirm Pages is enabled at
-   all and confirm the resulting URL matches `mvalasek77-droid.github.io/Mike_claw/`
-   — there's no `CNAME` file, so there's no custom domain configured, and I
-   can't confirm from here whether Pages has ever been turned on for this
-   repo. If the URLs in §1–§2 don't resolve, this is why — fix Pages first,
-   the ASC fields are correct once the pages are actually live.
-3. **Archive and upload a signed build.** `DEVELOPMENT_TEAM` is configured in
+2. **Archive and upload a signed build.** `DEVELOPMENT_TEAM` is configured in
    `project.yml`, but archiving still requires a working Apple signing setup in
    Xcode and an App Store Connect app record.
-4. **Legal entity name for the copyright line** — nothing in the repo states
+3. **Legal entity name for the copyright line** — nothing in the repo states
    one; fill in `§1`/`§2`'s Copyright field before submitting.
-5. A minor test-infra note, not a submission blocker: the new contract check
+4. A minor test-infra note, not a submission blocker: the new contract check
    for the Anthropic disclaimer had to account for Swift's `\` line-
    continuation syntax splitting the phrase across lines in the source file.
    Worth remembering if you hand-edit `LegalText` later — a contract-test
    substring check on multi-line Swift string literals needs the same
    normalization, or a phrase that happens to wrap a line reads as absent
    even when it's present.
+
+GitHub Pages is enabled and deployed from this branch; the paid privacy,
+Lite privacy, and support URLs in §1–§2 were verified as HTTP 200 on
+2026-08-06.
 
 Everything above that's checkable from source **is** checked — run
 `python3 ios/PromptCoach/Tests/validate_pack.py` (571 checks as of this
