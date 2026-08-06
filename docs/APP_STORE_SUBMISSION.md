@@ -51,9 +51,9 @@ all.
 | **Availability** | All territories, unless you have a reason to restrict |
 | **Age rating** | See §5 — computes to 4+ |
 | **In-app purchases** | None. Confirm zero IAP products exist under this app's ASC record before submitting — the app and its Terms both assert this. |
-| **Support URL** | `https://mvalasek77-droid.github.io/mike_claw/prompt-coach-support.html` *(verify — see §7, Pages may not be live yet)* |
+| **Support URL** | `https://mvalasek77-droid.github.io/Mike_claw/prompt-coach-support.html` *(verify — see §7, Pages may not be live yet)* |
 | **Marketing URL** | Optional; the support URL works fine here too if you don't want a separate marketing page |
-| **Privacy Policy URL** | `https://mvalasek77-droid.github.io/mike_claw/prompt-coach-privacy.html` |
+| **Privacy Policy URL** | `https://mvalasek77-droid.github.io/Mike_claw/prompt-coach-privacy.html` |
 | **Copyright** | `© 2026 [your legal name or entity]` — fill in; nothing in the repo states a legal entity name |
 
 ### Promotional text (170 char max, editable anytime post-launch)
@@ -141,8 +141,8 @@ shows it starting with version 2. Leave blank for the 1.0.0 initial submission.)
 | **Availability** | All territories |
 | **Age rating** | 4+ (see §5, identical questionnaire answers) |
 | **In-app purchases** | None. This matters more here than on the paid app — confirm no IAP exists, because a free app that links to a separate paid app can *look* like a 3.1.1 workaround if IAP products exist alongside it. There should be zero IAP products under this app's ASC record, full stop. |
-| **Support URL** | `https://mvalasek77-droid.github.io/mike_claw/prompt-coach-support.html` (same page as the paid app — it already covers both) |
-| **Privacy Policy URL** | `https://mvalasek77-droid.github.io/mike_claw/prompt-coach-lite-privacy.html` |
+| **Support URL** | `https://mvalasek77-droid.github.io/Mike_claw/prompt-coach-support.html` (same page as the paid app — it already covers both) |
+| **Privacy Policy URL** | `https://mvalasek77-droid.github.io/Mike_claw/prompt-coach-lite-privacy.html` |
 | **Copyright** | Same entity as the paid app |
 
 ### Promotional text
@@ -396,7 +396,7 @@ models the app's coaching guidance targets — not a claim of affiliation.
    updated to also trigger on this branch, but that only takes effect once
    this branch is pushed and the workflow actually runs. Check
    **Settings → Pages** in the GitHub repo to confirm Pages is enabled at
-   all and confirm the resulting URL matches `mvalasek77-droid.github.io/mike_claw/`
+   all and confirm the resulting URL matches `mvalasek77-droid.github.io/Mike_claw/`
    — there's no `CNAME` file, so there's no custom domain configured, and I
    can't confirm from here whether Pages has ever been turned on for this
    repo. If the URLs in §1–§2 don't resolve, this is why — fix Pages first,
