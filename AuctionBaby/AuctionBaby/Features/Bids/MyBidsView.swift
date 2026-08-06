@@ -94,6 +94,7 @@ struct MyBidsView: View {
 
 struct OutgoingBidRow: View {
     @EnvironmentObject private var store: AuctionStore
+    @EnvironmentObject private var matching: MatchingService
     let bid: Bid
     var locked: Bool
     var canRewind: Bool = false

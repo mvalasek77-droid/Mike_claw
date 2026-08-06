@@ -1,5 +1,7 @@
 import Foundation
 
+private struct WorkerError: Decodable { let error: String? }
+
 /// The client for the matching Worker (Slice 4 of the spine — real bids,
 /// matches, and messages between two signed-in users).
 ///
@@ -144,10 +146,10 @@ final class MatchingService: ObservableObject {
     // MARK: - Transport
 
     private func get<T: Decodable>(_ path: String, as type: T.Type) async -> ServiceResult<T> {
-        await request(path: path, method: "GET", body: nil, as: type)
+        return await request(path: path, method: "GET", body: nil, as: type)
     }
     private func post<T: Decodable>(_ path: String, body: [String: Any], as type: T.Type) async -> ServiceResult<T> {
-        await request(path: path, method: "POST", body: body, as: type)
+        return await request(path: path, method: "POST", body: body, as: type)
     }
 
     private func request<T: Decodable>(path: String, method: String,
@@ -177,7 +179,6 @@ final class MatchingService: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: req)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(status) else {
-                struct WorkerError: Decodable { let error: String? }
                 let decoded = try? JSONDecoder().decode(WorkerError.self, from: data)
                 let message = decoded?.error ?? "HTTP \(status)"
                 lastError = message

@@ -1,4 +1,6 @@
 import Foundation
+
+private struct WorkerError: Decodable { let error: String? }
 import AuthenticationServices
 
 /// Owns the app's authenticated server identity: the `serverUserId` and the
@@ -300,7 +302,6 @@ final class AuthService: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: req)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(status) else {
-                struct WorkerError: Decodable { let error: String? }
                 let decoded = try? JSONDecoder().decode(WorkerError.self, from: data)
                 let message = decoded?.error ?? "HTTP \(status)"
                 ErrorMonitor.shared.record(category: "Auth",

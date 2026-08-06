@@ -1,5 +1,7 @@
 import Foundation
 
+private struct WorkerError: Decodable { let error: String? }
+
 /// Syncs the local `Profile` — the app's on-device source of truth — to the
 /// public-profile view on the auth Worker (Slice 4b0). This is the missing
 /// piece before UI migration can matter: two real users can't see each other
@@ -117,6 +119,8 @@ final class ProfileService: ObservableObject {
     // MARK: - Photos (Batch U)
 
     struct PhotosResponse: Decodable {
+
+        enum CodingKeys: String, CodingKey { case photos, photo }
         let photos: [PublicPhoto]
         let photo: PublicPhoto?
 
@@ -129,17 +133,17 @@ final class ProfileService: ObservableObject {
 
     func uploadPhoto(jpeg: Data) async -> ServiceResult<PhotosResponse> {
         guard isEnabled else { return .notConfigured }
-        await uploadRaw("/me/photos", jpeg: jpeg, as: PhotosResponse.self)
+        return await uploadRaw("/me/photos", jpeg: jpeg, as: PhotosResponse.self)
     }
 
     func deletePhoto(id: String) async -> ServiceResult<PhotosResponse> {
         guard isEnabled else { return .notConfigured }
-        await delete("/me/photos/\(id)", as: PhotosResponse.self)
+        return await delete("/me/photos/\(id)", as: PhotosResponse.self)
     }
 
     func reorderPhotos(ids: [String]) async -> ServiceResult<PhotosResponse> {
         guard isEnabled else { return .notConfigured }
-        await put("/me/photos/order", body: ["ids": ids], as: PhotosResponse.self)
+        return await put("/me/photos/order", body: ["ids": ids], as: PhotosResponse.self)
     }
 
     /// Replace the full server photo set with whatever the local profile holds.
@@ -171,13 +175,13 @@ final class ProfileService: ObservableObject {
     // MARK: - Transport
 
     private func get<T: Decodable>(_ path: String, as type: T.Type) async -> ServiceResult<T> {
-        await request(path: path, method: "GET", body: nil, as: type)
+        return await request(path: path, method: "GET", body: nil, as: type)
     }
     private func put<T: Decodable>(_ path: String, body: [String: Any], as type: T.Type) async -> ServiceResult<T> {
-        await request(path: path, method: "PUT", body: body, as: type)
+        return await request(path: path, method: "PUT", body: body, as: type)
     }
     private func delete<T: Decodable>(_ path: String, as type: T.Type) async -> ServiceResult<T> {
-        await request(path: path, method: "DELETE", body: nil, as: type)
+        return await request(path: path, method: "DELETE", body: nil, as: type)
     }
 
     private func uploadRaw<T: Decodable>(_ path: String, jpeg: Data, as type: T.Type) async -> ServiceResult<T> {
@@ -200,7 +204,6 @@ final class ProfileService: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: req)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(status) else {
-                struct WorkerError: Decodable { let error: String? }
                 let decoded = try? JSONDecoder().decode(WorkerError.self, from: data)
                 let message = decoded?.error ?? "HTTP \(status)"
                 lastError = message
@@ -236,7 +239,6 @@ final class ProfileService: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: req)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             guard (200..<300).contains(status) else {
-                struct WorkerError: Decodable { let error: String? }
                 let decoded = try? JSONDecoder().decode(WorkerError.self, from: data)
                 let message = decoded?.error ?? "HTTP \(status)"
                 lastError = message
