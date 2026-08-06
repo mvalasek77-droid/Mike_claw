@@ -93,9 +93,7 @@ struct VerificationSheet: View {
     private var subtitle: String {
         switch phase {
         case .idle:
-            return useServerPath
-                ? "Match your face to your photos to earn a blue check the whole floor can trust."
-                : "Match your face to your photos to earn a blue check the whole floor can trust."
+            return "Match your face to your photos to earn a blue check the whole floor can trust."
         case .scanning:   return "Checking your liveness and matching your photos."
         case .submitting: return "Sending your submission for review."
         case .pending:    return "We'll review your submission and let you know as soon as it's done. You'll get a notification the moment your blue check goes live."

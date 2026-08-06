@@ -1,7 +1,7 @@
 import Foundation
+import AuthenticationServices
 
 private struct WorkerError: Decodable { let error: String? }
-import AuthenticationServices
 
 /// Owns the app's authenticated server identity: the `serverUserId` and the
 /// session token issued by the auth Worker after a successful Sign in with
