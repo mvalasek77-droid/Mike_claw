@@ -25,7 +25,9 @@ are foreign keys into `users`.
   and beyond.
 - **Durable Objects / WebSocket real-time.** For MVP, the other side wakes
   via push + refresh-on-foreground. Real-time chat is a future upgrade.
-- **Rate limiting.** No `bids/hour` cap yet. Add before public launch.
+- **Rate limiting.** Implemented in slice 4c1b: 20 bids/hour per bidder and
+  30 messages/minute per sender, enforced by shared D1 counters with 429 and
+  `Retry-After` responses.
 - **Server-side block enforcement.** That's slice 5.
 
 ## Setup (once, per environment)

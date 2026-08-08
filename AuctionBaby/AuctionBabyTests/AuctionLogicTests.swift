@@ -51,6 +51,7 @@ final class AuctionLogicTests: XCTestCase {
     }
 
     /// Gavels are the tactical currency, never a status shortcut.
+    @MainActor
     func testGavelsCannotBuyStatus() {
         let gavelCosts = [AuctionStore.gildedBidCost,
                           AuctionStore.bidInsuranceCost,
@@ -101,7 +102,7 @@ final class AuctionLogicTests: XCTestCase {
         var rich = poor
         rich.archetype = .trillionaire
         XCTAssertGreaterThan(rich.auctionCredit, poor.auctionCredit)
-        XCTAssertLessEqual(rich.auctionCredit, 900)
+        XCTAssertLessThanOrEqual(rich.auctionCredit, 900)
         XCTAssertGreaterThanOrEqual(poor.auctionCredit, 300)
     }
 
@@ -645,18 +646,45 @@ final class AuctionLogicTests: XCTestCase {
     }
 
     @MainActor
-    func testGildFallsBackWhenShortOnGavels() {
+    func testGildWalletSequenceAndInsufficientFundsFallback() {
         let store = freshStore()
         store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
                        hue: 0.6, startingBid: nil, prompts: [], interests: [])
-        // Starting balance is 750; the cheapest Gavel tier (500) is affordable
-        // but we want the wallet untouched, so buy nothing.
-        store.buyArchetype(.inheritance) // a money tier, unowned → no-op; wallet stays 750
-        XCTAssertEqual(store.me.archetype, .none, "an unowned money tier must not equip")
-        store.placeBid(on: store.floor.first { !$0.isCopycat }!, amount: 100, note: "", gilded: true)
-        // 750 >= 250, so this one gilds; verify the flag set and cost taken.
-        XCTAssertEqual(store.outgoingBids.first?.gilded, true)
-        XCTAssertEqual(store.wallet, 750 - AuctionStore.gildedBidCost)
+        let woman = store.floor.first { !$0.isCopycat }!
+        XCTAssertEqual(store.wallet, 750, "a new Demo bidder starts with the test wallet")
+
+        // Every successful Gild costs exactly 250 Gavels, including the last
+        // one that empties the wallet.
+        for expectedWallet in [500, 250, 0] {
+            store.placeBid(on: woman, amount: 100, note: "", gilded: true)
+            XCTAssertTrue(store.outgoingBids.first?.gilded == true)
+            XCTAssertEqual(store.wallet, expectedWallet)
+        }
+
+        // At zero, the request must be a standard bid: no negative wallet,
+        // no gold ribbon flag, and a clear fallback message.
+        store.placeBid(on: woman, amount: 100, note: "", gilded: true)
+        XCTAssertEqual(store.wallet, 0)
+        XCTAssertFalse(store.outgoingBids.first?.gilded == true)
+        XCTAssertEqual(store.toast, "Not enough Gavels to gild — sent a standard bid.")
+    }
+
+    @MainActor
+    func testWhisperIsFreeAndDoesNotUseLiveBidCapacity() {
+        let store = freshStore()
+        store.register(role: .man, name: "Max", age: 31, location: "LA", bio: "",
+                       hue: 0.6, startingBid: nil, prompts: [], interests: [])
+        let woman = store.floor.first { !$0.isCopycat }!
+        let walletBefore = store.wallet
+        let capacityBefore = store.activePendingBidCount
+        let creditBefore = store.me.auctionCredit
+
+        store.placeWhisper(on: woman)
+
+        XCTAssertEqual(store.wallet, walletBefore)
+        XCTAssertEqual(store.activePendingBidCount, capacityBefore)
+        XCTAssertEqual(store.me.auctionCredit, creditBefore)
+        XCTAssertTrue(store.outgoingBids.first?.isWhisper == true)
     }
 
     @MainActor

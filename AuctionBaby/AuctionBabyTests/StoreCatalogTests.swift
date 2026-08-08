@@ -22,6 +22,7 @@ final class StoreCatalogTests: XCTestCase {
     /// Gavels are the tactical currency — Gilded Bids, Bid Insurance, streak
     /// freezes — and must never buy status. The smallest pack has to cover
     /// the tactical spends, or the currency is decorative.
+    @MainActor
     func testGavelPacksCoverTacticalSpendsButNotStatus() {
         let smallest = StoreKitService.gavelCatalog.map(\.gavels).min() ?? 0
         for cost in [AuctionStore.gildedBidCost,
@@ -36,6 +37,7 @@ final class StoreCatalogTests: XCTestCase {
         }
     }
 
+    @MainActor
     func testBoostProductIsDistinctFromGavels() {
         XCTAssertFalse(StoreKitService.gavelIDs.contains(StoreKitService.boostProductID))
         XCTAssertEqual(StoreKitService.gavels(for: StoreKitService.boostProductID), 0,

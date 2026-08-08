@@ -518,11 +518,12 @@ final class AuctionStore: ObservableObject {
         // Real currency never flows toward an AI lure — a gild/insurance attempt
         // on a copycat is silently uncharged (the reveal lands a second later).
         var gild = gilded
+        var gildFallback = false
         if gild && woman.isCopycat {
             gild = false
         } else if gild {
             if wallet >= Self.gildedBidCost { wallet -= Self.gildedBidCost }
-            else { gild = false; toastFlash("Not enough Gavels to gild — sent a standard bid.") }
+            else { gild = false; gildFallback = true }
         }
         // Bid Insurance premium — copycats never charge it either.
         var insure = insured
@@ -556,8 +557,9 @@ final class AuctionStore: ObservableObject {
         }
 
         Haptics.commit()
-        toastFlash(gild ? "✦ Gilded Bid sent to \(woman.name) — top of her inbox."
-                        : "Bid placed: \(Money.compact(amount)) on \(woman.name).")
+        toastFlash(gildFallback ? "Not enough Gavels to gild — sent a standard bid."
+                              : gild ? "✦ Gilded Bid sent to \(woman.name) — top of her inbox."
+                                     : "Bid placed: \(Money.compact(amount)) on \(woman.name).")
         save()
         scheduleWomanDecision(bidID: bid.id)
     }
@@ -952,10 +954,11 @@ final class AuctionStore: ObservableObject {
         // Match the sim path's Gavel debits — real users never copycat, so
         // we don't need the sim's copycat-skip guard here.
         var didGild = false
+        var gildFallback = false
         var didInsure = false
         if gilded {
             if wallet >= Self.gildedBidCost { wallet -= Self.gildedBidCost; didGild = true }
-            else { toastFlash("Not enough Gavels to gild — sent a standard bid.") }
+            else { gildFallback = true }
         }
         if insured {
             if wallet >= Self.bidInsuranceCost { wallet -= Self.bidInsuranceCost; didInsure = true }
@@ -976,8 +979,9 @@ final class AuctionStore: ObservableObject {
             remoteOutgoingBids.insert(bid, at: 0)
             isRemoteOutgoing = true
             Haptics.commit()
-            toastFlash(didGild ? "✦ Gilded Bid sent to \(woman.name) — top of her inbox."
-                               : "Bid sent to \(woman.name). She'll get a notification.")
+            toastFlash(gildFallback ? "Not enough Gavels to gild — sent a standard bid."
+                                   : didGild ? "✦ Gilded Bid sent to \(woman.name) — top of her inbox."
+                                              : "Bid sent to \(woman.name). She'll get a notification.")
             save()
         case .failure(let message):
             // Roll back the Gavel debits — the bid didn't reach the server.
