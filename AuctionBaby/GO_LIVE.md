@@ -107,3 +107,47 @@ IDs** — sort that out early.
 
 Anything the dual-device or push runs turn up is the only category left that
 could need a code change — capture it in `BUGS.md`.
+
+---
+
+## Meanwhile — what you can run TODAY (no second Apple ID)
+
+The two-Apple-ID blocker only gates Phases 4–5. Don't stall — most of the
+surface can be validated now:
+
+**With one Apple ID (Phase 3):**
+- Sign in with Apple #1 → DOB → role → profile → floor
+- `QA_CHECKLIST.md` §2–§6 (browse, bid, My Bids, profile edit, paywall)
+- Verification flow, Safety Center, Blocked Users, Archetype (Status) store
+
+**With zero Apple IDs (Demo Mode):** type `demo` as the name in onboarding and
+the entire single-device UX runs on-device — bidding, inbox, matches, chat,
+Reserve, and every retention mechanic via **Summon a bidder**. Exercises most
+of the UI with no auth at all.
+
+| Can run now (1 Apple ID or Demo) | Genuinely blocked (needs 2 Apple IDs) |
+|---|---|
+| Single-device SIWA + onboarding | Cross-device discovery / bid / accept / chat |
+| Full Demo-Mode UX walk | Whisper-nod cross-device loop |
+| `QA_CHECKLIST` §2–§6, §10, §11 | Server-enforced block across devices |
+| Verification / safety / store | Real push matrix (§9 / Phase 5) |
+
+**Immediate move:** get the sim to boot, then run Phase 3 + Demo-Mode QA on one
+account while the second Apple ID gets sorted.
+
+---
+
+## Simulator won't boot / install stalls (iOS 26.1)
+
+Pure infra — the build succeeds, so there's nothing in the code to chase. In
+rough order of effectiveness:
+
+1. **Pre-boot and wait** — `xcrun simctl boot <udid>`, let it fully reach the
+   home screen *before* install/launch. The stall is usually first-boot
+   springboard warm-up.
+2. **Erase + reboot** — `xcrun simctl erase <udid>` clears a wedged state.
+3. **Use a smaller device** — iPhone 15/16 (non-Pro-Max) boots faster than the
+   largest models.
+4. **Split install and launch** — `simctl install` fully, pause, then
+   `simctl launch` (rather than run-in-one).
+5. **Still wedged** — quit Simulator.app, `xcrun simctl shutdown all`, relaunch.
