@@ -79,10 +79,25 @@ final class DemoFlowUITests: XCTestCase {
         onboardAsBidder(app)
 
         tapWhenReady(app.buttons["floor_bid"].firstMatch, in: app, timeout: 12)
-        tapWhenReady(app.buttons["bidsheet_place"], in: app)
+        // A Floor card is also a NavigationLink. On some iOS releases the
+        // outer link wins the nested Bid-button tap, so continue from the
+        // profile's equivalent Bid CTA when that happens.
+        let placeBid = app.buttons["bidsheet_place"]
+        let detailBid = app.buttons["detail_bid"]
+        if detailBid.waitForExistence(timeout: 5) {
+            tapWhenReady(detailBid, in: app)
+        }
+        tapWhenReady(placeBid, in: app)
 
         let myBids = app.tabBars.buttons["My Bids"]
         XCTAssertTrue(myBids.waitForExistence(timeout: 6), "My Bids tab should exist for a bidder")
+        if !myBids.isHittable {
+            let backToFloor = app.navigationBars.buttons["The Floor"]
+            XCTAssertTrue(backToFloor.waitForExistence(timeout: 5),
+                          "profile detail should provide a route back to the Floor")
+            backToFloor.tap()
+        }
+        XCTAssertTrue(myBids.isHittable, "My Bids tab should be tappable from the Floor")
         myBids.tap()
 
         let live = app.staticTexts["Live bids"]

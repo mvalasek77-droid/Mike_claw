@@ -190,6 +190,7 @@ struct AuctioneeDetailView: View {
                           systemImage: "hand.raised.fill") {
                 onBid()
             }
+            .accessibilityIdentifier("detail_bid")
             .screenPadding()
             .padding(.bottom, 8)
             .background(LinearGradient(colors: [.clear, Theme.bg], startPoint: .top, endPoint: .bottom))
