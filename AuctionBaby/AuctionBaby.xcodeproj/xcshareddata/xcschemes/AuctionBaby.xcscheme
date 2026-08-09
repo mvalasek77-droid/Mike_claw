@@ -64,6 +64,17 @@
                ReferencedContainer = "container:AuctionBaby.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "6AB263269675EFDCB1249B5F"
+               BuildableName = "AuctionBabyUITests.xctest"
+               BlueprintName = "AuctionBabyUITests"
+               ReferencedContainer = "container:AuctionBaby.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

@@ -47,6 +47,20 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.valasek.auctionbaby.tests
 
+  AuctionBabyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: AuctionBabyUITests
+    dependencies:
+      - target: AuctionBaby
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.auctionbaby.uitests
+        TEST_TARGET_NAME: AuctionBaby
+
 schemes:
   AuctionBaby:
     build:
@@ -61,5 +75,6 @@ schemes:
       storeKitConfiguration: Products.storekit
       targets:
         - AuctionBabyTests
+        - AuctionBabyUITests
     archive:
       config: Release
