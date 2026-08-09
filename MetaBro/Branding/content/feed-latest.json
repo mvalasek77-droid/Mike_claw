@@ -1,5 +1,5 @@
 {
-  "generated_for": "2026-08-09T06",
+  "generated_for": "2026-08-09T09",
   "posts": [
     {
       "community": {
@@ -10,74 +10,48 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Cutting without losing strength",
-      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
-      "score": 291,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "b885fc6a-9eae-103d-42b5-47adc25a1b26",
-      "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
-      },
-      "image_url": null,
-      "comment_count": 116,
-      "created_at": "2026-08-09T06:23:20+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
-        "is_joined": true
-      },
-      "title": "Detailing Sunday",
-      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
-      "score": 276,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "936d7db1-899a-f8bf-ba93-b9b959178bcf",
-      "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
-      },
-      "image_url": null,
-      "comment_count": 110,
-      "created_at": "2026-08-09T04:59:20+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
-        "name": "Grill Masters",
-        "slug": "bbq",
-        "member_count": 96400,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
-        "is_joined": true
-      },
-      "title": "Reverse sear is the only way",
-      "body": "Smoke to 120, rest, then blast it. Edge to edge pink every time.",
-      "score": 104,
+      "title": "Mobility > maxing out",
+      "body": "Ten minutes of hips and shoulders before every session. Game changer.",
+      "score": 218,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 2
+          "count": 1
         }
       ],
-      "id": "fc8edcb3-624b-8905-916b-9492df1c3915",
+      "id": "c34564ab-def6-b0e8-f9f5-7cb977e9595b",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 81,
+      "created_at": "2026-08-09T09:16:01+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 34,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 42
+        },
+        {
+          "kind": "strong",
+          "count": 11
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "b0abb53e-0861-5ed2-afaf-10e2895844d0",
       "author": {
         "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
         "handle": "@ironbro",
@@ -86,28 +60,117 @@
         "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 12,
-      "created_at": "2026-08-09T03:46:20+00:00",
+      "comment_count": 65,
+      "created_at": "2026-08-09T07:17:01+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Hit a new deadlift PR today",
+      "body": "405 for a clean triple. Sleep and protein, that's the whole secret.",
+      "score": 63,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "e05e675e-9495-29dc-0eff-c364f31a10cd",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 105,
+      "created_at": "2026-08-09T05:17:01+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
       "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 99,
+      "score": 85,
       "reactions": [
         {
           "kind": "respect",
-          "count": 42
+          "count": 23
         },
         {
           "kind": "strong",
-          "count": 15
+          "count": 20
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "aaa2bcbc-b6e1-3895-ca86-7a0d87225546",
+      "id": "16e1cb21-2172-9d6f-1cb7-ec9ed6e166d8",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 118,
+      "created_at": "2026-08-09T06:25:01+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "On discipline vs motivation",
+      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
+      "score": 124,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "8b0efc2f-d041-98d5-3aad-1d4508d5a691",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 28,
+      "created_at": "2026-08-09T06:14:01+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Hit a new deadlift PR today",
+      "body": "405 for a clean triple. Sleep and protein, that's the whole secret.",
+      "score": 236,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "e9810356-24c4-b546-b2b2-168f66c838cc",
       "author": {
         "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
         "handle": "@you",
@@ -116,68 +179,8 @@
         "bro_cred": 1280
       },
       "image_url": null,
-      "comment_count": 104,
-      "created_at": "2026-08-09T03:44:20+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 94,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 18
-        },
-        {
-          "kind": "strong",
-          "count": 41
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "442bccbf-92b7-6bfd-1c5f-58648b153a73",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 14,
-      "created_at": "2026-08-09T01:16:20+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 82,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 23
-        },
-        {
-          "kind": "like",
-          "count": 18
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "9457a31a-8310-6174-fa06-7ee2bf0da2fa",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 64,
-      "created_at": "2026-08-09T01:14:20+00:00",
+      "comment_count": 111,
+      "created_at": "2026-08-09T05:52:01+00:00",
       "my_vote": 0
     }
   ],
