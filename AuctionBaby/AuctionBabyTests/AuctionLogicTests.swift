@@ -375,8 +375,9 @@ final class AuctionLogicTests: XCTestCase {
         let bid = store.incomingBids.first { $0.status == .pending }!
         store.accept(bid)
         XCTAssertEqual(store.matches.count, 1)
-        // The woman sends the first message (the invite).
-        XCTAssertEqual(store.matches.first?.messages.first?.fromMe, false)
+        // The woman IS the current user here (registered role: .woman) and she
+        // always sends the first invite, so the opener is fromMe == true.
+        XCTAssertEqual(store.matches.first?.messages.first?.fromMe, true)
         XCTAssertEqual(store.incomingBids.first { $0.id == bid.id }?.status, .accepted)
     }
 
@@ -605,7 +606,10 @@ final class AuctionLogicTests: XCTestCase {
     func testActiveCountTracksNarrowing() {
         var f = FilterPreferences()
         XCTAssertEqual(f.activeCount, 0)
-        f.hideCopycats = true; f.verifiedOnly = true
+        // hideCopycats is deprecated and no longer counts (copycats walk the
+        // floor unlabelled by design). Two live filters instead:
+        f.verifiedOnly = true          // +1
+        f.minAge = 25                  // +1 (minAge > 18)
         XCTAssertEqual(f.activeCount, 2)
     }
 

@@ -269,7 +269,10 @@ final class FlowTests: XCTestCase {
         var wallet = store.wallet
         store.claimDaily(now: day0)
         XCTAssertEqual(store.dailyStreak, 1)
-        XCTAssertEqual(store.wallet, wallet + base)
+        // claimDaily also rolls "The Docket" mystery box; on a Gilded-mystery
+        // day it adds gildedBidCost on top of the base reward. Assert tolerantly.
+        let d0 = store.wallet - wallet
+        XCTAssertTrue(d0 == base || d0 == base + AuctionStore.gildedBidCost)
 
         store.claimDaily(now: day0)                                   // same day — no-op
         XCTAssertEqual(store.dailyStreak, 1)
@@ -278,7 +281,8 @@ final class FlowTests: XCTestCase {
         wallet = store.wallet
         store.claimDaily(now: day1)                                   // consecutive — streak 2
         XCTAssertEqual(store.dailyStreak, 2)
-        XCTAssertEqual(store.wallet, wallet + base * 2)
+        let d2 = store.wallet - wallet
+        XCTAssertTrue(d2 == base * 2 || d2 == base * 2 + AuctionStore.gildedBidCost)
 
         let day5 = cal.date(byAdding: .day, value: 4, to: day1)!
         store.claimDaily(now: day5)                                   // gap — streak resets
@@ -290,7 +294,7 @@ final class FlowTests: XCTestCase {
             d = cal.date(byAdding: .day, value: 1, to: d)!
             wallet = store.wallet
             store.claimDaily(now: d)
-            XCTAssertLessThanOrEqual(store.wallet - wallet, base * 7)
+            XCTAssertLessThanOrEqual(store.wallet - wallet, base * 7 + AuctionStore.gildedBidCost)
         }
         XCTAssertEqual(store.dailyStreak, 11)
     }
