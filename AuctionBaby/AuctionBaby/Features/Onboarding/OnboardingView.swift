@@ -118,6 +118,7 @@ struct OnboardingView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(r == .man ? "role_bidder" : "role_lot")
     }
 
     // MARK: Phase 2 — profile
@@ -336,6 +337,7 @@ struct OnboardingView: View {
                       prompt: Text(placeholder).foregroundStyle(Theme.inkFaint),
                       axis: axis ? .vertical : .horizontal)
                 .textFieldStyle(.plain)
+                .accessibilityIdentifier(title)   // stable hook for UI tests (e.g. "Name")
                 .keyboardType(keyboard)
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(Theme.ink)

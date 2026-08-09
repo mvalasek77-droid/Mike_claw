@@ -440,6 +440,7 @@ struct FloorCard: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Bid on \(woman.name)")
+                        .accessibilityIdentifier("floor_bid")
                     }
                 }
                 .padding(16)

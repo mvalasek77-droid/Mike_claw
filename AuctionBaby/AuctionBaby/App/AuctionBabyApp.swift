@@ -44,6 +44,15 @@ struct AuctionBabyApp: App {
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
                 .task {
+                    #if DEBUG
+                    // UI-test determinism: `-uiTestReset` wipes any persisted
+                    // account so the suite always starts at onboarding. Guarded
+                    // to DEBUG + the explicit arg, so it never affects a normal
+                    // launch or a Release build.
+                    if ProcessInfo.processInfo.arguments.contains("-uiTestReset") {
+                        store.resetAccount()
+                    }
+                    #endif
                     // Sign-out → un-register the APNs device token, so a
                     // signed-out user never keeps receiving pushes on their
                     // still-installed app.

@@ -138,6 +138,7 @@ struct BidSheet: View {
                         placeBid()
                         dismiss()
                     }
+                    .accessibilityIdentifier("bidsheet_place")
                     whisperFallback
                 }
 
