@@ -294,7 +294,18 @@ struct OnboardingView: View {
             // before role choice) trips App Review's "premature prompt"
             // guidance and users decline more often. Silent no-op for
             // local-only sessions (no auth token → no server registration).
-            await push.requestAuthorizationIfNeeded()
+            //
+            // Under UI tests, skip it: the system permission alert is a
+            // springboard modal that would otherwise consume the next tap
+            // (it masked the Floor-Bid check). Gated on the UI-test arg only.
+            #if DEBUG
+            let uiTesting = ProcessInfo.processInfo.arguments.contains("-uiTestReset")
+            #else
+            let uiTesting = false
+            #endif
+            if !uiTesting {
+                await push.requestAuthorizationIfNeeded()
+            }
             if auth.isSignedIn { await push.onSignedIn() }
         }
     }

@@ -17,6 +17,15 @@ final class DemoFlowUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        // Insurance: auto-dismiss any stray system alert (e.g. a push-permission
+        // modal) so it can't consume a tap. The Demo flow already suppresses the
+        // push prompt under `-uiTestReset`; this covers anything unexpected.
+        addUIInterruptionMonitor(withDescription: "System alert") { alert in
+            for label in ["Allow", "Allow While Using App", "OK", "Continue", "Don't Allow"] {
+                if alert.buttons[label].exists { alert.buttons[label].tap(); return true }
+            }
+            return false
+        }
     }
 
     // MARK: - Helpers
