@@ -60,6 +60,13 @@ final class DemoFlowUITests: XCTestCase {
         let name = app.textFields["Name"]
         XCTAssertTrue(name.waitForExistence(timeout: 8), "name field should appear")
         name.tap()
+        // Ensure the field actually took keyboard focus before typing — a bare
+        // tap sometimes lands before the field is first responder ("neither
+        // element nor any descendant has keyboard focus"). Retry once.
+        if !app.keyboards.element.waitForExistence(timeout: 3) {
+            name.tap()
+            _ = app.keyboards.element.waitForExistence(timeout: 3)
+        }
         name.typeText("demo")            // "demo" → Demo Mode (on-device sim)
 
         // Submit — PrimaryButton's label is its title.
@@ -93,6 +100,12 @@ final class DemoFlowUITests: XCTestCase {
         // appear and this fails — instead of silently routing through detail.
         tapWhenReady(app.buttons["floor_bid"].firstMatch, in: app, timeout: 12)
         tapWhenReady(app.buttons["bidsheet_place"], in: app)
+
+        // If the first lot is a Copycat, placing the bid fires a full-screen
+        // reveal that covers the tab bar. Dismiss it (tap-to-dismiss) so the
+        // My Bids tap doesn't get eaten by the celebration background.
+        let celebration = app.otherElements["match_celebration"]
+        if celebration.waitForExistence(timeout: 3) { celebration.tap() }
 
         let myBids = app.tabBars.buttons["My Bids"]
         XCTAssertTrue(myBids.waitForExistence(timeout: 6), "My Bids tab should exist for a bidder")

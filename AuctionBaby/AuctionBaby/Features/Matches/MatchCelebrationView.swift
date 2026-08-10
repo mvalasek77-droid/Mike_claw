@@ -42,6 +42,7 @@ struct MatchCelebrationView: View {
         ZStack {
             Color.black.opacity(0.82).ignoresSafeArea()
                 .onTapGesture { dismiss() }
+                .accessibilityIdentifier("match_celebration")
 
             if !celebration.otherCopycat && !reduceMotion {
                 ConfettiView()
