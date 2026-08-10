@@ -424,8 +424,15 @@ struct FloorCard: View {
                 }
                 // Navigation lives ONLY on the photo — a separate subtree from
                 // the Bid button below, so the two never contend for a tap.
+                // The photo is ALSO the combined VoiceOver element (the profile
+                // summary); the Bid button stays a separate a11y element so both
+                // VoiceOver and XCUITest can target it precisely. Combining the
+                // whole card instead made the Bid tap land on the photo centre.
                 .contentShape(Rectangle())
                 .onTapGesture { onOpen() }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("\(woman.name), \(woman.age), \(woman.location)\(woman.verified ? ", verified" : "")\(woman.startingBid.map { ", starting bid \(Money.full($0))" } ?? ", open bidding")")
 
                 VStack(alignment: .leading, spacing: 12) {
                     if !woman.bio.isEmpty {
@@ -461,8 +468,9 @@ struct FloorCard: View {
                 .padding(16)
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(woman.name), \(woman.age), \(woman.location)\(woman.verified ? ", verified" : "")\(woman.startingBid.map { ", starting bid \(Money.full($0))" } ?? ", open bidding")")
+        // Card-level combine removed: it merged the Bid button into one element,
+        // so a tap on floor_bid hit the combined frame's centre (the photo) and
+        // navigated instead of bidding. The photo carries the summary label now.
     }
 }
 
