@@ -1403,8 +1403,12 @@ final class AuctionStore: ObservableObject {
         let reward = Self.dailyGavelBase * min(dailyStreak, 7)
 
         // Mystery box roll — deterministic on the day so it can't be rerolled.
+        // Seed from the token's raw UUID bytes, NOT String.hashValue: Swift
+        // randomizes String hashing per process, so a hashValue seed would
+        // change on every launch and let a user force-quit to reroll the box.
         let dayKey = Calendar.current.ordinality(of: .day, in: .era, for: now) ?? 0
-        let mysteryRoll = (dayKey &+ Int(appAccountToken.uuidString.hashValue & 0x3FF)) % 5
+        let tokenSeed = Int(appAccountToken.uuid.0) &+ Int(appAccountToken.uuid.15)
+        let mysteryRoll = (dayKey &+ tokenSeed) % 5
         switch mysteryRoll {
         case 0:  // Gilded Bid credit (worth gildedBidCost Gavels)
             wallet += reward + Self.gildedBidCost

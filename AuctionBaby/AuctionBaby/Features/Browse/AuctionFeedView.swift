@@ -12,11 +12,14 @@ struct AuctionFeedView: View {
     @State private var showFilters = false
     @State private var showActivity = false
     @State private var showLotOfDay = false
+    /// Explicit nav path so a Floor card can push its detail from a body tap
+    /// while the inline Bid button keeps its own tap (see the lots ForEach).
+    @State private var lotPath: [Profile] = []
 
     private var lots: [Profile] { store.filteredFloor.filter { $0.id != store.lotOfTheDay?.id } }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $lotPath) {
             ScrollView {
                 LazyVStack(spacing: 18) {
                     header
@@ -36,14 +39,18 @@ struct AuctionFeedView: View {
                                        message: "Your filters are hiding everyone. Loosen them to see more of the floor.")
                     }
                     ForEach(Array(lots.enumerated()), id: \.element.id) { i, woman in
-                        NavigationLink(value: woman) {
-                            FloorCard(woman: woman) { bidTarget = woman }
-                        }
-                        .buttonStyle(ScaleButtonStyle(scale: 0.975))
-                        // FloorCards are tall — only the first ~3 are ever in
-                        // the initial viewport. Rows past that render statically
-                        // so the entrance animation never fires mid-scroll.
-                        .riseIn(Double(i) * 0.05, active: i < 3)
+                        // Body tap → detail; the inline Bid button stays its own
+                        // control. Nesting a Button inside a NavigationLink let
+                        // the link swallow the Bid tap on iOS 18 (users landed on
+                        // the detail instead of the bid sheet). A container
+                        // onTapGesture doesn't steal the Button's own hits.
+                        FloorCard(woman: woman) { bidTarget = woman }
+                            .contentShape(Rectangle())
+                            .onTapGesture { lotPath.append(woman) }
+                            // FloorCards are tall — only the first ~3 are ever in
+                            // the initial viewport. Rows past that render statically
+                            // so the entrance animation never fires mid-scroll.
+                            .riseIn(Double(i) * 0.05, active: i < 3)
                     }
                     Spacer(minLength: 24)
                 }
