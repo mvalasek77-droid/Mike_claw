@@ -44,9 +44,9 @@ struct AuctionFeedView: View {
                         // the link swallow the Bid tap on iOS 18 (users landed on
                         // the detail instead of the bid sheet). A container
                         // onTapGesture doesn't steal the Button's own hits.
-                        FloorCard(woman: woman) { bidTarget = woman }
-                            .contentShape(Rectangle())
-                            .onTapGesture { lotPath.append(woman) }
+                        FloorCard(woman: woman,
+                                  onOpen: { lotPath.append(woman) },
+                                  onBid: { bidTarget = woman })
                             // FloorCards are tall — only the first ~3 are ever in
                             // the initial viewport. Rows past that render statically
                             // so the entrance animation never fires mid-scroll.
@@ -364,6 +364,10 @@ struct LivePulseDot: View {
 /// One lot in the feed.
 struct FloorCard: View {
     let woman: Profile
+    /// Tapping the photo region opens the detail. Kept separate from `onBid`
+    /// so the two hit areas never overlap — a navigation gesture covering the
+    /// whole card swallows the inline Bid button's tap (iOS 18).
+    var onOpen: () -> Void = {}
     var onBid: () -> Void
 
     var body: some View {
@@ -418,6 +422,10 @@ struct FloorCard: View {
                     .padding(16)
                     .frame(maxWidth: .infinity, maxHeight: 360, alignment: .bottomLeading)
                 }
+                // Navigation lives ONLY on the photo — a separate subtree from
+                // the Bid button below, so the two never contend for a tap.
+                .contentShape(Rectangle())
+                .onTapGesture { onOpen() }
 
                 VStack(alignment: .leading, spacing: 12) {
                     if !woman.bio.isEmpty {
