@@ -151,6 +151,9 @@ struct OutgoingBidRow: View {
             }
             .padding(16)
         }
+        // Section-independent hook for UI tests: proves a bid row rendered,
+        // whether it's Live (pending) or Settled (declined/copycat).
+        .accessibilityIdentifier("outgoing_bid_row")
     }
 
     private var whisperStatus: some View {

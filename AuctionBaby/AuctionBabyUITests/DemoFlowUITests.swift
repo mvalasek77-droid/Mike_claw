@@ -111,9 +111,15 @@ final class DemoFlowUITests: XCTestCase {
         XCTAssertTrue(myBids.waitForExistence(timeout: 6), "My Bids tab should exist for a bidder")
         myBids.tap()
 
-        let live = app.staticTexts["Live bids"]
-        let settled = app.staticTexts["Settled"]
-        XCTAssertTrue(live.waitForExistence(timeout: 8) || settled.exists,
-                      "a placed bid should appear under Live bids (real lot) or Settled (copycat)")
+        // The tab-bar button exists on every tab, so it isn't proof we switched.
+        // The nav title confirms the My Bids screen is actually showing.
+        XCTAssertTrue(app.navigationBars["My Bids"].waitForExistence(timeout: 8),
+                      "tapping the My Bids tab should show the My Bids screen")
+
+        // Section-independent: a bid row rendered (Live for a real lot, Settled
+        // for a declined Copycat). Robust to which section header appears.
+        let bidRow = app.descendants(matching: .any).matching(identifier: "outgoing_bid_row").firstMatch
+        XCTAssertTrue(bidRow.waitForExistence(timeout: 8),
+                      "the placed bid should appear as a row in My Bids")
     }
 }
