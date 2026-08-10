@@ -11,7 +11,7 @@ struct LiveTicker: View {
     @State private var pulse = false
 
     private let timer = Timer.publish(every: 3.4, on: .main, in: .common).autoconnect()
-    private var reduceMotion: Bool { UIAccessibility.isReduceMotionEnabled }
+    private var reduceMotion: Bool { Motion.prefersReducedMotion }
 
     /// Fabricated-but-plausible floor activity, rebuilt from whoever is
     /// actually on the floor so names always match what the user sees.

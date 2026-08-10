@@ -11,8 +11,18 @@ enum Motion {
     /// Fluid, slightly over-damped — the iOS 26 Liquid Glass feel.
     static let liquid = Animation.spring(response: 0.52, dampingFraction: 0.68)
 
+    /// Set true at launch by UI tests. Continuous (repeatForever) animations
+    /// keep the app perpetually non-idle, which hangs XCUITest's wait-for-idle
+    /// after every tap; routing all reduce-motion checks through the property
+    /// below lets those loops no-op under test without touching production.
+    static var reduceContinuousAnimations = false
+    /// Honour the system Reduce Motion setting OR the UI-test override.
+    static var prefersReducedMotion: Bool {
+        reduceContinuousAnimations || UIAccessibility.isReduceMotionEnabled
+    }
+
     static func run(_ animation: Animation, _ body: () -> Void) {
-        if UIAccessibility.isReduceMotionEnabled {
+        if prefersReducedMotion {
             var t = Transaction()
             t.disablesAnimations = true
             withTransaction(t, body)
@@ -68,7 +78,7 @@ struct ScaleButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? scale : 1.0)
             .animation(
-                UIAccessibility.isReduceMotionEnabled ? nil : Motion.snap,
+                Motion.prefersReducedMotion ? nil : Motion.snap,
                 value: configuration.isPressed
             )
     }
@@ -77,7 +87,7 @@ struct ScaleButtonStyle: ButtonStyle {
 extension View {
     @ViewBuilder
     func motion(_ animation: Animation, value: some Equatable) -> some View {
-        if UIAccessibility.isReduceMotionEnabled {
+        if Motion.prefersReducedMotion {
             self
         } else {
             self.animation(animation, value: value)
@@ -132,7 +142,7 @@ struct ShimmerModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content.overlay(alignment: .center) {
-            if active, !UIAccessibility.isReduceMotionEnabled {
+            if active, !Motion.prefersReducedMotion {
                 GeometryReader { geo in
                     LinearGradient(
                         stops: [

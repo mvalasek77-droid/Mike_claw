@@ -139,7 +139,7 @@ struct EmptyStateView: View {
                 .scaleEffect(pulse)
                 .accessibilityHidden(true)
                 .onAppear {
-                    guard !UIAccessibility.isReduceMotionEnabled else { return }
+                    guard !Motion.prefersReducedMotion else { return }
                     withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
                         pulse = 1.10
                     }

@@ -64,7 +64,7 @@ struct DailyClaimCard: View {
         }
         .buttonStyle(.plain)
         .onAppear {
-            guard !UIAccessibility.isReduceMotionEnabled else { return }
+            guard !Motion.prefersReducedMotion else { return }
             withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { pulse = true }
         }
         .accessibilityLabel("Claim your daily \(nextReward) Gavels")

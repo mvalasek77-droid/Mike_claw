@@ -230,7 +230,7 @@ struct LotOfTheDayBanner: View {
         .depth(Theme.cornerXL, strong: true)
         .shadow(color: Theme.gold.opacity(shimmer ? 0.45 : 0.2), radius: shimmer ? 18 : 10)
         .onAppear {
-            guard !UIAccessibility.isReduceMotionEnabled else { return }
+            guard !Motion.prefersReducedMotion else { return }
             withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) { shimmer = true }
         }
     }
@@ -352,7 +352,7 @@ struct LivePulseDot: View {
                                 lineWidth: pulse ? 4 : 1)
             )
             .onAppear {
-                guard !UIAccessibility.isReduceMotionEnabled else { return }
+                guard !Motion.prefersReducedMotion else { return }
                 withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: false)) {
                     pulse = true
                 }

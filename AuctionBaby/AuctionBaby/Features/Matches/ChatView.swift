@@ -564,7 +564,7 @@ struct TypingBubble: View {
             Spacer(minLength: 50)
         }
         .onAppear {
-            guard !UIAccessibility.isReduceMotionEnabled else { return }
+            guard !Motion.prefersReducedMotion else { return }
             bounce = true
         }
         .accessibilityLabel("Typing")

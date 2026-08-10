@@ -50,6 +50,9 @@ struct AuctionBabyApp: App {
                     // to DEBUG + the explicit arg, so it never affects a normal
                     // launch or a Release build.
                     if ProcessInfo.processInfo.arguments.contains("-uiTestReset") {
+                        // Quiet repeatForever animations so XCUITest can reach
+                        // idle after taps, and wipe any persisted account.
+                        Motion.reduceContinuousAnimations = true
                         store.resetAccount()
                     }
                     #endif

@@ -198,7 +198,7 @@ struct VerificationSheet: View {
     /// Kept so Demo Mode + the local-only build have full end-to-end flow.
     private func startLocalScan() {
         phase = .scanning
-        if !UIAccessibility.isReduceMotionEnabled {
+        if !Motion.prefersReducedMotion {
             withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) { sweep = true }
         }
         Task { @MainActor in

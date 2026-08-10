@@ -26,7 +26,7 @@ struct MatchCelebrationView: View {
 
     @State private var appear = false
     @State private var slam = false
-    private var reduceMotion: Bool { UIAccessibility.isReduceMotionEnabled }
+    private var reduceMotion: Bool { Motion.prefersReducedMotion }
 
     private var headline: String {
         if celebration.otherCopycat { return "COPYCAT" }

@@ -20,7 +20,7 @@ struct CopycatPortrait: View {
     var showWatermark: Bool = true
     var sparkleCount: Int = 8
 
-    private var reduceMotion: Bool { UIAccessibility.isReduceMotionEnabled }
+    private var reduceMotion: Bool { Motion.prefersReducedMotion }
 
     // Deterministic sparkle field so twinkles don't jump between frames.
     private var sparkles: [Sparkle] {

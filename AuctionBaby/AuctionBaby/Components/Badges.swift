@@ -52,7 +52,7 @@ struct ArchetypeBadge: View {
                                             lineWidth: 0.8))
             .shadow(color: archetype.tint.opacity(showsPrestige ? 0.6 : 0), radius: 8)
             .onAppear {
-                guard showsPrestige, !UIAccessibility.isReduceMotionEnabled else { return }
+                guard showsPrestige, !Motion.prefersReducedMotion else { return }
                 withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) { shimmer = true }
             }
         }
@@ -82,7 +82,7 @@ struct MasterpieceBadge: View {
         .overlay(Capsule().strokeBorder(.white.opacity(0.5), lineWidth: 1))
         .shadow(color: Theme.gold.opacity(0.6), radius: 10)
         .onAppear {
-            guard !UIAccessibility.isReduceMotionEnabled else { return }
+            guard !Motion.prefersReducedMotion else { return }
             withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) { shimmer = true }
         }
         .accessibilityLabel("Masterpiece rating")
@@ -182,7 +182,7 @@ struct CopycatTag: View {
         .overlay(Capsule().strokeBorder(.white.opacity(0.4), lineWidth: 0.6))
         .shadow(color: Theme.copycat.opacity(pulse ? 0.6 : 0.2), radius: pulse ? 8 : 3)
         .onAppear {
-            guard !UIAccessibility.isReduceMotionEnabled else { pulse = true; return }
+            guard !Motion.prefersReducedMotion else { pulse = true; return }
             withAnimation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true)) { pulse = true }
         }
         .accessibilityLabel("Copycat, AI-generated profile")
