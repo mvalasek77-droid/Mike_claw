@@ -109,11 +109,19 @@ final class DemoFlowUITests: XCTestCase {
 
         let myBids = app.tabBars.buttons["My Bids"]
         XCTAssertTrue(myBids.waitForExistence(timeout: 6), "My Bids tab should exist for a bidder")
-        myBids.tap()
 
-        // The tab-bar button exists on every tab, so it isn't proof we switched.
-        // The nav title confirms the My Bids screen is actually showing.
-        XCTAssertTrue(app.navigationBars["My Bids"].waitForExistence(timeout: 8),
+        // The celebration's dismiss animation can briefly intercept the first
+        // tab tap, so tap until the My Bids screen actually appears. (The
+        // tab-bar button exists on every tab, so its presence is not proof of a
+        // switch — the nav title is.)
+        let myBidsNav = app.navigationBars["My Bids"]
+        var switchAttempts = 0
+        while !myBidsNav.exists && switchAttempts < 4 {
+            myBids.tap()
+            _ = myBidsNav.waitForExistence(timeout: 3)
+            switchAttempts += 1
+        }
+        XCTAssertTrue(myBidsNav.waitForExistence(timeout: 4),
                       "tapping the My Bids tab should show the My Bids screen")
 
         // Section-independent: a bid row rendered (Live for a real lot, Settled
