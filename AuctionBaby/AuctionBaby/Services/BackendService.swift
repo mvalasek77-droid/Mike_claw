@@ -82,7 +82,23 @@ final class BackendService: ObservableObject {
         // staging URL typed into the admin console survives relaunch.
         workerURL = savedURL.isEmpty ? BackendConfig.workerURL : savedURL
         sharedSecret = effectiveSecret.isEmpty ? BackendConfig.sharedSecret : effectiveSecret
-        consumablesURL = savedConsumables.isEmpty ? BackendConfig.consumablesURL : savedConsumables
+        consumablesURL = Self.resolvedConsumablesURL(
+            bundled: BackendConfig.consumablesURL,
+            saved: savedConsumables
+        )
+        // A blank bundled value is the release kill switch. Clear any URL
+        // retained by an older staging/TestFlight build so an upgrade cannot
+        // silently restore Stripe Gavel syncing or Reserve during App Review.
+        if consumablesURL.isEmpty, !savedConsumables.isEmpty {
+            UserDefaults.standard.removeObject(forKey: Self.consumablesKey)
+        }
+    }
+
+    nonisolated static func resolvedConsumablesURL(bundled: String, saved: String) -> String {
+        let bundled = bundled.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !bundled.isEmpty else { return "" }
+        let saved = saved.trimmingCharacters(in: .whitespacesAndNewlines)
+        return saved.isEmpty ? bundled : saved
     }
 
     var isConfigured: Bool {

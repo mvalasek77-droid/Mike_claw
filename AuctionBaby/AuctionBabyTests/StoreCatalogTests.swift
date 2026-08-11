@@ -77,6 +77,33 @@ final class StoreCatalogTests: XCTestCase {
         for tier in tiers { XCTAssertFalse(tier.perks.isEmpty, "\(tier.title) needs perks") }
     }
 
+    func testBlankBundledConsumablesURLIsAuthoritativeKillSwitch() {
+        XCTAssertEqual(
+            BackendService.resolvedConsumablesURL(
+                bundled: "   ",
+                saved: "https://auctionbaby-consumables-staging.example"
+            ),
+            ""
+        )
+    }
+
+    func testConfiguredBuildMayUseSavedConsumablesOverride() {
+        XCTAssertEqual(
+            BackendService.resolvedConsumablesURL(
+                bundled: "https://auctionbaby-consumables.example",
+                saved: "https://auctionbaby-consumables-staging.example"
+            ),
+            "https://auctionbaby-consumables-staging.example"
+        )
+        XCTAssertEqual(
+            BackendService.resolvedConsumablesURL(
+                bundled: "https://auctionbaby-consumables.example",
+                saved: ""
+            ),
+            "https://auctionbaby-consumables.example"
+        )
+    }
+
     @MainActor
     func testCreditAndRevokeMoveTheWallet() {
         UserDefaults.standard.removeObject(forKey: "auctionbaby.state.v5")
