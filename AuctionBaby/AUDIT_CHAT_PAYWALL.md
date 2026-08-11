@@ -31,10 +31,16 @@ floor still uses strict equality on the server. So:
 - The floor and the leaderboard use *different* location logic (inconsistent).
 - On a real, sparse user base, an exact-match floor can look empty or tiny.
 
-**Recommendation (v1.1):** either (a) apply the same fuzzy city-token match on
-the server floor query, or (b) move to real geocoding + distance ranking (what
-users expect from a dating app). Until then, set expectations: this is a
-city-label filter, not "people near me." Logged for `ROADMAP_V11.md`.
+**Status — (a) applied.** The server floor query now does **fuzzy city
+matching**: a profile matches if its location text *contains any substantial
+comma-token* (≥3 chars) of the searcher's location, case-insensitively, plus an
+exact fallback — so "New York" now finds "Manhattan, New York" and "New York,
+NY". 2-letter state codes are excluded (no whole-state over-match) and LIKE
+wildcards are stripped from input. This is still a **text** match, not
+proximity. **(b) real geocoding + distance ranking remains the v1.1 upgrade**
+(what daters expect from "people near me"); logged for `ROADMAP_V11.md`.
+Leading-wildcard `LIKE` is a table scan — fine at launch scale, index/geocode
+later.
 
 ---
 

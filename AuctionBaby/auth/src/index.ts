@@ -1213,8 +1213,28 @@ async function handleFloor(request: Request, env: Env): Promise<Response> {
     sql += " AND u.verified_at IS NOT NULL";
   }
   if (location != null) {
-    sql += " AND LOWER(p.location) = LOWER(?)";
+    // Fuzzy city matching. Exact-string equality left real users on an empty
+    // floor ("New York" never matched "Manhattan, New York" or "New York, NY")
+    // — the same brittleness the leaderboard's sameCity() already works around.
+    // Match a profile whose location text CONTAINS any substantial comma-token
+    // of the searcher's location, case-insensitively, plus an exact fallback.
+    // Tokens < 3 chars (e.g. "NY", "CA") are dropped so a state code can't
+    // match the whole state; % / _ are stripped so input can't inject LIKE
+    // wildcards. (Leading-wildcard LIKE is a scan — fine at launch scale; a
+    // geocoded distance index is the v1.1 upgrade.)
+    const tokens = location
+      .toLowerCase()
+      .split(",")
+      .map(t => t.trim().replace(/[%_]/g, ""))
+      .filter(t => t.length >= 3)
+      .slice(0, 5);
+    const clauses = ["LOWER(p.location) = LOWER(?)"];
     params.push(location);
+    for (const t of tokens) {
+      clauses.push("LOWER(p.location) LIKE ?");
+      params.push(`%${t}%`);
+    }
+    sql += ` AND (${clauses.join(" OR ")})`;
   }
   if (cursor != null && Number.isFinite(cursor)) {
     sql += " AND p.updated_at < ?";
