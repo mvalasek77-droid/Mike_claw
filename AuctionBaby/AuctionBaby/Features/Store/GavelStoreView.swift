@@ -114,11 +114,32 @@ struct GavelStoreView: View {
             if storeKit.gavelPacks.isEmpty {
                 unavailableCard
             } else {
-                ForEach(storeKit.gavelPacks, id: \.id) { product in
-                    GavelPackRow(product: product) { Task { await buy(product) } }
+                let packs = storeKit.gavelPacks   // sorted low → high price
+                let base = packs.first.flatMap { p -> Double? in
+                    let price = NSDecimalNumber(decimal: p.price).doubleValue
+                    return price > 0 ? Double(StoreKitService.gavels(for: p.id)) / price : nil
+                }
+                ForEach(Array(packs.enumerated()), id: \.element.id) { index, product in
+                    GavelPackRow(product: product,
+                                 badge: valueBadge(product, index: index, count: packs.count, base: base)) {
+                        Task { await buy(product) }
+                    }
                 }
             }
         }
+    }
+
+    /// A "+X% BONUS" / "BEST VALUE" chip computed from the *real* prices, so it
+    /// stays accurate whatever the App Store prices are set to. The cheapest
+    /// pack is the baseline (no badge); the priciest is flagged best value.
+    private func valueBadge(_ product: Product, index: Int, count: Int, base: Double?) -> String? {
+        guard let base, base > 0 else { return nil }
+        if index == count - 1 { return "BEST VALUE" }
+        let price = NSDecimalNumber(decimal: product.price).doubleValue
+        guard price > 0 else { return nil }
+        let rate = Double(StoreKitService.gavels(for: product.id)) / price
+        let bonus = Int((rate / base - 1) * 100 + 0.5)
+        return bonus >= 5 ? "+\(bonus)% BONUS" : nil
     }
 
     private var unavailableCard: some View {
@@ -226,6 +247,7 @@ struct GavelStoreView: View {
 
 private struct GavelPackRow: View {
     let product: Product
+    var badge: String? = nil
     var onBuy: () -> Void
 
     private var gavels: Int { StoreKitService.gavels(for: product.id) }
@@ -236,9 +258,18 @@ private struct GavelPackRow: View {
                 Image(systemName: "hammer.fill").font(.dynamicScaled(18, weight: .bold, relativeTo: .body))
                     .foregroundStyle(Theme.gold).frame(width: 44, height: 44)
                     .background(Circle().fill(Theme.gold.opacity(0.16)))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(Tally.compact(gavels)) Gavels")
-                        .font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text("\(Tally.compact(gavels)) Gavels")
+                            .font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
+                        if let badge {
+                            Text(badge)
+                                .font(.dynamicScaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Capsule().fill(Theme.goldGradient))
+                        }
+                    }
                     Text(product.displayName).font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                 }
                 Spacer()

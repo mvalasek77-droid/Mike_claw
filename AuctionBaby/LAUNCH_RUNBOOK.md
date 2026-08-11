@@ -218,13 +218,16 @@ from code; Gavel + Boost prices are yours to set (suggested).
 | 2 | `com.valasek.auctionbaby.sub.reserve` | Reserve | your monthly price |
 | 3 | `com.valasek.auctionbaby.sub.blackcard` | Black Card | your monthly price |
 
-### Consumables — Gavel packs
-| Product ID | Ref name | Grants | Suggested $ |
-|---|---|---|---|
-| `com.valasek.auctionbaby.gavels.handful` | Handful of Gavels | 1,000 | $4.99 |
-| `com.valasek.auctionbaby.gavels.stack` | Stack of Gavels | 5,000 | $19.99 |
-| `com.valasek.auctionbaby.gavels.chest` | Chest of Gavels | 14,000 | $49.99 |
-| `com.valasek.auctionbaby.gavels.vault` | Vault of Gavels | 30,000 | $99.99 |
+### Consumables — Gavel packs  ✅ prices DECIDED
+Escalating-value ladder ($/1,000 Gavels drops as size grows), sanity-checked
+against the sinks (gild 250 · insure 200 · streak-freeze 500; start 750). The
+in-app store shows a "+X% BONUS" / "BEST VALUE" chip computed from these prices.
+| Product ID | Ref name | Grants | Price | Value |
+|---|---|---|---|---|
+| `com.valasek.auctionbaby.gavels.handful` | Handful of Gavels | 1,000 | **$4.99** | base |
+| `com.valasek.auctionbaby.gavels.stack` | Stack of Gavels | 5,000 | **$19.99** | +25% |
+| `com.valasek.auctionbaby.gavels.chest` | Chest of Gavels | 14,000 | **$49.99** | +40% |
+| `com.valasek.auctionbaby.gavels.vault` | Vault of Gavels | 30,000 | **$99.99** | +50% (best) |
 
 ### Consumable — Boost
 | Product ID | Ref name | Suggested $ |
