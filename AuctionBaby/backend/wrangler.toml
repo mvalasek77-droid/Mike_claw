@@ -42,11 +42,14 @@ APP_BUNDLE_ID = "com.valasek.auctionbaby"
 # The command prints an id — paste it here in place of the placeholder below.
 [[kv_namespaces]]
 binding = "KV"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "cd07d62ccc654b28afca193fdc860e2a"
 
-# Cron: every 6 hours, fund the float then email the payout digest.
-[triggers]
-crons = ["0 */6 * * *"]
+# Cron target: every 6 hours, fund the float then email the payout digest.
+# Disabled while this Cloudflare account is on the Free plan: all five cron
+# slots are already occupied (API code 10072). Re-enable after upgrading or
+# removing another schedule.
+# [triggers]
+# crons = ["0 */6 * * *"]
 
 # ── STAGING (Stripe test mode / fake money) ──────────────────────────────────
 # Deploy: npx wrangler deploy --env staging   •   Worker: auctionbaby-payout-staging

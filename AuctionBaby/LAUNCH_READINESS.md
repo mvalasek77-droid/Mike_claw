@@ -41,9 +41,9 @@ Owner key: **You** = founder · **Test** = whoever runs the device · **Legal** 
 - ✅ Device-thinned asset compilation completed successfully on the connected
       iPhone 17 Pro Max on 2026-08-10 (the former asset-compilation block is
       cleared)
-- ☐ Re-run 92 unit + 2 UI tests with the phone unlocked. The 2026-08-10 run
-      built and signed successfully but executed zero tests because Xcode
-      stopped at `Unlock iPhone Pro 17 max to Continue`.
+- ✅ Full physical-device suite passed on iPhone 17 Pro Max / iOS 27.0 on
+      2026-08-10: **96/96** (94 unit + 2 UI), zero failures/skips. The Bid UI
+      path reached `bidsheet_place` and landed in `My Bids`.
 
 ### Dual-device (needs a **2nd Apple ID** or 2nd device) 🔴 for cross-device claims
 - ☐ Full `DUAL_DEVICE_TEST.md` matrix: discovery → bid → accept → chat →
@@ -55,16 +55,22 @@ Owner key: **You** = founder · **Test** = whoever runs the device · **Legal** 
 
 ## 2. Backend / ops  → refs: `DEPLOY.md`, `APP_STORE_SUBMISSION.md`
 
-- 🔴 **Rotate the admin credential** that was previously committed
-      (`valasek` / the old password) in the Worker secrets — outstanding since QA
-- ☐ Deploy all 4 Workers to **production** (auth, matching, consumables/Stripe,
-      profiles) — staging is done; production is not
+- ✅ Installed fresh production Worker session/admin secrets, stored in macOS
+      Keychain rather than embedded in the App Store binary
+- 🔴 Rotate the separate client admin password hash after choosing its new
+      plaintext password; no plaintext was fabricated or exposed in git
+- ✅ Provisioned production D1 plus separate payout/consumables KVs and deployed
+      all four production HTTP Workers on 2026-08-11
+- ☐ Enable Cloudflare R2 for profile photos (optional; monogram fallback works)
+- ☐ Free a sixth Cloudflare cron slot or upgrade the plan before enabling the
+      payout Worker schedule
 - ☐ Set **APNs secrets on the production** Auth Worker (3 `wrangler secret put`,
       same as staging) and confirm `/health` → `apns.configured: true`
 - ⚠️ **Reserve-the-date kill-switch OFF** for v1.0 review (decision) — and
       **verify the web-Gavel balance-sync path is unconfigured** in the submitted
       build, not merely that its CTA is hidden
-- ☐ Point a **Release** `Secrets.xcconfig` at the **production** Worker URLs
+- ✅ Pointed local **Release** `Secrets.xcconfig` at production auth, matching,
+      and payout URLs; consumables and the admin bearer remain blank for review
 - ✅ Fixed the xcconfig `https://` truncation trap in the committed template
       and deployment guide; added `Scripts/release_config_preflight.sh` to
       reject incomplete Release URLs, legal placeholders, or a configured

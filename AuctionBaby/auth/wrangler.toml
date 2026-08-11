@@ -45,16 +45,15 @@ PHOTOS_PUBLIC_URL = ""
 [[d1_databases]]
 binding = "DB"
 database_name = "auctionbaby-users"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "5ee09895-b80a-4a06-994f-45d45668cd55"
 
 # R2: profile photo bytes. Provision with:
 #   wrangler r2 bucket create auctionbaby-photos
 # Then enable public access (dashboard → the bucket → Settings → Public
 # access) and paste the r2.dev subdomain into PHOTOS_PUBLIC_URL above.
 # Optional but recommended: attach a custom domain for a stable CDN URL.
-[[r2_buckets]]
-binding = "PHOTOS"
-bucket_name = "auctionbaby-photos"
+# R2 is not enabled on the Cloudflare account yet. Keep PHOTOS_PUBLIC_URL blank
+# and omit the binding; clients use their monogram fallback until R2 is enabled.
 
 # ── STAGING (test bundle id / test database) ─────────────────────────────────
 # Deploy: `wrangler deploy --env staging`

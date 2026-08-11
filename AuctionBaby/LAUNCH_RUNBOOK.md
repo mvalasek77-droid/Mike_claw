@@ -144,6 +144,16 @@ cd AuctionBaby
 for w in auth matching consumables backend; do (cd $w && npx wrangler deploy); done
 ```
 
+Current production resources (provisioned 2026-08-11):
+
+- D1 `auctionbaby-users`: `5ee09895-b80a-4a06-994f-45d45668cd55`
+- Consumables KV: `0ed3ab5b5a3d4f059fbf1928801981dd`
+- Payout KV: `cd07d62ccc654b28afca193fdc860e2a`
+- Worker subdomain: `mvalasek77.workers.dev`
+- R2 is disabled at the account level; profile photos use monograms
+- Payout cron is disabled until a Cloudflare cron slot is freed or the account
+  is upgraded from the Free plan
+
 Then set the **three APNs secrets** on the **production** auth Worker (same as
 staging, prod env this time):
 
@@ -173,11 +183,15 @@ shared secret from Step 1b (real ids shown, sub in your subdomain):
 ```
 AB_AUTH_URL        = https:/$()/auctionbaby-auth.YOUR-SUBDOMAIN.workers.dev
 AB_MATCHING_URL    = https:/$()/auctionbaby-matching.YOUR-SUBDOMAIN.workers.dev
-AB_CONSUMABLES_URL = https:/$()/auctionbaby-consumables.YOUR-SUBDOMAIN.workers.dev
+# App Store v1: deliberately blank. This is the binary-level kill switch for
+# external Gavel syncing and Reserve-the-date checkout.
+AB_CONSUMABLES_URL =
 AB_WORKER_URL      = https:/$()/auctionbaby-payout.YOUR-SUBDOMAIN.workers.dev
 AB_SHARED_SECRET   = <the-new-APP_SHARED_SECRET-from-step-1b>
 ```
-✅ These must be the **production** hosts, not `-staging`.
+✅ Configured URLs must be the **production** hosts, not `-staging`.
+`AB_CONSUMABLES_URL` must remain blank in the v1 review archive; the release
+preflight enforces this and the client clears any persisted staging override.
 
 ---
 
@@ -238,7 +252,8 @@ screenshot**. Set all 16 to **"Ready to Submit"** and attach to the version.
 - ☐ Woman side + chat: Summon → accept → match → chat → reactions → Reserve.
 - ☐ Verification, Safety Center, Blocked Users.
 - ☐ Accessibility: VoiceOver, Dynamic Type xxxLarge, Reduce Motion, dark mode.
-- ☐ Resolve the iOS 26.1 **device-thinned asset** build (clean DerivedData + retry).
+- ✅ Physical-device build + full automated suite passed: 96/96 (94 unit +
+      2 UI) on iPhone 17 Pro Max / iOS 27.0, 2026-08-10.
 
 ---
 
@@ -273,7 +288,7 @@ screenshot**. Set all 16 to **"Ready to Submit"** and attach to the version.
 
 ## STEP 11 ✅ — Build, TestFlight, submit
 
-- ☐ Bump **version + build** (Info.plist is `1.0.0` build `2` — increment build).
+- ✅ Bumped submission candidate to version `1.0.0`, build `3`.
 - ✅ `ITSAppUsesNonExemptEncryption = false` already set (export prompt pre-answered).
 - ☐ Archive **Release** (prod config) → upload via Organizer/Transporter.
 - ☐ **Sandbox-test every IAP**: buy / restore / cancel / interrupted, with a
