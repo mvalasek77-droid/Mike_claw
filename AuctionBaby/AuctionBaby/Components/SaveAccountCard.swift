@@ -105,6 +105,19 @@ struct SaveAccountCard: View {
             }
         case .failure(let error):
             if let asError = error as? ASAuthorizationError, asError.code == .canceled { return }
+            // Capture the real cause — Apple's authorization failed BEFORE any
+            // Worker call, so this is a device/entitlement/provisioning issue.
+            // The code (e.g. 1004 .failed = missing SIWA capability in the
+            // provisioning profile) is what actually tells us what's wrong.
+            let detail: String
+            if let asError = error as? ASAuthorizationError {
+                detail = "ASAuthorizationError code \(asError.code.rawValue): \(asError.localizedDescription)"
+            } else {
+                detail = "\(type(of: error)): \(error.localizedDescription)"
+            }
+            ErrorMonitor.shared.record(category: "Auth",
+                                       message: "Sign in with Apple authorization failed",
+                                       detail: detail)
             auth.lastError = "Sign in with Apple failed. Try again, or continue without it."
         }
     }
