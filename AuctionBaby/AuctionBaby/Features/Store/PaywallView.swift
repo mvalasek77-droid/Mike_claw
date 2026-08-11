@@ -219,7 +219,7 @@ struct PaywallView: View {
                 PrimaryButton(title: "Continue with \(selected.title)",
                               systemImage: "sparkles",
                               gradient: selected == .blackcard ? Theme.prestigeGradient : Theme.goldGradient,
-                              enabled: subscriptionProduct != nil || !storeKit.subscriptions.isEmpty) {
+                              enabled: subscriptionProduct != nil) {
                     subscribe()
                 }
                 if subscriptionProduct == nil {
