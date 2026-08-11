@@ -106,7 +106,7 @@ struct ChatView: View {
                                      remotePhotoURL: other.remotePhotoURLs.first,
                                      size: 32, revealed: true)
                         Text(other.name)
-                            .font(.system(size: 16, weight: .heavy, design: .serif))
+                            .font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
                             .foregroundStyle(Theme.ink)
                         if other.verified { VerifiedBadge(size: 13) }
                     }
@@ -148,7 +148,7 @@ struct ChatView: View {
                         Image(systemName: match.seenByOther ? "checkmark.circle.fill" : "checkmark.circle")
                         Text(match.seenByOther ? "Seen" : "Delivered")
                     }
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                     .foregroundStyle(match.seenByOther ? Theme.verify : Theme.inkFaint)
                 } else if store.role == .man {
                     Button { showReceiptPaywall = true } label: {
@@ -156,7 +156,7 @@ struct ChatView: View {
                             Image(systemName: "lock.fill")
                             Text("Did she read it?")
                         }
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.rose)
                     }
                     .buttonStyle(.plain)
@@ -169,13 +169,13 @@ struct ChatView: View {
     /// Bumble-style urgency: a live countdown while the reply window is open.
     private func expiryBanner(until: Date) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: "clock.fill").font(.system(size: 11, weight: .bold))
+            Image(systemName: "clock.fill").font(.scaled(11, weight: .bold, relativeTo: .caption2))
             Text("Reply within")
             Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
                 .monospacedDigit()
             Text("or this goes cold")
         }
-        .font(.system(size: 11, weight: .bold, design: .rounded))
+        .font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
         .foregroundStyle(Theme.warning)
         .padding(.horizontal, 12).padding(.vertical, 7)
         .background(Capsule().fill(Theme.warning.opacity(0.14)))
@@ -184,9 +184,9 @@ struct ChatView: View {
 
     private var expiredBanner: some View {
         HStack(spacing: 8) {
-            Image(systemName: "snowflake").font(.system(size: 12, weight: .bold))
+            Image(systemName: "snowflake").font(.scaled(12, weight: .bold, relativeTo: .caption1))
             Text("This match went cold — nobody replied in time.")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.scaled(12, weight: .semibold, relativeTo: .caption1))
         }
         .foregroundStyle(Theme.inkFaint)
         .padding(.horizontal, 12).padding(.vertical, 8)
@@ -205,14 +205,14 @@ struct ChatView: View {
         if !other.icebreakers.isEmpty,
            !match.messages.contains(where: { $0.fromMe && !$0.isSystem }) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("NEED AN OPENER?").font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
+                Text("NEED AN OPENER?").font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
                     .foregroundStyle(Theme.inkFaint)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(other.icebreakers, id: \.self) { line in
                             Button { draft = line } label: {
                                 Text(line)
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.scaled(12, weight: .semibold, relativeTo: .caption1))
                                     .foregroundStyle(Theme.ink)
                                     .lineLimit(1)
                                     .padding(.horizontal, 12).padding(.vertical, 8)
@@ -230,16 +230,16 @@ struct ChatView: View {
 
     private func bidBanner(_ match: Match) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: "hand.raised.fill").font(.system(size: 11))
+            Image(systemName: "hand.raised.fill").font(.scaled(11, relativeTo: .caption2))
             Text("Accepted bid · \(Money.full(match.bid.amount))")
-                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
             if match.bid.onCopycat {
-                Text("· Copycat").foregroundStyle(Theme.copycat).font(.system(size: 12, weight: .heavy))
+                Text("· Copycat").foregroundStyle(Theme.copycat).font(.scaled(12, weight: .heavy, relativeTo: .caption1))
             }
             if match.dateReserved {
-                Image(systemName: "checkmark.seal.fill").font(.system(size: 11))
+                Image(systemName: "checkmark.seal.fill").font(.scaled(11, relativeTo: .caption2))
                     .foregroundStyle(Theme.verify)
-                Text(match.reservedLabel).foregroundStyle(Theme.verify).font(.system(size: 12, weight: .heavy))
+                Text(match.reservedLabel).foregroundStyle(Theme.verify).font(.scaled(12, weight: .heavy, relativeTo: .caption1))
             }
         }
         .foregroundStyle(Theme.gold)
@@ -260,7 +260,7 @@ struct ChatView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.verify)
                     Text("Date reserved — you're locked in")
-                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(Theme.ink)
                     Spacer()
                 }
@@ -275,13 +275,13 @@ struct ChatView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 8) {
                         Image(systemName: "calendar.badge.checkmark")
-                            .font(.system(size: 18, weight: .bold)).foregroundStyle(Theme.gold)
+                            .font(.scaled(18, weight: .bold, relativeTo: .body)).foregroundStyle(Theme.gold)
                         Text("Reserve the date")
-                            .font(.system(size: 15, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
+                            .font(.scaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
                         Spacer()
                     }
                     Text("A booking fee to lock in your in-person date. It goes to Auction Baby for the reservation — never to \(match.other(for: .man).name) — and unlocks nothing in the app. You still spend your bid on the date itself, and she keeps the receipts.")
-                        .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                        .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                     tierPicker
                     Button {
@@ -292,7 +292,7 @@ struct ChatView: View {
                             else { Image(systemName: store.demoMode ? "wand.and.stars" : "creditcard.fill") }
                             Text(reserveButtonTitle)
                         }
-                        .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity).padding(.vertical, 11)
                         .background(Capsule().fill(Theme.goldGradient))
@@ -317,7 +317,7 @@ struct ChatView: View {
                     Haptics.selection(); selectedTierCents = tier.cents
                 } label: {
                     Text(tier.display)
-                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(selected ? .black : Theme.ink)
                         .padding(.horizontal, 14).padding(.vertical, 8)
                         .background(Capsule().fill(selected ? AnyShapeStyle(Theme.goldGradient)
@@ -418,17 +418,17 @@ struct ChatView: View {
             switch match.phase {
             case _ where chatFrozen != nil:
                 HStack(spacing: 8) {
-                    Image(systemName: "hand.raised.slash.fill").font(.system(size: 13, weight: .bold))
+                    Image(systemName: "hand.raised.slash.fill").font(.scaled(13, weight: .bold, relativeTo: .footnote))
                     Text(chatFrozen ?? "This match can no longer be messaged.")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.scaled(12, weight: .semibold, relativeTo: .caption1))
                 }
                 .foregroundStyle(Theme.inkFaint)
                 .frame(maxWidth: .infinity).padding(.vertical, 12)
             case .chatting where match.isExpired:
                 HStack(spacing: 8) {
-                    Image(systemName: "snowflake").font(.system(size: 13, weight: .bold))
+                    Image(systemName: "snowflake").font(.scaled(13, weight: .bold, relativeTo: .footnote))
                     Text("This match has gone cold. No replies land here anymore.")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.scaled(12, weight: .semibold, relativeTo: .caption1))
                 }
                 .foregroundStyle(Theme.inkFaint)
                 .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -437,14 +437,14 @@ struct ChatView: View {
                 HStack(spacing: 10) {
                     TextField("", text: $draft,
                               prompt: Text("Message…").foregroundStyle(Theme.inkFaint), axis: .vertical)
-                        .textFieldStyle(.plain).font(.system(size: 15)).foregroundStyle(Theme.ink)
+                        .textFieldStyle(.plain).font(.scaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
                         .lineLimit(1...4)
                         .padding(.horizontal, 14).padding(.vertical, 11)
                         .background(Capsule().fill(.white.opacity(0.08)))
                     Button {
                         sendDraft(match)
                     } label: {
-                        Image(systemName: "arrow.up").font(.system(size: 16, weight: .heavy))
+                        Image(systemName: "arrow.up").font(.scaled(16, weight: .heavy, relativeTo: .callout))
                             .foregroundStyle(.black).frame(width: 40, height: 40)
                             .background(Circle().fill(Theme.goldGradient))
                     }
@@ -467,7 +467,7 @@ struct ChatView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.success)
                     Text("Reviews posted · lot closed")
-                        .font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.inkSoft)
+                        .font(.scaled(13, weight: .bold, design: .rounded, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 12)
             }
@@ -487,7 +487,7 @@ struct MessageBubble: View {
     var body: some View {
         if message.isSystem {
             Text(message.text)
-                .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                .font(.scaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
         } else {
@@ -495,7 +495,7 @@ struct MessageBubble: View {
                 HStack {
                     if message.fromMe { Spacer(minLength: 50) }
                     Text(message.text)
-                        .font(.system(size: 15))
+                        .font(.scaled(15, relativeTo: .subheadline))
                         .foregroundStyle(message.fromMe ? .black : Theme.ink)
                         .padding(.horizontal, 14).padding(.vertical, 10)
                         .background(
@@ -505,7 +505,7 @@ struct MessageBubble: View {
                         )
                         .overlay(alignment: message.fromMe ? .bottomLeading : .bottomTrailing) {
                             if let reaction = message.reaction {
-                                Text(reaction).font(.system(size: 16))
+                                Text(reaction).font(.scaled(16, relativeTo: .callout))
                                     .padding(4).background(Circle().fill(Theme.bg))
                                     .overlay(Circle().strokeBorder(.white.opacity(0.15), lineWidth: 0.6))
                                     .offset(x: message.fromMe ? -8 : 8, y: 8)
@@ -535,7 +535,7 @@ struct MessageBubble: View {
                 Button {
                     Haptics.selection()
                     Motion.run(Motion.bouncy) { onReact(emoji); showReactionBar = false }
-                } label: { Text(emoji).font(.system(size: 18)) }
+                } label: { Text(emoji).font(.scaled(18, relativeTo: .body)) }
                     .buttonStyle(.plain)
             }
             if !message.fromMe { Spacer(minLength: 50) }

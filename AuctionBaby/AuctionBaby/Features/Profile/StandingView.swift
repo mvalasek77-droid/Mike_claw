@@ -42,15 +42,15 @@ struct StandingView: View {
     private var header: some View {
         GlassCard(tint: Theme.gold) {
             HStack(spacing: 12) {
-                Image(systemName: "hammer.fill").font(.system(size: 20, weight: .bold))
+                Image(systemName: "hammer.fill").font(.scaled(20, weight: .bold, relativeTo: .title3))
                     .foregroundStyle(.black).frame(width: 44, height: 44)
                     .background(Circle().fill(Theme.goldGradient))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Week of \(store.currentWeekLabel)")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                     Text(store.me.location.isEmpty ? "The Floor" : store.me.location)
-                        .font(.system(size: 20, weight: .heavy, design: .serif))
+                        .font(.scaled(20, weight: .heavy, design: .serif, relativeTo: .title3))
                         .foregroundStyle(Theme.gold)
                 }
                 Spacer()
@@ -63,11 +63,11 @@ struct StandingView: View {
                          tint: Color) -> some View {
         GlassCard(title: title, icon: icon, tint: tint) {
             Text(subtitle)
-                .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 .fixedSize(horizontal: false, vertical: true)
             if entries.isEmpty {
                 Text("Nothing to rank yet this week.")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.scaled(12, weight: .semibold, relativeTo: .caption1))
                     .foregroundStyle(Theme.inkFaint)
                     .padding(.vertical, 4)
             } else {
@@ -83,28 +83,28 @@ struct StandingView: View {
     private func row(rank: Int, entry: AuctionStore.StandingEntry, tint: Color) -> some View {
         HStack(spacing: 12) {
             Text("\(rank)")
-                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                 .foregroundStyle(rank == 1 ? tint : Theme.inkSoft)
                 .frame(width: 22, alignment: .center)
             AvatarCircle(name: entry.name, hue: entry.hue,
                          photoName: entry.photoName, photoData: entry.photoData, size: 34)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
-                    Text(entry.name).font(.system(size: 14, weight: .heavy, design: .serif))
+                    Text(entry.name).font(.scaled(14, weight: .heavy, design: .serif, relativeTo: .footnote))
                         .foregroundStyle(Theme.ink)
                     if entry.isYou {
-                        Text("YOU").font(.system(size: 9, weight: .heavy, design: .rounded))
+                        Text("YOU").font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
                             .foregroundStyle(.black)
                             .padding(.horizontal, 5).padding(.vertical, 2)
                             .background(Capsule().fill(tint))
                     }
                 }
-                Text(entry.subtitle).font(.system(size: 11, weight: .semibold))
+                Text(entry.subtitle).font(.scaled(11, weight: .semibold, relativeTo: .caption2))
                     .foregroundStyle(Theme.inkFaint)
             }
             Spacer()
             Text("\(entry.value)")
-                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                 .foregroundStyle(tint)
         }
         .padding(.vertical, 4)
@@ -117,7 +117,7 @@ struct StandingView: View {
 
     private var footer: some View {
         Text("Cosmetic only. Ranks refresh every week from your Auction Credit and Showcase score — nothing you do here can move them directly.")
-            .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
+            .font(.scaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
             .multilineTextAlignment(.center)
             .padding(.top, 4)
     }

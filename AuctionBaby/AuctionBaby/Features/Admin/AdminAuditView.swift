@@ -23,7 +23,7 @@ struct AdminAuditView: View {
                     ForEach(entries) { row($0) }
                 }
                 if let err = lastError {
-                    Text(err).font(.system(size: 12, weight: .semibold))
+                    Text(err).font(.scaled(12, weight: .semibold, relativeTo: .caption1))
                         .foregroundStyle(Theme.danger)
                 }
                 Spacer(minLength: 24)
@@ -48,12 +48,12 @@ struct AdminAuditView: View {
     private var empty: some View {
         VStack(spacing: 6) {
             Image(systemName: "list.bullet.rectangle")
-                .font(.system(size: 28))
+                .font(.scaled(28, relativeTo: .title1))
                 .foregroundStyle(Theme.inkSoft)
             Text("No admin actions yet.")
-                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+                .font(.scaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
             Text("Verify, unverify, delete, and resolve-report actions log here.")
-                .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
         }
@@ -67,7 +67,7 @@ struct AdminAuditView: View {
                     Chip(text: e.action, color: color(for: e.action))
                     Spacer()
                     Text(dateString(e.createdAt))
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(.scaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                 }
                 HStack(spacing: 12) {
@@ -77,7 +77,7 @@ struct AdminAuditView: View {
                     }
                 }
                 if let n = e.note, !n.isEmpty {
-                    Text(n).font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                    Text(n).font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                 }
             }
             .padding(12)
@@ -87,10 +87,10 @@ struct AdminAuditView: View {
     private func label(_ k: String, _ v: Substring.SubSequence) -> some View {
         HStack(spacing: 4) {
             Text(k.uppercased())
-                .font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
+                .font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
                 .foregroundStyle(Theme.inkFaint)
             Text(String(v))
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .font(.scaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
                 .foregroundStyle(Theme.ink)
         }
     }

@@ -4,7 +4,7 @@ import SwiftUI
 /// count-up, driven by SwiftUI's animatable machinery.
 struct CountUpText: View, Animatable {
     var value: Double
-    var font: Font = .system(size: 32, weight: .heavy, design: .rounded)
+    var font: Font = .scaled(32, weight: .heavy, design: .rounded, relativeTo: .largeTitle)
     var color: Color = Theme.ink
 
     var animatableData: Double {
@@ -69,7 +69,7 @@ struct ScoreGauge: View {
                             font: .system(size: size * 0.26, weight: .heavy, design: .rounded),
                             color: Theme.ink)
                 Text(label.uppercased())
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
                     .tracking(1.5)
                     .foregroundStyle(Theme.inkSoft)
                     .contentTransition(.opacity)
@@ -97,11 +97,11 @@ struct StatBar: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Text(label)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.scaled(13, weight: .semibold, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(Theme.inkSoft)
                 Spacer()
                 Text(readout ?? String(format: "%.1f", value))
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(Theme.ink)
             }
             GeometryReader { geo in
@@ -155,7 +155,7 @@ struct StarPicker: View {
         HStack(spacing: 8) {
             ForEach(1...5, id: \.self) { i in
                 Image(systemName: i <= value ? "star.fill" : "star")
-                    .font(.system(size: 26, weight: .semibold))
+                    .font(.scaled(26, weight: .semibold, relativeTo: .title1))
                     .foregroundStyle(i <= value ? tint : Theme.inkFaint)
                     .scaleEffect(i == value ? 1.12 : 1)
                     .onTapGesture {

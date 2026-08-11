@@ -80,10 +80,10 @@ struct AppBackground: View {
 }
 
 extension Font {
-    static let displayXL = Font.system(size: 42, weight: .heavy, design: .serif)
-    static let displayL = Font.system(size: 30, weight: .bold, design: .serif)
-    static let titleSerif = Font.system(size: 22, weight: .bold, design: .serif)
-    static let titleRounded = Font.system(size: 22, weight: .bold, design: .rounded)
+    static let displayXL = Font.scaled(42, weight: .heavy, design: .serif, relativeTo: .largeTitle)
+    static let displayL = Font.scaled(30, weight: .bold, design: .serif, relativeTo: .largeTitle)
+    static let titleSerif = Font.scaled(22, weight: .bold, design: .serif, relativeTo: .title2)
+    static let titleRounded = Font.scaled(22, weight: .bold, design: .rounded, relativeTo: .title2)
 }
 
 extension View {

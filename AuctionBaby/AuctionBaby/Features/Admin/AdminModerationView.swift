@@ -47,7 +47,7 @@ struct AdminModerationView: View {
                     ForEach(reports) { row($0) }
                 }
                 if let err = lastError {
-                    Text(err).font(.system(size: 12, weight: .semibold))
+                    Text(err).font(.scaled(12, weight: .semibold, relativeTo: .caption1))
                         .foregroundStyle(Theme.danger)
                 }
                 Spacer(minLength: 24)
@@ -122,13 +122,13 @@ struct AdminModerationView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Target")
-                            .font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
+                            .font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
                             .foregroundStyle(Theme.inkFaint)
                         Text(r.targetId.prefix(8) + "…")
-                            .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                            .font(.scaled(13, weight: .heavy, design: .monospaced, relativeTo: .footnote))
                             .foregroundStyle(Theme.ink)
                         Text(dateString(r.createdAt))
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .font(.scaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkFaint)
                     }
                     Spacer()
@@ -136,7 +136,7 @@ struct AdminModerationView: View {
                          color: chipColor(r.status))
                 }
                 if let ctx = r.context, !ctx.isEmpty {
-                    Text(ctx).font(.system(size: 12))
+                    Text(ctx).font(.scaled(12, relativeTo: .caption1))
                         .foregroundStyle(Theme.inkSoft).lineLimit(6)
                 }
                 // Batch H — repeat-offender signal. A target with a lot of
@@ -153,14 +153,14 @@ struct AdminModerationView: View {
                     }
                 }
                 HStack(spacing: 6) {
-                    Text("From").font(.system(size: 9, weight: .heavy, design: .rounded))
+                    Text("From").font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
                         .tracking(1).foregroundStyle(Theme.inkFaint)
                     Text(r.reporterId.prefix(8) + "…")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(.scaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                     if let by = r.resolvedBy, !by.isEmpty, r.status != "open" {
                         Text("· resolved by \(by)")
-                            .font(.system(size: 10))
+                            .font(.scaled(10, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkFaint)
                     }
                 }
@@ -169,7 +169,7 @@ struct AdminModerationView: View {
                         resolving = r
                     } label: {
                         Label("Resolve", systemImage: "checkmark.seal.fill")
-                            .font(.system(size: 13, weight: .heavy, design: .rounded))
+                            .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                             .foregroundStyle(.black)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 9)
@@ -181,7 +181,7 @@ struct AdminModerationView: View {
                             pendingAction = (r, .unverify)
                         } label: {
                             Label("Unverify", systemImage: "checkmark.seal")
-                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                                 .foregroundStyle(Theme.warning)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
@@ -192,7 +192,7 @@ struct AdminModerationView: View {
                             pendingAction = (r, .ban)
                         } label: {
                             Label("Delete", systemImage: "xmark.octagon.fill")
-                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                                 .foregroundStyle(Theme.danger)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
@@ -248,13 +248,13 @@ struct AdminModerationView: View {
     private var emptyCard: some View {
         VStack(spacing: 6) {
             Image(systemName: status == "open" ? "checkmark.seal.fill" : "archivebox")
-                .font(.system(size: 28))
+                .font(.scaled(28, relativeTo: .title1))
                 .foregroundStyle(status == "open" ? Theme.success : Theme.inkSoft)
             Text(status == "open" ? "Queue is clear." : "No \(status) reports.")
-                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+                .font(.scaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
             if status == "open" {
                 Text("New Report & Block actions land here.")
-                    .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                    .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
             }
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)

@@ -68,10 +68,10 @@ struct AuctionFeedView: View {
                     Button { showFilters = true } label: {
                         ZStack(alignment: .topTrailing) {
                             Image(systemName: "line.3.horizontal.decrease.circle\(store.filters.activeCount > 0 ? ".fill" : "")")
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(.scaled(17, weight: .semibold, relativeTo: .body))
                             if store.filters.activeCount > 0 {
                                 Text("\(store.filters.activeCount)")
-                                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                                    .font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
                                     .foregroundStyle(.black).frame(width: 14, height: 14)
                                     .background(Circle().fill(Theme.rose)).offset(x: 6, y: -6)
                             }
@@ -134,9 +134,9 @@ struct AuctionFeedView: View {
     private var realFloorChip: some View {
         HStack(spacing: 6) {
             Image(systemName: "person.2.wave.2.fill")
-                .font(.system(size: 10, weight: .bold))
+                .font(.scaled(10, weight: .bold, relativeTo: .caption2))
             Text("Real people on the floor")
-                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                .font(.scaled(11, weight: .heavy, design: .rounded, relativeTo: .caption2))
                 .tracking(0.4)
         }
         .foregroundStyle(Theme.verify)
@@ -151,14 +151,14 @@ struct AuctionFeedView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text("Tonight's lots")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.scaled(14, weight: .bold, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(Theme.inkSoft)
                 Spacer()
                 if store.isBoosted, let until = store.boostUntil {
                     HStack(spacing: 4) {
-                        Image(systemName: "bolt.fill").font(.system(size: 10, weight: .bold))
+                        Image(systemName: "bolt.fill").font(.scaled(10, weight: .bold, relativeTo: .caption2))
                         Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
-                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                             .monospacedDigit()
                     }
                     .foregroundStyle(Theme.rose)
@@ -166,16 +166,16 @@ struct AuctionFeedView: View {
                     .background(Capsule().fill(Theme.rose.opacity(0.16)))
                 }
                 HStack(spacing: 5) {
-                    Image(systemName: "hammer.fill").font(.system(size: 11, weight: .bold))
+                    Image(systemName: "hammer.fill").font(.scaled(11, weight: .bold, relativeTo: .caption2))
                     Text(Tally.compact(store.wallet))
-                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                 }
                 .foregroundStyle(Theme.gold)
                 .padding(.horizontal, 10).padding(.vertical, 5)
                 .background(Capsule().fill(Theme.gold.opacity(0.14)))
             }
             Text("Bid what a date is worth. She unlocks your photo when she accepts.")
-                .font(.system(size: 12, weight: .medium))
+                .font(.scaled(12, weight: .medium, relativeTo: .caption1))
                 .foregroundStyle(Theme.inkFaint)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -192,8 +192,8 @@ struct LotOfTheDayBanner: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
-                Image(systemName: "hammer.fill").font(.system(size: 11, weight: .bold))
-                Text("LOT OF THE DAY").font(.system(size: 11, weight: .heavy, design: .rounded)).tracking(1.5)
+                Image(systemName: "hammer.fill").font(.scaled(11, weight: .bold, relativeTo: .caption2))
+                Text("LOT OF THE DAY").font(.scaled(11, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1.5)
                 Spacer()
             }
             .foregroundStyle(.black)
@@ -208,7 +208,7 @@ struct LotOfTheDayBanner: View {
                     .frame(height: 240).allowsHitTesting(false)
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
-                        Text(woman.name).font(.system(size: 26, weight: .heavy, design: .serif))
+                        Text(woman.name).font(.scaled(26, weight: .heavy, design: .serif, relativeTo: .title1))
                         if woman.verified { VerifiedBadge(size: 18) }
                         if woman.masterpiece { MasterpieceBadge(compact: true) }
                     }
@@ -253,7 +253,7 @@ struct LotOfTheDayIntroSheet: View {
                     Spacer()
                     Button { onDismiss(nil); dismiss() } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.scaled(13, weight: .bold, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkSoft)
                             .frame(width: 32, height: 32)
                             .background(Circle().fill(.white.opacity(0.08)))
@@ -264,12 +264,12 @@ struct LotOfTheDayIntroSheet: View {
 
                 VStack(spacing: 4) {
                     Label("TONIGHT'S LOT", systemImage: "hammer.fill")
-                        .font(.system(size: 12, weight: .heavy, design: .rounded)).tracking(2)
+                        .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1)).tracking(2)
                         .foregroundStyle(.black)
                         .padding(.horizontal, 14).padding(.vertical, 7)
                         .background(Capsule().fill(Theme.goldGradient))
                     Text("Curated for tonight only")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(.scaled(12, weight: .semibold, design: .rounded, relativeTo: .caption1))
                         .foregroundStyle(Theme.inkFaint)
                 }
 
@@ -285,10 +285,10 @@ struct LotOfTheDayIntroSheet: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
                             Text(woman.name)
-                                .font(.system(size: 32, weight: .heavy, design: .serif))
+                                .font(.scaled(32, weight: .heavy, design: .serif, relativeTo: .largeTitle))
                             if woman.verified { VerifiedBadge(size: 20) }
                             Text("\(woman.age)")
-                                .font(.system(size: 22, weight: .medium, design: .serif))
+                                .font(.scaled(22, weight: .medium, design: .serif, relativeTo: .title2))
                                 .foregroundStyle(Theme.inkSoft)
                         }
                         .foregroundStyle(Theme.ink)
@@ -298,7 +298,7 @@ struct LotOfTheDayIntroSheet: View {
                                  systemImage: "rosette", color: Theme.rose)
                         }
                         Text(woman.location)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.scaled(13, weight: .medium, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkSoft)
                     }
                     .padding(20)
@@ -326,7 +326,7 @@ struct LotOfTheDayIntroSheet: View {
                     onDismiss(nil); dismiss()
                 } label: {
                     Text("Browse the floor instead")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.scaled(13, weight: .semibold, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(Theme.inkSoft)
                 }
                 .buttonStyle(.plain)
@@ -383,7 +383,7 @@ struct FloorCard: View {
                         HStack(spacing: 5) {
                             LivePulseDot()
                             Text("ON THE FLOOR NOW")
-                                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                .font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
                                 .tracking(1)
                         }
                         .foregroundStyle(.white)
@@ -406,16 +406,16 @@ struct FloorCard: View {
                         Spacer()
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(woman.name)
-                                .font(.system(size: 26, weight: .heavy, design: .serif))
+                                .font(.scaled(26, weight: .heavy, design: .serif, relativeTo: .title1))
                             if woman.verified { VerifiedBadge(size: 18) }
                             Text("\(woman.age)")
-                                .font(.system(size: 20, weight: .medium, design: .serif))
+                                .font(.scaled(20, weight: .medium, design: .serif, relativeTo: .title3))
                                 .foregroundStyle(Theme.inkSoft)
                         }
                         .foregroundStyle(Theme.ink)
                         HStack(spacing: 6) {
-                            Image(systemName: "mappin.and.ellipse").font(.system(size: 11))
-                            Text(woman.location).font(.system(size: 12, weight: .medium))
+                            Image(systemName: "mappin.and.ellipse").font(.scaled(11, relativeTo: .caption2))
+                            Text(woman.location).font(.scaled(12, weight: .medium, relativeTo: .caption1))
                         }
                         .foregroundStyle(Theme.inkSoft)
                     }
@@ -437,7 +437,7 @@ struct FloorCard: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if !woman.bio.isEmpty {
                         Text(woman.bio)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.scaled(14, weight: .medium, relativeTo: .footnote))
                             .foregroundStyle(Theme.ink)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -454,7 +454,7 @@ struct FloorCard: View {
                                 Image(systemName: "hand.raised.fill")
                                 Text("Bid")
                             }
-                            .font(.system(size: 15, weight: .heavy, design: .rounded))
+                            .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                             .foregroundStyle(.black)
                             .padding(.horizontal, 20).padding(.vertical, 11)
                             .background(Capsule().fill(Theme.goldGradient))
@@ -480,14 +480,14 @@ struct FloorStat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             if let bid = woman.startingBid {
-                Text("Starting bid").font(.system(size: 10, weight: .bold, design: .rounded))
+                Text("Starting bid").font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
                     .foregroundStyle(Theme.inkFaint)
-                Text(Money.full(bid)).font(.system(size: 18, weight: .heavy, design: .rounded))
+                Text(Money.full(bid)).font(.scaled(18, weight: .heavy, design: .rounded, relativeTo: .body))
                     .foregroundStyle(Theme.gold)
             } else {
-                Text("No floor").font(.system(size: 10, weight: .bold, design: .rounded))
+                Text("No floor").font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
                     .foregroundStyle(Theme.inkFaint)
-                Text("Open bidding").font(.system(size: 15, weight: .heavy, design: .rounded))
+                Text("Open bidding").font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(Theme.rose)
             }
         }
@@ -500,10 +500,10 @@ struct PromptBubble: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(prompt.question)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.scaled(12, weight: .semibold, relativeTo: .caption1))
                 .foregroundStyle(Theme.inkSoft)
             Text(prompt.answer)
-                .font(.system(size: 17, weight: .bold, design: .serif))
+                .font(.scaled(17, weight: .bold, design: .serif, relativeTo: .body))
                 .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
         }

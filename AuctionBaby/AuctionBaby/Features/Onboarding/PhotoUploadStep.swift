@@ -39,7 +39,7 @@ struct PhotoUploadStep: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(Theme.warning)
                     Text(rejectReason)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.scaled(12, weight: .medium, relativeTo: .caption1))
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -48,7 +48,7 @@ struct PhotoUploadStep: View {
             }
 
             Text("Photos stay on your phone until you post them. You can skip this step — a monogram portrait stands in until you upload.")
-                .font(.system(size: 11, weight: .medium))
+                .font(.scaled(11, weight: .medium, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkFaint)
         }
         .onChange(of: selection) { _, newValue in
@@ -66,10 +66,10 @@ struct PhotoUploadStep: View {
     private var heading: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Add your photos")
-                .font(.system(size: 20, weight: .heavy, design: .serif))
+                .font(.scaled(20, weight: .heavy, design: .serif, relativeTo: .title3))
                 .foregroundStyle(Theme.ink)
             Text("Up to \(Self.maxTotal). The first one shows on your card — tap any photo to make it primary. Drag to reorder.")
-                .font(.system(size: 13, weight: .medium))
+                .font(.scaled(13, weight: .medium, relativeTo: .footnote))
                 .foregroundStyle(Theme.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -81,13 +81,13 @@ struct PhotoUploadStep: View {
                      matching: .images) {
             VStack(spacing: 12) {
                 Image(systemName: "photo.badge.plus")
-                    .font(.system(size: 42))
+                    .font(.scaled(42, relativeTo: .largeTitle))
                     .foregroundStyle(Theme.gold)
                 Text("Choose photos")
-                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    .font(.scaled(16, weight: .heavy, design: .rounded, relativeTo: .callout))
                     .foregroundStyle(Theme.ink)
                 Text("From your photo library")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.scaled(12, weight: .medium, relativeTo: .caption1))
                     .foregroundStyle(Theme.inkSoft)
             }
             .frame(maxWidth: .infinity)
@@ -109,7 +109,7 @@ struct PhotoUploadStep: View {
                              maxSelectionCount: remaining,
                              matching: .images) {
                     Label("Add more (\(remaining) left)", systemImage: "plus.circle.fill")
-                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(Theme.gold)
                         .padding(.horizontal, 14).padding(.vertical, 10)
                         .background(Capsule().stroke(Theme.gold, lineWidth: 1.5))
@@ -151,7 +151,7 @@ struct PhotoUploadStep: View {
             HStack(spacing: 6) {
                 if index != 0 {
                     Button { makePrimary(index) } label: {
-                        Image(systemName: "star").font(.system(size: 11, weight: .bold))
+                        Image(systemName: "star").font(.scaled(11, weight: .bold, relativeTo: .caption2))
                             .foregroundStyle(.white).padding(6)
                             .background(Circle().fill(.black.opacity(0.55)))
                     }
@@ -159,7 +159,7 @@ struct PhotoUploadStep: View {
                     .accessibilityLabel("Make photo \(index + 1) primary")
                 }
                 Button { remove(at: index) } label: {
-                    Image(systemName: "xmark").font(.system(size: 11, weight: .bold))
+                    Image(systemName: "xmark").font(.scaled(11, weight: .bold, relativeTo: .caption2))
                         .foregroundStyle(.white).padding(6)
                         .background(Circle().fill(.black.opacity(0.55)))
                 }

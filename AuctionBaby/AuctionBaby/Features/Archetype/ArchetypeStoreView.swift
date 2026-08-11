@@ -80,7 +80,7 @@ struct ArchetypeStoreView: View {
     /// Sets expectations before someone taps a four-figure button.
     private var ladderNote: some View {
         Text("Every rating is a real purchase, billed by Apple — the number is the whole point. Buy one and it's yours for good; you can switch between ratings you own any time, free. Gavels don't buy status: they're for Gilded Bids, Bid Insurance and streak freezes.")
-            .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+            .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 8).padding(.top, 4)
     }
@@ -99,7 +99,7 @@ struct ArchetypeStoreView: View {
         GlassCard(tint: Theme.gold) {
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Your rating").font(.system(size: 11, weight: .bold, design: .rounded))
+                    Text("Your rating").font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                     ArchetypeBadge(archetype: store.me.archetype,
                                    pending: store.me.showsPendingTrillionaire)
@@ -108,7 +108,7 @@ struct ArchetypeStoreView: View {
             }
             if store.me.archetype == .none {
                 Text("Unbadged. On this floor that's information too.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                    .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
             }
         }
         .motion(Motion.snap, value: store.me.archetype)
@@ -130,7 +130,7 @@ struct ArchetypeRow: View {
                          tint: tier.usesPrestigeStyle ? Theme.gold : .white) {
                 HStack(spacing: 14) {
                     Image(systemName: tier.systemImage)
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.scaled(20, weight: .bold, relativeTo: .title3))
                         .foregroundStyle(tier.usesPrestigeStyle ? .black : tier.tint)
                         .frame(width: 48, height: 48)
                         .background(Circle().fill(tier.usesPrestigeStyle
@@ -138,30 +138,30 @@ struct ArchetypeRow: View {
                                                   : AnyShapeStyle(tier.tint.opacity(0.16))))
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
-                            Text(tier.title).font(.system(size: 16, weight: .heavy, design: .serif))
+                            Text(tier.title).font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
                                 .foregroundStyle(Theme.ink)
                             if tier == .trillionaire {
-                                Image(systemName: "rosette").font(.system(size: 11)).foregroundStyle(Theme.rose)
+                                Image(systemName: "rosette").font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.rose)
                             }
                         }
-                        Text(tier.blurb).font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                        Text(tier.blurb).font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 6)
                     VStack(alignment: .trailing, spacing: 4) {
                         switch tier.purchase {
                         case .free:
-                            Text("Free").font(.system(size: 16, weight: .heavy, design: .rounded))
+                            Text("Free").font(.scaled(16, weight: .heavy, design: .rounded, relativeTo: .callout))
                                 .foregroundStyle(Theme.ink)
                         case .money:
                             Text(owned ? "Owned" : priceLabel)
-                                .font(.system(size: 16, weight: .heavy, design: .rounded))
+                                .font(.scaled(16, weight: .heavy, design: .rounded, relativeTo: .callout))
                                 .foregroundStyle(owned ? Theme.success
                                                  : tier.usesPrestigeStyle ? Theme.gold : Theme.ink)
                                 .lineLimit(1).minimumScaleFactor(0.7)
                         }
                         if current {
-                            Text(pending ? "PENDING" : "ACTIVE").font(.system(size: 9, weight: .heavy, design: .rounded))
+                            Text(pending ? "PENDING" : "ACTIVE").font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
                                 .foregroundStyle(.black).padding(.horizontal, 7).padding(.vertical, 3)
                                 .background(Capsule().fill(pending ? Theme.warning : Theme.success))
                         }

@@ -101,7 +101,7 @@ struct AdminView: View {
     private var headerCard: some View {
         GlassCard(title: "Founder tools", icon: "person.2.badge.gearshape.fill", tint: Theme.verify) {
             Text("Add, edit or remove lots and bidders. Changes go live immediately and persist across launches.")
-                .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -136,9 +136,9 @@ struct AdminView: View {
                 }
             } else if let err = statsError {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(err).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.danger)
+                    Text(err).font(.scaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.danger)
                     Text("Sign in with an admin account (is_admin = 1) to see the platform heartbeat.")
-                        .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                        .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -152,15 +152,15 @@ struct AdminView: View {
                          highlight: Color? = nil) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(label.uppercased())
-                .font(.system(size: 9, weight: .heavy, design: .rounded)).tracking(1)
+                .font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
                 .foregroundStyle(Theme.inkFaint)
                 .frame(width: 68, alignment: .leading)
             Text(value)
-                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
                 .foregroundStyle(highlight ?? Theme.ink)
             Spacer()
             Text(trail)
-                .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                 .lineLimit(1)
         }
     }
@@ -182,19 +182,19 @@ struct AdminView: View {
             GlassSurface(corner: Theme.cornerL) {
                 HStack(spacing: 12) {
                     Image(systemName: "banknote.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.scaled(16, weight: .semibold, relativeTo: .callout))
                         .foregroundStyle(Theme.success)
                         .frame(width: 44, height: 44)
                         .background(Circle().fill(Theme.success.opacity(0.14)))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Money & backend").font(.system(size: 15, weight: .heavy, design: .serif))
+                        Text("Money & backend").font(.scaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline))
                             .foregroundStyle(Theme.ink)
                         Text("Float, ledger, payouts, backend URLs")
-                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                            .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                        .font(.scaled(12, weight: .bold, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(14)
             }
@@ -209,19 +209,19 @@ struct AdminView: View {
             GlassSurface(corner: Theme.cornerL) {
                 HStack(spacing: 12) {
                     Image(systemName: "person.3.sequence.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.scaled(16, weight: .semibold, relativeTo: .callout))
                         .foregroundStyle(Theme.gold)
                         .frame(width: 44, height: 44)
                         .background(Circle().fill(Theme.gold.opacity(0.14)))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Signed-in users").font(.system(size: 15, weight: .heavy, design: .serif))
+                        Text("Signed-in users").font(.scaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline))
                             .foregroundStyle(Theme.ink)
                         Text("Real accounts from Sign in with Apple. Unverify or delete.")
-                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                            .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                        .font(.scaled(12, weight: .bold, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(14)
             }
@@ -236,19 +236,19 @@ struct AdminView: View {
             GlassSurface(corner: Theme.cornerL) {
                 HStack(spacing: 12) {
                     Image(systemName: "list.bullet.rectangle.portrait")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.scaled(16, weight: .semibold, relativeTo: .callout))
                         .foregroundStyle(Theme.inkSoft)
                         .frame(width: 44, height: 44)
                         .background(Circle().fill(Theme.inkSoft.opacity(0.14)))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Audit trail").font(.system(size: 15, weight: .heavy, design: .serif))
+                        Text("Audit trail").font(.scaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline))
                             .foregroundStyle(Theme.ink)
                         Text("Every admin action, newest first — who did what to whom.")
-                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                            .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                        .font(.scaled(12, weight: .bold, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(14)
             }
@@ -262,19 +262,19 @@ struct AdminView: View {
             GlassSurface(corner: Theme.cornerL) {
                 HStack(spacing: 12) {
                     Image(systemName: "flag.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.scaled(16, weight: .semibold, relativeTo: .callout))
                         .foregroundStyle(Theme.warning)
                         .frame(width: 44, height: 44)
                         .background(Circle().fill(Theme.warning.opacity(0.14)))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Moderation queue").font(.system(size: 15, weight: .heavy, design: .serif))
+                        Text("Moderation queue").font(.scaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline))
                             .foregroundStyle(Theme.ink)
                         Text("User reports. Resolve, unverify, or delete the target.")
-                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                            .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold)).foregroundStyle(Theme.inkFaint)
+                        .font(.scaled(12, weight: .bold, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(14)
             }
@@ -290,13 +290,13 @@ struct AdminView: View {
                     AvatarCircle(name: store.me.name, hue: store.me.hue,
                                  photoName: store.me.photoName, size: 44, revealed: true)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Your account").font(.system(size: 12, weight: .bold, design: .rounded))
+                        Text("Your account").font(.scaled(12, weight: .bold, design: .rounded, relativeTo: .caption1))
                             .foregroundStyle(Theme.inkFaint)
                         Text(store.me.name.isEmpty ? "You" : store.me.name)
-                            .font(.system(size: 15, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
+                            .font(.scaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
                     }
                     Spacer()
-                    Label("Edit", systemImage: "pencil").font(.system(size: 13, weight: .bold))
+                    Label("Edit", systemImage: "pencil").font(.scaled(13, weight: .bold, relativeTo: .footnote))
                         .foregroundStyle(Theme.gold)
                 }
                 .padding(14)
@@ -313,13 +313,13 @@ struct AdminView: View {
             Spacer()
             Button(action: add) {
                 Label(addLabel, systemImage: "plus.circle.fill")
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(Theme.gold)
             }
         }
         .padding(.top, 4)
         if people.isEmpty {
-            Text(empty).font(.system(size: 13)).foregroundStyle(Theme.inkFaint)
+            Text(empty).font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkFaint)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             ForEach(people) { profile in
@@ -345,33 +345,33 @@ struct AdminUserRow: View {
                              copycatStyle: profile.copycatStyle)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(profile.name).font(.system(size: 15, weight: .heavy, design: .serif))
+                        Text(profile.name).font(.scaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline))
                             .foregroundStyle(Theme.ink)
                         if profile.verified { VerifiedBadge(size: 12) }
                         if profile.isCopycat { CopycatTag(compact: true) }
                     }
                     Text("\(profile.age) · \(profile.location)")
-                        .font(.system(size: 12)).foregroundStyle(Theme.inkSoft).lineLimit(1)
+                        .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft).lineLimit(1)
                     if profile.role == .man, profile.archetype != .none {
                         Text(profile.archetype.title)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                             .foregroundStyle(Theme.gold)
                     } else if let bid = profile.startingBid {
                         Text("Floor \(Money.compact(bid))")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                             .foregroundStyle(Theme.gold)
                     }
                 }
                 Spacer()
                 Button(action: onEdit) {
-                    Image(systemName: "pencil").font(.system(size: 14, weight: .bold))
+                    Image(systemName: "pencil").font(.scaled(14, weight: .bold, relativeTo: .footnote))
                         .foregroundStyle(Theme.gold)
                         .frame(width: 38, height: 38)
                         .background(Circle().fill(Theme.gold.opacity(0.14)))
                 }
                 .buttonStyle(.plain)
                 Button(action: onDelete) {
-                    Image(systemName: "trash.fill").font(.system(size: 15, weight: .bold))
+                    Image(systemName: "trash.fill").font(.scaled(15, weight: .bold, relativeTo: .subheadline))
                         .foregroundStyle(Theme.danger)
                         .frame(width: 38, height: 38)
                         .background(Circle().fill(Theme.danger.opacity(0.14)))

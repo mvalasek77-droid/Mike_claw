@@ -52,7 +52,7 @@ struct AvatarView: View {
                 .scaleEffect(1.7)
                 .offset(y: 18)
             Text(initials)
-                .font(.system(size: 34, weight: .heavy, design: .serif))
+                .font(.scaled(34, weight: .heavy, design: .serif, relativeTo: .largeTitle))
                 .foregroundStyle(.white.opacity(0.9))
                 .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
         }
@@ -84,8 +84,8 @@ struct AvatarView: View {
     /// Minimal, always-present AI disclosure for photo-backed copycats.
     private var aiWatermark: some View {
         HStack(spacing: 3) {
-            Image(systemName: "sparkles").font(.system(size: 8, weight: .black))
-            Text("AI").font(.system(size: 9, weight: .black, design: .rounded))
+            Image(systemName: "sparkles").font(.scaled(8, weight: .black, relativeTo: .caption2))
+            Text("AI").font(.scaled(9, weight: .black, design: .rounded, relativeTo: .caption2))
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 6).padding(.vertical, 3)
@@ -134,10 +134,10 @@ struct AvatarView: View {
                 Rectangle().fill(.ultraThinMaterial)
                 VStack(spacing: 8) {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.scaled(26, weight: .bold, relativeTo: .title1))
                         .foregroundStyle(Theme.gold)
                     Text("Photo unlocks\nwhen you accept")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .font(.scaled(11, weight: .semibold, design: .rounded, relativeTo: .caption2))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(Theme.inkSoft)
                 }

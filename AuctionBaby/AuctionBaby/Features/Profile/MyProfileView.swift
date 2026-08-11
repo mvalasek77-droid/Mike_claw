@@ -38,7 +38,7 @@ struct MyProfileView: View {
                     }
                     settingsCard
                     Text("Auction Baby · v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
-                        .font(.system(size: 11))
+                        .font(.scaled(11, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                     Spacer(minLength: 24)
                 }
@@ -106,9 +106,9 @@ struct MyProfileView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 8) {
                                 Text(me.name.isEmpty ? "You" : me.name)
-                                    .font(.system(size: 28, weight: .heavy, design: .serif))
+                                    .font(.scaled(28, weight: .heavy, design: .serif, relativeTo: .title1))
                                 if me.verified { VerifiedBadge(size: 20) }
-                                Text("\(me.age)").font(.system(size: 20, design: .serif)).foregroundStyle(Theme.inkSoft)
+                                Text("\(me.age)").font(.scaled(20, design: .serif, relativeTo: .title3)).foregroundStyle(Theme.inkSoft)
                             }.foregroundStyle(Theme.ink)
                             HStack(spacing: 8) {
                                 Chip(text: me.role.sideTitle, systemImage: me.role.systemImage,
@@ -123,7 +123,7 @@ struct MyProfileView: View {
                         }.padding(16)
                     }
                 if !me.bio.isEmpty {
-                    Text(me.bio).font(.system(size: 14)).foregroundStyle(Theme.ink)
+                    Text(me.bio).font(.scaled(14, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(16)
                 }
             }
@@ -134,14 +134,14 @@ struct MyProfileView: View {
         Button { showVerify = true } label: {
             GlassSurface(corner: Theme.cornerL, tint: Theme.verify) {
                 HStack(spacing: 14) {
-                    Image(systemName: "checkmark.seal.fill").font(.system(size: 22, weight: .bold))
+                    Image(systemName: "checkmark.seal.fill").font(.scaled(22, weight: .bold, relativeTo: .title2))
                         .foregroundStyle(.white).frame(width: 46, height: 46)
                         .background(Circle().fill(Theme.verify))
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Get verified").font(.system(size: 16, weight: .heavy, design: .serif))
+                        Text("Get verified").font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
                             .foregroundStyle(Theme.ink)
                         Text("A blue check tells the floor you're a real person — verified profiles get accepted far more.")
-                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                            .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
@@ -174,10 +174,10 @@ struct MyProfileView: View {
                 if let next = me.archetype.next {
                     Divider().overlay(Theme.hairline)
                     HStack {
-                        Text("Next tier: \(next.title)").font(.system(size: 12, weight: .semibold))
+                        Text("Next tier: \(next.title)").font(.scaled(12, weight: .semibold, relativeTo: .caption1))
                             .foregroundStyle(Theme.inkSoft)
                         Spacer()
-                        Text(next.fallbackPriceLabel).font(.system(size: 13, weight: .heavy, design: .rounded))
+                        Text(next.fallbackPriceLabel).font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                             .foregroundStyle(Theme.gold)
                     }
                 }
@@ -190,23 +190,23 @@ struct MyProfileView: View {
     private var trillionaireProgress: some View {
         GlassCard(title: "Verify your Trillionaire", icon: "hourglass", tint: Theme.warning) {
             Text("Trillionaire is earned, not just bought. Clear all three:")
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                .font(.scaled(12, weight: .medium, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
             VStack(alignment: .leading, spacing: 10) {
                 gate(done: true, "Bought the Trillionaire tier ($9,999)")
                 gate(done: false, "Bid & spend the full $9,999 on a date")
                 gate(done: false, "She confirms it against the receipts")
             }
             Text("Then your badge flips to Trillionaire ✓. The Masterpiece is a different mountain: bid & spend $1,000,000 on a single date, and she confirms it.")
-                .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
         }
     }
 
     private func gate(done: Bool, _ text: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 16, weight: .bold))
+                .font(.scaled(16, weight: .bold, relativeTo: .callout))
                 .foregroundStyle(done ? Theme.success : Theme.inkFaint)
-            Text(text).font(.system(size: 13, weight: .semibold))
+            Text(text).font(.scaled(13, weight: .semibold, relativeTo: .footnote))
                 .foregroundStyle(done ? Theme.ink : Theme.inkSoft)
             Spacer(minLength: 0)
         }
@@ -225,10 +225,10 @@ struct MyProfileView: View {
             }
             if store.isBoosted, let until = store.boostUntil {
                 HStack(spacing: 6) {
-                    Image(systemName: "bolt.fill").font(.system(size: 11, weight: .bold))
-                    Text("Boosted · bidders incoming ·").font(.system(size: 12, weight: .semibold))
+                    Image(systemName: "bolt.fill").font(.scaled(11, weight: .bold, relativeTo: .caption2))
+                    Text("Boosted · bidders incoming ·").font(.scaled(12, weight: .semibold, relativeTo: .caption1))
                     Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
-                        .font(.system(size: 12, weight: .heavy, design: .rounded)).monospacedDigit()
+                        .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1)).monospacedDigit()
                 }
                 .foregroundStyle(Theme.rose)
             }
@@ -237,9 +237,9 @@ struct MyProfileView: View {
 
     private func worthStat(_ label: String, _ value: String, _ tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label.uppercased()).font(.system(size: 9, weight: .bold, design: .rounded)).tracking(1)
+            Text(label.uppercased()).font(.scaled(9, weight: .bold, design: .rounded, relativeTo: .caption2)).tracking(1)
                 .foregroundStyle(Theme.inkFaint)
-            Text(value).font(.system(size: 22, weight: .heavy, design: .rounded)).foregroundStyle(tint)
+            Text(value).font(.scaled(22, weight: .heavy, design: .rounded, relativeTo: .title2)).foregroundStyle(tint)
                 .minimumScaleFactor(0.6).lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -256,9 +256,9 @@ struct MyProfileView: View {
                 HStack(spacing: 16) {
                     ScoreGauge(value: me.showcaseCredit, range: 300...900, label: me.showcaseTier, tint: Theme.rose, size: 124)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Market value").font(.system(size: 10, weight: .bold, design: .rounded))
+                        Text("Market value").font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkFaint)
-                        Text(Money.compact(me.marketValue)).font(.system(size: 24, weight: .heavy, design: .rounded))
+                        Text(Money.compact(me.marketValue)).font(.scaled(24, weight: .heavy, design: .rounded, relativeTo: .title2))
                             .foregroundStyle(Theme.gold)
                         StarRow(value: me.overallStars)
                         StatPill(icon: "dollarsign.circle.fill", label: "accepted", value: Money.compact(store.earnings), tint: Theme.rose)
@@ -284,25 +284,25 @@ struct MyProfileView: View {
                         TextField("", text: $bidText,
                                   prompt: Text("e.g. 250").foregroundStyle(Theme.inkFaint))
                             .keyboardType(.numberPad).textFieldStyle(.plain)
-                            .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
+                            .font(.scaled(18, weight: .heavy, design: .rounded, relativeTo: .body)).foregroundStyle(Theme.gold)
                             .padding(10).background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
                         Button("Save") {
                             store.setStartingBid(bidText.isEmpty ? nil : Int(bidText))
                             Haptics.commit(); editingBid = false
                         }
-                        .font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(.black)
+                        .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote)).foregroundStyle(.black)
                         .padding(.horizontal, 14).padding(.vertical, 9).background(Capsule().fill(Theme.goldGradient))
                         Button("Clear") { store.setStartingBid(nil); bidText = ""; editingBid = false }
-                            .font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.inkSoft)
+                            .font(.scaled(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                     }
                 } else {
                     HStack {
                         Text(me.startingBid.map { Money.full($0) } ?? "No floor — open bidding")
-                            .font(.system(size: 18, weight: .heavy, design: .rounded))
+                            .font(.scaled(18, weight: .heavy, design: .rounded, relativeTo: .body))
                             .foregroundStyle(me.startingBid == nil ? Theme.rose : Theme.gold)
                         Spacer()
                         Button { bidText = me.startingBid.map(String.init) ?? ""; editingBid = true } label: {
-                            Label("Edit", systemImage: "pencil").font(.system(size: 13, weight: .bold))
+                            Label("Edit", systemImage: "pencil").font(.scaled(13, weight: .bold, relativeTo: .footnote))
                                 .foregroundStyle(Theme.gold)
                         }
                     }
@@ -319,25 +319,25 @@ struct MyProfileView: View {
                 ArtTierBadge(tier: me.artTier)
                 Spacer()
                 Text("\(me.reviews.count) reviewed date\(me.reviews.count == 1 ? "" : "s")")
-                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                    .font(.scaled(11, weight: .semibold, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
             }
             if let next = me.nextArtTier {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("NEXT: \(next.title.uppercased())")
-                        .font(.system(size: 10, weight: .heavy, design: .rounded)).tracking(1)
+                        .font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
                         .foregroundStyle(next.tint)
                     Text(next.requirement)
-                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        .font(.scaled(12, weight: .medium, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                 }
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.05)))
             } else if me.artTier == .exhibitionStar {
                 Text("Only one thing hangs higher — and it can't be climbed to. \(ArtTier.masterpiece.requirement).")
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    .font(.scaled(12, weight: .medium, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
             } else if me.artTier == .masterpiece {
                 Text("The rarest object on any floor. There is nothing above this.")
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
+                    .font(.scaled(12, weight: .medium, relativeTo: .caption1)).foregroundStyle(Theme.gold)
             }
         }
     }
@@ -365,18 +365,18 @@ struct MyProfileView: View {
                     VStack(spacing: 16) {
                         GlassCard(title: "Your opener", icon: "text.bubble.fill", tint: Theme.rose) {
                             Text("This line auto-sends the moment you accept a bid. Set it once — every winning bidder gets the same welcome.")
-                                .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                                .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                                 .fixedSize(horizontal: false, vertical: true)
                             TextField("", text: $script,
                                       prompt: Text("Write your opener — e.g. \"You're in. Where are we going?\"")
                                         .foregroundStyle(Theme.inkFaint), axis: .vertical)
-                                .textFieldStyle(.plain).font(.system(size: 15))
+                                .textFieldStyle(.plain).font(.scaled(15, relativeTo: .subheadline))
                                 .foregroundStyle(Theme.ink)
                                 .lineLimit(2...5)
                                 .padding(12)
                                 .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                             Text("\(script.count) / 240")
-                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .font(.scaled(10, weight: .semibold, design: .rounded, relativeTo: .caption2))
                                 .foregroundStyle(script.count > 240 ? Theme.danger : Theme.inkFaint)
                                 .onChange(of: script) { _, newValue in
                                     // Hard clamp so Save can't silently drop
@@ -389,7 +389,7 @@ struct MyProfileView: View {
                                 ForEach(presets, id: \.self) { preset in
                                     Button { script = preset } label: {
                                         HStack {
-                                            Text(preset).font(.system(size: 13, weight: .medium))
+                                            Text(preset).font(.scaled(13, weight: .medium, relativeTo: .footnote))
                                                 .foregroundStyle(Theme.ink)
                                                 .frame(maxWidth: .infinity, alignment: .leading)
                                             Image(systemName: "arrow.up.left").foregroundStyle(Theme.gold)
@@ -518,12 +518,12 @@ struct MyProfileView: View {
                                 profileField("Name", text: $name)
                                 profileField("Location", text: $location, prompt: "e.g. New York")
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("BIO").font(.system(size: 10, weight: .heavy, design: .rounded))
+                                    Text("BIO").font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
                                         .tracking(1).foregroundStyle(Theme.inkFaint)
                                     TextField("", text: $bio,
                                               prompt: Text("A few words about you")
                                                 .foregroundStyle(Theme.inkFaint), axis: .vertical)
-                                        .textFieldStyle(.plain).font(.system(size: 15))
+                                        .textFieldStyle(.plain).font(.scaled(15, relativeTo: .subheadline))
                                         .foregroundStyle(Theme.ink)
                                         .lineLimit(2...6)
                                         .padding(12)
@@ -531,7 +531,7 @@ struct MyProfileView: View {
                                             .fill(.white.opacity(0.06)))
                                 }
                                 Text("\(bio.count) / 300")
-                                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                    .font(.scaled(10, weight: .semibold, design: .rounded, relativeTo: .caption2))
                                     .foregroundStyle(bio.count > 300 ? Theme.danger : Theme.inkFaint)
                                     .onChange(of: bio) { _, v in if v.count > 300 { bio = String(v.prefix(300)) } }
                             }
@@ -539,7 +539,7 @@ struct MyProfileView: View {
 
                         GlassCard(title: "Prompts", icon: "text.bubble.fill", tint: Theme.rose) {
                             Text("Pick a question and write your answer.")
-                                .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                                .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                             VStack(spacing: 14) {
                                 ForEach(0..<3, id: \.self) { i in
                                     VStack(alignment: .leading, spacing: 6) {
@@ -550,12 +550,12 @@ struct MyProfileView: View {
                                         } label: {
                                             HStack {
                                                 Text(promptQuestions[i].isEmpty ? "Choose a question" : promptQuestions[i])
-                                                    .font(.system(size: 13, weight: .semibold))
+                                                    .font(.scaled(13, weight: .semibold, relativeTo: .footnote))
                                                     .foregroundStyle(promptQuestions[i].isEmpty ? Theme.inkFaint : Theme.gold)
                                                     .lineLimit(1)
                                                 Spacer()
                                                 Image(systemName: "chevron.up.chevron.down")
-                                                    .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                                                    .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                                             }
                                             .padding(10)
                                             .background(RoundedRectangle(cornerRadius: Theme.cornerS)
@@ -565,7 +565,7 @@ struct MyProfileView: View {
                                             TextField("", text: $promptAnswers[i],
                                                       prompt: Text("Your answer").foregroundStyle(Theme.inkFaint),
                                                       axis: .vertical)
-                                                .textFieldStyle(.plain).font(.system(size: 14))
+                                                .textFieldStyle(.plain).font(.scaled(14, relativeTo: .footnote))
                                                 .foregroundStyle(Theme.ink)
                                                 .lineLimit(1...4)
                                                 .padding(10)
@@ -618,11 +618,11 @@ struct MyProfileView: View {
                                    prompt: String? = nil) -> some View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(label.uppercased())
-                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
                     .tracking(1).foregroundStyle(Theme.inkFaint)
                 TextField("", text: text,
                           prompt: Text(prompt ?? label).foregroundStyle(Theme.inkFaint))
-                    .textFieldStyle(.plain).font(.system(size: 15))
+                    .textFieldStyle(.plain).font(.scaled(15, relativeTo: .subheadline))
                     .foregroundStyle(Theme.ink)
                     .padding(12)
                     .background(RoundedRectangle(cornerRadius: Theme.cornerM)
@@ -636,9 +636,9 @@ struct MyProfileView: View {
             Button { showEditProfile = true } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "pencil.line").foregroundStyle(Theme.gold)
-                    Text("Edit profile").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Text("Edit profile").font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                     Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                    Image(systemName: "chevron.right").font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(.vertical, 4)
             }
@@ -647,11 +647,11 @@ struct MyProfileView: View {
             Button { showPhotoEditor = true } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "photo.on.rectangle.angled").foregroundStyle(Theme.gold)
-                    Text("Edit photos").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Text("Edit photos").font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                     Spacer()
-                    Text(photoCountLabel).font(.system(size: 11, weight: .bold, design: .rounded))
+                    Text(photoCountLabel).font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
-                    Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                    Image(systemName: "chevron.right").font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(.vertical, 4)
             }
@@ -661,13 +661,13 @@ struct MyProfileView: View {
                 Button { showOpeningScript = true } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "text.bubble.fill").foregroundStyle(Theme.rose)
-                        Text("Opening Bid Script").font(.system(size: 14, weight: .semibold))
+                        Text("Opening Bid Script").font(.scaled(14, weight: .semibold, relativeTo: .footnote))
                             .foregroundStyle(Theme.ink)
                         Spacer()
                         Text(me.openingBidScript == nil ? "Off" : "On")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkFaint)
-                        Image(systemName: "chevron.right").font(.system(size: 12))
+                        Image(systemName: "chevron.right").font(.scaled(12, relativeTo: .caption1))
                             .foregroundStyle(Theme.inkFaint)
                     }
                     .padding(.vertical, 4)
@@ -678,12 +678,12 @@ struct MyProfileView: View {
             Button { showStanding = true } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "trophy.fill").foregroundStyle(Theme.gold)
-                    Text("The Standing").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Text("The Standing").font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                     Spacer()
                     Text("This week")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
-                    Image(systemName: "chevron.right").font(.system(size: 12))
+                    Image(systemName: "chevron.right").font(.scaled(12, relativeTo: .caption1))
                         .foregroundStyle(Theme.inkFaint)
                 }
                 .padding(.vertical, 4)
@@ -693,9 +693,9 @@ struct MyProfileView: View {
             Button { showSafety = true } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "shield.lefthalf.filled").foregroundStyle(Theme.verify)
-                    Text("Safety Center").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Text("Safety Center").font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                     Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                    Image(systemName: "chevron.right").font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(.vertical, 4)
             }
@@ -705,13 +705,13 @@ struct MyProfileView: View {
                 Button { showAdmin = true } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "person.2.badge.gearshape.fill").foregroundStyle(Theme.gold)
-                        Text("Admin console").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Text("Admin console").font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                         Spacer()
-                        Text("Founder").font(.system(size: 10, weight: .heavy, design: .rounded))
+                        Text("Founder").font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
                             .foregroundStyle(Theme.gold)
                             .padding(.horizontal, 7).padding(.vertical, 2)
                             .background(Capsule().fill(Theme.gold.opacity(0.16)))
-                        Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                        Image(systemName: "chevron.right").font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                     }
                     .padding(.vertical, 4)
                 }
@@ -722,9 +722,9 @@ struct MyProfileView: View {
                 Link(destination: url) {
                     HStack(spacing: 10) {
                         Image(systemName: "ladybug.fill").foregroundStyle(Theme.gold)
-                        Text("Report a bug").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Text("Report a bug").font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                         Spacer()
-                        Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                        Image(systemName: "chevron.right").font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                     }
                     .padding(.vertical, 4)
                 }
@@ -739,9 +739,9 @@ struct MyProfileView: View {
                 Link(destination: url) {
                     HStack(spacing: 10) {
                         Image(systemName: "doc.text.fill").foregroundStyle(Theme.inkSoft)
-                        Text("Terms of Service").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Text("Terms of Service").font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                         Spacer()
-                        Image(systemName: "arrow.up.right").font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                        Image(systemName: "arrow.up.right").font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                     }
                     .padding(.vertical, 4)
                 }
@@ -752,9 +752,9 @@ struct MyProfileView: View {
                 Link(destination: url) {
                     HStack(spacing: 10) {
                         Image(systemName: "hand.raised.fill").foregroundStyle(Theme.inkSoft)
-                        Text("Privacy Policy").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Text("Privacy Policy").font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                         Spacer()
-                        Image(systemName: "arrow.up.right").font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                        Image(systemName: "arrow.up.right").font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                     }
                     .padding(.vertical, 4)
                 }
@@ -763,13 +763,13 @@ struct MyProfileView: View {
             }
             HStack {
                 Text("Reduce Motion / Dark Mode honored system-wide")
-                    .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                    .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 Spacer()
             }
             if auth.isSignedIn {
                 Button { showSignOut = true } label: {
                     Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .font(.scaled(14, weight: .bold, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity).padding(.vertical, 11)
                         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.08)))
@@ -778,7 +778,7 @@ struct MyProfileView: View {
             }
             Button(role: .destructive) { showReset = true } label: {
                 Label("Reset account", systemImage: "trash")
-                    .font(.system(size: 14, weight: .bold, design: .rounded)).foregroundStyle(Theme.danger)
+                    .font(.scaled(14, weight: .bold, design: .rounded, relativeTo: .footnote)).foregroundStyle(Theme.danger)
                     .frame(maxWidth: .infinity).padding(.vertical, 11)
                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.danger.opacity(0.12)))
             }
@@ -787,7 +787,7 @@ struct MyProfileView: View {
                     HStack(spacing: 6) {
                         if deleting { ProgressView().tint(Theme.danger) }
                         Label("Delete account permanently", systemImage: "xmark.octagon.fill")
-                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                            .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
                             .foregroundStyle(Theme.danger)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 11)
@@ -796,7 +796,7 @@ struct MyProfileView: View {
                 .buttonStyle(.plain)
                 .disabled(deleting)
                 Text("Required by Apple: signed-in users can permanently delete their account from here. GDPR/CCPA compliant.")
-                    .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                    .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                     .padding(.top, 2)
             }
         }

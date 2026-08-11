@@ -18,8 +18,8 @@ struct PrimaryButton: View {
             action()
         } label: {
             HStack(spacing: 8) {
-                if let systemImage { Image(systemName: systemImage).font(.system(size: 16, weight: .bold)) }
-                Text(title).font(.system(size: 17, weight: .heavy, design: .rounded))
+                if let systemImage { Image(systemName: systemImage).font(.scaled(16, weight: .bold, relativeTo: .callout)) }
+                Text(title).font(.scaled(17, weight: .heavy, design: .rounded, relativeTo: .body))
             }
             .foregroundStyle(.black)
             .frame(maxWidth: .infinity)
@@ -56,8 +56,8 @@ struct GhostButton: View {
             action()
         } label: {
             HStack(spacing: 8) {
-                if let systemImage { Image(systemName: systemImage).font(.system(size: 15, weight: .bold)) }
-                Text(title).font(.system(size: 16, weight: .bold, design: .rounded))
+                if let systemImage { Image(systemName: systemImage).font(.scaled(15, weight: .bold, relativeTo: .subheadline)) }
+                Text(title).font(.scaled(16, weight: .bold, design: .rounded, relativeTo: .callout))
             }
             .foregroundStyle(tint)
             .frame(maxWidth: .infinity)

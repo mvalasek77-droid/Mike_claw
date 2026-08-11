@@ -37,7 +37,7 @@ struct DailyClaimCard: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "gift.fill")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.scaled(16, weight: .bold, relativeTo: .callout))
                     .foregroundStyle(.black)
                     .frame(width: 38, height: 38)
                     .background(Circle().fill(Theme.goldGradient))
@@ -45,14 +45,14 @@ struct DailyClaimCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(nextReward > AuctionStore.dailyGavelBase ? "Daily streak ready"
                                                            : "Daily Gavels ready")
-                        .font(.system(size: 14, weight: .heavy, design: .serif))
+                        .font(.scaled(14, weight: .heavy, design: .serif, relativeTo: .footnote))
                         .foregroundStyle(Theme.ink)
                     Text("Claim \(Tally.compact(nextReward)) Gavels — or a mystery bonus.")
-                        .font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                        .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                 }
                 Spacer()
                 Text("CLAIM")
-                    .font(.system(size: 11, weight: .heavy, design: .rounded)).tracking(1)
+                    .font(.scaled(11, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
                     .foregroundStyle(.black)
                     .padding(.horizontal, 12).padding(.vertical, 7)
                     .background(Capsule().fill(Theme.goldGradient))
@@ -75,23 +75,23 @@ struct DailyClaimCard: View {
     @ViewBuilder private var docketRow: some View {
         if store.dailyStreak > 1 || store.streakFreezeCount > 0 {
             HStack(spacing: 8) {
-                Image(systemName: "snowflake").font(.system(size: 12, weight: .bold))
+                Image(systemName: "snowflake").font(.scaled(12, weight: .bold, relativeTo: .caption1))
                     .foregroundStyle(Theme.verify)
                 if store.streakFreezeCount > 0 {
                     Text(store.streakFreezeCount == 1
                          ? "1× streak-freeze — covers one missed day."
                          : "\(store.streakFreezeCount)× streak-freeze — covers \(store.streakFreezeCount) missed days.")
-                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                        .font(.scaled(11, weight: .semibold, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                 } else {
                     Text("No streak-freeze. One miss and day \(store.dailyStreak) resets.")
-                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                        .font(.scaled(11, weight: .semibold, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                 }
                 Spacer()
                 Button {
                     store.buyStreakFreeze()
                 } label: {
                     Text("+\(AuctionStore.streakFreezeGavelCost) ⚖︎")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .font(.scaled(11, weight: .heavy, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.verify)
                         .padding(.horizontal, 9).padding(.vertical, 5)
                         .background(Capsule().stroke(Theme.verify.opacity(0.55), lineWidth: 1))

@@ -52,12 +52,12 @@ struct OnboardingView: View {
             BrandMark(size: 86)
             Wordmark(size: 30)
             Text("Find a high value man,\nfind out what you're worth.")
-                .font(.system(size: 14, weight: .semibold, design: .serif)).italic()
+                .font(.scaled(14, weight: .semibold, design: .serif, relativeTo: .footnote)).italic()
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.inkSoft)
 
             Text("Choose your side of the floor")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .font(.scaled(13, weight: .bold, design: .rounded, relativeTo: .footnote))
                 .foregroundStyle(Theme.inkFaint)
                 .padding(.top, 6)
 
@@ -70,10 +70,10 @@ struct OnboardingView: View {
             // House rules — the up-front disclosure that makes the Copycat
             // game fair: fakes exist, you're told the instant you bid on one.
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "sparkles").font(.system(size: 11, weight: .bold))
+                Image(systemName: "sparkles").font(.scaled(11, weight: .bold, relativeTo: .caption2))
                     .foregroundStyle(Theme.copycat).padding(.top, 1)
                 Text("House rules: AI “Copycat” profiles walk the floor unlabelled. Bid on one and you're told instantly — it costs you reputation, never money. Spot the fakes.")
-                    .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                    .font(.scaled(11, weight: .medium, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
             .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
@@ -81,7 +81,7 @@ struct OnboardingView: View {
 
             Spacer()
             Text("Demo only · play money · fictional profiles")
-                .font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                .font(.scaled(11, weight: .medium, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                 .padding(.bottom, 12)
         }
         .screenPadding()
@@ -98,16 +98,16 @@ struct OnboardingView: View {
             GlassSurface {
                 HStack(spacing: 16) {
                     Image(systemName: r.systemImage)
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.scaled(26, weight: .bold, relativeTo: .title1))
                         .foregroundStyle(tint)
                         .frame(width: 56, height: 56)
                         .background(Circle().fill(tint.opacity(0.16)))
                     VStack(alignment: .leading, spacing: 4) {
                         Text(r.sideTitle)
-                            .font(.system(size: 20, weight: .heavy, design: .serif))
+                            .font(.scaled(20, weight: .heavy, design: .serif, relativeTo: .title3))
                             .foregroundStyle(Theme.ink)
                         Text(caption)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.scaled(13, weight: .medium, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkSoft)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -128,12 +128,12 @@ struct OnboardingView: View {
             VStack(spacing: 16) {
                 HStack {
                     Button { Motion.run(Motion.spring) { role = nil } } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .bold))
+                        Image(systemName: "chevron.left").font(.scaled(17, weight: .bold, relativeTo: .body))
                             .foregroundStyle(Theme.ink)
                     }
                     Spacer()
                     Text("Build your \(role == .woman ? "lot" : "bidder card")")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.scaled(15, weight: .bold, design: .rounded, relativeTo: .subheadline))
                         .foregroundStyle(Theme.inkSoft)
                     Spacer()
                     Image(systemName: "chevron.left").opacity(0)
@@ -179,14 +179,14 @@ struct OnboardingView: View {
                             } label: {
                                 HStack(spacing: 6) {
                                     label(promptQuestions[i])
-                                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                                    Image(systemName: "chevron.down").font(.scaled(9, weight: .bold, relativeTo: .caption2))
                                         .foregroundStyle(Theme.gold)
                                     Spacer()
                                 }
                             }
                             TextField("", text: $promptAnswers[i], prompt: Text("Your answer").foregroundStyle(Theme.inkFaint), axis: .vertical)
                                 .textFieldStyle(.plain)
-                                .font(.system(size: 15, weight: .medium))
+                                .font(.scaled(15, weight: .medium, relativeTo: .subheadline))
                                 .foregroundStyle(Theme.ink)
                                 .padding(12)
                                 .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.05)))
@@ -202,16 +202,16 @@ struct OnboardingView: View {
                     GlassCard(title: "Starting bid", icon: "dollarsign.circle.fill", tint: Theme.gold) {
                         Toggle(isOn: $startingBidOn.animation(Motion.snap)) {
                             Text("Set a floor")
-                                .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                                .font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                         }
                         .tint(Theme.gold)
                         if startingBidOn {
                             field("Minimum bid (USD)", text: $startingBidText, placeholder: "250", keyboard: .numberPad)
                             Text("Bidders see your floor. You can still accept above it, anytime.")
-                                .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                                .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                         } else {
                             Text("No floor — open the bidding to anything.")
-                                .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                                .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                         }
                     }
                 }
@@ -256,7 +256,7 @@ struct OnboardingView: View {
                     .tint(Theme.gold)
                 Spacer()
                 Text("\(ageFromDob)")
-                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(Theme.gold)
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(Capsule().fill(Theme.gold.opacity(0.12)))
@@ -264,7 +264,7 @@ struct OnboardingView: View {
             if ageFromDob < 18 {
                 Label("You must be 18 or older to use Auction Baby.",
                       systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.scaled(11, weight: .semibold, relativeTo: .caption2))
                     .foregroundStyle(Theme.danger)
             }
         }
@@ -336,7 +336,7 @@ struct OnboardingView: View {
 
     private func label(_ t: String) -> some View {
         Text(t.uppercased())
-            .font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1)
+            .font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2)).tracking(1)
             .foregroundStyle(Theme.inkFaint)
     }
 
@@ -350,7 +350,7 @@ struct OnboardingView: View {
                 .textFieldStyle(.plain)
                 .accessibilityIdentifier(title)   // stable hook for UI tests (e.g. "Name")
                 .keyboardType(keyboard)
-                .font(.system(size: 15, weight: .medium))
+                .font(.scaled(15, weight: .medium, relativeTo: .subheadline))
                 .foregroundStyle(Theme.ink)
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.05)))

@@ -29,13 +29,13 @@ struct SafetyCenterView: View {
                 VStack(spacing: 14) {
                     GlassCard(tint: Theme.verify) {
                         HStack(spacing: 12) {
-                            Image(systemName: "shield.lefthalf.filled").font(.system(size: 26, weight: .bold))
+                            Image(systemName: "shield.lefthalf.filled").font(.scaled(26, weight: .bold, relativeTo: .title1))
                                 .foregroundStyle(Theme.verify)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Your safety comes first")
-                                    .font(.system(size: 16, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
+                                    .font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
                                 Text("Date smart. Trust the checks. Report the rest.")
-                                    .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                                    .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                             }
                             Spacer(minLength: 0)
                         }
@@ -43,11 +43,11 @@ struct SafetyCenterView: View {
                     ForEach(tips, id: \.1) { tip in
                         GlassSurface(corner: Theme.cornerL) {
                             HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: tip.0).font(.system(size: 16, weight: .bold))
+                                Image(systemName: tip.0).font(.scaled(16, weight: .bold, relativeTo: .callout))
                                     .foregroundStyle(Theme.gold).frame(width: 30)
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(tip.1).font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.ink)
-                                    Text(tip.2).font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                                    Text(tip.1).font(.scaled(14, weight: .bold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
+                                    Text(tip.2).font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                                 Spacer(minLength: 0)
@@ -60,18 +60,18 @@ struct SafetyCenterView: View {
                             GlassSurface(corner: Theme.cornerL, tint: Theme.gold) {
                                 HStack(alignment: .top, spacing: 12) {
                                     Image(systemName: "ladybug.fill")
-                                        .font(.system(size: 16, weight: .bold))
+                                        .font(.scaled(16, weight: .bold, relativeTo: .callout))
                                         .foregroundStyle(Theme.gold).frame(width: 30)
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text("Report a bug")
-                                            .font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.ink)
+                                            .font(.scaled(14, weight: .bold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                                         Text("Something look wrong? Opens Mail with a pre-filled report — your device info is already attached.")
-                                            .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                                            .font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                                             .fixedSize(horizontal: false, vertical: true)
                                     }
                                     Spacer(minLength: 0)
                                     Image(systemName: "chevron.right")
-                                        .font(.system(size: 12, weight: .bold))
+                                        .font(.scaled(12, weight: .bold, relativeTo: .caption1))
                                         .foregroundStyle(Theme.inkFaint)
                                 }
                                 .padding(14)
@@ -86,17 +86,17 @@ struct SafetyCenterView: View {
                         GlassSurface(corner: Theme.cornerL) {
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: "hand.raised.slash.fill")
-                                    .font(.system(size: 16, weight: .bold))
+                                    .font(.scaled(16, weight: .bold, relativeTo: .callout))
                                     .foregroundStyle(Theme.rose).frame(width: 30)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text("Blocked users")
-                                        .font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.ink)
+                                        .font(.scaled(14, weight: .bold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                                     Text(blockedSubtitle)
-                                        .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                                        .font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                                 }
                                 Spacer(minLength: 0)
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 12, weight: .bold))
+                                    .font(.scaled(12, weight: .bold, relativeTo: .caption1))
                                     .foregroundStyle(Theme.inkFaint)
                             }
                             .padding(14)
@@ -135,10 +135,10 @@ struct ReportSheet: View {
             ScrollView {
                 VStack(spacing: 10) {
                     Text("Report \(profile.name)")
-                        .font(.system(size: 18, weight: .heavy, design: .serif)).foregroundStyle(Theme.ink)
+                        .font(.scaled(18, weight: .heavy, design: .serif, relativeTo: .body)).foregroundStyle(Theme.ink)
                         .padding(.top, 8)
                     Text("They'll be removed from your floor and won't be able to reach you. Reports are reviewed by our team.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
+                        .font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
                         .padding(.horizontal, 20)
                     ForEach(reasons, id: \.self) { reason in
                         Button {
@@ -147,7 +147,7 @@ struct ReportSheet: View {
                             onReported()
                         } label: {
                             HStack {
-                                Text(reason).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
+                                Text(reason).font(.scaled(15, weight: .semibold, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
                                 Spacer()
                                 Image(systemName: "chevron.right").foregroundStyle(Theme.inkFaint)
                             }
@@ -233,10 +233,10 @@ struct BlockedUsersView: View {
             HStack(spacing: 12) {
                 AvatarCircle(name: row.name, hue: row.hue, photoName: nil, size: 44, revealed: true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(row.name).font(.system(size: 14, weight: .heavy, design: .serif))
+                    Text(row.name).font(.scaled(14, weight: .heavy, design: .serif, relativeTo: .footnote))
                         .foregroundStyle(Theme.ink)
                     if let reason = row.reason, !reason.isEmpty {
-                        Text(reason).font(.system(size: 11)).foregroundStyle(Theme.inkFaint).lineLimit(1)
+                        Text(reason).font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint).lineLimit(1)
                     }
                 }
                 Spacer()
@@ -247,7 +247,7 @@ struct BlockedUsersView: View {
                         if unblockingId == row.id { ProgressView().tint(Theme.ink) }
                         else { Text("Unblock") }
                     }
-                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                     .foregroundStyle(Theme.ink)
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(Capsule().fill(.white.opacity(0.10)))

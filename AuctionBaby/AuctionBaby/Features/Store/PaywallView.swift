@@ -92,14 +92,14 @@ struct PaywallView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: {
-                        Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
+                        Image(systemName: "xmark").font(.scaled(13, weight: .bold, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkSoft).frame(width: 30, height: 30)
                             .background(Circle().fill(.white.opacity(0.08)))
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Restore") { Task { await storeKit.restore() } }
-                        .font(.system(size: 13)).foregroundStyle(Theme.inkFaint)
+                        .font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkFaint)
                 }
             }
             .overlay { if storeKit.isWorking { workingOverlay } }
@@ -112,19 +112,19 @@ struct PaywallView: View {
     private var hero: some View {
         VStack(spacing: 12) {
             Image(systemName: trigger.icon)
-                .font(.system(size: 30, weight: .bold))
+                .font(.scaled(30, weight: .bold, relativeTo: .largeTitle))
                 .foregroundStyle(.black)
                 .frame(width: 68, height: 68)
                 .background(Circle().fill(Theme.goldGradient))
                 .depth(34, strong: true)
                 .scaleEffect(appear ? 1 : 0.6)
             Text(trigger.headline)
-                .font(.system(size: 28, weight: .heavy, design: .serif))
+                .font(.scaled(28, weight: .heavy, design: .serif, relativeTo: .title1))
                 .foregroundStyle(Theme.ink)
                 .multilineTextAlignment(.center)
                 .opacity(appear ? 1 : 0)
             Text("Auction Baby Pass")
-                .font(.system(size: 12, weight: .heavy, design: .rounded)).tracking(2)
+                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1)).tracking(2)
                 .foregroundStyle(Theme.gold)
         }
         .padding(.top, 4)
@@ -147,16 +147,16 @@ struct PaywallView: View {
         } label: {
             VStack(spacing: 6) {
                 Image(systemName: tier.systemImage)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.scaled(16, weight: .bold, relativeTo: .callout))
                     .foregroundStyle(isSelected ? Theme.gold : Theme.inkFaint)
                 Text(tier.title)
-                    .font(.system(size: 13, weight: .heavy, design: .serif))
+                    .font(.scaled(13, weight: .heavy, design: .serif, relativeTo: .footnote))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1).minimumScaleFactor(0.7)
                 Text(product?.displayPrice ?? fallbackPrice(tier))
-                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(isSelected ? Theme.gold : Theme.inkSoft)
-                Text("/ month").font(.system(size: 9)).foregroundStyle(Theme.inkFaint)
+                Text("/ month").font(.scaled(9, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
@@ -189,15 +189,15 @@ struct PaywallView: View {
                     let included = (tiers.firstIndex(of: benefit.1) ?? 0) <= (tiers.firstIndex(of: selected) ?? 0)
                     HStack(spacing: 10) {
                         Image(systemName: included ? "checkmark.circle.fill" : "lock.fill")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.scaled(14, weight: .bold, relativeTo: .footnote))
                             .foregroundStyle(included ? Theme.success : Theme.inkFaint)
                         Text(benefit.0)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.scaled(13, weight: .semibold, relativeTo: .footnote))
                             .foregroundStyle(included ? Theme.ink : Theme.inkFaint)
                         Spacer()
                         if !included {
                             Text(benefit.1.title)
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
                                 .foregroundStyle(Theme.rose)
                         }
                     }
@@ -212,7 +212,7 @@ struct PaywallView: View {
         VStack(spacing: 10) {
             if storeKit.isSubscribed(to: selected) {
                 Label("\(selected.title) is active", systemImage: "checkmark.seal.fill")
-                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(Theme.success)
                     .frame(maxWidth: .infinity).padding(.vertical, 15)
             } else {
@@ -224,7 +224,7 @@ struct PaywallView: View {
                 }
                 if subscriptionProduct == nil {
                     Text("Products load from the App Store — in the simulator, run with the bundled StoreKit configuration.")
-                        .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
+                        .font(.scaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                         .multilineTextAlignment(.center)
                 }
             }
@@ -242,7 +242,7 @@ struct PaywallView: View {
                 dismiss()
             } label: {
                 Label("Demo: activate \(selected.title) free", systemImage: "testtube.2")
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(Theme.verify)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
@@ -259,7 +259,7 @@ struct PaywallView: View {
     private var footer: some View {
         VStack(spacing: 6) {
             Text("Auto-renews monthly until canceled at least 24h before the period ends. Billed to your Apple ID; manage in Settings.")
-                .font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
+                .font(.scaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                 .multilineTextAlignment(.center)
             HStack(spacing: 14) {
                 if let termsURL = BackendConfig.termsURL {
@@ -269,7 +269,7 @@ struct PaywallView: View {
                     Link("Privacy", destination: privacyURL)
                 }
             }
-            .font(.system(size: 11, weight: .semibold)).tint(Theme.gold)
+            .font(.scaled(11, weight: .semibold, relativeTo: .caption2)).tint(Theme.gold)
         }
     }
 

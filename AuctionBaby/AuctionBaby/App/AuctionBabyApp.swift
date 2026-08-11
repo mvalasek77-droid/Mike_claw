@@ -43,6 +43,10 @@ struct AuctionBabyApp: App {
                 .environmentObject(profileSync)
                 .preferredColorScheme(.dark)
                 .tint(Theme.gold)
+                // Dynamic Type: fonts scale via `Font.scaled(...)`. Clamp the
+                // upper bound so the largest accessibility sizes can't shatter
+                // the dense auction layouts, while still honoring a wide range.
+                .dynamicTypeSize(.xSmall ... .accessibility3)
                 .task {
                     #if DEBUG
                     // UI-test determinism: `-uiTestReset` wipes any persisted
@@ -250,7 +254,7 @@ struct SplashView: View {
                     .opacity(appear ? 1 : 0)
 
                 Text("Find a high value man,\nfind out what you're worth.")
-                    .font(.system(size: 14, weight: .semibold, design: .serif))
+                    .font(.scaled(14, weight: .semibold, design: .serif, relativeTo: .footnote))
                     .italic()
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Theme.inkSoft)

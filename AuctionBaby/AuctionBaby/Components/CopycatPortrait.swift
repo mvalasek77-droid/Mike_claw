@@ -234,8 +234,8 @@ struct CopycatPortrait: View {
             Spacer()
             HStack {
                 HStack(spacing: 4) {
-                    Image(systemName: "sparkles").font(.system(size: 9, weight: .black))
-                    Text("AI · COPYCAT").font(.system(size: 9, weight: .black, design: .rounded)).tracking(1)
+                    Image(systemName: "sparkles").font(.scaled(9, weight: .black, relativeTo: .caption2))
+                    Text("AI · COPYCAT").font(.scaled(9, weight: .black, design: .rounded, relativeTo: .caption2)).tracking(1)
                 }
                 .foregroundStyle(.white)
                 .padding(.horizontal, 8).padding(.vertical, 4)
@@ -243,7 +243,7 @@ struct CopycatPortrait: View {
                 .overlay(Capsule().strokeBorder(.white.opacity(0.4), lineWidth: 0.6))
                 Spacer()
                 Text(style.caption)
-                    .font(.system(size: 9, weight: .heavy, design: .rounded))
+                    .font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
                     .foregroundStyle(.white.opacity(0.95))
                     .padding(.horizontal, 8).padding(.vertical, 4)
                     .background(Capsule().fill(style.accent.opacity(0.55)))

@@ -41,15 +41,15 @@ struct FiltersView: View {
         GlassCard(title: "Age", icon: "calendar", tint: Theme.gold) {
             HStack {
                 Text("\(store.filters.minAge) – \(store.filters.maxAge)")
-                    .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
+                    .font(.scaled(18, weight: .heavy, design: .rounded, relativeTo: .body)).foregroundStyle(Theme.gold)
                 Spacer()
             }
             VStack(spacing: 4) {
-                HStack { Text("Min").font(.system(size: 11)).foregroundStyle(Theme.inkFaint); Spacer() }
+                HStack { Text("Min").font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint); Spacer() }
                 Slider(value: Binding(get: { Double(store.filters.minAge) },
                                       set: { store.filters.minAge = min(Int($0), store.filters.maxAge) }),
                        in: 18...80, step: 1).tint(Theme.gold)
-                HStack { Text("Max").font(.system(size: 11)).foregroundStyle(Theme.inkFaint); Spacer() }
+                HStack { Text("Max").font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint); Spacer() }
                 Slider(value: Binding(get: { Double(store.filters.maxAge) },
                                       set: { store.filters.maxAge = max(Int($0), store.filters.minAge) }),
                        in: 18...80, step: 1).tint(Theme.gold)
@@ -72,7 +72,7 @@ struct FiltersView: View {
                         Spacer()
                         Image(systemName: "chevron.right")
                     }
-                    .font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.rose)
+                    .font(.scaled(13, weight: .bold, design: .rounded, relativeTo: .footnote)).foregroundStyle(Theme.rose)
                     .padding(.vertical, 4)
                 }.buttonStyle(.plain)
             }
@@ -84,13 +84,13 @@ struct FiltersView: View {
                 }
             )) {
                 Label("Verified profiles only", systemImage: "checkmark.seal.fill")
-                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.ink)
+                    .font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
             }
             .tint(Theme.verify)
             .opacity(hasReserve || store.filters.verifiedOnly ? 1 : 0.45)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("MATCH INTERESTS").font(.system(size: 10, weight: .bold, design: .rounded))
+                Text("MATCH INTERESTS").font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
                     .tracking(1).foregroundStyle(Theme.inkFaint)
                 FlowChips(items: FilterPreferences.interestPool, selected: f.interests)
                     .disabled(!hasReserve)
@@ -109,7 +109,7 @@ struct FiltersView: View {
                     }
                 } label: {
                     Label("Clear premium filters", systemImage: "xmark.circle.fill")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .font(.scaled(12, weight: .bold, design: .rounded, relativeTo: .caption1))
                         .foregroundStyle(Theme.danger)
                 }
                 .buttonStyle(.plain)
@@ -123,7 +123,7 @@ struct FiltersView: View {
     private var reserveRequirementsCard: some View {
         GlassCard(title: "Reserve Requirements", icon: "checklist", tint: Theme.gold) {
             Text("Dealbreakers. Anyone whose profile clearly doesn't fit is hidden from the floor. Blank fields on a profile always pass.")
-                .font(.system(size: 11))
+                .font(.scaled(11, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkFaint)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -135,7 +135,7 @@ struct FiltersView: View {
                         Spacer()
                         Image(systemName: "chevron.right")
                     }
-                    .font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
+                    .font(.scaled(13, weight: .bold, design: .rounded, relativeTo: .footnote)).foregroundStyle(Theme.gold)
                     .padding(.vertical, 4)
                 }.buttonStyle(.plain)
             }
@@ -159,11 +159,11 @@ struct FiltersView: View {
     private var heightRow: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Minimum height").font(.system(size: 13, weight: .semibold))
+                Text("Minimum height").font(.scaled(13, weight: .semibold, relativeTo: .footnote))
                     .foregroundStyle(Theme.ink)
                 Spacer()
                 Text(store.filters.minHeightCm == 0 ? "Any" : Self.formatHeight(store.filters.minHeightCm))
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(Theme.gold)
             }
             // 0 = "Any", 150cm–200cm range covered by the slider.
@@ -178,7 +178,7 @@ struct FiltersView: View {
         title: String, options: Option.AllCases, binding: Binding<Option?>
     ) -> some View where Option.RawValue == String {
         HStack {
-            Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text(title).font(.scaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
             Spacer()
             Menu {
                 Button("Any") { binding.wrappedValue = nil }
@@ -188,8 +188,8 @@ struct FiltersView: View {
             } label: {
                 HStack(spacing: 4) {
                     Text(binding.wrappedValue?.rawValue ?? "Any")
-                        .font(.system(size: 13, weight: .heavy, design: .rounded))
-                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                        .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                    Image(systemName: "chevron.down").font(.scaled(9, weight: .bold, relativeTo: .caption2))
                 }
                 .foregroundStyle(Theme.gold)
                 .padding(.horizontal, 12).padding(.vertical, 7)
