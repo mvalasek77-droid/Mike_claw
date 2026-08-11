@@ -12,6 +12,7 @@ struct AuctionFeedView: View {
     @State private var showFilters = false
     @State private var showActivity = false
     @State private var showLotOfDay = false
+    @State private var showGavelStore = false
     /// Explicit nav path so a Floor card can push its detail from a body tap
     /// while the inline Bid button keeps its own tap (see the lots ForEach).
     @State private var lotPath: [Profile] = []
@@ -101,6 +102,7 @@ struct AuctionFeedView: View {
                 }
             }
             .sheet(isPresented: $showActivity) { ActivityView() }
+            .sheet(isPresented: $showGavelStore) { GavelStoreView() }
             .sheet(isPresented: $showLotOfDay) {
                 if let lot = store.lotOfTheDay {
                     LotOfTheDayIntroSheet(woman: lot) { profile in
@@ -165,14 +167,20 @@ struct AuctionFeedView: View {
                     .padding(.horizontal, 9).padding(.vertical, 5)
                     .background(Capsule().fill(Theme.rose.opacity(0.16)))
                 }
-                HStack(spacing: 5) {
-                    Image(systemName: "hammer.fill").font(.dynamicScaled(11, weight: .bold, relativeTo: .caption2))
-                    Text(Tally.compact(store.wallet))
-                        .font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                Button { showGavelStore = true } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "hammer.fill").font(.dynamicScaled(11, weight: .bold, relativeTo: .caption2))
+                        Text(Tally.compact(store.wallet))
+                            .font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                        Image(systemName: "plus.circle.fill").font(.dynamicScaled(11, weight: .bold, relativeTo: .caption2))
+                            .opacity(0.75)
+                    }
+                    .foregroundStyle(Theme.gold)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(Theme.gold.opacity(0.14)))
                 }
-                .foregroundStyle(Theme.gold)
-                .padding(.horizontal, 10).padding(.vertical, 5)
-                .background(Capsule().fill(Theme.gold.opacity(0.14)))
+                .buttonStyle(.plain)
+                .accessibilityLabel("Gavels: \(store.wallet). Tap to buy more.")
             }
             Text("Bid what a date is worth. She unlocks your photo when she accepts.")
                 .font(.dynamicScaled(12, weight: .medium, relativeTo: .caption1))
