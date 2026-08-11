@@ -64,7 +64,8 @@ struct MatchRow: View {
                             .foregroundStyle(Theme.ink)
                         if other.verified { VerifiedBadge(size: 13) }
                     }
-                    Text(match.messages.last?.text ?? "Say hello")
+                    Text(match.messages.last.map { $0.imageData != nil && $0.text.isEmpty ? "📷 Photo"
+                                                        : ($0.text.isEmpty ? "Say hello" : $0.text) } ?? "Say hello")
                         .font(.dynamicScaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft).lineLimit(1)
                     if match.dateReserved {
                         HStack(spacing: 4) {
