@@ -29,10 +29,9 @@ Legend: ☐ to do · ✅ done · ⚠️ risk
    booking fee via Stripe** and *unlocks nothing in the app* — it's the
    real-world-service exception. Apple may still challenge it. **Recommendation
    for v1.0 submission: ship with the Reserve kill-switch OFF** (the remote
-   flag hides the feature fleet-wide) so it isn't in the reviewed binary, then
-   turn it on post-approval and be ready to justify it. If you leave it on,
-   the review notes must explain it's a real-world reservation, not IAP-able
-   content.
+   flag hides the live checkout fleet-wide). Do not turn it on immediately
+   after approval; submit the exact payment behavior for review later and be
+   ready to explain the real-world service, fulfiller, and refund terms.
 
 3. **UGC moderation (Guideline 1.2).** A dating app with user profiles/photos/
    chat MUST have: content you can filter, a **report + block** mechanism,
@@ -41,9 +40,11 @@ Legend: ☐ to do · ✅ done · ⚠️ risk
    objectionable content. The app has report/block, admin moderation, and
    suspend/delete — surface all of it in the review notes.
 
-Also: **do not mention, link to, or hint at the external web Gavel shop from
-inside the iOS app.** In-app Gavels must be sold only via IAP (they are). Any
-in-app steering to a cheaper web purchase is an anti-steering rejection.
+Also: **do not mention, link to, hint at, or grant balances from the external
+web Gavel shop inside the submitted iOS configuration.** In-app Gavels are
+digital goods and must be sold through IAP absent an applicable regional rule
+or entitlement. The code contains a web-balance synchronization path, so verify
+that path is unconfigured—not merely that its CTA is hidden.
 
 ---
 
@@ -76,6 +77,10 @@ in-app steering to a cheaper web purchase is an anti-steering rejection.
 - ☐ **Terms of Use (EULA) URL** and **Privacy Policy URL** — the same ones set
       in `Secrets.xcconfig` (`AB_TERMS_URL` / `AB_PRIVACY_URL`); Privacy Policy
       is a required ASC field
+- ☐ **Content Rights:** answer **Yes** for the production app when it displays
+      user-uploaded profiles/photos or other UGC, and confirm you have the
+      necessary rights and moderation process. Answer No only for a genuinely
+      local/simulated build containing solely owned or licensed assets.
 - ☐ **Copyright**, **Version** string matching `CFBundleShortVersionString`
 
 ## D. Screenshots & preview
@@ -106,6 +111,13 @@ Complete **App Privacy → Data collection** truthfully. Likely declarations:
 - ☐ **Usage/Diagnostics**: only if you actually collect analytics/crash data
       (be honest; the app uses an on-device ErrorMonitor — declare only what
       leaves the device)
+- ☐ **Verification data and sensitive/profile attributes**: declare anything
+      the configured verification service or Workers receive or retain
+- ☐ Treat `appAccountToken` as linked when a backend uses it to route a wallet
+      or refund; a UUID is not automatically "Data Not Linked to You"
+- ☐ Inventory every production processor and log sink: Apple/StoreKit, Sign in
+      with Apple, push delivery, photo storage/CDN, verification, Stripe (if
+      present), and Worker/server logs
 - ☐ Confirm the label matches the Privacy Policy exactly
 - ☐ **Account deletion** is in-app (Settings → Delete Account) — required since
       2022 for any account-creation app ✅ (already built)
@@ -164,10 +176,10 @@ SUBSCRIPTIONS: "Auction Baby Pass" (Paddle / Reserve / Black Card, monthly,
 auto-renewable) unlocks bidder features. Terms + Privacy are linked on the
 paywall and in Settings. Restore Purchases is on the paywall.
 
-[If Reserve-the-date is enabled:] "Reserve the date" charges a real-world
-booking fee via Stripe to hold an in-person date. It unlocks NO in-app
-content and never sends money to another user — it is a real-world service,
-not IAP-able digital content.
+RESERVE CHECKOUT: the production Reserve checkout is disabled for this
+submission. Demo Mode may mark a fictional date reserved without payment so
+the reviewer can inspect the state. No external checkout or digital
+entitlement is offered by that demo action.
 ```
 
 ---
@@ -187,16 +199,27 @@ Pass"), three tiers, each **monthly**:
 **Consumables:**
 | Product | Product ID | Grants |
 |---|---|---|
-| Gavels — Handful | `…gavels.handful` | 1,000 |
-| Gavels — Stack | `…gavels.stack` | 5,000 |
-| Gavels — Chest | `…gavels.chest` | 14,000 |
-| Gavels — Vault | `…gavels.vault` | 30,000 |
-| Spotlight Boost | `…boost.spotlight` | 30 min top placement |
+| Gavels — Handful | `com.valasek.auctionbaby.gavels.handful` | 1,000 · $4.99 |
+| Gavels — Stack | `com.valasek.auctionbaby.gavels.stack` | 5,000 · $19.99 |
+| Gavels — Chest | `com.valasek.auctionbaby.gavels.chest` | 14,000 · $49.99 |
+| Gavels — Vault | `com.valasek.auctionbaby.gavels.vault` | 30,000 · $99.99 |
+| Spotlight Boost | `com.valasek.auctionbaby.boost.spotlight` | 30 min top placement · $3.99 |
 
-**Non-consumables** — status archetypes (`…goodguy` $4.99 … `…trillionaire`
-$9,999.99). ⚠️ Prices above $999.99 require Apple's **custom pricing** (up to
-$10,000) and draw extra scrutiny — confirm you actually want a $9,999.99 IAP,
-and be ready to justify it as a status/vanity good, not a service.
+**Non-consumable status archetypes:**
+| Product | Product ID | Price |
+|---|---|---|
+| Good Guy | `com.valasek.auctionbaby.status.goodguy` | $4.99 |
+| In & Out Guy | `com.valasek.auctionbaby.status.inandout` | $9.99 |
+| Why Not Guy | `com.valasek.auctionbaby.status.whynot` | $19.99 |
+| Got a Good Job | `com.valasek.auctionbaby.status.goodjob` | $99.99 |
+| Inheritance Money Guy | `com.valasek.auctionbaby.status.inheritance` | $999.99 |
+| Influencer | `com.valasek.auctionbaby.status.influencer` | $2,499.99 |
+| I Drive a Ferrari | `com.valasek.auctionbaby.status.ferrari` | $4,999.99 |
+| Trillionaire | `com.valasek.auctionbaby.status.trillionaire` | $9,999.99 |
+
+⚠️ Prices above $999.99 require Apple's custom pricing and draw extra scrutiny.
+Confirm you want these prices and be ready to justify them as status/vanity
+goods—not services.
 
 - ☐ Every product: reviewed state must be **"Ready to Submit"** and attached
       to **this app version** (subscriptions can be submitted with the build)
@@ -225,9 +248,10 @@ implements them; verify before submit:
 - ✅ **Price** (from StoreKit `displayPrice`)
 - ✅ **What's included** (benefits matrix)
 - ✅ **Functional Terms (EULA) + Privacy Policy links** — sourced from
-      `BackendConfig` (⚠️ these are blank until `AB_TERMS_URL` / `AB_PRIVACY_URL`
-      are set in `Secrets.xcconfig`; **set them or the links won't render and
-      review fails**)
+      `BackendConfig`. The code currently falls back to hosted GitHub Pages
+      URLs when `AB_TERMS_URL` / `AB_PRIVACY_URL` are blank. Prefer explicit
+      HTTPS Release values and verify both public pages on a clean device; they
+      must describe the real production data flows and deletion behavior.
 - ✅ **Restore Purchases** (toolbar)
 - ✅ **Auto-renew disclosure** ("Auto-renews monthly until canceled at least
       24h before the period ends. Billed to your Apple ID; manage in Settings.")
@@ -281,9 +305,11 @@ Auction Baby Pass is an auto-renewable subscription.
 - ☐ Part 1 A–K complete
 - ☐ `AB_TERMS_URL` / `AB_PRIVACY_URL` set, both pages live, linked in paywall +
       Settings + App description
-- ☐ Admin credential rotated in Worker secrets (outstanding from QA)
-- ☐ Reserve-the-date kill-switch decision made (recommend OFF for v1.0)
-- ☐ Web Gavel shop not referenced anywhere in the iOS binary
+- ☐ Admin credential commitment **and** Worker/admin secrets rotated
+- ☐ Reserve-the-date kill-switch verified OFF from a clean production install
+- ☐ Web Gavel shop not referenced and its iOS balance-grant path unconfigured
+- ☐ UGC report/block → moderator queue → action tested against production
+- ☐ In-app account deletion tested against production, not Demo Mode alone
 - ☐ All IAP products "Ready to Submit" and attached to the version
 - ☐ Demo Mode verified by a fresh reviewer walk-through
 - ☐ Age rating 17+; Privacy Nutrition Label matches Privacy Policy
