@@ -2018,11 +2018,17 @@ final class AuctionStore: ObservableObject {
             let boostPull = self.isBoosted ? 0.25 : 0
             let gildPull = bid.gilded ? 0.30 : 0
             let priorityPull = self.priorityPlacementEnabled ? 0.20 : 0
-            // TEST profile always accepts, so bid → match → chat is deterministic.
-            // Remove with the "TEST — Rae (real)" profile before launch.
-            let accepted = bid.woman.name == "TEST — Rae (real)"
-                ? true
-                : (ratio + creditPull + boostPull + gildPull + priorityPull + Double.random(in: -0.25...0.25)) >= 1.0
+            // TEST profile: accepts ONLY Mike Valasek's bids, denies everyone
+            // else — so bid → match → chat is deterministic for the founder and
+            // exclusive to him. Remove with the "TEST — Rae (real)" profile
+            // before launch.
+            let accepted: Bool
+            if bid.woman.name == "TEST — Rae (real)" {
+                accepted = bid.man.name.trimmingCharacters(in: .whitespaces)
+                    .caseInsensitiveCompare("Mike Valasek") == .orderedSame
+            } else {
+                accepted = (ratio + creditPull + boostPull + gildPull + priorityPull + Double.random(in: -0.25...0.25)) >= 1.0
+            }
 
             bid.status = accepted ? .accepted : .declined
             self.outgoingBids[idx] = bid
