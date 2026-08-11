@@ -13,6 +13,7 @@ struct BidSheet: View {
     @State private var amount: Int
     @State private var note: String = ""
     @State private var showStore = false
+    @State private var showGavelStore = false
     @State private var gild = false
     @State private var insure = false
 
@@ -118,6 +119,7 @@ struct BidSheet: View {
 
                 gildToggle
                 insuranceToggle
+                gavelBalanceRow
 
                 intentCallout
 
@@ -153,6 +155,31 @@ struct BidSheet: View {
         .motion(Motion.snap, value: amount)
         .motion(Motion.snap, value: gild)
         .sheet(isPresented: $showStore) { PaywallView(trigger: .bidLimit) }
+        .sheet(isPresented: $showGavelStore) { GavelStoreView() }
+    }
+
+    /// Current Gavel balance + a one-tap path to buy more, right where gilding
+    /// and insurance spend them. Tinted red when too low to gild.
+    private var gavelBalanceRow: some View {
+        let low = store.wallet < AuctionStore.gildedBidCost
+        return Button { showGavelStore = true } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "hammer.fill").font(.dynamicScaled(11, weight: .bold, relativeTo: .caption2))
+                Text("\(Tally.compact(store.wallet)) Gavels")
+                    .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                if low {
+                    Text("· low").font(.dynamicScaled(11, weight: .bold, relativeTo: .caption2))
+                }
+                Spacer()
+                Text("Get more").font(.dynamicScaled(12, weight: .bold, design: .rounded, relativeTo: .caption1))
+                Image(systemName: "plus.circle.fill").font(.dynamicScaled(12, weight: .bold, relativeTo: .caption1))
+            }
+            .foregroundStyle(low ? Theme.rose : Theme.gold)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(Capsule().fill((low ? Theme.rose : Theme.gold).opacity(0.10)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(store.wallet) Gavels. Tap to buy more.")
     }
 
     /// Dispatch the bid to the matching Worker (slice 4b1c) when the target

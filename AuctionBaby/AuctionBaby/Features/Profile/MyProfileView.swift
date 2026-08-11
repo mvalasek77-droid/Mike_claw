@@ -19,6 +19,7 @@ struct MyProfileView: View {
     @State private var showOpeningScript = false
     @State private var showStanding = false
     @State private var showEditProfile = false
+    @State private var showGavelStore = false
 
     private var me: Profile { store.me }
     private var isMan: Bool { store.role == .man }
@@ -55,6 +56,7 @@ struct MyProfileView: View {
             .sheet(isPresented: $showOpeningScript) { OpeningBidScriptSheet() }
             .sheet(isPresented: $showEditProfile) { EditProfileSheet() }
             .sheet(isPresented: $showStanding) { StandingView() }
+            .sheet(isPresented: $showGavelStore) { GavelStoreView() }
             .sheet(isPresented: $showAdmin) { AdminGateView() }
             .alert("Reset account?", isPresented: $showReset) {
                 Button("Reset", role: .destructive) {
@@ -638,6 +640,18 @@ struct MyProfileView: View {
 
     private var settingsCard: some View {
         GlassCard(title: "Settings", icon: "gearshape.fill") {
+            Button { showGavelStore = true } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "hammer.fill").foregroundStyle(Theme.gold)
+                    Text("Store — Gavels & Passes").font(.dynamicScaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text("\(Tally.compact(store.wallet)) ⚖︎").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                    Image(systemName: "chevron.right").font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
+                }
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(.plain)
+            Divider().overlay(Theme.hairline)
             Button { showEditProfile = true } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "pencil.line").foregroundStyle(Theme.gold)
