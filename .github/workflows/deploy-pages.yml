@@ -2,7 +2,9 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: [claude/ai-marketplace-ios-app-iUYui]
+    branches:
+      - claude/ai-marketplace-ios-app-iUYui
+      - claude/auction-baby-dating-app-rezanv
     paths: [docs/**]
   workflow_dispatch:
 

@@ -37,10 +37,13 @@ Owner key: **You** = founder · **Test** = whoever runs the device · **Legal** 
 - ☐ Accessibility: VoiceOver, Dynamic Type (xxxLarge), Reduce Motion, dark mode
 - ☐ Performance: Floor scroll at 120 Hz, memory over time
 
-### iOS 26.1 device test bundle  — Owner: Test
-- ☐ Resolve the **device-thinned asset compilation** block (iOS 26.1 only;
-      iOS 18 already runs). Likely a stale DerivedData/asset-variant issue —
-      clean DerivedData + retry, or inspect the asset catalog
+### Current physical-device bundle  — Owner: Test
+- ✅ Device-thinned asset compilation completed successfully on the connected
+      iPhone 17 Pro Max on 2026-08-10 (the former asset-compilation block is
+      cleared)
+- ☐ Re-run 92 unit + 2 UI tests with the phone unlocked. The 2026-08-10 run
+      built and signed successfully but executed zero tests because Xcode
+      stopped at `Unlock iPhone Pro 17 max to Continue`.
 
 ### Dual-device (needs a **2nd Apple ID** or 2nd device) 🔴 for cross-device claims
 - ☐ Full `DUAL_DEVICE_TEST.md` matrix: discovery → bid → accept → chat →
@@ -62,6 +65,10 @@ Owner key: **You** = founder · **Test** = whoever runs the device · **Legal** 
       **verify the web-Gavel balance-sync path is unconfigured** in the submitted
       build, not merely that its CTA is hidden
 - ☐ Point a **Release** `Secrets.xcconfig` at the **production** Worker URLs
+- ✅ Fixed the xcconfig `https://` truncation trap in the committed template
+      and deployment guide; added `Scripts/release_config_preflight.sh` to
+      reject incomplete Release URLs, legal placeholders, or a configured
+      consumables/web-Gavel endpoint in the v1 review archive
 
 ---
 

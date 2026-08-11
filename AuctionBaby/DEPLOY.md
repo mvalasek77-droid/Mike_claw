@@ -203,18 +203,25 @@ cp AuctionBaby/AuctionBaby/Config/Secrets.xcconfig.example \
 Open `Secrets.xcconfig` and paste four values:
 
 ```
-AB_AUTH_URL         = https://auctionbaby-auth.<your-subdomain>.workers.dev
-AB_MATCHING_URL     = https://auctionbaby-matching.<your-subdomain>.workers.dev
-AB_WORKER_URL       = https://auctionbaby-payout.<your-subdomain>.workers.dev
-AB_CONSUMABLES_URL  = https://auctionbaby-consumables.<your-subdomain>.workers.dev
+AB_AUTH_URL         = https:/$()/auctionbaby-auth.<your-subdomain>.workers.dev
+AB_MATCHING_URL     = https:/$()/auctionbaby-matching.<your-subdomain>.workers.dev
+AB_WORKER_URL       = https:/$()/auctionbaby-payout.<your-subdomain>.workers.dev
+AB_CONSUMABLES_URL  = https:/$()/auctionbaby-consumables.<your-subdomain>.workers.dev
 AB_SHARED_SECRET    = <the same hex string you set for APP_SHARED_SECRET>
-AB_TERMS_URL        = https://your-marketing-site.com/terms
-AB_PRIVACY_URL      = https://your-marketing-site.com/privacy
+AB_TERMS_URL        = https:/$()/your-marketing-site.com/terms
+AB_PRIVACY_URL      = https:/$()/your-marketing-site.com/privacy
 ```
+
+The `/$()/` spelling is intentional: `//` begins a comment in an xcconfig.
+A literal `https://…` value silently becomes `https:` in the built app.
 
 `AB_WORKER_URL` is the legacy payout Worker (float management, ledger). Leave blank if you're not running it — the app degrades gracefully. `AB_SHARED_SECRET` is used ONLY for Worker-to-Worker admin bearer paths (`/push/send`, `/internal/reservations/mark`). User-facing admin endpoints (Batch L) now use the founder's session token, not this secret.
 
-`AB_TERMS_URL` and `AB_PRIVACY_URL` are required for App Store submission (Guideline 5.1.1 — any account-creation flow must link to both). Host them as static HTML anywhere (your marketing site, a Cloudflare Pages project, even a public GitHub Pages repo); the Settings rows are hidden when either is blank.
+`AB_TERMS_URL` and `AB_PRIVACY_URL` are required for App Store submission
+(Guideline 5.1.1 — any account-creation flow must link to both). Host them as
+static HTML anywhere. The current client has GitHub Pages fallbacks, but a
+Release archive must still pass `Scripts/release_config_preflight.sh` so stale
+or placeholder pages cannot ship accidentally.
 
 Rebuild the app in Xcode. `BackendConfig.isBundled` returns true when both `AB_WORKER_URL` and `AB_SHARED_SECRET` are set.
 
