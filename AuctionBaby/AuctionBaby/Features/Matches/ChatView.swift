@@ -1,9 +1,12 @@
 import SwiftUI
 import UIKit
+import PhotosUI
 
 /// The conversation after a bid is accepted, plus the date lifecycle controls:
 /// mark the date done, then leave a review.
 struct ChatView: View {
+    /// Quick-insert emojis for the composer's smiley button.
+    private let quickEmojis = ["😀","😂","😍","😉","😘","🔥","💰","🍸","🌹","👀","💯","🙌","😏","🥂","❤️","😅"]
     let matchID: UUID
     @EnvironmentObject private var store: AuctionStore
     @EnvironmentObject private var storeKit: StoreKitService
@@ -20,6 +23,7 @@ struct ChatView: View {
     @State private var reserveEnabled = false
     @State private var selectedTierCents: Int?
     @State private var sending = false
+    @State private var photoItem: PhotosPickerItem?
 
     private var match: Match? { store.match(withId: matchID) }
     /// True iff this match is (or should be) authoritative on the server.
@@ -383,6 +387,34 @@ struct ChatView: View {
         }
     }
 
+    /// Load, downscale, and send a picked photo. Local/sim matches carry the
+    /// image inline; live (remote) photo upload needs the matching Worker and
+    /// is a follow-up, so it's declined with a note for now.
+    private func sendPhoto(_ item: PhotosPickerItem, in match: Match) async {
+        defer { photoItem = nil }
+        guard let raw = try? await item.loadTransferable(type: Data.self),
+              let img = UIImage(data: raw) else { return }
+        if isRemote {
+            store.toastFlash("Photos aren't supported in live chats yet.")
+            return
+        }
+        store.send("", image: Self.downscaledJPEG(img), in: match)
+    }
+
+    /// Cap the long edge and JPEG-compress so an inline photo (persisted with
+    /// the match) doesn't bloat storage.
+    private static func downscaledJPEG(_ image: UIImage, maxEdge: CGFloat = 1024,
+                                       quality: CGFloat = 0.7) -> Data {
+        let longEdge = max(image.size.width, image.size.height)
+        let scale = longEdge > maxEdge ? maxEdge / longEdge : 1
+        let target = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let resized = UIGraphicsImageRenderer(size: target).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+        return resized.jpegData(compressionQuality: quality)
+            ?? image.jpegData(compressionQuality: quality) ?? Data()
+    }
+
     /// Demo → mark booked free. Live → open Stripe hosted Checkout at the chosen
     /// tier; the completed payment is reflected on next foreground via
     /// `store.refreshReservations`.
@@ -434,7 +466,21 @@ struct ChatView: View {
                 .frame(maxWidth: .infinity).padding(.vertical, 12)
             case .chatting:
                 icebreakers(match)
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
+                        Image(systemName: "photo").font(.dynamicScaled(18, weight: .semibold, relativeTo: .body))
+                            .foregroundStyle(Theme.gold).frame(width: 34, height: 34)
+                    }
+                    .accessibilityLabel("Send a photo")
+                    Menu {
+                        ForEach(quickEmojis, id: \.self) { emoji in
+                            Button(emoji) { draft += emoji }
+                        }
+                    } label: {
+                        Image(systemName: "face.smiling").font(.dynamicScaled(18, weight: .semibold, relativeTo: .body))
+                            .foregroundStyle(Theme.gold).frame(width: 34, height: 34)
+                    }
+                    .accessibilityLabel("Insert emoji")
                     TextField("", text: $draft,
                               prompt: Text("Message…").foregroundStyle(Theme.inkFaint), axis: .vertical)
                         .textFieldStyle(.plain).font(.dynamicScaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
@@ -452,6 +498,10 @@ struct ChatView: View {
                     .buttonStyle(.plain)
                     .disabled(sending || draft.trimmingCharacters(in: .whitespaces).isEmpty)
                     .opacity(draft.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
+                }
+                .onChange(of: photoItem) { _, item in
+                    guard let item else { return }
+                    Task { await sendPhoto(item, in: match) }
                 }
                 if !match.bid.onCopycat {
                     reserveCard(match)
@@ -495,15 +545,7 @@ struct MessageBubble: View {
             VStack(alignment: message.fromMe ? .trailing : .leading, spacing: 2) {
                 HStack {
                     if message.fromMe { Spacer(minLength: 50) }
-                    Text(message.text)
-                        .font(.dynamicScaled(15, relativeTo: .subheadline))
-                        .foregroundStyle(message.fromMe ? .black : Theme.ink)
-                        .padding(.horizontal, 14).padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(message.fromMe ? AnyShapeStyle(Theme.goldGradient)
-                                                     : AnyShapeStyle(Color.white.opacity(0.08)))
-                        )
+                    bubbleSurface
                         .overlay(alignment: message.fromMe ? .bottomLeading : .bottomTrailing) {
                             if let reaction = message.reaction {
                                 Text(reaction).font(.dynamicScaled(16, relativeTo: .callout))
@@ -525,7 +567,29 @@ struct MessageBubble: View {
                 }
                 if showReactionBar { reactionBar }
             }
-            .accessibilityLabel("\(message.fromMe ? "You" : otherName): \(message.text)\(message.reaction.map { ", reacted \($0)" } ?? "")")
+            .accessibilityLabel("\(message.fromMe ? "You" : otherName): \(message.imageData != nil ? "sent a photo" : message.text)\(message.reaction.map { ", reacted \($0)" } ?? "")")
+        }
+    }
+
+    /// The message body — an inline photo when present, otherwise the text bubble.
+    @ViewBuilder private var bubbleSurface: some View {
+        if let data = message.imageData, let ui = UIImage(data: data) {
+            Image(uiImage: ui)
+                .resizable().scaledToFill()
+                .frame(maxWidth: 230, maxHeight: 280)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(.white.opacity(0.12), lineWidth: 0.6))
+        } else {
+            Text(message.text)
+                .font(.dynamicScaled(15, relativeTo: .subheadline))
+                .foregroundStyle(message.fromMe ? .black : Theme.ink)
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(message.fromMe ? AnyShapeStyle(Theme.goldGradient)
+                                             : AnyShapeStyle(Color.white.opacity(0.08)))
+                )
         }
     }
 

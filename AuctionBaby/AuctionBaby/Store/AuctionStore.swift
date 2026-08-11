@@ -1648,13 +1648,14 @@ final class AuctionStore: ObservableObject {
 
     // MARK: - Chat (shared)
 
-    func send(_ text: String, in match: Match) {
+    func send(_ text: String, image: Data? = nil, in match: Match) {
         guard let idx = matches.firstIndex(where: { $0.id == match.id }) else { return }
         // Store-level expiry guard — the composer lock in ChatView is view-only.
         guard !matches[idx].isExpired else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        matches[idx].messages.append(ChatMessage(fromMe: true, text: trimmed))
+        // A message needs either text or a photo.
+        guard !trimmed.isEmpty || image != nil else { return }
+        matches[idx].messages.append(ChatMessage(fromMe: true, text: trimmed, imageData: image))
         matches[idx].seenByOther = false   // reset; they haven't read the new one yet
         matches[idx].expiresAt = nil       // she/he replied — the urgency clock stops
         save()

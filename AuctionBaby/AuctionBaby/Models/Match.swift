@@ -9,15 +9,18 @@ struct ChatMessage: Identifiable, Codable, Hashable {
     var isSystem: Bool = false
     /// A double-tapped emoji reaction, iMessage-style. Nil = no reaction.
     var reaction: String? = nil
+    /// An attached photo (JPEG), stored inline. Nil = a plain text message.
+    var imageData: Data? = nil
 
     init(id: UUID = UUID(), fromMe: Bool, text: String, date: Date = .now,
-         isSystem: Bool = false, reaction: String? = nil) {
+         isSystem: Bool = false, reaction: String? = nil, imageData: Data? = nil) {
         self.id = id
         self.fromMe = fromMe
         self.text = text
         self.date = date
         self.isSystem = isSystem
         self.reaction = reaction
+        self.imageData = imageData
     }
 
     // Backward-compatible decode — see Profile.init(from:).
@@ -29,6 +32,7 @@ struct ChatMessage: Identifiable, Codable, Hashable {
         date = try c.decodeIfPresent(Date.self, forKey: .date) ?? .now
         isSystem = try c.decodeIfPresent(Bool.self, forKey: .isSystem) ?? false
         reaction = try c.decodeIfPresent(String.self, forKey: .reaction)
+        imageData = try c.decodeIfPresent(Data.self, forKey: .imageData)
     }
 }
 
