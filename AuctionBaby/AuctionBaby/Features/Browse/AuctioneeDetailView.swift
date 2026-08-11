@@ -64,16 +64,16 @@ struct AuctioneeDetailView: View {
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
-                            Text(woman.name).font(.scaled(30, weight: .heavy, design: .serif, relativeTo: .largeTitle))
+                            Text(woman.name).font(.dynamicScaled(30, weight: .heavy, design: .serif, relativeTo: .largeTitle))
                             if woman.verified { VerifiedBadge(size: 20) }
-                            Text("\(woman.age)").font(.scaled(22, design: .serif, relativeTo: .title2)).foregroundStyle(Theme.inkSoft)
+                            Text("\(woman.age)").font(.dynamicScaled(22, design: .serif, relativeTo: .title2)).foregroundStyle(Theme.inkSoft)
                         }
                         .foregroundStyle(Theme.ink)
                         HStack(spacing: 8) {
                             ArtTierBadge(tier: woman.artTier, compact: true)
                         }
                         .foregroundStyle(Theme.ink)
-                        Text(woman.location).font(.scaled(13, weight: .medium, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+                        Text(woman.location).font(.dynamicScaled(13, weight: .medium, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                     }
                     .padding(16)
                 }
@@ -81,7 +81,7 @@ struct AuctioneeDetailView: View {
 
                 if !woman.bio.isEmpty {
                     GlassCard(title: "About", icon: "text.quote") {
-                        Text(woman.bio).font(.scaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
+                        Text(woman.bio).font(.dynamicScaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
@@ -89,13 +89,13 @@ struct AuctioneeDetailView: View {
                 if hasReserve, let reserve = woman.startingBid {
                     GlassSurface(corner: Theme.cornerL, tint: Theme.gold) {
                         HStack(spacing: 10) {
-                            Image(systemName: "lock.open.fill").font(.scaled(14, weight: .bold, relativeTo: .footnote))
+                            Image(systemName: "lock.open.fill").font(.dynamicScaled(14, weight: .bold, relativeTo: .footnote))
                                 .foregroundStyle(Theme.gold)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Her reserve price").font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
+                                Text("Her reserve price").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                                     .foregroundStyle(Theme.inkFaint)
                                 Text(Money.full(reserve))
-                                    .font(.scaled(20, weight: .heavy, design: .rounded, relativeTo: .title3))
+                                    .font(.dynamicScaled(20, weight: .heavy, design: .rounded, relativeTo: .title3))
                                     .foregroundStyle(Theme.gold)
                             }
                             Spacer()
@@ -116,10 +116,10 @@ struct AuctioneeDetailView: View {
                                         Text("Bid & mention this answer")
                                         Spacer()
                                     }
-                                    .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                                    .font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                                     .foregroundStyle(Theme.rose)
                                     Text("A regular bid — this quote just rides along so she knows what caught your eye.")
-                                        .font(.scaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                                        .font(.dynamicScaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                                 .padding(.horizontal, 12).padding(.vertical, 9)
@@ -210,12 +210,12 @@ struct ShowcaseScoreCard: View {
                     HStack(spacing: 6) {
                         StarRow(value: woman.overallStars)
                         Text(woman.reviews.isEmpty ? "New" : String(format: "%.1f", woman.overallStars))
-                            .font(.scaled(12, weight: .bold, design: .rounded, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+                            .font(.dynamicScaled(12, weight: .bold, design: .rounded, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                     }
                     Text("Market value")
-                        .font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                        .font(.dynamicScaled(10, weight: .bold, design: .rounded, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                     Text(Money.compact(woman.marketValue))
-                        .font(.scaled(22, weight: .heavy, design: .rounded, relativeTo: .title2)).foregroundStyle(Theme.gold)
+                        .font(.dynamicScaled(22, weight: .heavy, design: .rounded, relativeTo: .title2)).foregroundStyle(Theme.gold)
                 }
                 Spacer(minLength: 0)
             }
@@ -240,11 +240,11 @@ struct ReviewRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 AvatarCircle(name: review.authorName, hue: review.authorHue, size: 30)
-                Text(review.authorName).font(.scaled(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
+                Text(review.authorName).font(.dynamicScaled(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                 if review.gavelConfirmed {
                     Label("Gavel Confirmed", systemImage: "checkmark.seal.fill")
                         .labelStyle(.iconOnly)
-                        .font(.scaled(12, weight: .bold, relativeTo: .caption1))
+                        .font(.dynamicScaled(12, weight: .bold, relativeTo: .caption1))
                         .foregroundStyle(Theme.verify)
                         .accessibilityLabel("Gavel Confirmed date")
                 }
@@ -255,7 +255,7 @@ struct ReviewRow: View {
                     StarRow(value: Double(review.stars), size: 11)
                 }
             }
-            Text(review.text).font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+            Text(review.text).font(.dynamicScaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
             if !review.interestCategories.isEmpty {
                 FlexLayout(spacing: 6, lineSpacing: 6) {

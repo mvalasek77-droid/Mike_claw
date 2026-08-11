@@ -97,16 +97,16 @@ struct IncomingBidsView: View {
     private var receiptsTip: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "sparkles")
-                .font(.scaled(14, weight: .bold, relativeTo: .footnote))
+                .font(.dynamicScaled(14, weight: .bold, relativeTo: .footnote))
                 .foregroundStyle(Theme.gold)
                 .padding(.top, 1)
             VStack(alignment: .leading, spacing: 2) {
                 Text("What his bid actually means")
-                    .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                    .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                     .tracking(0.4)
                     .foregroundStyle(Theme.ink)
                 Text("It's what he'll spend on the date — dinner, drinks, the whole night. Not a payment to you. Keep the receipts (and enjoy them).")
-                    .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
+                    .font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 6)
@@ -121,17 +121,17 @@ struct IncomingBidsView: View {
         GlassCard(tint: Theme.rose) {
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Highest live bid").font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
+                    Text("Highest live bid").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                     Text(pending.first.map { Money.compact($0.amount) } ?? "—")
-                        .font(.scaled(28, weight: .heavy, design: .rounded, relativeTo: .title1)).foregroundStyle(Theme.gold)
+                        .font(.dynamicScaled(28, weight: .heavy, design: .rounded, relativeTo: .title1)).foregroundStyle(Theme.gold)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("Accepted").font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
+                    Text("Accepted").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                     Text(Money.compact(store.earnings))
-                        .font(.scaled(20, weight: .heavy, design: .rounded, relativeTo: .title3)).foregroundStyle(Theme.rose)
+                        .font(.dynamicScaled(20, weight: .heavy, design: .rounded, relativeTo: .title3)).foregroundStyle(Theme.rose)
                 }
             }
             HStack {
@@ -141,7 +141,7 @@ struct IncomingBidsView: View {
                     Chip(text: "No floor", systemImage: "lock.open.fill", color: Theme.rose)
                 }
                 Spacer()
-                Text("Tap a bid to read his stats").font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                Text("Tap a bid to read his stats").font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
             }
         }
     }
@@ -159,8 +159,8 @@ struct BidRow: View {
             VStack(spacing: 12) {
                 if bid.isWhisper {
                     HStack(spacing: 5) {
-                        Image(systemName: "ear.fill").font(.scaled(10, weight: .bold, relativeTo: .caption2))
-                        Text("WHISPER").font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
+                        Image(systemName: "ear.fill").font(.dynamicScaled(10, weight: .bold, relativeTo: .caption2))
+                        Text("WHISPER").font(.dynamicScaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
                         Spacer()
                     }
                     .foregroundStyle(Theme.rose)
@@ -168,8 +168,8 @@ struct BidRow: View {
                     .background(Capsule().fill(Theme.rose.opacity(0.14)))
                 } else if bid.gilded {
                     HStack(spacing: 5) {
-                        Image(systemName: "seal.fill").font(.scaled(10, weight: .bold, relativeTo: .caption2))
-                        Text("GILDED BID").font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
+                        Image(systemName: "seal.fill").font(.dynamicScaled(10, weight: .bold, relativeTo: .caption2))
+                        Text("GILDED BID").font(.dynamicScaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
                         Spacer()
                     }
                     .foregroundStyle(Theme.gold)
@@ -184,12 +184,12 @@ struct BidRow: View {
                         HStack(spacing: 6) {
                             Text(bid.isWhisper ? "Someone whispered"
                                  : bid.status == .accepted ? bid.man.name : "Hidden bidder")
-                                .font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
+                                .font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
                             if !bid.isWhisper, bid.man.verified { VerifiedBadge(size: 14) }
                         }
                         if bid.isWhisper {
                             Text("Anonymous nod — nod back to draw a real bid.")
-                                .font(.scaled(11, weight: .medium, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                                .font(.dynamicScaled(11, weight: .medium, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                         } else {
                             ArchetypeBadge(archetype: bid.man.archetype, compact: true, pending: bid.man.showsPendingTrillionaire)
                         }
@@ -198,9 +198,9 @@ struct BidRow: View {
                     if !bid.isWhisper {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(Money.compact(bid.amount))
-                                .font(.scaled(22, weight: .heavy, design: .rounded, relativeTo: .title2)).foregroundStyle(Theme.gold)
+                                .font(.dynamicScaled(22, weight: .heavy, design: .rounded, relativeTo: .title2)).foregroundStyle(Theme.gold)
                             if bid.qualifiesForMasterpiece {
-                                Text("Masterpiece").font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                                Text("Masterpiece").font(.dynamicScaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
                                     .foregroundStyle(Theme.rose)
                             }
                         }
@@ -216,15 +216,15 @@ struct BidRow: View {
 
                 if let ref = bid.promptRef {
                     HStack(spacing: 5) {
-                        Image(systemName: "quote.opening").font(.scaled(9, weight: .bold, relativeTo: .caption2))
-                        Text("Replying to: \(ref)").font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2)).lineLimit(1)
+                        Image(systemName: "quote.opening").font(.dynamicScaled(9, weight: .bold, relativeTo: .caption2))
+                        Text("Replying to: \(ref)").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2)).lineLimit(1)
                     }
                     .foregroundStyle(Theme.rose)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 if !bid.note.isEmpty {
-                    Text("“\(bid.note)”").font(.scaled(13, weight: .medium, relativeTo: .footnote)).italic()
+                    Text("“\(bid.note)”").font(.dynamicScaled(13, weight: .medium, relativeTo: .footnote)).italic()
                         .foregroundStyle(Theme.inkSoft).frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -236,7 +236,7 @@ struct BidRow: View {
                                 Task { await store.declineRemote(bid, matching: matching) }
                             } label: {
                                 Label("Let it fade", systemImage: "xmark")
-                                    .font(.scaled(14, weight: .bold, design: .rounded, relativeTo: .footnote))
+                                    .font(.dynamicScaled(14, weight: .bold, design: .rounded, relativeTo: .footnote))
                                     .foregroundStyle(Theme.inkSoft).frame(maxWidth: .infinity).padding(.vertical, 11)
                                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                             }.buttonStyle(.plain)
@@ -245,7 +245,7 @@ struct BidRow: View {
                                 Task { await store.acceptRemote(bid, matching: matching) }
                             } label: {
                                 Label("Nod back", systemImage: "hand.wave.fill")
-                                    .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                                    .font(.dynamicScaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
                                     .foregroundStyle(.black).frame(maxWidth: .infinity).padding(.vertical, 11)
                                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.roseGradient))
                             }.buttonStyle(.plain)
@@ -257,7 +257,7 @@ struct BidRow: View {
                                 Task { await store.declineRemote(bid, matching: matching) }
                             } label: {
                                 Label("Pass", systemImage: "xmark")
-                                    .font(.scaled(14, weight: .bold, design: .rounded, relativeTo: .footnote))
+                                    .font(.dynamicScaled(14, weight: .bold, design: .rounded, relativeTo: .footnote))
                                     .foregroundStyle(Theme.inkSoft).frame(maxWidth: .infinity).padding(.vertical, 11)
                                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))
                             }.buttonStyle(.plain)
@@ -266,7 +266,7 @@ struct BidRow: View {
                                 Task { await store.acceptRemote(bid, matching: matching) }
                             } label: {
                                 Label("Accept", systemImage: "checkmark")
-                                    .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                                    .font(.dynamicScaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
                                     .foregroundStyle(.black).frame(maxWidth: .infinity).padding(.vertical, 11)
                                     .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.roseGradient))
                             }.buttonStyle(.plain)
@@ -275,7 +275,7 @@ struct BidRow: View {
                 } else {
                     Text(bid.isWhisper ? (bid.status == .accepted ? "Nodded back" : "Faded")
                          : bid.status == .accepted ? "Accepted · invite sent" : "Passed")
-                        .font(.scaled(12, weight: .bold, design: .rounded, relativeTo: .caption1))
+                        .font(.dynamicScaled(12, weight: .bold, design: .rounded, relativeTo: .caption1))
                         .foregroundStyle(bid.status == .accepted ? Theme.success : Theme.inkFaint)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -300,9 +300,9 @@ struct StatPill: View {
     var tint: Color = Theme.gold
     var body: some View {
         HStack(spacing: 5) {
-            Image(systemName: icon).font(.scaled(10, weight: .bold, relativeTo: .caption2))
-            Text(value).font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
-            Text(label).font(.scaled(10, weight: .semibold, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+            Image(systemName: icon).font(.dynamicScaled(10, weight: .bold, relativeTo: .caption2))
+            Text(value).font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+            Text(label).font(.dynamicScaled(10, weight: .semibold, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
         }
         .foregroundStyle(tint)
         .padding(.horizontal, 9).padding(.vertical, 5)

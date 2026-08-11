@@ -82,6 +82,7 @@
 		F4EEAB9F7F8F8DF6F2129A10 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE3F0241BF88A14E03250B1 /* PaywallView.swift */; };
 		F672E0FF8C956F934E4E54B0 /* GlassKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4AC11F382F223AD90B2339 /* GlassKit.swift */; };
 		F9B080ACC8937025B4BCC9D1 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71671F425FCFB4C43735C793 /* AuthService.swift */; };
+		FB8246D3CA400D1552177DF9 /* ScaledFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3F32E6E2B21C5F4FF41FA2B /* ScaledFont.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -164,6 +165,7 @@
 		B556A4A99F3ED8E0AE09FAC4 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		BB31F381E2651E2B7A05598C /* AuctionBabyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionBabyApp.swift; sourceTree = "<group>"; };
 		C3C1B67E57A3FD2E51FE6391 /* DailyClaimCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyClaimCard.swift; sourceTree = "<group>"; };
+		C3F32E6E2B21C5F4FF41FA2B /* ScaledFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFont.swift; sourceTree = "<group>"; };
 		C6BDD580D9E566334FED2120 /* CopycatPortrait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopycatPortrait.swift; sourceTree = "<group>"; };
 		C6ED05FFE0CD5124AEA3A06F /* Commerce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Commerce.swift; sourceTree = "<group>"; };
 		CA6A10D06DE85339F8CDDE96 /* FilterPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterPreferences.swift; sourceTree = "<group>"; };
@@ -250,6 +252,7 @@
 			isa = PBXGroup;
 			children = (
 				ECAE3B8E852ED77F069BF735 /* Motion.swift */,
+				C3F32E6E2B21C5F4FF41FA2B /* ScaledFont.swift */,
 				1A42C10183100B9CE7A97FBB /* Theme.swift */,
 			);
 			path = Theme;
@@ -645,6 +648,7 @@
 				03037BC76FEFAFEAF5E7E002 /* SafetyCenter.swift in Sources */,
 				97CC2AC7C59436F6FBF87BC3 /* SampleData.swift in Sources */,
 				32FF95BFD0BD841D55CAD39E /* SaveAccountCard.swift in Sources */,
+				FB8246D3CA400D1552177DF9 /* ScaledFont.swift in Sources */,
 				46DDB8409A88907F5EFB46D3 /* SecureStore.swift in Sources */,
 				AF32F26EB6EF9D84A4A993B3 /* StandingView.swift in Sources */,
 				5A7F5AA48407EA4BAD7F5E13 /* StoreKitService.swift in Sources */,

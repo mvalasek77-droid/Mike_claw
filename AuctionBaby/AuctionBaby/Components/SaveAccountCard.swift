@@ -44,19 +44,19 @@ struct SaveAccountCard: View {
             HStack(spacing: 10) {
                 Image(systemName: "checkmark.seal.fill")
                     .foregroundStyle(Theme.verify)
-                    .font(.scaled(18, weight: .bold, relativeTo: .body))
+                    .font(.dynamicScaled(18, weight: .bold, relativeTo: .body))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Signed in with Apple")
-                        .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                        .font(.dynamicScaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(Theme.ink)
                     if let email = auth.user?.email, !email.isEmpty {
                         Text(email)
-                            .font(.scaled(11, relativeTo: .caption2))
+                            .font(.dynamicScaled(11, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkFaint)
                             .lineLimit(1)
                     } else {
                         Text("Your account will survive a reinstall.")
-                            .font(.scaled(11, relativeTo: .caption2))
+                            .font(.dynamicScaled(11, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkFaint)
                     }
                 }
@@ -72,7 +72,7 @@ struct SaveAccountCard: View {
                   icon: "person.crop.circle.badge.checkmark",
                   tint: Theme.gold) {
             Text("Optional. Sign in with Apple so your profile and matches survive a phone reset or reinstall. You still fill everything below.")
-                .font(.scaled(11, relativeTo: .caption2))
+                .font(.dynamicScaled(11, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkFaint)
                 .fixedSize(horizontal: false, vertical: true)
             SignInWithAppleButton(.signIn) { request in
@@ -87,7 +87,7 @@ struct SaveAccountCard: View {
             .opacity(auth.inFlight ? 0.6 : 1)
             if let error = auth.lastError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .font(.scaled(11, weight: .semibold, relativeTo: .caption2))
+                    .font(.dynamicScaled(11, weight: .semibold, relativeTo: .caption2))
                     .foregroundStyle(Theme.danger)
             }
         }

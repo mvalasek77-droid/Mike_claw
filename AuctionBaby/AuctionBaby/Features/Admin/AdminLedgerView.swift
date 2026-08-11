@@ -24,7 +24,7 @@ struct AdminLedgerView: View {
                     ForEach(entries) { row($0) }
                 }
                 if let err = lastError {
-                    Text(err).font(.scaled(12, weight: .semibold, relativeTo: .caption1))
+                    Text(err).font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1))
                         .foregroundStyle(Theme.danger)
                 }
                 Spacer(minLength: 24)
@@ -48,25 +48,25 @@ struct AdminLedgerView: View {
 
     private var scopeField: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Scope").font(.scaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+            Text("Scope").font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
             HStack(spacing: 8) {
                 TextField("platform or acct_xxx", text: $scope)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .onSubmit { Task { await refresh() } }
-                    .font(.scaled(13, weight: .medium, design: .monospaced, relativeTo: .footnote))
+                    .font(.dynamicScaled(13, weight: .medium, design: .monospaced, relativeTo: .footnote))
                     .foregroundStyle(Theme.ink)
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
                 Button("Load") { Task { await refresh() } }
                     .buttonStyle(.plain)
-                    .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                    .font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(.black)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(Capsule().fill(Theme.gold))
             }
             Text("Tip: \"platform\" for treasury / top-ups / disputes / Apple refund notifications, or a woman's acct_… id for her transfers and payouts.")
-                .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                .font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
         }
     }
 
@@ -76,22 +76,22 @@ struct AdminLedgerView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("\(e.type.uppercased()) · \(e.status)")
-                        .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                        .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                         .foregroundStyle(tint)
                     Spacer()
                     Text(e.amountLabel)
-                        .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                        .font(.dynamicScaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(Theme.ink)
                 }
                 Text(e.ts.prefix(19))
-                    .font(.scaled(11, weight: .medium, design: .monospaced, relativeTo: .caption2))
+                    .font(.dynamicScaled(11, weight: .medium, design: .monospaced, relativeTo: .caption2))
                     .foregroundStyle(Theme.inkFaint)
                 if let note = e.note, !note.isEmpty {
-                    Text(note).font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft).lineLimit(3)
+                    Text(note).font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft).lineLimit(3)
                 }
                 if let stripeId = e.stripeId, !stripeId.isEmpty {
                     Text("stripe: \(stripeId)")
-                        .font(.scaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
+                        .font(.dynamicScaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint).lineLimit(1)
                 }
             }
@@ -101,11 +101,11 @@ struct AdminLedgerView: View {
 
     private var emptyCard: some View {
         VStack(spacing: 6) {
-            Image(systemName: "tray").font(.scaled(28, relativeTo: .title1)).foregroundStyle(Theme.inkSoft)
+            Image(systemName: "tray").font(.dynamicScaled(28, relativeTo: .title1)).foregroundStyle(Theme.inkSoft)
             Text("No ledger entries for \"\(scope)\".")
-                .font(.scaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
+                .font(.dynamicScaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
             Text("Most operator events live under \"platform\"; per-woman transfers and payouts live under her acct_… id.")
-                .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
+                .font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)

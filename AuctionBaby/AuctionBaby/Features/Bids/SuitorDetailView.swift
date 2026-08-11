@@ -43,10 +43,10 @@ struct SuitorDetailView: View {
             AvatarCircle(name: "?", hue: 0.85, size: 84, locked: true)
             VStack(spacing: 6) {
                 Text("Someone whispered")
-                    .font(.scaled(22, weight: .heavy, design: .serif, relativeTo: .title2))
+                    .font(.dynamicScaled(22, weight: .heavy, design: .serif, relativeTo: .title2))
                     .foregroundStyle(Theme.ink)
                 Text("A whisper is an anonymous nod — no name, no number, no strings. Nod back and he'll return with a real bid; let it fade and he'll never know you saw it.")
-                    .font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+                    .font(.dynamicScaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
@@ -64,7 +64,7 @@ struct SuitorDetailView: View {
                 .screenPadding()
             } else {
                 Text(bid.status == .accepted ? "You nodded back." : "It faded.")
-                    .font(.scaled(13, weight: .bold, design: .rounded, relativeTo: .footnote))
+                    .font(.dynamicScaled(13, weight: .bold, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(Theme.inkFaint)
             }
             Spacer()
@@ -85,7 +85,7 @@ struct SuitorDetailView: View {
                                 Label("Report & Block", systemImage: "flag")
                             }
                         } label: {
-                            Image(systemName: "ellipsis.circle").font(.scaled(18, relativeTo: .body))
+                            Image(systemName: "ellipsis.circle").font(.dynamicScaled(18, relativeTo: .body))
                                 .foregroundStyle(Theme.inkSoft)
                         }
                     }
@@ -127,9 +127,9 @@ struct SuitorDetailView: View {
                     }
                     if accepted {
                         VStack(alignment: .leading) {
-                            Text(man.name).font(.scaled(26, weight: .heavy, design: .serif, relativeTo: .title1))
+                            Text(man.name).font(.dynamicScaled(26, weight: .heavy, design: .serif, relativeTo: .title1))
                                 .foregroundStyle(Theme.ink)
-                            Text("\(man.age) · \(man.location)").font(.scaled(13, relativeTo: .footnote))
+                            Text("\(man.age) · \(man.location)").font(.dynamicScaled(13, relativeTo: .footnote))
                                 .foregroundStyle(Theme.inkSoft)
                         }.padding(16)
                     }
@@ -140,9 +140,9 @@ struct SuitorDetailView: View {
                 GlassCard(tint: Theme.gold) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("His bid").font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
+                            Text("His bid").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                                 .foregroundStyle(Theme.inkFaint)
-                            Text(Money.full(bid.amount)).font(.scaled(30, weight: .heavy, design: .rounded, relativeTo: .largeTitle))
+                            Text(Money.full(bid.amount)).font(.dynamicScaled(30, weight: .heavy, design: .rounded, relativeTo: .largeTitle))
                                 .foregroundStyle(Theme.gold)
                         }
                         Spacer()
@@ -152,11 +152,11 @@ struct SuitorDetailView: View {
                         HStack(spacing: 8) {
                             MasterpieceBadge(compact: true)
                             Text("Accept & complete this date to mint your Masterpiece.")
-                                .font(.scaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.ink)
+                                .font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.ink)
                         }
                     }
                     if !bid.note.isEmpty {
-                        Text("“\(bid.note)”").font(.scaled(14, relativeTo: .footnote)).italic().foregroundStyle(Theme.inkSoft)
+                        Text("“\(bid.note)”").font(.dynamicScaled(14, relativeTo: .footnote)).italic().foregroundStyle(Theme.inkSoft)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
@@ -184,7 +184,7 @@ struct SuitorDetailView: View {
 
                 if accepted, !man.bio.isEmpty {
                     GlassCard(title: "About", icon: "text.quote") {
-                        Text(man.bio).font(.scaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
+                        Text(man.bio).font(.dynamicScaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     ForEach(man.prompts) { p in GlassSurface { PromptBubble(prompt: p).padding(4) } }
@@ -193,7 +193,7 @@ struct SuitorDetailView: View {
                         HStack(spacing: 10) {
                             Image(systemName: "lock.fill").foregroundStyle(Theme.gold)
                             Text("His photo, bio and prompts unlock the moment you accept.")
-                                .font(.scaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
+                                .font(.dynamicScaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                         }
                     }
                 }

@@ -64,25 +64,25 @@ struct MyBidsView: View {
         GlassCard(tint: Theme.gold) {
             HStack(spacing: 14) {
                 Image(systemName: storeKit.hasPass ? "infinity" : "hand.raised.fill")
-                    .font(.scaled(18, weight: .bold, relativeTo: .body)).foregroundStyle(.black)
+                    .font(.dynamicScaled(18, weight: .bold, relativeTo: .body)).foregroundStyle(.black)
                     .frame(width: 44, height: 44).background(Circle().fill(Theme.goldGradient))
                 VStack(alignment: .leading, spacing: 2) {
                     if storeKit.hasPass {
-                        Text("Unlimited bids").font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
+                        Text("Unlimited bids").font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
                             .foregroundStyle(Theme.ink)
                         Text("\(storeKit.activeTier?.title ?? "Pass") active · rank reveal on")
-                            .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+                            .font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                     } else {
                         Text("\(store.activePendingBidCount) / \(AuctionStore.freeActiveBidLimit) free bids")
-                            .font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
+                            .font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
                         Text("Get a Pass for unlimited bids + rank reveal")
-                            .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+                            .font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                     }
                 }
                 Spacer()
                 if !storeKit.hasPass {
                     Button { showStore = true } label: {
-                        Text("Upgrade").font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                        Text("Upgrade").font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                             .foregroundStyle(.black).padding(.horizontal, 14).padding(.vertical, 9)
                             .background(Capsule().fill(Theme.roseGradient))
                     }.buttonStyle(.plain)
@@ -112,15 +112,15 @@ struct OutgoingBidRow: View {
                                  revealed: true)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
-                            Text(bid.woman.name).font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
+                            Text(bid.woman.name).font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
                                 .foregroundStyle(Theme.ink)
                         }
                         if bid.isWhisper {
                             Label("Whisper", systemImage: "ear.fill")
-                                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                                .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                                 .foregroundStyle(Theme.rose)
                         } else {
-                            Text(Money.compact(bid.amount)).font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                            Text(Money.compact(bid.amount)).font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                                 .foregroundStyle(Theme.gold)
                         }
                     }
@@ -133,7 +133,7 @@ struct OutgoingBidRow: View {
                                 Image(systemName: rewindUnlocked ? "arrow.uturn.backward.circle.fill" : "lock.fill")
                                 Text("Rewind")
                             }
-                            .font(.scaled(11, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                            .font(.dynamicScaled(11, weight: .heavy, design: .rounded, relativeTo: .caption2))
                             .foregroundStyle(Theme.rose)
                             .padding(.horizontal, 9).padding(.vertical, 5)
                             .background(Capsule().fill(Theme.rose.opacity(0.14)))
@@ -158,9 +158,9 @@ struct OutgoingBidRow: View {
 
     private var whisperStatus: some View {
         HStack(spacing: 8) {
-            Image(systemName: "ear.fill").font(.scaled(12, weight: .bold, relativeTo: .caption1))
+            Image(systemName: "ear.fill").font(.dynamicScaled(12, weight: .bold, relativeTo: .caption1))
             Text("Whisper sent — if she nods back, come in with a real bid.")
-                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
             Spacer()
         }
         .foregroundStyle(Theme.rose)
@@ -172,11 +172,11 @@ struct OutgoingBidRow: View {
         if locked {
             Button(action: onUnlock) {
                 HStack(spacing: 8) {
-                    Image(systemName: "lock.fill").font(.scaled(12, weight: .bold, relativeTo: .caption1))
+                    Image(systemName: "lock.fill").font(.dynamicScaled(12, weight: .bold, relativeTo: .caption1))
                     Text("Rank hidden — unlock with a Pass")
-                        .font(.scaled(12, weight: .bold, design: .rounded, relativeTo: .caption1))
+                        .font(.dynamicScaled(12, weight: .bold, design: .rounded, relativeTo: .caption1))
                     Spacer()
-                    Image(systemName: "chevron.right").font(.scaled(11, weight: .bold, relativeTo: .caption2))
+                    Image(systemName: "chevron.right").font(.dynamicScaled(11, weight: .bold, relativeTo: .caption2))
                 }
                 .foregroundStyle(Theme.rose)
                 .padding(.horizontal, 12).padding(.vertical, 10)
@@ -201,7 +201,7 @@ struct OutgoingBidRow: View {
                             Text("Rebid \(Money.compact(leader)) — take the top")
                             Spacer()
                         }
-                        .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                        .font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(.black)
                         .padding(.horizontal, 12).padding(.vertical, 10)
                         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(Theme.goldGradient))
@@ -214,8 +214,8 @@ struct OutgoingBidRow: View {
 
     private func rankBanner(icon: String, text: String, tint: Color) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: icon).font(.scaled(12, weight: .bold, relativeTo: .caption1))
-            Text(text).font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+            Image(systemName: icon).font(.dynamicScaled(12, weight: .bold, relativeTo: .caption1))
+            Text(text).font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
             Spacer()
         }
         .foregroundStyle(tint)
@@ -231,7 +231,7 @@ struct OutgoingBidRow: View {
             case .declined: return (bid.isWhisper ? "Faded" : "Passed", Theme.inkFaint)
             }
         }()
-        return Text(text).font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
+        return Text(text).font(.dynamicScaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
             .foregroundStyle(color)
             .padding(.horizontal, 8).padding(.vertical, 3)
             .background(Capsule().fill(color.opacity(0.16)))

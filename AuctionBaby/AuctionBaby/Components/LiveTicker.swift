@@ -39,11 +39,11 @@ struct LiveTicker: View {
                 Circle().fill(Theme.danger).frame(width: 6, height: 6)
                     .scaleEffect(pulse ? 1.25 : 0.8)
                     .opacity(pulse ? 1 : 0.55)
-                Text("LIVE").font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
+                Text("LIVE").font(.dynamicScaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1)
                     .foregroundStyle(Theme.danger)
             }
             Text(lines[index % max(lines.count, 1)])
-                .font(.scaled(12, weight: .semibold, design: .rounded, relativeTo: .caption1))
+                .font(.dynamicScaled(12, weight: .semibold, design: .rounded, relativeTo: .caption1))
                 .foregroundStyle(Theme.inkSoft)
                 .lineLimit(1)
                 .id(index)

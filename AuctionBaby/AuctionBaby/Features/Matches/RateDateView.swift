@@ -40,18 +40,18 @@ struct RateDateView: View {
                     AvatarCircle(name: other.name, hue: other.hue, photoName: other.photoName, size: 64,
                                  revealed: true)
                     Text("How was your date with \(other.name)?")
-                        .font(.scaled(18, weight: .heavy, design: .serif, relativeTo: .body)).foregroundStyle(Theme.ink)
+                        .font(.dynamicScaled(18, weight: .heavy, design: .serif, relativeTo: .body)).foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.center)
                 }
 
                 GlassCard(title: "Did you actually meet?", icon: "seal.fill", tint: Theme.verify) {
                     Text("Both sides confirm the date happened. Gavel Confirmed reviews carry full weight in the credit reports — self-reported alone reads guarded.")
-                        .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+                        .font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                     Toggle(isOn: $metInPerson.animation(Motion.snap)) {
                         Label(metInPerson ? "We met in person" : "They didn't show up",
                               systemImage: metInPerson ? "checkmark.seal.fill" : "xmark.seal.fill")
-                            .font(.scaled(14, weight: .bold, relativeTo: .footnote))
+                            .font(.dynamicScaled(14, weight: .bold, relativeTo: .footnote))
                             .foregroundStyle(metInPerson ? Theme.verify : Theme.danger)
                     }
                     .tint(Theme.verify)
@@ -67,7 +67,7 @@ struct RateDateView: View {
                             ForEach(Trait.allCases) { trait in
                                 HStack {
                                     Label(trait.rawValue, systemImage: trait.systemImage)
-                                        .font(.scaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+                                        .font(.dynamicScaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                                     Spacer()
                                     StarPicker(value: Binding(
                                         get: { traitScores[trait] ?? 4 },
@@ -80,15 +80,15 @@ struct RateDateView: View {
 
                     GlassCard(title: "Tag her interests", icon: "tag.fill", tint: Theme.gold) {
                         Text("Help future bidders — what's she into?")
-                            .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
+                            .font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                         FlowChips(items: categoryPool, selected: $categories)
                     }
 
                     GlassCard(title: "What you spent on the date", icon: "creditcard.fill", tint: Theme.gold) {
                         Text("You bid \(Money.full(match.bid.amount)). Log what you actually spent on the date — she confirms it against the receipts. (No in-app charge.)")
-                            .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
+                            .font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                         Text(Money.full(spent))
-                            .font(.scaled(30, weight: .heavy, design: .rounded, relativeTo: .largeTitle))
+                            .font(.dynamicScaled(30, weight: .heavy, design: .rounded, relativeTo: .largeTitle))
                             .foregroundStyle(spent >= match.bid.amount ? Theme.success : Theme.danger)
                             .frame(maxWidth: .infinity)
                         Slider(value: Binding(get: { Double(spent) },
@@ -96,23 +96,23 @@ struct RateDateView: View {
                                in: 0...Double(max(match.bid.amount, 1))).tint(Theme.gold)
                         if spent < match.bid.amount {
                             Label("Spending under your bid flags you as a deadbeat.", systemImage: "exclamationmark.triangle.fill")
-                                .font(.scaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.danger)
+                                .font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.danger)
                         }
                     }
                 } else {
                     GlassCard(title: "Did he spend it on the date?", icon: "checkmark.shield.fill", tint: Theme.gold) {
                         Text("He bid \(Money.full(match.bid.amount)) on the date itself. Check the receipts — did the night add up?")
-                            .font(.scaled(13, weight: .medium, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+                            .font(.dynamicScaled(13, weight: .medium, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                         Toggle(isOn: $paidInFull.animation(Motion.snap)) {
                             Text(paidInFull ? "Spent it in full — a gentleman" : "Deadbeat — talked big, spent small")
-                                .font(.scaled(14, weight: .bold, relativeTo: .footnote))
+                                .font(.dynamicScaled(14, weight: .bold, relativeTo: .footnote))
                                 .foregroundStyle(paidInFull ? Theme.success : Theme.danger)
                         }
                         .tint(Theme.success)
                         if match.bid.qualifiesForMasterpiece {
                             Label(paidInFull ? "This mints your Masterpiece." : "He didn't spend it — no Masterpiece.",
                                   systemImage: "rosette")
-                                .font(.scaled(12, weight: .bold, relativeTo: .caption1))
+                                .font(.dynamicScaled(12, weight: .bold, relativeTo: .caption1))
                                 .foregroundStyle(paidInFull ? Theme.rose : Theme.inkFaint)
                         }
                     }
@@ -121,7 +121,7 @@ struct RateDateView: View {
                 GlassCard(title: "Review", icon: "text.bubble.fill") {
                     TextField("", text: $text,
                               prompt: Text("A line for the record…").foregroundStyle(Theme.inkFaint), axis: .vertical)
-                        .textFieldStyle(.plain).font(.scaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
+                        .textFieldStyle(.plain).font(.dynamicScaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
                         .accessibilityLabel("Review")
                         .lineLimit(2...5)
                 }

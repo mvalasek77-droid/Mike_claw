@@ -55,7 +55,7 @@ struct MatchCelebrationView: View {
                     .opacity(appear ? 1 : 0)
 
                 Text(headline)
-                    .font(.scaled(50, weight: .heavy, design: .serif, relativeTo: .largeTitle))
+                    .font(.dynamicScaled(50, weight: .heavy, design: .serif, relativeTo: .largeTitle))
                     .foregroundStyle(accent)
                     .scaleEffect(appear ? 1 : 0.4)
                     .shadow(color: Theme.gold.opacity(0.5), radius: 16)
@@ -63,10 +63,10 @@ struct MatchCelebrationView: View {
                 if celebration.otherCopycat {
                     VStack(spacing: 8) {
                         Text("\(celebration.otherName) is a copycat. She is not real.")
-                            .font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
+                            .font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
                             .foregroundStyle(Theme.ink).multilineTextAlignment(.center)
                         Text("This affects your credit score.")
-                            .font(.scaled(13, weight: .semibold, relativeTo: .footnote))
+                            .font(.dynamicScaled(13, weight: .semibold, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkSoft).multilineTextAlignment(.center)
                     }
                     .padding(.horizontal, 26)
@@ -77,7 +77,7 @@ struct MatchCelebrationView: View {
 
                 Button { dismiss() } label: {
                     Text(celebration.otherCopycat ? "Got it" : "Say hello")
-                        .font(.scaled(17, weight: .heavy, design: .rounded, relativeTo: .body))
+                        .font(.dynamicScaled(17, weight: .heavy, design: .rounded, relativeTo: .body))
                         .foregroundStyle(.black)
                         .padding(.horizontal, 40).padding(.vertical, 15)
                         .background(Capsule().fill(celebration.otherCopycat
@@ -89,7 +89,7 @@ struct MatchCelebrationView: View {
                 .padding(.top, 6)
 
                 Text("Tap anywhere to continue")
-                    .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                    .font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
             }
             .opacity(appear ? 1 : 0)
             .screenPadding()
@@ -110,7 +110,7 @@ struct MatchCelebrationView: View {
                 }
             ZStack {
                 Circle().fill(Theme.roseGradient).frame(width: 38, height: 38)
-                Image(systemName: "heart.fill").font(.scaled(16, weight: .bold, relativeTo: .callout)).foregroundStyle(.white)
+                Image(systemName: "heart.fill").font(.dynamicScaled(16, weight: .bold, relativeTo: .callout)).foregroundStyle(.white)
             }
             .zIndex(1)
             .scaleEffect(appear ? 1 : 0)
@@ -127,19 +127,19 @@ struct MatchCelebrationView: View {
     private var amountChip: some View {
         VStack(spacing: 3) {
             Text(celebration.masterpiece ? "MASTERPIECE BID" : "WINNING BID")
-                .font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1.5)
+                .font(.dynamicScaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2)).tracking(1.5)
                 .foregroundStyle(Theme.inkFaint)
             HStack(spacing: 8) {
                 Text(celebration.meName).foregroundStyle(Theme.ink)
                 Text("×").foregroundStyle(Theme.inkFaint)
                 Text(celebration.otherName).foregroundStyle(Theme.ink)
             }
-            .font(.scaled(15, weight: .bold, design: .serif, relativeTo: .subheadline))
+            .font(.dynamicScaled(15, weight: .bold, design: .serif, relativeTo: .subheadline))
             Text(Money.full(celebration.amount))
-                .font(.scaled(26, weight: .heavy, design: .rounded, relativeTo: .title1))
+                .font(.dynamicScaled(26, weight: .heavy, design: .rounded, relativeTo: .title1))
                 .foregroundStyle(Theme.gold)
             Text("What you'll spend on the date · she keeps the receipts · Auction Baby never handles this money")
-                .font(.scaled(10, weight: .semibold, relativeTo: .caption2))
+                .font(.dynamicScaled(10, weight: .semibold, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkFaint)
                 .multilineTextAlignment(.center)
                 .padding(.top, 2)

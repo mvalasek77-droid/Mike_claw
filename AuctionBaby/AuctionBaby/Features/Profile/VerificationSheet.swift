@@ -36,7 +36,7 @@ struct VerificationSheet: View {
             ZStack {
                 Circle().fill(Theme.verify.opacity(0.14)).frame(width: 150, height: 150)
                 Image(systemName: iconName)
-                    .font(.scaled(66, weight: .bold, relativeTo: .largeTitle))
+                    .font(.dynamicScaled(66, weight: .bold, relativeTo: .largeTitle))
                     .foregroundStyle(iconTint)
                     .scaleEffect(phase == .done ? 1.1 : 1)
                 if phase == .scanning {
@@ -50,12 +50,12 @@ struct VerificationSheet: View {
             .frame(height: 160)
 
             VStack(spacing: 6) {
-                Text(title).font(.scaled(20, weight: .heavy, design: .serif, relativeTo: .title3)).foregroundStyle(Theme.ink)
-                Text(subtitle).font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+                Text(title).font(.dynamicScaled(20, weight: .heavy, design: .serif, relativeTo: .title3)).foregroundStyle(Theme.ink)
+                Text(subtitle).font(.dynamicScaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
                 if let vendorNote {
                     Text(vendorNote)
-                        .font(.scaled(11, weight: .semibold, relativeTo: .caption2))
+                        .font(.dynamicScaled(11, weight: .semibold, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                         .multilineTextAlignment(.center)
                         .padding(.top, 4)
@@ -69,7 +69,7 @@ struct VerificationSheet: View {
                 .screenPadding()
 
             Text(footerNote)
-                .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                .font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 10)

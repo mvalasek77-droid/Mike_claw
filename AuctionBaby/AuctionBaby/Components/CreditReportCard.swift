@@ -15,20 +15,20 @@ struct CreditReportCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
                             Image(systemName: factor.icon)
-                                .font(.scaled(12, weight: .bold, relativeTo: .caption1))
+                                .font(.dynamicScaled(12, weight: .bold, relativeTo: .caption1))
                                 .foregroundStyle(pointColor(factor.points))
                                 .frame(width: 22)
                             Text(factor.name)
-                                .font(.scaled(13, weight: .bold, design: .rounded, relativeTo: .footnote))
+                                .font(.dynamicScaled(13, weight: .bold, design: .rounded, relativeTo: .footnote))
                                 .foregroundStyle(Theme.ink)
                             Spacer()
                             Text(factor.points >= 0 ? "+\(factor.points)" : "\(factor.points)")
-                                .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                                .font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                                 .monospacedDigit()
                                 .foregroundStyle(pointColor(factor.points))
                         }
                         Text(factor.comment)
-                            .font(.scaled(12, relativeTo: .caption1))
+                            .font(.dynamicScaled(12, relativeTo: .caption1))
                             .foregroundStyle(Theme.inkSoft)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.leading, 30)
@@ -39,11 +39,11 @@ struct CreditReportCard: View {
                 Divider().overlay(Theme.hairline)
                 HStack {
                     Text("Base 300 + adjustments")
-                        .font(.scaled(11, weight: .semibold, relativeTo: .caption2))
+                        .font(.dynamicScaled(11, weight: .semibold, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                     Spacer()
                     Text("= \(min(900, max(300, 300 + factors.reduce(0) { $0 + $1.points })))")
-                        .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                        .font(.dynamicScaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote))
                         .monospacedDigit()
                         .foregroundStyle(tint)
                 }

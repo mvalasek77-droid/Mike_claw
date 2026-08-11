@@ -28,7 +28,7 @@ struct AdminRealUsersView: View {
                     ForEach(users) { u in row(u) }
                 }
                 if let err = lastError {
-                    Text(err).font(.scaled(12, weight: .semibold, relativeTo: .caption1))
+                    Text(err).font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1))
                         .foregroundStyle(Theme.danger)
                 }
                 Spacer(minLength: 24)
@@ -58,11 +58,11 @@ struct AdminRealUsersView: View {
 
     private var empty: some View {
         VStack(spacing: 6) {
-            Image(systemName: "person.3").font(.scaled(28, relativeTo: .title1)).foregroundStyle(Theme.inkSoft)
+            Image(systemName: "person.3").font(.dynamicScaled(28, relativeTo: .title1)).foregroundStyle(Theme.inkSoft)
             Text("No signed-in users yet.")
-                .font(.scaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
+                .font(.dynamicScaled(13, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
             Text("Sign-in with Apple creates the first row here. Sim rosters live on the previous screen.")
-                .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
+                .font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
         }
@@ -75,10 +75,10 @@ struct AdminRealUsersView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(u.name ?? "(no name)")
-                            .font(.scaled(14, weight: .heavy, design: .serif, relativeTo: .footnote))
+                            .font(.dynamicScaled(14, weight: .heavy, design: .serif, relativeTo: .footnote))
                             .foregroundStyle(Theme.ink)
                         Text(u.id.prefix(8) + "…")
-                            .font(.scaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
+                            .font(.dynamicScaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkFaint)
                     }
                     Spacer()
@@ -91,7 +91,7 @@ struct AdminRealUsersView: View {
                 }
                 if isSuspended(u), let until = u.suspendedUntil {
                     Text("Suspended until \(fullDate(until))")
-                        .font(.scaled(11, weight: .semibold, relativeTo: .caption2))
+                        .font(.dynamicScaled(11, weight: .semibold, relativeTo: .caption2))
                         .foregroundStyle(Theme.warning)
                 }
                 // Batch H — surface moderator counts so serial offenders
@@ -110,19 +110,19 @@ struct AdminRealUsersView: View {
                 HStack(spacing: 12) {
                     if let email = u.email, !email.isEmpty {
                         Text(email)
-                            .font(.scaled(11, weight: .medium, design: .monospaced, relativeTo: .caption2))
+                            .font(.dynamicScaled(11, weight: .medium, design: .monospaced, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkSoft).lineLimit(1)
                     }
                     Spacer()
                     Text("joined \(shortDate(u.createdAt))")
-                        .font(.scaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                        .font(.dynamicScaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                 }
                 HStack(spacing: 8) {
                     Button {
                         pending = (u, .unverify)
                     } label: {
                         Label("Unverify", systemImage: "checkmark.seal")
-                            .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                            .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                             .foregroundStyle(Theme.warning)
                             .frame(maxWidth: .infinity).padding(.vertical, 8)
                             .background(Capsule().fill(Theme.warning.opacity(0.14)))
@@ -137,7 +137,7 @@ struct AdminRealUsersView: View {
                             pending = (u, .unsuspend)
                         } label: {
                             Label("Unsuspend", systemImage: "clock.arrow.circlepath")
-                                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                                .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                                 .foregroundStyle(Theme.success)
                                 .frame(maxWidth: .infinity).padding(.vertical, 8)
                                 .background(Capsule().fill(Theme.success.opacity(0.14)))
@@ -150,7 +150,7 @@ struct AdminRealUsersView: View {
                             Button("Suspend 30 days") { pending = (u, .suspend30d) }
                         } label: {
                             Label("Suspend", systemImage: "clock.badge.exclamationmark")
-                                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                                .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                                 .foregroundStyle(Theme.warning)
                                 .frame(maxWidth: .infinity).padding(.vertical, 8)
                                 .background(Capsule().fill(Theme.warning.opacity(0.14)))
@@ -160,7 +160,7 @@ struct AdminRealUsersView: View {
                         pending = (u, .delete)
                     } label: {
                         Label("Delete", systemImage: "xmark.octagon.fill")
-                            .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                            .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                             .foregroundStyle(Theme.danger)
                             .frame(maxWidth: .infinity).padding(.vertical, 8)
                             .background(Capsule().fill(Theme.danger.opacity(0.14)))

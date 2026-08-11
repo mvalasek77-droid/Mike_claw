@@ -61,14 +61,14 @@ struct GlassCard<Content: View>: View {
                     HStack(spacing: 10) {
                         if let icon {
                             Image(systemName: icon)
-                                .font(.scaled(15, weight: .semibold, relativeTo: .subheadline))
+                                .font(.dynamicScaled(15, weight: .semibold, relativeTo: .subheadline))
                                 .foregroundStyle(tint)
                                 .frame(width: 30, height: 30)
                                 .background(Circle().fill(tint.opacity(0.18)))
                         }
                         if let title {
                             Text(title)
-                                .font(.scaled(16, weight: .bold, design: .rounded, relativeTo: .callout))
+                                .font(.dynamicScaled(16, weight: .bold, design: .rounded, relativeTo: .callout))
                                 .foregroundStyle(Theme.ink)
                         }
                         Spacer(minLength: 0)
@@ -91,9 +91,9 @@ struct Chip: View {
     var body: some View {
         HStack(spacing: 5) {
             if let systemImage {
-                Image(systemName: systemImage).font(.scaled(10, weight: .bold, relativeTo: .caption2))
+                Image(systemName: systemImage).font(.dynamicScaled(10, weight: .bold, relativeTo: .caption2))
             }
-            Text(text).font(.scaled(11, weight: .semibold, design: .rounded, relativeTo: .caption2))
+            Text(text).font(.dynamicScaled(11, weight: .semibold, design: .rounded, relativeTo: .caption2))
         }
         .foregroundStyle(filled ? .black : color)
         .padding(.horizontal, 10)
@@ -111,11 +111,11 @@ struct SectionHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.scaled(19, weight: .bold, design: .serif, relativeTo: .title3))
+                .font(.dynamicScaled(19, weight: .bold, design: .serif, relativeTo: .title3))
                 .foregroundStyle(Theme.ink)
             if let subtitle {
                 Text(subtitle)
-                    .font(.scaled(12, weight: .medium, relativeTo: .caption1))
+                    .font(.dynamicScaled(12, weight: .medium, relativeTo: .caption1))
                     .foregroundStyle(Theme.inkSoft)
             }
         }
@@ -134,7 +134,7 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.scaled(42, relativeTo: .largeTitle))
+                .font(.dynamicScaled(42, relativeTo: .largeTitle))
                 .foregroundStyle(tint)
                 .scaleEffect(pulse)
                 .accessibilityHidden(true)
@@ -145,10 +145,10 @@ struct EmptyStateView: View {
                     }
                 }
             Text(title)
-                .font(.scaled(16, weight: .bold, design: .rounded, relativeTo: .callout))
+                .font(.dynamicScaled(16, weight: .bold, design: .rounded, relativeTo: .callout))
                 .foregroundStyle(Theme.ink)
             Text(message)
-                .font(.scaled(13, weight: .medium, relativeTo: .footnote))
+                .font(.dynamicScaled(13, weight: .medium, relativeTo: .footnote))
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
         }
@@ -165,7 +165,7 @@ struct ToastView: View {
         HStack(spacing: 9) {
             Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.gold)
             Text(text)
-                .font(.scaled(13, weight: .semibold, design: .rounded, relativeTo: .footnote))
+                .font(.dynamicScaled(13, weight: .semibold, design: .rounded, relativeTo: .footnote))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(2)
         }

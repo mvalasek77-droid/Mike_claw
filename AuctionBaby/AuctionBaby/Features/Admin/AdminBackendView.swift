@@ -27,7 +27,7 @@ struct AdminBackendView: View {
                     }
                     if let line = statusLine {
                         Text(line)
-                            .font(.scaled(12, weight: .semibold, relativeTo: .caption1))
+                            .font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1))
                             .foregroundStyle(statusIsError ? Theme.danger : Theme.success)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -63,13 +63,13 @@ struct AdminBackendView: View {
         GlassCard(title: "Payout Worker", icon: "server.rack", tint: Theme.verify) {
             VStack(alignment: .leading, spacing: 10) {
                 Text("The Cloudflare Worker that pays women their 85% share and queues Apple refunds. Deploy steps live in backend/README.md.")
-                    .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+                    .font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
 
                 TextField("https://auctionbaby-payout.you.workers.dev", text: $backend.workerURL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
-                    .font(.scaled(13, weight: .medium, design: .monospaced, relativeTo: .footnote))
+                    .font(.dynamicScaled(13, weight: .medium, design: .monospaced, relativeTo: .footnote))
                     .foregroundStyle(Theme.ink)
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
@@ -84,14 +84,14 @@ struct AdminBackendView: View {
                     }
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .font(.scaled(13, weight: .medium, design: .monospaced, relativeTo: .footnote))
+                    .font(.dynamicScaled(13, weight: .medium, design: .monospaced, relativeTo: .footnote))
                     .foregroundStyle(Theme.ink)
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: Theme.cornerS).fill(.white.opacity(0.06)))
 
                     Button { secretVisible.toggle() } label: {
                         Image(systemName: secretVisible ? "eye.slash.fill" : "eye.fill")
-                            .font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+                            .font(.dynamicScaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                     }
                     .buttonStyle(.plain)
                 }
@@ -100,7 +100,7 @@ struct AdminBackendView: View {
                     Task { await testConnection() }
                 } label: {
                     Label("Test connection", systemImage: "bolt.fill")
-                        .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                        .font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 9)
@@ -130,7 +130,7 @@ struct AdminBackendView: View {
                     Text(f.topUpNeededUSD > 0
                          ? String(format: "Top up %@ %.2f to restore the buffer — the cron will pull it, or run it now below.", f.currency.uppercased(), f.topUpNeededUSD)
                          : "Float is healthy. Transfers to women will clear.")
-                        .font(.scaled(12, relativeTo: .caption1))
+                        .font(.dynamicScaled(12, relativeTo: .caption1))
                         .foregroundStyle(f.topUpNeededUSD > 0 ? Theme.warning : Theme.inkSoft)
                 }
             }
@@ -139,9 +139,9 @@ struct AdminBackendView: View {
 
     private func stat(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
+            Text(label).font(.dynamicScaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkFaint)
-            Text(value).font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
+            Text(value).font(.dynamicScaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                 .foregroundStyle(Theme.ink)
         }
     }
@@ -167,28 +167,28 @@ struct AdminBackendView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(e.ref?.isEmpty == false ? "Date \(e.ref!)" : "Date earnings")
-                            .font(.scaled(13, weight: .bold, design: .rounded, relativeTo: .footnote))
+                            .font(.dynamicScaled(13, weight: .bold, design: .rounded, relativeTo: .footnote))
                             .foregroundStyle(Theme.ink)
                         Text(e.accountId)
-                            .font(.scaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
+                            .font(.dynamicScaled(10, weight: .medium, design: .monospaced, relativeTo: .caption2))
                             .foregroundStyle(Theme.inkFaint).lineLimit(1)
                     }
                     Spacer()
                     Text(String(format: "$%.2f", e.amountUSD))
-                        .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
+                        .font(.dynamicScaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                         .foregroundStyle(Theme.warning)
                 }
                 Text(e.reason)
-                    .font(.scaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint).lineLimit(2)
+                    .font(.dynamicScaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint).lineLimit(2)
                 Button {
                     Task { await pay(e) }
                 } label: {
                     HStack(spacing: 6) {
                         if inFlight { ProgressView().tint(.black) }
-                        Image(systemName: "banknote.fill").font(.scaled(12, relativeTo: .caption1))
+                        Image(systemName: "banknote.fill").font(.dynamicScaled(12, relativeTo: .caption1))
                         Text(inFlight ? "Paying…" : "Pay now").fontWeight(.bold)
                     }
-                    .font(.scaled(13, relativeTo: .footnote))
+                    .font(.dynamicScaled(13, relativeTo: .footnote))
                     .foregroundStyle(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 9)
@@ -230,17 +230,17 @@ struct AdminBackendView: View {
     private func toolRow(_ title: String, icon: String, detail: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.scaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.gold)
+                .font(.dynamicScaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.gold)
                 .frame(width: 30, height: 30)
                 .background(Circle().fill(Theme.gold.opacity(0.14)))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.scaled(14, weight: .bold, design: .rounded, relativeTo: .footnote))
+                Text(title).font(.dynamicScaled(14, weight: .bold, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(Theme.ink)
-                Text(detail).font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
+                Text(detail).font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
             }
             Spacer()
             Image(systemName: "chevron.right")
-                .font(.scaled(12, weight: .bold, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
+                .font(.dynamicScaled(12, weight: .bold, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
         }
         .contentShape(Rectangle())
     }
@@ -249,7 +249,7 @@ struct AdminBackendView: View {
                             action: @escaping () async -> Void) -> some View {
         Button { Task { await action() } } label: {
             Label(title, systemImage: icon)
-                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                 .foregroundStyle(Theme.gold)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)

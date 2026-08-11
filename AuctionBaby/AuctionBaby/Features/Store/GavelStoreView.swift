@@ -31,7 +31,7 @@ struct GavelStoreView: View {
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Restore") { Task { await storeKit.restore() } }
-                        .foregroundStyle(Theme.inkSoft).font(.scaled(13, relativeTo: .footnote))
+                        .foregroundStyle(Theme.inkSoft).font(.dynamicScaled(13, relativeTo: .footnote))
                 }
             }
             .overlay { if storeKit.isWorking { workingOverlay } }
@@ -48,14 +48,14 @@ struct GavelStoreView: View {
     private var balance: some View {
         GlassCard(tint: Theme.gold) {
             HStack(spacing: 12) {
-                Image(systemName: "hammer.fill").font(.scaled(20, weight: .bold, relativeTo: .title3))
+                Image(systemName: "hammer.fill").font(.dynamicScaled(20, weight: .bold, relativeTo: .title3))
                     .foregroundStyle(.black).frame(width: 44, height: 44)
                     .background(Circle().fill(Theme.goldGradient))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Your Gavels").font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
+                    Text("Your Gavels").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.inkFaint)
                     Text(Tally.compact(store.wallet))
-                        .font(.scaled(26, weight: .heavy, design: .rounded, relativeTo: .title1))
+                        .font(.dynamicScaled(26, weight: .heavy, design: .rounded, relativeTo: .title1))
                         .foregroundStyle(Theme.gold).contentTransition(.numericText())
                 }
                 Spacer()
@@ -76,7 +76,7 @@ struct GavelStoreView: View {
         GlassCard(title: "Demo Mode · everything free", icon: "testtube.2", tint: Theme.verify) {
             VStack(spacing: 10) {
                 Text("For App Review. The real IAP products below remain live so the sandbox purchase path can be verified in the same session.")
-                    .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
+                    .font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 8) {
                     demoChip("+5,000 Gavels") { store.addDemoGavels(5_000) }
@@ -97,7 +97,7 @@ struct GavelStoreView: View {
     private func demoChip(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
+                .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1))
                 .foregroundStyle(Theme.verify)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 9)
@@ -124,7 +124,7 @@ struct GavelStoreView: View {
     private var unavailableCard: some View {
         GlassCard(tint: Theme.warning) {
             Text("Store products aren't loaded yet. In a sandbox/TestFlight build they appear here.")
-                .font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+                .font(.dynamicScaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
             if store.demoMode {
                 GhostButton(title: "Demo: +10,000 Gavels (no charge)", systemImage: "wand.and.stars") {
                     store.addDemoGavels()
@@ -140,28 +140,28 @@ struct GavelStoreView: View {
             SectionHeader(title: "Spotlight Boost", subtitle: "30 minutes at the very top of the floor.")
             GlassSurface(corner: Theme.cornerL, tint: Theme.rose) {
                 HStack(spacing: 14) {
-                    Image(systemName: "bolt.fill").font(.scaled(20, weight: .bold, relativeTo: .title3))
+                    Image(systemName: "bolt.fill").font(.dynamicScaled(20, weight: .bold, relativeTo: .title3))
                         .foregroundStyle(.black).frame(width: 46, height: 46)
                         .background(Circle().fill(Theme.roseGradient))
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Spotlight Boost").font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
+                        Text("Spotlight Boost").font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
                             .foregroundStyle(Theme.ink)
                         if store.isBoosted, let until = store.boostUntil {
                             HStack(spacing: 4) {
-                                Text("Active ·").font(.scaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.rose)
+                                Text("Active ·").font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1)).foregroundStyle(Theme.rose)
                                 Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
-                                    .font(.scaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1)).foregroundStyle(Theme.rose)
+                                    .font(.dynamicScaled(12, weight: .heavy, design: .rounded, relativeTo: .caption1)).foregroundStyle(Theme.rose)
                             }
                         } else {
                             Text("Jump to the top of every feed for 30 minutes.")
-                                .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+                                .font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                         }
                     }
                     Spacer()
                     if let boost = storeKit.boostProduct {
                         Button { Task { await buy(boost) } } label: {
                             Text(store.isBoosted ? "Extend" : boost.displayPrice)
-                                .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline)).foregroundStyle(.black)
+                                .font(.dynamicScaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline)).foregroundStyle(.black)
                                 .padding(.horizontal, 16).padding(.vertical, 9)
                                 .background(Capsule().fill(Theme.roseGradient))
                         }.buttonStyle(.plain)
@@ -195,7 +195,7 @@ struct GavelStoreView: View {
     private var footer: some View {
         VStack(spacing: 6) {
             Text("Gavels are a one-time purchase of in-app currency. Passes are auto-renewable subscriptions billed to your Apple ID; they renew unless canceled at least 24h before the period ends. Manage or cancel in Settings.")
-                .font(.scaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                .font(.dynamicScaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
             HStack(spacing: 14) {
                 if let termsURL = BackendConfig.termsURL {
                     Link("Terms", destination: termsURL)
@@ -204,7 +204,7 @@ struct GavelStoreView: View {
                     Link("Privacy", destination: privacyURL)
                 }
             }
-            .font(.scaled(11, weight: .semibold, relativeTo: .caption2)).tint(Theme.gold)
+            .font(.dynamicScaled(11, weight: .semibold, relativeTo: .caption2)).tint(Theme.gold)
         }
         .multilineTextAlignment(.center)
         .padding(.top, 6)
@@ -233,18 +233,18 @@ private struct GavelPackRow: View {
     var body: some View {
         GlassSurface(corner: Theme.cornerL) {
             HStack(spacing: 14) {
-                Image(systemName: "hammer.fill").font(.scaled(18, weight: .bold, relativeTo: .body))
+                Image(systemName: "hammer.fill").font(.dynamicScaled(18, weight: .bold, relativeTo: .body))
                     .foregroundStyle(Theme.gold).frame(width: 44, height: 44)
                     .background(Circle().fill(Theme.gold.opacity(0.16)))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(Tally.compact(gavels)) Gavels")
-                        .font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
-                    Text(product.displayName).font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+                        .font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
+                    Text(product.displayName).font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                 }
                 Spacer()
                 Button(action: onBuy) {
                     Text(product.displayPrice)
-                        .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline)).foregroundStyle(.black)
+                        .font(.dynamicScaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline)).foregroundStyle(.black)
                         .padding(.horizontal, 16).padding(.vertical, 9)
                         .background(Capsule().fill(Theme.goldGradient))
                 }
@@ -265,23 +265,23 @@ private struct PassRow: View {
         GlassSurface(corner: Theme.cornerL, tint: tier == .blackcard ? Theme.gold : .white) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
-                    Image(systemName: tier.systemImage).font(.scaled(16, weight: .bold, relativeTo: .callout))
+                    Image(systemName: tier.systemImage).font(.dynamicScaled(16, weight: .bold, relativeTo: .callout))
                         .foregroundStyle(tier == .blackcard ? .black : Theme.rose)
                         .frame(width: 38, height: 38)
                         .background(Circle().fill(tier == .blackcard
                                                   ? AnyShapeStyle(Theme.goldGradient)
                                                   : AnyShapeStyle(Theme.rose.opacity(0.16))))
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(tier.title).font(.scaled(17, weight: .heavy, design: .serif, relativeTo: .body))
+                        Text(tier.title).font(.dynamicScaled(17, weight: .heavy, design: .serif, relativeTo: .body))
                             .foregroundStyle(Theme.ink)
                         if let product {
-                            Text("\(product.displayPrice) / month").font(.scaled(12, weight: .semibold, relativeTo: .caption1))
+                            Text("\(product.displayPrice) / month").font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1))
                                 .foregroundStyle(Theme.gold)
                         }
                     }
                     Spacer()
                     if active {
-                        Text("ACTIVE").font(.scaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                        Text("ACTIVE").font(.dynamicScaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
                             .foregroundStyle(.black).padding(.horizontal, 8).padding(.vertical, 4)
                             .background(Capsule().fill(Theme.success))
                     }
@@ -289,9 +289,9 @@ private struct PassRow: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(tier.perks, id: \.self) { perk in
                         HStack(spacing: 8) {
-                            Image(systemName: "checkmark.circle.fill").font(.scaled(12, relativeTo: .caption1))
+                            Image(systemName: "checkmark.circle.fill").font(.dynamicScaled(12, relativeTo: .caption1))
                                 .foregroundStyle(Theme.success)
-                            Text(perk).font(.scaled(13, weight: .medium, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+                            Text(perk).font(.dynamicScaled(13, weight: .medium, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                         }
                     }
                 }

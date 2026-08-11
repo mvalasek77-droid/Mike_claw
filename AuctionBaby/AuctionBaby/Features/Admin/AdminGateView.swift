@@ -21,14 +21,14 @@ struct AdminGateView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         Image(systemName: "lock.shield.fill")
-                            .font(.scaled(44, relativeTo: .largeTitle))
+                            .font(.dynamicScaled(44, relativeTo: .largeTitle))
                             .foregroundStyle(Theme.gold)
                             .padding(.top, 28)
                         Text("Founder sign-in")
-                            .font(.scaled(22, weight: .heavy, design: .serif, relativeTo: .title2))
+                            .font(.dynamicScaled(22, weight: .heavy, design: .serif, relativeTo: .title2))
                             .foregroundStyle(Theme.ink)
                         Text("The admin console can move real money.\nCredentials required every time.\n\nUser & report actions ALSO require you to be signed in with an admin account (set `is_admin = 1` on your user row).")
-                            .font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
+                            .font(.dynamicScaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft)
                             .multilineTextAlignment(.center)
 
                         VStack(spacing: 10) {
@@ -40,20 +40,20 @@ struct AdminGateView: View {
                                 .textContentType(.password)
                                 .onSubmit(attempt)
                         }
-                        .font(.scaled(15, weight: .medium, relativeTo: .subheadline))
+                        .font(.dynamicScaled(15, weight: .medium, relativeTo: .subheadline))
                         .foregroundStyle(Theme.ink)
                         .padding(12)
                         .background(RoundedRectangle(cornerRadius: Theme.cornerL).fill(.white.opacity(0.06)))
 
                         if failed {
                             Text("Those credentials don't match.")
-                                .font(.scaled(12, weight: .semibold, relativeTo: .caption1))
+                                .font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1))
                                 .foregroundStyle(Theme.danger)
                         }
 
                         Button(action: attempt) {
                             Text("Unlock")
-                                .font(.scaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
+                                .font(.dynamicScaled(15, weight: .heavy, design: .rounded, relativeTo: .subheadline))
                                 .foregroundStyle(.black)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)

@@ -38,12 +38,12 @@ struct BidSheet: View {
                     AvatarCircle(name: woman.name, hue: woman.hue, photoName: woman.photoName, size: 48)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Bidding on \(woman.name)")
-                            .font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
+                            .font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout)).foregroundStyle(Theme.ink)
                         if let floor = woman.startingBid {
-                            Text("Floor \(Money.full(floor))").font(.scaled(12, weight: .semibold, relativeTo: .caption1))
+                            Text("Floor \(Money.full(floor))").font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1))
                                 .foregroundStyle(Theme.gold)
                         } else {
-                            Text("No floor — open bidding").font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
+                            Text("No floor — open bidding").font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                         }
                     }
                     Spacer()
@@ -52,13 +52,13 @@ struct BidSheet: View {
                 if let prompt = promptContext {
                     VStack(alignment: .leading, spacing: 4) {
                         Label("Your bid will mention this answer", systemImage: "quote.opening")
-                            .font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2)).tracking(1)
+                            .font(.dynamicScaled(10, weight: .bold, design: .rounded, relativeTo: .caption2)).tracking(1)
                             .foregroundStyle(Theme.rose)
-                        Text(prompt.question).font(.scaled(11, weight: .semibold, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
-                        Text(prompt.answer).font(.scaled(15, weight: .bold, design: .serif, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
+                        Text(prompt.question).font(.dynamicScaled(11, weight: .semibold, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
+                        Text(prompt.answer).font(.dynamicScaled(15, weight: .bold, design: .serif, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
                             .fixedSize(horizontal: false, vertical: true)
                         Text("Same as any other bid — the money, the rules, the ratings are identical. Her answer just rides along at the top of your bid so she knows what caught your eye.")
-                            .font(.scaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                            .font(.dynamicScaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 4)
                     }
@@ -70,16 +70,16 @@ struct BidSheet: View {
 
                 // Big amount display.
                 VStack(spacing: 4) {
-                    Text("Your bid").font(.scaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
+                    Text("Your bid").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .tracking(1).foregroundStyle(Theme.inkFaint)
                     Text(Money.full(amount))
-                        .font(.scaled(46, weight: .heavy, design: .rounded, relativeTo: .largeTitle))
+                        .font(.dynamicScaled(46, weight: .heavy, design: .rounded, relativeTo: .largeTitle))
                         .foregroundStyle(Theme.goldGradient)
                         .contentTransition(.numericText())
                         .minimumScaleFactor(0.5).lineLimit(1)
                     if amount >= Bid.masterpieceBid && store.role == .man && store.me.archetype == .trillionaire {
                         Label("Masterpiece-eligible — pay it & get confirmed", systemImage: "rosette")
-                            .font(.scaled(12, weight: .bold, relativeTo: .caption1)).foregroundStyle(Theme.rose)
+                            .font(.dynamicScaled(12, weight: .bold, relativeTo: .caption1)).foregroundStyle(Theme.rose)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -104,12 +104,12 @@ struct BidSheet: View {
 
                 // Note.
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("ADD A NOTE").font(.scaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
+                    Text("ADD A NOTE").font(.dynamicScaled(10, weight: .bold, design: .rounded, relativeTo: .caption2))
                         .tracking(1).foregroundStyle(Theme.inkFaint)
                     TextField("", text: $note,
                               prompt: Text("Why you? Make the bid count.").foregroundStyle(Theme.inkFaint),
                               axis: .vertical)
-                        .textFieldStyle(.plain).font(.scaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
+                        .textFieldStyle(.plain).font(.dynamicScaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
                         .accessibilityLabel("Bid note")
                         .lineLimit(2...4)
                         .padding(12)
@@ -125,7 +125,7 @@ struct BidSheet: View {
                     VStack(spacing: 8) {
                         Label("You've used all \(AuctionStore.freeActiveBidLimit) free live bids.",
                               systemImage: "hand.raised.slash.fill")
-                            .font(.scaled(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(Theme.warning)
+                            .font(.dynamicScaled(13, weight: .bold, relativeTo: .footnote)).foregroundStyle(Theme.warning)
                         PrimaryButton(title: "Get a Pass for unlimited bids", systemImage: "sparkles",
                                       gradient: Theme.roseGradient) { showStore = true }
                         whisperFallback
@@ -144,7 +144,7 @@ struct BidSheet: View {
                 }
 
                 Text("Spend your bid on the date — the meal, the drinks, the night. She keeps the receipts and confirms it after. Never wire money or send a personal deposit; the app has no way to send money to another user, by design.")
-                    .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint).multilineTextAlignment(.center)
+                    .font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint).multilineTextAlignment(.center)
                 Spacer(minLength: 20)
             }
             .screenPadding()
@@ -184,14 +184,14 @@ struct BidSheet: View {
     private var intentCallout: some View {
         HStack(spacing: 10) {
             Image(systemName: "signature")
-                .font(.scaled(18, weight: .bold, relativeTo: .body))
+                .font(.dynamicScaled(18, weight: .bold, relativeTo: .body))
                 .foregroundStyle(Theme.gold)
             VStack(alignment: .leading, spacing: 2) {
                 Text("The money you'll spend on the date")
-                    .font(.scaled(13, weight: .heavy, design: .serif, relativeTo: .footnote))
+                    .font(.dynamicScaled(13, weight: .heavy, design: .serif, relativeTo: .footnote))
                     .foregroundStyle(Theme.ink)
                 Text("Dinner, drinks, the experience — not a payment to her. She keeps the receipts so it can be confirmed after.")
-                    .font(.scaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
+                    .font(.dynamicScaled(11, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 6)
@@ -211,18 +211,18 @@ struct BidSheet: View {
         Button { Haptics.selection(); insure.toggle() } label: {
             HStack(spacing: 12) {
                 Image(systemName: insure ? "shield.checkerboard" : "shield")
-                    .font(.scaled(20, weight: .bold, relativeTo: .title3))
+                    .font(.dynamicScaled(20, weight: .bold, relativeTo: .title3))
                     .foregroundStyle(insure ? Theme.verify : Theme.inkSoft)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Bid Insurance").font(.scaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline))
+                    Text("Bid Insurance").font(.dynamicScaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline))
                         .foregroundStyle(Theme.ink)
                     Text("If she declines, your premium comes back — and the gild fee too, if you gilded.")
-                        .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+                        .font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 6)
                 Text("\(Tally.compact(AuctionStore.bidInsuranceCost)) ⚖︎")
-                    .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                    .font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(insure ? Theme.verify : Theme.inkFaint)
             }
             .padding(14)
@@ -248,7 +248,7 @@ struct BidSheet: View {
                     Spacer()
                     Image(systemName: "chevron.right")
                 }
-                .font(.scaled(13, weight: .bold, design: .rounded, relativeTo: .footnote))
+                .font(.dynamicScaled(13, weight: .bold, design: .rounded, relativeTo: .footnote))
                 .foregroundStyle(Theme.rose)
                 .padding(.horizontal, 14).padding(.vertical, 11)
                 .background(Capsule().stroke(Theme.rose.opacity(0.55), lineWidth: 1.2))
@@ -262,18 +262,18 @@ struct BidSheet: View {
         Button { Haptics.selection(); gild.toggle() } label: {
             HStack(spacing: 12) {
                 Image(systemName: gild ? "seal.fill" : "seal")
-                    .font(.scaled(20, weight: .bold, relativeTo: .title3))
+                    .font(.dynamicScaled(20, weight: .bold, relativeTo: .title3))
                     .foregroundStyle(gild ? AnyShapeStyle(Theme.prestigeGradient) : AnyShapeStyle(Theme.inkSoft))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Gild this bid").font(.scaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline))
+                    Text("Gild this bid").font(.dynamicScaled(15, weight: .heavy, design: .serif, relativeTo: .subheadline))
                         .foregroundStyle(Theme.ink)
                     Text("Pin to the top of her inbox with a gold ribbon — she's far more likely to accept.")
-                        .font(.scaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
+                        .font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 6)
                 Text("\(Tally.compact(AuctionStore.gildedBidCost)) ⚖︎")
-                    .font(.scaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
+                    .font(.dynamicScaled(13, weight: .heavy, design: .rounded, relativeTo: .footnote))
                     .foregroundStyle(gild ? Theme.gold : Theme.inkFaint)
             }
             .padding(14)

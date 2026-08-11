@@ -60,16 +60,16 @@ struct MatchRow: View {
                              revealed: true)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(other.name).font(.scaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
+                        Text(other.name).font(.dynamicScaled(16, weight: .heavy, design: .serif, relativeTo: .callout))
                             .foregroundStyle(Theme.ink)
                         if other.verified { VerifiedBadge(size: 13) }
                     }
                     Text(match.messages.last?.text ?? "Say hello")
-                        .font(.scaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft).lineLimit(1)
+                        .font(.dynamicScaled(13, relativeTo: .footnote)).foregroundStyle(Theme.inkSoft).lineLimit(1)
                     if match.dateReserved {
                         HStack(spacing: 4) {
-                            Image(systemName: "checkmark.seal.fill").font(.scaled(10, relativeTo: .caption2))
-                            Text(match.reservedLabel).font(.scaled(11, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                            Image(systemName: "checkmark.seal.fill").font(.dynamicScaled(10, relativeTo: .caption2))
+                            Text(match.reservedLabel).font(.dynamicScaled(11, weight: .heavy, design: .rounded, relativeTo: .caption2))
                         }
                         .foregroundStyle(Theme.verify)
                     }
@@ -77,14 +77,14 @@ struct MatchRow: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: 6) {
                     Text(Money.compact(match.bid.amount))
-                        .font(.scaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote)).foregroundStyle(Theme.gold)
+                        .font(.dynamicScaled(14, weight: .heavy, design: .rounded, relativeTo: .footnote)).foregroundStyle(Theme.gold)
                     if let until = match.expiresAt, !match.isExpired {
                         HStack(spacing: 3) {
-                            Image(systemName: "clock.fill").font(.scaled(8, weight: .bold, relativeTo: .caption2))
+                            Image(systemName: "clock.fill").font(.dynamicScaled(8, weight: .bold, relativeTo: .caption2))
                             Text(timerInterval: Date.now...max(until, Date.now.addingTimeInterval(1)), countsDown: true)
                                 .monospacedDigit()
                         }
-                        .font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                        .font(.dynamicScaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(Theme.warning)
                     } else {
                         PhaseTag(phase: match.phase, expired: match.isExpired)
@@ -109,7 +109,7 @@ struct PhaseTag: View {
             case .closed: return ("Closed", Theme.inkFaint)
             }
         }()
-        return Text(text).font(.scaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
+        return Text(text).font(.dynamicScaled(10, weight: .heavy, design: .rounded, relativeTo: .caption2))
             .foregroundStyle(color)
             .padding(.horizontal, 8).padding(.vertical, 3)
             .background(Capsule().fill(color.opacity(0.16)))

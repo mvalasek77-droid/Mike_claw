@@ -21,10 +21,10 @@ extension Font {
     /// re-evaluate when `\.dynamicTypeSize` changes — so text resizes live when
     /// the user moves the slider. The app root clamps the upper bound
     /// (`.accessibility3`) so the largest settings can't shatter dense layouts.
-    static func scaled(_ size: CGFloat,
-                       weight: Font.Weight = .regular,
-                       design: Font.Design = .default,
-                       relativeTo textStyle: UIFont.TextStyle = .body) -> Font {
+    static func dynamicScaled(_ size: CGFloat,
+                              weight: Font.Weight = .regular,
+                              design: Font.Design = .default,
+                              relativeTo textStyle: UIFont.TextStyle = .body) -> Font {
         let scaledSize = UIFontMetrics(forTextStyle: textStyle).scaledValue(for: size)
         return .system(size: scaledSize, weight: weight, design: design)
     }
