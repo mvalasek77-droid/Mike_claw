@@ -65,17 +65,22 @@ Owner key: **You** = founder · **Test** = whoever runs the device · **Legal** 
 
 ---
 
-## 3. Legal & hosting 🔴  → refs: `legal/PRIVACY_POLICY.md`, `legal/EULA.md`, `ASC_METADATA.md`
+## 3. Legal & hosting 🔴  → refs: `legal/*.md`, `legal/*.html`, `ASC_METADATA.md`
 
-- 🔴 **Attorney review + finalize** the Privacy Policy and EULA templates; fill
-      every `[BRACKET]` (entity name, jurisdiction, support email, effective
-      date, address)  — Owner: Legal
-- 🔴 **Host** the finalized Privacy Policy + EULA at stable public URLs
-      (GitHub Pages / Cloudflare Pages)  — Owner: You
-- ☐ Create the **Support page** the ASC Support URL requires (contact + basic
-      FAQ; can be the same host)
-- 🔴 **Set `AB_TERMS_URL` / `AB_PRIVACY_URL`** in `Secrets.xcconfig` → the
-      paywall links + Settings rows render from these; blank = 3.1.2 rejection
+- ✅ Hardened Privacy Policy + EULA drafted (industry-distilled: arbitration +
+      class waiver, safety/no-background-check disclaimers, virtual-goods terms,
+      CCPA/GDPR rights) — markdown source + **hostable HTML** (`legal/privacy.html`,
+      `legal/eula.html`)
+- ✅ **Support page** drafted (`legal/support.html`) for the ASC Support URL
+- 🔴 **Attorney review + finalize**; fill every `[BRACKET]` (entity name,
+      jurisdiction, support/DMCA email, effective date, address, arbitration
+      body). Arbitration/class-waiver enforceability varies — counsel must
+      confirm.  — Owner: Legal
+- 🔴 **Host** the finalized pages at stable public URLs (GitHub Pages /
+      Cloudflare Pages — the HTML is ready to drop in)  — Owner: You
+- 🔴 **Set `AB_TERMS_URL` / `AB_PRIVACY_URL`** in `Secrets.xcconfig` (and the
+      Support URL in ASC) → the paywall links + Settings rows render from these;
+      blank = 3.1.2 rejection
 - ☐ Verify both links open from: the **paywall**, **Settings**, and the **App
       Store description**
 
@@ -126,9 +131,10 @@ Owner key: **You** = founder · **Test** = whoever runs the device · **Legal** 
 
 ## 6. Build & submit
 
-- ☐ Bump **version + build number** (`CFBundleShortVersionString` / `CFBundleVersion`)
-- ☐ Add `ITSAppUsesNonExemptEncryption = false` to Info.plist (standard TLS only)
-      to skip the export-compliance prompt each upload
+- ☐ Bump **version + build number** for each upload (currently `1.0.0` build `2`
+      in Info.plist)
+- ✅ `ITSAppUsesNonExemptEncryption = false` already in Info.plist (standard TLS
+      only) — export-compliance prompt is pre-answered
 - ☐ Archive **Release** build → upload (Organizer / Transporter)
 - ☐ **Sandbox-test** every IAP (buy / restore / cancel / interrupted) with a
       Sandbox Apple ID
@@ -156,7 +162,8 @@ Paid Apps agreement      ─┘        │
 
 ## The hard blockers, in one place (🔴)
 1. Admin credential not yet rotated
-2. Privacy Policy + EULA not finalized (attorney) and not hosted
+2. Privacy Policy + EULA — hardened drafts + hostable HTML ready; still need
+   **attorney finalize** + **hosting**
 3. `AB_TERMS_URL` / `AB_PRIVACY_URL` not set → paywall legal links blank
 4. Paid Apps agreement / banking / tax not confirmed
 5. The 16 IAP products not yet created in ASC
@@ -166,7 +173,11 @@ Paid Apps agreement      ─┘        │
 - Reserve-the-date kill-switch OFF for v1.0? (recommended)
 - Final store name / subtitle from `ASC_METADATA.md`
 - Gavel-pack + Boost prices
-- Whether to keep the $9,999.99 archetype (custom pricing + scrutiny)
+- ✅ **$9,999.99 archetype — DECIDED: keep it.** Action: configure Apple
+      **custom pricing** for `com.valasek.auctionbaby.status.trillionaire`
+      (standard tiers cap at $999.99), and expect extra review scrutiny on a
+      four-figure IAP — be ready to justify it as an optional vanity/status good
+      (the EULA §9 already frames it that way).
 
 ---
 

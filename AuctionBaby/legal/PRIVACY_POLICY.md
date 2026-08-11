@@ -1,92 +1,137 @@
 # Privacy Policy — Auction Baby
 
-**Effective date: [EFFECTIVE_DATE]**
+**Effective date: [EFFECTIVE_DATE]** · **Last updated: [EFFECTIVE_DATE]**
 
-> ⚠️ **Template — not legal advice.** This draft is written to match the app's
-> App Store Privacy Nutrition Label and actual data flows, but it must be
-> reviewed and finalized by a qualified attorney before you publish it and
-> point `AB_PRIVACY_URL` at it. Fill every `[BRACKET]` placeholder.
+> ⚠️ **Template — not legal advice.** Hardened using clauses common to major
+> dating platforms, but it must be reviewed and finalized by a qualified
+> attorney (especially the GDPR/UK, CCPA/CPRA, and international-transfer
+> sections) before you publish it and point `AB_PRIVACY_URL` at it. Fill every
+> `[BRACKET]` placeholder. The hosted copy is `legal/privacy.html`.
 
-[LEGAL ENTITY NAME] ("Auction Baby," "we," "us") operates the Auction Baby
-mobile application (the "App"). This policy explains what we collect, why, and
-your choices.
+[LEGAL ENTITY NAME] ("Auction Baby," "we," "us," "our") operates the Auction
+Baby mobile application and related services (the "Service"). This Privacy
+Policy explains what personal information we collect, how we use and share it,
+and the choices and rights you have.
 
-## 1. Who this applies to
-Auction Baby is for adults **18 and older**. We do not knowingly collect data
-from anyone under 18. If you believe a minor is using the App, contact us at
-[SUPPORT_EMAIL] and we will remove the account.
+By using the Service you acknowledge this Privacy Policy. If you do not agree,
+do not use the Service.
+
+## 1. Who can use the Service
+Auction Baby is for adults **18 and older**. We do not knowingly collect
+personal information from anyone under 18. If we learn that a user is under 18,
+we will terminate the account and delete the data. If you believe a minor is
+using the Service, contact **[SUPPORT_EMAIL]**.
 
 ## 2. Information we collect
-We collect only what the App needs to work:
 
-- **Account & contact info** — your name and email. If you use Sign in with
-  Apple, we receive the identifier Apple provides and, if you choose, a
-  relay email (Hide My Email). We never require you to disable Hide My Email.
-- **Profile & user content** — photos, bio, prompts, interests, location text
-  you enter, your date of birth (used to confirm you are 18+), and the
-  messages and bids you send.
-- **Identifiers** — a user id we assign, and, if you enable notifications, a
-  push device token.
-- **Purchases** — your in-app purchase history (subscriptions, currency,
-  status items). Payment is processed by Apple; we do not receive your card
-  details.
-- **Diagnostics** — limited, non-identifying error information to keep the App
-  working. [Adjust to match reality: if error data stays on-device only, say
-  so; if any is transmitted, describe it.]
+**a. Information you provide**
+- **Account & identity:** name, email (including an Apple private-relay email
+  if you use Hide My Email), and your **date of birth** (used to confirm you
+  are 18+).
+- **Profile & content:** photos, bio, prompts, interests, the city/location
+  text you type, and the messages, bids, and reactions you send.
+- **Verification:** if you verify, a live selfie is processed to match your
+  profile photos; we store the **verification result/status**, not necessarily
+  the raw selfie (subject to the verification provider's terms).
+- **Purchases:** records of subscriptions, in-app currency, and status items
+  you buy. Apple processes payment; we do **not** receive your full card number.
+- **Support:** anything you send us (e.g., a bug report or email).
 
-We do **not** collect precise GPS location; "location" is free text you type.
-The App has no mechanism to transfer money between users.
+**b. Information collected automatically**
+- **Device & usage:** device model, OS version, app version, and limited
+  diagnostic/error information used to keep the Service working and secure.
+- **Identifiers:** a user id we assign, and — if you enable notifications — a
+  push notification token; a per-account purchase token (`appAccountToken`)
+  used to route your wallet/refunds.
+- We do **not** collect precise GPS location; "location" is free text you type.
+
+**c. Information from third parties**
+- **Sign in with Apple:** the identifier and, if you allow it, name/email Apple
+  shares on first sign-in.
 
 ## 3. How we use your information
-- To create and operate your account and profile.
-- To show you (and other users) profiles, bids, matches, and messages.
-- To verify identity (a live selfie matched to your photos) and award the
-  verified badge.
-- To keep the community safe — process reports, enforce blocks, and act on
-  abuse.
-- To process purchases and provide subscription features.
-- To send you notifications you've opted into.
+- Create, operate, and secure your account and profile.
+- Provide core features: the floor, bids, matches, chat, verification, and the
+  reveal/safety mechanics that are part of how the Service works.
+- Process purchases and provide subscription features.
+- Detect, prevent, and respond to fraud, abuse, spam, and safety issues, and
+  enforce our Terms.
+- Send transactional and (if you opt in) other notifications.
+- Comply with law and enforce our rights.
 
-## 4. How information is shared
-We share information only as needed to run the service:
-- **Other users** — your profile, bids, and messages are shared with the
-  users you interact with, per the App's design (e.g., a man's photo unlocks
-  to a woman when she accepts his bid).
-- **Service providers** — hosting and backend (Cloudflare), push delivery
-  (Apple Push Notification service), and payment/booking processing (Apple
-  for in-app purchases; Stripe if you use a real-world booking fee). These
-  providers process data on our behalf under their own terms.
-- **Legal** — where required by law, or to protect users, the public, or our
-  rights.
+**Legal bases (EEA/UK):** performance of our contract with you (providing the
+Service); our legitimate interests (safety, fraud prevention, improving the
+Service); your consent (e.g., notifications, optional processing); and
+compliance with legal obligations. Some processing of profile data may involve
+**special-category data** (e.g., data you choose to reveal); where required we
+rely on your explicit consent, which you can withdraw by editing your profile
+or deleting your account.
 
-We do **not** sell your personal information.
+## 4. How we share information
+We share personal information only as described here; we do **not sell** your
+personal information.
+- **With other users:** your profile, bids, and messages are shared with the
+  users you interact with, consistent with the Service's design (for example,
+  a bidder's photo unlocks to a lot when she accepts his bid).
+- **Service providers (processors):** hosting/backend and photo storage
+  (Cloudflare), push delivery (Apple Push Notification service), payments and
+  subscriptions (Apple), any real-world booking-fee processor (Stripe, if you
+  use that feature), and an identity-verification provider. They process data
+  on our behalf under contract.
+- **Legal & safety:** to comply with law, respond to lawful requests, enforce
+  our Terms, or protect the rights, property, or safety of users, the public,
+  or us.
+- **Business transfers:** in a merger, acquisition, or asset sale, subject to
+  this Policy.
 
-## 5. Retention
-We keep your information while your account is active. When you delete your
-account (Settings → Delete Account), we delete or de-identify your personal
-data, except where we must retain limited records for legal, security, or
-fraud-prevention reasons.
+## 5. Tracking technologies
+The app itself does not use advertising cookies. We use only the identifiers
+described in §2 for authentication, notifications, purchases, and security. If
+we add analytics or a website, any cookies/SDKs will be disclosed here and, in
+the EEA/UK, subject to consent.
 
-## 6. Your choices and rights
-- **Access / deletion** — delete your account any time in Settings; this
-  removes your profile and associated data from the service.
-- **Notifications** — control push permissions in iOS Settings.
-- **Regional rights** — depending on where you live (e.g., EEA/UK, California),
-  you may have rights to access, correct, delete, or restrict processing of
-  your data. Contact [SUPPORT_EMAIL] to exercise them.
+## 6. Data retention
+We keep personal information while your account is active and as needed to
+provide the Service. When you delete your account (Settings → Delete Account),
+we delete or de-identify your personal data, except limited records we must
+keep for legal, tax, security, fraud-prevention, or dispute-resolution
+purposes, retained only as long as necessary.
 
-## 7. Security
-We use industry-standard measures (encryption in transit, credential storage
-in the device Keychain) to protect your information. No method is perfectly
-secure, but we work to protect your data and respond to incidents.
+## 7. Your rights and choices
+- **Access, correction, deletion:** edit your profile in-app, and delete your
+  account any time in Settings.
+- **Notifications:** manage push permissions in iOS Settings.
+- **EEA/UK (GDPR):** rights to access, rectify, erase, restrict, and port your
+  data, to object to processing, and to withdraw consent; you may lodge a
+  complaint with your supervisory authority.
+- **California (CCPA/CPRA):** rights to know, access, correct, and delete, and
+  to opt out of "sale"/"sharing" — **we do not sell or share** personal
+  information as those terms are defined. We do not discriminate against you
+  for exercising your rights.
+- **Other regions:** we honor applicable data-protection rights.
+To exercise any right, use the in-app controls or contact **[SUPPORT_EMAIL]**;
+we may need to verify your identity.
 
-## 8. International users
-We operate the App from [JURISDICTION]. If you use it elsewhere, your data may
-be processed in [JURISDICTION] and other countries where our providers operate.
+## 8. Security
+We use technical and organizational measures appropriate to the risk —
+encryption in transit (HTTPS/TLS), credential storage in the device Keychain,
+and access controls. No system is perfectly secure; we work to protect your
+data and will notify you and/or regulators of a breach where required by law.
 
-## 9. Changes
-We may update this policy. Material changes will be posted here with a new
-effective date and, where appropriate, notified in the App.
+## 9. International transfers
+We operate the Service from **[JURISDICTION]** and use providers that may
+process data in other countries. Where required, we use appropriate safeguards
+(e.g., Standard Contractual Clauses) for cross-border transfers.
 
-## 10. Contact
-Questions or requests: **[SUPPORT_EMAIL]** · [LEGAL ENTITY NAME], [ADDRESS].
+## 10. Children
+The Service is strictly for adults 18+. We do not direct it to, or knowingly
+collect data from, children.
+
+## 11. Changes
+We may update this Policy. We will post the new version here with an updated
+date and, for material changes, provide additional notice (e.g., in the app).
+Continued use after changes take effect means you accept the updated Policy.
+
+## 12. Contact
+**[LEGAL ENTITY NAME]** · **[SUPPORT_EMAIL]** · [ADDRESS]
+EEA/UK representative (if applicable): [EU_REP]
