@@ -438,6 +438,7 @@ struct ChatView: View {
                     TextField("", text: $draft,
                               prompt: Text("Message…").foregroundStyle(Theme.inkFaint), axis: .vertical)
                         .textFieldStyle(.plain).font(.scaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
+                        .accessibilityLabel("Message")
                         .lineLimit(1...4)
                         .padding(.horizontal, 14).padding(.vertical, 11)
                         .background(Capsule().fill(.white.opacity(0.08)))

@@ -110,6 +110,7 @@ struct BidSheet: View {
                               prompt: Text("Why you? Make the bid count.").foregroundStyle(Theme.inkFaint),
                               axis: .vertical)
                         .textFieldStyle(.plain).font(.scaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
+                        .accessibilityLabel("Bid note")
                         .lineLimit(2...4)
                         .padding(12)
                         .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.06)))

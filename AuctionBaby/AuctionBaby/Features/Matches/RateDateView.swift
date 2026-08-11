@@ -122,6 +122,7 @@ struct RateDateView: View {
                     TextField("", text: $text,
                               prompt: Text("A line for the record…").foregroundStyle(Theme.inkFaint), axis: .vertical)
                         .textFieldStyle(.plain).font(.scaled(15, relativeTo: .subheadline)).foregroundStyle(Theme.ink)
+                        .accessibilityLabel("Review")
                         .lineLimit(2...5)
                 }
 

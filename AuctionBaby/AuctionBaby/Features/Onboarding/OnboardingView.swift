@@ -186,6 +186,7 @@ struct OnboardingView: View {
                             }
                             TextField("", text: $promptAnswers[i], prompt: Text("Your answer").foregroundStyle(Theme.inkFaint), axis: .vertical)
                                 .textFieldStyle(.plain)
+                                .accessibilityLabel(promptQuestions[i])
                                 .font(.scaled(15, weight: .medium, relativeTo: .subheadline))
                                 .foregroundStyle(Theme.ink)
                                 .padding(12)
@@ -349,6 +350,7 @@ struct OnboardingView: View {
                       axis: axis ? .vertical : .horizontal)
                 .textFieldStyle(.plain)
                 .accessibilityIdentifier(title)   // stable hook for UI tests (e.g. "Name")
+                .accessibilityLabel(title)        // VoiceOver name once the field has content
                 .keyboardType(keyboard)
                 .font(.scaled(15, weight: .medium, relativeTo: .subheadline))
                 .foregroundStyle(Theme.ink)
@@ -375,6 +377,8 @@ struct FlowChips: View {
                     Chip(text: item, color: on ? Theme.gold : .white, filled: on)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(item)
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
     }

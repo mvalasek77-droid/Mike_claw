@@ -287,5 +287,7 @@ struct PhotoPageDots: View {
         }
         .padding(.horizontal, 16)
         .animation(.easeInOut(duration: 0.2), value: current)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Photo \(current + 1) of \(count)")
     }
 }
