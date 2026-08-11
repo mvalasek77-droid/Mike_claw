@@ -15,6 +15,9 @@ struct MatchCelebration: Identifiable, Equatable {
     var mePhoto: String? = nil
     var amount: Int
     var masterpiece: Bool
+    /// The match this celebration belongs to, so "Say hello" can open the
+    /// conversation. Nil for a copycat (no match is ever created).
+    var matchID: UUID? = nil
 }
 
 /// The dopamine moment: when a bid is accepted, the gavel slams, "SOLD!" lands,
@@ -24,6 +27,7 @@ struct MatchCelebrationView: View {
     let celebration: MatchCelebration
     var onDismiss: () -> Void
 
+    @EnvironmentObject private var push: PushService
     @State private var appear = false
     @State private var slam = false
     private var reduceMotion: Bool { Motion.prefersReducedMotion }
@@ -75,7 +79,7 @@ struct MatchCelebrationView: View {
                     amountChip
                 }
 
-                Button { dismiss() } label: {
+                Button { primaryAction() } label: {
                     Text(celebration.otherCopycat ? "Got it" : "Say hello")
                         .font(.dynamicScaled(17, weight: .heavy, design: .rounded, relativeTo: .body))
                         .foregroundStyle(.black)
@@ -157,6 +161,16 @@ struct MatchCelebrationView: View {
             Motion.run(.spring(response: 0.32, dampingFraction: 0.5)) { slam = true }
             Haptics.heavy()
         }
+    }
+
+    /// "Say hello" on a real match opens that conversation (reusing the same
+    /// deep-link MainTabView handles for a message push); "Got it" on a copycat
+    /// just closes the reveal. Tapping the backdrop always only dismisses.
+    private func primaryAction() {
+        if !celebration.otherCopycat, let id = celebration.matchID {
+            push.deepLinkEvent = .messageReceived(matchId: id.uuidString, messageId: nil)
+        }
+        dismiss()
     }
 
     private func dismiss() {

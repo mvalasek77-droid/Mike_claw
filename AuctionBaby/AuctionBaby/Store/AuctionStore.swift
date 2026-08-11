@@ -816,7 +816,8 @@ final class AuctionStore: ObservableObject {
             // (failure branch) must not stack a credit that never landed.
             earnings += bid.amount
             celebrate(with: bid.man, amount: bid.amount,
-                      copycat: false, masterpiece: bid.qualifiesForMasterpiece)
+                      copycat: false, masterpiece: bid.qualifiesForMasterpiece,
+                      matchID: match.id)
             log(.bidAccepted, "You accepted \(bid.man.name)'s \(Money.compact(bid.amount)) bid.")
             save()
             // Await the opener send so we can reconcile the local placeholder
@@ -1546,7 +1547,8 @@ final class AuctionStore: ObservableObject {
                    ? "A Trillionaire's bid accepted — a Masterpiece is in reach."
                    : "Bid accepted. Invite sent to \(accepted.man.name).")
         celebrate(with: accepted.man, amount: accepted.amount,
-                  copycat: accepted.onCopycat, masterpiece: accepted.qualifiesForMasterpiece)
+                  copycat: accepted.onCopycat, masterpiece: accepted.qualifiesForMasterpiece,
+                  matchID: match.id)
         log(.bidAccepted, "You accepted \(accepted.man.name)'s \(Money.compact(accepted.amount)) bid.")
         save()
         scheduleSuitorReply(matchID: match.id)
@@ -1965,13 +1967,14 @@ final class AuctionStore: ObservableObject {
     // MARK: - Celebration
 
     /// Fire the full-screen "SOLD!" moment for a freshly-made match.
-    private func celebrate(with other: Profile, amount: Int, copycat: Bool, masterpiece: Bool) {
+    private func celebrate(with other: Profile, amount: Int, copycat: Bool, masterpiece: Bool,
+                           matchID: UUID? = nil) {
         celebration = MatchCelebration(
             otherName: other.name, otherHue: other.hue, otherPhoto: other.photoName,
             otherCopycat: copycat, otherCopycatStyle: other.copycatStyle,
             otherVerified: other.verified,
             meName: me.name.isEmpty ? "You" : me.name, meHue: me.hue, mePhoto: me.photoName,
-            amount: amount, masterpiece: masterpiece)
+            amount: amount, masterpiece: masterpiece, matchID: matchID)
     }
 
     // MARK: - Simulation
@@ -2035,7 +2038,8 @@ final class AuctionStore: ObservableObject {
                 Haptics.success()
                 self.toastFlash("\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid!")
                 self.celebrate(with: bid.woman, amount: bid.amount,
-                               copycat: false, masterpiece: bid.qualifiesForMasterpiece)
+                               copycat: false, masterpiece: bid.qualifiesForMasterpiece,
+                               matchID: match.id)
                 self.log(.bidAccepted, "\(bid.woman.name) accepted your \(Money.compact(bid.amount)) bid.")
             } else {
                 let before = self.me.auctionCredit
