@@ -80,26 +80,36 @@ replaces them**; the app already points at the GitHub Pages URLs below):
 > copies you host. 🔴 **Attorney must confirm** the arbitration + class-waiver
 > clauses before you publish.
 
-**2b. Host on GitHub Pages** (the HTML is self-contained, drop-in). The app's
-fallback URLs already assume this exact path — match it so even a blank
-`Secrets.xcconfig` resolves:
+**2b. Host on GitHub Pages** — ✅ **DONE (plumbing).** This repo deploys Pages
+from `docs/` via `.github/workflows/deploy-pages.yml` (auto-runs on any push
+touching `docs/**` on this branch — no manual Settings → Pages step). The
+Auction Baby pages are now published at `docs/auctionbaby/`, which maps to the
+exact URLs the app's fallback expects, so even a blank `Secrets.xcconfig`
+resolves:
 
 ```
 https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/privacy.html
-https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/terms.html   (= eula.html)
+https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/terms.html   (= eula.html, links rewritten)
 https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/support.html
 ```
 
-```sh
-# From the repo root, on a branch Pages serves (e.g. the default branch or a `gh-pages`):
-mkdir -p auctionbaby
-cp AuctionBaby/legal/privacy.html auctionbaby/privacy.html
-cp AuctionBaby/legal/eula.html    auctionbaby/terms.html    # note: served as terms.html
-cp AuctionBaby/legal/support.html auctionbaby/support.html
-git add auctionbaby && git commit -m "Publish legal pages for App Store" && git push
-```
-Then in GitHub → **Settings → Pages** → Source = your branch, `/ (root)`.
-✅ Open all three URLs in a browser — they must render, not 404.
+> ⚠️ The root `docs/{privacy,terms,support}.html` are a DIFFERENT app's pages
+> (AI Marketplace) — do NOT point Auction Baby at them. Auction Baby lives
+> under `docs/auctionbaby/`.
+>
+> To refresh after the attorney fills the brackets: edit
+> `AuctionBaby/legal/*.html`, re-copy into `docs/auctionbaby/`
+> (`cp eula.html terms.html` + `sed -i 's/eula\.html/terms.html/g'`), push —
+> the Action redeploys to the same URLs.
+
+🔴 **Still blocked on content:** the published pages still contain 21
+`[BRACKET]` placeholders (entity, jurisdiction, arbitration body, emails,
+dates). They now resolve (no more 404), so the paywall links and screenshot
+frame 6 work — but **Apple will reject bracketed legal**, so the attorney
+fill (2a) must land before Submit for Review.
+
+✅ After the Action finishes, open all three URLs in a browser — they must
+render, not 404.
 
 ---
 
