@@ -1,362 +1,291 @@
-# Auction Baby — App Store Connect Submission Guide
+# Auction Baby — App Store Submission Guide
 
-A field-by-field walkthrough of the entire App Store Connect (ASC) submission,
-with the exact values to paste, every in-app purchase, the paywall mapping, and
-the reviewer demo-mode steps. Work top to bottom — later sections can't be
-completed until the earlier ones exist.
+Two parts: **Part 1** is the App Store Connect (ASC) submission checklist;
+**Part 2** is the paywall / in-app-purchase submission (the subscription
+review, Guideline 3.1.2). Read the **Review-risk callouts** first — this app
+has three areas Apple will scrutinize, and getting them wrong is the most
+likely rejection.
 
-> Apple moves the ASC UI around from time to time; section **names** here match
-> what you'll see, even if the exact page layout shifts. Anything in a
-> `code box` is meant to be pasted verbatim.
+Bundle id: `com.valasek.auctionbaby` · Age rating: **17+** · Sign in with
+Apple, Push, StoreKit subscriptions + consumables + non-consumables.
 
----
-
-## 0. Prerequisites (do these first, they gate everything)
-
-- [ ] **Apple Developer Program** membership active ($99/yr), signed in at
-      [appstoreconnect.apple.com](https://appstoreconnect.apple.com)
-- [ ] **Agreements, Tax, and Banking** → the **Paid Apps Agreement** shows
-      **Active**, with a bank account + tax forms complete. *Until this is
-      Active you cannot create or test any in-app purchase.*
-- [ ] Bundle ID `com.valasek.auctionbaby` registered (Certificates, IDs &
-      Profiles → Identifiers) — Xcode usually creates it on first upload
-- [ ] The app builds and archives from Xcode on a Mac (Phase 0 of
-      `LAUNCH_CHECKLIST.md`)
+Legend: ☐ to do · ✅ done · ⚠️ risk
 
 ---
 
-## 1. Create the app record
+## ⚠️ Read first — the three things that get this app rejected
 
-**My Apps → ➕ → New App**
+1. **The concept (men bidding on women).** Guideline 1.1 (objectionable) /
+   1.1.4. The defense is baked into the copy and *must stay consistent* in the
+   App Store description and screenshots: a bid is a **letter of intent — the
+   money a man commits to spend on the date itself (dinner, drinks, the
+   night), never a payment to her.** The app never moves money between users
+   (enforced in code). Do **not** use language in metadata that implies buying
+   a person, escorting, or transactional sex. Frame it as a **dating app with
+   an auction-house theme where intent is signalled by planned generosity.**
 
-| Field | Value |
-|---|---|
-| Platforms | **iOS** |
-| Name | `Auction Baby` |
-| Primary language | `English (U.S.)` |
-| Bundle ID | `com.valasek.auctionbaby` |
-| SKU | `auctionbaby-ios-01` (any unique internal string) |
-| User Access | Full Access |
+2. **"Reserve the date" Stripe booking fee (external payment).** Guideline
+   3.1.1 requires IAP for digital content. Reserve charges a **real-world
+   booking fee via Stripe** and *unlocks nothing in the app* — it's the
+   real-world-service exception. Apple may still challenge it. **Recommendation
+   for v1.0 submission: ship with the Reserve kill-switch OFF** (the remote
+   flag hides the feature fleet-wide) so it isn't in the reviewed binary, then
+   turn it on post-approval and be ready to justify it. If you leave it on,
+   the review notes must explain it's a real-world reservation, not IAP-able
+   content.
 
-> **Name collision:** if "Auction Baby" is taken, ASC rejects it here. Have a
-> backup (e.g. "Auction Baby: Bid to Date") ready; the name is also what
-> reviewers judge against the concept.
+3. **UGC moderation (Guideline 1.2).** A dating app with user profiles/photos/
+   chat MUST have: content you can filter, a **report + block** mechanism,
+   published contact info, a commitment to **act on reports within 24h and
+   eject abusive users**, and an **EULA with a zero-tolerance clause** for
+   objectionable content. The app has report/block, admin moderation, and
+   suspend/delete — surface all of it in the review notes.
 
----
-
-## 2. App Information (left sidebar → *General → App Information*)
-
-| Field | Value |
-|---|---|
-| Subtitle | `Bid for the date. Earn it.` (30 char max) |
-| Category → Primary | **Social Networking** |
-| Category → Secondary | **Lifestyle** |
-| Content Rights | Check **"Contains, shows, or accesses third-party content"** = **No** (all content is original/simulated) |
-| Age Rating | Set via the questionnaire → see **§8**. Target: **17+** |
-
-There is no "description" here — that lives on the version page (**§5**).
-
----
-
-## 3. Pricing and Availability
-
-| Field | Value |
-|---|---|
-| Price (the app itself) | **Free** (Tier 0) — revenue is all IAP |
-| Availability | All countries/regions, or restrict as you like |
-| Pre-orders | Off for v1 |
-
-> The app being **Free** is important: everything monetized is an in-app
-> purchase or the external real-world reservation fee. Do not set an app price.
+Also: **do not mention, link to, or hint at the external web Gavel shop from
+inside the iOS app.** In-app Gavels must be sold only via IAP (they are). Any
+in-app steering to a cheaper web purchase is an anti-steering rejection.
 
 ---
 
-## 4. In-App Purchases & Subscriptions — "the paywall parts"
+# Part 1 — App Store Connect submission checklist
 
-This is the biggest section. You are recreating, **exactly**, the catalog in
-`Products.storekit`. **Product IDs must be character-identical** or the app
-shows no products. Left sidebar → **Monetization → In-App Purchases** and
-**Monetization → Subscriptions**.
+## A. Prerequisites
+- ☐ Apple Developer Program membership active ($99/yr, paid)
+- ☐ Bundle id `com.valasek.auctionbaby` registered (Identifiers), with
+      **Sign in with Apple** + **Push Notifications** capabilities enabled
+- ☐ APNs Auth Key (.p8) created (same one set on the Auth Worker)
+- ☐ **Paid Apps agreement** signed in ASC → Business (required for any IAP)
+- ☐ Banking + tax forms complete (Agreements, Tax, and Banking)
 
-### 4a. ⚠️ Request high price points FIRST (do this before creating IAPs)
+## B. App record
+- ☐ New app in ASC: name **"Auction Baby"** (or your final store name — check
+      availability), primary language, bundle id, SKU
+- ☐ Primary category: **Lifestyle** or **Social Networking** (dating apps
+      typically Lifestyle; Social Networking triggers extra UGC scrutiny —
+      Lifestyle is the safer pick)
+- ☐ Secondary category: optional
 
-Three status products are above Apple's default $999.99 ceiling. Apple grants
-higher price points case-by-case and **reviews the request**, so start it early:
+## C. Metadata (App Information + Version)
+- ☐ **Name** (30 char), **Subtitle** (30 char)
+- ☐ **Promotional text** (170 char, updatable without review)
+- ☐ **Description** — must include, per 3.1.2, the subscription facts (see
+      Part 2 §D) and must keep the compliant framing from the risk callout
+- ☐ **Keywords** (100 char) — avoid trademarked/again-avoid transactional terms
+- ☐ **Support URL** (required, must resolve)
+- ☐ **Marketing URL** (optional)
+- ☐ **Terms of Use (EULA) URL** and **Privacy Policy URL** — the same ones set
+      in `Secrets.xcconfig` (`AB_TERMS_URL` / `AB_PRIVACY_URL`); Privacy Policy
+      is a required ASC field
+- ☐ **Copyright**, **Version** string matching `CFBundleShortVersionString`
 
-**ASC → Business → (Agreements) → request access to price points above
-$999.99** (up to Apple's absolute max of **$9,999.99**). Without this you
-literally cannot create Influencer, Ferrari, or Trillionaire.
+## D. Screenshots & preview
+- ☐ **iPhone 6.9"** (or 6.7") — **required**; upload 3–10
+- ☐ iPhone 6.5" — recommended
+- ☐ iPad 12.9" — only if the app supports iPad
+- ☐ Optional app preview video (15–30s)
+- ⚠️ Screenshots must reflect real UI and the compliant framing; no nudity,
+      no implied transactional content. Show: the Floor, a profile, the bid
+      composer with the "money you'll spend on the date" disclosure, a match,
+      chat, the Pass paywall.
 
-### 4b. Consumables (Monetization → In-App Purchases → ➕ → Consumable)
+## E. Age rating
+- ☐ Complete the questionnaire → **17+**
+      (Mature/Suggestive Themes: Frequent/Intense; Simulated Gambling: None —
+      the "auction" is not gambling; Sexual Content and Nudity: None if you
+      keep it clean; Unrestricted Web Access: No)
+- ⚠️ Do **not** enable anything that reads as real-money gambling — the bid is
+      not a wager.
 
-| Reference Name | Product ID | Price |
+## F. App Privacy (the Nutrition Label)
+Complete **App Privacy → Data collection** truthfully. Likely declarations:
+- ☐ **Contact Info**: name, email (via Sign in with Apple relay) — linked to
+      identity, used for app functionality
+- ☐ **User Content**: photos, bio/prompts, messages — app functionality
+- ☐ **Identifiers**: user id, device token (push) — app functionality
+- ☐ **Purchases**: purchase history — app functionality
+- ☐ **Usage/Diagnostics**: only if you actually collect analytics/crash data
+      (be honest; the app uses an on-device ErrorMonitor — declare only what
+      leaves the device)
+- ☐ Confirm the label matches the Privacy Policy exactly
+- ☐ **Account deletion** is in-app (Settings → Delete Account) — required since
+      2022 for any account-creation app ✅ (already built)
+
+## G. Sign in with Apple compliance
+- ☐ SIWA present ✅. If you offer any other third-party login, SIWA must be
+      offered too (currently SIWA is the only server login — compliant)
+- ☐ Never request Apple's private-relay email be replaced; never require the
+      user to disable Hide My Email
+
+## H. Build, capabilities, export compliance
+- ☐ Archive a **Release** build; version + build number incremented
+- ☐ Capabilities in the archived build: Sign in with Apple, Push (aps-environment
+      = production for the store build) ✅ entitlements committed
+- ☐ Upload via Xcode Organizer or `xcrun altool`/Transporter
+- ☐ **Export compliance**: the app uses only standard HTTPS/TLS → answer the
+      encryption question accordingly; add `ITSAppUsesNonExemptEncryption = false`
+      to Info.plist if that's true to skip the prompt each upload
+- ☐ Build appears in ASC → TestFlight; run **internal TestFlight** first
+
+## I. Review information
+- ☐ **Sign-in required?** Yes → provide the **Demo Mode** path in notes (see §K)
+- ☐ **Contact** name, phone, email for the reviewer
+- ☐ **Notes** (see §K) — this is where you defuse the three risks
+- ☐ Attachments: optional screen recording of the Demo flow
+
+## J. Pricing & availability
+- ☐ App is **free** (monetization is via IAP)
+- ☐ Territories: choose (consider excluding regions where the concept is
+      legally sensitive)
+- ☐ No pre-order unless intended
+
+## K. Review notes template (paste into "Notes")
+```
+Auction Baby is a dating app with an auction-house theme. A "bid" is a
+LETTER OF INTENT — the money a man commits to spend ON THE DATE ITSELF
+(dinner, drinks, the evening). It is never a payment to another user; the
+app has no mechanism to transfer money between users, by design.
+
+REVIEW ACCESS — no real account needed:
+1. On the first screen, choose a role (Bidder or Lot).
+2. In the name field, type: demo
+   ("demo" activates Demo Mode: play-money, fictional profiles, and every
+   paid feature is unlocked for review with no charge — including the full
+   Auction Baby Pass and Gavel economy.)
+3. Complete onboarding to reach the main floor.
+   - Bidders: browse, place bids, open the Pass paywall.
+   - Lots: use "Summon a bidder" to populate the inbox, accept/decline,
+     open the match + chat.
+
+SAFETY / UGC (Guideline 1.2): every profile and chat has Report & Block
+(removes the user from your floor and blocks contact). Reports are reviewed;
+abusive users are suspended/deleted. Account deletion is in Settings.
+
+SUBSCRIPTIONS: "Auction Baby Pass" (Paddle / Reserve / Black Card, monthly,
+auto-renewable) unlocks bidder features. Terms + Privacy are linked on the
+paywall and in Settings. Restore Purchases is on the paywall.
+
+[If Reserve-the-date is enabled:] "Reserve the date" charges a real-world
+booking fee via Stripe to hold an in-person date. It unlocks NO in-app
+content and never sends money to another user — it is a real-world service,
+not IAP-able digital content.
+```
+
+---
+
+# Part 2 — Paywall / IAP submission (Guideline 3.1.2)
+
+## A. Products to create in ASC (Features → In-App Purchases / Subscriptions)
+
+**Auto-renewable subscriptions** — one **Subscription Group** ("Auction Baby
+Pass"), three tiers, each **monthly**:
+| Tier | Product ID | Price |
 |---|---|---|
-| Handful of Gavels | `com.valasek.auctionbaby.gavels.handful` | $4.99 |
-| Stack of Gavels | `com.valasek.auctionbaby.gavels.stack` | $19.99 |
-| Chest of Gavels | `com.valasek.auctionbaby.gavels.chest` | $49.99 |
-| Vault of Gavels | `com.valasek.auctionbaby.gavels.vault` | $99.99 |
-| Spotlight Boost | `com.valasek.auctionbaby.boost.spotlight` | $3.99 |
+| Paddle | `com.valasek.auctionbaby.sub.paddle` | $19.99 |
+| Reserve | `com.valasek.auctionbaby.sub.reserve` | $39.99 |
+| Black Card | `com.valasek.auctionbaby.sub.blackcard` | $99.99 |
 
-### 4c. Non-consumables — the 8 status ratings (➕ → Non-Consumable)
-
-| Reference Name | Product ID | Price |
+**Consumables:**
+| Product | Product ID | Grants |
 |---|---|---|
-| Good Guy | `com.valasek.auctionbaby.status.goodguy` | $4.99 |
-| In & Out Guy | `com.valasek.auctionbaby.status.inandout` | $9.99 |
-| Why Not Guy | `com.valasek.auctionbaby.status.whynot` | $19.99 |
-| Got a Good Job | `com.valasek.auctionbaby.status.goodjob` | $99.99 |
-| Inheritance Money Guy | `com.valasek.auctionbaby.status.inheritance` | $999.99 |
-| Influencer | `com.valasek.auctionbaby.status.influencer` | $2,499.99 ⚠️ |
-| I Drive a Ferrari | `com.valasek.auctionbaby.status.ferrari` | $4,999.99 ⚠️ |
-| Trillionaire | `com.valasek.auctionbaby.status.trillionaire` | $9,999.99 ⚠️ |
+| Gavels — Handful | `…gavels.handful` | 1,000 |
+| Gavels — Stack | `…gavels.stack` | 5,000 |
+| Gavels — Chest | `…gavels.chest` | 14,000 |
+| Gavels — Vault | `…gavels.vault` | 30,000 |
+| Spotlight Boost | `…boost.spotlight` | 30 min top placement |
 
-⚠️ = needs the §4a high-price-point grant first.
+**Non-consumables** — status archetypes (`…goodguy` $4.99 … `…trillionaire`
+$9,999.99). ⚠️ Prices above $999.99 require Apple's **custom pricing** (up to
+$10,000) and draw extra scrutiny — confirm you actually want a $9,999.99 IAP,
+and be ready to justify it as a status/vanity good, not a service.
 
-### 4d. Subscriptions — Auction Baby Pass (Monetization → Subscriptions)
+- ☐ Every product: reviewed state must be **"Ready to Submit"** and attached
+      to **this app version** (subscriptions can be submitted with the build)
+- ☐ Product IDs must **exactly** match `StoreKitService.swift`
 
-Create **one Subscription Group** named `Auction Baby Pass`. All three tiers go
-in it (so a user can up/downgrade within the group):
+## B. Subscription group configuration
+- ☐ Group display name (localized): "Auction Baby Pass"
+- ☐ Rank the three tiers (Paddle < Reserve < Black Card) so upgrades/downgrades
+      resolve correctly
+- ☐ Set a subscription duration (monthly) per tier
+- ☐ (Optional) intro offers / free trial — if used, the paywall must disclose
+      the trial length + post-trial price
 
-| Reference Name | Product ID | Duration | Price |
-|---|---|---|---|
-| Paddle | `com.valasek.auctionbaby.sub.paddle` | 1 month | $19.99 |
-| Reserve | `com.valasek.auctionbaby.sub.reserve` | 1 month | $39.99 |
-| Black Card | `com.valasek.auctionbaby.sub.blackcard` | 1 month | $99.99 |
+## C. Per-product metadata (each subscription)
+- ☐ **Display name** + **Description** (what it unlocks)
+- ☐ **Review screenshot** — a screenshot of the **in-app paywall** showing that
+      product (required; reviewers reject subs with a missing/again-wrong shot)
+- ☐ At least one **localization**
+- ☐ Price / duration set
 
-### 4e. For EACH in-app purchase and subscription, fill these sub-fields
+## D. In-app paywall requirements (must be visible in the binary)
+Apple requires ALL of these on the paywall — the app's `PaywallView` already
+implements them; verify before submit:
+- ✅ Subscription **name/title** (Paddle / Reserve / Black Card)
+- ✅ **Length** ("/ month")
+- ✅ **Price** (from StoreKit `displayPrice`)
+- ✅ **What's included** (benefits matrix)
+- ✅ **Functional Terms (EULA) + Privacy Policy links** — sourced from
+      `BackendConfig` (⚠️ these are blank until `AB_TERMS_URL` / `AB_PRIVACY_URL`
+      are set in `Secrets.xcconfig`; **set them or the links won't render and
+      review fails**)
+- ✅ **Restore Purchases** (toolbar)
+- ✅ **Auto-renew disclosure** ("Auto-renews monthly until canceled at least
+      24h before the period ends. Billed to your Apple ID; manage in Settings.")
+- ☐ Confirm the same disclosure text also appears in the **App Store
+      description** (3.1.2 requires it in metadata too)
 
-ASC won't let you submit an IAP until every one of these is done:
+## E. App description subscription block (paste near the end of the description)
+```
+Auction Baby Pass is an auto-renewable subscription.
+• Paddle — $19.99/month · Reserve — $39.99/month · Black Card — $99.99/month
+• Payment is charged to your Apple ID at confirmation of purchase.
+• The subscription auto-renews unless canceled at least 24 hours before the
+  end of the current period. Your account is charged for renewal within 24
+  hours prior to the end of the current period.
+• Manage or cancel in your Apple ID account settings after purchase.
+• Terms of Use: <AB_TERMS_URL>   Privacy Policy: <AB_PRIVACY_URL>
+```
 
-- **Reference Name** — internal only (table above)
-- **Product ID** — from the tables (immutable once saved — triple-check)
-- **Price** — pick the exact tier
-- **Localization (English U.S.)** — a **Display Name** and **Description**
-  shown on the App Store / in system purchase sheets. Suggested copy:
-  - *Gavel packs:* Display "Stack of Gavels", Desc "5,000 Gavels to gild bids,
-    insure bids, and freeze streaks."
-  - *Boost:* "Spotlight Boost" / "30 minutes at the top of the floor."
-  - *Status:* "Trillionaire" / "The rarest status rating. What you pay is the
-    signal — worn openly on the floor, owned forever."
-  - *Subs:* "Black Card" / "Top Pass tier: see if you're the top bid, unlimited
-    bids, read receipts, priority placement, auto-rebid."
-- **Review Screenshot** — a 1290×2796 (or any valid iPhone size) screenshot of
-  the paywall/store screen where that product appears. Take these from the
-  build running the `demo` account (§7).
-- **Review Notes (per product)** — for the status ratings, paste:
-  > "Status ratings are non-consumables. The premise of the app is that the
-  > rating a man wears IS what he paid for it — the price is the product, not an
-  > arbitrary charge. Gavels (consumables) never buy status."
-- **Subscription extras:** set the **Subscription Duration**, a **Group Display
-  Name** (`Auction Baby Pass`), and localized benefit copy per tier. Add the
-  **Terms of Use (EULA)** + **Privacy Policy** links (Apple shows these on the
-  paywall — required).
+## F. Consumables & non-consumables — review notes
+- ☐ Note that **Gavels** are in-app currency for **status only** (Gilded Bids,
+      Bid Insurance, streak freezes) — never a payment to another user, never
+      cash out
+- ☐ Note that **status archetypes** are one-time cosmetic/status purchases
+- ☐ In Demo Mode, all of these are granted free so the reviewer can exercise
+      them without a sandbox charge
 
-### 4f. Paywall → product mapping (so screenshots + notes match the app)
+## G. StoreKit testing before you submit
+- ☐ Local: run the bundled `Products.storekit` config → verify buy / restore /
+      cancel / interrupted purchase for a sub, a Gavel pack, a Boost, an
+      archetype
+- ☐ **Sandbox**: create a Sandbox Apple ID (ASC → Users and Access → Sandbox),
+      sign into it on the device (Settings → Developer or the purchase sheet),
+      and run each real purchase against sandbox
+- ☐ Verify **Restore Purchases** returns the subscription entitlement
+- ☐ Verify a refund/revocation claws back Gavels (StoreKit already handles this)
 
-| In-app surface | Products shown |
+## H. Common IAP rejection reasons — and how Auction Baby answers them
+| Rejection | Status |
 |---|---|
-| **Store tab** (hammer icon) → Gavel packs | the 4 `gavels.*` consumables |
-| Store → Spotlight Boost | `boost.spotlight` |
-| **Paywall** (`PaywallView`) — Pass upsell | the 3 `sub.*` subscriptions |
-| **Status tab** (`ArchetypeStoreView`) | the 8 `status.*` non-consumables |
-| Bid composer "Gild" / "Bid Insurance" | *no IAP* — spent in Gavels |
-
-### 4g. ⚠️ The "Reserve the date" fee is NOT an in-app purchase
-
-Do **not** create an IAP for it. It's a **real-world booking fee** collected via
-**Stripe** (Apple guideline 3.1.3(e)/3.1.5: real-world services between two
-people must not use IAP). You don't configure it in ASC at all — but you **must
-explain it in App Review notes** (§7) so a reviewer who sees an external payment
-sheet understands why it's allowed. It has a server-side kill-switch if Apple
-still objects.
+| Paywall missing Terms/Privacy links | ✅ present — **set the URLs** |
+| Paywall missing price/length/restore | ✅ all present |
+| Sub facts missing from App description | ☐ add §E block |
+| Missing subscription review screenshot | ☐ attach the paywall shot |
+| Steering to external/web purchase | ⚠️ keep the web Gavel shop invisible in-app |
+| External payment for digital content | ⚠️ Reserve-the-date — kill-switch OFF for v1.0 |
+| Product IDs mismatch binary | ✅ verify against StoreKitService |
 
 ---
 
-## 5. The version page (1.0 → Prepare for Submission)
-
-### 5a. Screenshots (required)
-- [ ] **6.9"** (iPhone 16 Pro Max, 1320×2868) — required set
-- [ ] **6.5"** (older Pro Max, 1284×2778) — recommended
-- Capture 3–8 shots running the `demo` account: the floor, a profile with the
-  bid composer, the store, the status tab, a match/chat, the credit report.
-
-### 5b. Text fields (paste from `APP_STORE.md`)
-
-**Promotional Text** (170 char, editable without resubmit):
-```
-Find a high value man, find out what you're worth. Men bid what a date is worth; she accepts when the number's right. Reputation is everything.
-```
-
-**Description** — paste the full block from `APP_STORE.md` §Description.
-
-**Keywords** (100 char, comma-separated, no spaces):
-```
-dating,auction,bid,match,singles,date,chat,relationship,verified,luxury,premium,meet,love,flirt
-```
-
-**Support URL:** `https://auctionbaby.app/support` (must resolve)
-**Marketing URL:** `https://auctionbaby.app` (optional)
-
-**What's New** (first release):
-```
-Welcome to the floor. Place your first bid, build your reputation, and find out what you're worth.
-```
-
-**Copyright:** `2026 Michael Valasek` (or your legal entity)
-
-### 5c. Build
-- [ ] Attach the build uploaded from Xcode / TestFlight (§9)
-
----
-
-## 6. App Privacy (nutrition labels)
-
-Left sidebar → **App Privacy → Get Started**. Answer from `APP_STORE.md`
-§Privacy. This build is client-local for consumers:
-
-| Question | Answer |
-|---|---|
-| Do you collect data? | **Yes** (purchases go through Apple) |
-| **Data used to Track You** | **None** |
-| **Data Linked to You** | **None** |
-| **Data Not Linked to You** | **Purchases** (via Apple) + an anonymous `appAccountToken` (per-install UUID, no PII, used only so a refund routes to the right wallet) |
-| Third-party analytics/ads SDKs | **None** |
-
-> If/when a production build adds real accounts (name, photos, ID verification),
-> update the labels to add those under "Data Linked to You → App Functionality,
-> not for tracking." The current build doesn't.
-
----
-
-## 7. App Review Information — **where reviewer demo mode goes**
-
-Left sidebar → version page → **App Review Information**.
-
-| Field | Value |
-|---|---|
-| Sign-in required? | **No** (the app needs no account) |
-| Contact — First/Last | Michael Valasek |
-| Phone / Email | your real contact |
-| Demo account | Not needed — but explain the credential in Notes ↓ |
-
-**Notes to App Review** — paste this whole block:
-
-```
-This app has a credential-driven Demo Mode for review (no login system exists).
-
-HOW TO ENTER DEMO MODE:
-1. Launch the app. On the onboarding screen, choose EITHER role
-   ("Bid on dates" = the man side is the most feature-rich).
-2. In the NAME field, type:  demo   (case-insensitive)
-3. Leave everything else default and tap "Step onto the floor."
-
-That exact name activates Demo Mode for the session:
-- Wallet pre-funded with 25,000 Gavels (+ free demo top-ups)
-- All 8 status ratings marked owned (equip free; real buy buttons stay live
-  for sandbox verification)
-- Auction Baby Pass can be activated free from any paywall ("Demo: activate")
-- "Reserve the date" can be exercised free ("Demo: reserve free")
-No password, email, or payment method is required.
-
-ABOUT THE MONEY MODEL:
-- Bids are shown in dollars but are LETTERS OF INTENT — no charge is made in
-  the app for any bid, including the "$1,000,000 Masterpiece." Date payment is
-  a real-world, person-to-person matter settled off-platform. The app never
-  collects, holds, or transmits it (no escrow / money transmission).
-- The 8 status RATINGS are genuine non-consumable IAPs; the price is the
-  product (the premise is that what a man pays for his rating is the signal).
-- "Reserve the date" is a small REAL-WORLD BOOKING FEE (tiers $10–$100)
-  collected via Stripe, NOT IAP, per guideline 3.1.3(e)/3.1.5 (a real-world
-  service between two people). It is kept by the platform, never paid to the
-  other user, and unlocks no in-app content — the app only marks the date
-  "reserved." It has a server-side kill-switch.
-- "Copycat" profiles are AI-generated and disclosed to users at onboarding;
-  the app never takes money on a Copycat interaction.
-
-A Products.storekit config is bundled so all IAPs load in the simulator.
-See DEMO_MODE.md in the repository for a 12-minute reviewer walkthrough.
-```
-
----
-
-## 8. Age Rating questionnaire (target 17+)
-
-App Information → Age Rating → **Edit**. Answer honestly toward a **17+**
-result (mature/suggestive dating themes):
-
-- Sexual Content or Nudity → **Infrequent/Mild** (suggestive themes, no nudity)
-- Mature/Suggestive Themes → **Frequent/Intense** (it's a dating app)
-- Simulated Gambling / Contests → **None** (bids are not gambling; be ready to
-  clarify in notes — no wager, no chance-based payout)
-- Alcohol/Tobacco/Drug references → **Infrequent/Mild** (lifestyle prompts)
-- Unrestricted Web Access → **No**
-- Everything else → **None**
-
-Result should compute to **17+**. If it lands lower, that's fine as long as it's
-honest, but 17+ suits the concept.
-
----
-
-## 9. Build upload + TestFlight (before you can submit)
-
-- [ ] Xcode → Product → **Archive** → Distribute App → App Store Connect →
-      Upload
-- [ ] Wait for processing (email), then it appears under **TestFlight** and is
-      selectable on the version page
-- [ ] **Export Compliance:** already handled — `Info.plist` sets
-      `ITSAppUsesNonExemptEncryption = false` (the app uses only standard
-      data-protection encryption, which is exempt), so ASC won't ask each build
-- [ ] Internal TestFlight to yourself; sandbox-test a Gavel pack, a Boost, a
-      Pass, a status rating, and a refund (`LAUNCH_CHECKLIST.md` Phase 4)
-
----
-
-## 10. Final submission checklist (the "Submit for Review" gate)
-
-ASC blocks submission until all are green:
-
-- [ ] Screenshots (at least the 6.9" set)
-- [ ] Promotional text, Description, Keywords, Support URL
-- [ ] Build attached
-- [ ] **All 16 IAPs "Ready to Submit"** and, for the first release, **attached
-      to this version** (scroll to the *In-App Purchases* box on the version
-      page and add them, or they won't review together)
-- [ ] App Privacy complete
-- [ ] Age Rating set
-- [ ] App Review notes (§7) pasted
-- [ ] Content Rights + Export Compliance answered
-- [ ] **Advertising Identifier (IDFA):** answer **No** (the app uses no IDFA)
-
-Then **Add for Review → Submit**.
-
----
-
-## 11. Known review-risk hot spots for THIS app (be ready)
-
-1. **The concept** ("men bid on dates"). Lead reviewers to the disclosures:
-   bids are letters of intent, no money is transmitted, the woman is never paid
-   through the app. Emphasize it's entertainment + reputation, not escort/
-   transactional sex. (If they read it as facilitating prostitution it's an
-   instant reject — the notes in §7 pre-empt this.)
-2. **The $9,999.99 Trillionaire IAP.** Expect a hard look. Your defense: it's a
-   non-consumable status badge, the price *is* the product, and it can't be
-   "laundered" through consumables (Gavels never buy status). Requesting the
-   high price point (§4a) with a clear justification is half the battle.
-3. **The Stripe "Reserve the date" fee.** If flagged as "circumventing IAP,"
-   respond that it is a real-world service (an in-person date reservation),
-   which guideline 3.1.3(e)/3.1.5 requires be handled off-IAP; it unlocks no
-   digital content. If they still object, flip `RESERVE_ENABLED="false"` on the
-   Worker (no app update) and resubmit.
-4. **AI "Copycat" profiles.** FTC-sensitive. Your defense: disclosed at
-   onboarding, revealed immediately after a bid, and no money is ever taken on
-   a Copycat interaction.
-5. **Gambling read.** Bids have no wager and no chance-based payout — clarify in
-   notes if the age-rating "contests" question draws a question.
-
----
-
-## Quick reference — the demo credential
-
-> **Onboarding → any role → Name = `demo` → Step onto the floor.**
-> No password. Seeds 25,000 Gavels, marks all status owned, and enables the free
-> demo buttons for Pass and Reserve. Reset via Profile → Reset account.
+## Final pre-submit gate
+- ☐ Part 1 A–K complete
+- ☐ `AB_TERMS_URL` / `AB_PRIVACY_URL` set, both pages live, linked in paywall +
+      Settings + App description
+- ☐ Admin credential rotated in Worker secrets (outstanding from QA)
+- ☐ Reserve-the-date kill-switch decision made (recommend OFF for v1.0)
+- ☐ Web Gavel shop not referenced anywhere in the iOS binary
+- ☐ All IAP products "Ready to Submit" and attached to the version
+- ☐ Demo Mode verified by a fresh reviewer walk-through
+- ☐ Age rating 17+; Privacy Nutrition Label matches Privacy Policy
+- ☐ Release build archived, uploaded, tested via TestFlight, then **Submit for
+      Review**
