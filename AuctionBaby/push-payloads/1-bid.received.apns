@@ -1,0 +1,9 @@
+{
+  "Simulator Target Bundle": "com.valasek.auctionbaby",
+  "aps": {
+    "alert": { "title": "New bid on your lot", "body": "Someone just placed a bid. Tap to see who." },
+    "sound": "default"
+  },
+  "type": "bid.received",
+  "bidId": "00000000-0000-0000-0000-0000000000b1"
+}

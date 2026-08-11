@@ -1,0 +1,10 @@
+{
+  "Simulator Target Bundle": "com.valasek.auctionbaby",
+  "aps": {
+    "alert": { "title": "New message", "body": "You have a new message. Tap to reply." },
+    "sound": "default"
+  },
+  "type": "message.received",
+  "matchId": "00000000-0000-0000-0000-0000000000a7",
+  "messageId": "00000000-0000-0000-0000-0000000000c3"
+}

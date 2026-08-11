@@ -1,0 +1,10 @@
+{
+  "Simulator Target Bundle": "com.valasek.auctionbaby",
+  "aps": {
+    "alert": { "title": "SOLD! It's a match", "body": "Your bid was accepted. Open the chat and say hello." },
+    "sound": "default"
+  },
+  "type": "bid.accepted",
+  "bidId": "00000000-0000-0000-0000-0000000000b1",
+  "matchId": "00000000-0000-0000-0000-0000000000a7"
+}

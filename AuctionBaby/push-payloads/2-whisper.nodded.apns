@@ -1,0 +1,9 @@
+{
+  "Simulator Target Bundle": "com.valasek.auctionbaby",
+  "aps": {
+    "alert": { "title": "She nodded", "body": "Your whisper got a nod. The floor is warming up." },
+    "sound": "default"
+  },
+  "type": "whisper.nodded",
+  "bidId": "00000000-0000-0000-0000-0000000000b1"
+}

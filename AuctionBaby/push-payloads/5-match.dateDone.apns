@@ -1,0 +1,9 @@
+{
+  "Simulator Target Bundle": "com.valasek.auctionbaby",
+  "aps": {
+    "alert": { "title": "How was the date?", "body": "Confirm your date to verify the badge." },
+    "sound": "default"
+  },
+  "type": "match.dateDone",
+  "matchId": "00000000-0000-0000-0000-0000000000a7"
+}
