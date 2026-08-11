@@ -26,6 +26,18 @@ targets:
         INFOPLIST_FILE: AuctionBaby/Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # Wire the entitlements file so Sign in with Apple + Push actually make
+        # it into the signed binary. Without this, XcodeGen emits no
+        # CODE_SIGN_ENTITLEMENTS and the app ships with only the three default
+        # entitlements — which is why the SIWA sheet never appeared.
+        CODE_SIGN_ENTITLEMENTS: AuctionBaby/AuctionBaby.entitlements
+      configs:
+        # aps-environment in the entitlements reads $(APS_ENVIRONMENT):
+        # development for local/dev builds, production for TestFlight/App Store.
+        Debug:
+          APS_ENVIRONMENT: development
+        Release:
+          APS_ENVIRONMENT: production
     configFiles:
       Debug: Config/Build.xcconfig
       Release: Config/Build.xcconfig
