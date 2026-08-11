@@ -35,6 +35,24 @@ enum SampleData {
                     isCopycat: true, copycatStyle: .glam,
                     masterpiece: true),
 
+            // ── TEST ONLY — remove before launch ─────────────────────────────
+            // The single non-copycat woman on this floor. Every other profile is
+            // a copycat, so this is the ONLY lot that produces a real pending bid
+            // → woman-decision → match → chat, and the only one where auto-rebid
+            // (Reserve+) and priority placement (Black Card) can actually fire.
+            // Being the sole non-copycat, she is also the pinned "Lot of the Day".
+            Profile(name: "TEST — Rae (real)", age: 27, role: .woman, location: "SoHo, New York",
+                    bio: "Test profile — the only real (non-copycat) woman on this floor. Bid on me to exercise matches, auto-rebid, priority placement, and chat. Remove before launch.",
+                    hue: 0.5,
+                    photoName: "photo-grace",
+                    prompts: [
+                        Prompt(question: "The way to win me over is", answer: "Place a bid so we can test the match and chat flow."),
+                    ],
+                    interests: ["Wine", "Art", "Travel"],
+                    verified: true,
+                    startingBid: 100,
+                    isCopycat: false),
+
             Profile(name: "Mara Quinn", age: 27, role: .woman, location: "SoHo, New York",
                     bio: "Gallery curator. I spend my weekends at openings and my weeknights pretending I'll stop buying art books.",
                     hue: 0.92,
