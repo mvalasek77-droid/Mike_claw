@@ -102,7 +102,7 @@ Same steps, Type = **Consumable**.
 |---|---|
 | Reference Name | `Boost Spotlight` |
 | **Product ID** | `com.valasek.auctionbaby.boost.spotlight` |
-| **Price** | **$2.99** |
+| **Price** | **$4.99** |
 | Display Name | `Spotlight Boost` |
 | Description | `30 minutes at the top of the floor so more people see your profile.` |
 
@@ -219,7 +219,7 @@ standard EULA) and the **Privacy Policy URL**.
 | 5 | Consumable | `...gavels.stack` | $19.99 |
 | 6 | Consumable | `...gavels.chest` | $49.99 |
 | 7 | Consumable | `...gavels.vault` | $99.99 |
-| 8 | Consumable | `...boost.spotlight` | $2.99 |
+| 8 | Consumable | `...boost.spotlight` | $4.99 |
 | 9 | Non-Consumable | `...status.goodguy` | $4.99 |
 | 10 | Non-Consumable | `...status.inandout` | $9.99 |
 | 11 | Non-Consumable | `...status.whynot` | $19.99 |
