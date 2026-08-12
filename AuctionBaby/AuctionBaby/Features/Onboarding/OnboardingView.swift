@@ -69,20 +69,23 @@ struct OnboardingView: View {
             }
             // House rules — the up-front disclosure that makes the Copycat
             // game fair: fakes exist, you're told the instant you bid on one.
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "sparkles").font(.dynamicScaled(11, weight: .bold, relativeTo: .caption2))
-                    .foregroundStyle(Theme.copycat).padding(.top, 1)
-                Text("House rules: AI “Copycat” profiles walk the floor unlabelled. Bid on one and you're told instantly — it costs you reputation, never money. Spot the fakes.")
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "sparkles").font(.dynamicScaled(11, weight: .bold, relativeTo: .caption2))
+                        .foregroundStyle(Theme.copycat).padding(.top, 1)
+                    Text("House Rules")
+                        .font(.dynamicScaled(12, weight: .bold, design: .rounded, relativeTo: .caption1))
+                        .foregroundStyle(Theme.copycat)
+                }
+                Text("AI “Copycat” profiles walk the floor unlabelled. Bid on one and you're told instantly — it costs you reputation, never money. Spot the fakes.")
                     .font(.dynamicScaled(11, weight: .medium, relativeTo: .caption2)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
             .background(RoundedRectangle(cornerRadius: Theme.cornerM).fill(.white.opacity(0.05)))
             .padding(.top, 8)
 
             Spacer()
-            Text("Demo only · play money · fictional profiles")
-                .font(.dynamicScaled(11, weight: .medium, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
-                .padding(.bottom, 12)
         }
         .screenPadding()
     }
