@@ -37,6 +37,9 @@ extension Profile {
         self.openingBidScript = remote.openingBidScript
         self.archetype = Archetype(fromRemoteString: remote.archetype)
         self.verified = remote.isVerified
+        if let until = remote.spotlightBoostUntil {
+            self.spotlightBoostUntil = Date(timeIntervalSince1970: until)
+        }
     }
 }
 

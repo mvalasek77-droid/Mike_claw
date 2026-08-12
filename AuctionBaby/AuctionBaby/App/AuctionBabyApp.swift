@@ -113,6 +113,12 @@ struct AuctionBabyApp: App {
                         guard let store, !store.demoMode else { return }
                         Task { await profileSync?.syncPhotos(from: profile) }
                     }
+                    // Spotlight Boost → push the expiry to the server so other
+                    // users' floors sort the boosted profile to the top.
+                    store.onBoostChanged = { [weak profileSync, weak store] in
+                        guard let store, !store.demoMode else { return }
+                        Task { _ = await profileSync?.uploadSpotlightBoost(until: store.boostUntil) }
+                    }
                     // Slice 4c1a: mirror local Report & Block actions to the
                     // auth Worker so the pair can't see, bid, or message
                     // across devices. Local block already fired above; this

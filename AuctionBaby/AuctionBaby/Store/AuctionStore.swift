@@ -167,6 +167,12 @@ final class AuctionStore: ObservableObject {
     var filteredFloor: [Profile] {
         let source = isRemoteFloor ? remoteFloor : floor
         return source.filter { !blockedIDs.contains($0.id) && filters.matches($0) }
+            .sorted { a, b in
+                // Spotlight Boosted profiles always sort to the top.
+                if a.isSpotlightBoosted && !b.isSpotlightBoosted { return true }
+                if !a.isSpotlightBoosted && b.isSpotlightBoosted { return false }
+                return false
+            }
     }
 
     /// The Lot of the Day — a real (non-copycat) lot, rotating daily and
@@ -1354,12 +1360,16 @@ final class AuctionStore: ObservableObject {
         let base = isBoosted ? (boostUntil ?? .now) : .now
         boostUntil = base.addingTimeInterval(Double(StoreKitService.boostMinutes) * 60)
         Haptics.success()
-        toastFlash(role == .woman
-                   ? "⚡️ Spotlight Boost live — bidders are flocking to your lot."
-                   : "⚡️ Spotlight Boost live — top of the floor for \(StoreKitService.boostMinutes) min.")
+        toastFlash("⚡️ Spotlight Boost live — top of the floor for \(StoreKitService.boostMinutes) min.")
         log(.boost, "Spotlight Boost activated.")
+        onBoostChanged?()
         save()
     }
+
+    /// Fires when the Spotlight Boost starts (or extends). Wired at app root
+    /// to push the boost expiry to the server so other users' floors sort the
+    /// boosted profile to the top.
+    var onBoostChanged: (() -> Void)?
 
     // MARK: - Daily streak & Pass perks
 

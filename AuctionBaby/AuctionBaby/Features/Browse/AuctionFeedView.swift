@@ -401,6 +401,20 @@ struct FloorCard: View {
                         .padding(12)
                     }
 
+                    if woman.isSpotlightBoosted {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bolt.fill")
+                                .font(.dynamicScaled(10, weight: .bold, relativeTo: .caption2))
+                            Text("SPOTLIGHT")
+                                .font(.dynamicScaled(9, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                                .tracking(1)
+                        }
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Capsule().fill(Theme.gold))
+                        .padding(12)
+                    }
+
                     if woman.artTier > .freshCanvas {
                         VStack { Spacer(); HStack { Spacer(); ArtTierBadge(tier: woman.artTier, compact: true) } }
                             .padding(12)

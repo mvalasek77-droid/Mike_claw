@@ -175,6 +175,11 @@ struct Profile: Identifiable, Codable, Hashable {
     /// Identity-verified (selfie match). Copycats can never be verified — it's
     /// the strongest "this is a real human" signal in the app.
     var verified: Bool = false
+    /// Spotlight Boost expiry — set from the server's `spotlightBoostUntil`
+    /// when converting from PublicProfile. Used to sort boosted profiles to
+    /// the top of the floor feed.
+    var spotlightBoostUntil: Date? = nil
+    var isSpotlightBoosted: Bool { (spotlightBoostUntil ?? .distantPast) > .now }
 
     // MARK: Woman-specific
     var startingBid: Int? = nil           // optional floor

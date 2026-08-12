@@ -70,6 +70,17 @@ final class ProfileService: ObservableObject {
         return result
     }
 
+    /// Push the Spotlight Boost expiry to the server so other users' floors
+    /// can sort the boosted profile to the top. Send null to clear it.
+    func uploadSpotlightBoost(until: Date?) async -> ServiceResult<PublicProfile> {
+        guard isEnabled else { return .notConfigured }
+        let body: [String: Any] = until.map { ["spotlightBoostUntil": $0.timeIntervalSince1970] } ?? ["spotlightBoostUntil": NSNull()]
+        struct Response: Decodable { let profile: PublicProfile }
+        let result = await put("/me/profile", body: body, as: Response.self).map(\.profile)
+        if case .success(let p) = result { myServerProfile = p }
+        return result
+    }
+
     /// Fetch (and cache) MY current server profile.
     @discardableResult
     func refreshMyProfile() async -> ServiceResult<PublicProfile> {
@@ -280,10 +291,15 @@ struct PublicProfile: Codable, Equatable, Identifiable {
     let interests: [String]
     let photos: [PublicPhoto]
     let verifiedAt: Double?
+    let spotlightBoostUntil: Double?
     let createdAt: Double
     let updatedAt: Double
 
     var isVerified: Bool { verifiedAt != nil }
+    var isSpotlightBoosted: Bool {
+        guard let until = spotlightBoostUntil else { return false }
+        return until > Date().timeIntervalSince1970
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -301,6 +317,7 @@ struct PublicProfile: Codable, Equatable, Identifiable {
         interests = try c.decodeIfPresent([String].self, forKey: .interests) ?? []
         photos = try c.decodeIfPresent([PublicPhoto].self, forKey: .photos) ?? []
         verifiedAt = try c.decodeIfPresent(Double.self, forKey: .verifiedAt)
+        spotlightBoostUntil = try c.decodeIfPresent(Double.self, forKey: .spotlightBoostUntil)
         createdAt = try c.decode(Double.self, forKey: .createdAt)
         updatedAt = try c.decode(Double.self, forKey: .updatedAt)
     }
