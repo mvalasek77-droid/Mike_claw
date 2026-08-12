@@ -16,9 +16,11 @@ struct GavelStoreView: View {
                         balance
                         if store.demoMode { demoSection }
                         gavelSection
+                        passSection
+                    } else {
+                        boostSection
+                        passSection
                     }
-                    boostSection
-                    passSection
                     footer
                     Spacer(minLength: 24)
                 }
