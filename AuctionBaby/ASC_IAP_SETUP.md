@@ -148,18 +148,44 @@ description above (optional cosmetic, no advantage sold) is your justification.
 ## PART 5 — Review screenshots (required on EVERY product)  🔴
 
 Apple requires **one screenshot per IAP** showing where it appears in the app.
-Without it, the product is stuck in **Missing Metadata**.
+Without it, the product is stuck in **Missing Metadata**. You may **reuse one
+image across products on the same screen**, so all 16 need only **4 captures**.
 
-- **Subscriptions (×3):** screenshot the **Paywall** (My Bids → Upgrade) with the
-  tiers, prices, benefits, and the Terms/Privacy links visible.
-- **Gavel packs + Boost (×5):** screenshot the **Gavel Store** (tap the Gavel
-  counter on the Floor) showing the packs.
-- **Archetypes (×8):** screenshot the **Status** tab where the badge is bought.
+### Setup (do once, so prices actually render)  ✅
+Store prices come from StoreKit, so you must run with the local config:
+1. Xcode → run the app **from Xcode** (⌘R) on the **iPhone 16/17 Pro Max**
+   simulator — this injects `Products.storekit` so real prices show.
+   *(The paywall also has fallback prices, but the Gavel/Boost/Status stores go
+   blank without the config — so run from Xcode.)*
+2. Onboard with the name **`demo`** → Demo Mode populates the floor and lets you
+   reach everything without a real account.
+3. (Optional, clean status bar) `xcrun simctl status_bar booted override --time 9:41 --batteryLevel 100 --cellularBars 4`.
+4. Capture: `⌘S` in Simulator, or `xcrun simctl io booted screenshot ~/Desktop/shot.png`.
 
-How to capture: run the app (Xcode with the StoreKit config so prices show),
-`⌘S` in Simulator (or `xcrun simctl io booted screenshot x.png`). One image can
-be reused across products of the same screen. Upload under each product's **App
-Store Information → Review Screenshot**.
+### The 4 captures → which products they cover
+
+| Capture | Role | How to reach it | Must show | Covers |
+|---|---|---|---|---|
+| **1 · Paywall** | Man (`demo`) | **My Bids → Upgrade** | 3 tiers, each **title + price + "/ month"**, benefits matrix, **Restore**, auto-renew line, **Terms + Privacy** links | the **3 subscriptions** |
+| **2 · Gavel store** | Man | Floor → tap the **Gavel counter** (top-right) → Store | the 4 packs with **prices** + the "+X% / BEST VALUE" badges | the **4 Gavel packs** |
+| **3 · Status store** | Man | **Status** tab (crown) | the archetype badges with **prices** | the **8 archetypes** |
+| **4 · Boost** | Woman | onboard as a **woman** → **You → Settings → Store** | the **Spotlight Boost** with its price | the **1 Boost** |
+
+> Note the role split: Gavels + Passes are **man-side**; the **Boost lives on the
+> woman side** (a lot boosting to the top of the floor). So capture 4 needs a
+> woman account — reset (Settings → Reset account) and onboard as a woman, name
+> `demo`, then You → Settings → Store.
+
+### Upload
+Under each product's **App Store Information → Review Screenshot**, upload the
+matching capture: #1 on all 3 subs, #2 on all 4 Gavel packs, #3 on all 8
+archetypes, #4 on the Boost. Any resolution is fine for review screenshots
+(they're not the marketing screenshots).
+
+> Per-tier option: if you'd rather show each specific product, capture the
+> paywall three times with each tier selected (its benefits highlight), and the
+> Status store scrolled to each badge. Not required — one image per screen is
+> accepted.
 
 ---
 
