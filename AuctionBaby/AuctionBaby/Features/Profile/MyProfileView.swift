@@ -642,10 +642,13 @@ struct MyProfileView: View {
         GlassCard(title: "Settings", icon: "gearshape.fill") {
             Button { showGavelStore = true } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "hammer.fill").foregroundStyle(Theme.gold)
-                    Text("Store — Gavels & Passes").font(.dynamicScaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
+                    Image(systemName: store.role == .woman ? "bolt.fill" : "hammer.fill").foregroundStyle(Theme.gold)
+                    Text(store.role == .woman ? "Store — Boost & Passes" : "Store — Gavels & Passes")
+                        .font(.dynamicScaled(14, weight: .semibold, relativeTo: .footnote)).foregroundStyle(Theme.ink)
                     Spacer()
-                    Text("\(Tally.compact(store.wallet)) ⚖︎").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                    if store.role == .man {
+                        Text("\(Tally.compact(store.wallet)) ⚖︎").font(.dynamicScaled(11, weight: .bold, design: .rounded, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
+                    }
                     Image(systemName: "chevron.right").font(.dynamicScaled(12, relativeTo: .caption1)).foregroundStyle(Theme.inkFaint)
                 }
                 .padding(.vertical, 4)

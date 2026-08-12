@@ -687,8 +687,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3899DC2C7B495BDFDB4C4793 /* Build.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = AuctionBaby/AuctionBaby.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = AuctionBaby/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -900,8 +902,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3899DC2C7B495BDFDB4C4793 /* Build.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = AuctionBaby/AuctionBaby.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = AuctionBaby/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

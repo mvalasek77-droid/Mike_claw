@@ -60,10 +60,13 @@ struct AuctionBabyApp: App {
                         store.resetAccount()
                     }
                     #endif
-                    // Sign-out → un-register the APNs device token, so a
-                    // signed-out user never keeps receiving pushes on their
-                    // still-installed app.
-                    auth.onSignedOut = { [weak push] in await push?.onSignedOut() }
+                    // Sign-out → un-register the APNs device token AND reset
+                    // the local store so the user returns to onboarding instead
+                    // of being stuck on a stale MainTabView with no floor.
+                    auth.onSignedOut = { [weak push, weak store] in
+                        await push?.onSignedOut()
+                        await MainActor.run { store?.resetAccount() }
+                    }
                     // Server flipped verified_at (via webhook / admin / push)
                     // → flip the local blue check to match, in one place.
                     auth.onVerified = { [weak store] in store?.verifyMe() }

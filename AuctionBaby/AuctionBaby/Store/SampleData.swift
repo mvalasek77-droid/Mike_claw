@@ -35,22 +35,34 @@ enum SampleData {
                     isCopycat: true, copycatStyle: .glam,
                     masterpiece: true),
 
-            // ── TEST ONLY — remove before launch ─────────────────────────────
-            // The single non-copycat woman on this floor. Every other profile is
-            // a copycat, so this is the ONLY lot that produces a real pending bid
-            // → woman-decision → match → chat, and the only one where auto-rebid
-            // (Reserve+) and priority placement (Black Card) can actually fire.
-            // Being the sole non-copycat, she is also the pinned "Lot of the Day".
-            Profile(name: "TEST — Rae (real)", age: 27, role: .woman, location: "SoHo, New York",
-                    bio: "Test profile — the only real (non-copycat) woman on this floor. Bid on me to exercise matches, auto-rebid, priority placement, and chat. Remove before launch.",
+            // ── Non-copycat women — the only lots that produce real pending bids
+            // → woman-decision → match → chat, and where auto-rebid (Reserve+)
+            // and priority placement (Black Card) can actually fire. Both accept
+            // only Mike Valasek's bids. Rae is Lot of the Day on day 0 (account
+            // creation day); Sloane rotates in on day 1+.
+            Profile(name: "Rae", age: 27, role: .woman, location: "SoHo, New York",
+                    bio: "Gallery girl by day, downtown by night. I know what I want and I don't settle.",
                     hue: 0.5,
                     photoName: "photo-grace",
                     prompts: [
-                        Prompt(question: "The way to win me over is", answer: "Place a bid so we can test the match and chat flow."),
+                        Prompt(question: "The way to win me over is", answer: "Be direct, be confident, and make the reservation before you ask."),
                     ],
                     interests: ["Wine", "Art", "Travel"],
                     verified: true,
                     startingBid: 100,
+                    isCopycat: false),
+
+            Profile(name: "Sloane", age: 31, role: .woman, location: "Venice, Los Angeles",
+                    bio: "Founder, second company. I like early mornings, good espresso, and people who follow through.",
+                    hue: 0.55,
+                    photoName: "photo-sloane",
+                    prompts: [
+                        Prompt(question: "Together we could", answer: "Skip the small talk and split the tasting menu."),
+                        Prompt(question: "Dating me is like", answer: "Working with a good cofounder — direct, loyal, occasionally intense."),
+                    ],
+                    interests: ["Startups", "Fitness", "Food", "Design"],
+                    verified: true,
+                    startingBid: 150,
                     isCopycat: false),
 
             Profile(name: "Mara Quinn", age: 27, role: .woman, location: "SoHo, New York",
@@ -70,7 +82,7 @@ enum SampleData {
                                             Trait.genuine.rawValue: 5],
                                    interestCategories: ["Art openings", "Wine bars"]),
                     ],
-                    verified: true,
+                    verified: false,
                     startingBid: 250, isCopycat: true),
 
             Profile(name: "Priya Sethi", age: 29, role: .woman, location: "Lincoln Park, Chicago",
@@ -90,11 +102,11 @@ enum SampleData {
                                             Trait.genuine.rawValue: 5],
                                    interestCategories: ["Tasting menus"]),
                     ],
-                    verified: true,
+                    verified: false,
                     startingBid: 300, isCopycat: true),
 
-            Profile(name: "Sloane Carter", age: 31, role: .woman, location: "Venice, Los Angeles",
-                    bio: "Founder, second company. I like early mornings, good espresso, and people who follow through.",
+            Profile(name: "Harper Wells", age: 31, role: .woman, location: "Venice, Los Angeles",
+                    bio: "Producer. I survive on espresso and deadline adrenaline. Looking for someone who can keep up on a Sunday hike.",
                     hue: 0.55,
                     photoName: "photo-sloane",
                     prompts: [

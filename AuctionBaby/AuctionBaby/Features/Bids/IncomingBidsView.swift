@@ -7,7 +7,6 @@ struct IncomingBidsView: View {
     @EnvironmentObject private var matching: MatchingService
     @EnvironmentObject private var auth: AuthService
     @State private var detail: Bid?
-    @State private var showSummon = false
     @State private var showActivity = false
 
     /// The inbox source — `remoteIncomingBids` when the woman is signed in
@@ -31,12 +30,9 @@ struct IncomingBidsView: View {
                     header
                     receiptsTip
                     LiveTicker()
-                    DailyClaimCard()
                     if pending.isEmpty && resolved.isEmpty {
                         EmptyStateView(icon: "hand.raised", title: "No bids yet",
-                                       message: store.isRemoteInbox
-                                            ? "Bidders will land here when they place a real bid. Pull down to check for new ones."
-                                            : "Bidders are finding their nerve. Summon one to see how it works.")
+                                       message: "When bidders place a real bid, it lands here. Pull down to check for new ones.")
                     }
                     ForEach(Array(pending.enumerated()), id: \.element.id) { i, bid in
                         Button { detail = bid } label: { BidRow(bid: bid) }.buttonStyle(.plain)
@@ -58,21 +54,6 @@ struct IncomingBidsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     ActivityBell(isPresented: $showActivity)
-                }
-                // Summon is a sim/Demo affordance — it mutates the sim
-                // `incomingBids` array. On the remote inbox it would appear
-                // to do nothing (the view reads `remoteIncomingBids`). Hide
-                // the menu entirely when the inbox is remote so a signed-in
-                // woman doesn't tap it and report a phantom bug.
-                if !store.isRemoteInbox {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            Button { store.summonBidder() } label: { Label("Summon a bidder", systemImage: "person.badge.plus") }
-                            Button { store.summonBidder(trillionaire: true) } label: {
-                                Label("Summon the Trillionaire ($1M bid)", systemImage: "crown.fill")
-                            }
-                        } label: { Image(systemName: "plus.circle.fill").foregroundStyle(Theme.gold) }
-                    }
                 }
             }
             .sheet(item: $detail) { bid in

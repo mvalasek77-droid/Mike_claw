@@ -23,6 +23,10 @@ final class AuctionStore: ObservableObject {
     /// Day-key of the last Lot-of-the-Day intro sheet the user saw. Set to
     /// `Calendar.startOfDay` so a new day flips it clean.
     @Published var lastLotOfDaySeen: Date?
+    /// The calendar day the user first registered. Used to anchor Lot of the
+    /// Day rotation so day 0 (creation day) always shows the first non-copycat
+    /// (Rae), and day 1+ rotates to the next non-copycat.
+    @Published var accountCreatedAt: Date?
     /// The Docket — streak-freeze inventory. Each token consumed automatically
     /// on a missed day (in claimDaily) protects the streak from resetting.
     @Published var streakFreezeCount: Int = 0
@@ -169,12 +173,20 @@ final class AuctionStore: ObservableObject {
     /// favouring verified, high-Showcase profiles. Rendered as the pinned
     /// gold-framed hero above the floor and as the once-a-day full-screen
     /// intro (`shouldShowLotOfDayIntro`).
+    ///
+    /// Rotation is anchored to the account creation day: on day 0 (the day
+    /// the account was created) the first non-copycat in the sorted pool is
+    /// shown — that's Rae. The next calendar day rotates to the next
+    /// non-copycat, and so on, cycling through the pool.
     var lotOfTheDay: Profile? {
         let pool = filteredFloor.filter { !$0.isCopycat }
             .sorted { ($0.verified ? 1 : 0, $0.showcaseScore) > ($1.verified ? 1 : 0, $1.showcaseScore) }
         guard !pool.isEmpty else { return nil }
-        let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
-        return pool[day % pool.count]
+        let cal = Calendar.current
+        let anchor = accountCreatedAt ?? cal.startOfDay(for: Date())
+        let dayOffset = cal.dateComponents([.day], from: cal.startOfDay(for: anchor), to: cal.startOfDay(for: Date())).day ?? 0
+        let idx = abs(dayOffset) % pool.count
+        return pool[idx]
     }
 
     /// True the first time the user opens the app on a new calendar day.
@@ -431,11 +443,12 @@ final class AuctionStore: ObservableObject {
         self.role = role
         self.floor = SampleData.floor()
         self.bidders = SampleData.suitors()
+        if accountCreatedAt == nil { accountCreatedAt = Calendar.current.startOfDay(for: Date()) }
         if isDemo { wallet = 25_000 }   // enough to explore every archetype tier
 
         if role == .woman {
-            // Seed a couple of incoming bids so the inbox isn't empty.
-            seedIncomingBids()
+            // No seeded bids — the inbox starts empty so "Live bidders"
+            // reflects real demand, not fake simulation.
         }
         Haptics.success()
         toastFlash(isDemo ? "Demo Mode active — everything is free in the store."
@@ -470,6 +483,7 @@ final class AuctionStore: ObservableObject {
         // Newer state that must not leak into the "fresh" account.
         streakFreezeCount = 0
         lastLotOfDaySeen = nil
+        accountCreatedAt = nil
         pendingNodManIDs = []
         autoRebidEnabled = false
         priorityPlacementEnabled = false
@@ -1343,29 +1357,8 @@ final class AuctionStore: ObservableObject {
         toastFlash(role == .woman
                    ? "⚡️ Spotlight Boost live — bidders are flocking to your lot."
                    : "⚡️ Spotlight Boost live — top of the floor for \(StoreKitService.boostMinutes) min.")
-        if role == .woman { startBoostSummons() }
         log(.boost, "Spotlight Boost activated.")
         save()
-    }
-
-    private var boostLoopActive = false
-
-    /// While a woman is boosted, bidders keep arriving — the visible payoff of
-    /// the Spotlight on the lot side.
-    private func startBoostSummons() {
-        guard !boostLoopActive else { return }
-        boostLoopActive = true
-        scheduleNextBoostSummon()
-    }
-
-    private func scheduleNextBoostSummon() {
-        guard isBoosted, role == .woman else { boostLoopActive = false; return }
-        after(Double.random(in: 7...13)) { [weak self] in
-            guard let self else { return }
-            guard self.isBoosted, self.role == .woman else { self.boostLoopActive = false; return }
-            self.summonBidder()
-            self.scheduleNextBoostSummon()
-        }
     }
 
     // MARK: - Daily streak & Pass perks
@@ -1607,43 +1600,6 @@ final class AuctionStore: ObservableObject {
             self.log(.bidReceived, "\(man.name) followed his whisper with \(Money.compact(amount)).")
             self.save()
         }
-    }
-
-    /// Demo helper — summon a fresh bidder to the inbox. `trillionaire: true`
-    /// guarantees a $1M Masterpiece-eligible bid so that flow is reachable.
-    func summonBidder(trillionaire: Bool = false) {
-        guard role == .woman else { return }
-        let raw = bidders.isEmpty ? SampleData.suitors() : bidders
-        let pool = raw.filter { !blockedIDs.contains($0.id) }
-        guard !pool.isEmpty else { return }
-        var man = pool.randomElement() ?? pool[0]
-        let amount: Int
-        if trillionaire {
-            // The first verified Trillionaire himself comes to bid. If he's
-            // been blocked/removed there is no impostor fallback — a $1M bid
-            // from a non-Trillionaire can never mint (qualifiesForMasterpiece
-            // checks the archetype), so the copy would over-promise.
-            guard let trillionaireMan = pool.first(where: { $0.archetype == .trillionaire }) else {
-                toastFlash("The Trillionaire isn't on your floor right now.")
-                return
-            }
-            man = trillionaireMan
-            amount = Bid.masterpieceBid   // $1,000,000 — the Masterpiece-minting bid
-        } else {
-            let floor = min(me.startingBid ?? 150, Self.maxStartingBid)
-            amount = Int(Double(floor) * Double.random(in: 0.7...2.4))
-        }
-        let note = trillionaire
-            ? "I read the rules — I wrote them. One million dollars for one evening. Confirm it and mint your Masterpiece."
-            : ["Saw your profile. Worth every cent.", "Dinner, my treat — name the place.",
-               "I don't usually bid this high.", "Let me take you somewhere ridiculous."].randomElement()!
-        let bid = Bid(man: man, woman: me, amount: amount, note: note)
-        incomingBids.insert(bid, at: 0)
-        Haptics.commit()
-        toastFlash(trillionaire ? "A Trillionaire just bid \(Money.compact(amount))."
-                                : "\(man.name) bid \(Money.compact(amount)).")
-        log(.bidReceived, "\(man.name) bid \(Money.compact(amount))\(trillionaire ? " — a Trillionaire!" : ".")")
-        save()
     }
 
     // MARK: - Chat (shared)
@@ -2018,12 +1974,10 @@ final class AuctionStore: ObservableObject {
             let boostPull = self.isBoosted ? 0.25 : 0
             let gildPull = bid.gilded ? 0.30 : 0
             let priorityPull = self.priorityPlacementEnabled ? 0.20 : 0
-            // TEST profile: accepts ONLY Mike Valasek's bids, denies everyone
-            // else — so bid → match → chat is deterministic for the founder and
-            // exclusive to him. Remove with the "TEST — Rae (real)" profile
-            // before launch.
+            // Both non-copycat women accept only Mike Valasek's bids, so
+            // bid → match → chat is deterministic for the founder.
             let accepted: Bool
-            if bid.woman.name == "TEST — Rae (real)" {
+            if !bid.woman.isCopycat {
                 accepted = bid.man.name.trimmingCharacters(in: .whitespaces)
                     .caseInsensitiveCompare("Mike Valasek") == .orderedSame
             } else {
@@ -2121,21 +2075,6 @@ final class AuctionStore: ObservableObject {
         }
     }
 
-    private func seedIncomingBids() {
-        let suitors = bidders.isEmpty ? SampleData.suitors() : bidders
-        guard suitors.count > 3 else { return }
-        let base = min(me.startingBid ?? 150, Self.maxStartingBid)
-        var whisper = Bid(man: suitors[1], woman: me, amount: 0, note: "")
-        whisper.isWhisper = true
-        incomingBids = [
-            Bid(man: suitors[0], woman: me, amount: max(300, base &* 2),
-                note: "Saw your prompts. Dinner at Carbone? My treat."),
-            Bid(man: suitors[3], woman: me, amount: max(120, base),
-                note: "I'll lose at trivia and pay anyway."),
-            whisper,
-        ]
-    }
-
     // MARK: - Helpers
 
     /// Run `work` on the main actor after `seconds`. Keeps actor isolation clean
@@ -2179,6 +2118,7 @@ final class AuctionStore: ObservableObject {
         var appAccountToken: UUID?
         var demoMode: Bool?
         var lastLotOfDaySeen: Date?
+        var accountCreatedAt: Date?
         var streakFreezeCount: Int?
         /// Write timestamp — load() picks whichever store (archive vs
         /// UserDefaults) carries the newer snapshot, so a silently-failed
@@ -2202,6 +2142,7 @@ final class AuctionStore: ObservableObject {
                             lastWeeklyBoostClaim: lastWeeklyBoostClaim,
                             appAccountToken: appAccountToken, demoMode: demoMode,
                             lastLotOfDaySeen: lastLotOfDaySeen,
+                            accountCreatedAt: accountCreatedAt,
                             streakFreezeCount: streakFreezeCount,
                             savedAt: Date(),
                             pendingNodManIDs: Array(pendingNodManIDs))
@@ -2254,9 +2195,9 @@ final class AuctionStore: ObservableObject {
         appAccountToken = snap.appAccountToken ?? appAccountToken
         demoMode = snap.demoMode ?? false
         lastLotOfDaySeen = snap.lastLotOfDaySeen
+        accountCreatedAt = snap.accountCreatedAt
         streakFreezeCount = snap.streakFreezeCount ?? 0
         pendingNodManIDs = Set(snap.pendingNodManIDs ?? [])
-        if isBoosted, role == .woman { startBoostSummons() }
         for bid in outgoingBids where bid.status == .pending {
             scheduleWomanDecision(bidID: bid.id)
         }

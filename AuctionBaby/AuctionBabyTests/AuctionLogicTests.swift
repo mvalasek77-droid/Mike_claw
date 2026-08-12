@@ -297,12 +297,12 @@ final class AuctionLogicTests: XCTestCase {
     // MARK: Store flows
 
     @MainActor
-    func testRegisterWomanSeedsInbox() {
+    func testRegisterWomanStartsWithEmptyInbox() {
         let store = freshStore()
         store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "Hi",
                        hue: 0.9, startingBid: 200, prompts: [], interests: [])
         XCTAssertEqual(store.role, .woman)
-        XCTAssertFalse(store.incomingBids.isEmpty, "woman should start with seeded bids")
+        XCTAssertTrue(store.incomingBids.isEmpty, "woman should start with an empty inbox — no fake bids")
     }
 
     /// Buying status must never touch the Gavel wallet — ratings are paid
@@ -372,6 +372,7 @@ final class AuctionLogicTests: XCTestCase {
         let store = freshStore()
         store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
                        hue: 0.9, startingBid: 200, prompts: [], interests: [])
+        seedBid(store)
         let bid = store.incomingBids.first { $0.status == .pending }!
         store.accept(bid)
         XCTAssertEqual(store.matches.count, 1)
@@ -386,8 +387,12 @@ final class AuctionLogicTests: XCTestCase {
         let store = freshStore()
         store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
                        hue: 0.9, startingBid: 200, prompts: [], interests: ["Art"])
-        store.summonBidder(trillionaire: true)
-        let bid = store.incomingBids.first { $0.qualifiesForMasterpiece }!
+        // Insert a $1M bid from a Trillionaire so the Masterpiece flow is testable.
+        let suitors = SampleData.suitors()
+        let trillionaire = suitors.first { $0.archetype == .trillionaire } ?? suitors[0]
+        let bid = Bid(man: trillionaire, woman: store.me, amount: Bid.masterpieceBid,
+                      note: "One million dollars.")
+        store.incomingBids.append(bid)
         store.accept(bid)
         let match = store.matches.first { $0.bid.id == bid.id }!
         store.markDateDone(match)
@@ -401,8 +406,11 @@ final class AuctionLogicTests: XCTestCase {
         let store = freshStore()
         store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
                        hue: 0.9, startingBid: 200, prompts: [], interests: ["Art"])
-        store.summonBidder(trillionaire: true)
-        let bid = store.incomingBids.first { $0.qualifiesForMasterpiece }!
+        let suitors = SampleData.suitors()
+        let trillionaire = suitors.first { $0.archetype == .trillionaire } ?? suitors[0]
+        let bid = Bid(man: trillionaire, woman: store.me, amount: Bid.masterpieceBid,
+                      note: "One million dollars.")
+        store.incomingBids.append(bid)
         store.accept(bid)
         let match = store.matches.first { $0.bid.id == bid.id }!
         store.markDateDone(match)
@@ -529,6 +537,7 @@ final class AuctionLogicTests: XCTestCase {
         store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
                        hue: 0.9, startingBid: 200, prompts: [], interests: [])
         XCTAssertNil(store.celebration)
+        seedBid(store)
         let bid = store.incomingBids.first { $0.status == .pending }!
         store.accept(bid)
         XCTAssertNotNil(store.celebration, "accepting a bid should trigger the SOLD celebration")
@@ -548,6 +557,7 @@ final class AuctionLogicTests: XCTestCase {
         let store = freshStore()
         store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
                        hue: 0.9, startingBid: 200, prompts: [], interests: [])
+        seedBid(store)
         let countBefore = store.activity.count
         let bid = store.incomingBids.first { $0.status == .pending }!
         store.accept(bid)
@@ -571,6 +581,8 @@ final class AuctionLogicTests: XCTestCase {
         let store = freshStore()
         store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "",
                        hue: 0.9, startingBid: 200, prompts: [], interests: [])
+        seedBid(store, amount: 400)
+        seedBid(store, amount: 250)
         let pendingBefore = store.liveBidCount
         XCTAssertGreaterThan(pendingBefore, 0)
         XCTAssertEqual(store.totalOnTable, store.incomingBids.filter { $0.status == .pending }.map(\.amount).reduce(0, +))
@@ -731,5 +743,13 @@ final class AuctionLogicTests: XCTestCase {
         let store = AuctionStore()
         store.resetAccount()
         return store
+    }
+
+    /// Insert a bid directly into the inbox for tests that need one.
+    @MainActor
+    private func seedBid(_ store: AuctionStore, amount: Int = 300, note: String = "Test bid") {
+        let man = (store.bidders.isEmpty ? SampleData.suitors() : store.bidders).first!
+        let bid = Bid(man: man, woman: store.me, amount: amount, note: note)
+        store.incomingBids.append(bid)
     }
 }

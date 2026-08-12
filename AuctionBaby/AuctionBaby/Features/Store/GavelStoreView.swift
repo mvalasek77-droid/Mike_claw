@@ -12,9 +12,11 @@ struct GavelStoreView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    balance
-                    if store.demoMode { demoSection }
-                    gavelSection
+                    if store.role == .man {
+                        balance
+                        if store.demoMode { demoSection }
+                        gavelSection
+                    }
                     boostSection
                     passSection
                     footer

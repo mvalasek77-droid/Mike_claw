@@ -22,6 +22,9 @@ final class FlowTests: XCTestCase {
     private func registerWoman(_ store: AuctionStore) {
         store.register(role: .woman, name: "Ada", age: 29, location: "NYC", bio: "Hi",
                        hue: 0.9, startingBid: 200, prompts: [], interests: ["Art"])
+        // Insert a test bid so accept/match flows can be exercised.
+        let man = SampleData.suitors().first!
+        store.incomingBids.append(Bid(man: man, woman: store.me, amount: 400, note: "Dinner?"))
     }
 
     // MARK: - Complete journeys

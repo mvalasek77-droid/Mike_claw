@@ -223,6 +223,17 @@ struct OnboardingView: View {
                     submit()
                 }
                 .padding(.top, 4)
+                if primaryPhoto == nil {
+                    Text("📷 Add at least one photo to continue")
+                        .font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1))
+                        .foregroundStyle(Theme.danger)
+                        .padding(.top, 2)
+                } else if name.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text("✍️ Enter your name to continue")
+                        .font(.dynamicScaled(12, weight: .semibold, relativeTo: .caption1))
+                        .foregroundStyle(Theme.danger)
+                        .padding(.top, 2)
+                }
                 Spacer(minLength: 30)
             }
             .screenPadding()
@@ -238,7 +249,9 @@ struct OnboardingView: View {
     }
 
     private var canSubmit: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty && ageFromDob >= 18
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
+        && ageFromDob >= 18
+        && primaryPhoto != nil
     }
 
     /// DOB picker with a visible age readout. The picker is capped at "today

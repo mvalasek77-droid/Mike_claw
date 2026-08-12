@@ -47,7 +47,7 @@ struct PhotoUploadStep: View {
                 .background(RoundedRectangle(cornerRadius: 10).fill(Theme.warning.opacity(0.10)))
             }
 
-            Text("Photos stay on your phone until you post them. You can skip this step — a monogram portrait stands in until you upload.")
+            Text("Photos stay on your phone until you post them. At least one photo is required.")
                 .font(.dynamicScaled(11, weight: .medium, relativeTo: .caption2))
                 .foregroundStyle(Theme.inkFaint)
         }
