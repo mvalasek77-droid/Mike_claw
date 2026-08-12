@@ -113,7 +113,7 @@ struct GavelStoreView: View {
 
     private var gavelSection: some View {
         VStack(spacing: 12) {
-            SectionHeader(title: "Top up Gavels", subtitle: "Spend them on status. Bids are always free.")
+            SectionHeader(title: "Top up Gavels", subtitle: "Spend Gavels on status upgrades. You get \(AuctionStore.freeActiveBidLimit) active bids at once — unlock unlimited bidding with an Auction Baby Pass.")
             if storeKit.gavelPacks.isEmpty {
                 unavailableCard
             } else {
