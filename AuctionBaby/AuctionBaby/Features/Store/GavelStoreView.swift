@@ -19,7 +19,6 @@ struct GavelStoreView: View {
                         passSection
                     } else {
                         boostSection
-                        passSection
                     }
                     footer
                     Spacer(minLength: 24)
