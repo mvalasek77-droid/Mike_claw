@@ -1,162 +1,116 @@
-# Sandbox IAP Testing — full paywall + Gavel store
+# Sandbox IAP Testing — Auction Baby
 
-How to actually **buy** every in-app purchase and verify the money paths, two
-ways: a **local StoreKit config** you can run in minutes with no Apple setup,
-and the **real App Store Sandbox** for the pre-submission pass. Do Route A
-first (fast, functional), then Route B (proper, required before you ship).
-
-Legend: ✅ do · 🔴 blocker · 💰 money-safety check
+Two routes so you're never blocked.
 
 ---
 
-## The products under test (IDs must match everywhere)
+## Route A — Local StoreKit Testing (no ASC needed, works now)
 
-**Subscriptions (auto-renewable, group "Auction Baby Pass"):**
-```
-com.valasek.auctionbaby.sub.paddle
-com.valasek.auctionbaby.sub.reserve
-com.valasek.auctionbaby.sub.blackcard
-```
-**Consumables (Gavel packs + Boost):**
-```
-com.valasek.auctionbaby.gavels.handful   → 1,000
-com.valasek.auctionbaby.gavels.stack     → 5,000
-com.valasek.auctionbaby.gavels.chest     → 14,000
-com.valasek.auctionbaby.gavels.vault     → 30,000
-com.valasek.auctionbaby.boost.spotlight  → 30-min Boost
-```
-**Non-consumables (8 status archetypes):** `...status.goodguy` … `...status.trillionaire`
+The `Products.storekit` configuration file is already in the scheme. It provides all 16 IAP products locally — no App Store Connect required.
 
-**Where to reach them in the app:**
-- **Subscriptions/paywall:** My Bids → **Upgrade**, or the filters / rank-reveal / read-receipt / rewind triggers. (The 4th-bid paywall won't fire on the all-copycat test floor — use My Bids → Upgrade.)
-- **Gavel store:** tap the **Gavel counter** on the Floor, the **"Get more"** row in the bid composer, or **Profile → Settings → Store**.
+### On Simulator (fastest)
+
+```bash
+# Build + run tests (StoreKit config auto-attached via scheme test action)
+cd ~/code/mike_claw/AuctionBaby
+xcodebuild test \
+  -project AuctionBaby.xcodeproj \
+  -scheme AuctionBaby \
+  -destination 'platform=iOS Simulator,id=404E9341-3F05-4536-BD30-B696DFD57DFE' \
+  -only-testing:AuctionBabyTests/StoreCatalogTests
+```
+
+Or to interact manually:
+1. Open Xcode: `open AuctionBaby.xcodeproj`
+2. Select **AuctionBaby** scheme → **iPhone 17 Pro Max** simulator
+3. **Cmd+R** — StoreKit config is injected automatically
+4. All products show with prices and are purchasable (simulated, no charge)
+
+### On Physical Device (iPhone 17 Pro Max)
+
+**Must run from Xcode** — `xcodebuild` + `devicectl install` does NOT inject the StoreKit config.
+
+1. Open Xcode: `open AuctionBaby.xcodeproj`
+2. Select **AuctionBaby** scheme → **iPhone 17 Pro Max** (physical device)
+3. **Cmd+R** — StoreKit config is injected on launch
+4. Navigate to **You → Store** → all products show prices and are tappable
+
+### Products in the StoreKit config
+
+| Type | Product ID | Name | Price |
+|---|---|---|---|
+| Consumable | `com.valasek.auctionbaby.gavels.handful` | Handful of Gavels | $4.99 |
+| Consumable | `com.valasek.auctionbaby.gavels.stack` | Stack of Gavels | $19.99 |
+| Consumable | `com.valasek.auctionbaby.gavels.chest` | Chest of Gavels | $49.99 |
+| Consumable | `com.valasek.auctionbaby.gavels.vault` | Vault of Gavels | $99.99 |
+| Consumable | `com.valasek.auctionbaby.boost.spotlight` | Spotlight Boost | $4.99 |
+| Non-Consumable | `com.valasek.auctionbaby.status.goodguy` | Good Guy | $4.99 |
+| Non-Consumable | `com.valasek.auctionbaby.status.inandout` | In & Out Guy | $9.99 |
+| Non-Consumable | `com.valasek.auctionbaby.status.whynot` | Why Not Guy | $19.99 |
+| Non-Consumable | `com.valasek.auctionbaby.status.goodjob` | Got a Good Job | $99.99 |
+| Non-Consumable | `com.valasek.auctionbaby.status.inheritance` | Inheritance Money Guy | $999.99 |
+| Non-Consumable | `com.valasek.auctionbaby.status.influencer` | Influencer | $2,499.99 |
+| Non-Consumable | `com.valasek.auctionbaby.status.ferrari` | I Drive a Ferrari | $4,999.99 |
+| Non-Consumable | `com.valasek.auctionbaby.status.trillionaire` | Trillionaire | $9,999.99 |
+| Subscription | `com.valasek.auctionbaby.sub.paddle` | Paddle | $19.99/mo |
+| Subscription | `com.valasek.auctionbaby.sub.reserve` | Reserve | $39.99/mo |
+| Subscription | `com.valasek.auctionbaby.sub.blackcard` | Black Card | $99.99/mo |
+
+### What to test
+
+- [ ] **Gavel packs**: Buy each pack → wallet balance updates → value badge shows correct % vs base
+- [ ] **Spotlight Boost**: Buy → 30-min timer starts → boost badge on profile
+- [ ] **Pass subscriptions**: Subscribe to Paddle → `hasPass = true` → bid limit lifted
+- [ ] **Status archetypes**: Buy Good Guy → badge appears on profile
+- [ ] **Restore**: Tap Restore → re-grants all previous purchases
+- [ ] **Cancel subscription**: Cancel in sandbox → entitlement expires at period end
+- [ ] **Interrupted purchase**: Background the app mid-purchase → no charge, no entitlement
 
 ---
 
-# ROUTE A — Local StoreKit configuration (fastest, no Apple setup)
+## Route B — ASC Sandbox Testing (real Apple servers)
 
-Buys are **simulated** by Xcode against the bundled `Products.storekit`. No
-Apple ID, no Paid Apps agreement, no ASC products, no charges. Works in the
-**Simulator** and on a **device run from Xcode**. This is the quickest way to
-exercise the paywall and money-safety logic.
+Once the products in App Store Connect have full metadata (name, description, screenshot, price), you can test with a real sandbox account.
 
-### A1. Confirm the scheme uses the config  ✅
-- The `AuctionBaby` scheme already sets `storeKitConfiguration: Products.storekit`
-  (project.yml). In Xcode: **Product → Scheme → Edit Scheme → Run → Options →
-  StoreKit Configuration = Products.storekit**. If blank, select it.
-- Run the app **from Xcode** (⌘R) on a sim or a connected device.
+### Prerequisites
 
-### A2. Buy every product  ✅
-- Open the paywall → **Continue with Paddle/Reserve/Black Card** → the sim
-  purchase sheet appears → confirm. Entitlement should activate instantly.
-- Open the Gavel store → buy each pack → wallet credits by the right amount.
-- Buy the Boost → 30-min boost activates. Buy a status archetype → badge equips.
+1. **Paid Apps Agreement** signed in ASC → Business
+2. All 16 products created in ASC with:
+   - Display name + description
+   - Price (matching the table above)
+   - Review screenshot
+   - Status: **Ready to Submit**
+3. Products attached to the app version
 
-### A3. Drive the edge cases from Xcode's Transaction Manager  ✅ 💰
-With the app running, use **Debug → StoreKit → Manage Transactions** (or the
-Transactions inspector) to:
-- **Refund** a Gavel pack → 💰 the granted Gavels are **clawed back** once.
-- **Refund** a status archetype → 💰 badge drops to the best still-owned tier.
-- **Ask to Buy / pending** → toggle "Ask to Buy" in the config → purchase goes
-  **pending**, grants nothing until approved.
-- **Subscription renewal** → the config's renewal rate is accelerated; watch
-  auto-renew, then **cancel** and let it lapse → entitlement ends.
-- **Interrupted purchase** → force-quit the app mid-buy, relaunch → the drain
-  on launch finishes it and credits once (💰 never double, never lost).
+### Create a Sandbox Account
 
-### A4. Verify prices/tiers in the config  ✅
-- Each pack shows the right `displayPrice`; the store's **"+X% BONUS / BEST
-  VALUE"** badges read off those prices. Adjust prices in `Products.storekit`
-  if you want to preview a different ladder (this file is test-only).
+1. ASC → **Users and Access** → **Sandbox** → **Test Accounts** → **+**
+2. Use a unique email (not a real Apple ID)
+3. Set country to match your App Store region
 
-> Route A limits: it's **not** the real StoreKit server, so it can't validate
-> ASC product setup, real receipts, or the production grant path. That's Route B.
+### Test on Device
+
+1. **Settings → App Store → Sandbox Account** (appears when a debug build is installed)
+2. Sign in with the sandbox account
+3. Run the app from Xcode (Cmd+R) — products now fetch from ASC sandbox
+4. Purchase each product — sandbox accounts don't charge real money
+5. Check `StoreKitService` logs in Console.app
+
+### Sandbox Limitations
+
+- Subscriptions auto-renew fast (5 min for monthly in sandbox)
+- Purchases are simulated but go through real StoreKit APIs
+- Sandbox account is device-wide (not per-app)
+- Can't test family sharing without a family group
 
 ---
 
-# ROUTE B — Real App Store Sandbox (required before submission)
+## Troubleshooting
 
-Real StoreKit, real receipts, a real (test) Apple ID — but **no money charged**.
-This is the pass that proves the ASC setup and the live purchase pipeline.
-
-### B1. Account & agreements  🔴
-- 🔴 **Paid Apps agreement** Active (ASC → **Business → Agreements, Tax, and
-  Banking**). Without it, `Product.products()` returns **empty** and every buy
-  button is dead — this is the #1 "products won't load" cause.
-- Bundle id `com.valasek.auctionbaby` registered with the IAP capability.
-
-### B2. Create + ready the products  🔴
-- All **16 IAP** created with the **exact IDs** above (see `LAUNCH_RUNBOOK.md`
-  Step 7 for the full table + decided prices).
-- Each needs display name + description + a **review screenshot**, then state
-  **"Ready to Submit"** (products in `MISSING_METADATA` won't load in sandbox).
-- Subscriptions grouped as **"Auction Baby Pass"**, ranked Paddle < Reserve <
-  Black Card, monthly.
-- ⚠️ `status.trillionaire` at **$9,999.99** needs Apple **custom pricing**.
-
-### B3. Create a Sandbox tester  🔴
-- ASC → **Users and Access → Sandbox → Testers → +**. Use an email you control
-  that is **NOT** an existing Apple ID. Note the password. (Region sets the
-  storefront/currency you'll see.)
-- Never sign your **real** Apple ID into sandbox.
-
-### B4. Put the sandbox account on the device  ✅
-- Install a **development-signed** build (run from Xcode or Ad Hoc) — TestFlight
-  also works and uses sandbox automatically.
-- On the device: **Settings → Developer → Sandbox Apple Account → Sign In** with
-  the B3 tester. (If "Developer" isn't shown, connect the device to Xcode once.)
-- Do **not** sign it into Settings → Media & Purchases; sandbox is separate.
-
-### B5. Buy every product in sandbox  ✅ 💰
-Run through the **whole matrix** — the sheet will say **[Environment: Sandbox]**:
-- ☐ **Buy** each of the 3 subs → entitlement active; usage flips to Unlimited;
-      Reserve unlocks reserve-price/filters/rewind; Black Card unlocks read receipts.
-- ☐ **Buy** each Gavel pack → wallet credits 1,000/5,000/14,000/30,000.
-- ☐ **Buy** the Boost → 30-min boost; **Buy** a couple archetypes → badge equips.
-- ☐ **Cancel** the sheet → no entitlement, no phantom credit.
-- ☐ **Ask to Buy** (if simulating a family child) → pending, no grant.
-- ☐ **Restore Purchases** (paywall toolbar) on a fresh install → subs + archetypes come back.
-- ☐ **Upgrade/downgrade** across the 3 sub tiers → subscription-group ranking resolves; no double charge.
-- ☐ 💰 **Refund** a Gavel pack (ASC sandbox refund, or wait for auto) → Gavels clawed back once.
-- ☐ 💰 **Kill mid-purchase** → relaunch → credited exactly once (drain path).
-- ☐ **Auto-renew**: sandbox monthly renews on an **accelerated** clock (~every
-      few minutes); confirm renewal, then cancel → lapses.
-
-### B6. Sandbox subscription renewal speeds (so you're not confused)
-| Real period | Sandbox renews every |
+| Issue | Fix |
 |---|---|
-| 1 week | ~3 min |
-| 1 month | ~5 min |
-| (auto-renews ~6 times, then stops) | |
-
----
-
-## What "pass" looks like (money-safety invariants) 💰
-- Every consumable credits **exactly once**, even across kill/relaunch (keyed by `transaction.id`).
-- Cancel/pending **never** grants.
-- Refund **claws back** exactly what was granted (Gavels or badge); a later
-  reversal restores it.
-- Restore returns subs + archetypes on a clean install.
-- Terms + Privacy links on the paywall **open** (needs `AB_TERMS_URL`/`AB_PRIVACY_URL`
-  or the hosted fallback — see runbook Steps 2–3).
-
-## The App Review path (not sandbox — don't confuse them)
-**Demo Mode** (onboard with name `demo`) shows a **"Demo: activate <tier> free"**
-button and grants status free — for the reviewer, no purchase. Keep this working,
-but it is **separate** from sandbox buying.
-
----
-
-## Troubleshooting — "the buttons do nothing / no products"
-| Symptom | Cause / fix |
-|---|---|
-| All buy buttons greyed, "products load from the App Store…" | Products not loaded. **Route A:** scheme's StoreKit config not selected → set it, re-run from Xcode. **Route B:** Paid Apps agreement not Active, or products not "Ready to Submit", or ID mismatch. |
-| Products load in sim but not on device | Device build wasn't **run from Xcode** (so no local config) and sandbox isn't set up → do Route B, or run from Xcode. |
-| "Cannot connect to iTunes Store" (sandbox) | Wrong/again-prompting sandbox account; sign in via **Settings → Developer → Sandbox Apple Account**, not Media & Purchases. |
-| Sub shows active forever | A lingering sandbox sub or a `demoTier` — reset between passes (delete app / new sandbox tester). |
-| `trillionaire` won't load | Needs **custom pricing** approved in ASC. |
-
-## Recommended order
-1. **Route A today** — verify the paywall + Gavel store + every money-safety edge with zero Apple setup.
-2. Finish **B1–B3** (agreement, products Ready, sandbox tester).
-3. **Route B** full matrix on the device → then Archive → TestFlight → submit.
+| "Unavailable" on Pass buttons | Run from Xcode (Cmd+R), not `xcodebuild` + `devicectl` |
+| Products don't load | Check scheme has `Products.storekit` in StoreKit config |
+| "Cannot connect to App Store" | Sign out of sandbox account, sign back in |
+| Purchase fails silently | Check Console.app for StoreKit errors |
+| Subscriptions not found | Verify subscription group "Auction Baby Pass" exists in ASC |
