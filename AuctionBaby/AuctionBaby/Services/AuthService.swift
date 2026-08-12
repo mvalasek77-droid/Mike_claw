@@ -48,6 +48,12 @@ final class AuthService: ObservableObject {
 
     private static let tokenKey = "com.valasek.auctionbaby.auth.sessionToken.v1"
     private static let userIdKey = "com.valasek.auctionbaby.auth.serverUserId.v1"
+    private static func appleNameKey(_ appleUser: String) -> String {
+        "com.valasek.auctionbaby.auth.appleName.\(appleUser)"
+    }
+    private static func appleEmailKey(_ appleUser: String) -> String {
+        "com.valasek.auctionbaby.auth.appleEmail.\(appleUser)"
+    }
 
     /// True iff an auth Worker URL is bundled with the build. When false, the
     /// SIWA button hides and the app runs in local-only mode.
@@ -80,23 +86,34 @@ final class AuthService: ObservableObject {
               let identityToken = String(data: tokenData, encoding: .utf8) else {
             return .failure("Apple didn't return an identity token — try again.")
         }
-        let displayName = fullNameString(credential.fullName)
+        let nameKey = Self.appleNameKey(credential.user)
+        let emailKey = Self.appleEmailKey(credential.user)
+        let freshName = fullNameString(credential.fullName)
+        let freshEmail = credential.email?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let freshName { SecureStore.setString(freshName, forKey: nameKey) }
+        if let freshEmail, !freshEmail.isEmpty { SecureStore.setString(freshEmail, forKey: emailKey) }
+        // Apple returns name/email only once. Preserve that response in the
+        // Keychain so later authorizations can still hydrate onboarding.
+        let displayName = freshName ?? SecureStore.string(forKey: nameKey)
+        let displayEmail = freshEmail ?? SecureStore.string(forKey: emailKey)
 
         inFlight = true
         defer { inFlight = false }
         lastError = nil
 
-        struct Body: Encodable { let identityToken: String; let name: String? }
+        struct Body: Encodable { let identityToken: String; let name: String?; let email: String? }
         struct Response: Decodable { let userId: String; let sessionToken: String; let isNew: Bool; let user: RemoteUser }
 
         switch await request("/auth/apple", method: "POST",
-                              body: Body(identityToken: identityToken, name: displayName),
+                              body: Body(identityToken: identityToken, name: displayName, email: displayEmail),
                               auth: false, as: Response.self) {
         case .success(let r):
             self.sessionToken = r.sessionToken
             SecureStore.setString(r.userId, forKey: Self.userIdKey)
             self.serverUserId = r.userId
             self.user = r.user
+            if let name = r.user.name, !name.isEmpty { SecureStore.setString(name, forKey: nameKey) }
+            if let email = r.user.email, !email.isEmpty { SecureStore.setString(email, forKey: emailKey) }
             return .success(isNew: r.isNew, user: r.user)
         case .failure(let message, _):
             self.lastError = message

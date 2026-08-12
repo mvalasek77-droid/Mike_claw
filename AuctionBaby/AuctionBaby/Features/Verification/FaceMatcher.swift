@@ -168,6 +168,6 @@ final class FaceMatcher {
             return 0
         }
         guard let face = (request.results as? [VNFaceObservation])?.first else { return 0 }
-        return face.captureQuality ?? 0
+        return Double(face.faceCaptureQuality ?? 0)
     }
 }

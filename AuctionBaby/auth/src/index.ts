@@ -337,13 +337,14 @@ function handleHealth(env: Env): Response {
   });
 }
 
-/** POST /auth/apple  { identityToken, name? }  →  { userId, sessionToken, isNew, user } */
+/** POST /auth/apple  { identityToken, name?, email? }  →  { userId, sessionToken, isNew, user } */
 async function handleAppleAuth(request: Request, env: Env): Promise<Response> {
   let body: any;
   try { body = await request.json(); } catch { return err("Invalid JSON body"); }
 
   const identityToken = String(body?.identityToken ?? "").trim();
   const suppliedName = body?.name != null ? String(body.name).trim().slice(0, 80) : null;
+  const suppliedEmail = body?.email != null ? String(body.email).trim().toLowerCase().slice(0, 254) : null;
   if (!identityToken) return err("identityToken is required");
   if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
   if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
@@ -355,8 +356,12 @@ async function handleAppleAuth(request: Request, env: Env): Promise<Response> {
     return err(`Apple token rejected: ${e.message}`, 401);
   }
 
+  const tokenEmail = claims.email?.trim().toLowerCase() ?? null;
+  if (suppliedEmail && tokenEmail && suppliedEmail !== tokenEmail) {
+    return err("Apple email did not match the signed identity token", 400);
+  }
   const { user, isNew } = await upsertUserByAppleSub(
-    env, claims.sub, claims.email ?? null, isNew_seedName(suppliedName, claims),
+    env, claims.sub, tokenEmail, isNew_seedName(suppliedName, claims),
   );
   // Batch R — soft-ban check on new sign-ins. Existing sessions run to their
   // TTL; if you need to yank now, use `DELETE /admin/users/:id`.
@@ -1168,6 +1173,12 @@ async function handleUpsertMyProfile(request: Request, env: Env): Promise<Respon
     existing ? Date.now() : now,   // don't overwrite created_at on updates
     now,
   ).run();
+
+  // Repair the private account record when Apple no longer returns its
+  // one-time fullName: the user's submitted public profile name is canonical.
+  await env.DB.prepare(
+    "UPDATE users SET name = CASE WHEN name IS NULL OR trim(name) = '' THEN ? ELSE name END WHERE id = ?",
+  ).bind(name, userId).run();
 
   const row = await env.DB.prepare(`${PROFILE_SELECT} WHERE p.user_id = ?`)
     .bind(userId).first<ProfileWithAge>();
