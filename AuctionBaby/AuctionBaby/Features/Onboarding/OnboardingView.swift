@@ -337,15 +337,31 @@ struct OnboardingView: View {
         return f
     }()
 
-    /// Post-sign-in wiring: seed the name Apple returned (if any + field is
-    /// empty). The push authorization prompt has moved to `submit()` — firing
-    /// it here (mid-onboarding, before role choice) trips App Review's
-    /// premature-prompt guidance. Push registration handshake still runs
-    /// after submit for signed-in users.
+    /// Post-sign-in wiring: seed the basics Apple returned (name, email) into
+    /// the onboarding form so the user doesn't re-type them. Apple only
+    /// returns fullName and email on the FIRST sign-in for a given Apple ID +
+    /// team, so on subsequent sign-ins we fall back to the Keychain-cached
+    /// values that `AuthService` preserved.
     private func onSignedInWithApple(_ user: RemoteUser) {
-        if name.trimmingCharacters(in: .whitespaces).isEmpty,
-           let n = user.name, !n.isEmpty {
-            name = n
+        // Name — try server response first, then Keychain-cached Apple name
+        if name.trimmingCharacters(in: .whitespaces).isEmpty {
+            if let n = user.name, !n.isEmpty {
+                name = n
+            } else if let cached = auth.cachedAppleName, !cached.isEmpty {
+                name = cached
+            }
+        }
+        // If we still don't have a name, the user may have signed in before
+        // we started caching, and Apple didn't return the name this time.
+        // Try refreshing from the server — the profile name may have been
+        // backfilled from onboarding on a previous session.
+        if name.trimmingCharacters(in: .whitespaces).isEmpty {
+            Task {
+                let refreshed = await auth.refreshMe()
+                if refreshed, let n = auth.user?.name, !n.isEmpty {
+                    await MainActor.run { name = n }
+                }
+            }
         }
     }
 

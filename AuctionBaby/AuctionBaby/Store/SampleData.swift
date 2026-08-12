@@ -108,7 +108,7 @@ enum SampleData {
             Profile(name: "Harper Wells", age: 31, role: .woman, location: "Venice, Los Angeles",
                     bio: "Producer. I survive on espresso and deadline adrenaline. Looking for someone who can keep up on a Sunday hike.",
                     hue: 0.55,
-                    photoName: "photo-sloane",
+                    photoName: "photo-harper",
                     prompts: [
                         Prompt(question: "Together we could", answer: "Skip the small talk and split the tasting menu."),
                         Prompt(question: "Dating me is like", answer: "Working with a good cofounder — direct, loyal, occasionally intense."),

@@ -48,6 +48,7 @@ final class AuthService: ObservableObject {
 
     private static let tokenKey = "com.valasek.auctionbaby.auth.sessionToken.v1"
     private static let userIdKey = "com.valasek.auctionbaby.auth.serverUserId.v1"
+    private static let appleUserKey = "com.valasek.auctionbaby.auth.appleUser.v1"
     private static func appleNameKey(_ appleUser: String) -> String {
         "com.valasek.auctionbaby.auth.appleName.\(appleUser)"
     }
@@ -64,6 +65,23 @@ final class AuthService: ObservableObject {
     /// think we're signed in" flag, not a guarantee. Call `refreshMe()` to
     /// confirm and drop the session on 401.
     var isSignedIn: Bool { sessionToken != nil && serverUserId != nil }
+
+    /// The Apple-cached display name for the current user, if any. Apple only
+    /// returns fullName on the first SIWA authorization; we preserve it in
+    /// Keychain so onboarding can pre-fill the name field on subsequent
+    /// sign-ins. Returns nil if no cached name exists.
+    var cachedAppleName: String? {
+        // The Keychain key uses Apple's `credential.user` identifier, which
+        // we store alongside the session at sign-in time.
+        guard let appleUser = SecureStore.string(forKey: Self.appleUserKey) else { return nil }
+        return SecureStore.string(forKey: Self.appleNameKey(appleUser))
+    }
+
+    /// The Apple-cached email for the current user, if any.
+    var cachedAppleEmail: String? {
+        guard let appleUser = SecureStore.string(forKey: Self.appleUserKey) else { return nil }
+        return SecureStore.string(forKey: Self.appleEmailKey(appleUser))
+    }
 
     init() {
         // Rehydrate the userId at launch so views observe the right state
@@ -88,6 +106,9 @@ final class AuthService: ObservableObject {
         }
         let nameKey = Self.appleNameKey(credential.user)
         let emailKey = Self.appleEmailKey(credential.user)
+        // Persist Apple's user identifier so we can look up the cached
+        // name/email on subsequent sign-ins (Apple only returns them once).
+        SecureStore.setString(credential.user, forKey: Self.appleUserKey)
         let freshName = fullNameString(credential.fullName)
         let freshEmail = credential.email?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let freshName { SecureStore.setString(freshName, forKey: nameKey) }
@@ -272,6 +293,7 @@ final class AuthService: ObservableObject {
     private func signOutLocally() {
         SecureStore.setString(nil, forKey: Self.tokenKey)
         SecureStore.setString(nil, forKey: Self.userIdKey)
+        SecureStore.setString(nil, forKey: Self.appleUserKey)
         self.serverUserId = nil
         self.user = nil
     }

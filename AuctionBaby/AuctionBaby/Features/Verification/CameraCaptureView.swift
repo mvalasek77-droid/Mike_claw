@@ -50,7 +50,7 @@ struct CameraCaptureView: UIViewRepresentable {
 
     final class Coordinator: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         private let parent: CameraCaptureView
-        private let session = AVCaptureSession()
+        let session = AVCaptureSession()
         private let videoOutput = AVCaptureVideoDataOutput()
         private let sessionQueue = DispatchQueue(label: "com.valasek.auctionbaby.verify.camera")
         private let visionQueue = DispatchQueue(label: "com.valasek.auctionbaby.verify.vision")
