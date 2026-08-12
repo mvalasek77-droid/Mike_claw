@@ -23,7 +23,7 @@ struct StandingView: View {
                             icon: "flame.fill",
                             entries: store.mostContestedLots,
                             tint: Theme.rose)
-                    footer
+                    if store.role == .man { footer }
                     Spacer(minLength: 24)
                 }
                 .screenPadding().padding(.top, 8)
