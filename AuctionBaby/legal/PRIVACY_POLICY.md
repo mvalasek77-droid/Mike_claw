@@ -30,9 +30,12 @@ using the Service, contact **[SUPPORT_EMAIL]**.
   are 18+).
 - **Profile & content:** photos, bio, prompts, interests, the city/location
   text you type, and the messages, bids, and reactions you send.
-- **Verification:** if you verify, a live selfie is processed to match your
-  profile photos; we store the **verification result/status**, not necessarily
-  the raw selfie (subject to the verification provider's terms).
+- **Verification:** if you verify, Apple's Vision framework processes live
+  camera frames and your existing profile photos on your device to check for a
+  blink, capture quality, and facial similarity. Camera frames, selfies, and
+  facial landmarks are discarded on-device and are not uploaded. We receive
+  and store only numeric quality/match scores, a liveness result, and the
+  verification status and time.
 - **Purchases:** records of subscriptions, in-app currency, and status items
   you buy. Apple processes payment; we do **not** receive your full card number.
 - **Support:** anything you send us (e.g., a bug report or email).
@@ -75,8 +78,8 @@ personal information.
   a bidder's photo unlocks to a lot when she accepts his bid).
 - **Service providers (processors):** hosting/backend and photo storage
   (Cloudflare), push delivery (Apple Push Notification service), payments and
-  subscriptions (Apple), any real-world booking-fee processor (Stripe, if you
-  use that feature), and an identity-verification provider. They process data
+  subscriptions (Apple), and any real-world booking-fee processor (Stripe, if you
+  use that feature). They process data
   on our behalf under contract.
 - **Legal & safety:** to comply with law, respond to lawful requests, enforce
   our Terms, or protect the rights, property, or safety of users, the public,

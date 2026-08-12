@@ -116,8 +116,8 @@ in person.
 - Except as required by law or Apple's policies, all purchases are final.
 
 ## 10. Third-party services
-The Service relies on third parties (e.g., Apple, Cloudflare, and any payment or
-verification provider). Their services are governed by their own terms and
+The Service relies on third parties (e.g., Apple, Cloudflare, and any payment
+provider). Their services are governed by their own terms and
 privacy policies; we are not responsible for them.
 
 ## 11. Intellectual property; DMCA

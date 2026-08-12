@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS users (
   verification_ref       TEXT,
   -- 'unstarted' | 'pending' | 'passed' | 'failed' | 'expired'
   verification_status    TEXT NOT NULL DEFAULT 'unstarted',
+  verification_selfie_score REAL,
+  verification_face_match_score REAL,
+  verification_liveness_passed INTEGER,
 
   -- ── Batch L: session-based admin auth ──────────────────────────────────────
   -- 0 = normal user. 1 = admin (can hit /admin/*). Flipped out-of-band via

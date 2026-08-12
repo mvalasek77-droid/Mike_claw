@@ -50,7 +50,7 @@
 <ul>
   <li><strong>Account &amp; identity:</strong> name, email (including an Apple private-relay email if you use Hide My Email), and your <strong>date of birth</strong> (to confirm you are 18+).</li>
   <li><strong>Profile &amp; content:</strong> photos, bio, prompts, interests, the city/location text you type, and the messages, bids, and reactions you send.</li>
-  <li><strong>Verification:</strong> if you verify, a live selfie is processed to match your profile photos; we store the verification result/status, subject to the verification provider’s terms.</li>
+  <li><strong>Verification:</strong> if you verify, Apple’s Vision framework processes live camera frames and your existing profile photos on your device to check for a blink, capture quality, and facial similarity. Camera frames, selfies, and facial landmarks are discarded on-device and are not uploaded. We receive and store only numeric quality/match scores, a liveness result, and the verification status and time.</li>
   <li><strong>Purchases:</strong> records of subscriptions, in-app currency, and status items. Apple processes payment; we do not receive your full card number.</li>
   <li><strong>Support:</strong> anything you send us.</li>
 </ul>
@@ -78,7 +78,7 @@
 <p>We share personal information only as described here; we do <strong>not sell</strong> your personal information.</p>
 <ul>
   <li><strong>With other users:</strong> your profile, bids, and messages are shared with users you interact with, consistent with the Service’s design (e.g., a bidder’s photo unlocks to a lot when she accepts his bid).</li>
-  <li><strong>Service providers (processors):</strong> hosting/backend and photo storage (Cloudflare), push delivery (Apple), payments/subscriptions (Apple), any real-world booking-fee processor (Stripe, if used), and an identity-verification provider — all under contract.</li>
+  <li><strong>Service providers (processors):</strong> hosting/backend and photo storage (Cloudflare), push delivery (Apple), payments/subscriptions (Apple), and any real-world booking-fee processor (Stripe, if used) — all under contract.</li>
   <li><strong>Legal &amp; safety:</strong> to comply with law, respond to lawful requests, enforce our Terms, or protect users, the public, or us.</li>
   <li><strong>Business transfers:</strong> in a merger, acquisition, or asset sale, subject to this Policy.</li>
 </ul>

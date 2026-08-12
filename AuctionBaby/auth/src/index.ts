@@ -736,11 +736,11 @@ async function constantTimeEqual(a: string, b: string): Promise<boolean> {
 //   only ever get a pass/fail signal + a reference id.
 
 type VerificationStatus = "unstarted" | "pending" | "passed" | "failed" | "expired";
-type VerificationVendor = "manual" | "persona" | "onfido" | "stub";
+type VerificationVendor = "manual" | "vision" | "persona" | "onfido" | "stub";
 
 function currentVendor(env: Env): VerificationVendor {
   const v = (env.VERIFICATION_VENDOR ?? "manual").toLowerCase() as VerificationVendor;
-  return (["manual", "persona", "onfido", "stub"].includes(v)) ? v : "manual";
+  return (["manual", "vision", "persona", "onfido", "stub"].includes(v)) ? v : "manual";
 }
 
 /** POST /verify/start  [auth]  →  { verificationId, vendor, status, nextStep }
@@ -816,6 +816,8 @@ function nextStepFor(vendor: VerificationVendor, ref: string, _env: Env): unknow
         kind: "wait",
         message: "Your verification is under review. We'll notify you when it's done.",
       };
+    case "vision":
+      return { kind: "camera", message: "Complete the on-device face check." };
     case "persona":
     case "onfido":
       // Placeholders — a real integration returns their SDK init token
@@ -824,6 +826,53 @@ function nextStepFor(vendor: VerificationVendor, ref: string, _env: Env): unknow
     case "stub":
       return { kind: "done" };
   }
+}
+
+/** POST /verify/submit [auth]
+ * Accepts only the outcome of Apple's on-device Vision checks. No image,
+ * landmarks, or biometric template is uploaded or persisted.
+ */
+async function handleVerifySubmit(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  if (!userId) return err("Unauthorized", 401);
+
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const selfieScore = Number(body?.selfieScore);
+  const faceMatchScore = Number(body?.faceMatchScore);
+  const livenessPassed = body?.livenessPassed === true;
+  if (!Number.isFinite(selfieScore) || selfieScore < 0 || selfieScore > 1
+      || !Number.isFinite(faceMatchScore) || faceMatchScore < 0 || faceMatchScore > 1
+      || typeof body?.livenessPassed !== "boolean") {
+    return err("Scores must be numbers from 0 to 1 and livenessPassed must be boolean");
+  }
+
+  const user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`)
+    .bind(userId).first<UserRow>();
+  if (!user) return err("User not found", 404);
+  if (user.verification_status === "passed" && user.verified_at) {
+    return json({ status: "passed", verifiedAt: user.verified_at });
+  }
+
+  const now = Date.now();
+  const ref = user.verification_ref ?? crypto.randomUUID();
+  const passed = livenessPassed && faceMatchScore >= 0.50 && selfieScore >= 0.15;
+  const status: VerificationStatus = passed ? "passed" : (livenessPassed ? "pending" : "failed");
+  await env.DB.prepare(
+    `UPDATE users SET verified_at = ?, verification_status = ?, verification_vendor = 'vision',
+      verification_ref = ?, verification_selfie_score = ?, verification_face_match_score = ?,
+      verification_liveness_passed = ?, last_seen_at = ? WHERE id = ?`,
+  ).bind(passed ? now : null, status, ref, selfieScore, faceMatchScore,
+         livenessPassed ? 1 : 0, now, userId).run();
+
+  if (passed) {
+    await fireVerifiedPush(env, userId).catch(() => {});
+    return json({ status: "passed", verifiedAt: now });
+  }
+  if (status === "pending") {
+    return json({ status, message: "Your result needs a quick manual review. We'll notify you when it's complete." });
+  }
+  return json({ status, message: "We couldn't confirm liveness. Please try again." });
 }
 
 /** POST /verify/webhook  — vendor callback, signature-verified.
@@ -1858,6 +1907,7 @@ export default {
 
     // Slice 3 — verification
     if (pathname === "/verify/start" && m === "POST") return handleVerifyStart(request, env);
+    if (pathname === "/verify/submit" && m === "POST") return handleVerifySubmit(request, env);
     if (pathname === "/verify/webhook" && m === "POST") return handleVerifyWebhook(request, env);
     if (pathname === "/admin/verify" && m === "POST") return handleAdminVerify(request, env);
 

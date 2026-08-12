@@ -93,6 +93,57 @@ final class VerificationService: ObservableObject {
         }
     }
 
+    /// Submit the result of the on-device Vision checks. Images and landmarks
+    /// never enter this request; the server receives only bounded numeric
+    /// quality/match scores and the liveness outcome.
+    func submitVerificationResult(selfieScore: Double,
+                                  livenessPassed: Bool,
+                                  faceMatchScore: Double) async -> SubmitResult {
+        guard isEnabled, let session = sessionToken() else {
+            return .failure("Sign in to verify your identity.")
+        }
+        inFlight = true
+        defer { inFlight = false }
+        lastError = nil
+
+        let base = BackendConfig.authURL.trimmingCharacters(in: .whitespaces)
+        let trimmed = base.hasSuffix("/") ? String(base.dropLast()) : base
+        guard let url = URL(string: "\(trimmed)/verify/submit") else {
+            return .failure("Auth Worker URL looks malformed.")
+        }
+
+        struct Body: Encodable {
+            let selfieScore: Double
+            let livenessPassed: Bool
+            let faceMatchScore: Double
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 20
+        request.setValue("Bearer \(session)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        do {
+            request.httpBody = try JSONEncoder().encode(Body(
+                selfieScore: min(max(selfieScore, 0), 1),
+                livenessPassed: livenessPassed,
+                faceMatchScore: min(max(faceMatchScore, 0), 1)
+            ))
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard (200..<300).contains(statusCode) else {
+                struct E: Decodable { let error: String? }
+                let message = (try? JSONDecoder().decode(E.self, from: data).error) ?? "HTTP \(statusCode)"
+                lastError = message
+                return .failure(message)
+            }
+            return .success(try JSONDecoder().decode(SubmitResponse.self, from: data))
+        } catch {
+            ErrorMonitor.shared.record(category: "Verify", message: "POST /verify/submit failed", error: error)
+            lastError = error.localizedDescription
+            return .failure(error.localizedDescription)
+        }
+    }
+
     // MARK: - Response shapes
 
     /// Mirrors the Worker's `handleVerifyStart` response.
@@ -113,6 +164,17 @@ final class VerificationService: ObservableObject {
 
     enum StartResult {
         case success(StartResponse)
+        case failure(String)
+    }
+
+    struct SubmitResponse: Decodable {
+        let status: String
+        let verifiedAt: Double?
+        let message: String?
+    }
+
+    enum SubmitResult {
+        case success(SubmitResponse)
         case failure(String)
     }
 }

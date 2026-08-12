@@ -23,7 +23,6 @@ struct StandingView: View {
                             icon: "flame.fill",
                             entries: store.mostContestedLots,
                             tint: Theme.rose)
-                    if store.role == .man { footer }
                     Spacer(minLength: 24)
                 }
                 .screenPadding().padding(.top, 8)
@@ -115,10 +114,4 @@ struct StandingView: View {
         )
     }
 
-    private var footer: some View {
-        Text("Cosmetic only. Ranks refresh every week from your Auction Credit and Showcase score — nothing you do here can move them directly.")
-            .font(.dynamicScaled(10, relativeTo: .caption2)).foregroundStyle(Theme.inkFaint)
-            .multilineTextAlignment(.center)
-            .padding(.top, 4)
-    }
 }

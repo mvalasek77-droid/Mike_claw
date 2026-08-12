@@ -52,8 +52,11 @@ targets:
       - path: AuctionBabyTests
         excludes:
           - "README.md"
+      - path: Products.storekit
+        buildPhase: resources
     dependencies:
       - target: AuctionBaby
+      - sdk: StoreKitTest.framework
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
