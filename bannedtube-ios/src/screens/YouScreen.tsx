@@ -33,18 +33,18 @@ export default function YouScreen({ onChannelPress }: YouScreenProps) {
   const [editingName, setEditingName] = useState(false);
 
   const stats = [
-    { label: "Videos watched", value: formatCompact(watchHistory.length) },
+    { label: "Watched", value: formatCompact(watchHistory.length) },
     { label: "Saved", value: formatCompact(savedVideos.size) },
     { label: "Liked", value: formatCompact(likedVideos.size) },
-    { label: "Subscriptions", value: formatCompact(subscriptions.size) },
+    { label: "Following", value: formatCompact(subscriptions.size) },
   ];
 
   const menuItems = [
     { icon: "time-outline", label: "History", screen: "library" },
     { icon: "bookmark-outline", label: "Saved", screen: "library" },
-    { icon: "thumbs-up-outline", label: "Liked videos", screen: "library" },
-    { icon: "download-outline", label: "Downloads", screen: "downloads" },
-    { icon: "people-outline", label: "Subscriptions", screen: "subs" },
+    { icon: "thumbs-up-outline", label: "Liked", screen: "library" },
+    { icon: "download-outline", label: "Offline", screen: "downloads" },
+    { icon: "people-outline", label: "Following", screen: "subs" },
   ];
 
   const settingsItems = [

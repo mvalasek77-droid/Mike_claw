@@ -48,7 +48,7 @@ const TAB_CONFIG: {
     key: "shorts",
     icon: "flash-outline",
     iconActive: "flash",
-    label: "Shorts",
+    label: "Clips",
   },
   {
     key: "trending",
@@ -76,15 +76,15 @@ const TAB_CONFIG: {
   },
   {
     key: "library",
-    icon: "library-outline",
-    iconActive: "library",
-    label: "Library",
+    icon: "albums-outline",
+    iconActive: "albums",
+    label: "Vault",
   },
   {
     key: "you",
     icon: "person-circle-outline",
     iconActive: "person-circle",
-    label: "You",
+    label: "Profile",
   },
 ];
 

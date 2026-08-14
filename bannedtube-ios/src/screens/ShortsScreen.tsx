@@ -170,7 +170,7 @@ export default function ShortsScreen({ videos }: ShortsScreenProps) {
               <Ionicons name="checkmark-circle" size={14} color="#fff" />
             )}
             <TouchableOpacity style={styles.subscribeBtn}>
-              <Text style={styles.subscribeText}>Subscribe</Text>
+              <Text style={styles.subscribeText}>Follow</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.shortTitle} numberOfLines={2}>

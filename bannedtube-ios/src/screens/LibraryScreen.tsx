@@ -55,7 +55,7 @@ export default function LibraryScreen({
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Library</Text>
+        <Text style={styles.headerTitle}>Vault</Text>
       </View>
 
       <View style={styles.filterRow}>

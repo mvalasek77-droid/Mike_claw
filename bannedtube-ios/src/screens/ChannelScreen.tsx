@@ -49,7 +49,7 @@ export default function ChannelScreen({
     );
   }
 
-  const tabs = ["Videos", "Playlists", "Community", "About"];
+  const tabs = ["Uploads", "Collections", "Feed", "Info"];
 
   async function handleSubscribe() {
     await toggleSubscription(channelId);
@@ -154,7 +154,7 @@ export default function ChannelScreen({
             onPress={handleSubscribe}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel={subscribed ? "Unsubscribe" : "Subscribe"}
+            accessibilityLabel={subscribed ? "Unfollow" : "Follow"}
           >
             <Text
               style={[
@@ -162,7 +162,7 @@ export default function ChannelScreen({
                 subscribed && styles.subscribedBtnText,
               ]}
             >
-              {subscribed ? "Subscribed" : "Subscribe"}
+              {subscribed ? "Following" : "Follow"}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -235,7 +235,7 @@ export default function ChannelScreen({
               <View style={styles.playlistRow}>
                 <Ionicons name="list" size={20} color={THEME.accent} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.playlistTitle}>All Uploads</Text>
+                  <Text style={styles.playlistTitle}>All Content</Text>
                   <Text style={styles.playlistMeta}>{channelVideos.length} videos</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={THEME.textSecondary} />
@@ -245,7 +245,7 @@ export default function ChannelScreen({
               <View style={styles.playlistRow}>
                 <Ionicons name="flame" size={20} color="#fbbf24" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.playlistTitle}>Most Popular</Text>
+                  <Text style={styles.playlistTitle}>Top Viewed</Text>
                   <Text style={styles.playlistMeta}>{Math.min(channelVideos.length, 5)} videos</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={THEME.textSecondary} />
@@ -255,7 +255,7 @@ export default function ChannelScreen({
               <View style={styles.playlistRow}>
                 <Ionicons name="time" size={20} color="#60a5fa" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.playlistTitle}>Recently Uploaded</Text>
+                  <Text style={styles.playlistTitle}>Latest Drops</Text>
                   <Text style={styles.playlistMeta}>{Math.min(channelVideos.length, 3)} videos</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={THEME.textSecondary} />
@@ -318,7 +318,7 @@ export default function ChannelScreen({
             <GlassCard style={styles.aboutCard}>
               <Text style={styles.aboutLabel}>Description</Text>
               <Text style={styles.aboutText}>
-                {channel.description || `Welcome to ${channel.name}. Subscribe for the latest content that the mainstream doesn't want you to see.`}
+                {channel.description || `Welcome to ${channel.name}. Follow for the latest content that the mainstream doesn't want you to see.`}
               </Text>
             </GlassCard>
             <GlassCard style={styles.aboutCard}>
@@ -326,7 +326,7 @@ export default function ChannelScreen({
               <View style={styles.aboutStatsGrid}>
                 <View style={styles.aboutStat}>
                   <Text style={styles.aboutStatVal}>{formatSubscribers(channel.subscribers)}</Text>
-                  <Text style={styles.aboutStatKey}>Subscribers</Text>
+                  <Text style={styles.aboutStatKey}>Followers</Text>
                 </View>
                 <View style={styles.aboutStat}>
                   <Text style={styles.aboutStatVal}>{channelVideos.length}</Text>

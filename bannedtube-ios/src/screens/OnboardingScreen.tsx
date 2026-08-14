@@ -105,7 +105,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
           </Text>
           <Text style={styles.featureBullet}>• Watch, like, save, and subscribe</Text>
           <Text style={styles.featureBullet}>• Comment and reply to the community</Text>
-          <Text style={styles.featureBullet}>• Shorts, Trending, AI Studio, and more</Text>
+          <Text style={styles.featureBullet}>• Clips, Trending, AI Studio, and more</Text>
           <Text style={styles.featureBullet}>• Zero data leaves your phone</Text>
           <TouchableOpacity style={styles.primaryBtn} onPress={handleNext}>
             <Text style={styles.primaryBtnText}>Get Started</Text>

@@ -362,7 +362,7 @@ export default function WatchScreen({
               onPress={handleSubscribe}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel={subscribed ? "Unsubscribe" : "Subscribe"}
+              accessibilityLabel={subscribed ? "Unfollow" : "Follow"}
             >
               <Text
                 style={[
@@ -370,7 +370,7 @@ export default function WatchScreen({
                   subscribed && styles.subscribedBtnText,
                 ]}
               >
-                {subscribed ? "Subscribed" : "Subscribe"}
+                {subscribed ? "Following" : "Follow"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -486,7 +486,7 @@ export default function WatchScreen({
           <View style={styles.commentInputRow}>
             <TextInput
               style={styles.commentInput}
-              placeholder="Add a comment..."
+              placeholder="Share your thoughts..."
               placeholderTextColor={THEME.textSecondary}
               value={commentText}
               onChangeText={setCommentText}
@@ -511,7 +511,7 @@ export default function WatchScreen({
             <CommentItem key={comment.id} comment={comment} onReply={handleReply} />
           ))}
 
-          <Text style={styles.relatedHeader}>Up next</Text>
+          <Text style={styles.relatedHeader}>More like this</Text>
           {relatedVideos.map((v) => (
             <VideoCard
               key={v.id}
