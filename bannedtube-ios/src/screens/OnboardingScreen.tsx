@@ -100,6 +100,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
             </LinearGradient>
           </View>
           <Text style={styles.welcomeTitle}>Welcome to BannedTube</Text>
+          <Text style={styles.tagline}>For the creators that were wrongfully banned.</Text>
           <Text style={styles.welcomeSubtitle}>
             The local-first video platform. No account needed — everything stays on your device.
           </Text>
@@ -246,6 +247,14 @@ const styles = StyleSheet.create({
     color: THEME.textPrimary,
     fontSize: 28,
     fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  tagline: {
+    color: THEME.accent,
+    fontSize: 16,
+    fontWeight: "600",
+    fontStyle: "italic",
     textAlign: "center",
     marginBottom: 12,
   },
