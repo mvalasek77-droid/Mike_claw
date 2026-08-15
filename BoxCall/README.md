@@ -78,6 +78,21 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## The live market
+
+Premiums are not static. `MarketService` runs a 3-second tick loop that continuously reprices every contract on every chain:
+
+```
+mark = basePremium × exp(demand / liquidity) × movieSentiment × (1 + noise)
+```
+
+- **User trades move price directly.** Every `buy` calls `MarketService.recordBuy(contractId:quantity:)` which increments the per-contract demand imbalance; the next tick reprices exponentially. Sells symmetrically pull the mark down. Slippage is intuitive: small trades barely move it, crowd piles create real drift.
+- **Background NPC traders** nudge random strikes each tick so the tape is always moving — even when no human is in the app. In a real deployment these are replaced by real user flow and market-maker inventory.
+- **Market events** fire ~5% of ticks: a random movie gets a bullish or bearish headline ("Presales spike — 60% ahead of tracking" / "Embargo lifts: reviews weaker than tracking assumed") that shocks the movie's whole chain via a sentiment multiplier — every Call mark moves one way, every Put mark moves the other. Events surface as a news ticker on each movie's page, and users holding open positions on that movie get a push notification.
+- **Price history** is stored per-contract (rolling 90 points ≈ 4.5 minutes) and rendered as row sparklines on the chain, and as a full time-series chart with area gradient on the Trade Sheet.
+- **Live indicator** — a pulsing green dot marks anywhere the tape is streaming, with the last-tick timestamp so users can tell the market is alive.
+- **Mean reversion**: demand drifts back toward zero and sentiment toward 1.0 each tick, so isolated shocks fade if not sustained by continued flow.
+
 ## Education layer
 
 Options are unfamiliar to most people. BoxCall teaches the mechanics in three places:

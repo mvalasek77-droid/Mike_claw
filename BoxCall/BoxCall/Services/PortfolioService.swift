@@ -66,6 +66,7 @@ final class PortfolioService: ObservableObject {
             settledPayout: nil,
             actualOWMillions: nil
         ))
+        MarketService.shared.recordBuy(contractId: contract.id, quantity: quantity)
         RewardsService.shared.grant(xp: 10, reason: "Placed a trade")
         if user.badges.first(where: { $0.id == "first_call" }) == nil,
            let badge = Badge.make("first_call") {
@@ -81,6 +82,7 @@ final class PortfolioService: ObservableObject {
         let proceeds = mark * Double(position.quantity)
         user.reelCoins += proceeds
         user.lifetimePnL += proceeds - position.cost
+        MarketService.shared.recordSell(contractId: position.contractId, quantity: position.quantity)
         positions.removeAll { $0.id == position.id }
     }
 

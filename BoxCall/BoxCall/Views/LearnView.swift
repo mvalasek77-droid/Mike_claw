@@ -43,7 +43,7 @@ struct LearnView: View {
 // MARK: - Sections
 
 enum LearnSection: String, CaseIterable, Identifiable {
-    case theBigIdea, whatsACall, whatsAPut, strike, premium, settlement, closeEarly, multiplier, rewards, glossary
+    case theBigIdea, whatsACall, whatsAPut, strike, premium, liveMarket, settlement, closeEarly, multiplier, rewards, glossary
 
     var id: String { rawValue }
 
@@ -54,6 +54,7 @@ enum LearnSection: String, CaseIterable, Identifiable {
         case .whatsAPut:    return "Puts: betting the movie flops"
         case .strike:       return "The strike price"
         case .premium:      return "Premium & implied volatility"
+        case .liveMarket:   return "The live market — how mark moves 24/7"
         case .settlement:   return "Opening weekend & settlement"
         case .closeEarly:   return "Closing early at the mark"
         case .multiplier:   return "Multiplier"
@@ -69,6 +70,7 @@ enum LearnSection: String, CaseIterable, Identifiable {
         case .whatsAPut:    PutSection()
         case .strike:       StrikeSection()
         case .premium:      PremiumSection()
+        case .liveMarket:   LiveMarketSection()
         case .settlement:   SettlementSection()
         case .closeEarly:   CloseEarlySection()
         case .multiplier:   MultiplierSection()
@@ -288,10 +290,40 @@ struct PremiumSection: View {
     }
 }
 
+struct LiveMarketSection: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            LearnHeader(index: 6, title: LearnSection.liveMarket.title)
+            LearnParagraph("Premiums are not static. Every contract's mark moves continuously — 24/7, whether you have the app open or not — as buys and sells push it around and news events shock a movie's whole chain.")
+            FormulaBox(title: "Live pricing model",
+                       formula: "mark = base × exp(demand / liquidity) × movieSentiment × (1 + noise)")
+            bullet("Buys push the mark up.",
+                   "Every contract you buy adds to the demand imbalance for that strike. The next tick, the mark reprices higher. Slippage is small when demand is small, larger when the whole crowd piles into one strike.")
+            bullet("Sells push the mark down.",
+                   "Closing a position at the mark removes demand and drops the price for the next buyer.")
+            bullet("News moves the whole chain.",
+                   "A bullish event (great reviews, presales spike, viral trailer) lifts the movie's sentiment multiplier — every Call mark goes up, every Put mark goes down. Bearish news does the reverse. Events land in the news ticker on each movie page.")
+            bullet("Background NPC activity keeps the tape moving.",
+                   "Even when no human is trading a strike, small bot orders drift the mark so the sparkline always has a story. In a live version, these are replaced by real user orders and market-maker liquidity.")
+            LearnParagraph("The takeaway: entering early — when consensus is stable and news hasn't broken — usually gets you a better fill than piling in after the crowd. And you can trade the news itself: buy the dip on an overreaction, take profit into a spike.")
+        }
+    }
+
+    private func bullet(_ head: String, _ body: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(.orange).padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(head).font(.subheadline.weight(.semibold))
+                Text(body).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 struct SettlementSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 6, title: LearnSection.settlement.title)
+            LearnHeader(index: 7, title: LearnSection.settlement.title)
             LearnParagraph("Trading on a movie closes when the first show goes up on Friday night. Over the weekend, the studio reports Friday, Saturday, and Sunday grosses. Monday morning, BoxCall pulls the reported domestic three-day number and settles every open position on that movie.")
             LearnParagraph("Settlement pays the intrinsic value of each contract:")
             HStack(spacing: 10) {
@@ -306,7 +338,7 @@ struct SettlementSection: View {
 struct CloseEarlySection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 7, title: LearnSection.closeEarly.title)
+            LearnHeader(index: 8, title: LearnSection.closeEarly.title)
             LearnParagraph("You don't have to hold until settlement. Every open position has a Close button that sells at the current mark price.")
             bullet("Take profit early", "If tracking spikes and your Call's mark doubles, you can lock in the gain without waiting for opening weekend to actually deliver.")
             bullet("Cut losses",         "If the movie's buzz collapses (bad reviews, marketing disaster) and your position is underwater, close early rather than eating the full premium.")
@@ -329,7 +361,7 @@ struct CloseEarlySection: View {
 struct MultiplierSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 8, title: LearnSection.multiplier.title)
+            LearnHeader(index: 9, title: LearnSection.multiplier.title)
             LearnParagraph("Every contract has a multiplier — the number of Reel Coins each dollar of intrinsic value converts to.")
             FormulaBox(title: "Default multiplier",
                        formula: "1 RC per $1M of intrinsic value")
@@ -341,7 +373,7 @@ struct MultiplierSection: View {
 struct RewardsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 9, title: LearnSection.rewards.title)
+            LearnHeader(index: 10, title: LearnSection.rewards.title)
             LearnParagraph("Reel Coins are the fuel — 500 refill weekly, and you never buy or redeem them. What actually accrues is status.")
             HStack(alignment: .top, spacing: 10) {
                 pillar("🎯", "XP & tiers", "Wins grant XP proportional to profit. Six tiers unlock functional social power — verified checkmark, gold username, ability to create custom markets, pinned posts.")
@@ -382,7 +414,7 @@ struct GlossarySection: View {
     ]
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 10, title: LearnSection.glossary.title)
+            LearnHeader(index: 11, title: LearnSection.glossary.title)
             ForEach(terms, id: \.0) { term in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(term.0).font(.subheadline.weight(.bold)).foregroundStyle(.orange)

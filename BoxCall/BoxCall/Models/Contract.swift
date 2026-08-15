@@ -16,7 +16,8 @@ struct Contract: Identifiable, Codable, Hashable {
     let movieId: String
     let side: ContractSide
     let strikeMillions: Double
-    let premium: Double        // current mark price, Reel Coins per contract
+    let basePremium: Double    // theoretical fair value at issuance
+    let premium: Double        // current mark price (drifts with buys/sells and events)
     let multiplier: Double     // Reel Coins per $M of intrinsic value
     let openInterest: Int
 

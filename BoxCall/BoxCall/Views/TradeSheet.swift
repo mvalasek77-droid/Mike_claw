@@ -5,6 +5,7 @@ struct TradeSheet: View {
     let movie: Movie
     @EnvironmentObject var portfolio: PortfolioService
     @EnvironmentObject var social: SocialService
+    @EnvironmentObject var market: MarketService
     @Environment(\.dismiss) private var dismiss
     @State private var quantity: Int = 1
     @State private var shareAsPost: Bool = true
@@ -13,7 +14,12 @@ struct TradeSheet: View {
     @State private var showLearn: Bool = false
     @State private var showChart: Bool = false
 
-    var cost: Double { contract.premium * Double(quantity) }
+    /// Latest live contract from the market (mark ticks while sheet is open).
+    var liveContract: Contract {
+        market.chain(for: contract.movieId).first(where: { $0.id == contract.id }) ?? contract
+    }
+
+    var cost: Double { liveContract.premium * Double(quantity) }
 
     var body: some View {
         NavigationStack {
@@ -28,11 +34,26 @@ struct TradeSheet: View {
                     }
                 }
 
+                Section {
+                    PriceChart(points: market.priceHistory(contractId: contract.id),
+                               color: contract.side == .call ? .green : .red)
+                        .padding(.vertical, 4)
+                } header: {
+                    HStack(spacing: 6) {
+                        LivePulse()
+                        Text("Live mark").font(.caption.weight(.semibold))
+                        Spacer()
+                        Text(liveContract.premium, format: .number.precision(.fractionLength(2)))
+                            .font(.caption.monospacedDigit().weight(.bold))
+                            .foregroundStyle(contract.side == .call ? .green : .red)
+                    }
+                }
+
                 Section("Order") {
                     Stepper("Quantity: \(quantity)", value: $quantity, in: 1...100)
                     HStack {
                         Text("Premium (each)"); Spacer()
-                        Text(contract.premium, format: .number.precision(.fractionLength(2)))
+                        Text(liveContract.premium, format: .number.precision(.fractionLength(2)))
                             .monospacedDigit()
                     }
                     HStack {
@@ -59,7 +80,7 @@ struct TradeSheet: View {
                     DisclosureGroup(isExpanded: $showChart) {
                         PayoffChart(side: contract.side,
                                     strike: contract.strikeMillions,
-                                    premium: contract.premium,
+                                    premium: liveContract.premium,
                                     multiplier: contract.multiplier)
                             .padding(.vertical, 4)
                         Text("Green = profit zone. Orange dashed = your strike. Blue dashed = break-even.")
@@ -104,9 +125,10 @@ struct TradeSheet: View {
                 Section {
                     Button {
                         do {
-                            let positionId = try portfolio.buy(contract: contract, quantity: quantity)
+                            let live = liveContract
+                            let positionId = try portfolio.buy(contract: live, quantity: quantity)
                             if shareAsPost {
-                                social.share(positionId: positionId, contract: contract,
+                                social.share(positionId: positionId, contract: live,
                                              movie: movie, quantity: quantity, hotTake: hotTake)
                             }
                             if let placed = portfolio.positions.first(where: { $0.id == positionId }) {

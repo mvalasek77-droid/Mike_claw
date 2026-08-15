@@ -11,12 +11,18 @@ struct MovieDetailView: View {
         market.chain(for: movie.id).filter { $0.side == (showPutSide ? .put : .call) }
     }
 
+    var events: [MarketEvent] {
+        market.events(for: movie.id)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
                 consensusCard
+                if !events.isEmpty { newsTicker }
                 sidePicker
+                chainHeader
                 chainTable
             }
             .padding()
@@ -89,6 +95,31 @@ struct MovieDetailView: View {
         .background(RoundedRectangle(cornerRadius: 12).fill(.orange.opacity(0.08)))
     }
 
+    private var newsTicker: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .foregroundStyle(.orange)
+                Text("Market news")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(events.prefix(3)) { event in
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: event.isBullish ? "arrow.up.right" : "arrow.down.right")
+                        .foregroundStyle(event.isBullish ? .green : .red)
+                        .font(.caption2.weight(.bold))
+                    Text(event.headline)
+                        .font(.caption)
+                    Spacer()
+                    Text(shortTime(event.time)).font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+    }
+
     private var sidePicker: some View {
         Picker("Side", selection: $showPutSide) {
             Text("CALLS (bullish)").tag(false)
@@ -97,13 +128,27 @@ struct MovieDetailView: View {
         .pickerStyle(.segmented)
     }
 
+    private var chainHeader: some View {
+        HStack(spacing: 6) {
+            LivePulse()
+            Text("Live chain · updates every ~3s")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(shortTime(market.lastTickAt))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.tertiary)
+        }
+    }
+
     private var chainTable: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Strike").frame(maxWidth: .infinity, alignment: .leading)
-                Text("Premium").frame(maxWidth: .infinity, alignment: .trailing)
-                Text("OI").frame(width: 60, alignment: .trailing)
-                Text("").frame(width: 44)
+                Text("Strike").frame(width: 60, alignment: .leading)
+                Text("Mark").frame(width: 60, alignment: .trailing)
+                Text("Trend").frame(maxWidth: .infinity)
+                Text("OI").frame(width: 50, alignment: .trailing)
+                Text("").frame(width: 30)
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
@@ -118,18 +163,21 @@ struct MovieDetailView: View {
                 } label: {
                     HStack {
                         Text("$\(Int(contract.strikeMillions))M")
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(width: 60, alignment: .leading)
                             .fontWeight(.medium)
                         Text(contract.premium, format: .number.precision(.fractionLength(2)))
-                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .frame(width: 60, alignment: .trailing)
                             .monospacedDigit()
                             .foregroundStyle(contract.side == .call ? .green : .red)
+                        Sparkline(points: market.priceHistory(contractId: contract.id),
+                                  color: contract.side == .call ? .green : .red)
+                            .frame(maxWidth: .infinity)
                         Text("\(contract.openInterest)")
-                            .frame(width: 60, alignment: .trailing)
+                            .frame(width: 50, alignment: .trailing)
                             .foregroundStyle(.secondary)
                             .font(.caption)
                         Image(systemName: "cart.badge.plus")
-                            .frame(width: 44)
+                            .frame(width: 30)
                             .foregroundStyle(.orange)
                     }
                     .padding(.horizontal, 12)
@@ -140,5 +188,22 @@ struct MovieDetailView: View {
             }
         }
         .background(RoundedRectangle(cornerRadius: 12).fill(.gray.opacity(0.08)))
+    }
+
+    private func shortTime(_ date: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
+        return f.string(from: date)
+    }
+}
+
+struct LivePulse: View {
+    @State private var on = false
+    var body: some View {
+        Circle()
+            .fill(.green)
+            .frame(width: 8, height: 8)
+            .opacity(on ? 1.0 : 0.35)
+            .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: on)
+            .onAppear { on = true }
     }
 }

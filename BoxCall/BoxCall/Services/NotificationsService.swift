@@ -76,6 +76,14 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
                 kind: .tier(tier: tier))
     }
 
+    func notifyMarketEvent(_ event: MarketEvent) {
+        let arrow = event.isBullish ? "▲" : "▼"
+        deliver(id: "evt_\(event.id.uuidString)",
+                title: "\(arrow) \(event.movieTitle)",
+                body: event.headline,
+                kind: .marketEvent(movieId: event.movieId, positive: event.isBullish))
+    }
+
     func notifyComment(fromHandle handle: String, movieTitle: String) {
         deliver(id: "cmt_\(UUID().uuidString)",
                 title: "@\(handle) replied to your call",
@@ -167,15 +175,17 @@ struct InboxItem: Identifiable, Hashable {
         case tier(tier: Tier)
         case comment(handle: String)
         case reminder(movieId: String)
+        case marketEvent(movieId: String, positive: Bool)
 
         var emoji: String {
             switch self {
-            case .settlement(_, let pos): return pos ? "🎯" : "📉"
-            case .follower:               return "👥"
-            case .badge:                  return "🏅"
-            case .tier:                   return "⭐️"
-            case .comment:                return "💬"
-            case .reminder:               return "🎬"
+            case .settlement(_, let pos):  return pos ? "🎯" : "📉"
+            case .follower:                return "👥"
+            case .badge:                   return "🏅"
+            case .tier:                    return "⭐️"
+            case .comment:                 return "💬"
+            case .reminder:                return "🎬"
+            case .marketEvent(_, let pos): return pos ? "📈" : "📰"
             }
         }
     }
