@@ -1,11 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, ImageSourcePropType, StyleSheet } from "react-native";
 
 interface AvatarProps {
   color: string;
   initial: string;
   size?: number;
   borderColor?: string;
+  imageSource?: ImageSourcePropType;
 }
 
 export default function Avatar({
@@ -13,6 +14,7 @@ export default function Avatar({
   initial,
   size = 36,
   borderColor,
+  imageSource,
 }: AvatarProps) {
   return (
     <View
@@ -22,21 +24,30 @@ export default function Avatar({
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: color,
+          backgroundColor: imageSource ? "transparent" : color,
           borderWidth: borderColor ? 2 : 0,
           borderColor: borderColor || "transparent",
+          overflow: "hidden",
         },
       ]}
       accessibilityRole="image"
       accessibilityLabel={`${initial} avatar`}
     >
-      <Text
-        style={[styles.initial, { fontSize: size * 0.4 }]}
-        numberOfLines={1}
-        allowFontScaling={false}
-      >
-        {initial}
-      </Text>
+      {imageSource ? (
+        <Image
+          source={imageSource}
+          style={{ width: size, height: size }}
+          resizeMode="cover"
+        />
+      ) : (
+        <Text
+          style={[styles.initial, { fontSize: size * 0.4 }]}
+          numberOfLines={1}
+          allowFontScaling={false}
+        >
+          {initial}
+        </Text>
+      )}
     </View>
   );
 }

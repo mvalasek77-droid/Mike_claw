@@ -28,6 +28,7 @@ import {
   getComments,
   THEME,
 } from "../lib/data";
+import { avatars } from "../lib/assets";
 
 interface WatchScreenProps {
   video: Video;
@@ -337,6 +338,7 @@ export default function WatchScreen({
                 initial={video.channel.initial}
                 size={40}
                 borderColor="rgba(255,68,68,0.25)"
+                imageSource={avatars[video.channel.id]}
               />
               <View>
                 <View style={styles.channelNameRow}>

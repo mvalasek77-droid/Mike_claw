@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, ImageSourcePropType, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { THEME } from "../lib/data";
@@ -11,6 +11,7 @@ interface VideoThumbnailProps {
   height?: number;
   progressPercent?: number;
   saved?: boolean;
+  imageSource?: ImageSourcePropType;
 }
 
 export default function VideoThumbnail({
@@ -20,6 +21,7 @@ export default function VideoThumbnail({
   height = 200,
   progressPercent = 0,
   saved = false,
+  imageSource,
 }: VideoThumbnailProps) {
   return (
     <View
@@ -27,44 +29,67 @@ export default function VideoThumbnail({
       accessibilityRole="image"
       accessibilityLabel={`Thumbnail for ${title}`}
     >
-      <LinearGradient
-        colors={[colors[0], colors[1]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      <LinearGradient
-        colors={["rgba(0,0,0,0.35)", "transparent"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 0.4 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      <LinearGradient
-        colors={["transparent", "rgba(0,0,0,0.75)"]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      <View style={styles.playContainer}>
-        <View style={styles.playGlow} />
-        <View style={styles.playButton}>
-          <Ionicons
-            name="play"
-            size={24}
-            color="#fff"
-            style={{ marginLeft: 3 }}
+      {imageSource ? (
+        <Image
+          source={imageSource}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+      ) : (
+        <>
+          <LinearGradient
+            colors={[colors[0], colors[1]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
           />
-        </View>
-      </View>
 
-      <View style={styles.titleBar}>
-        <Text style={styles.titleText} numberOfLines={1}>
-          {title}
-        </Text>
-      </View>
+          <LinearGradient
+            colors={["rgba(0,0,0,0.35)", "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 0.4 }}
+            style={StyleSheet.absoluteFill}
+          />
+
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.75)"]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+
+          <View style={styles.playContainer}>
+            <View style={styles.playGlow} />
+            <View style={styles.playButton}>
+              <Ionicons
+                name="play"
+                size={24}
+                color="#fff"
+                style={{ marginLeft: 3 }}
+              />
+            </View>
+          </View>
+
+          <View style={styles.titleBar}>
+            <Text style={styles.titleText} numberOfLines={1}>
+              {title}
+            </Text>
+          </View>
+
+          <LinearGradient
+            colors={["rgba(255,68,68,0.12)", "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.35, y: 0.35 }}
+            style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 12 }]}
+          />
+          <LinearGradient
+            colors={["rgba(255,68,68,0.06)", "transparent"]}
+            start={{ x: 1, y: 1 }}
+            end={{ x: 0.7, y: 0.7 }}
+            style={[StyleSheet.absoluteFill, { borderBottomRightRadius: 12 }]}
+          />
+        </>
+      )}
 
       {saved && (
         <View style={styles.savedBadge}>
@@ -86,19 +111,6 @@ export default function VideoThumbnail({
           />
         </View>
       )}
-
-      <LinearGradient
-        colors={["rgba(255,68,68,0.12)", "transparent"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.35, y: 0.35 }}
-        style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 12 }]}
-      />
-      <LinearGradient
-        colors={["rgba(255,68,68,0.06)", "transparent"]}
-        start={{ x: 1, y: 1 }}
-        end={{ x: 0.7, y: 0.7 }}
-        style={[StyleSheet.absoluteFill, { borderBottomRightRadius: 12 }]}
-      />
     </View>
   );
 }

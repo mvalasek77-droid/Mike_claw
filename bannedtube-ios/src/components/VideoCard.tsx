@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Avatar from "./Avatar";
 import VideoThumbnail from "./VideoThumbnail";
 import { type Video, formatViews, THEME } from "../lib/data";
+import { thumbnails, avatars } from "../lib/assets";
 import { useApp } from "../lib/AppContext";
 
 interface VideoCardProps {
@@ -22,6 +23,8 @@ export default memo(function VideoCard({
   const { getWatchProgress, isSaved } = useApp();
   const progress = getWatchProgress(video.id);
   const saved = isSaved(video.id);
+  const thumbSource = thumbnails[video.id];
+  const avatarSource = avatars[video.channel.id];
 
   if (layout === "list") {
     return (
@@ -40,6 +43,7 @@ export default memo(function VideoCard({
             height={90}
             progressPercent={progress}
             saved={saved}
+            imageSource={thumbSource}
           />
         </View>
         <View style={styles.listInfo}>
@@ -79,6 +83,7 @@ export default memo(function VideoCard({
         title={video.title}
         progressPercent={progress}
         saved={saved}
+        imageSource={thumbSource}
       />
       <View style={styles.gridInfo}>
         <TouchableOpacity
@@ -90,6 +95,7 @@ export default memo(function VideoCard({
             initial={video.channel.initial}
             size={36}
             borderColor="rgba(255,68,68,0.2)"
+            imageSource={avatarSource}
           />
         </TouchableOpacity>
         <View style={styles.gridTextContainer}>

@@ -20,6 +20,7 @@ import {
   THEME,
   type Video,
 } from "../lib/data";
+import { avatars } from "../lib/assets";
 
 interface SubscriptionsScreenProps {
   onVideoPress: (video: Video) => void;
@@ -131,7 +132,7 @@ export default function SubscriptionsScreen({
                 },
               ]}
             >
-              <Avatar color={ch.avatarColor} initial={ch.initial} size={40} />
+              <Avatar color={ch.avatarColor} initial={ch.initial} size={40} imageSource={avatars[ch.id]} />
             </View>
             <Text
               style={[

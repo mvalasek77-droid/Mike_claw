@@ -23,6 +23,7 @@ import {
   formatCompact,
   THEME,
 } from "../lib/data";
+import { avatars } from "../lib/assets";
 
 interface ChannelScreenProps {
   channelId: string;
@@ -106,6 +107,7 @@ export default function ChannelScreen({
               initial={channel.initial}
               size={72}
               borderColor="rgba(255,68,68,0.3)"
+              imageSource={avatars[channel.id]}
             />
             <View
               style={[
@@ -268,7 +270,7 @@ export default function ChannelScreen({
           <View style={styles.tabContent}>
             <GlassCard style={styles.communityPost}>
               <View style={styles.communityHeader}>
-                <Avatar color={channel.avatarColor} initial={channel.initial} size={32} />
+                <Avatar color={channel.avatarColor} initial={channel.initial} size={32} imageSource={avatars[channel.id]} />
                 <View>
                   <Text style={styles.communityAuthor}>{channel.name}</Text>
                   <Text style={styles.communityTime}>2 days ago</Text>
@@ -290,7 +292,7 @@ export default function ChannelScreen({
             </GlassCard>
             <GlassCard style={styles.communityPost}>
               <View style={styles.communityHeader}>
-                <Avatar color={channel.avatarColor} initial={channel.initial} size={32} />
+                <Avatar color={channel.avatarColor} initial={channel.initial} size={32} imageSource={avatars[channel.id]} />
                 <View>
                   <Text style={styles.communityAuthor}>{channel.name}</Text>
                   <Text style={styles.communityTime}>1 week ago</Text>
