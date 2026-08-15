@@ -7,7 +7,7 @@ struct User: Codable, Hashable {
     var weeklyAllowance: Double
     var lastAllowanceAt: Date
 
-    // Reputation
+    // Reputation (earned, not bought)
     var xp: Int
     var currentStreakWeeks: Int
     var longestStreakWeeks: Int
@@ -16,6 +16,9 @@ struct User: Codable, Hashable {
     var badges: [Badge]
     var trophies: [String]        // e.g. ["Oracle · Summer 2026"]
     var bio: String
+
+    // Subscription
+    var membership: Membership
 
     var tier: Tier { Tier.forXP(xp) }
 
@@ -38,4 +41,11 @@ struct LeaderboardEntry: Identifiable, Codable, Hashable {
     let weeklyPnL: Double
     let winRate: Double
     let isCurrentUser: Bool
+}
+
+/// Every account starts here. Enforced at creation — no promo codes,
+/// no referrals, no way for a free user to start with more than another
+/// free user. Paid tiers layer on top via Membership.
+enum StartingGrant {
+    static let reelCoins: Double = 1_000
 }

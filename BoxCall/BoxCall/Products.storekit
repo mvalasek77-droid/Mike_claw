@@ -1,0 +1,86 @@
+{
+  "identifier" : "com.boxcall.storekit.config",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_applicationInternalID" : "1000000000",
+    "_developerTeamID" : "TEAM_ID_HERE",
+    "_lastSynchronizedDate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "boxcall_membership",
+      "localizations" : [],
+      "name" : "BoxCall Membership",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "backstage_monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "5,000 RC bonus + 1,500 RC weekly + ad-free",
+              "displayName" : "Backstage",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.boxcall.sub.backstage.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Backstage Monthly",
+          "subscriptionGroupID" : "boxcall_membership",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "producers_pass_monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "15,000 RC bonus + 4,000 RC weekly + analytics",
+              "displayName" : "Producer's Pass",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.boxcall.sub.producers_pass.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Producer's Pass Monthly",
+          "subscriptionGroupID" : "boxcall_membership",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "24.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "mogul_monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "40,000 RC bonus + 10,000 RC weekly + custom markets",
+              "displayName" : "Mogul",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.boxcall.sub.mogul.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Mogul Monthly",
+          "subscriptionGroupID" : "boxcall_membership",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

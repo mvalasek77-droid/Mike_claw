@@ -78,6 +78,26 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## Fairness + monetization (3 IAP tiers)
+
+**Every free account starts identical**: 1,000 Reel Coins on sign-up, 500 RC refilled every week, forever. No promo codes, no referral boosts, no way for one free user to start ahead of another. `StartingGrant.reelCoins` is the single source of truth and `PortfolioService.init` enforces it.
+
+Three optional subscription tiers unlock more coins — nothing else. Leaderboards, badges, tier progression (Rookie → Oracle), Featured Critics slots, and every feature stay earned by winning calls, never bought. Status is not for sale.
+
+| Membership | Price | Starting bonus | Weekly allowance | Extras |
+|---|---|---|---|---|
+| **Free** | — | 0 (1,000 base) | 500 RC | — |
+| **Backstage** | $3.99/mo | +5,000 RC | 1,500 RC | Ad-free, extended news ticker |
+| **Producer's Pass** | $9.99/mo | +15,000 RC | 4,000 RC | Advanced analytics (IV history, demand heatmap), priority contest slots, profile badge |
+| **Mogul** | $24.99/mo | +40,000 RC | 10,000 RC | Create custom markets, pin a post 24h/week, gold avatar frame |
+
+Implementation:
+- `Models/Membership.swift` — the four cases with pricing, perks, colors, product IDs
+- `Services/StoreService.swift` — StoreKit 2 wrapper: loads products, drives purchase, listens to `Transaction.updates` for renewals + revocations, restores purchases, falls back to a demo activation if products can't be loaded
+- `Products.storekit` — StoreKit Configuration file attached to the scheme so the paywall works out-of-the-box in Xcode without App Store Connect setup
+- `Views/PaywallView.swift` — three tier cards with per-tier accent colors and a fairness banner reminding users that status is not for sale
+- Profile membership card, Slate coin-balance chip, and weekly-allowance calculation all pull from `user.membership.weeklyAllowance` — a downgrade flips everything back to the free rate immediately
+
 ## Dynamic implied consensus
 
 The "opening weekend estimate" is no longer a static tracker number — it's a **live crowd forecast** derived from the market itself. Every buy, sell, and news event shifts a per-movie sentiment multiplier; the implied consensus is `base × sentiment`. Users see the current implied number with a `%` delta arrow vs the original tracker, plus a live sparkline of how the crowd forecast has been drifting. Same treatment on the Slate list, Movie Detail card, and the Trade Sheet's "if tracks…" scenario.

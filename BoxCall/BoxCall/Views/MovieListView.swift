@@ -29,21 +29,32 @@ struct MovieListView: View {
 
 struct CoinBalanceRow: View {
     let coins: Double
+    @EnvironmentObject var portfolio: PortfolioService
     var body: some View {
+        let m = portfolio.user.membership
         HStack {
             Image(systemName: "circle.hexagongrid.fill")
                 .foregroundStyle(.orange)
                 .font(.title2)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Reel Coins")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text("Reel Coins")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if m.isPaid {
+                        Text(m.displayName)
+                            .font(.caption2.weight(.bold))
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(RoundedRectangle(cornerRadius: 4).fill(m.accentColor.opacity(0.25)))
+                            .foregroundStyle(m.accentColor)
+                    }
+                }
                 Text(coins, format: .number.precision(.fractionLength(0)))
                     .font(.title2.weight(.semibold))
                     .monospacedDigit()
             }
             Spacer()
-            Text("+500 / week")
+            Text("+\(Int(m.weeklyAllowance)) / week")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var portfolio: PortfolioService
     @EnvironmentObject var social: SocialService
+    @State private var showPaywall = false
 
     var user: User { portfolio.user }
     var myReviews: [Review] {
@@ -14,6 +15,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     identityCard
+                    membershipCard
                     tierProgressCard
                     statsRow
                     badgeShelf
@@ -25,7 +27,43 @@ struct ProfileView: View {
                 .padding()
             }
             .navigationTitle("Profile")
+            .sheet(isPresented: $showPaywall) {
+                PaywallView()
+            }
         }
+    }
+
+    private var membershipCard: some View {
+        let m = user.membership
+        return HStack(spacing: 12) {
+            Image(systemName: m.isPaid ? "star.circle.fill" : "person.crop.circle")
+                .font(.title2)
+                .foregroundStyle(m.accentColor)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(m.displayName)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(m.accentColor)
+                Text("\(Int(m.weeklyAllowance)) RC weekly · same rules for every \(m.displayName) member")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button {
+                showPaywall = true
+            } label: {
+                Text(m.isPaid ? "Manage" : "Upgrade")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .tint(m.accentColor)
+            .controlSize(.small)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 12).fill(m.accentColor.opacity(0.10)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(m.accentColor.opacity(m.isPaid ? 0.5 : 0.15), lineWidth: 1)
+        )
     }
 
     private var reviewsBlock: some View {

@@ -9,11 +9,12 @@ final class PortfolioService: ObservableObject {
     @Published private(set) var leaderboard: [LeaderboardEntry] = []
 
     private init() {
+        // Every account starts identical. Paid tiers layer bonuses on top.
         self.user = User(
             handle: "you",
-            reelCoins: 1000,
+            reelCoins: StartingGrant.reelCoins,
             lifetimePnL: 0,
-            weeklyAllowance: 500,
+            weeklyAllowance: Membership.free.weeklyAllowance,
             lastAllowanceAt: Date().addingTimeInterval(-8 * 86400),
             xp: 0,
             currentStreakWeeks: 0,
@@ -22,10 +23,38 @@ final class PortfolioService: ObservableObject {
             followingHandles: [],
             badges: [],
             trophies: [],
-            bio: "Long the mid-budget original. Short the fifth sequel."
+            bio: "Long the mid-budget original. Short the fifth sequel.",
+            membership: .free
         )
         seedLeaderboard()
         redeemWeeklyIfDue()
+    }
+
+    // MARK: - Membership
+
+    /// Called by StoreService on successful purchase or restore.
+    /// Applies the tier's one-time starting bonus (once per upgrade) and
+    /// switches the weekly allowance to the tier's rate.
+    func activateMembership(_ new: Membership, grantStartingBonus: Bool = true) {
+        let previous = user.membership
+        mutateUser { u in
+            u.membership = new
+            u.weeklyAllowance = new.weeklyAllowance
+        }
+        if grantStartingBonus, new.isPaid, new != previous, new.startingBonus > 0 {
+            mutateUser { $0.reelCoins += new.startingBonus }
+            RewardsService.shared.grant(
+                xp: 50,
+                reason: "Welcome to \(new.displayName) — +\(Int(new.startingBonus)) RC")
+        }
+    }
+
+    /// Called if a subscription lapses / is cancelled.
+    func downgradeToFree() {
+        mutateUser { u in
+            u.membership = .free
+            u.weeklyAllowance = Membership.free.weeklyAllowance
+        }
     }
 
     // MARK: - Trading
@@ -152,7 +181,7 @@ final class PortfolioService: ObservableObject {
     func redeemWeeklyIfDue() {
         let week: TimeInterval = 7 * 86400
         if Date().timeIntervalSince(user.lastAllowanceAt) >= week {
-            user.reelCoins += user.weeklyAllowance
+            user.reelCoins += user.membership.weeklyAllowance
             user.lastAllowanceAt = Date()
         }
     }

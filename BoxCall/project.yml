@@ -16,6 +16,9 @@ targets:
     platform: iOS
     sources:
       - path: BoxCall
+    dependencies:
+      - sdk: StoreKit.framework
+      - sdk: UserNotifications.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app
@@ -28,3 +31,11 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_PREVIEWS: YES
         DEVELOPMENT_ASSET_PATHS: '"BoxCall/Preview Content"'
+schemes:
+  BoxCall:
+    build:
+      targets:
+        BoxCall: all
+    run:
+      config: Debug
+      storeKitConfiguration: BoxCall/Products.storekit
