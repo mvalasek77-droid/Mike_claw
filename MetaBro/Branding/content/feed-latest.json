@@ -1,62 +1,37 @@
 {
-  "generated_for": "2026-08-15T00",
+  "generated_for": "2026-08-15T03",
   "posts": [
     {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 71,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 11
-        },
-        {
-          "kind": "like",
-          "count": 27
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "ec3781db-3dac-3bd6-fe97-af50cccd17da",
-      "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
-      },
-      "image_url": null,
-      "comment_count": 30,
-      "created_at": "2026-08-14T21:32:36+00:00",
-      "my_vote": 0
-    },
-    {
       "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
         "is_joined": true
       },
-      "title": "Manual or auto for a first project car?",
-      "body": "Want something I can wrench on cheaply. Thoughts?",
-      "score": 54,
+      "title": "First steps today",
+      "body": "Caught it on video. Did not expect to tear up. Worth every sleepless night.",
+      "score": 282,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "af739a23-9249-6a6a-b3f3-2157c55a6e38",
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 3
+        }
+      ],
+      "id": "ff7469f3-2045-e910-b842-49aec6eb8bdf",
       "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 5,
-      "created_at": "2026-08-14T20:02:36+00:00",
+      "comment_count": 102,
+      "created_at": "2026-08-14T23:24:24+00:00",
       "my_vote": 0
     },
     {
@@ -68,13 +43,18 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Mobility > maxing out",
-      "body": "Ten minutes of hips and shoulders before every session. Game changer.",
-      "score": 166,
+      "title": "PSA: warm up your rotator cuffs, bros",
+      "body": "Saved my bench after years of nagging pain. Here's the routine.",
+      "score": 280,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "bbb31036-ab89-57b8-1197-41ccbec350fd",
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 2
+        }
+      ],
+      "id": "c376d151-a69a-8e2f-57cf-b65e20734473",
       "author": {
         "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
         "handle": "@newbro",
@@ -83,66 +63,60 @@
         "bro_cred": 40
       },
       "image_url": null,
-      "comment_count": 13,
-      "created_at": "2026-08-14T21:59:36+00:00",
+      "comment_count": 118,
+      "created_at": "2026-08-15T02:49:24+00:00",
       "my_vote": 0
     },
     {
-      "community": null,
-      "title": null,
-      "body": "Just hit a year sober. Grateful for this crew.",
-      "score": 64,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 16
-        },
-        {
-          "kind": "strong",
-          "count": 6
-        },
-        {
-          "kind": "like",
-          "count": 3
-        }
-      ],
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "Tips for a 5am toddler?",
+      "body": "He's up before the sun. How do you bros keep your sanity?",
+      "score": 150,
+      "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "7b86a15d-f2f9-d622-86ed-c0fe32319e1a",
+      "id": "4ed8bcef-b3ff-27f1-64f2-6d8f57db64a9",
       "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 103,
-      "created_at": "2026-08-14T22:11:36+00:00",
+      "comment_count": 36,
+      "created_at": "2026-08-14T23:41:24+00:00",
       "my_vote": 0
     },
     {
       "community": null,
       "title": null,
       "body": "Pickup basketball this Saturday at Riverside. Who's in?",
-      "score": 51,
+      "score": 25,
       "reactions": [
         {
           "kind": "strong",
-          "count": 3
+          "count": 26
         },
         {
           "kind": "respect",
-          "count": 8
+          "count": 37
         },
         {
           "kind": "lol",
-          "count": 29
+          "count": 5
         }
       ],
       "my_reaction": null,
       "awards": [],
-      "id": "b17c6d24-8b46-1445-5cec-bacc7f3ee0ab",
+      "id": "22527339-ce49-1a71-b0f0-4656061997fa",
       "author": {
         "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
         "handle": "@coachdave",
@@ -151,31 +125,64 @@
         "bro_cred": 9300
       },
       "image_url": null,
-      "comment_count": 106,
-      "created_at": "2026-08-14T18:20:36+00:00",
+      "comment_count": 68,
+      "created_at": "2026-08-14T22:11:24+00:00",
       "my_vote": 0
     },
     {
       "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
         "is_joined": true
       },
-      "title": "Detailing Sunday",
-      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
-      "score": 133,
+      "title": "Best cheap smoker under $300?",
+      "body": "Looking to upgrade from the kettle. What are you bros running?",
+      "score": 106,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 3
+          "count": 1
         }
       ],
-      "id": "a65ebed0-98ff-7333-6988-8ceb5c547e97",
+      "id": "40382cb2-e9d9-271d-3552-1f81fddddfd4",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 82,
+      "created_at": "2026-08-14T23:54:24+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "First steps today",
+      "body": "Caught it on video. Did not expect to tear up. Worth every sleepless night.",
+      "score": 167,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "392f7678-7015-f7bc-1238-748cf4e60cb3",
       "author": {
         "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
         "handle": "@you",
@@ -184,8 +191,8 @@
         "bro_cred": 1280
       },
       "image_url": null,
-      "comment_count": 86,
-      "created_at": "2026-08-14T21:40:36+00:00",
+      "comment_count": 61,
+      "created_at": "2026-08-14T23:47:24+00:00",
       "my_vote": 0
     }
   ],
