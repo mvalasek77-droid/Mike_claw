@@ -9,21 +9,31 @@ struct BoxCallApp: App {
     @StateObject private var notifications = NotificationsService.shared
     @StateObject private var coordinator = TradeCoordinator.shared
 
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environmentObject(market)
-                .environmentObject(portfolio)
-                .environmentObject(social)
-                .environmentObject(rewards)
-                .environmentObject(notifications)
-                .environmentObject(coordinator)
-                .preferredColorScheme(.dark)
-                .overlay(alignment: .top) { RewardToastOverlay() }
-                .task { notifications.requestAuthorizationIfNeeded() }
-                .sheet(item: $coordinator.pendingCopy) { intent in
-                    TradeSheet(contract: intent.contract, movie: intent.movie)
+            Group {
+                if hasCompletedOnboarding {
+                    RootView()
+                } else {
+                    OnboardingView(hasCompleted: $hasCompletedOnboarding)
                 }
+            }
+            .environmentObject(market)
+            .environmentObject(portfolio)
+            .environmentObject(social)
+            .environmentObject(rewards)
+            .environmentObject(notifications)
+            .environmentObject(coordinator)
+            .preferredColorScheme(.dark)
+            .overlay(alignment: .top) { RewardToastOverlay() }
+            .task {
+                if hasCompletedOnboarding { notifications.requestAuthorizationIfNeeded() }
+            }
+            .sheet(item: $coordinator.pendingCopy) { intent in
+                TradeSheet(contract: intent.contract, movie: intent.movie)
+            }
         }
     }
 }

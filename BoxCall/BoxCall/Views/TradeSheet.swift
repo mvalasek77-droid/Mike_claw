@@ -10,6 +10,8 @@ struct TradeSheet: View {
     @State private var shareAsPost: Bool = true
     @State private var hotTake: String = ""
     @State private var errorMessage: String?
+    @State private var showLearn: Bool = false
+    @State private var showChart: Bool = false
 
     var cost: Double { contract.premium * Double(quantity) }
 
@@ -47,13 +49,37 @@ struct TradeSheet: View {
                     }
                 }
 
-                Section("Payoff at settlement") {
+                Section {
                     let hi = movie.consensusOpeningMillions * 1.5
                     let lo = movie.consensusOpeningMillions * 0.5
                     let mid = movie.consensusOpeningMillions
                     payoffRow(label: "If bomb ($\(Int(lo))M)", value: contract.intrinsic(atMillions: lo) * Double(quantity))
                     payoffRow(label: "If tracks ($\(Int(mid))M)", value: contract.intrinsic(atMillions: mid) * Double(quantity))
                     payoffRow(label: "If blockbuster ($\(Int(hi))M)", value: contract.intrinsic(atMillions: hi) * Double(quantity))
+                    DisclosureGroup(isExpanded: $showChart) {
+                        PayoffChart(side: contract.side,
+                                    strike: contract.strikeMillions,
+                                    premium: contract.premium,
+                                    multiplier: contract.multiplier)
+                            .padding(.vertical, 4)
+                        Text("Green = profit zone. Orange dashed = your strike. Blue dashed = break-even.")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    } label: {
+                        Label("Payoff diagram", systemImage: "chart.xyaxis.line")
+                    }
+                } header: {
+                    HStack {
+                        Text("Payoff at settlement")
+                        Spacer()
+                        Button {
+                            showLearn = true
+                        } label: {
+                            Label("Learn", systemImage: "questionmark.circle")
+                                .labelStyle(.iconOnly)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.orange)
+                    }
                 }
 
                 Section("Share this call") {
@@ -105,6 +131,23 @@ struct TradeSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showLearn = true
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                }
+            }
+            .sheet(isPresented: $showLearn) {
+                NavigationStack {
+                    LearnView(initialSection: contract.side == .call ? .whatsACall : .whatsAPut)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Done") { showLearn = false }
+                            }
+                        }
                 }
             }
         }

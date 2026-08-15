@@ -5,6 +5,7 @@ struct MovieDetailView: View {
     @EnvironmentObject var market: MarketService
     @State private var tradeTarget: Contract?
     @State private var showPutSide = false
+    @State private var showLearn = false
 
     var chain: [Contract] {
         market.chain(for: movie.id).filter { $0.side == (showPutSide ? .put : .call) }
@@ -22,8 +23,27 @@ struct MovieDetailView: View {
         }
         .navigationTitle(movie.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showLearn = true
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                }
+            }
+        }
         .sheet(item: $tradeTarget) { contract in
             TradeSheet(contract: contract, movie: movie)
+        }
+        .sheet(isPresented: $showLearn) {
+            NavigationStack {
+                LearnView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { showLearn = false }
+                        }
+                    }
+            }
         }
     }
 

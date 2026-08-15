@@ -15,11 +15,56 @@ struct ProfileView: View {
                     badgeShelf
                     trophyShelf
                     perksCard
+                    learnLinks
                 }
                 .padding()
             }
             .navigationTitle("Profile")
         }
+    }
+
+    private var learnLinks: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Learn the game").font(.headline)
+            NavigationLink {
+                LearnView()
+            } label: {
+                learnRow(icon: "book.pages", title: "How BoxCall works",
+                         subtitle: "The full guide — Calls, Puts, strikes, settlement, rewards.")
+            }
+            NavigationLink {
+                LearnView(initialSection: .whatsACall)
+            } label: {
+                learnRow(icon: "arrow.up.right.circle", title: "Calls explained",
+                         subtitle: "Bullish bets, payoff diagram, worked example.")
+            }
+            NavigationLink {
+                LearnView(initialSection: .whatsAPut)
+            } label: {
+                learnRow(icon: "arrow.down.right.circle", title: "Puts explained",
+                         subtitle: "Bearish bets, payoff diagram, worked example.")
+            }
+            NavigationLink {
+                LearnView(initialSection: .glossary)
+            } label: {
+                learnRow(icon: "text.book.closed", title: "Glossary",
+                         subtitle: "Strike, premium, IV, DTE, mark, and more.")
+            }
+        }
+    }
+
+    private func learnRow(icon: String, title: String, subtitle: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon).foregroundStyle(.orange).font(.title3).frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
     }
 
     private var identityCard: some View {

@@ -78,6 +78,16 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## Education layer
+
+Options are unfamiliar to most people. BoxCall teaches the mechanics in three places:
+
+- **First-run onboarding** — 4 slides on launch, complete with a live payoff chart on the Call and Put slides. Users who want more can jump straight into the full guide from the last slide.
+- **`LearnView` — the full guide** — 10 sections with headers, worked examples, formula boxes, and hand-drawn `PayoffChart` diagrams. Sections: The Big Idea → Calls → Puts → Strike → Premium & IV → Settlement → Closing Early → Multiplier → Rewards → Glossary. Ends with a plain-English "this is entertainment, no real wagering" disclaimer.
+- **Contextual "?" buttons** — top-right of the Movie Detail and Trade Sheet screens, plus a "Learn the game" section on the Profile with deep links directly to Calls, Puts, and the glossary. The Trade Sheet also has an expandable payoff diagram right next to the "if bomb / tracks / blockbuster" table so the shape is visible before you place.
+
+The `PayoffChart` component is a small SwiftUI `Canvas` renderer that draws the classic hockey stick with strike + break-even markers and green/red profit/loss fills. Reusable for future analytics screens.
+
 ## Retention & virality loops
 
 - **Push notifications** (local now, APNs later): settlement results, new followers, badge unlocks, tier promotions, 24-hour opening-day reminders scheduled the moment you place a trade. In-app inbox with an unread bell on the Feed nav bar.
