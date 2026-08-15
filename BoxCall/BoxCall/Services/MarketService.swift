@@ -17,6 +17,7 @@ final class MarketService: ObservableObject {
     @Published private(set) var movies: [Movie] = []
     @Published private(set) var chains: [String: [Contract]] = [:]
     @Published private(set) var history: [String: [PricePoint]] = [:]     // contractId
+    @Published private(set) var consensusHistory: [String: [PricePoint]] = [:]  // movieId
     @Published private(set) var recentEvents: [MarketEvent] = []
     @Published private(set) var lastTickAt: Date = Date()
 
@@ -57,8 +58,23 @@ final class MarketService: ObservableObject {
     func movie(id: String) -> Movie? { movies.first { $0.id == id } }
     func chain(for movieId: String) -> [Contract] { chains[movieId] ?? [] }
     func priceHistory(contractId: String) -> [PricePoint] { history[contractId] ?? [] }
+    func consensusHistoryFor(movieId: String) -> [PricePoint] { consensusHistory[movieId] ?? [] }
     func events(for movieId: String) -> [MarketEvent] {
         recentEvents.filter { $0.movieId == movieId }
+    }
+
+    /// The current crowd-forecast opening. Base tracker × movie sentiment,
+    /// where sentiment is nudged by every buy/sell/news event on the movie.
+    func impliedConsensus(for movieId: String) -> Double {
+        guard let m = movie(id: movieId) else { return 0 }
+        let s = movieSentiment[movieId] ?? 1.0
+        return (m.consensusOpeningMillions * s * 10).rounded() / 10
+    }
+
+    /// Percentage change vs the original tracker number.
+    func consensusDeltaPct(for movieId: String) -> Double {
+        guard let m = movie(id: movieId), m.consensusOpeningMillions > 0 else { return 0 }
+        return (impliedConsensus(for: movieId) - m.consensusOpeningMillions) / m.consensusOpeningMillions
     }
 
     // MARK: - Trade hooks (called by PortfolioService)
@@ -137,6 +153,16 @@ final class MarketService: ObservableObject {
             }
         }
         chains = newChains
+
+        // Append consensus point per movie.
+        for m in movies {
+            let c = impliedConsensus(for: m.id)
+            var pts = consensusHistory[m.id] ?? []
+            pts.append(.init(time: now, mark: c))
+            if pts.count > historyCap { pts.removeFirst(pts.count - historyCap) }
+            consensusHistory[m.id] = pts
+        }
+
         lastTickAt = now
     }
 

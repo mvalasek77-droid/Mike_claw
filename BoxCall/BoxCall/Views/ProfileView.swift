@@ -2,8 +2,12 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var portfolio: PortfolioService
+    @EnvironmentObject var social: SocialService
 
     var user: User { portfolio.user }
+    var myReviews: [Review] {
+        social.reviews.filter { $0.authorIsCurrentUser }
+    }
 
     var body: some View {
         NavigationStack {
@@ -15,11 +19,46 @@ struct ProfileView: View {
                     badgeShelf
                     trophyShelf
                     perksCard
+                    reviewsBlock
                     learnLinks
                 }
                 .padding()
             }
             .navigationTitle("Profile")
+        }
+    }
+
+    private var reviewsBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Your reviews").font(.headline)
+                Spacer()
+                if myReviews.isEmpty == false {
+                    Text("\(myReviews.count)").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if myReviews.isEmpty {
+                Text("Write a review from any movie's detail page. Land in the top-5 leaderboard and your latest gets spotlighted on the Feed.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+            } else {
+                ForEach(myReviews.prefix(3)) { r in
+                    HStack(spacing: 8) {
+                        Text(r.moviePosterEmoji).font(.title3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(r.movieTitle).font(.subheadline.weight(.semibold))
+                            Text(r.headline).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        Spacer()
+                        Text(r.stars).font(.caption2).foregroundStyle(.yellow)
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+                }
+            }
         }
     }
 

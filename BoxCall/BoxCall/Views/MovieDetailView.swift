@@ -3,9 +3,12 @@ import SwiftUI
 struct MovieDetailView: View {
     let movie: Movie
     @EnvironmentObject var market: MarketService
+    @EnvironmentObject var social: SocialService
     @State private var tradeTarget: Contract?
     @State private var showPutSide = false
     @State private var showLearn = false
+    @State private var showWriteReview = false
+    @State private var expandedReview: Review?
 
     var chain: [Contract] {
         market.chain(for: movie.id).filter { $0.side == (showPutSide ? .put : .call) }
@@ -13,6 +16,10 @@ struct MovieDetailView: View {
 
     var events: [MarketEvent] {
         market.events(for: movie.id)
+    }
+
+    var reviewsForMovie: [Review] {
+        social.reviews(for: movie.id)
     }
 
     var body: some View {
@@ -24,6 +31,7 @@ struct MovieDetailView: View {
                 sidePicker
                 chainHeader
                 chainTable
+                reviewsSection
             }
             .padding()
         }
@@ -31,10 +39,19 @@ struct MovieDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showLearn = true
+                Menu {
+                    Button {
+                        showWriteReview = true
+                    } label: {
+                        Label("Write a review", systemImage: "square.and.pencil")
+                    }
+                    Button {
+                        showLearn = true
+                    } label: {
+                        Label("How this works", systemImage: "questionmark.circle")
+                    }
                 } label: {
-                    Image(systemName: "questionmark.circle")
+                    Image(systemName: "ellipsis.circle")
                 }
             }
         }
@@ -49,6 +66,57 @@ struct MovieDetailView: View {
                             Button("Done") { showLearn = false }
                         }
                     }
+            }
+        }
+        .sheet(isPresented: $showWriteReview) {
+            WriteReviewSheet(movie: movie)
+        }
+        .sheet(item: $expandedReview) { r in
+            ReviewDetailSheet(review: r)
+        }
+    }
+
+    private var reviewsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Reviews").font(.headline)
+                Spacer()
+                Button {
+                    showWriteReview = true
+                } label: {
+                    Label("Write", systemImage: "square.and.pencil")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(.orange)
+            }
+            if reviewsForMovie.isEmpty {
+                Text("No reviews yet. Be the first.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                ForEach(reviewsForMovie) { r in
+                    Button {
+                        expandedReview = r
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text("@\(r.authorHandle)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(r.authorTier.color)
+                                Text(r.stars).font(.caption).foregroundStyle(.yellow)
+                                Spacer()
+                                Text("\(r.likes) ♥").font(.caption2).foregroundStyle(.pink)
+                            }
+                            Text(r.headline).font(.subheadline.weight(.semibold)).multilineTextAlignment(.leading)
+                            Text(r.body).font(.caption).lineLimit(2)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -72,14 +140,20 @@ struct MovieDetailView: View {
     }
 
     private var consensusCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Consensus opening")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            HStack(alignment: .firstTextBaseline) {
-                Text("$\(Int(movie.consensusOpeningMillions))M")
+        let implied = market.impliedConsensus(for: movie.id)
+        let delta = market.consensusDeltaPct(for: movie.id)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Text("Implied opening")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LivePulse()
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("$\(implied, specifier: "%.1f")M")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                deltaTag(delta)
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("IV \(Int(movie.impliedVolPct))%")
@@ -90,9 +164,28 @@ struct MovieDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            Sparkline(points: market.consensusHistoryFor(movieId: movie.id),
+                      color: delta >= 0 ? .green : .red,
+                      height: 28)
+                .padding(.top, 2)
+            Text("Base tracker: $\(Int(movie.consensusOpeningMillions))M · moves with buys, sells, and news.")
+                .font(.caption2).foregroundStyle(.tertiary)
         }
         .padding()
         .background(RoundedRectangle(cornerRadius: 12).fill(.orange.opacity(0.08)))
+    }
+
+    private func deltaTag(_ pct: Double) -> some View {
+        let up = pct >= 0
+        return HStack(spacing: 2) {
+            Image(systemName: up ? "arrow.up.right" : "arrow.down.right")
+            Text(pct * 100, format: .number.precision(.fractionLength(1)).sign(strategy: .always()))
+            Text("%")
+        }
+        .font(.caption.weight(.bold))
+        .padding(.horizontal, 6).padding(.vertical, 2)
+        .background(RoundedRectangle(cornerRadius: 4).fill((up ? Color.green : .red).opacity(0.2)))
+        .foregroundStyle(up ? .green : .red)
     }
 
     private var newsTicker: some View {

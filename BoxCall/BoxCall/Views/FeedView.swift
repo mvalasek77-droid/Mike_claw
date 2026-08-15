@@ -12,6 +12,10 @@ struct FeedView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 12) {
+                    FeaturedCritics()
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                    Divider().padding(.horizontal)
                     ForEach(social.feed) { post in
                         PostCard(post: post,
                                  onComment: { commentSheet = post },

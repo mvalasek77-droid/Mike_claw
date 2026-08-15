@@ -71,11 +71,11 @@ struct TradeSheet: View {
                 }
 
                 Section {
-                    let hi = movie.consensusOpeningMillions * 1.5
-                    let lo = movie.consensusOpeningMillions * 0.5
-                    let mid = movie.consensusOpeningMillions
+                    let mid = market.impliedConsensus(for: movie.id)
+                    let hi = mid * 1.5
+                    let lo = mid * 0.5
                     payoffRow(label: "If bomb ($\(Int(lo))M)", value: contract.intrinsic(atMillions: lo) * Double(quantity))
-                    payoffRow(label: "If tracks ($\(Int(mid))M)", value: contract.intrinsic(atMillions: mid) * Double(quantity))
+                    payoffRow(label: "If tracks ($\(mid, specifier: "%.1f")M implied)", value: contract.intrinsic(atMillions: mid) * Double(quantity))
                     payoffRow(label: "If blockbuster ($\(Int(hi))M)", value: contract.intrinsic(atMillions: hi) * Double(quantity))
                     DisclosureGroup(isExpanded: $showChart) {
                         PayoffChart(side: contract.side,

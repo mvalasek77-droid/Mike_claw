@@ -78,6 +78,18 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## Dynamic implied consensus
+
+The "opening weekend estimate" is no longer a static tracker number — it's a **live crowd forecast** derived from the market itself. Every buy, sell, and news event shifts a per-movie sentiment multiplier; the implied consensus is `base × sentiment`. Users see the current implied number with a `%` delta arrow vs the original tracker, plus a live sparkline of how the crowd forecast has been drifting. Same treatment on the Slate list, Movie Detail card, and the Trade Sheet's "if tracks…" scenario.
+
+## Featured Critics
+
+The top-5 leaderboard performers get their latest **movie review** spotlighted at the top of the Feed:
+- **#1 hero card**: full headline + first 4 lines + like count, in an orange-gradient card
+- **#2–5**: horizontally scrolling supporting cards ranked with colored rank badges
+- **Any user can write a review** from any movie's detail page (⋯ menu → Write a review) — 5-star rating + one-line headline + long-form body
+- **Winning traders' opinions become the app's editorial voice** — status → reach
+
 ## The live market
 
 Premiums are not static. `MarketService` runs a 3-second tick loop that continuously reprices every contract on every chain:

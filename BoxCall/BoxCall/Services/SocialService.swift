@@ -6,11 +6,122 @@ final class SocialService: ObservableObject {
     static let shared = SocialService()
 
     @Published private(set) var feed: [SocialPost] = []
+    @Published private(set) var reviews: [Review] = []
     /// Position id -> post id, so settlement can update the outcome on the post.
     private var postByPositionId: [UUID: UUID] = [:]
 
     private init() {
         seedFeed()
+        seedReviews()
+    }
+
+    // MARK: - Reviews
+
+    /// Latest reviews by the current top-5 leaderboard performers, in leaderboard order.
+    /// Falls back to any reviews if no leaderboard match.
+    func spotlightedReviews() -> [Review] {
+        let topHandles = PortfolioService.shared.leaderboard.prefix(5).map(\.handle)
+        var picked: [Review] = []
+        for handle in topHandles {
+            if let r = reviews
+                .filter({ $0.authorHandle == handle })
+                .sorted(by: { $0.createdAt > $1.createdAt })
+                .first {
+                picked.append(r)
+            }
+        }
+        return picked
+    }
+
+    func submitReview(movie: Movie, headline: String, body: String, rating: Int) {
+        let user = PortfolioService.shared.user
+        let review = Review(
+            id: UUID(),
+            authorHandle: user.handle,
+            authorTier: user.tier,
+            authorIsCurrentUser: true,
+            movieId: movie.id,
+            movieTitle: movie.title,
+            moviePosterEmoji: movie.posterEmoji,
+            headline: headline,
+            body: body,
+            rating: rating,
+            createdAt: Date(),
+            likes: 0,
+            isLikedByMe: false
+        )
+        reviews.insert(review, at: 0)
+    }
+
+    func toggleReviewLike(id: UUID) {
+        guard let idx = reviews.firstIndex(where: { $0.id == id }) else { return }
+        reviews[idx].isLikedByMe.toggle()
+        reviews[idx].likes += reviews[idx].isLikedByMe ? 1 : -1
+    }
+
+    func reviews(for movieId: String) -> [Review] {
+        reviews.filter { $0.movieId == movieId }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func latestReview(byHandle handle: String) -> Review? {
+        reviews.filter { $0.authorHandle == handle }
+            .sorted { $0.createdAt > $1.createdAt }.first
+    }
+
+    private func seedReviews() {
+        let m = MarketService.shared
+        guard let starmap = m.movie(id: "m_starmap"),
+              let neon    = m.movie(id: "m_neon"),
+              let atlas   = m.movie(id: "m_atlas"),
+              let prowl   = m.movie(id: "m_prowl"),
+              let glacier = m.movie(id: "m_glacier"),
+              let paper   = m.movie(id: "m_paperhouse") else { return }
+
+        reviews = [
+            .init(id: UUID(), authorHandle: "popcornshark", authorTier: .studioHead,
+                  authorIsCurrentUser: false,
+                  movieId: starmap.id, movieTitle: starmap.title, moviePosterEmoji: starmap.posterEmoji,
+                  headline: "The universe expands. My interest doesn't.",
+                  body: "By the fifth Starmap the ceiling is visible — you can see where the cape flutters, where the joke was written, where the reshoots patched a plot hole with a monologue. Tracking still thinks $168M because the brand carries it, but presales are soft in the top-25 and the trailer's Rotten Tomatoes leak reads like an obituary. Fading calls at $155.",
+                  rating: 2, createdAt: Date().addingTimeInterval(-3600 * 4),
+                  likes: 312, isLikedByMe: false),
+            .init(id: UUID(), authorHandle: "indieyoda", authorTier: .producer,
+                  authorIsCurrentUser: false,
+                  movieId: neon.id, movieTitle: neon.title, moviePosterEmoji: neon.posterEmoji,
+                  headline: "The sleeper of the season.",
+                  body: "A24 knows what it's doing. Letterboxd early reviews are averaging 4.1, TikTok's discovered the soundtrack, and the trailer is doing quiet numbers with high completion rates — the tell. Consensus $12M is a floor, not a ceiling. I'm long calls at every strike up to $18M.",
+                  rating: 4, createdAt: Date().addingTimeInterval(-3600 * 8),
+                  likes: 187, isLikedByMe: true),
+            .init(id: UUID(), authorHandle: "openingnight", authorTier: .insider,
+                  authorIsCurrentUser: false,
+                  movieId: atlas.id, movieTitle: atlas.title, moviePosterEmoji: atlas.posterEmoji,
+                  headline: "Old-fashioned in the best way.",
+                  body: "Two hours and eighteen minutes of a movie that trusts its audience. Adult drama sold on movie-star charisma — a lost art. Warner marketing has been quiet, which usually means confidence. Consensus $58M feels ten million light to me.",
+                  rating: 4, createdAt: Date().addingTimeInterval(-3600 * 12),
+                  likes: 94, isLikedByMe: false),
+            .init(id: UUID(), authorHandle: "marqueemaven", authorTier: .insider,
+                  authorIsCurrentUser: false,
+                  movieId: prowl.id, movieTitle: prowl.title, moviePosterEmoji: prowl.posterEmoji,
+                  headline: "Buried alive by its own studio.",
+                  body: "Blumhouse released three genre movies this month. Guess which one the marketing team gave up on? Prowl gets a promo push worth about seven dollars and a poster. Consensus $21M is fantasy — this opens single digits and I'll take the Bomb Caller badge, thanks.",
+                  rating: 2, createdAt: Date().addingTimeInterval(-3600 * 18),
+                  likes: 71, isLikedByMe: false),
+            .init(id: UUID(), authorHandle: "greenlight", authorTier: .analyst,
+                  authorIsCurrentUser: false,
+                  movieId: glacier.id, movieTitle: glacier.title, moviePosterEmoji: glacier.posterEmoji,
+                  headline: "Solid thriller in a soft weekend.",
+                  body: "Universal did their homework on the marketing. Adult thrillers in the $30-40M range have overperformed all year. Nothing to short here; nothing to blow the doors off either. Consensus $34M is fair.",
+                  rating: 3, createdAt: Date().addingTimeInterval(-3600 * 24),
+                  likes: 44, isLikedByMe: false),
+            .init(id: UUID(), authorHandle: "trailerbait", authorTier: .analyst,
+                  authorIsCurrentUser: false,
+                  movieId: paper.id, movieTitle: paper.title, moviePosterEmoji: paper.posterEmoji,
+                  headline: "Searchlight prestige on autopilot.",
+                  body: "You've seen this movie before. Sometimes that's a compliment. The tracking is honest; the audience is loyal; the theatrical run will be short and the streaming tail will pay the bills. Neutral.",
+                  rating: 3, createdAt: Date().addingTimeInterval(-3600 * 30),
+                  likes: 18, isLikedByMe: false)
+        ]
     }
 
     // MARK: - Publishing

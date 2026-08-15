@@ -52,8 +52,11 @@ struct CoinBalanceRow: View {
 
 struct MovieRow: View {
     let movie: Movie
+    @EnvironmentObject var market: MarketService
 
     var body: some View {
+        let implied = market.impliedConsensus(for: movie.id)
+        let delta = market.consensusDeltaPct(for: movie.id)
         HStack(spacing: 14) {
             Text(movie.posterEmoji)
                 .font(.system(size: 40))
@@ -64,11 +67,20 @@ struct MovieRow: View {
                 Text(movie.studio).font(.caption).foregroundStyle(.secondary)
                 HStack(spacing: 8) {
                     Label("\(movie.daysToRelease)d", systemImage: "clock")
-                    Label("$\(Int(movie.consensusOpeningMillions))M est.", systemImage: "chart.bar")
+                    HStack(spacing: 3) {
+                        Image(systemName: "chart.bar")
+                        Text("$\(implied, specifier: "%.1f")M")
+                        Text(delta * 100, format: .number.precision(.fractionLength(1)).sign(strategy: .always()))
+                            .foregroundStyle(delta >= 0 ? .green : .red)
+                        Text("%").foregroundStyle(delta >= 0 ? .green : .red)
+                    }
                     Label("\(Int(movie.impliedVolPct))% IV", systemImage: "waveform.path")
                 }
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                Sparkline(points: market.consensusHistoryFor(movieId: movie.id),
+                          color: delta >= 0 ? .green : .red,
+                          height: 14)
             }
         }
         .padding(.vertical, 4)
