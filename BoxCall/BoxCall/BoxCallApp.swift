@@ -6,6 +6,8 @@ struct BoxCallApp: App {
     @StateObject private var portfolio = PortfolioService.shared
     @StateObject private var social = SocialService.shared
     @StateObject private var rewards = RewardsService.shared
+    @StateObject private var notifications = NotificationsService.shared
+    @StateObject private var coordinator = TradeCoordinator.shared
 
     var body: some Scene {
         WindowGroup {
@@ -14,8 +16,14 @@ struct BoxCallApp: App {
                 .environmentObject(portfolio)
                 .environmentObject(social)
                 .environmentObject(rewards)
+                .environmentObject(notifications)
+                .environmentObject(coordinator)
                 .preferredColorScheme(.dark)
                 .overlay(alignment: .top) { RewardToastOverlay() }
+                .task { notifications.requestAuthorizationIfNeeded() }
+                .sheet(item: $coordinator.pendingCopy) { intent in
+                    TradeSheet(contract: intent.contract, movie: intent.movie)
+                }
         }
     }
 }

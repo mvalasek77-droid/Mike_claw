@@ -91,6 +91,8 @@ final class PortfolioService: ObservableObject {
         var wonAny = false
         var lostAny = false
 
+        let movie = MarketService.shared.movie(id: movieId)
+
         for i in toSettle.indices {
             let p = toSettle[i]
             let intrinsic = p.side == .call
@@ -122,6 +124,12 @@ final class PortfolioService: ObservableObject {
                     payoutPerContract: payoutPerContract,
                     netProfit: net
                 )
+            }
+
+            if let movie {
+                NotificationsService.shared.notifySettlement(
+                    movie: movie, position: toSettle[i],
+                    actual: actualMillions, net: net)
             }
         }
 

@@ -83,6 +83,9 @@ struct TradeSheet: View {
                                 social.share(positionId: positionId, contract: contract,
                                              movie: movie, quantity: quantity, hotTake: hotTake)
                             }
+                            if let placed = portfolio.positions.first(where: { $0.id == positionId }) {
+                                NotificationsService.shared.scheduleOpeningReminder(movie: movie, position: placed)
+                            }
                             portfolio.refreshLeaderboard()
                             dismiss()
                         } catch {

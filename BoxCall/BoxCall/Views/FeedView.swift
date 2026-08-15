@@ -3,22 +3,55 @@ import SwiftUI
 struct FeedView: View {
     @EnvironmentObject var social: SocialService
     @EnvironmentObject var portfolio: PortfolioService
+    @EnvironmentObject var notifications: NotificationsService
     @State private var commentSheet: SocialPost?
+    @State private var showInbox = false
+    @State private var copyBlocked = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(social.feed) { post in
-                        PostCard(post: post, onComment: { commentSheet = post })
+                        PostCard(post: post,
+                                 onComment: { commentSheet = post },
+                                 onCopyBlocked: { copyBlocked = true })
                             .padding(.horizontal)
                     }
                 }
                 .padding(.vertical, 8)
             }
             .navigationTitle("Hot Takes")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showInbox = true
+                    } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: notifications.unreadCount > 0 ? "bell.badge.fill" : "bell")
+                                .foregroundStyle(notifications.unreadCount > 0 ? .orange : .primary)
+                            if notifications.unreadCount > 0 {
+                                Text("\(min(notifications.unreadCount, 99))")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(3)
+                                    .background(Circle().fill(.red))
+                                    .offset(x: 8, y: -6)
+                            }
+                        }
+                    }
+                }
+            }
             .sheet(item: $commentSheet) { post in
                 CommentSheet(post: post)
+            }
+            .sheet(isPresented: $showInbox) {
+                NotificationInboxView()
+            }
+            .alert("Can't copy this call", isPresented: $copyBlocked) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("The movie has already opened or that strike is no longer on the chain.")
             }
         }
     }
@@ -27,7 +60,9 @@ struct FeedView: View {
 struct PostCard: View {
     let post: SocialPost
     let onComment: () -> Void
+    let onCopyBlocked: () -> Void
     @EnvironmentObject var social: SocialService
+    @EnvironmentObject var coordinator: TradeCoordinator
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -139,11 +174,14 @@ struct PostCard: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            NavigationLink(value: post.movieId) {
+            Button {
+                if !coordinator.requestCopy(fromPost: post) { onCopyBlocked() }
+            } label: {
                 Label("Copy call", systemImage: "arrow.triangle.branch")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(post.outcome == nil ? .orange : .secondary)
             }
+            .disabled(post.outcome != nil)
         }
         .font(.caption)
         .buttonStyle(.plain)

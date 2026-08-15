@@ -21,27 +21,40 @@ final class RewardsService: ObservableObject {
     // MARK: - Public API
 
     func grant(xp amount: Int, reason: String) {
+        let before = PortfolioService.shared.user.tier
         PortfolioService.shared.mutateUser { $0.xp += amount }
         toast("+\(amount) XP", subtitle: reason, emoji: "⚡️")
+        let after = PortfolioService.shared.user.tier
+        if after > before { NotificationsService.shared.notifyTier(after) }
     }
 
     func award(badge: Badge) {
+        var wasNew = false
         PortfolioService.shared.mutateUser { u in
             if !u.badges.contains(where: { $0.id == badge.id }) {
                 u.badges.append(badge)
+                wasNew = true
             }
         }
-        toast("Badge unlocked", subtitle: "\(badge.name) — \(badge.blurb)", emoji: badge.emoji)
+        if wasNew {
+            toast("Badge unlocked", subtitle: "\(badge.name) — \(badge.blurb)", emoji: badge.emoji)
+            NotificationsService.shared.notifyBadge(badge)
+        }
     }
 
     func recordWin(position: Position, actual: Double, netProfit: Double) {
         // Base XP scaled by profit; magnitude bonus for calling something far from consensus.
         let baseXP = Int(min(500, max(25, netProfit)))
+        let followersGained = Int.random(in: 3...12)
+        let tierBefore = PortfolioService.shared.user.tier
         PortfolioService.shared.mutateUser { u in
             u.xp += baseXP
-            u.followerCount += Int.random(in: 3...12)   // your call went viral
+            u.followerCount += followersGained
         }
         toast("+\(baseXP) XP", subtitle: "Winning \(position.side.display) settled — new followers", emoji: "🎯")
+        NotificationsService.shared.notifyFollowers(gained: followersGained)
+        let tierAfter = PortfolioService.shared.user.tier
+        if tierAfter > tierBefore { NotificationsService.shared.notifyTier(tierAfter) }
 
         recentWinsInARow += 1
         if recentWinsInARow == 5, let b = Badge.make("sniper") { award(badge: b) }

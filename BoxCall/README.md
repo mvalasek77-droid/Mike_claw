@@ -78,10 +78,15 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## Retention & virality loops
+
+- **Push notifications** (local now, APNs later): settlement results, new followers, badge unlocks, tier promotions, 24-hour opening-day reminders scheduled the moment you place a trade. In-app inbox with an unread bell on the Feed nav bar.
+- **Copy-trade**: any feed post has a "Copy call" button that pops the TradeSheet pre-filled with the same movie / side / strike / quantity, priced at the current chain premium. Disabled once the movie settles.
+
 ## Next steps
 
 1. **Real data**: swap `MarketService.loadMockCatalog()` for a backend that pulls upcoming releases from TMDB and tracking numbers from Deadline / Box Office Mojo / The Numbers.
 2. **Server-side settlement**: Monday job fetches Friday–Sunday grosses and pays out positions.
-3. **Push notifications** for settlements, badge unlocks, new followers, comments on your posts.
-4. **Copy-trade** button on posts (currently stubbed as a nav link).
-5. **Season resets** every 12 weeks with an Oracle crowning ceremony.
+3. **APNs**: replace local notifications with server-side pushes so settlement / social events fire even when the app is closed for weeks.
+4. **Season resets** every 12 weeks with an Oracle crowning ceremony.
+5. **Deep links** from notifications straight to the relevant movie / post / profile.
