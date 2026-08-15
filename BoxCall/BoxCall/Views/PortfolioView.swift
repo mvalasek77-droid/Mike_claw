@@ -12,6 +12,9 @@ struct PortfolioView: View {
             List {
                 Section {
                     balanceCard
+                    LowBalanceBanner()
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                        .listRowBackground(Color.clear)
                 }
                 Section("Open positions") {
                     if openPositions.isEmpty {

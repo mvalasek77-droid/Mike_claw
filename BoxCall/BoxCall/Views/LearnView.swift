@@ -43,7 +43,7 @@ struct LearnView: View {
 // MARK: - Sections
 
 enum LearnSection: String, CaseIterable, Identifiable {
-    case theBigIdea, whatsACall, whatsAPut, strike, premium, liveMarket, settlement, closeEarly, multiplier, rewards, glossary
+    case theBigIdea, whatsACall, whatsAPut, strike, premium, liveMarket, settlement, losingCoins, closeEarly, multiplier, rewards, glossary
 
     var id: String { rawValue }
 
@@ -56,6 +56,7 @@ enum LearnSection: String, CaseIterable, Identifiable {
         case .premium:      return "Premium & implied volatility"
         case .liveMarket:   return "The live market — how mark moves 24/7"
         case .settlement:   return "Opening weekend & settlement"
+        case .losingCoins:  return "Losing coins — what actually happens"
         case .closeEarly:   return "Closing early at the mark"
         case .multiplier:   return "Multiplier"
         case .rewards:      return "What you win"
@@ -72,6 +73,7 @@ enum LearnSection: String, CaseIterable, Identifiable {
         case .premium:      PremiumSection()
         case .liveMarket:   LiveMarketSection()
         case .settlement:   SettlementSection()
+        case .losingCoins:  LosingCoinsSection()
         case .closeEarly:   CloseEarlySection()
         case .multiplier:   MultiplierSection()
         case .rewards:      RewardsSection()
@@ -335,10 +337,51 @@ struct SettlementSection: View {
     }
 }
 
+struct LosingCoinsSection: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            LearnHeader(index: 8, title: LearnSection.losingCoins.title)
+            LearnParagraph("BoxCall is a real market. You will lose trades. Here's exactly what that looks like — and why it isn't the end of the world.")
+            HStack(spacing: 10) {
+                lossBullet(icon: "arrow.down.right.circle.fill", head: "Max loss is the premium.",
+                           body: "Every contract you buy has a fixed downside. If your Call finishes out-of-the-money (movie opens at or below the strike), you lose exactly what you paid — never more. Same for Puts.")
+                lossBullet(icon: "clock.arrow.circlepath", head: "Mark can drop before settlement.",
+                           body: "If a movie's news turns against you, the live mark on your contract drops. Your open P&L is red until either you close at the mark (locking a smaller loss) or the movie settles.")
+            }
+            HStack(spacing: 10) {
+                lossBullet(icon: "gift.fill", head: "You never go negative.",
+                           body: "Reel Coins can't go below zero. Once you've spent your balance, trading pauses until your weekly refill lands.")
+                lossBullet(icon: "arrow.clockwise.circle.fill", head: "Weekly refill is automatic.",
+                           body: "Every account gets 500 RC free every week — forever. Even if you lose your last coin, you're back in the market next Monday. Subscribers refill faster (see Membership).")
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Text("This is not real money.")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.orange)
+                Text("Reel Coins are play-money. They can't be bought as balance (only via subscription bonuses), can't be redeemed for cash, and can't be transferred. Losing them costs nothing but time and pride. Winning them earns you status.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 10).fill(.orange.opacity(0.10)))
+        }
+    }
+
+    private func lossBullet(icon: String, head: String, body: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Image(systemName: icon).font(.title2).foregroundStyle(.red)
+            Text(head).font(.subheadline.weight(.bold))
+            Text(body).font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+    }
+}
+
 struct CloseEarlySection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 8, title: LearnSection.closeEarly.title)
+            LearnHeader(index: 9, title: LearnSection.closeEarly.title)
             LearnParagraph("You don't have to hold until settlement. Every open position has a Close button that sells at the current mark price.")
             bullet("Take profit early", "If tracking spikes and your Call's mark doubles, you can lock in the gain without waiting for opening weekend to actually deliver.")
             bullet("Cut losses",         "If the movie's buzz collapses (bad reviews, marketing disaster) and your position is underwater, close early rather than eating the full premium.")
@@ -361,7 +404,7 @@ struct CloseEarlySection: View {
 struct MultiplierSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 9, title: LearnSection.multiplier.title)
+            LearnHeader(index: 10, title: LearnSection.multiplier.title)
             LearnParagraph("Every contract has a multiplier — the number of Reel Coins each dollar of intrinsic value converts to.")
             FormulaBox(title: "Default multiplier",
                        formula: "1 RC per $1M of intrinsic value")
@@ -373,7 +416,7 @@ struct MultiplierSection: View {
 struct RewardsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 10, title: LearnSection.rewards.title)
+            LearnHeader(index: 11, title: LearnSection.rewards.title)
             LearnParagraph("Reel Coins are the fuel — 500 refill weekly, and you never buy or redeem them. What actually accrues is status.")
             HStack(alignment: .top, spacing: 10) {
                 pillar("🎯", "XP & tiers", "Wins grant XP proportional to profit. Six tiers unlock functional social power — verified checkmark, gold username, ability to create custom markets, pinned posts.")
@@ -414,7 +457,7 @@ struct GlossarySection: View {
     ]
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            LearnHeader(index: 11, title: LearnSection.glossary.title)
+            LearnHeader(index: 12, title: LearnSection.glossary.title)
             ForEach(terms, id: \.0) { term in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(term.0).font(.subheadline.weight(.bold)).foregroundStyle(.orange)

@@ -49,6 +49,25 @@ struct TradeSheet: View {
                     }
                 }
 
+                Section {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("You could lose up to \(cost, specifier: "%.0f") RC")
+                                .font(.subheadline.weight(.bold))
+                            Text("If \(movie.title) opens \(contract.side == .call ? "at or below" : "at or above") $\(Int(contract.strikeMillions))M, the contract expires worthless and you lose the full premium. Reel Coins refill \(Int(portfolio.user.membership.weeklyAllowance)) every week.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Risk")
+                }
+                .listRowBackground(Color.red.opacity(0.10))
+
                 Section("Order") {
                     Stepper("Quantity: \(quantity)", value: $quantity, in: 1...100)
                     HStack {

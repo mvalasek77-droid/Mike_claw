@@ -9,6 +9,9 @@ struct MovieListView: View {
             List {
                 Section {
                     CoinBalanceRow(coins: portfolio.user.reelCoins)
+                    LowBalanceBanner()
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                        .listRowBackground(Color.clear)
                 }
                 Section("Opening soon") {
                     ForEach(market.movies) { movie in

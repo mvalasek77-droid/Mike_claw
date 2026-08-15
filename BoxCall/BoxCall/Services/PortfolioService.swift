@@ -63,9 +63,12 @@ final class PortfolioService: ObservableObject {
         case insufficientFunds, notFound, alreadySettled
         var errorDescription: String? {
             switch self {
-            case .insufficientFunds: return "Not enough Reel Coins."
-            case .notFound: return "That contract vanished."
-            case .alreadySettled: return "Trading has closed on this movie."
+            case .insufficientFunds:
+                return "Not enough Reel Coins to cover the premium. Reduce the quantity, wait for your weekly refill, or upgrade for a larger allowance."
+            case .notFound:
+                return "That contract vanished."
+            case .alreadySettled:
+                return "Trading has closed on this movie."
             }
         }
     }

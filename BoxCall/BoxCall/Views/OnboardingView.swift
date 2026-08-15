@@ -79,7 +79,7 @@ struct OnboardingView: View {
     private var statusSlide: some View {
         slide(emoji: "🏆",
               title: "Play-money. Real status.",
-              body: "Reel Coins refill weekly — they can't be bought or cashed out. Winning grants XP, tiers, badges, followers, and season titles. Bold calls that hit go viral on the feed.")
+              body: "Every account starts with 1,000 Reel Coins and refills 500 every week — always free, no purchase required. Winning grants XP, tiers, badges, followers, and season titles.\n\nLosing trades cost coins too — that's the game. Your max loss on any trade is the premium you paid. Balances refill weekly regardless.")
     }
 
     // MARK: -

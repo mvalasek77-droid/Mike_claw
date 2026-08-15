@@ -122,6 +122,12 @@ struct ProfileView: View {
                          subtitle: "Bearish bets, payoff diagram, worked example.")
             }
             NavigationLink {
+                LearnView(initialSection: .losingCoins)
+            } label: {
+                learnRow(icon: "exclamationmark.shield", title: "Losing coins",
+                         subtitle: "What happens when a trade goes wrong. Max loss, weekly refills, no negative balance.")
+            }
+            NavigationLink {
                 LearnView(initialSection: .glossary)
             } label: {
                 learnRow(icon: "text.book.closed", title: "Glossary",

@@ -78,6 +78,17 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## Risk-awareness (you can lose coins)
+
+Every entry point sets expectations clearly:
+
+- **Trade Sheet risk card** — a red-bordered "You could lose up to X RC" section spelling out exactly which opening-weekend outcome makes the contract expire worthless, plus a reminder that coins refill weekly.
+- **Onboarding slide** — the play-money-real-status slide now explicitly says losing trades cost coins and names the premium as the max loss.
+- **Low-balance banner** on Portfolio and Slate — appears when balance drops under 100 RC. Shows countdown to the next refill and offers an Upgrade CTA. A separate "you're out" state kicks in at 0.
+- **Insufficient-funds error** — friendly wording that suggests reducing quantity, waiting for the refill, or upgrading.
+- **LearnView "Losing coins" section** — dedicated block covering: max loss = premium, mark can drop pre-settlement, you never go negative, weekly refills are automatic, and none of this is real money.
+- **Profile deep link** — "Losing coins" is one of the featured Learn links, alongside Calls and Puts.
+
 ## Fairness + monetization (3 IAP tiers)
 
 **Every free account starts identical**: 1,000 Reel Coins on sign-up, 500 RC refilled every week, forever. No promo codes, no referral boosts, no way for one free user to start ahead of another. `StartingGrant.reelCoins` is the single source of truth and `PortfolioService.init` enforces it.
