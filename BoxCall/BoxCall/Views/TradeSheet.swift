@@ -4,8 +4,11 @@ struct TradeSheet: View {
     let contract: Contract
     let movie: Movie
     @EnvironmentObject var portfolio: PortfolioService
+    @EnvironmentObject var social: SocialService
     @Environment(\.dismiss) private var dismiss
     @State private var quantity: Int = 1
+    @State private var shareAsPost: Bool = true
+    @State private var hotTake: String = ""
     @State private var errorMessage: String?
 
     var cost: Double { contract.premium * Double(quantity) }
@@ -53,6 +56,19 @@ struct TradeSheet: View {
                     payoffRow(label: "If blockbuster ($\(Int(hi))M)", value: contract.intrinsic(atMillions: hi) * Double(quantity))
                 }
 
+                Section("Share this call") {
+                    Toggle("Post to Hot Takes", isOn: $shareAsPost)
+                    if shareAsPost {
+                        TextField("Say why — 280 chars", text: $hotTake, axis: .vertical)
+                            .lineLimit(2...4)
+                        if portfolio.user.tier < .analyst {
+                            Text("Rookies post to their followers only. Reach Analyst to hit the public feed.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 if let errorMessage {
                     Section {
                         Text(errorMessage).foregroundStyle(.red)
@@ -62,7 +78,11 @@ struct TradeSheet: View {
                 Section {
                     Button {
                         do {
-                            try portfolio.buy(contract: contract, quantity: quantity)
+                            let positionId = try portfolio.buy(contract: contract, quantity: quantity)
+                            if shareAsPost {
+                                social.share(positionId: positionId, contract: contract,
+                                             movie: movie, quantity: quantity, hotTake: hotTake)
+                            }
                             portfolio.refreshLeaderboard()
                             dismiss()
                         } catch {

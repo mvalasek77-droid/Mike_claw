@@ -1,0 +1,179 @@
+import SwiftUI
+
+struct ProfileView: View {
+    @EnvironmentObject var portfolio: PortfolioService
+
+    var user: User { portfolio.user }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    identityCard
+                    tierProgressCard
+                    statsRow
+                    badgeShelf
+                    trophyShelf
+                    perksCard
+                }
+                .padding()
+            }
+            .navigationTitle("Profile")
+        }
+    }
+
+    private var identityCard: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(user.tier.color.opacity(0.25))
+                    .frame(width: 72, height: 72)
+                Text(String(user.handle.prefix(1)).uppercased())
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(user.tier.color)
+            }
+            .overlay(
+                Circle()
+                    .stroke(user.tier.color, lineWidth: user.tier >= .producer ? 3 : 0)
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    Text("@\(user.handle)")
+                        .font(.title3.bold())
+                        .foregroundStyle(user.tier >= .insider ? Color.yellow : .primary)
+                    if user.tier >= .analyst {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(user.tier.color)
+                    }
+                }
+                HStack(spacing: 6) {
+                    Text(user.tier.name)
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(RoundedRectangle(cornerRadius: 4).fill(user.tier.color.opacity(0.25)))
+                        .foregroundStyle(user.tier.color)
+                    Text("· \(user.followerCount) followers")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text(user.bio).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+    }
+
+    private var tierProgressCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("\(user.xp) XP")
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                Spacer()
+                if let next = Tier(rawValue: user.tier.rawValue + 1) {
+                    Text("\(next.minXP - user.xp) to \(next.name)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Max tier reached")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+            }
+            ProgressView(value: user.tierProgress)
+                .tint(user.tier.color)
+        }
+        .padding()
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+    }
+
+    private var statsRow: some View {
+        HStack(spacing: 10) {
+            stat("Streak", "\(user.currentStreakWeeks)w", subtitle: "best \(user.longestStreakWeeks)w", color: .orange)
+            stat("Lifetime P&L", String(format: "%+.0f", user.lifetimePnL), subtitle: "RC", color: user.lifetimePnL >= 0 ? .green : .red)
+            stat("Following", "\(user.followingHandles.count)", subtitle: "traders", color: .blue)
+        }
+    }
+
+    private func stat(_ label: String, _ value: String, subtitle: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(.title3.weight(.bold)).foregroundStyle(color).monospacedDigit()
+            Text(subtitle).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+    }
+
+    private var badgeShelf: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Badges").font(.headline)
+            if user.badges.isEmpty {
+                Text("Make winning calls to earn badges.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 88))], spacing: 12) {
+                    ForEach(user.badges) { badge in
+                        VStack(spacing: 4) {
+                            Text(badge.emoji).font(.system(size: 34))
+                            Text(badge.name).font(.caption2.weight(.semibold))
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 88)
+                        .padding(6)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+                    }
+                }
+            }
+        }
+    }
+
+    private var trophyShelf: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Trophies").font(.headline)
+            if user.trophies.isEmpty {
+                Text("Finish #1 in a season to earn a trophy.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(user.trophies, id: \.self) { t in
+                    HStack {
+                        Image(systemName: "trophy.fill").foregroundStyle(.orange)
+                        Text(t).font(.callout.weight(.semibold))
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.orange.opacity(0.12)))
+                }
+            }
+        }
+    }
+
+    private var perksCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("\(user.tier.name) perks").font(.headline)
+            ForEach(user.tier.perks, id: \.self) { perk in
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "sparkle").foregroundStyle(user.tier.color)
+                    Text(perk).font(.callout)
+                }
+            }
+            if let next = Tier(rawValue: user.tier.rawValue + 1) {
+                Divider().padding(.vertical, 4)
+                Text("Unlock at \(next.name):")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(next.perks, id: \.self) { perk in
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "lock").foregroundStyle(.secondary)
+                        Text(perk).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(RoundedRectangle(cornerRadius: 12).fill(user.tier.color.opacity(0.08)))
+    }
+}

@@ -1,35 +1,63 @@
 # BoxCall
 
-Play-money iOS app for trading **Call / Put contracts on opening-weekend box office**. Like an options chain for movies about to be released — every upcoming film has a live consensus opening-weekend gross, and you buy Calls (bullish) or Puts (bearish) at any strike on the chain.
+Social prediction app for opening-weekend box office. Users trade play-money **Call / Put contracts** on upcoming movies, and their calls become **posts in a public feed** where the community likes, comments, and follows the sharpest analysts.
 
-## Concept
+No real money changes hands. Winning is measured in **status**: XP, tier progression, badges, followers, and season titles.
 
-- Every movie has an **options chain** with 5 strikes above and 5 below its consensus opening.
-- **Call payoff**: `max(actual − strike, 0) × multiplier × qty`
-- **Put payoff**: `max(strike − actual, 0) × multiplier × qty`
-- Positions settle Monday morning against the reported opening-weekend gross (Box Office Mojo would be the production data source).
-- Currency is **Reel Coins**, refilled 500 per week. No real money, no in-app purchase for balances — this keeps the app inside Apple's guideline 5.3 (Gaming, Gambling & Lotteries) as a social prediction game rather than a gambling product.
+## The reward stack
+
+Winning gets you:
+
+- **XP + tier progression** (Rookie → Analyst → Insider → Producer → Studio Head → Oracle)
+- **Badges** for specific feats — Bomb Caller, Rocket, Contrarian, Sniper (5 in a row), Seasonal Oracle
+- **Followers** — a winning public call brings 3–12 new followers per settlement
+- **Social power that unlocks with tier:**
+  - Analyst: verified checkmark, post to the public feed
+  - Insider: gold username, boost one call/week to the top of a movie's page
+  - Producer: create custom markets ("Villeneuve's next opens above $X"), animated avatar frame
+  - Studio Head: pin any post 24h, custom victory animation
+  - Oracle: seasonal title, quoted on home feed
+- **Streaks** (weekly, Duolingo-style) with milestone badges at 3 and 10 weeks
+- **Trophy shelf** on profile — "Oracle · Summer 2026"
+
+The core loop: bold call → hits → your post goes viral → you gain followers → tier up → more social power → make bolder calls.
 
 ## How it's different from Kalshi
 
-Kalshi trades **YES/NO binary event contracts** at a single fixed strike per question. BoxCall trades a **continuous-payoff options chain** — you choose the strike, payoff scales linearly with the actual number, and both Call and Put sides trade at each strike. It feels like an equity options screen, not a prediction market.
+Kalshi trades **YES/NO binary event contracts** at a fixed strike per question. BoxCall trades a **continuous-payoff options chain** — choose the strike, payoff scales linearly with the actual opening-weekend number, both Call and Put sides quoted. Feels like an equity options screen, not a prediction market. And the whole product is designed around the **social feed** — Kalshi has no follow graph, no comments, no reputational status.
 
 ## Structure
 
 ```
 BoxCall/
-├── project.yml                # xcodegen spec
+├── project.yml                     # xcodegen spec
 └── BoxCall/
-    ├── BoxCallApp.swift       # entry
-    ├── Models/                # Movie, Contract, Position, User
-    ├── Services/              # MarketService (mock chain), PortfolioService
-    ├── Views/                 # RootView (tabs), Slate, Detail, TradeSheet, Portfolio, Leaderboard
+    ├── BoxCallApp.swift            # entry + reward-toast overlay
+    ├── Models/
+    │   ├── Movie.swift
+    │   ├── Contract.swift          # Call/Put + intrinsic payoff
+    │   ├── Position.swift
+    │   ├── User.swift              # xp, tier, streak, followers, badges, trophies
+    │   ├── Rewards.swift           # Tier + Badge catalog
+    │   └── SocialPost.swift        # posts, comments, outcomes
+    ├── Services/
+    │   ├── MarketService.swift     # mock catalog + chain pricing
+    │   ├── PortfolioService.swift  # buy/close/settle
+    │   ├── RewardsService.swift    # XP, badges, streaks, follower bumps
+    │   └── SocialService.swift     # feed, follow, like, comment
+    ├── Views/
+    │   ├── RootView.swift          # 5 tabs: Feed · Slate · Portfolio · Leaders · Profile
+    │   ├── FeedView.swift          # hot takes with likes/comments/follows/outcome banner
+    │   ├── MovieListView.swift
+    │   ├── MovieDetailView.swift   # options chain
+    │   ├── TradeSheet.swift        # place trade + share-as-post toggle
+    │   ├── PortfolioView.swift
+    │   ├── LeaderboardView.swift   # tiers + verified badges
+    │   └── ProfileView.swift       # identity, tier progress, badges, trophies, perks
     └── Assets.xcassets
 ```
 
 ## Open in Xcode
-
-If you have [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 
 ```bash
 cd BoxCall
@@ -38,14 +66,22 @@ xcodegen generate
 open BoxCall.xcodeproj
 ```
 
-Otherwise open Xcode → File → New → Project → iOS App, name it `BoxCall`, then drop the `BoxCall/BoxCall/` sources into the target.
+Or open Xcode → File → New → Project → iOS App named `BoxCall`, then drop `BoxCall/BoxCall/` sources into the target. Deployment target: iOS 17. Runs entirely on mock data — hit "Simulate opening weekends" in the Portfolio tab to trigger settlements, badges, and outcome banners on your feed posts.
 
-Deployment target: iOS 17. Everything runs on mock data in-memory — no backend required to try the flow.
+## Monetization (all Apple-compliant)
+
+Since real-money wagering is off the table, revenue stacks:
+
+1. **Premium subscription** ($6.99/mo) — advanced analytics, IV history charts, alerts, priority contest slots. IAP-friendly.
+2. **Studio-sponsored chains** — studios pay to promote their release ("Sony presents this chain"). Marketing budget line, not ads budget.
+3. **Fandango / AMC A-List affiliate** — every movie page gets a "get tickets" button, 5–8% commission.
+4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
+5. **In-app video ads** — interstitials between trades.
 
 ## Next steps
 
-1. **Real data**: swap `MarketService.loadMockCatalog()` for a call to a backend that pulls upcoming releases from TMDB and tracking numbers from Deadline / Box Office Mojo / The Numbers.
-2. **Server-side settlement**: run a Monday job that fetches Friday–Sunday grosses and pays out positions.
-3. **Order book vs mark**: current premiums are algorithmic; a real version would maintain a per-contract order book.
-4. **Social**: comments per movie, share-my-play cards for iMessage.
-5. **App Store compliance review**: draft privacy manifest, add "for entertainment only — no real-money wagering" copy in the About screen and store listing.
+1. **Real data**: swap `MarketService.loadMockCatalog()` for a backend that pulls upcoming releases from TMDB and tracking numbers from Deadline / Box Office Mojo / The Numbers.
+2. **Server-side settlement**: Monday job fetches Friday–Sunday grosses and pays out positions.
+3. **Push notifications** for settlements, badge unlocks, new followers, comments on your posts.
+4. **Copy-trade** button on posts (currently stubbed as a nav link).
+5. **Season resets** every 12 weeks with an Oracle crowning ceremony.
