@@ -57,7 +57,7 @@ struct TradeSheet: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("You could lose up to \(cost, specifier: "%.0f") RC")
                                 .font(.subheadline.weight(.bold))
-                            Text("If \(movie.title) opens \(contract.side == .call ? "at or below" : "at or above") $\(Int(contract.strikeMillions))M, the contract expires worthless and you lose the full premium. Reel Coins refill \(Int(portfolio.user.membership.weeklyAllowance)) every week.")
+                            Text("If \(movie.title) opens \(contract.side == .call ? "at or below" : "at or above") $\(Int(contract.strikeMillions))M, the contract expires worthless and you lose the full premium. Every account resets every Monday with \(Int(portfolio.user.membership.weeklyAllowance)) RC — next refill in \(RefillClock.countdownString()).")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

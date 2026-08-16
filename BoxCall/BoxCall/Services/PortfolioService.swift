@@ -177,15 +177,21 @@ final class PortfolioService: ObservableObject {
         } else if lostAny {
             RewardsService.shared.resetStreak()
         }
+
+        if user.reelCoins < 1 {
+            NotificationsService.shared.notifyOutOfCoins()
+        }
     }
 
     // MARK: - Weekly allowance
 
+    /// Monday-based reset. If a Monday has passed since the last
+    /// refill, grant exactly one allowance (never a stacked backlog).
     func redeemWeeklyIfDue() {
-        let week: TimeInterval = 7 * 86400
-        if Date().timeIntervalSince(user.lastAllowanceAt) >= week {
+        let lastMonday = RefillClock.lastMonday()
+        if user.lastAllowanceAt < lastMonday {
             user.reelCoins += user.membership.weeklyAllowance
-            user.lastAllowanceAt = Date()
+            user.lastAllowanceAt = lastMonday
         }
     }
 

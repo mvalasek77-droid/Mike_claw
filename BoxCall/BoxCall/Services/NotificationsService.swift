@@ -76,6 +76,13 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
                 kind: .tier(tier: tier))
     }
 
+    func notifyOutOfCoins() {
+        deliver(id: "broke_\(UUID().uuidString.prefix(8))",
+                title: "You're out of Reel Coins.",
+                body: "Trading pauses until Monday morning. Your allowance will land automatically.",
+                kind: .reminder(movieId: ""))
+    }
+
     func notifyMarketEvent(_ event: MarketEvent) {
         let arrow = event.isBullish ? "▲" : "▼"
         deliver(id: "evt_\(event.id.uuidString)",

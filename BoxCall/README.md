@@ -78,6 +78,28 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## Monday reset (how losses actually work)
+
+Losses are real: coins deplete, and if you burn through your balance you can't trade until the reset. But the reset is generous, automatic, and predictable.
+
+**Refill semantics** (`RefillClock.swift`, `PortfolioService.redeemWeeklyIfDue()`):
+- Every Monday at 00:00 local time, every account gets its membership's weekly allowance credited.
+- Missed a Monday (app closed for a week)? On next launch you get exactly one allowance — never a stacked backlog.
+- This mirrors real box-office cadence: opening weekends settle Monday morning; balances do too.
+
+**The three ways you can lose coins** — spelled out with numbers in `LearnView` (Losing Coins section):
+1. **Contract expires worthless.** Your Call finishes below the strike (or Put finishes above) → you lose the full premium × quantity. Max loss, capped.
+2. **Close early at a worse mark.** Market moved against you; you close to cap the loss. You lose the difference between entry and current mark × quantity.
+3. **Open position red.** Mark dropped but you're still holding. No coin lost yet — realizes only on close or settlement.
+
+**Zero-balance UX:**
+- Trading pauses; you can still watch, read the feed, comment, and write reviews.
+- Push notification fires the moment a settlement drops the balance to zero: "You're out of Reel Coins. Trading pauses until Monday morning."
+- Low-balance banner shows a live countdown ("Next refill: **Monday** · in 2d 14h") on Portfolio + Slate.
+- Balance card in Portfolio always shows the next Monday reset chip with amount.
+- TradeSheet risk card includes the countdown in the loss warning.
+- Subscribers get an "Upgrade to skip the wait" CTA — a bigger starting bonus lands immediately.
+
 ## Risk-awareness (you can lose coins)
 
 Every entry point sets expectations clearly:

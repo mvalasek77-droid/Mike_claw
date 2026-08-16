@@ -79,7 +79,7 @@ struct OnboardingView: View {
     private var statusSlide: some View {
         slide(emoji: "🏆",
               title: "Play-money. Real status.",
-              body: "Every account starts with 1,000 Reel Coins and refills 500 every week — always free, no purchase required. Winning grants XP, tiers, badges, followers, and season titles.\n\nLosing trades cost coins too — that's the game. Your max loss on any trade is the premium you paid. Balances refill weekly regardless.")
+              body: "Every account starts with 1,000 Reel Coins. Winning grants XP, tiers, badges, followers, and season titles.\n\nLosing trades cost coins — max loss on any trade is the premium you paid. If you lose everything, trading pauses. Every Monday at midnight, every account resets with a fresh allowance — 500 RC free, more for subscribers.")
     }
 
     // MARK: -

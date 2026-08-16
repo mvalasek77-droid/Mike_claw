@@ -60,6 +60,12 @@ struct PortfolioView: View {
                     .monospacedDigit()
             }
             .font(.caption)
+            HStack(spacing: 4) {
+                Image(systemName: "calendar.badge.clock").foregroundStyle(.orange)
+                Text("Next Monday reset · +\(Int(portfolio.user.membership.weeklyAllowance)) RC in \(RefillClock.countdownString())")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption2)
         }
         .padding(.vertical, 6)
     }

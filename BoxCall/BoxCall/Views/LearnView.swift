@@ -339,21 +339,59 @@ struct SettlementSection: View {
 
 struct LosingCoinsSection: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             LearnHeader(index: 8, title: LearnSection.losingCoins.title)
-            LearnParagraph("BoxCall is a real market. You will lose trades. Here's exactly what that looks like — and why it isn't the end of the world.")
+            LearnParagraph("BoxCall is a real market. You will lose trades. Here are the three ways it happens, exactly what they cost, and how the Monday reset gets you back in.")
+
+            Text("How losses happen")
+                .font(.subheadline.weight(.bold))
+                .padding(.top, 2)
+
+            LossScenarioCard(
+                number: 1,
+                title: "The contract expires worthless.",
+                explanation: "You bought a Call at the $12M strike for 2.80 RC each × 10 contracts = 28 RC. On Monday the movie opens at $10M — below your strike. Your Call pays $0 intrinsic. You lose the full 28 RC.",
+                verdict: "Max loss = premium × quantity. Never more, no matter how far the movie misses."
+            )
+            LossScenarioCard(
+                number: 2,
+                title: "You close early at a worse mark.",
+                explanation: "You bought a Put at 3.40 RC. Reviews came in strong, the movie's implied consensus jumped, and the mark on your Put dropped to 1.20 RC. You close to cut your losses: you get back 1.20 × 10 = 12 RC. Your loss is 22 RC (the difference), not the full 34 RC premium.",
+                verdict: "Closing early lets you cap losses partway through — a fixed loss beats an uncertain one when news moves against you."
+            )
+            LossScenarioCard(
+                number: 3,
+                title: "The market moved against you but you're still holding.",
+                explanation: "Your open position shows a red P&L in the Portfolio tab because the mark dropped. Nothing is realized yet — no coins have left your balance. You lose only if you close now or the movie settles below/above your strike.",
+                verdict: "Red P&L isn't a lost coin until the trade closes."
+            )
+
+            Divider().padding(.vertical, 4)
+
+            Text("The Monday reset")
+                .font(.subheadline.weight(.bold))
+
+            LearnParagraph("Every Monday at 12:00 AM (your local time), every account gets its weekly allowance credited automatically. This mirrors real box-office cadence: opening weekends settle Monday morning, and so do BoxCall balances.")
+
             HStack(spacing: 10) {
-                lossBullet(icon: "arrow.down.right.circle.fill", head: "Max loss is the premium.",
-                           body: "Every contract you buy has a fixed downside. If your Call finishes out-of-the-money (movie opens at or below the strike), you lose exactly what you paid — never more. Same for Puts.")
-                lossBullet(icon: "clock.arrow.circlepath", head: "Mark can drop before settlement.",
-                           body: "If a movie's news turns against you, the live mark on your contract drops. Your open P&L is red until either you close at the mark (locking a smaller loss) or the movie settles.")
+                resetBullet("500 RC",  "Free tier",           .gray)
+                resetBullet("1,500",   "Backstage",           .blue)
             }
             HStack(spacing: 10) {
-                lossBullet(icon: "gift.fill", head: "You never go negative.",
-                           body: "Reel Coins can't go below zero. Once you've spent your balance, trading pauses until your weekly refill lands.")
-                lossBullet(icon: "arrow.clockwise.circle.fill", head: "Weekly refill is automatic.",
-                           body: "Every account gets 500 RC free every week — forever. Even if you lose your last coin, you're back in the market next Monday. Subscribers refill faster (see Membership).")
+                resetBullet("4,000",   "Producer's Pass",     .purple)
+                resetBullet("10,000",  "Mogul",               .orange)
             }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("If you're at 0 coins…")
+                    .font(.subheadline.weight(.bold))
+                Text("Trading pauses. You can still watch the market, read the feed, comment on posts, and write reviews. On Monday, your allowance lands automatically — no action required, no way to run negative. Subscribers can skip the wait via the paywall.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+
             VStack(alignment: .leading, spacing: 6) {
                 Text("This is not real money.")
                     .font(.subheadline.weight(.bold))
@@ -366,14 +404,44 @@ struct LosingCoinsSection: View {
         }
     }
 
-    private func lossBullet(icon: String, head: String, body: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: icon).font(.title2).foregroundStyle(.red)
-            Text(head).font(.subheadline.weight(.bold))
-            Text(body).font(.caption).foregroundStyle(.secondary)
+    private func resetBullet(_ amount: String, _ tier: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Image(systemName: "calendar.circle.fill").foregroundStyle(color)
+                Text(amount).font(.subheadline.weight(.bold)).foregroundStyle(color).monospacedDigit()
+            }
+            Text(tier).font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+    }
+}
+
+private struct LossScenarioCard: View {
+    let number: Int
+    let title: String
+    let explanation: String
+    let verdict: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text("\(number)")
+                    .font(.caption.weight(.heavy))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(Capsule().fill(.red))
+                Text(title).font(.subheadline.weight(.bold))
+            }
+            Text(explanation).font(.caption).foregroundStyle(.primary.opacity(0.85))
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "lightbulb.fill").foregroundStyle(.orange).font(.caption2)
+                Text(verdict).font(.caption.italic()).foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
     }
 }
