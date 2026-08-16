@@ -13,6 +13,11 @@ struct TradeSheet: View {
     @State private var errorMessage: String?
     @State private var showLearn: Bool = false
     @State private var showChart: Bool = false
+    @State private var showTutorial: Bool = false
+    @State private var tutorialDismissed: Bool = false
+
+    @AppStorage("seenPrimerCall") private var seenPrimerCall: Bool = false
+    @AppStorage("seenPrimerPut")  private var seenPrimerPut:  Bool = false
 
     /// Latest live contract from the market (mark ticks while sheet is open).
     var liveContract: Contract {
@@ -32,6 +37,13 @@ struct TradeSheet: View {
                             .foregroundStyle(contract.side == .call ? .green : .red)
                             .fontWeight(.semibold)
                     }
+                }
+
+                Section {
+                    ScenarioPrimer(contract: contract, movie: movie,
+                                   quantity: quantity, liveMark: liveContract.premium)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                        .listRowBackground(Color.clear)
                 }
 
                 Section {
@@ -174,8 +186,19 @@ struct TradeSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showLearn = true
+                    Menu {
+                        Button {
+                            tutorialDismissed = false
+                            showTutorial = true
+                        } label: {
+                            Label(contract.side == .call ? "How Calls work" : "How Puts work",
+                                  systemImage: "graduationcap")
+                        }
+                        Button {
+                            showLearn = true
+                        } label: {
+                            Label("Full guide", systemImage: "book.pages")
+                        }
                     } label: {
                         Image(systemName: "questionmark.circle")
                     }
@@ -189,6 +212,24 @@ struct TradeSheet: View {
                                 Button("Done") { showLearn = false }
                             }
                         }
+                }
+            }
+            .sheet(isPresented: $showTutorial, onDismiss: {
+                if contract.side == .call { seenPrimerCall = true }
+                else                      { seenPrimerPut = true }
+            }) {
+                FirstTradeTutorial(side: contract.side, dismissed: $tutorialDismissed)
+                    .interactiveDismissDisabled(false)
+            }
+            .onChange(of: tutorialDismissed) { _, newValue in
+                if newValue { showTutorial = false }
+            }
+            .task {
+                let alreadySeen = contract.side == .call ? seenPrimerCall : seenPrimerPut
+                if !alreadySeen {
+                    // Delay a hair so the sheet-in-sheet animation is clean.
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    showTutorial = true
                 }
             }
         }

@@ -78,6 +78,21 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## Pre-trade scenario primer
+
+Before a user can hit Buy on any contract, they see the mechanics of THAT specific trade in plain English.
+
+- **`ScenarioPrimer` card** — sits at the top of the Trade Sheet, above the live mark chart, styled with the side's accent color (green for Calls, red for Puts). Contents:
+  - "You're going BULLISH / BEARISH" badge
+  - "You're buying **N CALLS** at the **$KM** strike on **[Movie]**, for **X RC**."
+  - **You WIN if…** — plain-English win condition, break-even value, and the exact RC-per-$1M payoff for the current quantity
+  - **You LOSE if…** — the exact miss condition and the exact premium at risk
+  - "Max loss is the premium — nothing more, no matter how far it misses."
+- **`FirstTradeTutorial` full-screen sheet** — auto-fires the FIRST time a user opens a Call trade (and separately, the first time for a Put) via `@AppStorage("seenPrimerCall")` / `seenPrimerPut`. Three numbered steps, a live payoff chart, and a Skip button. After they hit "Got it — show me the trade", it never fires again for that side.
+- **Toolbar menu** — the `?` in the Trade Sheet toolbar is a menu with "How Calls work" (re-opens the tutorial on demand) and "Full guide" (opens LearnView).
+
+The primer answers three questions before every buy: what am I actually buying, what does winning look like in this scenario, and what does losing look like in this scenario.
+
 ## Monday reset (how losses actually work)
 
 Losses are real: coins deplete, and if you burn through your balance you can't trade until the reset. But the reset is generous, automatic, and predictable.
