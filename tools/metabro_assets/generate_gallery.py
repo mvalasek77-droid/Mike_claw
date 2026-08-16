@@ -26,17 +26,20 @@ def _tile(x, y, s, svg, caption):
 
 def gallery(date: str) -> str:
     cols, s, pad, top = 5, 200, 40, 110
-    rows = 2
     w = cols * s + (cols + 1) * pad
-    h = top + rows * (s + 60) + pad
     body = (f'<text x="{pad}" y="56" font-family="DejaVu Sans" font-weight="bold" '
             f'font-size="40" fill="{INK}">MetaBro — Users &amp; Bro-hoods</text>'
             f'<text x="{pad}" y="90" font-family="DejaVu Sans" font-size="22" '
             f'fill="#5C8CFF">Generative avatars · seed date {date}</text>')
     names = {"you": "@you", "ironbro": "@ironbro", "coachdave": "@coachdave",
-             "newbro": "@newbro", "fitness": "Iron Bro-hood", "bbq": "Grill Masters",
+             "newbro": "@newbro", "theoknows": "@theoknows", "rajlifts": "@rajlifts",
+             "leobuilds": "@leobuilds", "coachmike": "@coachmike",
+             "gainz_bot": "@gainz_bot", "hotmic": "@hotmic",
+             "fitness": "Iron Bro-hood", "bbq": "Grill Masters",
              "cars": "Garage Gearheads", "fatherhood": "Dad Mode", "philosophy": "Stoic Bros"}
     items = ga.USERS + ga.GROUPS
+    rows = (len(items) + cols - 1) // cols
+    h = top + rows * (s + 60) + pad
     for i, ident in enumerate(items):
         c, r = i % cols, i // cols
         x = pad + c * (s + pad)

@@ -32,6 +32,10 @@ USERS = [
     {"handle": "@coachdave", "name": "Dave", "bro_cred": 9300},
     {"handle": "@newbro", "name": "Sam", "bro_cred": 40},
     {"handle": "@you", "name": "You", "bro_cred": 1280},
+    {"handle": "@theoknows", "name": "Theo", "bro_cred": 1120},
+    {"handle": "@rajlifts", "name": "Raj", "bro_cred": 3050},
+    {"handle": "@leobuilds", "name": "Leo", "bro_cred": 760},
+    {"handle": "@coachmike", "name": "Coach Mike", "bro_cred": 4200},
 ]
 COMMUNITIES = [
     {"name": "Iron Bro-hood", "slug": "fitness", "members": 182000},

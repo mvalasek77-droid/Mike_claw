@@ -139,6 +139,12 @@ USERS = [
     {"id": "ironbro", "label": "M", "kind": "user"},
     {"id": "coachdave", "label": "D", "kind": "user"},
     {"id": "newbro", "label": "S", "kind": "user"},
+    {"id": "theoknows", "label": "T", "kind": "user"},
+    {"id": "rajlifts", "label": "R", "kind": "user"},
+    {"id": "leobuilds", "label": "L", "kind": "user"},
+    {"id": "coachmike", "label": "CM", "kind": "user"},
+    {"id": "gainz_bot", "label": "G", "kind": "user"},
+    {"id": "hotmic", "label": "H", "kind": "user"},
 ]
 GROUPS = [
     {"id": "fitness", "label": "IB", "kind": "group"},      # Iron Bro-hood
