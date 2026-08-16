@@ -128,6 +128,12 @@ struct ProfileView: View {
                          subtitle: "What happens when a trade goes wrong. Max loss, weekly refills, no negative balance.")
             }
             NavigationLink {
+                DataSourcesView()
+            } label: {
+                learnRow(icon: "server.rack", title: "Data sources",
+                         subtitle: "Where the catalog and settlement numbers come from. TMDB, Box Office Mojo, and more.")
+            }
+            NavigationLink {
                 LearnView(initialSection: .glossary)
             } label: {
                 learnRow(icon: "text.book.closed", title: "Glossary",

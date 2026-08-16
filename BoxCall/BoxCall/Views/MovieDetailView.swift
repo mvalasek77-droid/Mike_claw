@@ -123,10 +123,8 @@ struct MovieDetailView: View {
 
     private var header: some View {
         HStack(alignment: .top, spacing: 14) {
-            Text(movie.posterEmoji)
-                .font(.system(size: 72))
-                .frame(width: 100, height: 140)
-                .background(RoundedRectangle(cornerRadius: 12).fill(.gray.opacity(0.2)))
+            PosterThumb(url: movie.posterURL, emoji: movie.posterEmoji,
+                        width: 100, height: 140)
             VStack(alignment: .leading, spacing: 6) {
                 Text(movie.title).font(.title2.bold())
                 Text(movie.studio).font(.subheadline).foregroundStyle(.secondary)

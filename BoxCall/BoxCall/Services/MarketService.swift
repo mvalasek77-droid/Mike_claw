@@ -20,6 +20,12 @@ final class MarketService: ObservableObject {
     @Published private(set) var consensusHistory: [String: [PricePoint]] = [:]  // movieId
     @Published private(set) var recentEvents: [MarketEvent] = []
     @Published private(set) var lastTickAt: Date = Date()
+    @Published private(set) var lastRefreshAt: Date?
+    @Published private(set) var refreshInFlight: Bool = false
+    @Published private(set) var lastRefreshError: String?
+
+    var provider: MovieDataProvider = Config.preferredProvider
+    private var refreshTimer: Timer?
 
     // Per-contract signed demand imbalance (unitless).
     private var demand: [String: Double] = [:]
@@ -35,6 +41,85 @@ final class MarketService: ObservableObject {
 
     private init() {
         loadMockCatalog()
+    }
+
+    // MARK: - Catalog refresh
+
+    /// Fetch upcoming releases from the current data provider and merge
+    /// into the live catalog. Preserves any chains, price history, and
+    /// user positions on movies that survive across refreshes.
+    @MainActor
+    func refreshCatalog(windowDays: Int = 60) async {
+        guard !refreshInFlight else { return }
+        refreshInFlight = true
+        defer { refreshInFlight = false }
+        do {
+            let fetched = try await provider.fetchUpcoming(windowDays: windowDays)
+            merge(remote: fetched)
+            lastRefreshAt = Date()
+            lastRefreshError = nil
+        } catch {
+            lastRefreshError = error.localizedDescription
+        }
+    }
+
+    /// Merge remote movies with the local catalog:
+    /// - Existing movie ids get their metadata refreshed (poster, tagline, etc)
+    ///   without touching the chain or history.
+    /// - New ids get freshly generated chains and are marked as NEW.
+    /// - Local-only movies (mock seeds not in remote) are kept as long as
+    ///   they haven't opened yet OR the user has an open position on them.
+    private func merge(remote: [Movie]) {
+        var byId: [String: Movie] = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
+        var chainsById = chains
+        var addedIds: Set<String> = []
+
+        for r in remote {
+            if let existing = byId[r.id] {
+                // Refresh metadata; keep addedAt so NEW badge doesn't retrigger.
+                byId[r.id] = Movie(
+                    id: existing.id, title: r.title, studio: r.studio,
+                    releaseDate: r.releaseDate, posterEmoji: r.posterEmoji,
+                    posterURL: r.posterURL, tagline: r.tagline,
+                    consensusOpeningMillions: existing.consensusOpeningMillions,
+                    impliedVolPct: existing.impliedVolPct,
+                    genre: r.genre, addedAt: existing.addedAt)
+            } else {
+                byId[r.id] = r
+                chainsById[r.id] = generateChain(for: r)
+                movieSentiment[r.id] = 1.0
+                addedIds.insert(r.id)
+            }
+        }
+
+        // Prune old local movies that already opened and have no open positions.
+        let openMovieIds = Set(PortfolioService.shared.positions
+            .filter { $0.isOpen }.map { $0.movieId })
+        let remoteIds = Set(remote.map(\.id))
+        for (id, m) in byId {
+            if remoteIds.contains(id) { continue }
+            if openMovieIds.contains(id) { continue }
+            if !m.isSettled { continue }
+            byId.removeValue(forKey: id)
+            chainsById.removeValue(forKey: id)
+            history = history.filter { !$0.key.hasPrefix(id) }
+            consensusHistory.removeValue(forKey: id)
+        }
+
+        // Publish. Sort by release date so the Slate lists soonest first.
+        movies = Array(byId.values).sorted { $0.releaseDate < $1.releaseDate }
+        chains = chainsById
+    }
+
+    // MARK: - Auto-refresh timer
+
+    /// Refresh every 6 hours in the background while the app is open.
+    private let refreshInterval: TimeInterval = 6 * 3600
+    func startAutoRefresh() {
+        refreshTimer?.invalidate()
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { _ in
+            Task { @MainActor in await MarketService.shared.refreshCatalog() }
+        }
     }
 
     // MARK: - Lifecycle
@@ -222,48 +307,8 @@ final class MarketService: ObservableObject {
     // MARK: - Mock catalog + chain generation
 
     private func loadMockCatalog() {
-        let today = Calendar.current.startOfDay(for: Date())
-        func date(_ daysFromNow: Int) -> Date {
-            Calendar.current.date(byAdding: .day, value: daysFromNow, to: today)!
-        }
-
-        let seeds: [Movie] = [
-            .init(id: "m_neon", title: "Neon Requiem", studio: "A24",
-                  releaseDate: date(5), posterEmoji: "🌃",
-                  tagline: "A cyberpunk grief opera.",
-                  consensusOpeningMillions: 12, impliedVolPct: 55, genre: "Sci-Fi"),
-            .init(id: "m_glacier", title: "Glacier", studio: "Universal",
-                  releaseDate: date(9), posterEmoji: "🏔️",
-                  tagline: "The mountain will not forgive.",
-                  consensusOpeningMillions: 34, impliedVolPct: 32, genre: "Thriller"),
-            .init(id: "m_starmap", title: "Starmap 3: Ascension", studio: "Marvel Studios",
-                  releaseDate: date(14), posterEmoji: "🚀",
-                  tagline: "Every hero has a horizon.",
-                  consensusOpeningMillions: 168, impliedVolPct: 22, genre: "Superhero"),
-            .init(id: "m_prowl", title: "Prowl", studio: "Blumhouse",
-                  releaseDate: date(18), posterEmoji: "🐺",
-                  tagline: "Something is hunting the hunters.",
-                  consensusOpeningMillions: 21, impliedVolPct: 48, genre: "Horror"),
-            .init(id: "m_paperhouse", title: "The Paper House", studio: "Searchlight",
-                  releaseDate: date(23), posterEmoji: "📜",
-                  tagline: "A love story, folded once.",
-                  consensusOpeningMillions: 6, impliedVolPct: 65, genre: "Drama"),
-            .init(id: "m_atlas", title: "Atlas & Sons", studio: "Warner Bros.",
-                  releaseDate: date(30), posterEmoji: "⚔️",
-                  tagline: "The empire runs in the family.",
-                  consensusOpeningMillions: 58, impliedVolPct: 28, genre: "Action"),
-            .init(id: "m_karaoke", title: "Karaoke Night",
-                  studio: "Sony Pictures Classics",
-                  releaseDate: date(37), posterEmoji: "🎤",
-                  tagline: "Everyone's the star. Nobody remembers.",
-                  consensusOpeningMillions: 4, impliedVolPct: 70, genre: "Comedy"),
-            .init(id: "m_deepblue", title: "Deep Blue Country", studio: "Netflix (Theatrical)",
-                  releaseDate: date(44), posterEmoji: "🌊",
-                  tagline: "The tide brought something back.",
-                  consensusOpeningMillions: 9, impliedVolPct: 60, genre: "Mystery")
-        ]
+        let seeds = MockMovieProvider.builtInSeed()
         movies = seeds
-
         var built: [String: [Contract]] = [:]
         for m in seeds {
             built[m.id] = generateChain(for: m)

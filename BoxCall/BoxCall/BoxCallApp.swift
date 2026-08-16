@@ -33,6 +33,8 @@ struct BoxCallApp: App {
             .task {
                 if hasCompletedOnboarding { notifications.requestAuthorizationIfNeeded() }
                 market.startMarket()
+                await market.refreshCatalog()
+                market.startAutoRefresh()
             }
             .sheet(item: $coordinator.pendingCopy) { intent in
                 TradeSheet(contract: intent.contract, movie: intent.movie)
