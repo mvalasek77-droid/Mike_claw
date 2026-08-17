@@ -2,12 +2,15 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  Image,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
   Dimensions,
 } from "react-native";
+
+const logoLarge = require("../../assets/logo-large.png");
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -92,12 +95,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
       {step === 0 && (
         <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
           <View style={styles.logoWrap}>
-            <LinearGradient
-              colors={[THEME.accent, "#cc3333"]}
-              style={styles.logoIcon}
-            >
-              <Ionicons name="flame" size={48} color="#fff" />
-            </LinearGradient>
+            <Image source={logoLarge} style={styles.logoIcon} resizeMode="contain" />
           </View>
           <Text style={styles.welcomeTitle}>Welcome to BannedTube</Text>
           <Text style={styles.tagline}>For the creators that were wrongfully banned.</Text>

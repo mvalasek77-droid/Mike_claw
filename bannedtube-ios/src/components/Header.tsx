@@ -1,9 +1,11 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { THEME } from "../lib/data";
+
+const logoIcon = require("../../assets/logo-icon.png");
 
 interface HeaderProps {
   onSearch?: () => void;
@@ -24,9 +26,7 @@ export default function Header({ onSearch, onNotification }: HeaderProps) {
           accessibilityRole="header"
           accessibilityLabel="BannedTube"
         >
-          <View style={styles.logoIcon}>
-            <Ionicons name="flame" size={18} color="#fff" />
-          </View>
+          <Image source={logoIcon} style={styles.logoIcon} resizeMode="contain" />
           <Text style={styles.logoText} allowFontScaling={false}>
             Banned<Text style={styles.logoAccent}>Tube</Text>
           </Text>
@@ -97,14 +97,6 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: THEME.accent,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: THEME.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 6,
   },
   logoText: {
     fontSize: 18,
