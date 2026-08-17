@@ -81,6 +81,10 @@
     matchDetail: (id) => match(`/matches/${id}`),
     sendMessage: (id, text) => match(`/matches/${id}/messages`, { method: "POST", body: { text } }),
     markSeen: (id) => match(`/matches/${id}/mark-seen`, { method: "POST" }),
+
+    // ── safety ──
+    blockUser: (userId, reason) => auth("/me/blocks", { method: "POST", body: { userId, reason } }),
+    reportUser: (userId, reason, context) => auth("/me/reports", { method: "POST", body: { userId, reason, context } }),
     react: (matchId, messageId, emoji) => match(`/matches/${matchId}/messages/${messageId}/react`, { method: "POST", body: { emoji } }),
 
     // ── payments (Stripe via consumables Worker) ──

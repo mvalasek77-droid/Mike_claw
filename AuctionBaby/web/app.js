@@ -57,8 +57,10 @@
       const arr = r.matches || (Array.isArray(r) ? r : []);
       S.matches = arr.map(m => ({
         id: m.id, lotId: m.lotId, name: (m.other && m.other.name) || m.name || "Match",
+        otherId: (m.other && m.other.userId) || m.otherUserId || m.otherId || null,
         hue: hueFrom(m.id || m.name), amount: m.amount || m.bidAmount || 0,
-        seen: !!m.seenByOther,
+        seen: !!m.seenByOther, unread: !!(m.unreadCount || m.unread),
+        lastTs: m.updatedAt || m.lastMessageAt || 0,
         messages: (m.messages || []).map(x => ({ id: x.id, me: !!x.fromMe, text: x.text, reaction: x.reaction || null })),
       }));
       save(); if (tab === "matches") matches();
@@ -150,9 +152,10 @@
   }
   const tabbar = () => {
     const first = S.role === "woman" ? ["floor", "▦", "Bids"] : ["floor", "▦", "Floor"];
+    const unread = (S.matches || []).filter(m => m.unread).length;
     return `<div class="tabbar">
       ${[first, ["matches", "❤", "Matches"], ["store", "⚖", "Store"], ["you", "◉", "You"]]
-        .map(([k, ic, l]) => `<button data-tab="${k}" class="${tab === k ? "on" : ""}"><span class="ic">${ic}</span>${l}</button>`).join("")}
+        .map(([k, ic, l]) => `<button data-tab="${k}" class="${tab === k ? "on" : ""}"><span class="ic">${ic}${k === "matches" && unread ? `<span class="badge">${unread}</span>` : ""}</span>${l}</button>`).join("")}
     </div>`;
   };
 
@@ -356,12 +359,12 @@
   function matches() {
     app.innerHTML = `<div class="screen">
       <h1 class="display" style="font-size:30px;margin-bottom:14px">Matches</h1>
-      ${S.matches.length ? S.matches.map(m => {
+      ${S.matches.length ? [...S.matches].sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0)).map(m => {
         const last = m.messages[m.messages.length - 1];
         return `<button class="card row" data-chat="${m.id}" style="width:100%;text-align:left;margin-bottom:10px">
           ${gradSm(m.hue, m.name)}<div class="grow"><div style="font-family:var(--serif);font-weight:800">${esc(m.name)}</div>
-          <div class="faint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(last ? last.text : "Say hello")}</div></div>
-          <span class="pill">${money(m.amount)}</span></button>`;
+          <div class="faint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${m.unread ? "color:var(--ink);font-weight:600" : ""}">${esc(last ? last.text : "Say hello")}</div></div>
+          ${m.unread ? `<span class="udot"></span>` : `<span class="pill">${money(m.amount)}</span>`}</button>`;
       }).join("") : `<div class="card muted">No matches yet. Win a bid on the floor.</div>`}
     </div>${tabbar()}`;
     wire();
@@ -369,6 +372,7 @@
 
   function chat(id) {
     const m = S.matches.find(x => x.id === id); if (!m) return go("/matches");
+    if (m.unread) { m.unread = false; save(); }
     if (CONFIGURED() && SIGNED_IN()) API.markSeen(id).catch(() => {});
     let lastMe = -1;
     for (let i = m.messages.length - 1; i >= 0; i--) { const x = m.messages[i]; if (x.me && !x.sys) { lastMe = i; break; } }
@@ -381,12 +385,16 @@
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
       <div class="topbar"><button class="chip" data-back>‹</button>
         <div class="row">${gradSm(m.hue, m.name)}<b style="font-family:var(--serif)">${esc(m.name)}</b></div>
-        ${S.role === "man" ? (m.reserved ? `<span class="chip on">✓ Reserved</span>` : `<button class="chip" id="reserve">Reserve</button>`) : "<span></span>"}</div>
+        <div class="row" style="gap:6px">
+          ${S.role === "man" ? (m.reserved ? `<span class="chip on">✓ Reserved</span>` : `<button class="chip" id="reserve">Reserve</button>`) : ""}
+          <button class="chip" id="report" title="Report & block">⚑</button>
+        </div></div>
       <div class="msgs" id="msgs">${bubbles}</div></div>
       <div class="composer"><input id="ci" placeholder="Message…" autocomplete="off">
         <button class="iconbtn" id="send">↑</button></div>`;
     app.querySelector("[data-back]").onclick = () => go("/matches");
     const rz = $("#reserve"); if (rz) rz.onclick = () => reserveSheet(id);
+    const rp = $("#report"); if (rp) rp.onclick = () => reportSheet(id);
     const box = $("#msgs"); box.scrollTop = box.scrollHeight;
     // reactions: double-tap → ❤️, long-press → picker
     app.querySelectorAll(".bub[data-mid]").forEach(b => {
@@ -400,7 +408,7 @@
     });
     const send = () => {
       const i = $("#ci"), tx = i.value.trim(); if (!tx) return;
-      m.messages.push({ me: true, text: tx }); m.seen = false; i.value = ""; save(); chat(id);
+      m.messages.push({ me: true, text: tx }); m.seen = false; m.lastTs = Date.now(); i.value = ""; save(); chat(id);
       if (CONFIGURED() && SIGNED_IN()) {
         API.sendMessage(id, tx).catch(e => toast("Send failed: " + e.message));
         return; // the real other side replies via syncMatches
@@ -408,7 +416,7 @@
       m.typing = true; save(); chat(id);
       setTimeout(() => {
         const replies = ["So where are you taking me?", "Bold. I like it.", "Prove it — pick the place.", "You had me at the bid.", "Friday, then?"];
-        m.typing = false; m.seen = true;
+        m.typing = false; m.seen = true; m.lastTs = Date.now();
         m.messages.push({ me: false, text: replies[Math.floor(Math.random() * replies.length)] });
         save(); if (location.hash.includes("chat/" + id)) chat(id);
       }, 1100 + Math.random() * 900);
@@ -430,6 +438,29 @@
     bar.innerHTML = `<div class="row">${["❤️", "😂", "😮", "👍", "🔥"].map(e => `<button data-e="${e}">${e}</button>`).join("")}</div>`;
     bar.onclick = ev => { const b = ev.target.closest("[data-e]"); bar.remove(); if (b) react(id, mid, b.dataset.e); };
     document.body.appendChild(bar);
+  }
+
+  // ---- report & block ----
+  function reportSheet(matchId) {
+    const m = S.matches.find(x => x.id === matchId); if (!m) return;
+    const sheet = document.createElement("div"); sheet.className = "sheet";
+    sheet.innerHTML = `<div class="panel"><div class="grab"></div>
+      <div class="kicker">Report &amp; block</div>
+      <p class="muted" style="margin:8px 0 14px">Block ${esc(m.name)} and report to moderation. They're removed from your matches and can no longer contact you.</p>
+      <div class="row" style="flex-wrap:wrap;gap:8px">${["Inappropriate", "Harassment", "Fake profile", "Spam", "Other"].map(r => `<button class="chip" data-reason="${r}">${r}</button>`).join("")}</div>
+      <button class="btn ghost" data-cancel style="margin-top:14px">Cancel</button></div>`;
+    sheet.onclick = e => {
+      if (e.target === sheet || e.target.closest("[data-cancel]")) { sheet.remove(); return; }
+      const b = e.target.closest("[data-reason]"); if (!b) return;
+      const reason = b.dataset.reason; sheet.remove();
+      if (CONFIGURED() && SIGNED_IN() && m.otherId) {
+        API.blockUser(m.otherId, reason).catch(() => {});
+        API.reportUser(m.otherId, reason, "chat").catch(() => {});
+      }
+      S.matches = S.matches.filter(x => x.id !== matchId); save();
+      toast("Reported & blocked."); go("/matches");
+    };
+    document.body.appendChild(sheet);
   }
 
   // ---- reserve the date (bidder-only, Stripe booking fee) ----
