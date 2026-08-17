@@ -6,13 +6,15 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="#0d0b08"/>
-  <!-- gavel -->
-  <g transform="rotate(-32 256 256)" fill="url(#g)">
-    <rect x="176" y="150" width="160" height="66" rx="18"/>
-    <rect x="236" y="210" width="40" height="150" rx="14"/>
-    <rect x="150" y="120" width="26" height="126" rx="12"/>
-    <rect x="336" y="120" width="26" height="126" rx="12"/>
-  </g>
   <!-- heart -->
-  <path fill="url(#g)" d="M256 392c-6 0-12-3-16-8-22-27-64-58-64-96 0-24 18-40 40-40 16 0 30 9 40 24 10-15 24-24 40-24 22 0 40 16 40 40 0 38-42 69-64 96-4 5-10 8-16 8z"/>
+  <path fill="url(#g)" d="M256 430c-8 0-15-3-20-9C196 374 112 308 112 232c0-48 36-82 80-82 30 0 50 15 64 40 14-25 34-40 64-40 44 0 80 34 80 82 0 76-84 142-124 189-5 6-12 9-20 9z"/>
+  <!-- crown — clean 5-point sitting on top of heart lobes -->
+  <path fill="url(#g)" d="M152 180 l16-72 40 44 48-72 48 72 40-44 16 72z"/>
+  <rect x="152" y="174" width="208" height="20" rx="4" fill="url(#g)"/>
+  <!-- jewel dots at crown tips -->
+  <circle cx="168" cy="112" r="8" fill="#e0607a"/>
+  <circle cx="208" cy="148" r="7" fill="#e0607a"/>
+  <circle cx="256" cy="80" r="9" fill="#e0607a"/>
+  <circle cx="304" cy="148" r="7" fill="#e0607a"/>
+  <circle cx="344" cy="112" r="8" fill="#e0607a"/>
 </svg>
