@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Standard bundle keys. With GENERATE_INFOPLIST_FILE=NO these are not
+	     auto-injected, so we supply them here (resolved from build settings). -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundleDisplayName</key>
+	<string>MetaBro</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<!-- Backend configuration, substituted from Config/Build.xcconfig at build
+	     time and read at runtime by BackendConfig. Blank = run on mocks. -->
+	<key>METABRO_API_BASE_URL</key>
+	<string>$(METABRO_API_BASE_URL)</string>
+	<key>METABRO_USE_LIVE</key>
+	<string>$(METABRO_USE_LIVE)</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>MetaBro can add Bro-hood events to your calendar so you don't miss them.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>MetaBro sends notifications for new messages, Bro requests, and community activity.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+</dict>
+</plist>

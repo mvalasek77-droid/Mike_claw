@@ -24,3 +24,4 @@ AIMarketplace/backend/package-lock.json
 # App-side secrets (production Worker URL + shared secret).
 # Bake in via Secrets.xcconfig (see AIMarketplace/Config/README.md).
 AIMarketplace/Config/Secrets.xcconfig
+MetaBro/Config/Secrets.xcconfig

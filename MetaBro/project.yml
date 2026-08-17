@@ -1,0 +1,70 @@
+name: MetaBro
+
+options:
+  bundleIdPrefix: com.valasek
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_LANGUAGE: en
+    # Instructs the Swift compiler to emit extraction markers so Xcode
+    # "Product → Export Localizations" can auto-populate the string catalog.
+    SWIFT_EMIT_LOC_STRINGS: YES
+
+targets:
+  MetaBro:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    # Backend base URL + live flag come from Config/Build.xcconfig, which
+    # optionally #includes Config/Secrets.xcconfig (gitignored). Info.plist
+    # substitutes them at build time; BackendConfig reads them at runtime.
+    configFiles:
+      Debug: Config/Build.xcconfig
+      Release: Config/Build.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.metabro
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: MetaBro/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    sources:
+      - path: MetaBro
+        excludes:
+          - "Info.plist"
+
+  MetaBroTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: MetaBroTests
+    dependencies:
+      - target: MetaBro
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.valasek.metabro.tests
+
+schemes:
+  MetaBro:
+    build:
+      targets:
+        MetaBro: all
+        MetaBroTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MetaBroTests
+    archive:
+      config: Release

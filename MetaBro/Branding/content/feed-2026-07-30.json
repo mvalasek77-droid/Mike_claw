@@ -1,0 +1,186 @@
+{
+  "generated_for": "2026-07-30T22",
+  "posts": [
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 63,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 26
+        },
+        {
+          "kind": "like",
+          "count": 10
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "7d82af29-6182-4f9a-8b1b-b9bbe4e6caad",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 16,
+      "created_at": "2026-07-30T18:26:45+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "First steps today",
+      "body": "Caught it on video. Did not expect to tear up. Worth every sleepless night.",
+      "score": 168,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 2
+        }
+      ],
+      "id": "596978b5-ffcc-8018-37ac-1bfc76f59e81",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 93,
+      "created_at": "2026-07-30T18:53:45+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "Built a treehouse this weekend",
+      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
+      "score": 268,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 2
+        }
+      ],
+      "id": "16ed8646-874b-9b01-91e7-1241760f1f1a",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 75,
+      "created_at": "2026-07-30T16:44:45+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Cutting without losing strength",
+      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
+      "score": 301,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "8834460f-b038-3f46-cd5d-33a37c9a9b03",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 47,
+      "created_at": "2026-07-30T18:35:45+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Mobility > maxing out",
+      "body": "Ten minutes of hips and shoulders before every session. Game changer.",
+      "score": 175,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "9239ab41-72c6-050c-429e-ca5ed031c95d",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 47,
+      "created_at": "2026-07-30T16:52:45+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "is_joined": true
+      },
+      "title": "Detailing Sunday",
+      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
+      "score": 109,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "d203ed86-3efd-7bec-caf9-03f98e5c1475",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 112,
+      "created_at": "2026-07-30T15:12:45+00:00",
+      "my_vote": 0
+    }
+  ],
+  "next_cursor": null
+}

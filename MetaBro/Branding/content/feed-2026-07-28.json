@@ -1,0 +1,191 @@
+{
+  "generated_for": "2026-07-28T21",
+  "posts": [
+    {
+      "community": {
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "is_joined": true
+      },
+      "title": "Best cheap smoker under $300?",
+      "body": "Looking to upgrade from the kettle. What are you bros running?",
+      "score": 127,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "a2ead7bd-7c06-7c2e-260b-b0cf447cb2e7",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 21,
+      "created_at": "2026-07-28T19:12:02+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Mobility > maxing out",
+      "body": "Ten minutes of hips and shoulders before every session. Game changer.",
+      "score": 219,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "05dae133-e77f-0ea6-a814-ccb798742c43",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 80,
+      "created_at": "2026-07-28T17:30:02+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "Memento mori \u2014 keeps me grounded",
+      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
+      "score": 151,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "0202fdb6-45a0-0fa8-d682-5a5f0f65b1f0",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 19,
+      "created_at": "2026-07-28T17:09:02+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 39,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 33
+        },
+        {
+          "kind": "strong",
+          "count": 17
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "71651185-6c43-b64e-4baa-c67392dc16ba",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 61,
+      "created_at": "2026-07-28T16:51:02+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "is_joined": true
+      },
+      "title": "Low and slow brisket \u2014 14 hours",
+      "body": "Wrapped at 165, pulled at 203. Bark was unreal. AMA.",
+      "score": 224,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 3
+        }
+      ],
+      "id": "20033589-0aed-7de0-accc-af965ff5fd6e",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 93,
+      "created_at": "2026-07-28T18:20:02+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "On discipline vs motivation",
+      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
+      "score": 270,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 3
+        }
+      ],
+      "id": "c78eaa05-b052-7c5a-abc3-ffa9fb997b81",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 28,
+      "created_at": "2026-07-28T18:48:02+00:00",
+      "my_vote": 0
+    }
+  ],
+  "next_cursor": null
+}

@@ -1,0 +1,196 @@
+{
+  "generated_for": "2026-07-09T22",
+  "posts": [
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Cutting without losing strength",
+      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
+      "score": 60,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "b3d3976f-48e5-fe9f-5ca1-4b946843691d",
+      "author": {
+        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
+        "handle": "@you",
+        "display_name": "You",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
+        "bro_cred": 1280
+      },
+      "image_url": null,
+      "comment_count": 58,
+      "created_at": "2026-07-09T21:26:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "On discipline vs motivation",
+      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
+      "score": 272,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "050353cd-3edd-8fdd-c5aa-d848e428fed5",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 31,
+      "created_at": "2026-07-09T21:25:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "On discipline vs motivation",
+      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
+      "score": 99,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 3
+        }
+      ],
+      "id": "1258c6ed-8d41-7aab-e5d8-1c2f3bc74e79",
+      "author": {
+        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
+        "handle": "@you",
+        "display_name": "You",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
+        "bro_cred": 1280
+      },
+      "image_url": null,
+      "comment_count": 58,
+      "created_at": "2026-07-09T21:01:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Pickup basketball this Saturday at Riverside. Who's in?",
+      "score": 93,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 3
+        },
+        {
+          "kind": "respect",
+          "count": 39
+        },
+        {
+          "kind": "lol",
+          "count": 28
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "096ff268-19f3-1f44-2332-c9a73bc34979",
+      "author": {
+        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
+        "handle": "@you",
+        "display_name": "You",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
+        "bro_cred": 1280
+      },
+      "image_url": null,
+      "comment_count": 25,
+      "created_at": "2026-07-09T17:31:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "Memento mori \u2014 keeps me grounded",
+      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
+      "score": 228,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "9656f736-d55b-e291-55d2-afa6b1a404e4",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 45,
+      "created_at": "2026-07-09T18:39:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 80,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 38
+        },
+        {
+          "kind": "strong",
+          "count": 7
+        },
+        {
+          "kind": "like",
+          "count": 4
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "731e12e9-3711-4836-948d-a58a87252c89",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 26,
+      "created_at": "2026-07-09T17:35:54+00:00",
+      "my_vote": 0
+    }
+  ],
+  "next_cursor": null
+}

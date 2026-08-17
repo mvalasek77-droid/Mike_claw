@@ -1,0 +1,189 @@
+{
+  "generated_for": "2026-07-06T22",
+  "posts": [
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "PSA: warm up your rotator cuffs, bros",
+      "body": "Saved my bench after years of nagging pain. Here's the routine.",
+      "score": 131,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "acb159aa-07ab-f61d-7c4c-b04f68da8a36",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 60,
+      "created_at": "2026-07-06T18:30:38+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "Memento mori \u2014 keeps me grounded",
+      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
+      "score": 179,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "363eb9a7-2e27-9dbd-e000-244a75010efd",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 80,
+      "created_at": "2026-07-06T19:20:38+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "is_joined": true
+      },
+      "title": "Manual or auto for a first project car?",
+      "body": "Want something I can wrench on cheaply. Thoughts?",
+      "score": 101,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "569933e2-1ae8-c653-e0f5-41824dcf16ae",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 10,
+      "created_at": "2026-07-06T20:23:38+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 27,
+      "reactions": [
+        {
+          "kind": "strong",
+          "count": 10
+        },
+        {
+          "kind": "like",
+          "count": 30
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "870874c6-7916-29c5-9338-2df370cc7cfe",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 56,
+      "created_at": "2026-07-06T19:48:38+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 76,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 40
+        },
+        {
+          "kind": "strong",
+          "count": 25
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "22de4a80-1057-3435-1222-fce80a76103a",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 10,
+      "created_at": "2026-07-06T18:39:38+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 55,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 5
+        },
+        {
+          "kind": "strong",
+          "count": 9
+        },
+        {
+          "kind": "like",
+          "count": 25
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "93d4efcc-121a-4e69-08ea-de48043d55b5",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 50,
+      "created_at": "2026-07-06T15:23:38+00:00",
+      "my_vote": 0
+    }
+  ],
+  "next_cursor": null
+}

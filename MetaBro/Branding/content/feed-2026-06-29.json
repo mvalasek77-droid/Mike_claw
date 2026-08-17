@@ -1,0 +1,182 @@
+{
+  "generated_for": "2026-06-29T22",
+  "posts": [
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 94,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 31
+        },
+        {
+          "kind": "strong",
+          "count": 24
+        },
+        {
+          "kind": "like",
+          "count": 13
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "e082978b-f461-bd5f-8102-74982a68f2b6",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 62,
+      "created_at": "2026-06-29T21:12:10+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
+        "name": "Dad Mode",
+        "slug": "fatherhood",
+        "member_count": 58700,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
+        "is_joined": true
+      },
+      "title": "Tips for a 5am toddler?",
+      "body": "He's up before the sun. How do you bros keep your sanity?",
+      "score": 185,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "18330861-ae41-38a0-946a-ce03a2fb2e12",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 112,
+      "created_at": "2026-06-29T17:54:10+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "Memento mori \u2014 keeps me grounded",
+      "body": "Read a page of Marcus Aurelius every morning. Recommend it.",
+      "score": 63,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "5d4fd8e7-1122-47b5-0941-7bf4282113d2",
+      "author": {
+        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
+        "handle": "@newbro",
+        "display_name": "Sam",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
+        "bro_cred": 40
+      },
+      "image_url": null,
+      "comment_count": 84,
+      "created_at": "2026-06-29T20:40:10+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Hit a new deadlift PR today",
+      "body": "405 for a clean triple. Sleep and protein, that's the whole secret.",
+      "score": 207,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "3e702807-3a19-19a7-6bf0-d433c194b74e",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 59,
+      "created_at": "2026-06-29T19:04:10+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
+        "name": "Grill Masters",
+        "slug": "bbq",
+        "member_count": 96400,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "is_joined": true
+      },
+      "title": "Reverse sear is the only way",
+      "body": "Smoke to 120, rest, then blast it. Edge to edge pink every time.",
+      "score": 243,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "22e2f725-0f6f-8f8e-216b-dd9cd722943b",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 81,
+      "created_at": "2026-06-29T18:44:10+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 61,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 20
+        },
+        {
+          "kind": "strong",
+          "count": 38
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "aa8cdc12-867c-8e74-0fef-6977ae3b9f52",
+      "author": {
+        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
+        "handle": "@coachdave",
+        "display_name": "Dave",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
+        "bro_cred": 9300
+      },
+      "image_url": null,
+      "comment_count": 27,
+      "created_at": "2026-06-29T18:59:10+00:00",
+      "my_vote": 0
+    }
+  ],
+  "next_cursor": null
+}
