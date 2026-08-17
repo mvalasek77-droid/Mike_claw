@@ -16,6 +16,10 @@
   const SIGNED_IN = () => !!(API.hasSession && API.hasSession());  // have a session token
   const APPLE_ON = () => !!(window.AB_CONFIG && window.AB_CONFIG.APPLE_SERVICE_ID);
   const hueFrom = s => { let h = 0; for (const c of (s || "")) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+  const VERIFIED_SVG = `<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+  const verifiedBadge = (size) => `<span class="vbadge${size === "sm" ? " sm" : size === "lg" ? " lg" : ""}" title="Verified">${VERIFIED_SVG}</span>`;
+  const masterpieceBadge = () => `<span class="mp-badge"><span class="mp-icon">&#127942;</span> Masterpiece</span>`;
+  const copycatTag = () => `<span class="cc-tag">&#10024; Copycat</span>`;
   const GAVEL_PACK_ID = { 1000: "gavels_handful", 5000: "gavels_stack", 14000: "gavels_chest", 30000: "gavels_vault" };
   const PASS_ID = { "Paddle": "pass_paddle", "Reserve": "pass_reserve", "Black Card": "pass_blackcard" };
 
@@ -26,7 +30,7 @@
     startingBid: p.startingBid || 100, bio: p.bio || "",
     icebreakers: (p.prompts || []).map(x => (x && x.answer) || x).filter(Boolean),
     hue: (typeof p.hue === "number" ? Math.round(p.hue * 360) : hueFrom(p.userId || p.name)),
-    verified: !!p.verified,
+    verified: !!p.verified, masterpiece: !!p.masterpiece, copycat: !!p.copycat,
     photo: (p.photos && p.photos[0] && p.photos[0].url) || null,
   });
   async function syncFloor() {
@@ -78,64 +82,64 @@
 
   // ---- demo floor (all 54 women from the iOS app with photos) ----
   const seedFloor = () => ([
-    ["Serena Voss",28,"Upper East Side, New York",1000000,"Private art dealer. Quiet dinners, old buildings, men who don't explain their watch.",["Know what you want and don't apologize for it.","Close a gallery and open the wine they keep behind the counter."],306,false,"photo-serena"],
-    ["Rae",27,"SoHo, New York",100,"Gallery girl by day, downtown by night. I know what I want and I don't settle.",["Be direct, be confident, and make the reservation before you ask."],180,true,"photo-grace"],
-    ["Sloane",31,"Venice, Los Angeles",150,"Founder, second company. I like early mornings, good espresso, and people who follow through.",["Skip the small talk and split the tasting menu.","Working with a good cofounder — direct, loyal, occasionally intense."],198,true,"photo-sloane"],
-    ["Mara Quinn",27,"SoHo, New York",250,"Gallery curator. I spend my weekends at openings and my weeknights pretending I'll stop buying art books.",["Make the reservation and don't cancel it.","A negroni, a window seat, and leaving the party at the right time."],331,false,"photo-mara"],
-    ["Priya Sethi",29,"Lincoln Park, Chicago",300,"ER doctor. My schedule is chaos, so when I'm off, I'm actually present.",["Medicine, obviously — but also 90s R&B. I will take over the aux.","Calls his mom. Tips well. Asks follow-up questions."],29,false,"photo-priya"],
-    ["Harper Wells",31,"Venice, Los Angeles",500,"Producer. I survive on espresso and deadline adrenaline. Looking for someone who can keep up on a Sunday hike.",["Skip the small talk and split the tasting menu.","Working with a good cofounder — direct, loyal, occasionally intense."],198,false,"photo-harper"],
-    ["Bella Rose",23,"Miami Beach",200,"Pool days, boat weekends, and a standing reservation at my favorite rooftop. Come keep up.",["Sunset drinks somewhere over the water. You handle the details."],342,false,"photo-bella"],
-    ["Noor Haddad",26,"Capitol Hill, Seattle",200,"Climate engineer. I'll hike in any weather and I fact-check fun facts — lovingly.",["Got weathered-in on a glacier for two days. Still the best trip of my life.","Parallel parking and reading a room."],151,false,"photo-noor"],
-    ["Valentina Cruz",28,"Williamsburg, Brooklyn",200,"Pastry chef. I work Saturdays, so impress me on a Tuesday. Bonus points if you actually like dessert.",["Cooking for people, then watching their face on the first bite."],47,false,"photo-valentina"],
-    ["Crystal Lux",24,"Las Vegas",200,"Cocktail dresses over casual, always. If you can't decide where to take me, I already know how the date ends.",["I've been to 30 countries, I hate champagne, and I always text back."],281,false,"photo-crystal"],
-    ["Jade Rivera",25,"Tulum",200,"Yoga teacher splitting time between Tulum and wherever the next retreat is. Sunrise person, unapologetically.",["The beach at 6am before anyone else is up."],288,false,"photo-jade"],
-    ["Amber Skye",24,"Malibu",200,"Grew up on this coast and never left. Golden hour is a personality trait, I've accepted it.",["Tacos on the beach, then see where the night goes."],25,false,"photo-amber"],
-    ["Tiana Brooks",27,"Georgetown, DC",200,"Brand strategist who accidentally became a weekend DJ. I own too many blazers and not enough patience for small talk.",["Someone who knows what they want and orders first."],65,false,"photo-tiana"],
-    ["Lucia Reyes",25,"Ibiza",200,"Summers in Europe, winters wherever the sun is. I collect wine, sunsets, and men who can keep up.",["Somewhere with a view and a bottle we'll remember. You pick the place."],7,false,"photo-lucia"],
-    ["Elena Marsh",26,"Pacific Palisades, LA",200,"Interior designer. I notice things — the way a room is lit, where you sit, whether you hold the door.",["You read something this week. You have a plant that's still alive."],223,false,"photo-elena"],
-    ["Sophie Hale",28,"Nolita, New York",200,"PR director. Half my wardrobe is black, the other half is statement coats. I leave parties early and restaurants late.",["Split a cab uptown and argue about where to eat next."],50,false,"photo-sophie"],
-    ["Zara Collins",24,"Harlem, New York",200,"Freelance photographer. I shoot everything but will only eat at places I've already been twice.",["Showing up. On time. With coffee. Every single time."],126,false,"photo-zara"],
-    ["Anaya Mehta",27,"West Village, New York",200,"Product lead at a startup nobody's heard of yet. Weekend mornings are for the farmers market, not my phone.",["Skincare ingredients, behavioral economics, and making the perfect dal."],209,false,"photo-anaya"],
-    ["Fiona Byrne",26,"Savannah, Georgia",200,"Garden designer. I grow things for a living and ruin book spines for fun.",["A used bookstore, an iced coffee, and nowhere I have to be."],14,false,"photo-fiona"],
-    ["Camille Adler",32,"Gold Coast, Chicago",200,"Wine importer. I've been to more vineyards than restaurants but I still can't say no to a good tasting menu.",["I can blind-taste a Burgundy from a Bordeaux. And I parallel park on the first try."],43,false,"photo-camille"],
-    ["Mei Lin Chen",25,"DUMBO, Brooklyn",200,"Architect. I think in floor plans and talk in references nobody gets.",["A building with good bones — worth the renovation."],245,false,"photo-mei"],
-    ["Nikki West",29,"Newport Beach, CA",200,"Charter broker. Weekdays I sell the boat, weekends I'm on it.",["Sunset sail. No agenda, no timeline, just the ocean and whatever we're drinking."],194,false,"photo-nikki"],
-    ["Brooke Taylor",30,"Scottsdale, Arizona",200,"Real estate. I flip houses and friendships — both need good foundation.",["Pick the restaurant, pick me up, and don't check your phone once."],36,false,"photo-brooke"],
-    ["Harper Lane",26,"Byron Bay, Australia",200,"Surf instructor half the year, content creator the other half. I'll outswim you and outeat you.",["Beach, tacos, sunset. In that order."],18,false,"photo-harper"],
-    ["Dana Walsh",33,"Tribeca, New York",200,"Pilates studio owner. My mornings start at 5:30 and I wouldn't have it any other way.",["He has a morning routine that doesn't start with his phone."],324,false,"photo-dana"],
-    ["Chloe Park",28,"Charleston, South Carolina",200,"Event planner. I turn empty rooms into something people remember.",["Sweet tea, a good porch, and a dog that greets me at the door."],79,false,"photo-chloe"],
-    ["Kendall Marsh",27,"Laguna Beach, CA",200,"Jewelry designer. I make things with my hands, collect sea glass, and take the long way everywhere.",["Drive down the coast with no plan and stop wherever looks good."],25,false,"photo-kendall"],
-    ["Riley Stone",29,"Nantucket, Massachusetts",200,"Cookbook author. I test recipes until midnight and wake up craving coffee and feedback.",["Farmers markets, sourdough timers, and restaurants that don't have a website."],58,false,"photo-riley"],
-    ["Lexi Monroe",25,"Palm Beach, Florida",200,"Luxury travel consultant. I book the trips everyone posts about, then take my own with no itinerary.",["Got bumped to first class in Rome, ended up at a stranger's vineyard for dinner."],22,false,"photo-lexi"],
-    ["Paige Nolan",31,"Calabasas, CA",200,"Wellness brand founder. I built my company poolside and I'm not apologizing for it.",["A five-star retreat — intentional, restorative, and you'll leave better than you came in."],295,false,"photo-paige"],
-    ["Sienna Clarke",27,"Santa Barbara, CA",200,"Botanical illustrator. I spend most of my time outside, most of my money on plants.",["Any garden, anywhere. The wilder the better."],137,false,"photo-sienna"],
-    ["Hayley James",30,"Savannah, Georgia",200,"Restaurant owner. Sunday brunch is my religion and Saturday night is my confessional.",["Sit at the bar, order something interesting, and make me laugh before the food comes."],72,false,"photo-hayley"],
-    ["Maya Santos",26,"South Beach, Miami",200,"Marine biologist who somehow ends up at the beach even on days off. Science by day, salsa by night.",["Identifying fish, dancing in heels, and leaving the party at exactly the right time."],173,false,"photo-maya"],
-    ["Autumn Reed",28,"Asheville, North Carolina",200,"Trail runner and part-time park ranger. Warm, colorful, and gone too fast.",["A trail at golden hour, then wherever the nearest firepit is. Bring layers."],32,false,"photo-autumn"],
-    ["Cassidy Blake",27,"Cabo San Lucas",200,"Yacht broker. I sell the dream and live it on weekends.",["Take the boat out, anchor somewhere nobody else is, and forget what day it is."],11,false,"photo-cassidy"],
-    ["Nia Jordan",29,"Arts District, Los Angeles",200,"Muralist and fitness coach. I paint walls by day and teach spin by evening.",["Shows up when he says he will. Knows what he wants for dinner. Has hobbies that aren't screens."],259,false,"photo-nia"],
-    ["Yuki Tanaka",26,"Santa Monica, CA",200,"Yoga instructor and breathwork facilitator. Sunrise on the pier is my temple.",["Presence. Put the phone away and just be here with me."],274,false,"photo-yuki"],
-    ["Charlotte Fox",31,"Greenwich, Connecticut",200,"Antiques dealer. I know what things are worth and I don't negotiate on the ones that matter.",["I can date a piece of furniture from across the room and pick the best bottle on any list."],54,false,"photo-charlotte"],
-    ["Jordan Obi",27,"Joshua Tree, CA",200,"Adventure photographer. I chase light for a living and silence for fun.",["Camped alone in the desert for a week shooting stars. Best photos I've ever taken."],108,false,"photo-jordan"],
-    ["Lily Tran",25,"Kitsilano, Vancouver",200,"UX designer who walks everywhere. Cherry blossom season is my Super Bowl.",["Typography, city planning, and the way light changes between 5 and 6 PM."],317,false,"photo-lily"],
-    ["Hana Kim",24,"Queen Anne, Seattle",200,"Dance teacher and part-time barista. I know everyone's order and nobody's last name.",["A matcha latte, a park bench, and watching dogs I don't own play fetch."],230,false,"photo-hana"],
-    ["Grace Ashford",30,"Annapolis, Maryland",200,"Sailing instructor. I grew up on the water and I still haven't found a reason to leave it.",["A day on the bay — calm on the surface, more going on underneath than you'd expect."],162,false,"photo-grace"],
-    ["Destiny Moore",28,"Sedona, Arizona",200,"Personal trainer and hiking guide. Golden hour is my office.",["Sunrise hike, then breakfast at the place only locals know."],338,false,"photo-destiny"],
-    ["Stella Cruz",27,"Sayulita, Mexico",200,"Surf photographer. I chase golden hour the way some people chase promotions.",["Catch the last wave, rinse off, and eat tacos with sandy feet."],115,false,"photo-stella"],
-    ["Britt Larson",25,"Mission Beach, San Diego",200,"Physical therapist who spends every lunch break at the beach.",["A towel, a good playlist, and absolutely nowhere I need to be."],4,false,"photo-britt"],
-    ["Nova Ray",26,"Playa del Carmen, Mexico",200,"Freediver and ocean conservationist. I hold my breath for a living and speak my mind for free.",["Holding my breath for four minutes, finding hidden beaches, and making friends in every country."],180,false,"photo-nova"],
-    ["Tessa Flynn",28,"Maui, Hawaii",200,"Dive instructor by morning, bartender by night. I live on island time and I'm not going back.",["Moved to Maui for a month. That was three years ago."],313,false,"photo-tessa"],
-    ["Wren Bishop",26,"Montauk, New York",200,"Photographer. Sunset is my golden hour and the beach is my studio. I shoot on film and live like it.",["A cold drink, warm sand, and a conversation that doesn't need a phone."],101,false,"photo-wren"],
-    ["Iris Calloway",29,"Positano, Italy",200,"Ceramicist splitting time between Italy and Brooklyn. Freckles are earned, not filtered.",["Remember what I said last time. That's it. That's the whole thing."],144,false,"photo-iris"],
-    ["Adriana Vega",27,"Barcelona, Spain",200,"Chef de partie at a Michelin kitchen. My days are loud and hot — I need my beach time quiet.",["Fermentation timelines, regional olive oils, and people who eat with their hands."],187,false,"photo-adriana"],
-    ["Paloma Diaz",25,"Tulum, Mexico",200,"Jewelry designer. Everything I make starts with something I found on the beach.",["Get lost in a market, buy something we don't need, and eat street food until we can't move."],252,false,"photo-paloma"],
-    ["Suki Nakamura",26,"Venice Beach, CA",200,"Content strategist who clocks out at 5 and is on the sand by 5:15.",["Golden hour at the beach, then ramen at the place with no sign."],238,false,"photo-suki"],
-    ["Kiana Reyes",25,"North Shore, Oahu",200,"Surf school owner. Born in the water, raised by the tide.",["Any beach, any island, as long as I can hear the waves while I eat."],266,false,"photo-kiana"],
-    ["Simone Hart",28,"Turks and Caicos",200,"Former pro swimmer, current water-sports instructor.",["Swimming in open water, reading people, and making fish tacos from scratch."],122,false,"photo-simone"],
-    ["Ava Sinclair",27,"Martha's Vineyard, MA",200,"Music journalist. I interview people for a living, so expect good questions and zero awkward silence.",["Skip the small talk — tell me the thing you never tell people on the first date."],202,false,"photo-ava"],
-    ["Kai Williams",29,"Outer Banks, North Carolina",200,"Fitness coach and beach volleyball captain. My laugh carries, my standards are higher.",["Show up with energy. Match mine. Don't try to dim it."],302,false,"photo-kai"],
-  ].map(([name, age, city, bid, bio, ice, hue, verified, photo]) => ({
-    id: uid(), name, age, city, startingBid: bid, bio, icebreakers: ice, hue, verified, photo: "photos/" + photo + ".jpg"
+    ["Serena Voss",28,"Upper East Side, New York",1000000,"Private art dealer. Quiet dinners, old buildings, men who don't explain their watch.",["Know what you want and don't apologize for it.","Close a gallery and open the wine they keep behind the counter."],306,false,true,true,"photo-serena"],
+    ["Rae",27,"SoHo, New York",100,"Gallery girl by day, downtown by night. I know what I want and I don't settle.",["Be direct, be confident, and make the reservation before you ask."],180,true,false,false,"photo-grace"],
+    ["Sloane",31,"Venice, Los Angeles",150,"Founder, second company. I like early mornings, good espresso, and people who follow through.",["Skip the small talk and split the tasting menu.","Working with a good cofounder — direct, loyal, occasionally intense."],198,true,false,false,"photo-sloane"],
+    ["Mara Quinn",27,"SoHo, New York",250,"Gallery curator. I spend my weekends at openings and my weeknights pretending I'll stop buying art books.",["Make the reservation and don't cancel it.","A negroni, a window seat, and leaving the party at the right time."],331,false,false,true,"photo-mara"],
+    ["Priya Sethi",29,"Lincoln Park, Chicago",300,"ER doctor. My schedule is chaos, so when I'm off, I'm actually present.",["Medicine, obviously — but also 90s R&B. I will take over the aux.","Calls his mom. Tips well. Asks follow-up questions."],29,false,false,true,"photo-priya"],
+    ["Harper Wells",31,"Venice, Los Angeles",500,"Producer. I survive on espresso and deadline adrenaline. Looking for someone who can keep up on a Sunday hike.",["Skip the small talk and split the tasting menu.","Working with a good cofounder — direct, loyal, occasionally intense."],198,false,false,true,"photo-harper"],
+    ["Bella Rose",23,"Miami Beach",200,"Pool days, boat weekends, and a standing reservation at my favorite rooftop. Come keep up.",["Sunset drinks somewhere over the water. You handle the details."],342,false,false,true,"photo-bella"],
+    ["Noor Haddad",26,"Capitol Hill, Seattle",200,"Climate engineer. I'll hike in any weather and I fact-check fun facts — lovingly.",["Got weathered-in on a glacier for two days. Still the best trip of my life.","Parallel parking and reading a room."],151,false,false,true,"photo-noor"],
+    ["Valentina Cruz",28,"Williamsburg, Brooklyn",200,"Pastry chef. I work Saturdays, so impress me on a Tuesday. Bonus points if you actually like dessert.",["Cooking for people, then watching their face on the first bite."],47,false,false,true,"photo-valentina"],
+    ["Crystal Lux",24,"Las Vegas",200,"Cocktail dresses over casual, always. If you can't decide where to take me, I already know how the date ends.",["I've been to 30 countries, I hate champagne, and I always text back."],281,false,false,true,"photo-crystal"],
+    ["Jade Rivera",25,"Tulum",200,"Yoga teacher splitting time between Tulum and wherever the next retreat is. Sunrise person, unapologetically.",["The beach at 6am before anyone else is up."],288,false,false,true,"photo-jade"],
+    ["Amber Skye",24,"Malibu",200,"Grew up on this coast and never left. Golden hour is a personality trait, I've accepted it.",["Tacos on the beach, then see where the night goes."],25,false,false,true,"photo-amber"],
+    ["Tiana Brooks",27,"Georgetown, DC",200,"Brand strategist who accidentally became a weekend DJ. I own too many blazers and not enough patience for small talk.",["Someone who knows what they want and orders first."],65,false,false,true,"photo-tiana"],
+    ["Lucia Reyes",25,"Ibiza",200,"Summers in Europe, winters wherever the sun is. I collect wine, sunsets, and men who can keep up.",["Somewhere with a view and a bottle we'll remember. You pick the place."],7,false,false,true,"photo-lucia"],
+    ["Elena Marsh",26,"Pacific Palisades, LA",200,"Interior designer. I notice things — the way a room is lit, where you sit, whether you hold the door.",["You read something this week. You have a plant that's still alive."],223,false,false,true,"photo-elena"],
+    ["Sophie Hale",28,"Nolita, New York",200,"PR director. Half my wardrobe is black, the other half is statement coats. I leave parties early and restaurants late.",["Split a cab uptown and argue about where to eat next."],50,false,false,true,"photo-sophie"],
+    ["Zara Collins",24,"Harlem, New York",200,"Freelance photographer. I shoot everything but will only eat at places I've already been twice.",["Showing up. On time. With coffee. Every single time."],126,false,false,true,"photo-zara"],
+    ["Anaya Mehta",27,"West Village, New York",200,"Product lead at a startup nobody's heard of yet. Weekend mornings are for the farmers market, not my phone.",["Skincare ingredients, behavioral economics, and making the perfect dal."],209,false,false,true,"photo-anaya"],
+    ["Fiona Byrne",26,"Savannah, Georgia",200,"Garden designer. I grow things for a living and ruin book spines for fun.",["A used bookstore, an iced coffee, and nowhere I have to be."],14,false,false,true,"photo-fiona"],
+    ["Camille Adler",32,"Gold Coast, Chicago",200,"Wine importer. I've been to more vineyards than restaurants but I still can't say no to a good tasting menu.",["I can blind-taste a Burgundy from a Bordeaux. And I parallel park on the first try."],43,false,false,true,"photo-camille"],
+    ["Mei Lin Chen",25,"DUMBO, Brooklyn",200,"Architect. I think in floor plans and talk in references nobody gets.",["A building with good bones — worth the renovation."],245,false,false,true,"photo-mei"],
+    ["Nikki West",29,"Newport Beach, CA",200,"Charter broker. Weekdays I sell the boat, weekends I'm on it.",["Sunset sail. No agenda, no timeline, just the ocean and whatever we're drinking."],194,false,false,true,"photo-nikki"],
+    ["Brooke Taylor",30,"Scottsdale, Arizona",200,"Real estate. I flip houses and friendships — both need good foundation.",["Pick the restaurant, pick me up, and don't check your phone once."],36,false,false,true,"photo-brooke"],
+    ["Harper Lane",26,"Byron Bay, Australia",200,"Surf instructor half the year, content creator the other half. I'll outswim you and outeat you.",["Beach, tacos, sunset. In that order."],18,false,false,true,"photo-harper"],
+    ["Dana Walsh",33,"Tribeca, New York",200,"Pilates studio owner. My mornings start at 5:30 and I wouldn't have it any other way.",["He has a morning routine that doesn't start with his phone."],324,false,false,true,"photo-dana"],
+    ["Chloe Park",28,"Charleston, South Carolina",200,"Event planner. I turn empty rooms into something people remember.",["Sweet tea, a good porch, and a dog that greets me at the door."],79,false,false,true,"photo-chloe"],
+    ["Kendall Marsh",27,"Laguna Beach, CA",200,"Jewelry designer. I make things with my hands, collect sea glass, and take the long way everywhere.",["Drive down the coast with no plan and stop wherever looks good."],25,false,false,true,"photo-kendall"],
+    ["Riley Stone",29,"Nantucket, Massachusetts",200,"Cookbook author. I test recipes until midnight and wake up craving coffee and feedback.",["Farmers markets, sourdough timers, and restaurants that don't have a website."],58,false,false,true,"photo-riley"],
+    ["Lexi Monroe",25,"Palm Beach, Florida",200,"Luxury travel consultant. I book the trips everyone posts about, then take my own with no itinerary.",["Got bumped to first class in Rome, ended up at a stranger's vineyard for dinner."],22,false,false,true,"photo-lexi"],
+    ["Paige Nolan",31,"Calabasas, CA",200,"Wellness brand founder. I built my company poolside and I'm not apologizing for it.",["A five-star retreat — intentional, restorative, and you'll leave better than you came in."],295,false,false,true,"photo-paige"],
+    ["Sienna Clarke",27,"Santa Barbara, CA",200,"Botanical illustrator. I spend most of my time outside, most of my money on plants.",["Any garden, anywhere. The wilder the better."],137,false,false,true,"photo-sienna"],
+    ["Hayley James",30,"Savannah, Georgia",200,"Restaurant owner. Sunday brunch is my religion and Saturday night is my confessional.",["Sit at the bar, order something interesting, and make me laugh before the food comes."],72,false,false,true,"photo-hayley"],
+    ["Maya Santos",26,"South Beach, Miami",200,"Marine biologist who somehow ends up at the beach even on days off. Science by day, salsa by night.",["Identifying fish, dancing in heels, and leaving the party at exactly the right time."],173,false,false,true,"photo-maya"],
+    ["Autumn Reed",28,"Asheville, North Carolina",200,"Trail runner and part-time park ranger. Warm, colorful, and gone too fast.",["A trail at golden hour, then wherever the nearest firepit is. Bring layers."],32,false,false,true,"photo-autumn"],
+    ["Cassidy Blake",27,"Cabo San Lucas",200,"Yacht broker. I sell the dream and live it on weekends.",["Take the boat out, anchor somewhere nobody else is, and forget what day it is."],11,false,false,true,"photo-cassidy"],
+    ["Nia Jordan",29,"Arts District, Los Angeles",200,"Muralist and fitness coach. I paint walls by day and teach spin by evening.",["Shows up when he says he will. Knows what he wants for dinner. Has hobbies that aren't screens."],259,false,false,true,"photo-nia"],
+    ["Yuki Tanaka",26,"Santa Monica, CA",200,"Yoga instructor and breathwork facilitator. Sunrise on the pier is my temple.",["Presence. Put the phone away and just be here with me."],274,false,false,true,"photo-yuki"],
+    ["Charlotte Fox",31,"Greenwich, Connecticut",200,"Antiques dealer. I know what things are worth and I don't negotiate on the ones that matter.",["I can date a piece of furniture from across the room and pick the best bottle on any list."],54,false,false,true,"photo-charlotte"],
+    ["Jordan Obi",27,"Joshua Tree, CA",200,"Adventure photographer. I chase light for a living and silence for fun.",["Camped alone in the desert for a week shooting stars. Best photos I've ever taken."],108,false,false,true,"photo-jordan"],
+    ["Lily Tran",25,"Kitsilano, Vancouver",200,"UX designer who walks everywhere. Cherry blossom season is my Super Bowl.",["Typography, city planning, and the way light changes between 5 and 6 PM."],317,false,false,true,"photo-lily"],
+    ["Hana Kim",24,"Queen Anne, Seattle",200,"Dance teacher and part-time barista. I know everyone's order and nobody's last name.",["A matcha latte, a park bench, and watching dogs I don't own play fetch."],230,false,false,true,"photo-hana"],
+    ["Grace Ashford",30,"Annapolis, Maryland",200,"Sailing instructor. I grew up on the water and I still haven't found a reason to leave it.",["A day on the bay — calm on the surface, more going on underneath than you'd expect."],162,false,false,true,"photo-grace"],
+    ["Destiny Moore",28,"Sedona, Arizona",200,"Personal trainer and hiking guide. Golden hour is my office.",["Sunrise hike, then breakfast at the place only locals know."],338,false,false,true,"photo-destiny"],
+    ["Stella Cruz",27,"Sayulita, Mexico",200,"Surf photographer. I chase golden hour the way some people chase promotions.",["Catch the last wave, rinse off, and eat tacos with sandy feet."],115,false,false,true,"photo-stella"],
+    ["Britt Larson",25,"Mission Beach, San Diego",200,"Physical therapist who spends every lunch break at the beach.",["A towel, a good playlist, and absolutely nowhere I need to be."],4,false,false,true,"photo-britt"],
+    ["Nova Ray",26,"Playa del Carmen, Mexico",200,"Freediver and ocean conservationist. I hold my breath for a living and speak my mind for free.",["Holding my breath for four minutes, finding hidden beaches, and making friends in every country."],180,false,false,true,"photo-nova"],
+    ["Tessa Flynn",28,"Maui, Hawaii",200,"Dive instructor by morning, bartender by night. I live on island time and I'm not going back.",["Moved to Maui for a month. That was three years ago."],313,false,false,true,"photo-tessa"],
+    ["Wren Bishop",26,"Montauk, New York",200,"Photographer. Sunset is my golden hour and the beach is my studio. I shoot on film and live like it.",["A cold drink, warm sand, and a conversation that doesn't need a phone."],101,false,false,true,"photo-wren"],
+    ["Iris Calloway",29,"Positano, Italy",200,"Ceramicist splitting time between Italy and Brooklyn. Freckles are earned, not filtered.",["Remember what I said last time. That's it. That's the whole thing."],144,false,false,true,"photo-iris"],
+    ["Adriana Vega",27,"Barcelona, Spain",200,"Chef de partie at a Michelin kitchen. My days are loud and hot — I need my beach time quiet.",["Fermentation timelines, regional olive oils, and people who eat with their hands."],187,false,false,true,"photo-adriana"],
+    ["Paloma Diaz",25,"Tulum, Mexico",200,"Jewelry designer. Everything I make starts with something I found on the beach.",["Get lost in a market, buy something we don't need, and eat street food until we can't move."],252,false,false,true,"photo-paloma"],
+    ["Suki Nakamura",26,"Venice Beach, CA",200,"Content strategist who clocks out at 5 and is on the sand by 5:15.",["Golden hour at the beach, then ramen at the place with no sign."],238,false,false,true,"photo-suki"],
+    ["Kiana Reyes",25,"North Shore, Oahu",200,"Surf school owner. Born in the water, raised by the tide.",["Any beach, any island, as long as I can hear the waves while I eat."],266,false,false,true,"photo-kiana"],
+    ["Simone Hart",28,"Turks and Caicos",200,"Former pro swimmer, current water-sports instructor.",["Swimming in open water, reading people, and making fish tacos from scratch."],122,false,false,true,"photo-simone"],
+    ["Ava Sinclair",27,"Martha's Vineyard, MA",200,"Music journalist. I interview people for a living, so expect good questions and zero awkward silence.",["Skip the small talk — tell me the thing you never tell people on the first date."],202,false,false,true,"photo-ava"],
+    ["Kai Williams",29,"Outer Banks, North Carolina",200,"Fitness coach and beach volleyball captain. My laugh carries, my standards are higher.",["Show up with energy. Match mine. Don't try to dim it."],302,false,false,true,"photo-kai"],
+  ].map(([name, age, city, bid, bio, ice, hue, verified, masterpiece, copycat, photo]) => ({
+    id: uid(), name, age, city, startingBid: bid, bio, icebreakers: ice, hue, verified, masterpiece, copycat, photo: "photos/" + photo + ".jpg"
   })));
 
   // ---- state ----
@@ -268,16 +272,20 @@
     };
   }
 
+  const badges = (w) => `${w.verified ? verifiedBadge() : ""}${w.masterpiece ? masterpieceBadge() : ""}${w.copycat && !w.masterpiece ? copycatTag() : ""}`;
+
   function floor() {
-    const [hero, ...rest] = S.floor;
+    const mp = S.floor.find(w => w.masterpiece);
+    const hero = mp || S.floor[0];
+    const rest = S.floor.filter(w => w !== hero);
     const tickers = ["Marcus B. was outbid on Nova Ray — rebid incoming", "3 bidders are watching Mara Quinn", "A Vault of Gavels was just claimed"];
     const tick = tickers[Math.floor(Date.now() / 6000) % tickers.length];
     const lotCard = (w, isHero) => `
-      <button class="lot ${isHero ? "hero" : ""}" data-lot="${w.id}" style="width:100%;padding:0;text-align:left;background:none">
+      <button class="lot ${isHero ? "hero" : ""}${w.masterpiece ? " masterpiece" : ""}" data-lot="${w.id}" style="width:100%;padding:0;text-align:left;background:none">
         <div class="art">${grad(w.hue, w.name, w.photo)}</div>
-        ${isHero ? `<div class="lotofday">⚖ Lot of the day</div>` : ""}
+        ${isHero ? `<div class="lotofday${w.masterpiece ? " mp" : ""}">⚖ ${w.masterpiece ? "Masterpiece — Lot of the Day" : "Lot of the day"}</div>` : ""}
         <div class="meta">
-          <div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span> ${w.verified ? "✔" : ""}</div>
+          <div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span>${badges(w)}</div>
           <div class="tags"><span class="chip">${esc(w.city)}</span><span class="chip on">${money(w.startingBid)} floor</span></div>
         </div>
       </button>`;
@@ -296,8 +304,9 @@
     const w = S.floor.find(x => x.id === id); if (!w) return go("/floor");
     app.innerHTML = `<div class="screen">
       <div class="topbar"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
-      <div class="lot" style="margin-bottom:16px"><div class="art">${grad(w.hue, w.name, w.photo)}</div>
-        <div class="meta"><div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span> ${w.verified ? "✔" : ""}</div>
+      <div class="lot${w.masterpiece ? " masterpiece" : ""}" style="margin-bottom:16px"><div class="art">${grad(w.hue, w.name, w.photo)}</div>
+        ${w.masterpiece ? `<div class="lotofday mp">⚖ Masterpiece — Lot of the Day</div>` : ""}
+        <div class="meta"><div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span>${badges(w)}</div>
         <div class="tags"><span class="chip">${esc(w.city)}</span><span class="chip on">${money(w.startingBid)} floor</span></div></div></div>
       <div class="card"><div class="kicker">About</div><p class="muted" style="margin:8px 0 0">${esc(w.bio)}</p></div>
       ${w.icebreakers.map(q => `<div class="card" style="margin-top:10px"><div class="faint">Prompt</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px">${esc(q)}</div></div>`).join("")}
@@ -350,7 +359,7 @@
   }
 
   function celebrate(w, amount, m) {
-    const c = document.createElement("div"); c.className = "celebrate";
+    const c = document.createElement("div"); c.className = `celebrate${w.copycat && !w.masterpiece ? " copycat" : ""}`;
     c.innerHTML = `<div><div class="kicker">Sold</div><div class="sold">SOLD!</div>
       <div style="margin:14px 0">${gradSm(w.hue, w.name)}</div>
       <div style="font-family:var(--serif);font-weight:800;font-size:20px">Matched with ${esc(w.name)}</div>

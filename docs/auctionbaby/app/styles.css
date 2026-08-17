@@ -135,6 +135,42 @@ textarea.txt{resize:vertical;min-height:64px}
 .disclosure{font-size:11px;color:var(--ink-faint);text-align:center;line-height:1.5;margin-top:12px}
 a{color:var(--gold)}
 
+/* verified badge (blue checkmark seal) */
+.vbadge{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
+  width:20px;height:20px;border-radius:50%;background:var(--verify);color:#fff;
+  box-shadow:0 2px 6px rgba(79,176,198,.4);margin-left:5px;flex:none}
+.vbadge svg{width:12px;height:12px;fill:currentColor}
+.vbadge.sm{width:16px;height:16px}.vbadge.sm svg{width:10px;height:10px}
+.vbadge.lg{width:24px;height:24px}.vbadge.lg svg{width:14px;height:14px}
+
+/* masterpiece badge (gold shimmer capsule) */
+.mp-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;
+  font:800 11px/1 var(--serif);color:#1a1407;background:var(--gold-grad);
+  border:1.5px solid rgba(255,255,255,.35);box-shadow:0 2px 8px rgba(184,134,11,.3);
+  vertical-align:middle;margin-left:5px;white-space:nowrap;position:relative;overflow:hidden}
+.mp-badge .mp-icon{font-size:12px}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.mp-badge::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.45) 50%,transparent 100%);
+  animation:shimmer 2.5s ease-in-out infinite}
+
+/* copycat tag (purple pulsing badge) */
+.cc-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;
+  font:800 11px/1 var(--sans);color:#fff;background:var(--copycat);
+  vertical-align:middle;margin-left:5px;white-space:nowrap}
+@keyframes pulse-cc{0%,100%{opacity:1}50%{opacity:.7}}
+.cc-tag{animation:pulse-cc 2s ease-in-out infinite}
+
+/* masterpiece hero card glow */
+.lot.masterpiece{border:1.5px solid rgba(230,184,0,.6);
+  box-shadow:0 0 0 1px rgba(230,184,0,.2),0 18px 50px rgba(184,134,11,.35)}
+@keyframes glow{0%,100%{box-shadow:0 0 0 1px rgba(230,184,0,.2),0 18px 50px rgba(184,134,11,.25)}
+  50%{box-shadow:0 0 0 1px rgba(230,184,0,.35),0 18px 50px rgba(184,134,11,.45)}}
+.lot.masterpiece{animation:glow 3s ease-in-out infinite}
+
+/* masterpiece lot-of-day banner override */
+.lotofday.mp{background:var(--gold-grad);letter-spacing:.16em}
+
 /* focus-visible for keyboard accessibility */
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
   outline:2px solid var(--gold);outline-offset:2px}
