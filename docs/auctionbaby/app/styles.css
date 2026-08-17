@@ -193,3 +193,31 @@ a{color:var(--gold)}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
   outline:2px solid var(--gold);outline-offset:2px}
 .tabbar button:focus-visible{outline-offset:-2px}
+
+/* detail page */
+.detail-card{margin-bottom:12px;padding:16px}
+.detail-title{display:flex;align-items:center;gap:6px;font:800 11px/1 var(--sans);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px}
+.detail-title .dt-icon{font-style:normal;font-size:14px;letter-spacing:0}
+.prompt-q{font:800 11px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
+.prompt-a{font-family:var(--serif);font-weight:700;font-size:17px;line-height:1.3;color:var(--ink);margin-bottom:12px}
+.bid-mention{display:block;width:100%;text-align:left;padding:10px 14px;border-radius:12px;
+  background:rgba(224,96,122,.14);border:0;cursor:pointer;color:inherit}
+.bid-mention-label{display:flex;align-items:center;gap:6px;font:800 13px/1 var(--sans);color:var(--rose)}
+.bid-mention-sub{display:block;font:400 10px/1.3 var(--sans);color:var(--ink-faint);margin-top:3px}
+.showcase-row{display:flex;align-items:center;gap:16px}
+.showcase-side{display:flex;flex-direction:column;gap:6px}
+.report-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.report-row:last-of-type{border-bottom:0}
+.report-icon{width:22px;text-align:center;flex:none;font-size:13px}
+.report-name{font:700 13px/1 var(--sans);color:var(--ink);flex:1}
+.report-pts{font:800 13px/1 var(--sans);flex:none}
+.report-pts.pos{color:var(--success)} .report-pts.neg{color:var(--danger)} .report-pts.zero{color:var(--ink-faint)}
+.report-comment{font:400 12px/1.35 var(--sans);color:var(--ink-soft);padding:0 0 6px 30px}
+.report-total{display:flex;align-items:center;justify-content:space-between;padding-top:10px;
+  border-top:1px solid var(--line);margin-top:2px}
+.report-total-label{font:600 11px/1 var(--sans);color:var(--ink-faint)}
+.report-total-val{font:800 14px/1 var(--sans);color:var(--rose)}
+.sticky-bid{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;z-index:40;
+  padding:12px 18px calc(12px + env(safe-area-inset-bottom));
+  background:linear-gradient(to bottom,transparent,var(--bg) 30%)}
