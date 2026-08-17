@@ -4,9 +4,11 @@ import SwiftUI
 /// in-app message to the seller (no contact info is ever exposed).
 struct ListingDetailView: View {
     @State private var model: ListingDetailViewModel
+    var onOpenMessages: (() -> Void)? = nil
 
-    init(listing: Listing, service: MarketplaceService) {
+    init(listing: Listing, service: MarketplaceService, onOpenMessages: (() -> Void)? = nil) {
         _model = State(initialValue: ListingDetailViewModel(listing: listing, service: service))
+        self.onOpenMessages = onOpenMessages
     }
 
     private var isMine: Bool { model.listing.seller.id == Session.me.id }
@@ -84,9 +86,18 @@ struct ListingDetailView: View {
                     .foregroundStyle(.red)
             }
             if model.sendState == .sent {
-                Label("Message sent to the seller", systemImage: "checkmark.circle.fill")
-                    .font(Tokens.Typography.caption.weight(.semibold))
-                    .foregroundStyle(Tokens.Color.accent)
+                HStack {
+                    Label("Message sent to the seller", systemImage: "checkmark.circle.fill")
+                        .font(Tokens.Typography.caption.weight(.semibold))
+                        .foregroundStyle(Tokens.Color.accent)
+                    Spacer()
+                    if let onOpenMessages {
+                        Button("Go to Messages") { onOpenMessages() }
+                            .font(Tokens.Typography.caption.weight(.bold))
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                    }
+                }
             }
             HStack(spacing: Tokens.Spacing.sm) {
                 TextField("Message the seller…", text: $model.draft, axis: .vertical)

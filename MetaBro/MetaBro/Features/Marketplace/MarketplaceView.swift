@@ -19,7 +19,8 @@ struct MarketplaceView: View {
                 .navigationTitle("Bro-ket")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: Listing.self) { listing in
-                    ListingDetailView(listing: listing, service: container.marketplaceService)
+                    ListingDetailView(listing: listing, service: container.marketplaceService,
+                                      onOpenMessages: { dismiss() })
                 }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

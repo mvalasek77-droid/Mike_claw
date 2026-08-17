@@ -46,10 +46,12 @@ struct ComposerView: View {
             VStack(alignment: .leading, spacing: Tokens.Spacing.lg) {
                 targetPicker
 
-                TextField("Title (optional)", text: $model.title)
-                    .font(Tokens.Typography.headline)
-                    .padding(Tokens.Spacing.md)
-                    .liquidGlass(radius: Tokens.Radius.md)
+                if model.target != nil {
+                    TextField("Title (optional)", text: $model.title)
+                        .font(Tokens.Typography.headline)
+                        .padding(Tokens.Spacing.md)
+                        .liquidGlass(radius: Tokens.Radius.md)
+                }
 
                 TextField("What's on your mind, bro?", text: $model.body, axis: .vertical)
                     .lineLimit(6...14)

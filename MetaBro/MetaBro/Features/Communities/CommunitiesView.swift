@@ -7,7 +7,7 @@ struct CommunitiesView: View {
     @State private var model: CommunitiesViewModel
     @State private var search: SearchViewModel
     @State private var searchText = ""
-    @State private var path: [Post] = []
+    @State private var path = NavigationPath()
     @State private var isShowingModQueue = false
     @State private var isShowingEvents = false
     @State private var isShowingGroups = false
@@ -35,6 +35,9 @@ struct CommunitiesView: View {
                 PostDetailView(post: post, service: container.commentService,
                                 safetyService: container.safetyService,
                                 moderationService: container.moderationService)
+            }
+            .navigationDestination(for: Community.self) { community in
+                CommunityFeedView(community: community, container: container)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -143,9 +146,12 @@ struct CommunitiesView: View {
             ScrollView {
                 LazyVStack(spacing: Tokens.Spacing.md) {
                     ForEach(communities) { community in
-                        CommunityRow(community: community) {
-                            requestJoin(community)
+                        Button { path.append(community) } label: {
+                            CommunityRow(community: community) {
+                                requestJoin(community)
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(Tokens.Spacing.lg)
@@ -153,6 +159,57 @@ struct CommunitiesView: View {
             }
             .refreshable { await model.load() }
         }
+    }
+}
+
+private struct CommunityFeedView: View {
+    let community: Community
+    let container: AppContainer
+    @State private var joinState: Bool
+
+    init(community: Community, container: AppContainer) {
+        self.community = community
+        self.container = container
+        _joinState = State(initialValue: community.isJoined)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: Tokens.Spacing.lg) {
+                VStack(spacing: Tokens.Spacing.md) {
+                    CommunityAvatar(community: community, size: 72)
+                    Text(community.name).font(Tokens.Typography.title)
+                    Text("b/\(community.slug) · \(community.memberCount.abbreviated) bros")
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Color.textSecondary)
+                    Button {
+                        joinState.toggle()
+                    } label: {
+                        Text(joinState ? "Joined" : "Join")
+                            .font(Tokens.Typography.caption.weight(.bold))
+                            .foregroundStyle(joinState ? Tokens.Color.textSecondary : .white)
+                            .padding(.horizontal, Tokens.Spacing.xl)
+                            .padding(.vertical, Tokens.Spacing.sm)
+                            .background {
+                                Capsule().fill(joinState
+                                               ? AnyShapeStyle(.ultraThinMaterial)
+                                               : AnyShapeStyle(Tokens.Color.accent))
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(Tokens.Spacing.xl)
+                .liquidGlass()
+
+                ContentUnavailableView("Community feed",
+                                       systemImage: "text.bubble",
+                                       description: Text("Posts from this Bro-hood will appear in the unified feed."))
+            }
+            .padding(Tokens.Spacing.lg)
+        }
+        .navigationTitle(community.name)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

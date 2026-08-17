@@ -5,11 +5,20 @@ import SwiftUI
 /// unread items carry a leading accent dot.
 struct NotificationsView: View {
     let model: NotificationsViewModel
+    var container: AppContainer? = nil
+    @State private var path: [Post] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             content
                 .navigationTitle("Notifications")
+                .navigationDestination(for: Post.self) { post in
+                    if let container {
+                        PostDetailView(post: post, service: container.commentService,
+                                        safetyService: container.safetyService,
+                                        moderationService: container.moderationService)
+                    }
+                }
                 .toolbar {
                     if model.unreadCount > 0 {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -42,7 +51,12 @@ struct NotificationsView: View {
             ScrollView {
                 LazyVStack(spacing: Tokens.Spacing.sm) {
                     ForEach(items) { item in
-                        Button { Task { await model.markRead(item) } } label: {
+                        Button {
+                            Task { await model.markRead(item) }
+                            if let post = item.post {
+                                path.append(post)
+                            }
+                        } label: {
                             NotificationRow(notification: item)
                         }
                         .buttonStyle(.plain)

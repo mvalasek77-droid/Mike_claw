@@ -114,11 +114,26 @@ private struct FriendRow<Trailing: View>: View {
     var body: some View {
         HStack(spacing: Tokens.Spacing.md) {
             UserAvatar(user: user, size: 44)
+                .overlay(alignment: .bottomTrailing) {
+                    if user.isOnline {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 12, height: 12)
+                            .overlay(Circle().strokeBorder(.background, lineWidth: 2))
+                    }
+                }
             VStack(alignment: .leading, spacing: 2) {
                 Text(user.displayName).font(Tokens.Typography.headline)
-                Text(user.handle)
-                    .font(Tokens.Typography.caption)
-                    .foregroundStyle(Tokens.Color.textSecondary)
+                HStack(spacing: 4) {
+                    Text(user.handle)
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Color.textSecondary)
+                    if user.isOnline {
+                        Text("· Online")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                    }
+                }
             }
             Spacer()
             trailing

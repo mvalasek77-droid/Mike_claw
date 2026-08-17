@@ -86,6 +86,12 @@ private struct GroupRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(group.name).font(Tokens.Typography.headline)
+                if !group.description.isEmpty {
+                    Text(group.description)
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                        .lineLimit(2)
+                }
                 Text("\(group.memberCount) members")
                     .font(Tokens.Typography.caption)
                     .foregroundStyle(Tokens.Color.textSecondary)

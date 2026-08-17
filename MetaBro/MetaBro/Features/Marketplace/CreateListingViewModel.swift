@@ -29,6 +29,7 @@ final class CreateListingViewModel {
     var canSubmit: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         price != nil &&
+        price! >= 0 &&
         submitState != .submitting
     }
 

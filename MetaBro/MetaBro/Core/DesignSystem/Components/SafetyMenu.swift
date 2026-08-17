@@ -35,16 +35,45 @@ struct SafetyMenu: View {
             ReportSheet(user: user, kind: kind, targetID: targetID, preview: preview,
                         community: community, service: service)
         }
+        .overlay(alignment: .top) {
+            if let lastAction {
+                Text(lastAction)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Tokens.Color.accent, in: Capsule())
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .offset(y: -36)
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(Tokens.Motion.gentle, value: lastAction)
     }
 
     private func mute() async {
         HapticsEngine.shared.play(.selectionChanged)
-        do { try await service.mute(user) } catch { BroLog.error(error, category: "safety") }
+        do {
+            try await service.mute(user)
+            lastAction = "\(user.displayName) muted"
+            dismissConfirmation()
+        } catch { BroLog.error(error, category: "safety") }
     }
 
     private func block() async {
         HapticsEngine.shared.play(.selectionChanged)
-        do { try await service.block(user) } catch { BroLog.error(error, category: "safety") }
+        do {
+            try await service.block(user)
+            lastAction = "\(user.displayName) blocked"
+            dismissConfirmation()
+        } catch { BroLog.error(error, category: "safety") }
+    }
+
+    private func dismissConfirmation() {
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            lastAction = nil
+        }
     }
 }
 

@@ -9,6 +9,7 @@ struct ProfileView: View {
     @State private var path: [Post] = []
     @State private var showingBugReport = false
     @State private var showingSaved = false
+    @State private var showingHistory = false
 
     init(container: AppContainer, onSignOut: @escaping () -> Void) {
         self.container = container
@@ -32,6 +33,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showingSaved) {
             SavedView(container: container)
+        }
+        .sheet(isPresented: $showingHistory) {
+            HistoryView(historyService: container.historyService)
         }
     }
 
@@ -58,6 +62,7 @@ struct ProfileView: View {
                     }
                     postsSection(profile.posts)
                     savedPostsRow
+                    historyRow
                     reportProblemRow
                     signOutRow
                     SloganView(showsMark: false)
@@ -89,6 +94,21 @@ struct ProfileView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var historyRow: some View {
+        Button { showingHistory = true } label: {
+            HStack {
+                Label("Recently viewed", systemImage: "clock.arrow.circlepath")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Tokens.Color.textSecondary)
+            }
+            .padding(Tokens.Spacing.md)
+        }
+        .buttonStyle(.plain)
+        .liquidGlass()
+        .frame(maxWidth: .infinity)
     }
 
     private var savedPostsRow: some View {
@@ -191,6 +211,62 @@ private struct ProfileHeader: View {
             Text(value).font(Tokens.Typography.headline).monospacedDigit()
             Text(label).font(Tokens.Typography.caption)
                 .foregroundStyle(Tokens.Color.textSecondary)
+        }
+    }
+}
+
+private struct HistoryView: View {
+    let historyService: HistoryService
+    @State private var viewedCount = 0
+    @State private var isLoading = true
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isLoading {
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewedCount == 0 {
+                    ContentUnavailableView("No history yet",
+                                           systemImage: "clock.arrow.circlepath",
+                                           description: Text("Posts you view will appear here."))
+                } else {
+                    VStack(spacing: Tokens.Spacing.lg) {
+                        HStack(spacing: Tokens.Spacing.md) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.title2)
+                                .foregroundStyle(Tokens.Color.accent)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(viewedCount) posts viewed")
+                                    .font(Tokens.Typography.headline)
+                                Text("Posts you open are tracked here.")
+                                    .font(Tokens.Typography.caption)
+                                    .foregroundStyle(Tokens.Color.textSecondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(Tokens.Spacing.lg)
+                        .liquidGlass()
+                        Spacer()
+                    }
+                    .padding(Tokens.Spacing.lg)
+                }
+            }
+            .navigationTitle("Recently Viewed")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .task {
+            do {
+                viewedCount = try await historyService.viewedPostIDs().count
+            } catch {
+                BroLog.error(error, category: "history")
+            }
+            isLoading = false
         }
     }
 }

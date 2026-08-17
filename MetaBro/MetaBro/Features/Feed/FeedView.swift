@@ -54,7 +54,7 @@ struct FeedView: View {
             FriendsView(service: container.friendsService)
         }
         .sheet(isPresented: $showingNotifications) {
-            NotificationsView(model: notifications)
+            NotificationsView(model: notifications, container: container)
         }
     }
 
