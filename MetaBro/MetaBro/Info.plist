@@ -43,5 +43,9 @@
 	<string>$(METABRO_USE_LIVE)</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>MetaBro can add Bro-hood events to your calendar so you don't miss them.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>MetaBro sends notifications for new messages, Bro requests, and community activity.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
