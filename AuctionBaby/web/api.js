@@ -52,6 +52,18 @@
       return data; // { token, user }
     },
     me: () => auth("/me"),
+    // Upload a profile photo (raw JPEG binary) to the auth Worker → R2.
+    async uploadPhoto(blob) {
+      const res = await fetch((C.AUTH_URL || "").replace(/\/$/, "") + "/me/photos", {
+        method: "POST",
+        headers: { "Content-Type": "image/jpeg", Authorization: "Bearer " + token() },
+        body: blob,
+      });
+      const t = await res.text();
+      const d = t ? JSON.parse(t) : {};
+      if (!res.ok) throw new Error(d.error || ("HTTP " + res.status));
+      return d; // { photo: { id, url }, ... } (shape may vary)
+    },
     async saveProfile(p) { return auth("/me/profile", { method: "PUT", body: p }); },
     async setDob(dob) { return auth("/me/dob", { method: "POST", body: { dob } }); },
     deleteAccount: () => auth("/me", { method: "DELETE" }),

@@ -119,6 +119,35 @@
     const d = document.createElement("div"); d.className = "toast"; d.textContent = t;
     document.body.appendChild(d); setTimeout(() => d.remove(), 2200);
   };
+
+  // Pick an image, downscale to <=1024px, return { blob, dataURL } (JPEG 0.82).
+  function pickPhoto(cb) {
+    const inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/*";
+    inp.onchange = () => {
+      const file = inp.files && inp.files[0]; if (!file) return;
+      const img = new Image();
+      img.onload = () => {
+        const max = 1024, scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+        cv.getContext("2d").drawImage(img, 0, 0, w, h);
+        cv.toBlob(blob => cb({ blob, dataURL: cv.toDataURL("image/jpeg", 0.82) }), "image/jpeg", 0.82);
+      };
+      img.src = URL.createObjectURL(file);
+    };
+    inp.click();
+  }
+  function addPhoto() {
+    pickPhoto(({ blob, dataURL }) => {
+      if (CONFIGURED() && SIGNED_IN()) {
+        API.uploadPhoto(blob).then(d => {
+          S.me.photo = (d.photo && d.photo.url) || d.url || (d.photos && d.photos[0] && d.photos[0].url) || dataURL;
+          save(); you(); toast("Photo updated.");
+        }).catch(e => { S.me.photo = dataURL; save(); you(); toast("Saved locally (upload: " + e.message + ")"); });
+      } else { S.me.photo = dataURL; save(); you(); toast("Photo updated."); }
+    });
+  }
   const tabbar = () => {
     const first = S.role === "woman" ? ["floor", "▦", "Bids"] : ["floor", "▦", "Floor"];
     return `<div class="tabbar">
@@ -446,15 +475,17 @@
   function you() {
     app.innerHTML = `<div class="screen">
       <div class="card" style="text-align:center;padding:24px">
-        <div style="width:96px;margin:0 auto 12px">${grad(210, S.me.name || "You")}</div>
+        <div style="width:96px;margin:0 auto 12px">${grad(210, S.me.name || "You", S.me.photo)}</div>
         <div style="font-family:var(--serif);font-weight:800;font-size:22px">${esc(S.me.name || "You")} <span class="muted">${S.me.age}</span></div>
         <div class="faint">${esc(S.me.city || "")} · ${S.role === "man" ? "Bidder" : "Lot"}</div>
         <div class="pill" style="margin-top:12px">⚖ ${S.wallet.toLocaleString()} Gavels</div>
       </div>
-      <button class="btn ghost" data-tab="store" style="margin-top:14px">Open the Store</button>
+      <button class="btn ghost" id="addphoto" style="margin-top:14px">${S.me.photo ? "Change photo" : "Add a photo"}</button>
+      <button class="btn ghost" data-tab="store" style="margin-top:10px">Open the Store</button>
       <button class="btn ghost" id="reset" style="margin-top:10px;color:var(--danger)">Reset account</button>
       <div class="disclosure">Auction Baby — web. A bid is a promise to spend on the date, never a payment to another person.</div>
     </div>${tabbar()}`;
+    $("#addphoto").onclick = addPhoto;
     $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedFloor(); save(); go("/"); onboarding(); } };
     wire();
   }
