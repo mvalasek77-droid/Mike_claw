@@ -23,7 +23,9 @@
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true
       },
-      "associatedDomains": ["applinks:bannedtube.app"]
+      "associatedDomains": [
+        "applinks:bannedtube.app"
+      ]
     },
     "scheme": "bannedtube",
     "android": {
@@ -54,7 +56,8 @@
     },
     "plugins": [
       "expo-sharing",
-      "expo-updates"
+      "expo-updates",
+      "expo-video"
     ]
   }
 }

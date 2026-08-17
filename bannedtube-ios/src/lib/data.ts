@@ -11,6 +11,7 @@ export interface Video {
   dislikes: number;
   category: string;
   tags: string[];
+  videoUrl: string;
 }
 
 export interface Channel {
@@ -333,6 +334,7 @@ export const videos: Video[] = [
     dislikes: 45,
     category: "Entertainment",
     tags: ["challenge", "money", "hide and seek", "competition"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
   },
   {
     id: "v2",
@@ -348,6 +350,7 @@ export const videos: Video[] = [
     dislikes: 32,
     category: "People & Blogs",
     tags: ["philanthropy", "homes", "giveaway", "charity"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
   },
   {
     id: "v3",
@@ -363,6 +366,7 @@ export const videos: Video[] = [
     dislikes: 67,
     category: "Entertainment",
     tags: ["survival", "island", "challenge", "competition"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
   },
   {
     id: "v4",
@@ -378,6 +382,7 @@ export const videos: Video[] = [
     dislikes: 12,
     category: "Entertainment",
     tags: ["kids", "water park", "family", "fun"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
   },
   {
     id: "v5",
@@ -393,6 +398,7 @@ export const videos: Video[] = [
     dislikes: 18,
     category: "Gaming",
     tags: ["gaming", "worst game", "steam", "challenge"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
   },
   {
     id: "v6",
@@ -408,6 +414,7 @@ export const videos: Video[] = [
     dislikes: 89,
     category: "Gaming",
     tags: ["reaction", "cringe", "throwback", "gaming"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
   },
   {
     id: "v7",
@@ -423,6 +430,7 @@ export const videos: Video[] = [
     dislikes: 5,
     category: "Gaming",
     tags: ["live", "gaming", "charity", "marathon"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
   },
   {
     id: "v8",
@@ -438,6 +446,7 @@ export const videos: Video[] = [
     dislikes: 15,
     category: "Comedy",
     tags: ["comedy", "sketch", "mom", "relatable"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
   },
   {
     id: "v9",
@@ -453,6 +462,7 @@ export const videos: Video[] = [
     dislikes: 23,
     category: "Comedy",
     tags: ["comedy", "school", "students", "sketch"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackFaceStreetstier.mp4",
   },
   {
     id: "v10",
@@ -468,6 +478,7 @@ export const videos: Video[] = [
     dislikes: 28,
     category: "Science",
     tags: ["engineering", "iron man", "build", "flying"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
   },
   {
     id: "v11",
@@ -483,6 +494,7 @@ export const videos: Video[] = [
     dislikes: 12,
     category: "Science",
     tags: ["dominos", "chain reaction", "world record", "satisfying"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
   },
   {
     id: "v12",
@@ -498,6 +510,7 @@ export const videos: Video[] = [
     dislikes: 15,
     category: "Entertainment",
     tags: ["trick shots", "impossible", "sports", "viral"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
   },
   {
     id: "v13",
@@ -513,6 +526,7 @@ export const videos: Video[] = [
     dislikes: 18,
     category: "Entertainment",
     tags: ["abandoned", "exploration", "theme park", "night"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4",
   },
   {
     id: "v14",
@@ -528,6 +542,7 @@ export const videos: Video[] = [
     dislikes: 34,
     category: "Entertainment",
     tags: ["haunted", "hotel", "24 hours", "paranormal"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
   },
   {
     id: "v15",
@@ -543,6 +558,7 @@ export const videos: Video[] = [
     dislikes: 18,
     category: "Comedy",
     tags: ["silent comedy", "physical comedy", "diy fail", "viral"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
   },
   {
     id: "v16",
@@ -558,6 +574,7 @@ export const videos: Video[] = [
     dislikes: 9,
     category: "Music",
     tags: ["music", "original song", "independent", "banned"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
   },
   {
     id: "v17",
@@ -573,6 +590,7 @@ export const videos: Video[] = [
     dislikes: 3,
     category: "Music",
     tags: ["street performer", "live music", "talent", "guitar"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
   },
   {
     id: "v18",
@@ -588,6 +606,7 @@ export const videos: Video[] = [
     dislikes: 21,
     category: "Technology",
     tags: ["tech", "phone review", "budget", "honest"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
   },
   {
     id: "v19",
@@ -603,6 +622,7 @@ export const videos: Video[] = [
     dislikes: 11,
     category: "Technology",
     tags: ["privacy", "smart home", "surveillance", "tech"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
   },
   {
     id: "v20",
@@ -618,6 +638,7 @@ export const videos: Video[] = [
     dislikes: 45,
     category: "Education",
     tags: ["history", "archaeology", "civilization", "mystery"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
   },
   {
     id: "v21",
@@ -633,6 +654,7 @@ export const videos: Video[] = [
     dislikes: 18,
     category: "Education",
     tags: ["psychology", "cognitive bias", "propaganda", "science"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
   },
   {
     id: "v22",
@@ -648,6 +670,7 @@ export const videos: Video[] = [
     dislikes: 34,
     category: "Comedy",
     tags: ["standup", "comedy", "special", "uncensored"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
   },
   {
     id: "v23",
@@ -663,6 +686,7 @@ export const videos: Video[] = [
     dislikes: 45,
     category: "Comedy",
     tags: ["roast", "comedy", "battle", "funny"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
   },
   {
     id: "v24",
@@ -678,6 +702,7 @@ export const videos: Video[] = [
     dislikes: 23,
     category: "Fitness",
     tags: ["fitness", "transformation", "bodyweight", "natural"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackFaceStreetstier.mp4",
   },
   {
     id: "v25",
@@ -693,6 +718,7 @@ export const videos: Video[] = [
     dislikes: 12,
     category: "Cooking",
     tags: ["cooking", "food", "challenge", "taste test"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4",
   },
   {
     id: "v26",
@@ -708,6 +734,7 @@ export const videos: Video[] = [
     dislikes: 9,
     category: "Travel",
     tags: ["travel", "rare country", "adventure", "solo travel"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
   },
   {
     id: "v27",
@@ -723,6 +750,7 @@ export const videos: Video[] = [
     dislikes: 15,
     category: "Travel",
     tags: ["travel", "tribe", "remote", "documentary"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
   },
   {
     id: "v28",
@@ -738,6 +766,7 @@ export const videos: Video[] = [
     dislikes: 89,
     category: "People & Blogs",
     tags: ["opinions", "controversial", "debate", "commentary"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
   },
   {
     id: "v29",
@@ -753,6 +782,7 @@ export const videos: Video[] = [
     dislikes: 6,
     category: "Art",
     tags: ["art", "experiment", "canvas", "strangers"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
   },
   {
     id: "v30",
@@ -768,6 +798,7 @@ export const videos: Video[] = [
     dislikes: 18,
     category: "News & Politics",
     tags: ["journalism", "interview", "street", "independent"],
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
   },
 ];
 

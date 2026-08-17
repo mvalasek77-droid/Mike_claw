@@ -144,6 +144,13 @@ describe("data integrity — deep checks", () => {
         }
       }
     });
+
+    it("every video has a valid videoUrl", () => {
+      for (const v of videos) {
+        expect(v.videoUrl).toBeDefined();
+        expect(v.videoUrl.startsWith("https://")).toBe(true);
+      }
+    });
   });
 
   describe("format functions edge cases", () => {

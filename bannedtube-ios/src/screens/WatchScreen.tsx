@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import * as Clipboard from "expo-clipboard";
 import { Alert, Share as RNShare } from "react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
 import Avatar from "../components/Avatar";
 import VideoCard from "../components/VideoCard";
 import { useApp } from "../lib/AppContext";
@@ -176,7 +178,6 @@ export default function WatchScreen({
     addWatchHistory, addComment, getVideoComments,
   } = useApp();
 
-  const [playing, setPlaying] = useState(false);
   const [commentText, setCommentText] = useState("");
   const liked = isLiked(video.id);
   const disliked = isDisliked(video.id);
@@ -186,6 +187,11 @@ export default function WatchScreen({
   const builtInComments = getComments();
   const userComments = getVideoComments(video.id);
   const allComments = [...userComments, ...builtInComments];
+
+  const player = useVideoPlayer(video.videoUrl, (player) => {
+    player.loop = true;
+    player.muted = false;
+  });
 
   useEffect(() => {
     addWatchHistory(video.id, 0);
@@ -272,53 +278,12 @@ export default function WatchScreen({
       </TouchableOpacity>
 
       <ScrollView showsVerticalScrollIndicator={false} keyboardDismissMode="interactive">
-        <TouchableOpacity
+        <VideoView
+          player={player}
           style={styles.player}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setPlaying(!playing);
-          }}
-          activeOpacity={0.9}
-          accessibilityRole="button"
-          accessibilityLabel={playing ? "Pause video" : "Play video"}
-        >
-          <LinearGradient
-            colors={[video.thumbnailColors[0], video.thumbnailColors[1]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <LinearGradient
-            colors={["rgba(0,0,0,0.4)", "transparent", "rgba(0,0,0,0.5)"]}
-            locations={[0, 0.4, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-
-          {!playing && (
-            <View style={styles.playOverlay}>
-              <View style={styles.playGlow} />
-              <View style={styles.playCircle}>
-                <Ionicons
-                  name="play"
-                  size={32}
-                  color="#fff"
-                  style={{ marginLeft: 4 }}
-                />
-              </View>
-            </View>
-          )}
-
-          <View style={styles.progressContainer}>
-            <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: playing ? "35%" : "0%" },
-                ]}
-              />
-            </View>
-          </View>
-        </TouchableOpacity>
+          contentFit="contain"
+          nativeControls
+        />
 
         <View style={styles.content}>
           <Text style={styles.title} accessibilityRole="header">
