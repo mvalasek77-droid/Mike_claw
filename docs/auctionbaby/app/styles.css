@@ -135,6 +135,13 @@ textarea.txt{resize:vertical;min-height:64px}
 .disclosure{font-size:11px;color:var(--ink-faint);text-align:center;line-height:1.5;margin-top:12px}
 a{color:var(--gold)}
 
+/* house rules banner */
+.house-rules{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin-bottom:16px}
+.house-rules-title{font:800 11px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--copycat);margin-bottom:6px}
+.house-rules-text{font-size:13px;line-height:1.45;color:var(--ink-soft)}
+
 /* verified badge (blue checkmark seal) */
 .vbadge{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
   width:20px;height:20px;border-radius:50%;background:var(--verify);color:#fff;
