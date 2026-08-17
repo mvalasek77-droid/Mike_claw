@@ -130,6 +130,7 @@
       const file = inp.files && inp.files[0]; if (!file) return;
       const img = new Image();
       img.onload = () => {
+        URL.revokeObjectURL(img.src);
         const max = 1024, scale = Math.min(1, max / Math.max(img.width, img.height));
         const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
         const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
@@ -279,14 +280,14 @@
     sheet.addEventListener("click", e => {
       const add = e.target.closest("[data-add]"); if (add) { amount += +add.dataset.add; draw(); }
       if (e.target.closest("[data-reset]")) { amount = w.startingBid; draw(); }
-      if (e.target.closest("#bid-place")) { sheet.remove(); placeBid(w, amount); }
+      if (e.target.closest("#bid-place")) { const note = ($("#bid-note") || {}).value || ""; sheet.remove(); placeBid(w, amount, note.trim()); }
     });
     document.body.appendChild(sheet);
   }
 
-  function placeBid(w, amount) {
+  function placeBid(w, amount, note) {
     if (CONFIGURED() && SIGNED_IN()) {
-      API.placeBid(w.id, amount, "")
+      API.placeBid(w.id, amount, note || "")
         .then(() => { toast("Bid placed — you'll be notified if she accepts."); syncMatches(); })
         .catch(e => toast("Bid failed: " + e.message));
       return;
@@ -295,9 +296,9 @@
     const accepted = true;
     if (!accepted) return toast(`${w.name} passed. Bid stronger next time.`);
     const m = { id: uid(), lotId: w.id, name: w.name, hue: w.hue, amount,
+                note: note || "",
                 messages: [{ me: false, text: w.icebreakers[0] || "You win — where are you taking me?" }] };
-    S.matches.unshift(m); save();
-    celebrate(w, amount, m);
+    S.matches.unshift(m); save(); celebrate(w, amount, m);
   }
 
   function celebrate(w, amount, m) {
@@ -363,7 +364,7 @@
         const last = m.messages[m.messages.length - 1];
         return `<button class="card row" data-chat="${m.id}" style="width:100%;text-align:left;margin-bottom:10px">
           ${gradSm(m.hue, m.name)}<div class="grow"><div style="font-family:var(--serif);font-weight:800">${esc(m.name)}</div>
-          <div class="faint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${m.unread ? "color:var(--ink);font-weight:600" : ""}">${esc(last ? last.text : "Say hello")}</div></div>
+          <div class="faint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${m.unread ? "color:var(--ink);font-weight:600" : ""}">${esc(last ? (last.photo ? "📷 Photo" : (last.text || "Say hello")) : "Say hello")}</div></div>
           ${m.unread ? `<span class="udot"></span>` : `<span class="pill">${money(m.amount)}</span>`}</button>`;
       }).join("") : `<div class="card muted">No matches yet. Win a bid on the floor.</div>`}
     </div>${tabbar()}`;
