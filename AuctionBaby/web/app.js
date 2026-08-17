@@ -37,6 +37,19 @@
       if (Array.isArray(arr) && arr.length) { S.floor = arr.map(mapLot); save(); if (tab === "floor") floor(); }
     } catch (e) { /* keep demo floor */ }
   }
+  async function syncIncoming() {
+    if (!CONFIGURED() || !SIGNED_IN()) return;
+    try {
+      const r = await API.incomingBids();
+      const arr = r.bids || (Array.isArray(r) ? r : []);
+      S.incoming = arr.map(b => ({
+        id: b.id, name: (b.man && b.man.name) || b.name || "Bidder",
+        age: b.age, amount: b.amount || b.bidAmount || 0, note: b.note || "",
+        hue: hueFrom(b.id || b.name),
+      }));
+      save(); if (tab === "floor" && S.role === "woman") incoming();
+    } catch (e) { /* keep local */ }
+  }
   async function syncMatches() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
     try {
@@ -83,8 +96,15 @@
   }
   function fresh() {
     return { registered: false, role: null, me: { name: "", age: 27, city: "" },
-             wallet: 750, floor: [], matches: [], seenSplash: false };
+             wallet: 750, floor: [], matches: [], incoming: [], seenSplash: false };
   }
+  // demo suitors (men bidding on a woman) — used when no backend is configured
+  const seedIncoming = () => ([
+    ["Marcus Bell", 34, 500, "Dinner at the place with the good scotch. You pick the night."],
+    ["Julian Reyes", 31, 1000, "I don't do small talk. Rooftop, Friday — tell me you're in."],
+    ["Theo Adler", 38, 750, "Gallery opening, then a late dinner. I'll make it worth the yes."],
+    ["Dominic Cross", 29, 300, "Coffee that turns into a long walk. Low pressure, high effort."],
+  ].map(([name, age, amount, note]) => ({ id: uid(), name, age, amount, note, hue: hueFrom(name) })));
   const save = () => localStorage.setItem(KEY, JSON.stringify(S));
   if (!S.floor || !S.floor.length) { S.floor = seedFloor(); save(); }
 
@@ -98,11 +118,13 @@
     const d = document.createElement("div"); d.className = "toast"; d.textContent = t;
     document.body.appendChild(d); setTimeout(() => d.remove(), 2200);
   };
-  const tabbar = () => `
-    <div class="tabbar">
-      ${[["floor", "▦", "Floor"], ["matches", "❤", "Matches"], ["store", "⚖", "Store"], ["you", "◉", "You"]]
+  const tabbar = () => {
+    const first = S.role === "woman" ? ["floor", "▦", "Bids"] : ["floor", "▦", "Floor"];
+    return `<div class="tabbar">
+      ${[first, ["matches", "❤", "Matches"], ["store", "⚖", "Store"], ["you", "◉", "You"]]
         .map(([k, ic, l]) => `<button data-tab="${k}" class="${tab === k ? "on" : ""}"><span class="ic">${ic}</span>${l}</button>`).join("")}
     </div>`;
+  };
 
   // ================= SCREENS =================
   function render() {
@@ -113,7 +135,7 @@
     if (h === "matches") { tab = "matches"; return matches(); }
     if (h === "store") { tab = "store"; return store(); }
     if (h === "you") { tab = "you"; return you(); }
-    tab = "floor"; return floor();
+    tab = "floor"; return S.role === "woman" ? incoming() : floor();
   }
 
   function onboarding() {
@@ -159,7 +181,8 @@
       if (CONFIGURED() && SIGNED_IN()) {
         try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
       }
-      S.registered = true; save(); go("/floor"); syncFloor(); syncMatches();
+      if (S.role === "woman" && !CONFIGURED() && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
+      S.registered = true; save(); go("/floor"); syncFloor(); syncMatches(); syncIncoming();
     };
   }
 
@@ -254,6 +277,50 @@
       <div class="faint" style="margin-top:10px">Tap anywhere to continue</div></div>`;
     c.onclick = e => { c.remove(); if (e.target.id === "sayhi") go("/chat/" + m.id); };
     document.body.appendChild(c);
+  }
+
+  // ---- woman side: incoming bids ----
+  function incoming() {
+    tab = "floor";
+    const bids = S.incoming || [];
+    app.innerHTML = `<div class="screen">
+      <div class="topbar"><h1 class="display" style="font-size:30px">Your bids</h1><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
+      <div class="faint" style="margin:-6px 0 14px">Men bidding for a date. Accept the one you like — his photo unlocks when you do.</div>
+      ${bids.length ? bids.map(b => `
+        <div class="card" style="margin-bottom:12px">
+          <div class="row">${gradSm(b.hue, b.name)}<div class="grow">
+            <div style="font-family:var(--serif);font-weight:800">${esc(b.name)} <span class="muted">${b.age || ""}</span></div>
+            <div class="gold" style="font-weight:800;font-size:18px">${money(b.amount)}</div></div></div>
+          ${b.note ? `<p class="muted" style="margin:10px 0 0">${esc(b.note)}</p>` : ""}
+          <div class="row" style="gap:8px;margin-top:12px">
+            <button class="btn rose" data-accept="${b.id}">Accept</button>
+            <button class="btn ghost" data-decline="${b.id}" style="max-width:110px">Pass</button>
+          </div>
+        </div>`).join("") : `<div class="card muted">No bids yet — sit tight. The floor moves fast.</div>`}
+    </div>${tabbar()}`;
+    app.querySelectorAll("[data-accept]").forEach(x => x.onclick = () => acceptBid(x.dataset.accept));
+    app.querySelectorAll("[data-decline]").forEach(x => x.onclick = () => declineBid(x.dataset.decline));
+    wire();
+  }
+
+  function acceptBid(id) {
+    const b = (S.incoming || []).find(x => x.id === id); if (!b) return;
+    if (CONFIGURED() && SIGNED_IN()) {
+      API.acceptBid(id)
+        .then(() => { toast("Accepted — say hello."); syncIncoming(); syncMatches(); go("/matches"); })
+        .catch(e => toast("Accept failed: " + e.message));
+      return;
+    }
+    // demo: remove from incoming, make a match + open with your line
+    S.incoming = (S.incoming || []).filter(x => x.id !== id);
+    const m = { id: uid(), name: b.name, hue: b.hue, amount: b.amount,
+                messages: [{ me: true, text: "You're in. Where are we going? 🍸" }] };
+    S.matches.unshift(m); save(); celebrate(b, b.amount, m);
+  }
+
+  function declineBid(id) {
+    if (CONFIGURED() && SIGNED_IN()) { API.declineBid(id).catch(() => {}); }
+    S.incoming = (S.incoming || []).filter(x => x.id !== id); save(); incoming(); toast("Passed.");
   }
 
   function matches() {
@@ -369,5 +436,7 @@
   if (!location.hash) go(S.registered ? "/floor" : "/");
   render();
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
-  if (S.registered && CONFIGURED() && SIGNED_IN()) { syncFloor(); syncMatches(); }
+  // demo woman returning with no bids left → reseed so the screen isn't empty
+  if (S.registered && S.role === "woman" && !CONFIGURED() && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); }
+  if (S.registered && CONFIGURED() && SIGNED_IN()) { syncFloor(); syncMatches(); syncIncoming(); }
 })();
