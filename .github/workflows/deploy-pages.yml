@@ -32,7 +32,11 @@ jobs:
              AuctionBaby/web/config.js AuctionBaby/web/styles.css AuctionBaby/web/sw.js \
              AuctionBaby/web/manifest.webmanifest AuctionBaby/web/landing.html \
              docs/auctionbaby/app/
-          cp AuctionBaby/web/icons/icon.svg docs/auctionbaby/app/icons/
+          cp AuctionBaby/web/icons/icon.svg \
+             AuctionBaby/web/icons/icon-180.png \
+             AuctionBaby/web/icons/icon-192.png \
+             AuctionBaby/web/icons/icon-512.png \
+             docs/auctionbaby/app/icons/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
