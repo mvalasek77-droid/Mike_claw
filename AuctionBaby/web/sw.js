@@ -1,5 +1,5 @@
 /* Auction Baby PWA service worker — cache-first shell so it installs and works offline. */
-const CACHE = "auctionbaby-v5";
+const CACHE = "auctionbaby-v6";
 const ASSETS = [
   "./", "./index.html", "./styles.css", "./app.js", "./api.js", "./config.js",
   "./manifest.webmanifest", "./icons/icon.svg", "./icons/icon-180.png",

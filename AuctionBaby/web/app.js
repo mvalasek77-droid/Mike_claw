@@ -150,8 +150,9 @@
     catch { return fresh(); }
   }
   function fresh() {
-    return { registered: false, role: null, me: { name: "", age: 27, city: "" },
-             wallet: 750, floor: [], matches: [], incoming: [], seenSplash: false };
+    return { registered: false, role: null,
+             me: { name: "", dob: "", age: 27, city: "", bio: "", portrait: "", winMe: "", simplePleasure: "", interests: [], photo: null },
+             wallet: 750, floor: [], matches: [], incoming: [], seenSplash: false, reputation: 100 };
   }
   // demo suitors (men bidding on a woman) — used when no backend is configured
   const seedIncoming = () => ([
@@ -224,11 +225,26 @@
     tab = "floor"; return S.role === "woman" ? incoming() : floor();
   }
 
+  const ALL_INTERESTS = ["Art","Travel","Fitness","Music","Film","Food","Startups","Reading","Wine","Dogs","Nightlife","Design"];
+  let obPhoto = S.me.photo || null;
+  let obInterests = [...(S.me.interests || [])];
+
+  function ageFromDOB(dob) {
+    if (!dob) return 0;
+    const d = new Date(dob), now = new Date();
+    let a = now.getFullYear() - d.getFullYear();
+    if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) a--;
+    return a;
+  }
+
   function onboarding() {
+    const me = S.me;
     const roleCard = (k, title, sub) =>
       `<button class="card" style="text-align:left;width:100%;margin-bottom:10px;${S.role === k ? "border-color:var(--gold)" : ""}" data-role="${k}">
          <div class="row"><div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:18px">${title}</div>
          <div class="faint">${sub}</div></div><div class="pill">${S.role === k ? "Selected" : "Pick"}</div></div></button>`;
+    const interestChips = ALL_INTERESTS.map(i =>
+      `<button class="chip${obInterests.includes(i) ? " on" : ""}" data-interest="${esc(i)}">${esc(i)}</button>`).join("");
     app.innerHTML = `<div class="screen">
       <div style="text-align:center;margin:18px 0 20px">
         <div class="kicker">Auction Baby</div>
@@ -238,17 +254,44 @@
       <div class="kicker" style="margin:6px 0 8px">Your side of the floor</div>
       ${roleCard("man", "I'm bidding", "Browse the floor and place bids on dates.")}
       ${roleCard("woman", "I'm a lot", "Field bids; accept the one you like.")}
-      <div class="card" style="margin-top:12px">
-        <label class="field"><div class="lbl">Name</div><input class="txt" id="ob-name" placeholder="Your name" value="${esc(S.me.name)}"></label>
-        <label class="field"><div class="lbl">Age</div><input class="txt" id="ob-age" type="number" min="18" value="${S.me.age}"></label>
-        <label class="field"><div class="lbl">City</div><input class="txt" id="ob-city" placeholder="Where you're based" value="${esc(S.me.city)}"></label>
+
+      <div class="kicker" style="margin:18px 0 8px">Your photo</div>
+      <div class="card" style="text-align:center;padding:20px">
+        <div id="ob-photo-preview" style="width:120px;height:120px;margin:0 auto 12px;border-radius:20px;overflow:hidden;border:2px dashed var(--line);display:grid;place-items:center">
+          ${obPhoto ? `<img src="${esc(obPhoto)}" alt="" style="width:100%;height:100%;object-fit:cover">` : `<span class="faint" style="font-size:13px">No photo yet</span>`}
+        </div>
+        <button class="btn ghost" id="ob-add-photo" style="max-width:200px;margin:0 auto">${obPhoto ? "Change photo" : "Add a photo"}</button>
       </div>
-      ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-top:12px"> Sign in with Apple</button>
+
+      <div class="kicker" style="margin:18px 0 8px">Basics</div>
+      <div class="card">
+        <label class="field"><div class="lbl">Name</div><input class="txt" id="ob-name" placeholder="Your name" value="${esc(me.name)}"></label>
+        <label class="field"><div class="lbl">Date of birth</div><input class="txt" id="ob-dob" type="date" value="${esc(me.dob || "")}"></label>
+        <label class="field"><div class="lbl">City</div><input class="txt" id="ob-city" placeholder="Where you're based" value="${esc(me.city)}"></label>
+        <label class="field"><div class="lbl">Portrait tone</div><textarea class="txt" id="ob-portrait" placeholder="About you" rows="2">${esc(me.portrait || "")}</textarea></label>
+        <label class="field"><div class="lbl">Bio</div><input class="txt" id="ob-bio" placeholder="One line that makes them lean in" value="${esc(me.bio || "")}"></label>
+        <label class="field"><div class="lbl">The way to win me over is</div><input class="txt" id="ob-winme" placeholder="Your answer" value="${esc(me.winMe || "")}"></label>
+        <label class="field"><div class="lbl">My simple pleasure</div><input class="txt" id="ob-pleasure" placeholder="Your answer" value="${esc(me.simplePleasure || "")}"></label>
+      </div>
+
+      <div class="kicker" style="margin:18px 0 8px">Interests</div>
+      <div class="card"><div style="display:flex;flex-wrap:wrap;gap:8px">${interestChips}</div></div>
+
+      ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-top:14px"> Sign in with Apple</button>
         <div class="faint" style="text-align:center;margin-top:6px">Optional — keeps your account across devices.</div>` : ""}
-      <button class="btn" id="ob-go" style="margin-top:16px">Step onto the floor</button>
+      <button class="btn" id="ob-go" style="margin-top:18px">Step onto the floor</button>
       <div class="disclosure">A bid is the budget you commit to spend on the date itself — dinner, drinks, the evening. It is never a payment to another person.</div>
     </div>`;
     app.querySelectorAll("[data-role]").forEach(b => b.onclick = () => { S.role = b.dataset.role; save(); onboarding(); });
+    app.querySelectorAll("[data-interest]").forEach(b => b.onclick = () => {
+      const i = b.dataset.interest;
+      if (obInterests.includes(i)) obInterests = obInterests.filter(x => x !== i);
+      else obInterests.push(i);
+      onboarding();
+    });
+    $("#ob-add-photo").onclick = () => {
+      pickPhoto(({ dataURL }) => { obPhoto = dataURL; onboarding(); });
+    };
     const ap = $("#ob-apple");
     if (ap) ap.onclick = async () => {
       try {
@@ -259,11 +302,23 @@
       } catch (e) { toast("Apple sign-in: " + e.message); }
     };
     $("#ob-go").onclick = async () => {
-      const name = $("#ob-name").value.trim(), age = +$("#ob-age").value || 0;
+      const name = $("#ob-name").value.trim();
+      const dob = ($("#ob-dob") || {}).value || "";
+      const age = ageFromDOB(dob);
       if (!S.role) return toast("Pick a side first.");
+      if (!obPhoto) return toast("Add a photo to continue.");
       if (!name) return toast("Add your name.");
+      if (!dob) return toast("Add your date of birth.");
       if (age < 18) return toast("You must be 18 or older.");
-      S.me = { name, age, city: $("#ob-city").value.trim() };
+      S.me = {
+        name, dob, age, city: $("#ob-city").value.trim(),
+        bio: ($("#ob-bio") || {}).value.trim(),
+        portrait: ($("#ob-portrait") || {}).value.trim(),
+        winMe: ($("#ob-winme") || {}).value.trim(),
+        simplePleasure: ($("#ob-pleasure") || {}).value.trim(),
+        interests: obInterests,
+        photo: obPhoto,
+      };
       if (CONFIGURED() && SIGNED_IN()) {
         try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
       }
@@ -614,14 +669,22 @@
   }
 
   function you() {
+    const me = S.me;
+    const interests = (me.interests || []).map(i => `<span class="chip on" style="pointer-events:none">${esc(i)}</span>`).join("");
     app.innerHTML = `<div class="screen">
       <div class="card" style="text-align:center;padding:24px">
-        <div style="width:96px;margin:0 auto 12px">${grad(210, S.me.name || "You", S.me.photo)}</div>
-        <div style="font-family:var(--serif);font-weight:800;font-size:22px">${esc(S.me.name || "You")} <span class="muted">${S.me.age}</span></div>
-        <div class="faint">${esc(S.me.city || "")} · ${S.role === "man" ? "Bidder" : "Lot"}</div>
+        <div style="width:96px;margin:0 auto 12px">${grad(210, me.name || "You", me.photo)}</div>
+        <div style="font-family:var(--serif);font-weight:800;font-size:22px">${esc(me.name || "You")} <span class="muted">${me.age}</span></div>
+        <div class="faint">${esc(me.city || "")} · ${S.role === "man" ? "Bidder" : "Lot"}</div>
         <div class="pill" style="margin-top:12px">⚖ ${S.wallet.toLocaleString()} Gavels</div>
+        ${typeof S.reputation === "number" ? `<div class="faint" style="margin-top:8px">Reputation: ${S.reputation}%</div>` : ""}
       </div>
-      <button class="btn ghost" id="addphoto" style="margin-top:14px">${S.me.photo ? "Change photo" : "Add a photo"}</button>
+      ${me.bio ? `<div class="card" style="margin-top:12px"><div class="kicker">Bio</div><div class="muted" style="margin-top:6px">${esc(me.bio)}</div></div>` : ""}
+      ${me.portrait ? `<div class="card" style="margin-top:10px"><div class="kicker">Portrait</div><div class="muted" style="margin-top:6px">${esc(me.portrait)}</div></div>` : ""}
+      ${me.winMe ? `<div class="card" style="margin-top:10px"><div class="faint">The way to win me over is</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px">${esc(me.winMe)}</div></div>` : ""}
+      ${me.simplePleasure ? `<div class="card" style="margin-top:10px"><div class="faint">My simple pleasure</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px">${esc(me.simplePleasure)}</div></div>` : ""}
+      ${interests ? `<div class="card" style="margin-top:10px"><div class="kicker" style="margin-bottom:8px">Interests</div><div style="display:flex;flex-wrap:wrap;gap:8px">${interests}</div></div>` : ""}
+      <button class="btn ghost" id="addphoto" style="margin-top:14px">${me.photo ? "Change photo" : "Add a photo"}</button>
       <button class="btn ghost" data-tab="store" style="margin-top:10px">Open the Store</button>
       ${(CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.VAPID_PUBLIC_KEY) ? `<button class="btn ghost" id="notif" style="margin-top:10px">Enable notifications</button>` : ""}
       ${SIGNED_IN() ? `<button class="btn ghost" id="signout" style="margin-top:10px">Sign out</button>` : ""}
@@ -635,9 +698,9 @@
     const da = $("#delacct"); if (da) da.onclick = async () => {
       if (!confirm("Permanently delete your account? This can't be undone.")) return;
       try { await API.deleteAccount(); } catch (e) { /* proceed with local wipe */ }
-      API.signOutLocal(); S = fresh(); S.floor = seedFloor(); save(); toast("Account deleted."); go("/"); onboarding();
+      API.signOutLocal(); S = fresh(); S.floor = seedFloor(); obPhoto = null; obInterests = []; save(); toast("Account deleted."); go("/"); onboarding();
     };
-    $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedFloor(); save(); go("/"); onboarding(); } };
+    $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedFloor(); obPhoto = null; obInterests = []; save(); go("/"); onboarding(); } };
     wire();
   }
 
