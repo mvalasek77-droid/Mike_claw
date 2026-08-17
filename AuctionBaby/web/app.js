@@ -76,18 +76,18 @@
   };
   const gradSm = (hue, name, photo) => grad(hue, name, photo).replace('class="avatar"', 'class="avatar sm"');
 
-  // ---- demo floor (fictional; gradient avatars, no real photos) ----
+  // ---- demo floor (fictional women with sample photos) ----
   const seedFloor = () => ([
-    ["Serena Voss", 28, "Upper East Side, New York", 300, "Private art dealer. Quiet dinners, old buildings, men who don't explain their watch.", ["Know what you want and don't apologize for it.", "Close a gallery, open the good wine."], 285, false],
-    ["Mara Quinn", 27, "SoHo, New York", 250, "Gallery curator. Openings on weekends, art books I swear I'll stop buying.", ["Make the reservation and don't cancel it."], 320, false],
-    ["Priya Sethi", 29, "Lincoln Park, Chicago", 300, "ER doctor. My schedule is chaos, so when I'm off, I'm present.", ["Calls his mom. Tips well. Asks follow-up questions."], 40, false],
-    ["Sloane Carter", 31, "Venice, Los Angeles", 500, "Founder, second company. Early mornings, good espresso, people who follow through.", ["Skip the small talk and split the tasting menu."], 200, false],
-    ["Noor Haddad", 26, "Capitol Hill, Seattle", 200, "Climate engineer. I'll hike in any weather and I fact-check fun facts, lovingly.", ["Best trip of my life started with getting weathered in."], 150, false],
-    ["Valentina Cruz", 28, "Williamsburg, Brooklyn", 260, "Pastry chef. I work Saturdays, so impress me on a Tuesday.", ["Cooking for people, then watching the first bite."], 15, false],
-    ["Jade Rivera", 25, "Tulum", 220, "Yoga teacher between Tulum and the next retreat. Sunrise person, unapologetically.", ["Meet me where the day starts."], 95, false],
-    ["Amber Skye", 24, "Miami Beach", 240, "Boat weekends and a standing rooftop reservation. Come keep up.", ["Sunset drinks over the water. You handle the details."], 350, false],
-  ].map(([name, age, city, bid, bio, ice, hue, verified]) => ({
-    id: uid(), name, age, city, startingBid: bid, bio, icebreakers: ice, hue, verified
+    ["Serena Voss", 28, "Upper East Side, New York", 300, "Private art dealer. Quiet dinners, old buildings, men who don't explain their watch.", ["Know what you want and don't apologize for it.", "Close a gallery, open the good wine."], 285, false, "photos/photo-serena.jpg"],
+    ["Mara Quinn", 27, "SoHo, New York", 250, "Gallery curator. Openings on weekends, art books I swear I'll stop buying.", ["Make the reservation and don't cancel it."], 320, false, "photos/photo-mara.jpg"],
+    ["Priya Sethi", 29, "Lincoln Park, Chicago", 300, "ER doctor. My schedule is chaos, so when I'm off, I'm present.", ["Calls his mom. Tips well. Asks follow-up questions."], 40, false, "photos/photo-priya.jpg"],
+    ["Sloane Carter", 31, "Venice, Los Angeles", 500, "Founder, second company. Early mornings, good espresso, people who follow through.", ["Skip the small talk and split the tasting menu."], 200, false, "photos/photo-sloane.jpg"],
+    ["Noor Haddad", 26, "Capitol Hill, Seattle", 200, "Climate engineer. I'll hike in any weather and I fact-check fun facts, lovingly.", ["Best trip of my life started with getting weathered in."], 150, false, "photos/photo-noor.jpg"],
+    ["Valentina Cruz", 28, "Williamsburg, Brooklyn", 260, "Pastry chef. I work Saturdays, so impress me on a Tuesday.", ["Cooking for people, then watching the first bite."], 15, false, "photos/photo-valentina.jpg"],
+    ["Jade Rivera", 25, "Tulum", 220, "Yoga teacher between Tulum and the next retreat. Sunrise person, unapologetically.", ["Meet me where the day starts."], 95, false, "photos/photo-jade.jpg"],
+    ["Amber Skye", 24, "Miami Beach", 240, "Boat weekends and a standing rooftop reservation. Come keep up.", ["Sunset drinks over the water. You handle the details."], 350, false, "photos/photo-amber.jpg"],
+  ].map(([name, age, city, bid, bio, ice, hue, verified, photo]) => ({
+    id: uid(), name, age, city, startingBid: bid, bio, icebreakers: ice, hue, verified, photo
   })));
 
   // ---- state ----

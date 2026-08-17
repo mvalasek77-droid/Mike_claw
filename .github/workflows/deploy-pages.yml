@@ -27,16 +27,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Sync web app into docs
         run: |
-          mkdir -p docs/auctionbaby/app/icons
+          mkdir -p docs/auctionbaby/app/icons docs/auctionbaby/app/photos
           cp AuctionBaby/web/index.html AuctionBaby/web/app.js AuctionBaby/web/api.js \
              AuctionBaby/web/config.js AuctionBaby/web/styles.css AuctionBaby/web/sw.js \
              AuctionBaby/web/manifest.webmanifest AuctionBaby/web/landing.html \
              docs/auctionbaby/app/
-          cp AuctionBaby/web/icons/icon.svg \
-             AuctionBaby/web/icons/icon-180.png \
-             AuctionBaby/web/icons/icon-192.png \
-             AuctionBaby/web/icons/icon-512.png \
-             docs/auctionbaby/app/icons/
+          cp AuctionBaby/web/icons/* docs/auctionbaby/app/icons/
+          cp AuctionBaby/web/photos/* docs/auctionbaby/app/photos/ 2>/dev/null || true
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
