@@ -1,0 +1,25 @@
+name: Web CI
+
+on:
+  push:
+    paths: ["AuctionBaby/web/**"]
+  pull_request:
+    paths: ["AuctionBaby/web/**"]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Syntax-check web JS
+        run: |
+          cd AuctionBaby/web
+          for f in config.js api.js app.js sw.js; do
+            echo "checking $f"; node --check "$f"
+          done
+      - name: Validate manifest JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('AuctionBaby/web/manifest.webmanifest','utf8')); console.log('manifest OK')"

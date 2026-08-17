@@ -58,7 +58,8 @@
       S.matches = arr.map(m => ({
         id: m.id, lotId: m.lotId, name: (m.other && m.other.name) || m.name || "Match",
         hue: hueFrom(m.id || m.name), amount: m.amount || m.bidAmount || 0,
-        messages: (m.messages || []).map(x => ({ me: !!x.fromMe, text: x.text })),
+        seen: !!m.seenByOther,
+        messages: (m.messages || []).map(x => ({ id: x.id, me: !!x.fromMe, text: x.text, reaction: x.reaction || null })),
       }));
       save(); if (tab === "matches") matches();
     } catch (e) { /* keep local */ }
@@ -339,8 +340,15 @@
 
   function chat(id) {
     const m = S.matches.find(x => x.id === id); if (!m) return go("/matches");
-    const bubbles = m.messages.map(msg =>
-      `<div class="bub ${msg.sys ? "sys" : msg.me ? "me" : "them"}">${esc(msg.text)}</div>`).join("");
+    if (CONFIGURED() && SIGNED_IN()) API.markSeen(id).catch(() => {});
+    let lastMe = -1;
+    for (let i = m.messages.length - 1; i >= 0; i--) { const x = m.messages[i]; if (x.me && !x.sys) { lastMe = i; break; } }
+    const bubbles = m.messages.map((msg, i) => {
+      if (msg.sys) return `<div class="bub sys">${esc(msg.text)}</div>`;
+      const rx = msg.reaction ? `<span class="rx">${msg.reaction}</span>` : "";
+      const receipt = (i === lastMe) ? `<div class="receipt">${m.seen ? "Seen" : "Delivered"}</div>` : "";
+      return `<div class="bub ${msg.me ? "me" : "them"}" data-mid="${i}">${esc(msg.text)}${rx}</div>${receipt}`;
+    }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
       <div class="topbar"><button class="chip" data-back>‹</button>
         <div class="row">${gradSm(m.hue, m.name)}<b style="font-family:var(--serif)">${esc(m.name)}</b></div><span></span></div>
@@ -348,23 +356,49 @@
       <div class="composer"><input id="ci" placeholder="Message…" autocomplete="off">
         <button class="iconbtn" id="send">↑</button></div>`;
     app.querySelector("[data-back]").onclick = () => go("/matches");
-    const scroll = () => { const e = $("#msgs"); e.scrollTop = e.scrollHeight; };
-    scroll();
+    const box = $("#msgs"); box.scrollTop = box.scrollHeight;
+    // reactions: double-tap → ❤️, long-press → picker
+    app.querySelectorAll(".bub[data-mid]").forEach(b => {
+      let t;
+      b.addEventListener("dblclick", () => react(id, +b.dataset.mid, "❤️"));
+      const start = () => { t = setTimeout(() => rxPicker(id, +b.dataset.mid), 420); };
+      const stop = () => clearTimeout(t);
+      b.addEventListener("pointerdown", start);
+      b.addEventListener("pointerup", stop);
+      b.addEventListener("pointerleave", stop);
+    });
     const send = () => {
-      const i = $("#ci"), t = i.value.trim(); if (!t) return;
-      m.messages.push({ me: true, text: t }); i.value = ""; save(); chat(id);
+      const i = $("#ci"), tx = i.value.trim(); if (!tx) return;
+      m.messages.push({ me: true, text: tx }); m.seen = false; i.value = ""; save(); chat(id);
       if (CONFIGURED() && SIGNED_IN()) {
-        API.sendMessage(id, t).catch(e => toast("Send failed: " + e.message));
-        return; // the other side's reply comes from the real user, via syncMatches/refresh
+        API.sendMessage(id, tx).catch(e => toast("Send failed: " + e.message));
+        return; // the real other side replies via syncMatches
       }
+      m.typing = true; save(); chat(id);
       setTimeout(() => {
         const replies = ["So where are you taking me?", "Bold. I like it.", "Prove it — pick the place.", "You had me at the bid.", "Friday, then?"];
+        m.typing = false; m.seen = true;
         m.messages.push({ me: false, text: replies[Math.floor(Math.random() * replies.length)] });
         save(); if (location.hash.includes("chat/" + id)) chat(id);
-      }, 900 + Math.random() * 900);
+      }, 1100 + Math.random() * 900);
     };
     $("#send").onclick = send;
     $("#ci").addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+  }
+
+  function react(id, mid, emoji) {
+    const m = S.matches.find(x => x.id === id); if (!m || !m.messages[mid]) return;
+    const msg = m.messages[mid];
+    msg.reaction = (msg.reaction === emoji) ? null : emoji;   // toggle
+    save(); chat(id);
+    if (CONFIGURED() && SIGNED_IN() && msg.id) API.react(id, msg.id, msg.reaction || "").catch(() => {});
+  }
+
+  function rxPicker(id, mid) {
+    const bar = document.createElement("div"); bar.className = "rxbar";
+    bar.innerHTML = `<div class="row">${["❤️", "😂", "😮", "👍", "🔥"].map(e => `<button data-e="${e}">${e}</button>`).join("")}</div>`;
+    bar.onclick = ev => { const b = ev.target.closest("[data-e]"); bar.remove(); if (b) react(id, mid, b.dataset.e); };
+    document.body.appendChild(bar);
   }
 
   function store() {

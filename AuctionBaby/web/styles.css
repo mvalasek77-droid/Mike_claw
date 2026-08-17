@@ -83,6 +83,15 @@ button{font-family:var(--sans);cursor:pointer;border:0;background:none;color:inh
 .bub.me{align-self:flex-end;background:var(--gold-grad);color:#1a1407}
 .bub.them{align-self:flex-start;background:rgba(255,255,255,.08);color:var(--ink)}
 .bub.sys{align-self:center;background:none;color:var(--ink-faint);font-size:12px}
+.bub{position:relative;user-select:none;-webkit-user-select:none}
+.bub .rx{position:absolute;bottom:-10px;font-size:15px;background:var(--bg);border:1px solid var(--line);
+  border-radius:999px;padding:1px 4px;line-height:1}
+.bub.me .rx{left:-6px} .bub.them .rx{right:-6px}
+.bub.typing{color:var(--ink-faint);letter-spacing:3px}
+.receipt{align-self:flex-end;font:700 11px/1 var(--sans);color:var(--ink-faint);margin:2px 6px 0}
+.rxbar{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.5)}
+.rxbar .row{background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:10px 14px;gap:10px}
+.rxbar button{font-size:26px}
 .composer{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;display:flex;gap:8px;
   padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(13,11,8,.94);
   backdrop-filter:blur(14px);border-top:1px solid var(--line)}

@@ -69,6 +69,7 @@
     matchDetail: (id) => match(`/matches/${id}`),
     sendMessage: (id, text) => match(`/matches/${id}/messages`, { method: "POST", body: { text } }),
     markSeen: (id) => match(`/matches/${id}/mark-seen`, { method: "POST" }),
+    react: (matchId, messageId, emoji) => match(`/matches/${matchId}/messages/${messageId}/react`, { method: "POST", body: { emoji } }),
 
     // ── payments (Stripe via consumables Worker) ──
     // Redirects the browser to Stripe Checkout for a Gavel pack.
