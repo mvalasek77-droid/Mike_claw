@@ -380,11 +380,13 @@
     }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
       <div class="topbar"><button class="chip" data-back>‹</button>
-        <div class="row">${gradSm(m.hue, m.name)}<b style="font-family:var(--serif)">${esc(m.name)}</b></div><span></span></div>
+        <div class="row">${gradSm(m.hue, m.name)}<b style="font-family:var(--serif)">${esc(m.name)}</b></div>
+        ${S.role === "man" ? (m.reserved ? `<span class="chip on">✓ Reserved</span>` : `<button class="chip" id="reserve">Reserve</button>`) : "<span></span>"}</div>
       <div class="msgs" id="msgs">${bubbles}</div></div>
       <div class="composer"><input id="ci" placeholder="Message…" autocomplete="off">
         <button class="iconbtn" id="send">↑</button></div>`;
     app.querySelector("[data-back]").onclick = () => go("/matches");
+    const rz = $("#reserve"); if (rz) rz.onclick = () => reserveSheet(id);
     const box = $("#msgs"); box.scrollTop = box.scrollHeight;
     // reactions: double-tap → ❤️, long-press → picker
     app.querySelectorAll(".bub[data-mid]").forEach(b => {
@@ -428,6 +430,32 @@
     bar.innerHTML = `<div class="row">${["❤️", "😂", "😮", "👍", "🔥"].map(e => `<button data-e="${e}">${e}</button>`).join("")}</div>`;
     bar.onclick = ev => { const b = ev.target.closest("[data-e]"); bar.remove(); if (b) react(id, mid, b.dataset.e); };
     document.body.appendChild(bar);
+  }
+
+  // ---- reserve the date (bidder-only, Stripe booking fee) ----
+  function markReserved(matchId) {
+    const m = S.matches.find(x => x.id === matchId); if (m) { m.reserved = true; save(); }
+    if (location.hash.includes("chat/" + matchId)) chat(matchId);
+  }
+  function reserveSheet(matchId) {
+    const tiers = [1000, 1500, 2500, 5000, 10000]; // $10 / 15 / 25 / 50 / 100
+    const sheet = document.createElement("div"); sheet.className = "sheet";
+    sheet.innerHTML = `<div class="panel"><div class="grab"></div>
+      <div class="kicker">Reserve the date</div>
+      <p class="muted" style="margin:8px 0 14px">A booking fee to lock in your in-person date. It goes to Auction Baby for the reservation — never to her — and unlocks nothing in the app. You still spend your bid on the date itself; she keeps the receipts.</p>
+      <div class="row" style="flex-wrap:wrap;gap:8px">${tiers.map(c => `<button class="chip" data-cents="${c}">$${c / 100}</button>`).join("")}</div>
+      <div class="faint" style="margin-top:12px">Web payments via Stripe.</div></div>`;
+    sheet.onclick = e => {
+      if (e.target === sheet) { sheet.remove(); return; }
+      const b = e.target.closest("[data-cents]"); if (!b) return;
+      const cents = +b.dataset.cents; sheet.remove();
+      if (CONFIGURED() && SIGNED_IN()) {
+        API.reserveDate(matchId, cents)
+          .then(d => { if (d.reserved || d.url === "about:blank") markReserved(matchId); }) // else it redirected to Stripe
+          .catch(er => toast("Reserve: " + er.message));
+      } else { markReserved(matchId); toast("Demo: date reserved."); }
+    };
+    document.body.appendChild(sheet);
   }
 
   function store() {
@@ -482,10 +510,20 @@
       </div>
       <button class="btn ghost" id="addphoto" style="margin-top:14px">${S.me.photo ? "Change photo" : "Add a photo"}</button>
       <button class="btn ghost" data-tab="store" style="margin-top:10px">Open the Store</button>
+      ${(CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.VAPID_PUBLIC_KEY) ? `<button class="btn ghost" id="notif" style="margin-top:10px">Enable notifications</button>` : ""}
+      ${SIGNED_IN() ? `<button class="btn ghost" id="signout" style="margin-top:10px">Sign out</button>` : ""}
       <button class="btn ghost" id="reset" style="margin-top:10px;color:var(--danger)">Reset account</button>
+      ${SIGNED_IN() ? `<button class="btn ghost" id="delacct" style="margin-top:10px;color:var(--danger)">Delete account permanently</button>` : ""}
       <div class="disclosure">Auction Baby — web. A bid is a promise to spend on the date, never a payment to another person.</div>
     </div>${tabbar()}`;
     $("#addphoto").onclick = addPhoto;
+    const notif = $("#notif"); if (notif) notif.onclick = () => API.enableWebPush().then(() => toast("Notifications on.")).catch(e => toast("Notifications: " + e.message));
+    const so = $("#signout"); if (so) so.onclick = () => { API.signOutLocal(); S.registered = false; save(); toast("Signed out."); go("/"); onboarding(); };
+    const da = $("#delacct"); if (da) da.onclick = async () => {
+      if (!confirm("Permanently delete your account? This can't be undone.")) return;
+      try { await API.deleteAccount(); } catch (e) { /* proceed with local wipe */ }
+      API.signOutLocal(); S = fresh(); S.floor = seedFloor(); save(); toast("Account deleted."); go("/"); onboarding();
+    };
     $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedFloor(); save(); go("/"); onboarding(); } };
     wire();
   }

@@ -98,6 +98,36 @@
     balance: () => shop("/balance"),
     catalog: () => shop("/catalog"),
 
+    // ── reserve the date (Stripe booking fee via consumables Worker) ──
+    reserveInfo: () => shop("/reserve/info", { auth: false }),
+    reserveStatus: (matchId) => shop("/reserve/status?matchId=" + encodeURIComponent(matchId)),
+    async reserveDate(matchId, amountCents) {
+      const data = await shop("/reserve/checkout", {
+        method: "POST",
+        body: { matchId, amountCents,
+                successUrl: C.CHECKOUT_SUCCESS_URL || location.href,
+                cancelUrl: C.CHECKOUT_CANCEL_URL || location.href },
+      });
+      if (data.url && data.url !== "about:blank") location.href = data.url;
+      return data;
+    },
+
+    // ── Web Push (VAPID) ──
+    // Subscribe the browser and register the subscription with the auth Worker.
+    async enableWebPush() {
+      if (!C.VAPID_PUBLIC_KEY) throw new Error("Web Push not configured");
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("Push unsupported");
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") throw new Error("Permission denied");
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64ToUint8(C.VAPID_PUBLIC_KEY),
+      });
+      await auth("/devices/register-web", { method: "POST", body: { subscription: sub.toJSON() } });
+      return true;
+    },
+
     // Recurring Auction Baby Pass via Stripe Billing → redirect to Checkout.
     async subscribe(passId, userId) {
       const data = await shop("/subscribe", {
@@ -111,6 +141,13 @@
     },
     subscriptionStatus: (userId) => shop("/subscription?userId=" + encodeURIComponent(userId)),
   };
+
+  function urlB64ToUint8(base64) {
+    const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+    const b64 = (base64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(b64);
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  }
 
   function loadAppleJS() {
     return new Promise((resolve, reject) => {

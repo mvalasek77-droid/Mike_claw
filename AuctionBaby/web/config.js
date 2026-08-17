@@ -23,6 +23,13 @@ window.AB_CONFIG = {
   // (recurring Stripe Billing). Both are implemented in the Worker.
   CHECKOUT_SUCCESS_URL: "",       // e.g. "https://auctionbaby.pages.dev/index.html#/store?paid=1"
   CHECKOUT_CANCEL_URL:  "",       // e.g. "https://auctionbaby.pages.dev/index.html#/store"
+
+  // ── Web Push (VAPID) ─────────────────────────────────────────────────────
+  // Generate a VAPID keypair (e.g. `npx web-push generate-vapid-keys`). Put the
+  // PUBLIC key here; keep the PRIVATE key as a Worker secret. The Worker stores
+  // subscriptions (POST /devices/register-web) and sends encrypted Web Push.
+  // See web/PUSH.md for the server contract.
+  VAPID_PUBLIC_KEY: "",           // base64url public key
 };
 
 // live == every backend URL present. Auth/pay each check their own deps.
