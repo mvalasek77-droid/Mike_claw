@@ -100,6 +100,19 @@ function findPack(id: string): Pack | undefined {
   return CATALOG.find((p) => p.id === id);
 }
 
+// ── Auction Baby Pass (recurring subscriptions, web/Stripe Billing) ──────────
+// Mirrors the iOS PassTier prices (monthly). Web only — Apple IAP handles subs
+// on the app. priceCents map to Stripe recurring prices.
+interface Pass { id: string; name: string; priceCents: number; }
+const PASS_CATALOG: Pass[] = [
+  { id: "pass_paddle",    name: "Paddle",     priceCents: 1999 },
+  { id: "pass_reserve",   name: "Reserve",    priceCents: 3999 },
+  { id: "pass_blackcard", name: "Black Card", priceCents: 9999 },
+];
+function findPass(id: string): Pass | undefined {
+  return PASS_CATALOG.find((p) => p.id === id);
+}
+
 // ── Stripe helpers ───────────────────────────────────────────────────────────
 
 /** POST to the Stripe API with form-encoded params (Stripe wants
@@ -368,6 +381,66 @@ async function handleCheckout(request: Request, env: Env): Promise<Response> {
   }
 }
 
+/** POST /subscribe — create a recurring (monthly) Stripe Checkout Session for
+ *  an Auction Baby Pass. Web only. Body: { passId, userId, successUrl?, cancelUrl? }
+ *  Returns: { sessionId, url } — redirect the user to `url`. */
+async function handleSubscribe(request: Request, env: Env): Promise<Response> {
+  let body: any;
+  try { body = await request.json(); } catch { return error("Invalid JSON body"); }
+
+  const passId = String(body?.passId ?? "");
+  const userId = String(body?.userId ?? "").trim().toLowerCase();
+  if (!userId) return error("userId is required");
+  const pass = findPass(passId);
+  if (!pass) return error(`Unknown passId '${passId}'`, 404);
+
+  const currency = (env.CURRENCY ?? "usd").toLowerCase();
+  const successUrl = String(body?.successUrl ?? env.SUCCESS_URL ?? "https://example.com/success");
+  const cancelUrl = String(body?.cancelUrl ?? env.CANCEL_URL ?? "https://example.com/cancel");
+
+  try {
+    const session = await stripe(
+      "/checkout/sessions",
+      {
+        mode: "subscription",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency,
+              unit_amount: pass.priceCents,
+              recurring: { interval: "month" },
+              product_data: { name: `Auction Baby Pass — ${pass.name}` },
+            },
+          },
+        ],
+        // kind=subscription so the webhook records entitlement, not Gavels.
+        metadata: { kind: "subscription", userId, passId: pass.id },
+        // Copy identity onto the subscription too, so a later
+        // customer.subscription.deleted can clear the entitlement.
+        subscription_data: { metadata: { userId, passId: pass.id } },
+        client_reference_id: userId,
+      },
+      env.STRIPE_SECRET_KEY,
+      `subscribe:${userId}:${pass.id}:${Math.floor(Date.now() / 60000)}`,
+    );
+    return json({ sessionId: session.id, url: session.url });
+  } catch (e: any) {
+    return error(`Subscribe failed: ${e.message}`, 502);
+  }
+}
+
+/** GET /subscription?userId= — the user's active Pass id (from KV), or null. */
+async function handleSubscriptionStatus(request: Request, env: Env): Promise<Response> {
+  const userId = new URL(request.url).searchParams.get("userId")?.trim().toLowerCase();
+  if (!userId) return error("userId is required");
+  if (!env.KV) return json({ passId: null });
+  const passId = await env.KV.get(`pass:${userId}`);
+  return json({ passId: passId || null });
+}
+
 /** POST /webhook — Stripe events. The ONLY place balances move on purchase or
  *  refund. Verifies the signature; `checkout.session.completed` credits once
  *  per event, `charge.refunded` debits once per event (floored at zero). */
@@ -433,6 +506,14 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
       return json({ received: true, reserved: true });
     }
 
+    // A subscription (Auction Baby Pass): record the entitlement, credit no Gavels.
+    if (String(session.metadata?.kind) === "subscription") {
+      const subUser = String(session.metadata?.userId ?? session.client_reference_id ?? "");
+      const passId = String(session.metadata?.passId ?? "");
+      if (subUser && passId && env.KV) await env.KV.put(`pass:${subUser}`, passId);
+      return json({ received: true, subscription: passId });
+    }
+
     const userId = String(session.metadata?.userId ?? session.client_reference_id ?? "");
     const gavels = Number(session.metadata?.gavels ?? 0);
     if (!userId || !gavels) {
@@ -459,6 +540,14 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
       await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
     }
     console.log(`Credited ${gavels} Gavels to ${userId} (session ${session.id}); balance ${next}`);
+  }
+
+  // Subscription ended (canceled / lapsed) → drop the Pass entitlement.
+  if (event.type === "customer.subscription.deleted") {
+    const sub = event.data.object as any;
+    const userId = String(sub.metadata?.userId ?? "");
+    if (userId && env.KV) await env.KV.delete(`pass:${userId}`);
+    return json({ received: true, subscriptionEnded: true });
   }
 
   if (event.type === "charge.refunded") {
@@ -716,6 +805,8 @@ export default {
     if (!authed) return error("Unauthorized", 401);
 
     if (pathname === "/checkout" && method === "POST") return handleCheckout(request, env);
+    if (pathname === "/subscribe" && method === "POST") return handleSubscribe(request, env);
+    if (pathname === "/subscription" && method === "GET") return handleSubscriptionStatus(request, env);
     if (pathname === "/balance" && method === "GET") return handleBalance(request, env);
     if (pathname === "/consume" && method === "POST") return handleConsume(request, env);
     if (pathname === "/ledger" && method === "GET") return handleLedger(request, env);

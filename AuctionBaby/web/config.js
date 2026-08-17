@@ -19,8 +19,8 @@ window.AB_CONFIG = {
 
   // ── Payments (Stripe, via the consumables Worker) ────────────────────────
   // The consumables Worker holds the Stripe secret; the web only needs the
-  // return URLs. Gavel packs use /checkout (one-time). Subscriptions need a
-  // Stripe Billing endpoint — see README "Subscriptions".
+  // return URLs. Gavel packs use /checkout (one-time); Passes use /subscribe
+  // (recurring Stripe Billing). Both are implemented in the Worker.
   CHECKOUT_SUCCESS_URL: "",       // e.g. "https://auctionbaby.pages.dev/index.html#/store?paid=1"
   CHECKOUT_CANCEL_URL:  "",       // e.g. "https://auctionbaby.pages.dev/index.html#/store"
 };

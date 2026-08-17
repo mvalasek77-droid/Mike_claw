@@ -57,15 +57,22 @@ config = live. **Go live by editing `config.js` + deploying two things.**
      ```
      *(The Worker now accepts both the app bundle id and this web Services ID —
      that change is in `auth/src/index.ts`.)*
-3. **Payments = Stripe** (the `consumables` Worker already speaks Stripe):
+3. **Payments = Stripe** (the `consumables` Worker speaks Stripe for both):
    - Set `CHECKOUT_SUCCESS_URL` / `CHECKOUT_CANCEL_URL` in `config.js`.
-   - The Gavel packs call `POST /checkout` → redirect to Stripe. Ensure the
-     Worker's Stripe catalog packIds are `handful/stack/chest/vault` (or edit
-     `GAVEL_PACK_ID` in `app.js` to match your catalog).
-   - **Subscriptions (Passes)** need Stripe **Billing** (recurring) — the current
-     `/checkout` is one-time only. Add a `mode:"subscription"` endpoint to the
-     Worker (or use Stripe Payment Links) and point the Pass buttons at it.
+   - **Gavel packs** → `POST /checkout` (one-time). PackIds are
+     `gavels_handful/stack/chest/vault` (already matched in `app.js`).
+   - **Passes** → `POST /subscribe` (**recurring, Stripe Billing** — added to the
+     Worker). PassIds `pass_paddle/pass_reserve/pass_blackcard`. The webhook
+     records the active Pass in **KV** (`pass:{userId}`); `GET /subscription?userId=`
+     reads it; `customer.subscription.deleted` clears it.
+   - Redeploy the Worker: `cd AuctionBaby/consumables && npx wrangler deploy`
+     (a **KV namespace** must be bound for Pass entitlement to persist), and add
+     `customer.subscription.deleted` to your Stripe webhook event list.
 4. **Deploy the web app** to Cloudflare Pages (above). Done — it's live.
+
+**Photos:** the floor now renders real profile photos when the auth Worker
+returns them (needs `PHOTOS_PUBLIC_URL` set + R2 bound); otherwise it falls back
+to gradient monograms. No client change needed.
 
 ### Field-shape note (verify against your live Workers)
 `api.js`/`mapLot`/`syncMatches` use tolerant field names (`floor`/`users`,

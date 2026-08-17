@@ -16,14 +16,18 @@
   const SIGNED_IN = () => !!(API.hasSession && API.hasSession());  // have a session token
   const APPLE_ON = () => !!(window.AB_CONFIG && window.AB_CONFIG.APPLE_SERVICE_ID);
   const hueFrom = s => { let h = 0; for (const c of (s || "")) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
-  const GAVEL_PACK_ID = { 1000: "handful", 5000: "stack", 14000: "chest", 30000: "vault" };
+  const GAVEL_PACK_ID = { 1000: "gavels_handful", 5000: "gavels_stack", 14000: "gavels_chest", 30000: "gavels_vault" };
+  const PASS_ID = { "Paddle": "pass_paddle", "Reserve": "pass_reserve", "Black Card": "pass_blackcard" };
 
-  // Map a server profile → the local lot shape (field-name-tolerant).
+  // Map a server profile → the local lot shape (matches the Worker's publicProfile:
+  // userId, name, age, location, bio, hue, startingBid, verified, photos:[{url}], prompts).
   const mapLot = p => ({
-    id: p.id, name: p.name || "—", age: p.age || 27, city: p.location || p.city || "",
+    id: p.userId || p.id, name: p.name || "—", age: p.age || 27, city: p.location || p.city || "",
     startingBid: p.startingBid || 100, bio: p.bio || "",
     icebreakers: (p.prompts || []).map(x => (x && x.answer) || x).filter(Boolean),
-    hue: hueFrom(p.id || p.name), verified: !!p.verified,
+    hue: (typeof p.hue === "number" ? Math.round(p.hue * 360) : hueFrom(p.userId || p.name)),
+    verified: !!p.verified,
+    photo: (p.photos && p.photos[0] && p.photos[0].url) || null,
   });
   async function syncFloor() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
@@ -48,12 +52,13 @@
   }
 
   // ---- theme helper: a deterministic gradient avatar from a hue ----
-  const grad = (hue, name) => {
+  const grad = (hue, name, photo) => {
+    if (photo) return `<div class="avatar" style="padding:0"><img src="${esc(photo)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:inherit"></div>`;
     const a = `hsl(${hue} 55% 42%)`, b = `hsl(${(hue + 40) % 360} 60% 24%)`;
     const initials = (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
     return `<div class="avatar" style="background:linear-gradient(140deg,${a},${b})">${initials}</div>`;
   };
-  const gradSm = (hue, name) => grad(hue, name).replace('class="avatar"', 'class="avatar sm"');
+  const gradSm = (hue, name, photo) => grad(hue, name, photo).replace('class="avatar"', 'class="avatar sm"');
 
   // ---- demo floor (fictional; gradient avatars, no real photos) ----
   const seedFloor = () => ([
@@ -164,7 +169,7 @@
     const tick = tickers[Math.floor(Date.now() / 6000) % tickers.length];
     const lotCard = (w, isHero) => `
       <button class="lot ${isHero ? "hero" : ""}" data-lot="${w.id}" style="width:100%;padding:0;text-align:left;background:none">
-        <div class="art">${grad(w.hue, w.name)}</div>
+        <div class="art">${grad(w.hue, w.name, w.photo)}</div>
         ${isHero ? `<div class="lotofday">⚖ Lot of the day</div>` : ""}
         <div class="meta">
           <div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span> ${w.verified ? "✔" : ""}</div>
@@ -186,7 +191,7 @@
     const w = S.floor.find(x => x.id === id); if (!w) return go("/floor");
     app.innerHTML = `<div class="screen">
       <div class="topbar"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
-      <div class="lot" style="margin-bottom:16px"><div class="art">${grad(w.hue, w.name)}</div>
+      <div class="lot" style="margin-bottom:16px"><div class="art">${grad(w.hue, w.name, w.photo)}</div>
         <div class="meta"><div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span> ${w.verified ? "✔" : ""}</div>
         <div class="tags"><span class="chip">${esc(w.city)}</span><span class="chip on">${money(w.startingBid)} floor</span></div></div></div>
       <div class="card"><div class="kicker">About</div><p class="muted" style="margin:8px 0 0">${esc(w.bio)}</p></div>
@@ -326,9 +331,15 @@
         .catch(e => toast("Checkout: " + e.message));
       return;
     }
+    // LIVE: recurring Pass via Stripe Billing.
+    if (kind === "pass" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
+      const passId = PASS_ID[a] || a;
+      API.me().then(u => API.subscribe(passId, u.id || u.userId)).catch(e => toast("Subscribe: " + e.message));
+      return;
+    }
     // DEMO fallback (no charge).
     if (kind === "gavels") { S.wallet += a; save(); toast(`Demo: +${a.toLocaleString()} Gavels (configure Stripe for live).`); store(); }
-    else toast(`Demo: ${a} Pass (subscriptions need Stripe Billing — see README).`);
+    else toast(`Demo: ${a} Pass active (configure Stripe for live).`);
   }
 
   function you() {

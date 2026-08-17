@@ -84,6 +84,19 @@
     },
     balance: () => shop("/balance"),
     catalog: () => shop("/catalog"),
+
+    // Recurring Auction Baby Pass via Stripe Billing → redirect to Checkout.
+    async subscribe(passId, userId) {
+      const data = await shop("/subscribe", {
+        method: "POST",
+        body: { passId, userId,
+                successUrl: C.CHECKOUT_SUCCESS_URL || location.href,
+                cancelUrl: C.CHECKOUT_CANCEL_URL || location.href },
+      });
+      if (data.url) location.href = data.url;
+      return data;
+    },
+    subscriptionStatus: (userId) => shop("/subscription?userId=" + encodeURIComponent(userId)),
   };
 
   function loadAppleJS() {
