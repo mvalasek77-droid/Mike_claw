@@ -1,0 +1,14 @@
+{
+  "name": "Auction Baby",
+  "short_name": "Auction Baby",
+  "description": "Bid what a date is worth. An auction-house take on dating.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0b08",
+  "theme_color": "#0d0b08",
+  "icons": [
+    { "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
