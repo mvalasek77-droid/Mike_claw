@@ -355,6 +355,10 @@
         <div class="house-rules-title">House Rules</div>
         <div class="house-rules-text">AI "Copycat" profiles walk the floor unlabelled. Bid on one and you're told instantly — it costs you reputation, never money. Spot the fakes.</div>
       </div>
+      <div class="floor-header">
+        <span class="floor-header-label">On the floor now</span>
+        <span class="floor-header-count">${S.floor.length}</span>
+      </div>
       ${lotCard(hero, true)}
       ${rest.map(w => lotCard(w, false)).join("")}
     </div>${tabbar()}`;
