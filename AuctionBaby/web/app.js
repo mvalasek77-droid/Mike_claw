@@ -341,6 +341,8 @@
         ${isHero ? `<div class="lotofday${w.masterpiece ? " mp" : ""}">⚖ ${w.masterpiece ? "Masterpiece — Lot of the Day" : "Lot of the day"}</div>` : ""}
         <div class="meta">
           <div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span>${badges(w)}</div>
+          ${w.bio ? `<div class="lot-bio">${esc(w.bio)}</div>` : ""}
+          ${w.icebreakers && w.icebreakers[0] ? `<div class="lot-prompt"><span class="lot-prompt-label">The way to win me over is</span> ${esc(w.icebreakers[0])}</div>` : ""}
           <div class="tags"><span class="chip">${esc(w.city)}</span><span class="chip on">${money(w.startingBid)} floor</span></div>
         </div>
       </button>`;
@@ -368,7 +370,8 @@
         <div class="meta"><div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span>${badges(w)}</div>
         <div class="tags"><span class="chip">${esc(w.city)}</span><span class="chip on">${money(w.startingBid)} floor</span></div></div></div>
       <div class="card"><div class="kicker">About</div><p class="muted" style="margin:8px 0 0">${esc(w.bio)}</p></div>
-      ${w.icebreakers.map(q => `<div class="card" style="margin-top:10px"><div class="faint">Prompt</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px">${esc(q)}</div></div>`).join("")}
+      ${w.icebreakers && w.icebreakers[0] ? `<div class="card" style="margin-top:10px"><div class="faint">The way to win me over is</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px">${esc(w.icebreakers[0])}</div></div>` : ""}
+      ${w.icebreakers.slice(1).map(q => `<div class="card" style="margin-top:10px"><div class="faint">Prompt</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px">${esc(q)}</div></div>`).join("")}
       <button class="btn" data-bid="${w.id}" style="margin-top:18px">Place a bid</button>
     </div>`;
     app.querySelector("[data-back]").onclick = () => go("/floor");
