@@ -76,6 +76,7 @@ interface Env {
   DB: D1Database;
   SESSION_SECRET: string;
   APPLE_CLIENT_ID: string;         // e.g. "com.valasek.auctionbaby" (bundle id)
+  WEB_CLIENT_ID?: string;          // Sign-in-with-Apple-for-Web Services ID (e.g. "com.valasek.auctionbaby.web")
   SESSION_TTL_SECONDS?: string;    // default 30 days
   APP_SHARED_SECRET?: string;      // gates admin endpoints (POST /push/send)
 
@@ -204,7 +205,7 @@ interface AppleClaims {
 
 /** Verify an Apple identity JWT. Throws on any failure — never returns
  *  partial verification. Returns the parsed claims on success. */
-async function verifyAppleIdentityToken(token: string, expectedAudience: string): Promise<AppleClaims> {
+async function verifyAppleIdentityToken(token: string, expectedAudiences: string[]): Promise<AppleClaims> {
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("Malformed JWT");
   const [headerB64, payloadB64, sigB64] = parts;
@@ -233,7 +234,8 @@ async function verifyAppleIdentityToken(token: string, expectedAudience: string)
   // Claim checks. Any failure here is a hard rejection — a valid signature
   // on the wrong claims is exactly the attack we're guarding against.
   if (claims.iss !== APPLE_ISSUER) throw new Error(`Wrong issuer: ${claims.iss}`);
-  if (claims.aud !== expectedAudience) throw new Error(`Wrong audience: ${claims.aud}`);
+  // Accept the iOS app bundle id OR the Sign-in-with-Apple-for-Web Services ID.
+  if (!expectedAudiences.includes(claims.aud)) throw new Error(`Wrong audience: ${claims.aud}`);
   const now = Math.floor(Date.now() / 1000);
   if (typeof claims.exp !== "number" || claims.exp < now) throw new Error("Token expired");
   if (typeof claims.iat !== "number" || claims.iat > now + 60) throw new Error("Token issued in the future");
@@ -351,7 +353,8 @@ async function handleAppleAuth(request: Request, env: Env): Promise<Response> {
 
   let claims: AppleClaims;
   try {
-    claims = await verifyAppleIdentityToken(identityToken, env.APPLE_CLIENT_ID);
+    claims = await verifyAppleIdentityToken(identityToken,
+      [env.APPLE_CLIENT_ID, env.WEB_CLIENT_ID].filter(Boolean) as string[]);
   } catch (e: any) {
     return err(`Apple token rejected: ${e.message}`, 401);
   }

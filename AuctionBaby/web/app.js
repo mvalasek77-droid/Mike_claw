@@ -10,6 +10,43 @@
   const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const uid = () => Math.random().toString(36).slice(2, 10);
 
+  // ---- live backend (Cloudflare Workers) with graceful demo fallback ----
+  const API = window.AB_API || {};
+  const CONFIGURED = () => !!window.AB_LIVE;                       // backend URLs set
+  const SIGNED_IN = () => !!(API.hasSession && API.hasSession());  // have a session token
+  const APPLE_ON = () => !!(window.AB_CONFIG && window.AB_CONFIG.APPLE_SERVICE_ID);
+  const hueFrom = s => { let h = 0; for (const c of (s || "")) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+  const GAVEL_PACK_ID = { 1000: "handful", 5000: "stack", 14000: "chest", 30000: "vault" };
+
+  // Map a server profile → the local lot shape (field-name-tolerant).
+  const mapLot = p => ({
+    id: p.id, name: p.name || "—", age: p.age || 27, city: p.location || p.city || "",
+    startingBid: p.startingBid || 100, bio: p.bio || "",
+    icebreakers: (p.prompts || []).map(x => (x && x.answer) || x).filter(Boolean),
+    hue: hueFrom(p.id || p.name), verified: !!p.verified,
+  });
+  async function syncFloor() {
+    if (!CONFIGURED() || !SIGNED_IN()) return;
+    try {
+      const r = await API.floor(S.me.city);
+      const arr = r.floor || r.users || (Array.isArray(r) ? r : []);
+      if (Array.isArray(arr) && arr.length) { S.floor = arr.map(mapLot); save(); if (tab === "floor") floor(); }
+    } catch (e) { /* keep demo floor */ }
+  }
+  async function syncMatches() {
+    if (!CONFIGURED() || !SIGNED_IN()) return;
+    try {
+      const r = await API.matches();
+      const arr = r.matches || (Array.isArray(r) ? r : []);
+      S.matches = arr.map(m => ({
+        id: m.id, lotId: m.lotId, name: (m.other && m.other.name) || m.name || "Match",
+        hue: hueFrom(m.id || m.name), amount: m.amount || m.bidAmount || 0,
+        messages: (m.messages || []).map(x => ({ me: !!x.fromMe, text: x.text })),
+      }));
+      save(); if (tab === "matches") matches();
+    } catch (e) { /* keep local */ }
+  }
+
   // ---- theme helper: a deterministic gradient avatar from a hue ----
   const grad = (hue, name) => {
     const a = `hsl(${hue} 55% 42%)`, b = `hsl(${(hue + 40) % 360} 60% 24%)`;
@@ -93,17 +130,31 @@
         <label class="field"><div class="lbl">Age</div><input class="txt" id="ob-age" type="number" min="18" value="${S.me.age}"></label>
         <label class="field"><div class="lbl">City</div><input class="txt" id="ob-city" placeholder="Where you're based" value="${esc(S.me.city)}"></label>
       </div>
+      ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-top:12px"> Sign in with Apple</button>
+        <div class="faint" style="text-align:center;margin-top:6px">Optional — keeps your account across devices.</div>` : ""}
       <button class="btn" id="ob-go" style="margin-top:16px">Step onto the floor</button>
       <div class="disclosure">A bid is the budget you commit to spend on the date itself — dinner, drinks, the evening. It is never a payment to another person.</div>
     </div>`;
     app.querySelectorAll("[data-role]").forEach(b => b.onclick = () => { S.role = b.dataset.role; save(); onboarding(); });
-    $("#ob-go").onclick = () => {
+    const ap = $("#ob-apple");
+    if (ap) ap.onclick = async () => {
+      try {
+        const d = await API.signInWithApple();
+        const nm = d && d.user && d.user.name;
+        if (nm && !$("#ob-name").value) $("#ob-name").value = nm;
+        toast("Signed in with Apple.");
+      } catch (e) { toast("Apple sign-in: " + e.message); }
+    };
+    $("#ob-go").onclick = async () => {
       const name = $("#ob-name").value.trim(), age = +$("#ob-age").value || 0;
       if (!S.role) return toast("Pick a side first.");
       if (!name) return toast("Add your name.");
       if (age < 18) return toast("You must be 18 or older.");
       S.me = { name, age, city: $("#ob-city").value.trim() };
-      S.registered = true; save(); go("/floor");
+      if (CONFIGURED() && SIGNED_IN()) {
+        try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
+      }
+      S.registered = true; save(); go("/floor"); syncFloor(); syncMatches();
     };
   }
 
@@ -173,7 +224,13 @@
   }
 
   function placeBid(w, amount) {
-    // simulated: she accepts → match + opener
+    if (CONFIGURED() && SIGNED_IN()) {
+      API.placeBid(w.id, amount, "")
+        .then(() => { toast("Bid placed — you'll be notified if she accepts."); syncMatches(); })
+        .catch(e => toast("Bid failed: " + e.message));
+      return;
+    }
+    // demo: she accepts → match + opener
     const accepted = true;
     if (!accepted) return toast(`${w.name} passed. Bid stronger next time.`);
     const m = { id: uid(), lotId: w.id, name: w.name, hue: w.hue, amount,
@@ -224,6 +281,10 @@
     const send = () => {
       const i = $("#ci"), t = i.value.trim(); if (!t) return;
       m.messages.push({ me: true, text: t }); i.value = ""; save(); chat(id);
+      if (CONFIGURED() && SIGNED_IN()) {
+        API.sendMessage(id, t).catch(e => toast("Send failed: " + e.message));
+        return; // the other side's reply comes from the real user, via syncMatches/refresh
+      }
       setTimeout(() => {
         const replies = ["So where are you taking me?", "Bold. I like it.", "Prove it — pick the place.", "You had me at the bid.", "Friday, then?"];
         m.messages.push({ me: false, text: replies[Math.floor(Math.random() * replies.length)] });
@@ -257,9 +318,17 @@
   }
 
   function checkout(kind, a, price) {
-    // Placeholder for Stripe Checkout (the consumables Worker already speaks Stripe).
-    if (kind === "gavels") { S.wallet += a; save(); toast(`Demo: +${a.toLocaleString()} Gavels (wire Stripe for live).`); store(); }
-    else toast(`Demo: ${a} Pass active (wire Stripe for live).`);
+    // LIVE: redirect to Stripe Checkout via the consumables Worker.
+    if (kind === "gavels" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
+      const packId = GAVEL_PACK_ID[a] || String(a);
+      API.me()
+        .then(u => API.buyGavels(packId, u.id || u.userId))   // → redirects to Stripe
+        .catch(e => toast("Checkout: " + e.message));
+      return;
+    }
+    // DEMO fallback (no charge).
+    if (kind === "gavels") { S.wallet += a; save(); toast(`Demo: +${a.toLocaleString()} Gavels (configure Stripe for live).`); store(); }
+    else toast(`Demo: ${a} Pass (subscriptions need Stripe Billing — see README).`);
   }
 
   function you() {
@@ -288,4 +357,6 @@
   // ---- boot ----
   if (!location.hash) go(S.registered ? "/floor" : "/");
   render();
+  if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
+  if (S.registered && CONFIGURED() && SIGNED_IN()) { syncFloor(); syncMatches(); }
 })();
