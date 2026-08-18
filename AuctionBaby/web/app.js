@@ -153,6 +153,9 @@
   // ---- state ----
   const KEY = "auctionbaby.web.v1";
   let S = load();
+  // Migrate: ensure new fields exist on older saved states
+  if (!S.ownedStatus) S.ownedStatus = [];
+  if (S.pass === undefined) S.pass = null;
   function load() {
     try { return JSON.parse(localStorage.getItem(KEY)) || fresh(); }
     catch { return fresh(); }
@@ -160,7 +163,8 @@
   function fresh() {
     return { registered: false, role: null,
              me: { name: "", dob: "", age: 27, city: "", bio: "", portrait: "", winMe: "", simplePleasure: "", interests: [], photo: null },
-             wallet: 750, floor: [], matches: [], incoming: [], seenSplash: false, reputation: 100 };
+             wallet: 750, floor: [], matches: [], incoming: [], seenSplash: false, reputation: 100,
+             ownedStatus: [], pass: null };
   }
   // demo suitors (men bidding on a woman) — used when no backend is configured
   const seedIncoming = () => ([
@@ -229,6 +233,8 @@
     if (h.startsWith("chat/")) return chat(h.split("/")[1]);
     if (h === "matches") { tab = "matches"; return matches(); }
     if (h === "store") { tab = "store"; return store(); }
+    if (h === "paywall") { tab = "store"; return paywall(); }
+    if (h.startsWith("paywall/")) { tab = "store"; return paywall(h.split("/")[1]); }
     if (h === "you") { tab = "you"; return you(); }
     tab = "floor"; return S.role === "woman" ? incoming() : floor();
   }
@@ -749,30 +755,149 @@
     document.body.appendChild(sheet);
   }
 
+  // ── Status archetype catalog (mirrors iOS Archetype.swift exactly) ──
+  const STATUS_TIERS = [
+    { id: "status_goodguy",      name: "Good Guy",              price: 4.99,    blurb: "Texts back. Probably splits the bill.",                 icon: "👍", tint: "var(--success)" },
+    { id: "status_inandout",     name: "In & Out Guy",          price: 9.99,    blurb: "Efficient. Knows what he wants.",                      icon: "⚡", tint: "var(--success)" },
+    { id: "status_whynot",       name: "Why Not Guy",           price: 19.99,   blurb: "The shrug that launched a thousand dates.",            icon: "😄", tint: "var(--success)" },
+    { id: "status_goodjob",      name: "Got a Good Job",        price: 99.99,   blurb: "Salaried, LinkedIn-verified energy.",                  icon: "💼", tint: "var(--gold)" },
+    { id: "status_inheritance",  name: "Inheritance Money Guy", price: 500,     blurb: "Didn't earn it. Will absolutely spend it.",             icon: "🏛", tint: "var(--gold)" },
+    { id: "status_influencer",   name: "Influencer",            price: 800,     blurb: "Will film the date. You signed nothing.",              icon: "📷", tint: "var(--rose)" },
+    { id: "status_ferrari",      name: "I Drive a Ferrari",    price: 900,     blurb: "The car is leased. The flex is real.",                  icon: "🏎", tint: "var(--rose)" },
+    { id: "status_trillionaire", name: "Trillionaire",         price: 1000,    blurb: "Can mint a Masterpiece. The whole floor turns.",        icon: "👑", tint: "var(--gold-soft)", prestige: true },
+  ];
+  const PASS_TIERS = [
+    { id: "Paddle",     price: 19.99, icon: "✋", perks: ["Unlimited bids", "See if you're the top bid", "1 Boost / week"] },
+    { id: "Reserve",    price: 39.99, icon: "🔓", perks: ["Everything in Paddle", "Reveal her reserve price", "Auto-rebid to stay on top", "Rewind your last bid"] },
+    { id: "Black Card", price: 99.99, icon: "💳", perks: ["Everything in Reserve", "Priority placement on every lot", "Read receipts"] },
+  ];
+  // Benefits matrix for the paywall: (label, lowest tier index that includes it)
+  const PAYWALL_BENEFITS = [
+    ["Unlimited live bids", 0],
+    ["See if you're the top bid", 0],
+    ["1 Spotlight Boost every week", 0],
+    ["Reveal her reserve price", 1],
+    ["Auto-rebid to stay on top", 1],
+    ["Advanced filters (verified-only, interests)", 1],
+    ["Rewind your last bid", 1],
+    ["Read receipts — Seen / Delivered", 2],
+    ["Priority placement in every inbox", 2],
+  ];
+  const PAYWALL_TRIGGERS = {
+    rankReveal:   { headline: "She's comparing bids.<br>See where you stand.", icon: "📊", suggested: 0 },
+    bidLimit:     { headline: "Out of free bids.<br>The floor doesn't wait.", icon: "🚫", suggested: 0 },
+    filters:      { headline: "Cut the noise.<br>Bid only on your type.", icon: "🎛", suggested: 1 },
+    readReceipts: { headline: "She read it.<br>Know the moment she does.", icon: "✓", suggested: 2 },
+    rewind:       { headline: "Bid too soon?<br>Take it back.", icon: "↩", suggested: 1 },
+    general:      { headline: "Win the bid<br>you can't see.", icon: "👑", suggested: 0 },
+  };
+
   function store() {
     const packs = [["Handful", 1000, 4.99], ["Stack", 5000, 19.99], ["Chest", 14000, 49.99], ["Vault", 30000, 99.99]];
-    const passes = [["Paddle", 19.99, "Unlimited bids · see if you're top bid · 1 Boost/week"],
-                    ["Reserve", 39.99, "+ reveal reserve · auto-rebid · filters · rewind"],
-                    ["Black Card", 99.99, "+ priority placement · read receipts"]];
+    const isMan = S.role === "man";
     app.innerHTML = `<div class="screen">
       <div class="topbar"><h1 class="display" style="font-size:28px">Store</h1><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
+      ${isMan ? `
       <div class="kicker" style="margin:8px 0">Top up Gavels</div>
       ${packs.map(([n, g, p], i) => `<div class="card row" style="margin-bottom:10px"><div class="grow">
         <div style="font-family:var(--serif);font-weight:800">${g.toLocaleString()} Gavels ${i === packs.length - 1 ? '<span class="pill">BEST VALUE</span>' : ""}</div>
         <div class="faint">${n} of Gavels</div></div><button class="chip on" data-buy="${g}" data-price="${p}">$${p}</button></div>`).join("")}
+      <div class="kicker" style="margin:16px 0 8px">Spotlight Boost</div>
+      <div class="card row" style="margin-bottom:10px"><div class="grow">
+        <div style="font-family:var(--serif);font-weight:800">Spotlight Boost</div>
+        <div class="faint">30 minutes at the very top of the floor.</div></div>
+        <button class="chip rose" data-boost>$4.99</button></div>
+      <div class="kicker" style="margin:16px 0 8px">Status</div>
+      ${STATUS_TIERS.map(t => `<div class="card row" style="margin-bottom:10px${t.prestige ? ";border-color:rgba(230,184,0,.5);box-shadow:0 0 0 1px rgba(230,184,0,.15)" : ""}"><div class="grow">
+        <div style="font-family:var(--serif);font-weight:800">${t.icon} ${t.name}${t.prestige ? ' <span class="pill">TOP TIER</span>' : ""}</div>
+        <div class="faint">${t.blurb}</div></div>
+        <button class="chip ${t.prestige ? 'on' : 'rose'}" data-status="${t.id}" data-price="${t.price}">${S.ownedStatus && S.ownedStatus.includes(t.id) ? 'Owned' : '$' + t.price.toLocaleString()}</button></div>`).join("")}
+      <div class="faint" style="margin:8px 0">Every rating is a real purchase — the number is the whole point. Buy one and it's yours for good.</div>
       <div class="kicker" style="margin:16px 0 8px">Auction Baby Pass</div>
-      ${passes.map(([n, p, b]) => `<div class="card" style="margin-bottom:10px"><div class="row"><div class="grow">
-        <div style="font-family:var(--serif);font-weight:800">${n} <span class="muted">· $${p}/mo</span></div>
-        <div class="faint">${b}</div></div><button class="chip rose" data-sub="${n}">Subscribe</button></div></div>`).join("")}
-      <div class="disclosure">Payments on the web are processed by Stripe. Gavels are in-app status currency and are never a payment to another user.</div>
+      ${PASS_TIERS.map(t => `<div class="card" style="margin-bottom:10px"><div class="row"><div class="grow">
+        <div style="font-family:var(--serif);font-weight:800">${t.icon} ${t.name} <span class="muted">· $${t.price}/mo</span></div>
+        <div class="faint">${t.perks.join(" · ")}</div></div><button class="chip rose" data-sub="${t.id}">Subscribe</button></div></div>`).join("")}
+      ` : `
+      <div class="kicker" style="margin:8px 0">Spotlight Boost</div>
+      <div class="card row" style="margin-bottom:10px"><div class="grow">
+        <div style="font-family:var(--serif);font-weight:800">Spotlight Boost</div>
+        <div class="faint">30 minutes at the very top of the floor.</div></div>
+        <button class="chip rose" data-boost>$4.99</button></div>
+      `}
+      <div class="disclosure">Payments on the web are processed by Stripe. Gavels are in-app status currency and are never a payment to another user. Passes auto-renew monthly until canceled.</div>
     </div>${tabbar()}`;
     app.querySelectorAll("[data-buy]").forEach(b => b.onclick = () => checkout("gavels", +b.dataset.buy, +b.dataset.price));
     app.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => checkout("pass", b.dataset.sub));
+    app.querySelectorAll("[data-boost]").forEach(b => b.onclick = () => checkout("boost"));
+    app.querySelectorAll("[data-status]").forEach(b => b.onclick = () => checkout("status", b.dataset.status, +b.dataset.price));
     wire();
   }
 
+  // ── Paywall (1:1 with iOS PaywallView) ─────────────────────────────────
+  // Triggered at peak-intent moments. Shows a tier picker, benefits matrix,
+  // and a single CTA — exactly like the iOS paywall.
+  let paywallSelected = 0; // index into PASS_TIERS
+  function paywall(trigger) {
+    const t = PAYWALL_TRIGGERS[trigger] || PAYWALL_TRIGGERS.general;
+    paywallSelected = t.suggested;
+    const activePass = S.pass || null; // track active pass in demo mode
+    function render() {
+      const sel = PASS_TIERS[paywallSelected];
+      const isActive = activePass === sel.id;
+      app.innerHTML = `<div class="screen" style="padding-bottom:100px">
+        <div style="text-align:center;padding:20px 0 8px">
+          <div style="font-size:48px;margin-bottom:10px">${t.icon}</div>
+          <h1 class="display" style="font-size:28px;line-height:1.15">${t.headline}</h1>
+          <div class="kicker" style="margin-top:10px">Auction Baby Pass</div>
+        </div>
+        <div class="row" style="gap:10px;margin:16px 0">
+          ${PASS_TIERS.map((tier, i) => `
+            <button class="paywall-tier ${i === paywallSelected ? 'on' : ''}" data-tier="${i}">
+              <div style="font-size:22px;margin-bottom:4px">${tier.icon}</div>
+              <div style="font-family:var(--serif);font-weight:800;font-size:14px;color:var(--ink)">${tier.id}</div>
+              <div style="font-family:var(--sans);font-weight:800;font-size:16px;color:${i === paywallSelected ? 'var(--gold)' : 'var(--ink-soft)'}">$${tier.price}</div>
+              <div class="faint" style="font-size:10px">/ month</div>
+            </button>`).join("")}
+        </div>
+        <div class="glass" style="border-radius:18px;overflow:hidden">
+          ${PAYWALL_BENEFITS.map(([label, minTier], i) => {
+            const included = paywallSelected >= minTier;
+            return `<div class="row" style="padding:12px 16px;${i < PAYWALL_BENEFITS.length - 1 ? 'border-bottom:1px solid var(--line)' : ''}">
+              <span style="font-size:16px">${included ? '✅' : '🔒'}</span>
+              <div class="grow" style="font-size:13px;font-weight:600;color:${included ? 'var(--ink)' : 'var(--ink-faint)'}">${label}</div>
+              ${!included ? `<span class="pill" style="font-size:10px">${PASS_TIERS[minTier].id}</span>` : ''}
+            </div>`;
+          }).join("")}
+        </div>
+        <div style="margin-top:16px">
+          ${isActive
+            ? `<div style="text-align:center;padding:15px;border-radius:16px;background:rgba(92,201,138,.14);color:var(--success);font-weight:800;font-size:15px">✓ ${sel.id} is active</div>`
+            : `<button class="btn ${sel.id === 'Black Card' ? '' : 'rose'}" style="width:100%;font-size:16px" data-cta>
+                ${sel.id === 'Black Card' ? '👑' : '✨'} Continue with ${sel.id}
+              </button>
+              ${S.role === 'woman' ? '' : `<button class="btn ghost" style="margin-top:10px;width:100%" data-back>Maybe later</button>`}`
+          }
+        </div>
+        <div class="disclosure" style="margin-top:16px">
+          Auto-renews monthly until canceled at least 24h before the period ends. Web payments processed by Stripe.
+          ${window.AB_CONFIG && window.AB_CONFIG.CONSUMABLES_URL ? '' : ' (Demo mode — no charge. Configure Stripe for live.)'}
+        </div>
+      </div>${tabbar()}`;
+      app.querySelectorAll("[data-tier]").forEach(b => b.onclick = () => {
+        paywallSelected = +b.dataset.tier;
+        render();
+      });
+      const cta = app.querySelector("[data-cta]");
+      if (cta) cta.onclick = () => checkout("pass", PASS_TIERS[paywallSelected].id);
+      const back = app.querySelector("[data-back]");
+      if (back) back.onclick = () => go("/store");
+      wire();
+    }
+    render();
+  }
+
   function checkout(kind, a, price) {
-    // LIVE: redirect to Stripe Checkout via the consumables Worker.
+    // LIVE: Gavel packs via Stripe Checkout (consumables Worker).
     if (kind === "gavels" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
       const packId = GAVEL_PACK_ID[a] || String(a);
       API.me()
@@ -780,20 +905,42 @@
         .catch(e => toast("Checkout: " + e.message));
       return;
     }
-    // LIVE: recurring Pass via Stripe Billing.
+    // LIVE: Recurring Pass via Stripe Billing.
     if (kind === "pass" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
       const passId = PASS_ID[a] || a;
       API.me().then(u => API.subscribe(passId, u.id || u.userId)).catch(e => toast("Subscribe: " + e.message));
       return;
     }
+    // LIVE: Spotlight Boost via Stripe Checkout (one-time).
+    if (kind === "boost" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
+      API.me().then(u => API.buyBoost(u.id || u.userId)).catch(e => toast("Boost: " + e.message));
+      return;
+    }
+    // LIVE: Status Archetype via Stripe Checkout (one-time, owned forever).
+    if (kind === "status" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
+      const statusId = a;
+      API.me().then(u => API.buyStatus(statusId, u.id || u.userId)).catch(e => toast("Status: " + e.message));
+      return;
+    }
     // DEMO fallback (no charge).
     if (kind === "gavels") { S.wallet += a; save(); toast(`Demo: +${a.toLocaleString()} Gavels (configure Stripe for live).`); store(); }
-    else toast(`Demo: ${a} Pass active (configure Stripe for live).`);
+    else if (kind === "boost") { toast("Demo: Boost active for 30 min (configure Stripe for live)."); }
+    else if (kind === "status") {
+      S.ownedStatus = S.ownedStatus || [];
+      if (!S.ownedStatus.includes(a)) S.ownedStatus.push(a);
+      save(); toast(`Demo: Status unlocked (configure Stripe for live).`); store();
+    }
+    else if (kind === "pass") { S.pass = a; save(); toast(`Demo: ${a} Pass active (configure Stripe for live).`); store(); }
+    else toast(`Demo: ${a} active (configure Stripe for live).`);
   }
 
   function you() {
     const me = S.me;
     const interests = (me.interests || []).map(i => `<span class="chip on" style="pointer-events:none">${esc(i)}</span>`).join("");
+    const ownedBadges = (S.ownedStatus || []).map(id => {
+      const t = STATUS_TIERS.find(s => s.id === id);
+      return t ? `<span class="pill" style="margin:2px">${t.icon} ${t.name}</span>` : "";
+    }).join("");
     app.innerHTML = `<div class="screen">
       <div class="card" style="text-align:center;padding:24px">
         <div style="width:96px;margin:0 auto 12px">${grad(210, me.name || "You", me.photo)}</div>
@@ -801,6 +948,8 @@
         <div class="faint">${esc(me.city || "")} · ${S.role === "man" ? "Bidder" : "Lot"}</div>
         <div class="pill" style="margin-top:12px">⚖ ${S.wallet.toLocaleString()} Gavels</div>
         ${typeof S.reputation === "number" ? `<div class="faint" style="margin-top:8px">Reputation: ${S.reputation}%</div>` : ""}
+        ${S.pass ? `<div class="pill" style="margin-top:6px;background:rgba(224,96,122,.14);color:var(--rose)">✓ ${S.pass} Pass</div>` : ""}
+        ${ownedBadges ? `<div style="margin-top:10px">${ownedBadges}</div>` : ""}
       </div>
       ${me.bio ? `<div class="card" style="margin-top:12px"><div class="kicker">Bio</div><div class="muted" style="margin-top:6px">${esc(me.bio)}</div></div>` : ""}
       ${me.portrait ? `<div class="card" style="margin-top:10px"><div class="kicker">Portrait</div><div class="muted" style="margin-top:6px">${esc(me.portrait)}</div></div>` : ""}
@@ -809,6 +958,7 @@
       ${interests ? `<div class="card" style="margin-top:10px"><div class="kicker" style="margin-bottom:8px">Interests</div><div style="display:flex;flex-wrap:wrap;gap:8px">${interests}</div></div>` : ""}
       <button class="btn ghost" id="addphoto" style="margin-top:14px">${me.photo ? "Change photo" : "Add a photo"}</button>
       <button class="btn ghost" data-tab="store" style="margin-top:10px">Open the Store</button>
+      ${S.role === "man" && !S.pass ? `<button class="btn" style="margin-top:10px" data-go="paywall">Get an Auction Baby Pass</button>` : ""}
       ${(CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.VAPID_PUBLIC_KEY) ? `<button class="btn ghost" id="notif" style="margin-top:10px">Enable notifications</button>` : ""}
       ${SIGNED_IN() ? `<button class="btn ghost" id="signout" style="margin-top:10px">Sign out</button>` : ""}
       <button class="btn ghost" id="reset" style="margin-top:10px;color:var(--danger)">Reset account</button>
@@ -831,6 +981,7 @@
   function wire() {
     app.querySelectorAll("[data-lot]").forEach(b => b.onclick = () => go("/lot/" + b.dataset.lot));
     app.querySelectorAll("[data-chat]").forEach(b => b.onclick = () => go("/chat/" + b.dataset.chat));
+    app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go("/" + b.dataset.go));
     document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => go("/" + b.dataset.tab));
   }
 

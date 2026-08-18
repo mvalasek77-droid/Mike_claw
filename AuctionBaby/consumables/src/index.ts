@@ -113,6 +113,35 @@ function findPass(id: string): Pass | undefined {
   return PASS_CATALOG.find((p) => p.id === id);
 }
 
+// ── Spotlight Boost (consumable, one-time) ──────────────────────────────────
+// 30 minutes at the top of the floor. Mirrors the iOS boost IAP.
+const BOOST: { id: string; name: string; description: string; priceCents: number; minutes: number } = {
+  id: "boost_spotlight", name: "Spotlight Boost",
+  description: "30 minutes in the spotlight — top of the floor.",
+  priceCents: 499, minutes: 30,
+};
+
+// ── Status Archetypes (non-consumable, one-time purchase, owned forever) ────
+// Mirrors the iOS Archetype ladder exactly. On the web these are one-time Stripe
+// Checkout payments (mode=payment). Ownership is recorded in KV as
+// `status:{userId}` → CSV of owned status IDs, so the web app can show/hide
+// badges just like the iOS app's ownedStatusIDs set.
+interface StatusTier { id: string; name: string; blurb: string; priceCents: number; }
+const STATUS_CATALOG: StatusTier[] = [
+  { id: "status_goodguy",      name: "Good Guy",              blurb: "Texts back. Probably splits the bill.",                 priceCents: 499 },
+  { id: "status_inandout",     name: "In & Out Guy",          blurb: "Efficient. Knows what he wants.",                      priceCents: 999 },
+  { id: "status_whynot",       name: "Why Not Guy",           blurb: "The shrug that launched a thousand dates.",            priceCents: 1999 },
+  { id: "status_goodjob",      name: "Got a Good Job",        blurb: "Salaried, LinkedIn-verified energy.",                  priceCents: 9999 },
+  { id: "status_inheritance",  name: "Inheritance Money Guy", blurb: "Didn't earn it. Will absolutely spend it.",             priceCents: 50000 },
+  { id: "status_influencer",   name: "Influencer",            blurb: "Will film the date. You signed nothing.",              priceCents: 80000 },
+  { id: "status_ferrari",      name: "I Drive a Ferrari",    blurb: "The car is leased. The flex is real.",                  priceCents: 90000 },
+  { id: "status_trillionaire", name: "Trillionaire",         blurb: "Can mint a Masterpiece. The whole floor turns.",        priceCents: 100000 },
+];
+function findStatus(id: string): StatusTier | undefined {
+  return STATUS_CATALOG.find((p) => p.id === id);
+}
+const statusKey = (userId: string) => `status:${userId}`;
+
 // ── Stripe helpers ───────────────────────────────────────────────────────────
 
 /** POST to the Stripe API with form-encoded params (Stripe wants
@@ -307,19 +336,29 @@ const error = (message: string, status = 400) => json({ error: message }, status
 
 // ── Route handlers ───────────────────────────────────────────────────────────
 
-/** GET /catalog — public list of purchasable Gavel packs. */
+/** GET /catalog — public list of purchasable Gavel packs + passes + status + boost. */
 function handleCatalog(env: Env): Response {
   const currency = (env.CURRENCY ?? "usd").toLowerCase();
   return json({
     currency,
     packs: CATALOG.map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      gavels: p.gavels,
-      priceCents: p.priceCents,
+      id: p.id, name: p.name, description: p.description,
+      gavels: p.gavels, priceCents: p.priceCents,
       priceDisplay: formatPrice(p.priceCents, currency),
     })),
+    passes: PASS_CATALOG.map((p) => ({
+      id: p.id, name: p.name, priceCents: p.priceCents,
+      priceDisplay: formatPrice(p.priceCents, currency),
+    })),
+    status: STATUS_CATALOG.map((s) => ({
+      id: s.id, name: s.name, blurb: s.blurb,
+      priceCents: s.priceCents, priceDisplay: formatPrice(s.priceCents, currency),
+    })),
+    boost: {
+      id: BOOST.id, name: BOOST.name, description: BOOST.description,
+      priceCents: BOOST.priceCents, minutes: BOOST.minutes,
+      priceDisplay: formatPrice(BOOST.priceCents, currency),
+    },
   });
 }
 
@@ -514,6 +553,48 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
       return json({ received: true, subscription: passId });
     }
 
+    // ── Spotlight Boost (consumable, one-time) ─────────────────────────────
+    // A paid Boost grants 30 minutes at the top of the floor. Record it so the
+    // web app can activate the boost on next poll.
+    if (String(session.metadata?.kind) === "boost") {
+      const boostUser = String(session.metadata?.userId ?? session.client_reference_id ?? "");
+      if (boostUser && env.KV) {
+        await env.KV.put(`boost:${boostUser}`, JSON.stringify({
+          userId: boostUser, minutes: BOOST.minutes, paidAt: Date.now(), sessionId: String(session.id),
+        }), { expirationTtl: 60 * 60 }); // 1-hour TTL — enough to pick up
+        if (session.payment_intent) {
+          await env.KV.put(piKey(String(session.payment_intent)),
+                           JSON.stringify({ kind: "boost", userId: boostUser, refundedCents: 0 }),
+                           { expirationTtl: 60 * 60 * 24 * 180 });
+        }
+        await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
+      }
+      console.log(`Boost purchased by ${boostUser} (session ${session.id})`);
+      return json({ received: true, boost: true });
+    }
+
+    // ── Status Archetype (non-consumable, owned forever) ───────────────────
+    // A paid status tier is recorded in KV as a CSV of owned IDs. This is the
+    // web equivalent of the iOS app's ownedStatusIDs Set. A refund clears it.
+    if (String(session.metadata?.kind) === "status") {
+      const statusUser = String(session.metadata?.userId ?? session.client_reference_id ?? "");
+      const statusId = String(session.metadata?.statusId ?? "");
+      if (statusUser && statusId && env.KV) {
+        const raw = await env.KV.get(statusKey(statusUser));
+        const owned = raw ? raw.split(",").filter(Boolean) : [];
+        if (!owned.includes(statusId)) owned.push(statusId);
+        await env.KV.put(statusKey(statusUser), owned.join(","));
+        if (session.payment_intent) {
+          await env.KV.put(piKey(String(session.payment_intent)),
+                           JSON.stringify({ kind: "status", userId: statusUser, statusId, refundedCents: 0 }),
+                           { expirationTtl: 60 * 60 * 24 * 365 });
+        }
+        await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
+      }
+      console.log(`Status ${statusId} purchased by ${statusUser} (session ${session.id})`);
+      return json({ received: true, status: statusId });
+    }
+
     const userId = String(session.metadata?.userId ?? session.client_reference_id ?? "");
     const gavels = Number(session.metadata?.gavels ?? 0);
     if (!userId || !gavels) {
@@ -558,7 +639,7 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
     const routed = await env.KV.get(piKey(pi));
     if (!routed) return json({ received: true, skipped: "unknown payment_intent" });
     const record = JSON.parse(routed) as {
-      kind?: string; userId: string; gavels?: number; refundedCents?: number; matchId?: string;
+      kind?: string; userId: string; gavels?: number; refundedCents?: number; matchId?: string; statusId?: string;
     };
 
     // A refunded booking fee un-reserves the date; nothing to debit (Gavels
@@ -578,6 +659,28 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
       await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
       console.log(`Reservation refunded for match ${record.matchId} (charge ${charge.id})`);
       return json({ received: true, reservationRefunded: true });
+    }
+
+    // A refunded status archetype: remove it from the user's owned set.
+    if (record.kind === "status") {
+      const sUser = record.userId;
+      const sId = record.statusId;
+      if (sUser && sId && env.KV) {
+        const raw = await env.KV.get(statusKey(sUser));
+        const owned = raw ? raw.split(",").filter(x => x !== sId) : [];
+        if (owned.length) await env.KV.put(statusKey(sUser), owned.join(","));
+        else await env.KV.delete(statusKey(sUser));
+      }
+      await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
+      console.log(`Status ${sId} refunded for ${sUser} (charge ${charge.id})`);
+      return json({ received: true, statusRefunded: true });
+    }
+
+    // A refunded boost: nothing to debit (no Gavels were credited). Just mark.
+    if (record.kind === "boost") {
+      await env.KV.put(eventKey(event.id), "1", { expirationTtl: 60 * 60 * 24 * 30 });
+      console.log(`Boost refunded for ${record.userId} (charge ${charge.id})`);
+      return json({ received: true, boostRefunded: true });
     }
 
     const userId = record.userId;
@@ -763,6 +866,116 @@ async function handleReserveStatus(request: Request, env: Env): Promise<Response
                 paidAt: rec.paidAt ?? null, amountCents: rec.amountCents ?? null });
 }
 
+// ── Spotlight Boost ──────────────────────────────────────────────────────────
+
+/** POST /boost/checkout — create a one-time Stripe Checkout Session for a
+ *  Spotlight Boost. Body: { userId, successUrl?, cancelUrl? }
+ *  Returns: { sessionId, url } — redirect the user to `url`. */
+async function handleBoostCheckout(request: Request, env: Env): Promise<Response> {
+  let body: any;
+  try { body = await request.json(); } catch { return error("Invalid JSON body"); }
+  const userId = String(body?.userId ?? "").trim().toLowerCase();
+  if (!userId) return error("userId is required");
+
+  const currency = (env.CURRENCY ?? "usd").toLowerCase();
+  const successUrl = String(body?.successUrl ?? env.SUCCESS_URL ?? "https://example.com/success");
+  const cancelUrl = String(body?.cancelUrl ?? env.CANCEL_URL ?? "https://example.com/cancel");
+
+  try {
+    const session = await stripe(
+      "/checkout/sessions",
+      {
+        mode: "payment",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: BOOST.priceCents,
+            product_data: { name: BOOST.name, description: BOOST.description },
+          },
+        }],
+        metadata: { kind: "boost", userId },
+        client_reference_id: userId,
+      },
+      env.STRIPE_SECRET_KEY,
+      `boost:${userId}:${Math.floor(Date.now() / 60000)}`,
+    );
+    return json({ sessionId: session.id, url: session.url });
+  } catch (e: any) {
+    return error(`Boost checkout failed: ${e.message}`, 502);
+  }
+}
+
+/** GET /boost/status?userId= — does the user have an active boost? */
+async function handleBoostStatus(request: Request, env: Env): Promise<Response> {
+  const userId = new URL(request.url).searchParams.get("userId")?.trim().toLowerCase();
+  if (!userId) return error("userId is required");
+  if (!env.KV) return json({ userId, active: false });
+  const raw = await env.KV.get(`boost:${userId}`);
+  if (!raw) return json({ userId, active: false });
+  const rec = JSON.parse(raw);
+  const elapsed = (Date.now() - rec.paidAt) / 60000; // minutes
+  const remaining = Math.max(0, rec.minutes - elapsed);
+  return json({ userId, active: remaining > 0, remainingMinutes: remaining });
+}
+
+// ── Status Archetypes ───────────────────────────────────────────────────────
+
+/** POST /status/checkout — create a one-time Stripe Checkout Session for a
+ *  status archetype purchase. Body: { statusId, userId, successUrl?, cancelUrl? }
+ *  Returns: { sessionId, url } — redirect the user to `url`. */
+async function handleStatusCheckout(request: Request, env: Env): Promise<Response> {
+  let body: any;
+  try { body = await request.json(); } catch { return error("Invalid JSON body"); }
+  const statusId = String(body?.statusId ?? "");
+  const userId = String(body?.userId ?? "").trim().toLowerCase();
+  if (!userId) return error("userId is required");
+  const tier = findStatus(statusId);
+  if (!tier) return error(`Unknown statusId '${statusId}'`, 404);
+
+  const currency = (env.CURRENCY ?? "usd").toLowerCase();
+  const successUrl = String(body?.successUrl ?? env.SUCCESS_URL ?? "https://example.com/success");
+  const cancelUrl = String(body?.cancelUrl ?? env.CANCEL_URL ?? "https://example.com/cancel");
+
+  try {
+    const session = await stripe(
+      "/checkout/sessions",
+      {
+        mode: "payment",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: tier.priceCents,
+            product_data: { name: tier.name, description: tier.blurb },
+          },
+        }],
+        metadata: { kind: "status", userId, statusId: tier.id },
+        client_reference_id: userId,
+      },
+      env.STRIPE_SECRET_KEY,
+      `status:${userId}:${tier.id}:${Math.floor(Date.now() / 60000)}`,
+    );
+    return json({ sessionId: session.id, url: session.url });
+  } catch (e: any) {
+    return error(`Status checkout failed: ${e.message}`, 502);
+  }
+}
+
+/** GET /status/owned?userId= — CSV of owned status IDs for the user. */
+async function handleStatusOwned(request: Request, env: Env): Promise<Response> {
+  const userId = new URL(request.url).searchParams.get("userId")?.trim().toLowerCase();
+  if (!userId) return error("userId is required");
+  if (!env.KV) return json({ userId, owned: [] });
+  const raw = await env.KV.get(statusKey(userId));
+  const owned = raw ? raw.split(",").filter(Boolean) : [];
+  return json({ userId, owned });
+}
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export default {
@@ -812,6 +1025,10 @@ export default {
     if (pathname === "/ledger" && method === "GET") return handleLedger(request, env);
     if (pathname === "/reserve/checkout" && method === "POST") return handleReserveCheckout(request, env);
     if (pathname === "/reserve/status" && method === "GET") return handleReserveStatus(request, env);
+    if (pathname === "/boost/checkout" && method === "POST") return handleBoostCheckout(request, env);
+    if (pathname === "/boost/status" && method === "GET") return handleBoostStatus(request, env);
+    if (pathname === "/status/checkout" && method === "POST") return handleStatusCheckout(request, env);
+    if (pathname === "/status/owned" && method === "GET") return handleStatusOwned(request, env);
 
     return error("Not found", 404);
   },

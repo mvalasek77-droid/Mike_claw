@@ -144,6 +144,32 @@
       return data;
     },
     subscriptionStatus: (userId) => shop("/subscription?userId=" + encodeURIComponent(userId)),
+
+    // ── Spotlight Boost (one-time Stripe Checkout) ──
+    async buyBoost(userId) {
+      const data = await shop("/boost/checkout", {
+        method: "POST",
+        body: { userId,
+                successUrl: C.CHECKOUT_SUCCESS_URL || location.href,
+                cancelUrl: C.CHECKOUT_CANCEL_URL || location.href },
+      });
+      if (data.url) location.href = data.url;
+      return data;
+    },
+    boostStatus: (userId) => shop("/boost/status?userId=" + encodeURIComponent(userId)),
+
+    // ── Status Archetypes (one-time Stripe Checkout, owned forever) ──
+    async buyStatus(statusId, userId) {
+      const data = await shop("/status/checkout", {
+        method: "POST",
+        body: { statusId, userId,
+                successUrl: C.CHECKOUT_SUCCESS_URL || location.href,
+                cancelUrl: C.CHECKOUT_CANCEL_URL || location.href },
+      });
+      if (data.url) location.href = data.url;
+      return data;
+    },
+    statusOwned: (userId) => shop("/status/owned?userId=" + encodeURIComponent(userId)),
   };
 
   function urlB64ToUint8(base64) {

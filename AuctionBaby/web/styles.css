@@ -221,3 +221,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .sticky-bid{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;z-index:40;
   padding:12px 18px calc(12px + env(safe-area-inset-bottom));
   background:linear-gradient(to bottom,transparent,var(--bg) 30%)}
+
+/* paywall tier picker */
+.paywall-tier{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:14px 8px;border-radius:16px;background:rgba(255,255,255,.04);
+  border:1px solid var(--line);transition:all .2s;min-height:44px}
+.paywall-tier.on{background:rgba(230,184,0,.12);border-color:var(--gold);
+  transform:scale(1.03)}
