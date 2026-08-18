@@ -5,9 +5,9 @@
    All three are the SAME Cloudflare Workers your iOS app already uses. */
 window.AB_CONFIG = {
   // ── Backends (your deployed Workers) ─────────────────────────────────────
-  AUTH_URL:       "",  // e.g. "https://auctionbaby-auth.<sub>.workers.dev"
-  MATCHING_URL:   "",  // e.g. "https://auctionbaby-matching.<sub>.workers.dev"
-  CONSUMABLES_URL:"",  // e.g. "https://auctionbaby-consumables.<sub>.workers.dev"
+  AUTH_URL:       "https://auctionbaby-auth.mvalasek77.workers.dev",
+  MATCHING_URL:   "https://auctionbaby-matching.mvalasek77.workers.dev",
+  CONSUMABLES_URL:"https://auctionbaby-consumables.mvalasek77.workers.dev",
 
   // ── Sign in with Apple for the Web ───────────────────────────────────────
   // Create a **Services ID** in the Apple Developer portal (NOT the app bundle
@@ -21,8 +21,8 @@ window.AB_CONFIG = {
   // The consumables Worker holds the Stripe secret; the web only needs the
   // return URLs. Gavel packs use /checkout (one-time); Passes use /subscribe
   // (recurring Stripe Billing). Both are implemented in the Worker.
-  CHECKOUT_SUCCESS_URL: "",       // e.g. "https://auctionbaby.pages.dev/index.html#/store?paid=1"
-  CHECKOUT_CANCEL_URL:  "",       // e.g. "https://auctionbaby.pages.dev/index.html#/store"
+  CHECKOUT_SUCCESS_URL: "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/index.html#/store?paid=1",
+  CHECKOUT_CANCEL_URL:  "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/index.html#/store",
 
   // ── Web Push (VAPID) ─────────────────────────────────────────────────────
   // Generate a VAPID keypair (e.g. `npx web-push generate-vapid-keys`). Put the
