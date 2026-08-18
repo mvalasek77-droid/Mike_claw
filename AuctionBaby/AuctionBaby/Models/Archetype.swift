@@ -45,10 +45,10 @@ enum Archetype: Int, Codable, CaseIterable, Identifiable, Comparable {
         case .inAndOut:     return .money(productID: Self.productPrefix + "inandout",    usd: 9.99)
         case .whyNot:       return .money(productID: Self.productPrefix + "whynot",      usd: 19.99)
         case .goodJob:      return .money(productID: Self.productPrefix + "goodjob",     usd: 99.99)
-        case .inheritance:  return .money(productID: Self.productPrefix + "inheritance", usd: 999.99)
-        case .influencer:   return .money(productID: Self.productPrefix + "influencer",  usd: 2_499.99)
-        case .ferrari:      return .money(productID: Self.productPrefix + "ferrari",     usd: 4_999.99)
-        case .trillionaire: return .money(productID: Self.productPrefix + "trillionaire", usd: 9_999.99)
+        case .inheritance:  return .money(productID: Self.productPrefix + "inheritance", usd: 500)
+        case .influencer:   return .money(productID: Self.productPrefix + "influencer",  usd: 800)
+        case .ferrari:      return .money(productID: Self.productPrefix + "ferrari",     usd: 900)
+        case .trillionaire: return .money(productID: Self.productPrefix + "trillionaire", usd: 1_000)
         }
     }
 

@@ -194,7 +194,7 @@ struct MyProfileView: View {
             Text("Trillionaire is earned, not just bought. Clear all three:")
                 .font(.dynamicScaled(12, weight: .medium, relativeTo: .caption1)).foregroundStyle(Theme.inkSoft)
             VStack(alignment: .leading, spacing: 10) {
-                gate(done: true, "Bought the Trillionaire tier ($9,999)")
+                gate(done: true, "Bought the Trillionaire tier ($1,000)")
                 gate(done: false, "Bid & spend the full $9,999 on a date")
                 gate(done: false, "She confirms it against the receipts")
             }

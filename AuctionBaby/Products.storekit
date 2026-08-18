@@ -138,7 +138,7 @@
       "type" : "NonConsumable"
     },
     {
-      "displayPrice" : "999.99",
+      "displayPrice" : "500",
       "familyShareable" : false,
       "internalID" : "status-inheritance",
       "localizations" : [
@@ -153,7 +153,7 @@
       "type" : "NonConsumable"
     },
     {
-      "displayPrice" : "2499.99",
+      "displayPrice" : "800",
       "familyShareable" : false,
       "internalID" : "status-influencer",
       "localizations" : [
@@ -168,7 +168,7 @@
       "type" : "NonConsumable"
     },
     {
-      "displayPrice" : "4999.99",
+      "displayPrice" : "900",
       "familyShareable" : false,
       "internalID" : "status-ferrari",
       "localizations" : [
@@ -183,7 +183,7 @@
       "type" : "NonConsumable"
     },
     {
-      "displayPrice" : "9999.99",
+      "displayPrice" : "1000",
       "familyShareable" : false,
       "internalID" : "status-trillionaire",
       "localizations" : [
