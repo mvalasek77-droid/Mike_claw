@@ -10,6 +10,7 @@ struct ProfileView: View {
     @State private var showingBugReport = false
     @State private var showingSaved = false
     @State private var showingHistory = false
+    @State private var showDeleteConfirm = false
 
     init(container: AppContainer, onSignOut: @escaping () -> Void) {
         self.container = container
@@ -36,6 +37,22 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showingHistory) {
             HistoryView(historyService: container.historyService)
+        }
+        .confirmationDialog("Delete Account",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Account", role: .destructive) {
+                Task {
+                    await container.authService.signOut()
+                    Session.shared.signOut()
+                    UserDefaults.standard.removeObject(forKey: "metabro.tutorial.seen")
+                    onSignOut()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes your account data, handle, posts, and Bro Cred from this device. This action cannot be undone.")
         }
     }
 
@@ -65,6 +82,7 @@ struct ProfileView: View {
                     historyRow
                     reportProblemRow
                     signOutRow
+                    deleteAccountRow
                     SloganView(showsMark: false)
                         .padding(.top, Tokens.Spacing.xl)
                         .frame(maxWidth: .infinity)
@@ -151,6 +169,21 @@ struct ProfileView: View {
         } label: {
             HStack {
                 Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                Spacer()
+            }
+            .padding(Tokens.Spacing.md)
+        }
+        .buttonStyle(.plain)
+        .liquidGlass()
+        .frame(maxWidth: .infinity)
+    }
+
+    private var deleteAccountRow: some View {
+        Button(role: .destructive) {
+            showDeleteConfirm = true
+        } label: {
+            HStack {
+                Label("Delete Account", systemImage: "person.crop.circle.badge.minus")
                 Spacer()
             }
             .padding(Tokens.Spacing.md)
