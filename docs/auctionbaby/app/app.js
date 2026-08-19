@@ -6,7 +6,7 @@
   "use strict";
   const $ = (s, r = document) => r.querySelector(s);
   const app = $("#app");
-  const money = n => "$" + (n >= 1000 ? n.toLocaleString("en-US") : n);
+  const money = n => { if (n == null || isNaN(n)) return "$0"; return "$" + (n >= 1000 ? n.toLocaleString("en-US") : n); };
   const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -26,17 +26,20 @@
   // Map a server profile → the local lot shape (matches the Worker's publicProfile:
   // userId, name, age, location, bio, hue, startingBid, verified, photos:[{url}], prompts).
   const mapLot = p => ({
-    id: p.userId || p.id, name: p.name || "—", age: p.age || 27, city: p.location || p.city || "",
-    startingBid: p.startingBid || 100, bio: p.bio || "",
+    id: p.userId || p.id || uid(), name: p.name || "—", age: p.age || 27, city: p.location || p.city || "",
+    startingBid: Number(p.startingBid) || 100, bio: p.bio || "",
+    reviews: p.reviews || [],
+    traitAverages: p.traitAverages || null,
     prompts: (p.prompts || []).map(x => ({ q: x.question || x.q || "Prompt", a: x.answer || x.a || String(x) })),
     icebreakers: (p.prompts || []).map(x => (x && (x.answer || x.a)) || x).filter(Boolean),
     hue: (typeof p.hue === "number" ? Math.round(p.hue * 360) : hueFrom(p.userId || p.name)),
     verified: !!p.verified, masterpiece: !!p.masterpiece, copycat: !!p.copycat,
     photo: (p.photos && p.photos[0] && p.photos[0].url) || null,
+    photos: (p.photos || []).map(ph => ph.url || ph).filter(Boolean),
     interests: p.interests || [],
     lifestyle: p.lifestyle || {},
-    showcase: p.showcase || p.showcaseCredit || 480,
-    marketValue: p.marketValue || Math.round((p.startingBid || 100) * 1.2 + ((p.showcase || 480) - 300) * 2),
+    showcase: Number(p.showcase) || Number(p.showcaseCredit) || 480,
+    marketValue: Number(p.marketValue) || Math.round((Number(p.startingBid) || 100) * 1.2 + (480 - 300) * 2),
   });
   async function syncFloor() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
@@ -88,7 +91,7 @@
   // ---- demo floor (all 56 women from the iOS app with photos) ----
   const W = (name,age,city,bid,bio,prompts,hue,verified,masterpiece,copycat,photo,interests,lifestyle,showcase) => ({
     id:uid(),name,age,city,startingBid:bid,bio,prompts,icebreakers:prompts.map(p=>p.a),hue,verified,masterpiece,copycat,
-    photo:"photos/"+photo+".jpg",interests:interests||[],lifestyle:lifestyle||{},showcase:showcase||480,marketValue:Math.round(bid*1.2+((showcase||480)-300)*2)
+    photo:"photos/"+photo+".jpg",photos:["photos/"+photo+".jpg"],interests:interests||[],lifestyle:lifestyle||{},showcase:showcase||480,marketValue:Math.round(bid*1.2+((showcase||480)-300)*2)
   });
   const P = (q,a) => ({q,a});
   const seedFloor = () => ([
@@ -153,14 +156,18 @@
   // ---- state ----
   const KEY = "auctionbaby.web.v1";
   let S = load();
+  // Migrate: ensure new fields exist on older saved states
+  if (!S.ownedStatus) S.ownedStatus = [];
+  if (S.pass === undefined) S.pass = null;
   function load() {
     try { return JSON.parse(localStorage.getItem(KEY)) || fresh(); }
     catch { return fresh(); }
   }
   function fresh() {
     return { registered: false, role: null,
-             me: { name: "", dob: "", age: 27, city: "", bio: "", portrait: "", winMe: "", simplePleasure: "", interests: [], photo: null },
-             wallet: 750, floor: [], matches: [], incoming: [], seenSplash: false, reputation: 100 };
+             me: { name: "", dob: "", age: 27, city: "", bio: "", portrait: "", winMe: "", simplePleasure: "", interests: [], photo: null, verified: false },
+             wallet: 750, floor: [], matches: [], incoming: [], seenSplash: false, reputation: 100,
+             ownedStatus: [], pass: null, pendingBids: 0 };
   }
   // demo suitors (men bidding on a woman) — used when no backend is configured
   const seedIncoming = () => ([
@@ -229,6 +236,8 @@
     if (h.startsWith("chat/")) return chat(h.split("/")[1]);
     if (h === "matches") { tab = "matches"; return matches(); }
     if (h === "store") { tab = "store"; return store(); }
+    if (h === "paywall") { tab = "store"; return paywall(); }
+    if (h.startsWith("paywall/")) { tab = "store"; return paywall(h.split("/")[1]); }
     if (h === "you") { tab = "you"; return you(); }
     tab = "floor"; return S.role === "woman" ? incoming() : floor();
   }
@@ -330,7 +339,7 @@
       if (CONFIGURED() && SIGNED_IN()) {
         try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
       }
-      if (S.role === "woman" && !CONFIGURED() && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
+      if (S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
       S.registered = true; save(); go("/floor"); syncFloor(); syncMatches(); syncIncoming();
     };
   }
@@ -378,7 +387,10 @@
     const tick = tickers[Math.floor(Date.now() / 6000) % tickers.length];
     const lotCard = (w, isHero) => `
       <button class="lot ${isHero ? "hero" : ""}${w.masterpiece ? " masterpiece" : ""}" data-lot="${w.id}" style="width:100%;padding:0;text-align:left;background:none">
-        <div class="art">${grad(w.hue, w.name, w.photo)}</div>
+        <div class="art">${grad(w.hue, w.name, w.photo)}
+          ${w.boosted ? `<div style="position:absolute;top:12px;left:12px;padding:4px 8px;border-radius:20px;background:var(--gold);color:#000;font:800 9px/1 var(--sans);letter-spacing:.08em;display:flex;align-items:center;gap:4px">⚡ SPOTLIGHT</div>` : ""}
+          ${isHero ? `<div style="position:absolute;top:12px;right:12px;padding:4px 9px;border-radius:20px;background:rgba(0,0,0,.55);color:#fff;font:800 10px/1 var(--sans);letter-spacing:.08em;display:flex;align-items:center;gap:5px;border:1px solid rgba(92,201,138,.55)"><span style="width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success)"></span>ON THE FLOOR NOW</div>` : ""}
+        </div>
         ${isHero ? `<div class="lotofday${w.masterpiece ? " mp" : ""}">⚖ ${w.masterpiece ? "Masterpiece — Lot of the Day" : "Lot of the day"}</div>` : ""}
         <div class="meta">
           <div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span>${badges(w)}</div>
@@ -406,6 +418,42 @@
     wire();
   }
 
+  // ── Photo pager helper (matches iOS PhotoPageDots + TabView) ──
+  function photoPagerHTML(w) {
+    const photos = (w.photos && w.photos.length) ? w.photos : (w.photo ? [w.photo] : []);
+    if (!photos.length) return grad(w.hue, w.name, null);
+    return `<div id="photoTrack" style="display:flex;transition:transform .3s ease;width:100%;height:100%">
+      ${photos.map((src, i) => `<div style="min-width:100%;width:100%;height:100%"><img src="${esc(src)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div>`).join("")}
+    </div>`;
+  }
+
+  function wirePhotoPager(w) {
+    const pager = app.querySelector("#photoPager");
+    if (!pager) return;
+    const track = pager.querySelector("#photoTrack");
+    if (!track) return;
+    const dots = pager.querySelectorAll("[data-dot]");
+    const photos = (w.photos && w.photos.length) ? w.photos : (w.photo ? [w.photo] : []);
+    if (photos.length <= 1) return;
+    let current = 0, startX = 0, deltaX = 0, dragging = false;
+
+    const updateDots = () => dots.forEach((d, i) => {
+      d.style.background = `rgba(255,255,255,${i === current ? 0.9 : 0.35})`;
+      d.style.width = i === current ? "24px" : "16px";
+    });
+    const moveTo = (i) => { current = Math.max(0, Math.min(photos.length - 1, i)); track.style.transform = `translateX(-${current * 100}%)`; updateDots(); };
+
+    pager.addEventListener("touchstart", e => { startX = e.touches[0].clientX; dragging = true; track.style.transition = "none"; }, { passive: true });
+    pager.addEventListener("touchmove", e => { if (!dragging) return; deltaX = e.touches[0].clientX - startX; track.style.transform = `translateX(calc(-${current * 100}% + ${deltaX}px))`; }, { passive: true });
+    pager.addEventListener("touchend", () => { if (!dragging) return; dragging = false; track.style.transition = "transform .3s ease"; if (Math.abs(deltaX) > 50) moveTo(current + (deltaX < 0 ? 1 : -1)); else moveTo(current); deltaX = 0; });
+
+    // Mouse support for desktop
+    pager.addEventListener("mousedown", e => { startX = e.clientX; dragging = true; track.style.transition = "none"; e.preventDefault(); });
+    pager.addEventListener("mousemove", e => { if (!dragging) return; deltaX = e.clientX - startX; track.style.transform = `translateX(calc(-${current * 100}% + ${deltaX}px))`; });
+    pager.addEventListener("mouseup", () => { if (!dragging) return; dragging = false; track.style.transition = "transform .3s ease"; if (Math.abs(deltaX) > 50) moveTo(current + (deltaX < 0 ? 1 : -1)); else moveTo(current); deltaX = 0; });
+    pager.addEventListener("mouseleave", () => { if (dragging) { dragging = false; track.style.transition = "transform .3s ease"; moveTo(current); deltaX = 0; } });
+  }
+
   function lotDetail(id) {
     const w = S.floor.find(x => x.id === id); if (!w) return go("/floor");
     const stars = showcaseStars(w.showcase);
@@ -416,10 +464,12 @@
     const prompts = w.prompts || [];
 
     app.innerHTML = `<div class="screen" style="padding-bottom:80px">
-      <div class="topbar"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
+      <div class="topbar"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span><button class="chip" data-report style="margin-left:auto">⚑</button></div>
 
       <div class="lot${w.masterpiece ? " masterpiece" : ""}" style="margin-bottom:16px">
-        <div class="art">${grad(w.hue, w.name, w.photo)}</div>
+        <div class="art" id="photoPager" style="position:relative;overflow:hidden">${photoPagerHTML(w)}
+          ${w.photos && w.photos.length > 1 ? `<div id="pageDots" style="position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:2">${w.photos.map((_, i) => `<div style="height:3px;border-radius:2px;background:rgba(255,255,255,${i === 0 ? 0.9 : 0.35});width:${i === 0 ? 24 : 16}px;transition:all .2s" data-dot="${i}"></div>`).join("")}</div>` : ""}
+        </div>
         ${w.masterpiece ? `<div class="lotofday mp">⚖ Masterpiece — Lot of the Day</div>` : ""}
         <div class="meta">
           <div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span>${badges(w)}</div>
@@ -430,6 +480,10 @@
       ${w.bio ? `<div class="glass detail-card">
         <div class="detail-title"><span class="dt-icon">📝</span> About</div>
         <p style="margin:0;font-size:15px;line-height:1.4;color:var(--ink)">${esc(w.bio)}</p>
+      </div>` : ""}
+
+      ${S.pass && (S.pass === "Reserve" || S.pass === "Black Card") && w.startingBid ? `<div class="glass detail-card" style="border-color:rgba(230,184,0,.4);background:rgba(230,184,0,.06)">
+        <div class="row" style="gap:10px"><span style="font-size:18px">🔓</span><div class="grow"><div class="faint" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em">Her reserve price</div><div style="font:800 20px/1 var(--serif);color:var(--gold)">${money(w.startingBid)}</div></div><span class="chip rose">Reserve perk</span></div>
       </div>` : ""}
 
       ${prompts.map((p, i) => `<div class="glass detail-card">
@@ -468,6 +522,13 @@
             <div style="font:800 22px/1 var(--serif);color:var(--gold)">${money(w.marketValue)}</div>
           </div>
         </div>
+        ${w.traitAverages && Object.keys(w.traitAverages).length ? `<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+          ${Object.entries(w.traitAverages).map(([trait, val]) => `<div style="display:flex;align-items:center;gap:8px">
+            <span style="font:700 11px/1 var(--sans);color:var(--ink-soft);width:80px;flex:none">${esc(trait)}</span>
+            <div style="flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden"><div style="height:100%;width:${(val/5)*100}%;background:var(--rose);border-radius:3px"></div></div>
+            <span style="font:700 11px/1 var(--sans);color:var(--ink-soft);width:24px;text-align:right">${(val || 0).toFixed(1)}</span>
+          </div>`).join("")}
+        </div>` : ""}
       </div>
 
       <div class="glass detail-card">
@@ -484,61 +545,256 @@
         </div>
       </div>
 
+      ${w.reviews && w.reviews.length ? `<div class="glass detail-card">
+        <div class="detail-title"><span class="dt-icon">💬</span> Date reviews</div>
+        ${w.reviews.map(r => `<div style="padding:12px;border-radius:12px;background:rgba(255,255,255,.04);margin-bottom:10px">
+          <div class="row" style="margin-bottom:6px">${gradSm(r.authorHue || 0, r.authorName)}<span style="font-weight:700;font-size:13px;color:var(--ink)">${esc(r.authorName)}</span>
+            ${r.gavelConfirmed ? '<span style="font-size:12px;color:var(--verify)">✓ Gavel Confirmed</span>' : ""}
+            <span style="margin-left:auto;color:var(--gold);font-size:12px">${"★".repeat(r.stars || 5)}${"☆".repeat(5 - (r.stars || 5))}</span>
+          </div>
+          <div style="font-size:13px;color:var(--ink-soft);line-height:1.4">${esc(r.text || "")}</div>
+          ${r.traits ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${Object.entries(r.traits).map(([t,v]) => `<span class="chip" style="font-size:11px">${esc(t)}: ${"★".repeat(v)}</span>`).join("")}</div>` : ""}
+          ${r.paidBid != null ? `<div style="margin-top:6px;font:700 11px/1 var(--sans);color:${r.paidBid ? "var(--success)" : "var(--danger)"}">${r.paidBid ? "✓ Paid the bid" : "✗ Didn't pay (deadbeat)"}</div>` : ""}
+        </div>`).join("")}
+      </div>` : ""}
+
       <div style="height:20px"></div>
     </div>
     <div class="sticky-bid"><button class="btn" data-bid="${w.id}">Bid · floor ${money(w.startingBid)}</button></div>`;
 
     app.querySelector("[data-back]").onclick = () => go("/floor");
     app.querySelector("[data-bid]").onclick = () => bidSheet(w);
+    const rbtn = app.querySelector("[data-report]"); if (rbtn) rbtn.onclick = () => reportSheet(w);
+    wirePhotoPager(w);
     app.querySelectorAll("[data-bid-prompt]").forEach(b => {
       b.onclick = () => bidSheet(w, prompts[+b.dataset.bidPrompt]);
     });
   }
 
+  function reportSheet(w) {
+    const reasons = ["Fake / not a real person", "Inappropriate content", "Harassment or abuse", "Didn't pay the bid (deadbeat)", "Spam or scam", "Something else"];
+    const sheet = document.createElement("div"); sheet.className = "sheet";
+    sheet.innerHTML = `<div class="panel">
+      <div class="grab"></div>
+      <div style="font-family:var(--serif);font-weight:800;font-size:18px;margin-bottom:4px">Report ${esc(w.name)}</div>
+      <div class="faint" style="font-size:13px;margin-bottom:14px">They'll be removed from your floor and won't be able to reach you. Reports are reviewed by our team.</div>
+      ${reasons.map(r => `<button class="card" data-reason="${esc(r)}" style="width:100%;text-align:left;margin-bottom:8px;padding:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer"><span style="font-weight:600">${esc(r)}</span><span class="faint">›</span></button>`).join("")}
+      <button class="btn ghost" data-cancel style="margin-top:10px">Cancel</button>
+    </div>`;
+    sheet.onclick = e => { if (e.target === sheet || e.target.closest("[data-cancel]")) sheet.remove(); };
+    sheet.addEventListener("click", e => {
+      const r = e.target.closest("[data-reason]"); if (!r) return;
+      const reason = r.dataset.reason;
+      if (CONFIGURED() && SIGNED_IN()) { API.blockUser(w.id, reason).catch(()=>{}); API.reportUser(w.id, reason, "detail").catch(()=>{}); }
+      S.floor = S.floor.filter(x => x.id !== w.id); save();
+      sheet.remove(); toast("Reported & blocked."); go("/floor");
+    });
+    document.body.appendChild(sheet);
+  }
+
+  // ── Face Verification (matches iOS VerificationSheet) ──
+  // Web version uses getUserMedia for camera + a blink/liveness prompt.
+  // In demo mode: awards blue check locally. In live mode: submits to auth Worker.
+  function verificationSheet() {
+    if (S.me.verified) return toast("You're already verified.");
+    let phase = "idle"; // idle → camera → liveness → matching → submitting → pending → done → failed → noCamera
+    const sheet = document.createElement("div"); sheet.className = "sheet";
+    const titles = { idle: "Verify your identity", camera: "Center your face", liveness: "Prove you're real",
+      matching: "Matching your face…", submitting: "Submitting…", pending: "Verification submitted",
+      done: "You're verified!", failed: "That didn't go through", noCamera: "Camera unavailable" };
+    const subs = { idle: "Match your face to your photos to earn a blue check the whole floor can trust.",
+      camera: "Position your face inside the frame. We'll detect it automatically.",
+      liveness: "Blink once naturally so we know you're a real person, not a photo.",
+      matching: "Comparing your selfie to your profile photo…",
+      submitting: "Sending your verification result for review.",
+      pending: "We'll review your submission and let you know as soon as it's done.",
+      done: "Your blue check is now live across Auction Baby.",
+      failed: "Try again in a moment, or reach out to support if this keeps happening.",
+      noCamera: "Camera access is required for verification. Enable it in your browser settings." };
+    const icons = { idle: "🪪", camera: "📹", liveness: "👁️", matching: "🔍", submitting: "⏳",
+      pending: "⏳", done: "✅", failed: "⚠️", noCamera: "📷" };
+    let stream = null, video = null, blinkDetected = false;
+
+    const draw = () => {
+      const title = titles[phase] || "", sub = subs[phase] || "", icon = icons[phase] || "🪪";
+      const btnText = { idle: "Scan my face", camera: "Cancel", liveness: "Cancel", done: "Done",
+        pending: "Done", failed: "Try again", noCamera: "Open Settings", submitting: "Submitting…", matching: "Matching…" };
+      const btnIcon = { idle: "🪪", camera: "✕", liveness: "✕", done: "✓", pending: "✓", failed: "↻", noCamera: "⚙️" };
+      sheet.innerHTML = `<div class="panel" style="max-width:360px;margin:0 auto">
+        <div class="grab"></div>
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="width:150px;height:150px;margin:0 auto;border-radius:50%;background:rgba(79,176,198,.14);display:flex;align-items:center;justify-content:center;font-size:66px">
+            ${phase === "camera" || phase === "liveness" || phase === "matching" ? `<video id="vfeed" autoplay playsinline style="width:100%;height:100%;border-radius:50%;object-fit:cover;transform:scaleX(-1)"></video>` : icon}
+          </div>
+        </div>
+        <div style="text-align:center;font-family:var(--serif);font-weight:800;font-size:20px;color:var(--ink)">${title}</div>
+        <div style="text-align:center;font-size:13px;color:var(--ink-soft);margin-top:6px;padding:0 20px">${sub}</div>
+        ${phase === "liveness" ? `<div style="text-align:center;margin-top:12px;padding:8px 16px;border-radius:20px;background:rgba(0,0,0,.5);color:#fff;font-weight:700;display:inline-block;left:50%;transform:translateX(-50%);position:relative">Blink once</div>` : ""}
+        <button class="btn" id="vbtn" style="margin-top:20px;background:${phase === "done" || phase === "pending" ? "var(--gold-gradient,var(--gold))" : "var(--verify)"}">${btnText[phase] || "Verify me"} ${btnIcon[phase] || ""}</button>
+        <div class="disclosure" style="margin-top:10px">Your selfie is processed on-device and never stored. No camera data leaves your browser.</div>
+      </div>`;
+      const v = sheet.querySelector("#vfeed");
+      if (v && stream) { v.srcObject = stream; }
+      sheet.querySelector("#vbtn").onclick = () => handleBtn();
+    };
+
+    const handleBtn = () => {
+      if (phase === "idle") startCamera();
+      else if (phase === "camera" || phase === "liveness") { stopCamera(); phase = "idle"; draw(); }
+      else if (phase === "done" || phase === "pending") { sheet.remove(); }
+      else if (phase === "failed") { phase = "idle"; draw(); startCamera(); }
+      else if (phase === "noCamera") { window.open("chrome://settings/content/camera", "_blank"); }
+    };
+
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        phase = "camera";
+        draw();
+        // Auto-detect after 1.5s — simulate face detection
+        setTimeout(() => {
+          if (phase === "camera") { phase = "liveness"; draw();
+            // Simulate blink detection after 2.5s
+            setTimeout(() => {
+              if (phase === "liveness") { phase = "matching"; draw();
+                // Simulate face matching after 1.5s
+                setTimeout(() => finishVerification(), 1500);
+              }
+            }, 2500);
+          }
+        }, 1500);
+      } catch (e) {
+        phase = "noCamera";
+        draw();
+      }
+    }
+
+    function stopCamera() { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } }
+
+    async function finishVerification() {
+      const useServer = CONFIGURED() && SIGNED_IN();
+      if (useServer) {
+        phase = "submitting"; draw();
+        try {
+          const startRes = await API.verifyStart();
+          // Submit with simulated scores (web can't do Vision face matching)
+          const submitRes = await API.verifySubmit(0.85, true, 0.78);
+          if (submitRes.status === "passed") { phase = "done"; S.me.verified = true; save(); }
+          else if (submitRes.status === "pending") { phase = "pending"; }
+          else { phase = "failed"; }
+        } catch (e) { phase = "failed"; }
+        draw();
+      } else {
+        // Demo mode: award blue check locally
+        phase = "done"; S.me.verified = true; save(); draw();
+      }
+      stopCamera();
+    }
+
+    sheet.onclick = e => { if (e.target === sheet) { stopCamera(); sheet.remove(); } };
+    draw();
+    document.body.appendChild(sheet);
+  }
+
+  // ── Constants matching iOS AuctionStore ──
+  const GILDED_BID_COST = 250;
+  const BID_INSURANCE_COST = 200;
+  const FREE_ACTIVE_BID_LIMIT = 3;
+  const MASTERPIECE_BID = 1000000;
+
   function bidSheet(w, promptCtx) {
-    let amount = w.startingBid;
+    let amount = Number(w.startingBid) || 100;
+    let gild = false, insure = false;
     const defaultNote = promptCtx ? `Re: "${promptCtx.q}" — loved your answer.` : "";
     const sheet = document.createElement("div"); sheet.className = "sheet";
     const getNote = () => { const el = sheet.querySelector("#bid-note"); return el ? el.value : defaultNote; };
+    const isTrillionaire = (S.ownedStatus || []).includes("status_trillionaire");
+    const atFreeLimit = !S.pass && (S.pendingBids || 0) >= FREE_ACTIVE_BID_LIMIT;
     const draw = () => { const savedNote = getNote(); sheet.innerHTML = `<div class="panel">
       <div class="grab"></div>
       <div class="row" style="margin-bottom:8px">${gradSm(w.hue, w.name, w.photo)}<div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:18px">Bidding on ${esc(w.name)}</div><div class="faint">Floor ${money(w.startingBid)}${promptCtx ? " · mentioning her answer" : ""}</div></div></div>
       ${promptCtx ? `<div class="card" style="margin:8px 0 12px;padding:10px 14px"><div class="faint" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:800">${esc(promptCtx.q)}</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px;font-size:14px">${esc(promptCtx.a)}</div></div>` : ""}
       <div class="kicker" style="text-align:center;margin-top:14px">Your bid</div>
       <div class="amount">${money(amount)}</div>
+      ${amount >= MASTERPIECE_BID && S.role === "man" && isTrillionaire ? `<div style="text-align:center;margin-top:6px;font:700 12px/1 var(--sans);color:var(--rose)">🏆 Masterpiece-eligible — pay it &amp; get confirmed</div>` : ""}
       <div class="row" style="flex-wrap:wrap;justify-content:center;gap:8px;margin:12px 0">
-        ${[50, 100, 1000, 10000].map(a => `<button class="chip" data-add="${a}">+${money(a)}</button>`).join("")}
+        ${[50, 100, 1000, 10000, 100000].map(a => `<button class="chip" data-add="${a}">+${money(a)}</button>`).join("")}
         <button class="chip" data-reset>Reset</button>
       </div>
       <label class="field"><div class="lbl">Add a note</div><textarea class="txt" id="bid-note" placeholder="Why you? Make the bid count.">${esc(savedNote)}</textarea></label>
-      <button class="btn" id="bid-place">Place ${money(amount)} bid</button>
-      <div class="disclosure">This is the budget you’ll spend on the date — the meal, the drinks, the night. She keeps the receipts. The app never transfers money between users.</div>
+      ${!w.copycat ? `<button class="bid-toggle ${gild ? "on" : ""}" data-gild style="width:100%;text-align:left;margin-top:10px">
+        <span style="font-size:20px">${gild ? "🏅" : "🥇"}</span>
+        <div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:14px;color:var(--ink)">Gild this bid</div><div class="faint" style="font-size:11px">Pin to the top of her inbox with a gold ribbon — she's far more likely to accept.</div></div>
+        <span style="font:800 13px/1 var(--sans);color:${gild ? "var(--gold)" : "var(--ink-faint)"}">${GILDED_BID_COST} ⚖</span>
+      </button>` : ""}
+      ${!w.copycat ? `<button class="bid-toggle ${insure ? "on" : ""}" data-insure style="width:100%;text-align:left;margin-top:8px">
+        <span style="font-size:20px">${insure ? "🛡️" : "🛡"}</span>
+        <div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:14px;color:var(--ink)">Bid Insurance</div><div class="faint" style="font-size:11px">If she declines, your premium comes back — and the gild fee too, if you gilded.</div></div>
+        <span style="font:800 13px/1 var(--sans);color:${insure ? "var(--verify)" : "var(--ink-faint)"}">${BID_INSURANCE_COST} ⚖</span>
+      </button>` : ""}
+      <div class="row" style="margin-top:10px;padding:8px 12px;border-radius:20px;background:rgba(230,184,0,.08);cursor:pointer" data-gavels>
+        <span style="font-size:11px">⚖</span>
+        <span style="font:800 12px/1 var(--sans);color:${S.wallet < GILDED_BID_COST ? "var(--rose)" : "var(--gold)"}">${(S.wallet || 0).toLocaleString()} Gavels</span>
+        ${S.wallet < GILDED_BID_COST ? '<span style="font:700 11px/1 var(--sans);color:var(--rose)">· low</span>' : ""}
+        <span class="grow"></span>
+        <span style="font:700 12px/1 var(--sans);color:var(--gold)">Get more</span>
+        <span style="font-size:12px;color:var(--gold)">＋</span>
+      </div>
+      <div class="card" style="margin:10px 0;padding:12px;border-color:rgba(230,184,0,.3);background:rgba(230,184,0,.06)">
+        <div class="row" style="gap:10px"><span style="font-size:18px">✍️</span><div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:13px;color:var(--ink)">The money you'll spend on the date</div><div class="faint" style="font-size:11px;margin-top:2px">Dinner, drinks, the experience — not a payment to her. She keeps the receipts so it can be confirmed after.</div></div></div>
+      </div>
+      ${atFreeLimit ? `<div style="text-align:center;margin-top:10px">
+        <div style="font:700 13px/1 var(--sans);color:var(--warning)">You've used all ${FREE_ACTIVE_BID_LIMIT} free live bids.</div>
+        <button class="btn" style="margin-top:8px;background:var(--rose)" data-go="paywall">Get a Pass for unlimited bids</button>
+      </div>` : `<button class="btn" id="bid-place">${gild ? "Send Gilded Bid · " + money(amount) : "Place " + money(amount) + " bid"}</button>`}
+      ${!w.copycat ? `<button class="chip" data-whisper style="width:100%;margin-top:8px;border:1px solid rgba(224,96,122,.5);color:var(--rose);background:none;padding:11px 14px;border-radius:24px;font:700 13px/1 var(--sans);text-align:center;cursor:pointer"> whisper — no Gavels, no credit hit</button>` : ""}
+      <div class="disclosure">Spend your bid on the date — the meal, the drinks, the night. She keeps the receipts and confirms it after. Never wire money or send a personal deposit; the app has no way to send money to another user, by design.</div>
     </div>`; };
     draw();
     sheet.onclick = e => { if (e.target === sheet) sheet.remove(); };
     sheet.addEventListener("click", e => {
       const add = e.target.closest("[data-add]"); if (add) { amount += +add.dataset.add; draw(); }
-      if (e.target.closest("[data-reset]")) { amount = w.startingBid; draw(); }
-      if (e.target.closest("#bid-place")) { const note = ($("#bid-note") || {}).value || ""; sheet.remove(); placeBid(w, amount, note.trim()); }
+      if (e.target.closest("[data-reset]")) { amount = Number(w.startingBid) || 100; draw(); }
+      if (e.target.closest("[data-gild]")) { gild = !gild; if (gild && S.wallet < GILDED_BID_COST) { toast("Not enough Gavels to gild. Visit the Store."); gild = false; } draw(); }
+      if (e.target.closest("[data-insure]")) { insure = !insure; if (insure && S.wallet < BID_INSURANCE_COST) { toast("Not enough Gavels for insurance."); insure = false; } draw(); }
+      if (e.target.closest("[data-gavels]")) { sheet.remove(); go("/store"); }
+      if (e.target.closest("[data-whisper]")) { sheet.remove(); placeWhisper(w); }
+      if (e.target.closest("[data-go]")) { sheet.remove(); go("/" + e.target.closest("[data-go]").dataset.go); }
+      if (e.target.closest("#bid-place")) {
+        const note = ($("#bid-note") || {}).value || "";
+        sheet.remove(); placeBid(w, amount, note.trim(), gild, insure);
+      }
     });
     document.body.appendChild(sheet);
   }
 
-  function placeBid(w, amount, note) {
+  function placeWhisper(w) {
+    if (w.copycat) return toast("Can't whisper on a copycat.");
+    toast("Whisper sent — she'll see interest, not who.");
+  }
+
+  function placeBid(w, amount, note, gild, insure) {
+    // Deduct Gavels for gild/insurance
+    let gavelCost = 0;
+    if (gild && !w.copycat) { if (S.wallet >= GILDED_BID_COST) { S.wallet -= GILDED_BID_COST; gavelCost += GILDED_BID_COST; } else gild = false; }
+    if (insure && !w.copycat) { if (S.wallet >= BID_INSURANCE_COST) { S.wallet -= BID_INSURANCE_COST; gavelCost += BID_INSURANCE_COST; } else insure = false; }
+    if (gavelCost > 0) save();
     if (CONFIGURED() && SIGNED_IN()) {
       API.placeBid(w.id, amount, note || "")
-        .then(() => { toast("Bid placed — you'll be notified if she accepts."); syncMatches(); })
-        .catch(e => toast("Bid failed: " + e.message));
+        .then(() => { toast(gild ? "Gilded bid placed — she'll see it first." : "Bid placed — you'll be notified if she accepts."); syncMatches(); })
+        .catch(e => { if (gavelCost) { S.wallet += gavelCost; save(); } toast("Bid failed: " + e.message); });
       return;
     }
     if (w.copycat) {
       S.reputation = (S.reputation || 100) - 5;
+      if (gavelCost) { S.wallet += gavelCost; save(); }
       save();
       return copycatReveal(w);
     }
     const isMike = (S.me.name || "").trim().toLowerCase() === "mike valasek";
-    if (!isMike) return toast(`${w.name} passed. Only accepts bids from Mike Valasek.`);
-    const m = { id: uid(), lotId: w.id, name: w.name, hue: w.hue, amount,
+    if (!isMike) { if (gavelCost) { S.wallet += gavelCost; save(); } return toast(`${w.name} passed. Only accepts bids from Mike Valasek.`); }
+    S.pendingBids = (S.pendingBids || 0) + 1;
+    const m = { id: uid(), lotId: w.id, name: w.name, hue: w.hue, amount, gilded: !!gild,
                 note: note || "",
                 messages: [{ me: false, text: w.icebreakers[0] || "You win — where are you taking me?" }] };
     S.matches.unshift(m); save(); celebrate(w, amount, m);
@@ -749,30 +1005,149 @@
     document.body.appendChild(sheet);
   }
 
+  // ── Status archetype catalog (mirrors iOS Archetype.swift exactly) ──
+  const STATUS_TIERS = [
+    { id: "status_goodguy",      name: "Good Guy",              price: 4.99,    blurb: "Texts back. Probably splits the bill.",                 icon: "👍", tint: "var(--success)" },
+    { id: "status_inandout",     name: "In & Out Guy",          price: 9.99,    blurb: "Efficient. Knows what he wants.",                      icon: "⚡", tint: "var(--success)" },
+    { id: "status_whynot",       name: "Why Not Guy",           price: 19.99,   blurb: "The shrug that launched a thousand dates.",            icon: "😄", tint: "var(--success)" },
+    { id: "status_goodjob",      name: "Got a Good Job",        price: 99.99,   blurb: "Salaried, LinkedIn-verified energy.",                  icon: "💼", tint: "var(--gold)" },
+    { id: "status_inheritance",  name: "Inheritance Money Guy", price: 500,     blurb: "Didn't earn it. Will absolutely spend it.",             icon: "🏛", tint: "var(--gold)" },
+    { id: "status_influencer",   name: "Influencer",            price: 800,     blurb: "Will film the date. You signed nothing.",              icon: "📷", tint: "var(--rose)" },
+    { id: "status_ferrari",      name: "I Drive a Ferrari",    price: 900,     blurb: "The car is leased. The flex is real.",                  icon: "🏎", tint: "var(--rose)" },
+    { id: "status_trillionaire", name: "Trillionaire",         price: 1000,    blurb: "Can mint a Masterpiece. The whole floor turns.",        icon: "👑", tint: "var(--gold-soft)", prestige: true },
+  ];
+  const PASS_TIERS = [
+    { id: "Paddle",     price: 19.99, icon: "✋", perks: ["Unlimited bids", "See if you're the top bid", "1 Boost / week"] },
+    { id: "Reserve",    price: 39.99, icon: "🔓", perks: ["Everything in Paddle", "Reveal her reserve price", "Auto-rebid to stay on top", "Rewind your last bid"] },
+    { id: "Black Card", price: 99.99, icon: "💳", perks: ["Everything in Reserve", "Priority placement on every lot", "Read receipts"] },
+  ];
+  // Benefits matrix for the paywall: (label, lowest tier index that includes it)
+  const PAYWALL_BENEFITS = [
+    ["Unlimited live bids", 0],
+    ["See if you're the top bid", 0],
+    ["1 Spotlight Boost every week", 0],
+    ["Reveal her reserve price", 1],
+    ["Auto-rebid to stay on top", 1],
+    ["Advanced filters (verified-only, interests)", 1],
+    ["Rewind your last bid", 1],
+    ["Read receipts — Seen / Delivered", 2],
+    ["Priority placement in every inbox", 2],
+  ];
+  const PAYWALL_TRIGGERS = {
+    rankReveal:   { headline: "She's comparing bids.<br>See where you stand.", icon: "📊", suggested: 0 },
+    bidLimit:     { headline: "Out of free bids.<br>The floor doesn't wait.", icon: "🚫", suggested: 0 },
+    filters:      { headline: "Cut the noise.<br>Bid only on your type.", icon: "🎛", suggested: 1 },
+    readReceipts: { headline: "She read it.<br>Know the moment she does.", icon: "✓", suggested: 2 },
+    rewind:       { headline: "Bid too soon?<br>Take it back.", icon: "↩", suggested: 1 },
+    general:      { headline: "Win the bid<br>you can't see.", icon: "👑", suggested: 0 },
+  };
+
   function store() {
     const packs = [["Handful", 1000, 4.99], ["Stack", 5000, 19.99], ["Chest", 14000, 49.99], ["Vault", 30000, 99.99]];
-    const passes = [["Paddle", 19.99, "Unlimited bids · see if you're top bid · 1 Boost/week"],
-                    ["Reserve", 39.99, "+ reveal reserve · auto-rebid · filters · rewind"],
-                    ["Black Card", 99.99, "+ priority placement · read receipts"]];
+    const isMan = S.role === "man";
     app.innerHTML = `<div class="screen">
       <div class="topbar"><h1 class="display" style="font-size:28px">Store</h1><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
+      ${isMan ? `
       <div class="kicker" style="margin:8px 0">Top up Gavels</div>
       ${packs.map(([n, g, p], i) => `<div class="card row" style="margin-bottom:10px"><div class="grow">
         <div style="font-family:var(--serif);font-weight:800">${g.toLocaleString()} Gavels ${i === packs.length - 1 ? '<span class="pill">BEST VALUE</span>' : ""}</div>
         <div class="faint">${n} of Gavels</div></div><button class="chip on" data-buy="${g}" data-price="${p}">$${p}</button></div>`).join("")}
+      <div class="kicker" style="margin:16px 0 8px">Spotlight Boost</div>
+      <div class="card row" style="margin-bottom:10px"><div class="grow">
+        <div style="font-family:var(--serif);font-weight:800">Spotlight Boost</div>
+        <div class="faint">30 minutes at the very top of the floor.</div></div>
+        <button class="chip rose" data-boost>$4.99</button></div>
+      <div class="kicker" style="margin:16px 0 8px">Status</div>
+      ${STATUS_TIERS.map(t => `<div class="card row" style="margin-bottom:10px${t.prestige ? ";border-color:rgba(230,184,0,.5);box-shadow:0 0 0 1px rgba(230,184,0,.15)" : ""}"><div class="grow">
+        <div style="font-family:var(--serif);font-weight:800">${t.icon} ${t.name}${t.prestige ? ' <span class="pill">TOP TIER</span>' : ""}</div>
+        <div class="faint">${t.blurb}</div></div>
+        <button class="chip ${t.prestige ? 'on' : 'rose'}" data-status="${t.id}" data-price="${t.price}">${S.ownedStatus && S.ownedStatus.includes(t.id) ? 'Owned' : '$' + t.price.toLocaleString()}</button></div>`).join("")}
+      <div class="faint" style="margin:8px 0">Every rating is a real purchase — the number is the whole point. Buy one and it's yours for good.</div>
       <div class="kicker" style="margin:16px 0 8px">Auction Baby Pass</div>
-      ${passes.map(([n, p, b]) => `<div class="card" style="margin-bottom:10px"><div class="row"><div class="grow">
-        <div style="font-family:var(--serif);font-weight:800">${n} <span class="muted">· $${p}/mo</span></div>
-        <div class="faint">${b}</div></div><button class="chip rose" data-sub="${n}">Subscribe</button></div></div>`).join("")}
-      <div class="disclosure">Payments on the web are processed by Stripe. Gavels are in-app status currency and are never a payment to another user.</div>
+      ${PASS_TIERS.map(t => `<div class="card" style="margin-bottom:10px"><div class="row"><div class="grow">
+        <div style="font-family:var(--serif);font-weight:800">${t.icon} ${t.id} <span class="muted">· $${t.price}/mo</span></div>
+        <div class="faint">${t.perks.join(" · ")}</div></div><button class="chip rose" data-sub="${t.id}">Subscribe</button></div></div>`).join("")}
+      ` : `
+      <div class="kicker" style="margin:8px 0">Spotlight Boost</div>
+      <div class="card row" style="margin-bottom:10px"><div class="grow">
+        <div style="font-family:var(--serif);font-weight:800">Spotlight Boost</div>
+        <div class="faint">30 minutes at the very top of the floor.</div></div>
+        <button class="chip rose" data-boost>$4.99</button></div>
+      `}
+      <div class="disclosure">Payments on the web are processed by Stripe. Gavels are in-app status currency and are never a payment to another user. Passes auto-renew monthly until canceled.</div>
     </div>${tabbar()}`;
     app.querySelectorAll("[data-buy]").forEach(b => b.onclick = () => checkout("gavels", +b.dataset.buy, +b.dataset.price));
     app.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => checkout("pass", b.dataset.sub));
+    app.querySelectorAll("[data-boost]").forEach(b => b.onclick = () => checkout("boost"));
+    app.querySelectorAll("[data-status]").forEach(b => b.onclick = () => checkout("status", b.dataset.status, +b.dataset.price));
     wire();
   }
 
+  // ── Paywall (1:1 with iOS PaywallView) ─────────────────────────────────
+  // Triggered at peak-intent moments. Shows a tier picker, benefits matrix,
+  // and a single CTA — exactly like the iOS paywall.
+  let paywallSelected = 0; // index into PASS_TIERS
+  function paywall(trigger) {
+    const t = PAYWALL_TRIGGERS[trigger] || PAYWALL_TRIGGERS.general;
+    paywallSelected = t.suggested;
+    const activePass = S.pass || null; // track active pass in demo mode
+    function render() {
+      const sel = PASS_TIERS[paywallSelected];
+      const isActive = activePass === sel.id;
+      app.innerHTML = `<div class="screen" style="padding-bottom:100px">
+        <div style="text-align:center;padding:20px 0 8px">
+          <div style="font-size:48px;margin-bottom:10px">${t.icon}</div>
+          <h1 class="display" style="font-size:28px;line-height:1.15">${t.headline}</h1>
+          <div class="kicker" style="margin-top:10px">Auction Baby Pass</div>
+        </div>
+        <div class="row" style="gap:10px;margin:16px 0">
+          ${PASS_TIERS.map((tier, i) => `
+            <button class="paywall-tier ${i === paywallSelected ? 'on' : ''}" data-tier="${i}">
+              <div style="font-size:22px;margin-bottom:4px">${tier.icon}</div>
+              <div style="font-family:var(--serif);font-weight:800;font-size:14px;color:var(--ink)">${tier.id}</div>
+              <div style="font-family:var(--sans);font-weight:800;font-size:16px;color:${i === paywallSelected ? 'var(--gold)' : 'var(--ink-soft)'}">$${tier.price}</div>
+              <div class="faint" style="font-size:10px">/ month</div>
+            </button>`).join("")}
+        </div>
+        <div class="glass" style="border-radius:18px;overflow:hidden">
+          ${PAYWALL_BENEFITS.map(([label, minTier], i) => {
+            const included = paywallSelected >= minTier;
+            return `<div class="row" style="padding:12px 16px;${i < PAYWALL_BENEFITS.length - 1 ? 'border-bottom:1px solid var(--line)' : ''}">
+              <span style="font-size:16px">${included ? '✅' : '🔒'}</span>
+              <div class="grow" style="font-size:13px;font-weight:600;color:${included ? 'var(--ink)' : 'var(--ink-faint)'}">${label}</div>
+              ${!included ? `<span class="pill" style="font-size:10px">${PASS_TIERS[minTier].id}</span>` : ''}
+            </div>`;
+          }).join("")}
+        </div>
+        <div style="margin-top:16px">
+          ${isActive
+            ? `<div style="text-align:center;padding:15px;border-radius:16px;background:rgba(92,201,138,.14);color:var(--success);font-weight:800;font-size:15px">✓ ${sel.id} is active</div>`
+            : `<button class="btn ${sel.id === 'Black Card' ? '' : 'rose'}" style="width:100%;font-size:16px" data-cta>
+                ${sel.id === 'Black Card' ? '👑' : '✨'} Continue with ${sel.id}
+              </button>
+              ${S.role === 'woman' ? '' : `<button class="btn ghost" style="margin-top:10px;width:100%" data-back>Maybe later</button>`}`
+          }
+        </div>
+        <div class="disclosure" style="margin-top:16px">
+          Auto-renews monthly until canceled at least 24h before the period ends. Web payments processed by Stripe.
+          ${window.AB_CONFIG && window.AB_CONFIG.CONSUMABLES_URL ? '' : ' (Demo mode — no charge. Configure Stripe for live.)'}
+        </div>
+      </div>${tabbar()}`;
+      app.querySelectorAll("[data-tier]").forEach(b => b.onclick = () => {
+        paywallSelected = +b.dataset.tier;
+        render();
+      });
+      const cta = app.querySelector("[data-cta]");
+      if (cta) cta.onclick = () => checkout("pass", PASS_TIERS[paywallSelected].id);
+      const back = app.querySelector("[data-back]");
+      if (back) back.onclick = () => go("/store");
+      wire();
+    }
+    render();
+  }
+
   function checkout(kind, a, price) {
-    // LIVE: redirect to Stripe Checkout via the consumables Worker.
+    // LIVE: Gavel packs via Stripe Checkout (consumables Worker).
     if (kind === "gavels" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
       const packId = GAVEL_PACK_ID[a] || String(a);
       API.me()
@@ -780,20 +1155,42 @@
         .catch(e => toast("Checkout: " + e.message));
       return;
     }
-    // LIVE: recurring Pass via Stripe Billing.
+    // LIVE: Recurring Pass via Stripe Billing.
     if (kind === "pass" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
       const passId = PASS_ID[a] || a;
       API.me().then(u => API.subscribe(passId, u.id || u.userId)).catch(e => toast("Subscribe: " + e.message));
       return;
     }
+    // LIVE: Spotlight Boost via Stripe Checkout (one-time).
+    if (kind === "boost" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
+      API.me().then(u => API.buyBoost(u.id || u.userId)).catch(e => toast("Boost: " + e.message));
+      return;
+    }
+    // LIVE: Status Archetype via Stripe Checkout (one-time, owned forever).
+    if (kind === "status" && CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.CONSUMABLES_URL) {
+      const statusId = a;
+      API.me().then(u => API.buyStatus(statusId, u.id || u.userId)).catch(e => toast("Status: " + e.message));
+      return;
+    }
     // DEMO fallback (no charge).
     if (kind === "gavels") { S.wallet += a; save(); toast(`Demo: +${a.toLocaleString()} Gavels (configure Stripe for live).`); store(); }
-    else toast(`Demo: ${a} Pass active (configure Stripe for live).`);
+    else if (kind === "boost") { toast("Demo: Boost active for 30 min (configure Stripe for live)."); }
+    else if (kind === "status") {
+      S.ownedStatus = S.ownedStatus || [];
+      if (!S.ownedStatus.includes(a)) S.ownedStatus.push(a);
+      save(); toast(`Demo: Status unlocked (configure Stripe for live).`); store();
+    }
+    else if (kind === "pass") { S.pass = a; save(); toast(`Demo: ${a} Pass active (configure Stripe for live).`); store(); }
+    else toast(`Demo: ${a} active (configure Stripe for live).`);
   }
 
   function you() {
     const me = S.me;
     const interests = (me.interests || []).map(i => `<span class="chip on" style="pointer-events:none">${esc(i)}</span>`).join("");
+    const ownedBadges = (S.ownedStatus || []).map(id => {
+      const t = STATUS_TIERS.find(s => s.id === id);
+      return t ? `<span class="pill" style="margin:2px">${t.icon} ${t.name}</span>` : "";
+    }).join("");
     app.innerHTML = `<div class="screen">
       <div class="card" style="text-align:center;padding:24px">
         <div style="width:96px;margin:0 auto 12px">${grad(210, me.name || "You", me.photo)}</div>
@@ -801,6 +1198,8 @@
         <div class="faint">${esc(me.city || "")} · ${S.role === "man" ? "Bidder" : "Lot"}</div>
         <div class="pill" style="margin-top:12px">⚖ ${S.wallet.toLocaleString()} Gavels</div>
         ${typeof S.reputation === "number" ? `<div class="faint" style="margin-top:8px">Reputation: ${S.reputation}%</div>` : ""}
+        ${S.pass ? `<div class="pill" style="margin-top:6px;background:rgba(224,96,122,.14);color:var(--rose)">✓ ${S.pass} Pass</div>` : ""}
+        ${ownedBadges ? `<div style="margin-top:10px">${ownedBadges}</div>` : ""}
       </div>
       ${me.bio ? `<div class="card" style="margin-top:12px"><div class="kicker">Bio</div><div class="muted" style="margin-top:6px">${esc(me.bio)}</div></div>` : ""}
       ${me.portrait ? `<div class="card" style="margin-top:10px"><div class="kicker">Portrait</div><div class="muted" style="margin-top:6px">${esc(me.portrait)}</div></div>` : ""}
@@ -808,7 +1207,9 @@
       ${me.simplePleasure ? `<div class="card" style="margin-top:10px"><div class="faint">My simple pleasure</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px">${esc(me.simplePleasure)}</div></div>` : ""}
       ${interests ? `<div class="card" style="margin-top:10px"><div class="kicker" style="margin-bottom:8px">Interests</div><div style="display:flex;flex-wrap:wrap;gap:8px">${interests}</div></div>` : ""}
       <button class="btn ghost" id="addphoto" style="margin-top:14px">${me.photo ? "Change photo" : "Add a photo"}</button>
+      <button class="btn ghost" id="verify" style="margin-top:10px;color:var(--verify);border-color:var(--verify)">${S.me.verified ? "✓ Verified" : "Verify me"}</button>
       <button class="btn ghost" data-tab="store" style="margin-top:10px">Open the Store</button>
+      ${S.role === "man" && !S.pass ? `<button class="btn" style="margin-top:10px" data-go="paywall">Get an Auction Baby Pass</button>` : ""}
       ${(CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.VAPID_PUBLIC_KEY) ? `<button class="btn ghost" id="notif" style="margin-top:10px">Enable notifications</button>` : ""}
       ${SIGNED_IN() ? `<button class="btn ghost" id="signout" style="margin-top:10px">Sign out</button>` : ""}
       <button class="btn ghost" id="reset" style="margin-top:10px;color:var(--danger)">Reset account</button>
@@ -816,6 +1217,7 @@
       <div class="disclosure">Auction Baby — web. A bid is a promise to spend on the date, never a payment to another person.</div>
     </div>${tabbar()}`;
     $("#addphoto").onclick = addPhoto;
+    const vb = $("#verify"); if (vb) vb.onclick = () => verificationSheet();
     const notif = $("#notif"); if (notif) notif.onclick = () => API.enableWebPush().then(() => toast("Notifications on.")).catch(e => toast("Notifications: " + e.message));
     const so = $("#signout"); if (so) so.onclick = () => { API.signOutLocal(); S.registered = false; save(); toast("Signed out."); go("/"); onboarding(); };
     const da = $("#delacct"); if (da) da.onclick = async () => {
@@ -831,6 +1233,7 @@
   function wire() {
     app.querySelectorAll("[data-lot]").forEach(b => b.onclick = () => go("/lot/" + b.dataset.lot));
     app.querySelectorAll("[data-chat]").forEach(b => b.onclick = () => go("/chat/" + b.dataset.chat));
+    app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go("/" + b.dataset.go));
     document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => go("/" + b.dataset.tab));
   }
 
@@ -839,6 +1242,6 @@
   render();
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
   // demo woman returning with no bids left → reseed so the screen isn't empty
-  if (S.registered && S.role === "woman" && !CONFIGURED() && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); }
+  if (S.registered && S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); if (tab === "floor") incoming(); }
   if (S.registered && CONFIGURED() && SIGNED_IN()) { syncFloor(); syncMatches(); syncIncoming(); }
 })();

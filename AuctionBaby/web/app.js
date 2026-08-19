@@ -339,7 +339,7 @@
       if (CONFIGURED() && SIGNED_IN()) {
         try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
       }
-      if (S.role === "woman" && !CONFIGURED() && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
+      if (S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
       S.registered = true; save(); go("/floor"); syncFloor(); syncMatches(); syncIncoming();
     };
   }
@@ -728,7 +728,7 @@
         <span style="font:800 13px/1 var(--sans);color:${gild ? "var(--gold)" : "var(--ink-faint)"}">${GILDED_BID_COST} ⚖</span>
       </button>` : ""}
       ${!w.copycat ? `<button class="bid-toggle ${insure ? "on" : ""}" data-insure style="width:100%;text-align:left;margin-top:8px">
-        <span style="font-size:20px">${insure ? "🛡️" : " Shields"}</span>
+        <span style="font-size:20px">${insure ? "🛡️" : "🛡"}</span>
         <div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:14px;color:var(--ink)">Bid Insurance</div><div class="faint" style="font-size:11px">If she declines, your premium comes back — and the gild fee too, if you gilded.</div></div>
         <span style="font:800 13px/1 var(--sans);color:${insure ? "var(--verify)" : "var(--ink-faint)"}">${BID_INSURANCE_COST} ⚖</span>
       </button>` : ""}
@@ -1065,7 +1065,7 @@
       <div class="faint" style="margin:8px 0">Every rating is a real purchase — the number is the whole point. Buy one and it's yours for good.</div>
       <div class="kicker" style="margin:16px 0 8px">Auction Baby Pass</div>
       ${PASS_TIERS.map(t => `<div class="card" style="margin-bottom:10px"><div class="row"><div class="grow">
-        <div style="font-family:var(--serif);font-weight:800">${t.icon} ${t.name} <span class="muted">· $${t.price}/mo</span></div>
+        <div style="font-family:var(--serif);font-weight:800">${t.icon} ${t.id} <span class="muted">· $${t.price}/mo</span></div>
         <div class="faint">${t.perks.join(" · ")}</div></div><button class="chip rose" data-sub="${t.id}">Subscribe</button></div></div>`).join("")}
       ` : `
       <div class="kicker" style="margin:8px 0">Spotlight Boost</div>
@@ -1242,6 +1242,6 @@
   render();
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
   // demo woman returning with no bids left → reseed so the screen isn't empty
-  if (S.registered && S.role === "woman" && !CONFIGURED() && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); }
+  if (S.registered && S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); if (tab === "floor") incoming(); }
   if (S.registered && CONFIGURED() && SIGNED_IN()) { syncFloor(); syncMatches(); syncIncoming(); }
 })();
