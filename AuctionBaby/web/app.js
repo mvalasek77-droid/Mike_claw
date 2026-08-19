@@ -214,10 +214,24 @@
       if (CONFIGURED() && SIGNED_IN()) {
         API.uploadPhoto(blob).then(d => {
           S.me.photo = (d.photo && d.photo.url) || d.url || (d.photos && d.photos[0] && d.photos[0].url) || dataURL;
-          save(); you(); toast("Photo updated.");
-        }).catch(e => { S.me.photo = dataURL; save(); you(); toast("Saved locally (upload: " + e.message + ")"); });
-      } else { S.me.photo = dataURL; save(); you(); toast("Photo updated."); }
+          updateMyLot(); save(); you(); toast("Photo updated.");
+        }).catch(e => { S.me.photo = dataURL; updateMyLot(); save(); you(); toast("Saved locally (upload: " + e.message + ")"); });
+      } else { S.me.photo = dataURL; updateMyLot(); save(); you(); toast("Photo updated."); }
     });
+  }
+  // Update the woman's own lot on the floor when her photo/profile changes
+  function updateMyLot() {
+    if (S.role !== "woman") return;
+    const lot = (S.floor || []).find(l => l.id === "me_lot");
+    if (lot) {
+      lot.photo = S.me.photo;
+      lot.photos = S.me.photo ? [S.me.photo] : [];
+      lot.name = S.me.name;
+      lot.age = S.me.age;
+      lot.city = S.me.city;
+      lot.bio = S.me.bio || "";
+      lot.interests = S.me.interests || [];
+    }
   }
   const tabbar = () => {
     const first = S.role === "woman" ? ["floor", "▦", "Bids"] : ["floor", "▦", "Floor"];
@@ -340,6 +354,24 @@
         try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
       }
       if (S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
+      // When a woman registers, add her to the floor as a lot so bidders can find her.
+      // In demo mode this sits alongside the seed floor; in live mode the server handles it.
+      if (S.role === "woman" && !CONFIGURED()) {
+        const myLot = {
+          id: "me_lot",
+          name: S.me.name, age: S.me.age, city: S.me.city,
+          startingBid: 100, bio: S.me.bio || "",
+          prompts: [], icebreakers: [],
+          hue: hueFrom(S.me.name),
+          verified: !!S.me.verified, masterpiece: false, copycat: false,
+          photo: S.me.photo, photos: S.me.photo ? [S.me.photo] : [],
+          interests: S.me.interests || [], lifestyle: {}, showcase: 480,
+          marketValue: 200, isMe: true,
+        };
+        // Replace any existing "me_lot" entry
+        S.floor = (S.floor || []).filter(l => l.id !== "me_lot");
+        S.floor.unshift(myLot);
+      }
       S.registered = true; save(); go("/floor"); syncFloor(); syncMatches(); syncIncoming();
     };
   }
@@ -389,6 +421,7 @@
       <button class="lot ${isHero ? "hero" : ""}${w.masterpiece ? " masterpiece" : ""}" data-lot="${w.id}" style="width:100%;padding:0;text-align:left;background:none">
         <div class="art">${grad(w.hue, w.name, w.photo)}
           ${w.boosted ? `<div style="position:absolute;top:12px;left:12px;padding:4px 8px;border-radius:20px;background:var(--gold);color:#000;font:800 9px/1 var(--sans);letter-spacing:.08em;display:flex;align-items:center;gap:4px">⚡ SPOTLIGHT</div>` : ""}
+          ${w.isMe ? `<div style="position:absolute;top:12px;left:12px;padding:4px 10px;border-radius:20px;background:var(--rose);color:#fff;font:800 10px/1 var(--sans);letter-spacing:.08em">YOU</div>` : ""}
           ${isHero ? `<div style="position:absolute;top:12px;right:12px;padding:4px 9px;border-radius:20px;background:rgba(0,0,0,.55);color:#fff;font:800 10px/1 var(--sans);letter-spacing:.08em;display:flex;align-items:center;gap:5px;border:1px solid rgba(92,201,138,.55)"><span style="width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success)"></span>ON THE FLOOR NOW</div>` : ""}
         </div>
         ${isHero ? `<div class="lotofday${w.masterpiece ? " mp" : ""}">⚖ ${w.masterpiece ? "Masterpiece — Lot of the Day" : "Lot of the day"}</div>` : ""}
@@ -560,10 +593,12 @@
 
       <div style="height:20px"></div>
     </div>
-    <div class="sticky-bid"><button class="btn" data-bid="${w.id}">Bid · floor ${money(w.startingBid)}</button></div>`;
+    <div class="sticky-bid">${w.isMe
+      ? `<div style="padding:14px;text-align:center;background:var(--glass);color:var(--ink-soft);font:700 13px/1 var(--sans)">This is you on the floor ✨</div>`
+      : `<button class="btn" data-bid="${w.id}">Bid · floor ${money(w.startingBid)}</button>`}</div>`;
 
     app.querySelector("[data-back]").onclick = () => go("/floor");
-    app.querySelector("[data-bid]").onclick = () => bidSheet(w);
+    const bidBtn = app.querySelector("[data-bid]"); if (bidBtn) bidBtn.onclick = () => bidSheet(w);
     const rbtn = app.querySelector("[data-report]"); if (rbtn) rbtn.onclick = () => reportSheet(w);
     wirePhotoPager(w);
     app.querySelectorAll("[data-bid-prompt]").forEach(b => {
