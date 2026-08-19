@@ -170,6 +170,11 @@
       return data;
     },
     statusOwned: (userId) => shop("/status/owned?userId=" + encodeURIComponent(userId)),
+
+    // ── Verification (face match + liveness via auth Worker) ──
+    verifyStart: () => auth("/verify/start", { method: "POST", body: {} }),
+    verifySubmit: (selfieScore, livenessPassed, faceMatchScore) =>
+      auth("/verify/submit", { method: "POST", body: { selfieScore, livenessPassed, faceMatchScore } }),
   };
 
   function urlB64ToUint8(base64) {
