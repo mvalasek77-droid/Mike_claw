@@ -6,7 +6,7 @@
   "use strict";
   const $ = (s, r = document) => r.querySelector(s);
   const app = $("#app");
-  const money = n => "$" + (n >= 1000 ? n.toLocaleString("en-US") : n);
+  const money = n => { if (n == null || isNaN(n)) return "$0"; return "$" + (n >= 1000 ? n.toLocaleString("en-US") : n); };
   const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -26,8 +26,8 @@
   // Map a server profile → the local lot shape (matches the Worker's publicProfile:
   // userId, name, age, location, bio, hue, startingBid, verified, photos:[{url}], prompts).
   const mapLot = p => ({
-    id: p.userId || p.id, name: p.name || "—", age: p.age || 27, city: p.location || p.city || "",
-    startingBid: p.startingBid || 100, bio: p.bio || "",
+    id: p.userId || p.id || uid(), name: p.name || "—", age: p.age || 27, city: p.location || p.city || "",
+    startingBid: Number(p.startingBid) || 100, bio: p.bio || "",
     prompts: (p.prompts || []).map(x => ({ q: x.question || x.q || "Prompt", a: x.answer || x.a || String(x) })),
     icebreakers: (p.prompts || []).map(x => (x && (x.answer || x.a)) || x).filter(Boolean),
     hue: (typeof p.hue === "number" ? Math.round(p.hue * 360) : hueFrom(p.userId || p.name)),
@@ -35,8 +35,8 @@
     photo: (p.photos && p.photos[0] && p.photos[0].url) || null,
     interests: p.interests || [],
     lifestyle: p.lifestyle || {},
-    showcase: p.showcase || p.showcaseCredit || 480,
-    marketValue: p.marketValue || Math.round((p.startingBid || 100) * 1.2 + ((p.showcase || 480) - 300) * 2),
+    showcase: Number(p.showcase) || Number(p.showcaseCredit) || 480,
+    marketValue: Number(p.marketValue) || Math.round((Number(p.startingBid) || 100) * 1.2 + (480 - 300) * 2),
   });
   async function syncFloor() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
@@ -502,7 +502,7 @@
   }
 
   function bidSheet(w, promptCtx) {
-    let amount = w.startingBid;
+    let amount = Number(w.startingBid) || 100;
     const defaultNote = promptCtx ? `Re: "${promptCtx.q}" — loved your answer.` : "";
     const sheet = document.createElement("div"); sheet.className = "sheet";
     const getNote = () => { const el = sheet.querySelector("#bid-note"); return el ? el.value : defaultNote; };
@@ -513,18 +513,21 @@
       <div class="kicker" style="text-align:center;margin-top:14px">Your bid</div>
       <div class="amount">${money(amount)}</div>
       <div class="row" style="flex-wrap:wrap;justify-content:center;gap:8px;margin:12px 0">
-        ${[50, 100, 1000, 10000].map(a => `<button class="chip" data-add="${a}">+${money(a)}</button>`).join("")}
+        ${[50, 100, 1000, 10000, 100000].map(a => `<button class="chip" data-add="${a}">+${money(a)}</button>`).join("")}
         <button class="chip" data-reset>Reset</button>
       </div>
       <label class="field"><div class="lbl">Add a note</div><textarea class="txt" id="bid-note" placeholder="Why you? Make the bid count.">${esc(savedNote)}</textarea></label>
+      <div class="card" style="margin:10px 0;padding:12px;border-color:rgba(230,184,0,.3);background:rgba(230,184,0,.06)">
+        <div class="row" style="gap:10px"><span style="font-size:18px">✍️</span><div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:13px;color:var(--ink)">The money you'll spend on the date</div><div class="faint" style="font-size:11px;margin-top:2px">Dinner, drinks, the experience — not a payment to her. She keeps the receipts so it can be confirmed after.</div></div></div>
+      </div>
       <button class="btn" id="bid-place">Place ${money(amount)} bid</button>
-      <div class="disclosure">This is the budget you’ll spend on the date — the meal, the drinks, the night. She keeps the receipts. The app never transfers money between users.</div>
+      <div class="disclosure">Spend your bid on the date — the meal, the drinks, the night. She keeps the receipts and confirms it after. Never wire money or send a personal deposit; the app has no way to send money to another user, by design.</div>
     </div>`; };
     draw();
     sheet.onclick = e => { if (e.target === sheet) sheet.remove(); };
     sheet.addEventListener("click", e => {
       const add = e.target.closest("[data-add]"); if (add) { amount += +add.dataset.add; draw(); }
-      if (e.target.closest("[data-reset]")) { amount = w.startingBid; draw(); }
+      if (e.target.closest("[data-reset]")) { amount = Number(w.startingBid) || 100; draw(); }
       if (e.target.closest("#bid-place")) { const note = ($("#bid-note") || {}).value || ""; sheet.remove(); placeBid(w, amount, note.trim()); }
     });
     document.body.appendChild(sheet);
