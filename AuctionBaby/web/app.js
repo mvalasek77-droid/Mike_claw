@@ -35,6 +35,7 @@
     hue: (typeof p.hue === "number" ? Math.round(p.hue * 360) : hueFrom(p.userId || p.name)),
     verified: !!p.verified, masterpiece: !!p.masterpiece, copycat: !!p.copycat,
     photo: (p.photos && p.photos[0] && p.photos[0].url) || null,
+    photos: (p.photos || []).map(ph => ph.url || ph).filter(Boolean),
     interests: p.interests || [],
     lifestyle: p.lifestyle || {},
     showcase: Number(p.showcase) || Number(p.showcaseCredit) || 480,
@@ -90,7 +91,7 @@
   // ---- demo floor (all 56 women from the iOS app with photos) ----
   const W = (name,age,city,bid,bio,prompts,hue,verified,masterpiece,copycat,photo,interests,lifestyle,showcase) => ({
     id:uid(),name,age,city,startingBid:bid,bio,prompts,icebreakers:prompts.map(p=>p.a),hue,verified,masterpiece,copycat,
-    photo:"photos/"+photo+".jpg",interests:interests||[],lifestyle:lifestyle||{},showcase:showcase||480,marketValue:Math.round(bid*1.2+((showcase||480)-300)*2)
+    photo:"photos/"+photo+".jpg",photos:["photos/"+photo+".jpg"],interests:interests||[],lifestyle:lifestyle||{},showcase:showcase||480,marketValue:Math.round(bid*1.2+((showcase||480)-300)*2)
   });
   const P = (q,a) => ({q,a});
   const seedFloor = () => ([
@@ -417,6 +418,42 @@
     wire();
   }
 
+  // ── Photo pager helper (matches iOS PhotoPageDots + TabView) ──
+  function photoPagerHTML(w) {
+    const photos = (w.photos && w.photos.length) ? w.photos : (w.photo ? [w.photo] : []);
+    if (!photos.length) return grad(w.hue, w.name, null);
+    return `<div id="photoTrack" style="display:flex;transition:transform .3s ease;width:100%;height:100%">
+      ${photos.map((src, i) => `<div style="min-width:100%;width:100%;height:100%"><img src="${esc(src)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div>`).join("")}
+    </div>`;
+  }
+
+  function wirePhotoPager(w) {
+    const pager = app.querySelector("#photoPager");
+    if (!pager) return;
+    const track = pager.querySelector("#photoTrack");
+    if (!track) return;
+    const dots = pager.querySelectorAll("[data-dot]");
+    const photos = (w.photos && w.photos.length) ? w.photos : (w.photo ? [w.photo] : []);
+    if (photos.length <= 1) return;
+    let current = 0, startX = 0, deltaX = 0, dragging = false;
+
+    const updateDots = () => dots.forEach((d, i) => {
+      d.style.background = `rgba(255,255,255,${i === current ? 0.9 : 0.35})`;
+      d.style.width = i === current ? "24px" : "16px";
+    });
+    const moveTo = (i) => { current = Math.max(0, Math.min(photos.length - 1, i)); track.style.transform = `translateX(-${current * 100}%)`; updateDots(); };
+
+    pager.addEventListener("touchstart", e => { startX = e.touches[0].clientX; dragging = true; track.style.transition = "none"; }, { passive: true });
+    pager.addEventListener("touchmove", e => { if (!dragging) return; deltaX = e.touches[0].clientX - startX; track.style.transform = `translateX(calc(-${current * 100}% + ${deltaX}px))`; }, { passive: true });
+    pager.addEventListener("touchend", () => { if (!dragging) return; dragging = false; track.style.transition = "transform .3s ease"; if (Math.abs(deltaX) > 50) moveTo(current + (deltaX < 0 ? 1 : -1)); else moveTo(current); deltaX = 0; });
+
+    // Mouse support for desktop
+    pager.addEventListener("mousedown", e => { startX = e.clientX; dragging = true; track.style.transition = "none"; e.preventDefault(); });
+    pager.addEventListener("mousemove", e => { if (!dragging) return; deltaX = e.clientX - startX; track.style.transform = `translateX(calc(-${current * 100}% + ${deltaX}px))`; });
+    pager.addEventListener("mouseup", () => { if (!dragging) return; dragging = false; track.style.transition = "transform .3s ease"; if (Math.abs(deltaX) > 50) moveTo(current + (deltaX < 0 ? 1 : -1)); else moveTo(current); deltaX = 0; });
+    pager.addEventListener("mouseleave", () => { if (dragging) { dragging = false; track.style.transition = "transform .3s ease"; moveTo(current); deltaX = 0; } });
+  }
+
   function lotDetail(id) {
     const w = S.floor.find(x => x.id === id); if (!w) return go("/floor");
     const stars = showcaseStars(w.showcase);
@@ -430,7 +467,9 @@
       <div class="topbar"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span><button class="chip" data-report style="margin-left:auto">⚑</button></div>
 
       <div class="lot${w.masterpiece ? " masterpiece" : ""}" style="margin-bottom:16px">
-        <div class="art">${grad(w.hue, w.name, w.photo)}</div>
+        <div class="art" id="photoPager" style="position:relative;overflow:hidden">${photoPagerHTML(w)}
+          ${w.photos && w.photos.length > 1 ? `<div id="pageDots" style="position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:2">${w.photos.map((_, i) => `<div style="height:3px;border-radius:2px;background:rgba(255,255,255,${i === 0 ? 0.9 : 0.35});width:${i === 0 ? 24 : 16}px;transition:all .2s" data-dot="${i}"></div>`).join("")}</div>` : ""}
+        </div>
         ${w.masterpiece ? `<div class="lotofday mp">⚖ Masterpiece — Lot of the Day</div>` : ""}
         <div class="meta">
           <div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span>${badges(w)}</div>
@@ -526,6 +565,7 @@
     app.querySelector("[data-back]").onclick = () => go("/floor");
     app.querySelector("[data-bid]").onclick = () => bidSheet(w);
     const rbtn = app.querySelector("[data-report]"); if (rbtn) rbtn.onclick = () => reportSheet(w);
+    wirePhotoPager(w);
     app.querySelectorAll("[data-bid-prompt]").forEach(b => {
       b.onclick = () => bidSheet(w, prompts[+b.dataset.bidPrompt]);
     });
