@@ -544,7 +544,131 @@
 
 ---
 
-## Pre-Launch Blockers (Must Fix Before Live)
+## 28  Status Archetypes (NEW — iOS 1:1 Parity)
+
+| # | Check | Demo | Live |
+|---|-------|------|------|
+| 28.1 | Store shows "Status" section (men only, below Gavels + Boost) | | |
+| 28.2 | 8 status tiers render: Good Guy, In & Out Guy, Why Not Guy, Got a Good Job, Inheritance Money Guy, Influencer, I Drive a Ferrari, Trillionaire | | |
+| 28.3 | Each tier shows icon, name, blurb, and price | | |
+| 28.4 | Prices match iOS exactly: $4.99, $9.99, $19.99, $99.99, $500, $800, $900, $1,000 | | |
+| 28.5 | Trillionaire tier has gold prestige border + "TOP TIER" pill | | |
+| 28.6 | Blurb text matches iOS Archetype.swift exactly | | |
+| 28.7 | Women's store: NO status section visible (women see Boost only) | | |
+| 28.8 | **DEMO**: Tapping a status → "Demo: Status unlocked" toast + button changes to "Owned" | | |
+| 28.9 | **DEMO**: Owned status persists in localStorage `S.ownedStatus[]` | | |
+| 28.10 | **DEMO**: "Owned" tiers show "Owned" text instead of price | | |
+| 28.11 | **LIVE**: Tapping a status → `API.buyStatus(statusId, userId)` → redirect to Stripe Checkout | | |
+| 28.12 | **LIVE**: Stripe Checkout shows correct status tier name + price | | |
+| 28.13 | **LIVE**: After successful payment → ownership recorded in Worker KV | | |
+| 28.14 | **LIVE**: `GET /status/owned?userId=` returns owned status IDs | | |
+| 28.15 | **LIVE**: Refund → `charge.refunded` webhook removes status from owned set | | |
+| 28.16 | Profile/You page shows owned status badges (icon + name pills) | | |
+| 28.17 | Reset account clears `S.ownedStatus` | | |
+
+---
+
+## 29  Spotlight Boost (NEW — iOS 1:1 Parity)
+
+| # | Check | Demo | Live |
+|---|-------|------|------|
+| 29.1 | Store shows "Spotlight Boost" section with $4.99 price | | |
+| 29.2 | Boost section visible for BOTH men and women (matches iOS GavelStoreView) | | |
+| 29.3 | Description: "30 minutes at the very top of the floor." | | |
+| 29.4 | **DEMO**: Tapping Boost → "Demo: Boost active for 30 min" toast | | |
+| 29.5 | **LIVE**: Tapping Boost → `API.buyBoost(userId)` → redirect to Stripe Checkout | | |
+| 29.6 | **LIVE**: Stripe Checkout shows "Spotlight Boost" + $4.99 | | |
+| 29.7 | **LIVE**: After payment → `GET /boost/status?userId=` returns active boost + remaining minutes | | |
+| 29.8 | **LIVE**: Refund → `charge.refunded` webhook marks boost refunded | | |
+| 29.9 | Boost KV entry has 1-hour TTL (enough to pick up) | | |
+| 29.10 | Worker `/catalog` response includes `boost` object with id, name, priceCents, minutes | | |
+
+---
+
+## 30  Paywall (NEW — iOS 1:1 Parity)
+
+| # | Check | Demo | Live |
+|---|-------|------|------|
+| 30.1 | `#/paywall` route loads paywall with default trigger | | |
+| 30.2 | `#/paywall/rankReveal` → headline "She's comparing bids. See where you stand." | | |
+| 30.3 | `#/paywall/bidLimit` → headline "Out of free bids. The floor doesn't wait." | | |
+| 30.4 | `#/paywall/filters` → headline "Cut the noise. Bid only on your type." | | |
+| 30.5 | `#/paywall/readReceipts` → headline "She read it. Know the moment she does." | | |
+| 30.6 | `#/paywall/rewind` → headline "Bid too soon? Take it back." | | |
+| 30.7 | `#/paywall/general` → headline "Win the bid you can't see." | | |
+| 30.8 | Each trigger shows correct icon (📊, 🚫, 🎛, ✓, ↩, 👑) | | |
+| 30.9 | "Auction Baby Pass" kicker below headline | | |
+| 30.10 | Three tier cards: Paddle, Reserve, Black Card with icons (✋, 🔓, 💳) | | |
+| 30.11 | Each tier card shows name, price ($19.99, $39.99, $99.99), "/ month" | | |
+| 30.12 | Suggested tier pre-selected based on trigger (rankReveal→Paddle, filters→Reserve, readReceipts→Black Card) | | |
+| 30.13 | Selected tier has gold border + `.on` class + scale(1.03) | | |
+| 30.14 | Tapping a different tier selects it (updates selected state) | | |
+| 30.15 | Benefits matrix: 9 rows with ✅/🔒 icons | | |
+| 30.16 | Benefits above selected tier show ✅, below show 🔒 | | |
+| 30.17 | Locked benefits show tier name pill (e.g. "Reserve", "Black Card") | | |
+| 30.18 | Selecting higher tier unlocks more benefits (matrix updates dynamically) | | |
+| 30.19 | CTA button: "Continue with [tier]" with correct icon (✨ or 👑 for Black Card) | | |
+| 30.20 | Black Card CTA uses gold gradient, others use rose gradient | | |
+| 30.21 | "Maybe later" ghost button returns to store | | |
+| 30.22 | If pass already active → shows "✓ [tier] is active" instead of CTA | | |
+| 30.23 | Disclosure: auto-renew text + Stripe mention | | |
+| 30.24 | **DEMO**: Demo mode disclosure shows "(Demo mode — no charge)" | | |
+| 30.25 | **DEMO**: CTA → checkout("pass", tier) → sets S.pass + toast + re-renders store | | |
+| 30.26 | **LIVE**: CTA → `API.subscribe(passId, userId)` → redirect to Stripe Checkout | | |
+| 30.27 | Tab bar visible at bottom of paywall | | |
+| 30.28 | "Get an Auction Baby Pass" button on You page (men, no pass) → navigates to paywall | | |
+| 30.29 | No "Get Pass" button if user already has a pass | | |
+| 30.30 | No "Get Pass" button for women role | | |
+
+---
+
+## 31  Consumables Worker — New Endpoints (NEW)
+
+| # | Check | Staging | Prod |
+|---|-------|---------|------|
+| 31.1 | `GET /catalog` returns `packs` + `passes` + `status` + `boost` | | |
+| 31.2 | `status` array has 8 entries with id, name, blurb, priceCents, priceDisplay | | |
+| 31.3 | `boost` object has id, name, description, priceCents, minutes, priceDisplay | | |
+| 31.4 | Status prices in cents match: 499, 999, 1999, 9999, 50000, 80000, 90000, 100000 | | |
+| 31.5 | `POST /status/checkout` returns `{ sessionId, url }` (auth required) | | |
+| 31.6 | `POST /boost/checkout` returns `{ sessionId, url }` (auth required) | | |
+| 31.7 | `GET /status/owned?userId=` returns `{ owned: [...] }` (auth required) | | |
+| 31.8 | `GET /boost/status?userId=` returns `{ active, remainingMinutes }` (auth required) | | |
+| 31.9 | Unknown statusId → 404 error | | |
+| 31.10 | Missing userId → 400 error | | |
+| 31.11 | Unauthorized request → 401 error | | |
+| 31.12 | Webhook: `kind=status` → ownership recorded in KV as CSV | | |
+| 31.13 | Webhook: `kind=boost` → boost recorded in KV with 1h TTL | | |
+| 31.14 | Webhook: `charge.refunded` with `kind=status` → removes status from owned | | |
+| 31.15 | Webhook: `charge.refunded` with `kind=boost` → marks boost refunded | | |
+| 31.16 | Payment intent routing: `pi:{id}` → `{ kind: "status", userId, statusId }` | | |
+
+---
+
+## 32  iOS ↔ Web Price Parity (NEW)
+
+| # | Check | iOS | Web |
+|---|-------|-----|-----|
+| 32.1 | Gavel Handful: $4.99 → 1,000 Gavels | | |
+| 32.2 | Gavel Stack: $19.99 → 5,000 Gavels | | |
+| 32.3 | Gavel Chest: $49.99 → 14,000 Gavels | | |
+| 32.4 | Gavel Vault: $99.99 → 30,000 Gavels | | |
+| 32.5 | Spotlight Boost: $4.99 | | |
+| 32.6 | Paddle Pass: $19.99/mo | | |
+| 32.7 | Reserve Pass: $39.99/mo | | |
+| 32.8 | Black Card Pass: $99.99/mo | | |
+| 32.9 | Good Guy: $4.99 | | |
+| 32.10 | In & Out Guy: $9.99 | | |
+| 32.11 | Why Not Guy: $19.99 | | |
+| 32.12 | Got a Good Job: $99.99 | | |
+| 32.13 | Inheritance Money Guy: $500 | | |
+| 32.14 | Influencer: $800 | | |
+| 32.15 | I Drive a Ferrari: $900 | | |
+| 32.16 | Trillionaire: $1,000 | | |
+| 32.17 | Store shows same product names, descriptions, and icons | | |
+| 32.18 | Women's store: Boost only (no Gavels, no Status, no Pass) — matches iOS | | |
+
+---
 
 | # | Item | Status |
 |---|------|--------|
