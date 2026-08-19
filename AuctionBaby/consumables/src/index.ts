@@ -1013,22 +1013,29 @@ export default {
     // the shared secret.
     if (pathname === "/webhook" && method === "POST") return handleWebhook(request, env);
 
-    // Authenticated app routes.
-    const authed = await isAuthenticated(request, env.APP_SHARED_SECRET);
-    if (!authed) return error("Unauthorized", 401);
-
+    // ── Public checkout & status endpoints ──
+    // These only create Stripe Checkout/Billing sessions (no balance mutation)
+    // or read public status. Safe to expose without the shared secret so the
+    // web app (client-side JS) can call them directly. Balance mutation
+    // endpoints (/consume, /balance write) remain authed below.
     if (pathname === "/checkout" && method === "POST") return handleCheckout(request, env);
     if (pathname === "/subscribe" && method === "POST") return handleSubscribe(request, env);
     if (pathname === "/subscription" && method === "GET") return handleSubscriptionStatus(request, env);
-    if (pathname === "/balance" && method === "GET") return handleBalance(request, env);
-    if (pathname === "/consume" && method === "POST") return handleConsume(request, env);
-    if (pathname === "/ledger" && method === "GET") return handleLedger(request, env);
     if (pathname === "/reserve/checkout" && method === "POST") return handleReserveCheckout(request, env);
     if (pathname === "/reserve/status" && method === "GET") return handleReserveStatus(request, env);
     if (pathname === "/boost/checkout" && method === "POST") return handleBoostCheckout(request, env);
     if (pathname === "/boost/status" && method === "GET") return handleBoostStatus(request, env);
     if (pathname === "/status/checkout" && method === "POST") return handleStatusCheckout(request, env);
     if (pathname === "/status/owned" && method === "GET") return handleStatusOwned(request, env);
+
+    // Authenticated app routes (balance + consume + ledger — these mutate or
+    // expose sensitive financial state, so they stay behind the shared secret).
+    const authed = await isAuthenticated(request, env.APP_SHARED_SECRET);
+    if (!authed) return error("Unauthorized", 401);
+
+    if (pathname === "/balance" && method === "GET") return handleBalance(request, env);
+    if (pathname === "/consume" && method === "POST") return handleConsume(request, env);
+    if (pathname === "/ledger" && method === "GET") return handleLedger(request, env);
 
     return error("Not found", 404);
   },

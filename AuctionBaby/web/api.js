@@ -22,7 +22,10 @@
   }
   const auth = (p, o) => call(C.AUTH_URL, p, o);
   const match = (p, o) => call(C.MATCHING_URL, p, o);
-  const shop = (p, o) => call(C.CONSUMABLES_URL, p, o);
+  // shop() calls don't need auth — checkout/status endpoints are public in the
+  // Worker (they only create Stripe sessions, no balance mutation). Balance and
+  // consume endpoints still require the shared secret (iOS-only).
+  const shop = (p, o) => call(C.CONSUMABLES_URL, p, { auth: false, ...o });
 
   window.AB_API = {
     // ── session ──

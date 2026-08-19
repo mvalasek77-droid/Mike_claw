@@ -7,7 +7,7 @@ window.AB_CONFIG = {
   // ── Backends (your deployed Workers) ─────────────────────────────────────
   AUTH_URL:       "https://auctionbaby-auth.mvalasek77.workers.dev",
   MATCHING_URL:   "https://auctionbaby-matching.mvalasek77.workers.dev",
-  CONSUMABLES_URL:"https://auctionbaby-consumables.mvalasek77.workers.dev",
+  CONSUMABLES_URL:"https://auctionbaby-consumables-staging.mvalasek77.workers.dev",
 
   // ── Sign in with Apple for the Web ───────────────────────────────────────
   // Create a **Services ID** in the Apple Developer portal (NOT the app bundle
