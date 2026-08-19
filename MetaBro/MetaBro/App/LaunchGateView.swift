@@ -12,11 +12,14 @@ final class LaunchCoordinator {
     enum Phase: Equatable {
         case checking
         case onboarding
+        case tutorial
         case ready
     }
 
     private(set) var phase: Phase = .checking
     private(set) var container: AppContainer?
+
+    private static let tutorialSeenKey = "metabro.tutorial.seen"
 
     func start() async {
         let authService = AppContainer.makeAuthService()
@@ -31,6 +34,11 @@ final class LaunchCoordinator {
 
     func onboardingFinished() {
         container = AppContainer.resolve()
+        phase = .tutorial
+    }
+
+    func tutorialFinished() {
+        UserDefaults.standard.set(true, forKey: Self.tutorialSeenKey)
         phase = .ready
     }
 
@@ -52,6 +60,8 @@ struct LaunchGateView: View {
                 OnboardingView(authService: AppContainer.makeAuthService()) {
                     launch.onboardingFinished()
                 }
+            case .tutorial:
+                TutorialView { launch.tutorialFinished() }
             case .ready:
                 if let container = launch.container {
                     RootView(container: container, onSignOut: { launch.signedOut() })
