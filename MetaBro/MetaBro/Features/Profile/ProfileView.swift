@@ -11,6 +11,7 @@ struct ProfileView: View {
     @State private var showingSaved = false
     @State private var showingHistory = false
     @State private var showDeleteConfirm = false
+    @State private var showingTutorial = false
 
     init(container: AppContainer, onSignOut: @escaping () -> Void) {
         self.container = container
@@ -54,6 +55,9 @@ struct ProfileView: View {
         } message: {
             Text("This permanently deletes your account data, handle, posts, and Bro Cred from this device. This action cannot be undone.")
         }
+        .fullScreenCover(isPresented: $showingTutorial) {
+            TutorialView { showingTutorial = false }
+        }
     }
 
     @ViewBuilder
@@ -80,6 +84,7 @@ struct ProfileView: View {
                     postsSection(profile.posts)
                     savedPostsRow
                     historyRow
+                    tutorialRow
                     reportProblemRow
                     signOutRow
                     deleteAccountRow
@@ -133,6 +138,21 @@ struct ProfileView: View {
         Button { showingSaved = true } label: {
             HStack {
                 Label("Saved posts", systemImage: "bookmark")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Tokens.Color.textSecondary)
+            }
+            .padding(Tokens.Spacing.md)
+        }
+        .buttonStyle(.plain)
+        .liquidGlass()
+        .frame(maxWidth: .infinity)
+    }
+
+    private var tutorialRow: some View {
+        Button { showingTutorial = true } label: {
+            HStack {
+                Label("How MetaBro works", systemImage: "sparkles")
                 Spacer()
                 Image(systemName: "chevron.right")
                     .foregroundStyle(Tokens.Color.textSecondary)
