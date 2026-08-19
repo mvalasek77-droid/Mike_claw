@@ -154,6 +154,11 @@ a{color:var(--gold)}
 .house-rules-text{font-size:13px;line-height:1.45;color:var(--ink-soft)}
 
 /* verified badge (blue checkmark seal) */
+  --gold:#e6b800; --gold-soft:#f5d67b; --rose:#e0607a; --verify:#4fb0c6; --success:#5cc98a; --warning:#e8a838;
+  .bid-toggle { display:flex; align-items:center; gap:10px; padding:14px; border-radius:var(--corner-m,12px); background:rgba(255,255,255,.05); border:1px solid var(--hairline,rgba(255,255,255,.08)); cursor:pointer; transition:all .15s; }
+  .bid-toggle.on { background:rgba(230,184,0,.12); border-color:rgba(230,184,0,.5); }
+  .bid-toggle[data-insure].on { background:rgba(79,176,198,.12); border-color:rgba(79,176,198,.5); }
+  .lot .art { position:relative; }
 .vbadge{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
   width:20px;height:20px;border-radius:50%;background:var(--verify);color:#fff;
   box-shadow:0 2px 6px rgba(79,176,198,.4);margin-left:5px;flex:none}

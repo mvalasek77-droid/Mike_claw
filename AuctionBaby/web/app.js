@@ -384,7 +384,10 @@
     const tick = tickers[Math.floor(Date.now() / 6000) % tickers.length];
     const lotCard = (w, isHero) => `
       <button class="lot ${isHero ? "hero" : ""}${w.masterpiece ? " masterpiece" : ""}" data-lot="${w.id}" style="width:100%;padding:0;text-align:left;background:none">
-        <div class="art">${grad(w.hue, w.name, w.photo)}</div>
+        <div class="art">${grad(w.hue, w.name, w.photo)}
+          ${w.boosted ? `<div style="position:absolute;top:12px;left:12px;padding:4px 8px;border-radius:20px;background:var(--gold);color:#000;font:800 9px/1 var(--sans);letter-spacing:.08em;display:flex;align-items:center;gap:4px">⚡ SPOTLIGHT</div>` : ""}
+          ${isHero ? `<div style="position:absolute;top:12px;right:12px;padding:4px 9px;border-radius:20px;background:rgba(0,0,0,.55);color:#fff;font:800 10px/1 var(--sans);letter-spacing:.08em;display:flex;align-items:center;gap:5px;border:1px solid rgba(92,201,138,.55)"><span style="width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success)"></span>ON THE FLOOR NOW</div>` : ""}
+        </div>
         ${isHero ? `<div class="lotofday${w.masterpiece ? " mp" : ""}">⚖ ${w.masterpiece ? "Masterpiece — Lot of the Day" : "Lot of the day"}</div>` : ""}
         <div class="meta">
           <div class="name">${esc(w.name)} <span class="muted" style="font-size:18px">${w.age}</span>${badges(w)}</div>
@@ -422,7 +425,7 @@
     const prompts = w.prompts || [];
 
     app.innerHTML = `<div class="screen" style="padding-bottom:80px">
-      <div class="topbar"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
+      <div class="topbar"><button class="chip" data-back>‹ Floor</button><span class="pill">⚖ ${S.wallet.toLocaleString()}</span><button class="chip" data-report style="margin-left:auto">⚑</button></div>
 
       <div class="lot${w.masterpiece ? " masterpiece" : ""}" style="margin-bottom:16px">
         <div class="art">${grad(w.hue, w.name, w.photo)}</div>
@@ -436,6 +439,10 @@
       ${w.bio ? `<div class="glass detail-card">
         <div class="detail-title"><span class="dt-icon">📝</span> About</div>
         <p style="margin:0;font-size:15px;line-height:1.4;color:var(--ink)">${esc(w.bio)}</p>
+      </div>` : ""}
+
+      ${S.pass && (S.pass === "Reserve" || S.pass === "Black Card") && w.startingBid ? `<div class="glass detail-card" style="border-color:rgba(230,184,0,.4);background:rgba(230,184,0,.06)">
+        <div class="row" style="gap:10px"><span style="font-size:18px">🔓</span><div class="grow"><div class="faint" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em">Her reserve price</div><div style="font:800 20px/1 var(--serif);color:var(--gold)">${money(w.startingBid)}</div></div><span class="chip rose">Reserve perk</span></div>
       </div>` : ""}
 
       ${prompts.map((p, i) => `<div class="glass detail-card">
@@ -496,31 +503,85 @@
 
     app.querySelector("[data-back]").onclick = () => go("/floor");
     app.querySelector("[data-bid]").onclick = () => bidSheet(w);
+    const rbtn = app.querySelector("[data-report]"); if (rbtn) rbtn.onclick = () => reportSheet(w);
     app.querySelectorAll("[data-bid-prompt]").forEach(b => {
       b.onclick = () => bidSheet(w, prompts[+b.dataset.bidPrompt]);
     });
   }
 
+  function reportSheet(w) {
+    const reasons = ["Fake / not a real person", "Inappropriate content", "Harassment or abuse", "Didn't pay the bid (deadbeat)", "Spam or scam", "Something else"];
+    const sheet = document.createElement("div"); sheet.className = "sheet";
+    sheet.innerHTML = `<div class="panel">
+      <div class="grab"></div>
+      <div style="font-family:var(--serif);font-weight:800;font-size:18px;margin-bottom:4px">Report ${esc(w.name)}</div>
+      <div class="faint" style="font-size:13px;margin-bottom:14px">They'll be removed from your floor and won't be able to reach you. Reports are reviewed by our team.</div>
+      ${reasons.map(r => `<button class="card" data-reason="${esc(r)}" style="width:100%;text-align:left;margin-bottom:8px;padding:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer"><span style="font-weight:600">${esc(r)}</span><span class="faint">›</span></button>`).join("")}
+      <button class="btn ghost" data-cancel style="margin-top:10px">Cancel</button>
+    </div>`;
+    sheet.onclick = e => { if (e.target === sheet || e.target.closest("[data-cancel]")) sheet.remove(); };
+    sheet.addEventListener("click", e => {
+      const r = e.target.closest("[data-reason]"); if (!r) return;
+      const reason = r.dataset.reason;
+      if (CONFIGURED() && SIGNED_IN()) { API.blockUser(w.id, reason).catch(()=>{}); API.reportUser(w.id, reason, "detail").catch(()=>{}); }
+      S.floor = S.floor.filter(x => x.id !== w.id); save();
+      sheet.remove(); toast("Reported & blocked."); go("/floor");
+    });
+    document.body.appendChild(sheet);
+  }
+
+  // ── Constants matching iOS AuctionStore ──
+  const GILDED_BID_COST = 250;
+  const BID_INSURANCE_COST = 200;
+  const FREE_ACTIVE_BID_LIMIT = 3;
+  const MASTERPIECE_BID = 1000000;
+
   function bidSheet(w, promptCtx) {
     let amount = Number(w.startingBid) || 100;
+    let gild = false, insure = false;
     const defaultNote = promptCtx ? `Re: "${promptCtx.q}" — loved your answer.` : "";
     const sheet = document.createElement("div"); sheet.className = "sheet";
     const getNote = () => { const el = sheet.querySelector("#bid-note"); return el ? el.value : defaultNote; };
+    const isTrillionaire = (S.ownedStatus || []).includes("status_trillionaire");
+    const atFreeLimit = !S.pass && (S.pendingBids || 0) >= FREE_ACTIVE_BID_LIMIT;
     const draw = () => { const savedNote = getNote(); sheet.innerHTML = `<div class="panel">
       <div class="grab"></div>
       <div class="row" style="margin-bottom:8px">${gradSm(w.hue, w.name, w.photo)}<div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:18px">Bidding on ${esc(w.name)}</div><div class="faint">Floor ${money(w.startingBid)}${promptCtx ? " · mentioning her answer" : ""}</div></div></div>
       ${promptCtx ? `<div class="card" style="margin:8px 0 12px;padding:10px 14px"><div class="faint" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:800">${esc(promptCtx.q)}</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px;font-size:14px">${esc(promptCtx.a)}</div></div>` : ""}
       <div class="kicker" style="text-align:center;margin-top:14px">Your bid</div>
       <div class="amount">${money(amount)}</div>
+      ${amount >= MASTERPIECE_BID && S.role === "man" && isTrillionaire ? `<div style="text-align:center;margin-top:6px;font:700 12px/1 var(--sans);color:var(--rose)">🏆 Masterpiece-eligible — pay it &amp; get confirmed</div>` : ""}
       <div class="row" style="flex-wrap:wrap;justify-content:center;gap:8px;margin:12px 0">
         ${[50, 100, 1000, 10000, 100000].map(a => `<button class="chip" data-add="${a}">+${money(a)}</button>`).join("")}
         <button class="chip" data-reset>Reset</button>
       </div>
       <label class="field"><div class="lbl">Add a note</div><textarea class="txt" id="bid-note" placeholder="Why you? Make the bid count.">${esc(savedNote)}</textarea></label>
+      ${!w.copycat ? `<button class="bid-toggle ${gild ? "on" : ""}" data-gild style="width:100%;text-align:left;margin-top:10px">
+        <span style="font-size:20px">${gild ? "🏅" : "🥇"}</span>
+        <div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:14px;color:var(--ink)">Gild this bid</div><div class="faint" style="font-size:11px">Pin to the top of her inbox with a gold ribbon — she's far more likely to accept.</div></div>
+        <span style="font:800 13px/1 var(--sans);color:${gild ? "var(--gold)" : "var(--ink-faint)"}">${GILDED_BID_COST} ⚖</span>
+      </button>` : ""}
+      ${!w.copycat ? `<button class="bid-toggle ${insure ? "on" : ""}" data-insure style="width:100%;text-align:left;margin-top:8px">
+        <span style="font-size:20px">${insure ? "🛡️" : " Shields"}</span>
+        <div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:14px;color:var(--ink)">Bid Insurance</div><div class="faint" style="font-size:11px">If she declines, your premium comes back — and the gild fee too, if you gilded.</div></div>
+        <span style="font:800 13px/1 var(--sans);color:${insure ? "var(--verify)" : "var(--ink-faint)"}">${BID_INSURANCE_COST} ⚖</span>
+      </button>` : ""}
+      <div class="row" style="margin-top:10px;padding:8px 12px;border-radius:20px;background:rgba(230,184,0,.08);cursor:pointer" data-gavels>
+        <span style="font-size:11px">⚖</span>
+        <span style="font:800 12px/1 var(--sans);color:${S.wallet < GILDED_BID_COST ? "var(--rose)" : "var(--gold)"}">${(S.wallet || 0).toLocaleString()} Gavels</span>
+        ${S.wallet < GILDED_BID_COST ? '<span style="font:700 11px/1 var(--sans);color:var(--rose)">· low</span>' : ""}
+        <span class="grow"></span>
+        <span style="font:700 12px/1 var(--sans);color:var(--gold)">Get more</span>
+        <span style="font-size:12px;color:var(--gold)">＋</span>
+      </div>
       <div class="card" style="margin:10px 0;padding:12px;border-color:rgba(230,184,0,.3);background:rgba(230,184,0,.06)">
         <div class="row" style="gap:10px"><span style="font-size:18px">✍️</span><div class="grow"><div style="font-family:var(--serif);font-weight:800;font-size:13px;color:var(--ink)">The money you'll spend on the date</div><div class="faint" style="font-size:11px;margin-top:2px">Dinner, drinks, the experience — not a payment to her. She keeps the receipts so it can be confirmed after.</div></div></div>
       </div>
-      <button class="btn" id="bid-place">Place ${money(amount)} bid</button>
+      ${atFreeLimit ? `<div style="text-align:center;margin-top:10px">
+        <div style="font:700 13px/1 var(--sans);color:var(--warning)">You've used all ${FREE_ACTIVE_BID_LIMIT} free live bids.</div>
+        <button class="btn" style="margin-top:8px;background:var(--rose)" data-go="paywall">Get a Pass for unlimited bids</button>
+      </div>` : `<button class="btn" id="bid-place">${gild ? "Send Gilded Bid · " + money(amount) : "Place " + money(amount) + " bid"}</button>`}
+      ${!w.copycat ? `<button class="chip" data-whisper style="width:100%;margin-top:8px;border:1px solid rgba(224,96,122,.5);color:var(--rose);background:none;padding:11px 14px;border-radius:24px;font:700 13px/1 var(--sans);text-align:center;cursor:pointer"> whisper — no Gavels, no credit hit</button>` : ""}
       <div class="disclosure">Spend your bid on the date — the meal, the drinks, the night. She keeps the receipts and confirms it after. Never wire money or send a personal deposit; the app has no way to send money to another user, by design.</div>
     </div>`; };
     draw();
@@ -528,26 +589,46 @@
     sheet.addEventListener("click", e => {
       const add = e.target.closest("[data-add]"); if (add) { amount += +add.dataset.add; draw(); }
       if (e.target.closest("[data-reset]")) { amount = Number(w.startingBid) || 100; draw(); }
-      if (e.target.closest("#bid-place")) { const note = ($("#bid-note") || {}).value || ""; sheet.remove(); placeBid(w, amount, note.trim()); }
+      if (e.target.closest("[data-gild]")) { gild = !gild; if (gild && S.wallet < GILDED_BID_COST) { toast("Not enough Gavels to gild. Visit the Store."); gild = false; } draw(); }
+      if (e.target.closest("[data-insure]")) { insure = !insure; if (insure && S.wallet < BID_INSURANCE_COST) { toast("Not enough Gavels for insurance."); insure = false; } draw(); }
+      if (e.target.closest("[data-gavels]")) { sheet.remove(); go("/store"); }
+      if (e.target.closest("[data-whisper]")) { sheet.remove(); placeWhisper(w); }
+      if (e.target.closest("[data-go]")) { sheet.remove(); go("/" + e.target.closest("[data-go]").dataset.go); }
+      if (e.target.closest("#bid-place")) {
+        const note = ($("#bid-note") || {}).value || "";
+        sheet.remove(); placeBid(w, amount, note.trim(), gild, insure);
+      }
     });
     document.body.appendChild(sheet);
   }
 
-  function placeBid(w, amount, note) {
+  function placeWhisper(w) {
+    if (w.copycat) return toast("Can't whisper on a copycat.");
+    toast("Whisper sent — she'll see interest, not who.");
+  }
+
+  function placeBid(w, amount, note, gild, insure) {
+    // Deduct Gavels for gild/insurance
+    let gavelCost = 0;
+    if (gild && !w.copycat) { if (S.wallet >= GILDED_BID_COST) { S.wallet -= GILDED_BID_COST; gavelCost += GILDED_BID_COST; } else gild = false; }
+    if (insure && !w.copycat) { if (S.wallet >= BID_INSURANCE_COST) { S.wallet -= BID_INSURANCE_COST; gavelCost += BID_INSURANCE_COST; } else insure = false; }
+    if (gavelCost > 0) save();
     if (CONFIGURED() && SIGNED_IN()) {
       API.placeBid(w.id, amount, note || "")
-        .then(() => { toast("Bid placed — you'll be notified if she accepts."); syncMatches(); })
-        .catch(e => toast("Bid failed: " + e.message));
+        .then(() => { toast(gild ? "Gilded bid placed — she'll see it first." : "Bid placed — you'll be notified if she accepts."); syncMatches(); })
+        .catch(e => { if (gavelCost) { S.wallet += gavelCost; save(); } toast("Bid failed: " + e.message); });
       return;
     }
     if (w.copycat) {
       S.reputation = (S.reputation || 100) - 5;
+      if (gavelCost) { S.wallet += gavelCost; save(); }
       save();
       return copycatReveal(w);
     }
     const isMike = (S.me.name || "").trim().toLowerCase() === "mike valasek";
-    if (!isMike) return toast(`${w.name} passed. Only accepts bids from Mike Valasek.`);
-    const m = { id: uid(), lotId: w.id, name: w.name, hue: w.hue, amount,
+    if (!isMike) { if (gavelCost) { S.wallet += gavelCost; save(); } return toast(`${w.name} passed. Only accepts bids from Mike Valasek.`); }
+    S.pendingBids = (S.pendingBids || 0) + 1;
+    const m = { id: uid(), lotId: w.id, name: w.name, hue: w.hue, amount, gilded: !!gild,
                 note: note || "",
                 messages: [{ me: false, text: w.icebreakers[0] || "You win — where are you taking me?" }] };
     S.matches.unshift(m); save(); celebrate(w, amount, m);
