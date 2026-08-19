@@ -231,6 +231,7 @@
       lot.city = S.me.city;
       lot.bio = S.me.bio || "";
       lot.interests = S.me.interests || [];
+      lot.verified = !!S.me.verified;
     }
   }
   const tabbar = () => {
@@ -683,6 +684,9 @@
 
     async function startCamera() {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("getUserMedia not supported");
+        }
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         phase = "camera";
         draw();
@@ -699,8 +703,15 @@
           }
         }, 1500);
       } catch (e) {
-        phase = "noCamera";
-        draw();
+        // Camera unavailable — offer simulated verification (demo) or show error (live)
+        if (!CONFIGURED() || !SIGNED_IN()) {
+          // Demo mode: skip camera, simulate the whole flow
+          phase = "matching"; draw();
+          setTimeout(() => finishVerification(), 1500);
+        } else {
+          phase = "noCamera";
+          draw();
+        }
       }
     }
 
@@ -714,14 +725,14 @@
           const startRes = await API.verifyStart();
           // Submit with simulated scores (web can't do Vision face matching)
           const submitRes = await API.verifySubmit(0.85, true, 0.78);
-          if (submitRes.status === "passed") { phase = "done"; S.me.verified = true; save(); }
+          if (submitRes.status === "passed") { phase = "done"; S.me.verified = true; updateMyLot(); save(); }
           else if (submitRes.status === "pending") { phase = "pending"; }
           else { phase = "failed"; }
         } catch (e) { phase = "failed"; }
         draw();
       } else {
         // Demo mode: award blue check locally
-        phase = "done"; S.me.verified = true; save(); draw();
+        phase = "done"; S.me.verified = true; updateMyLot(); save(); draw();
       }
       stopCamera();
     }
