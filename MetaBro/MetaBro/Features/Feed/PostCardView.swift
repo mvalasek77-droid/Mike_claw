@@ -122,9 +122,7 @@ struct PostCardView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: Tokens.Spacing.lg) {
-            // The hybrid: Bro-hood posts use Reddit voting, social posts use
-            // Facebook-style reactions.
+        HStack(spacing: Tokens.Spacing.md) {
             switch post.origin {
             case .community:
                 VoteControl(
@@ -142,16 +140,20 @@ struct PostCardView: View {
             .buttonStyle(.plain)
             .foregroundStyle(Tokens.Color.textSecondary)
             .accessibilityLabel("\(post.commentCount) comments. Open discussion.")
-            Spacer()
-            awardMenu
-            saveButton
-            Image(systemName: "square.and.arrow.up")
-                .foregroundStyle(Tokens.Color.textSecondary)
-                .accessibilityLabel("Share")
-            if let safetyService {
-                SafetyMenu(user: post.author, kind: .post, targetID: post.id,
-                           preview: post.title ?? post.body, community: post.community,
-                           service: safetyService)
+            .lineLimit(1)
+            .fixedSize()
+            Spacer(minLength: 0)
+            HStack(spacing: Tokens.Spacing.sm) {
+                awardMenu
+                saveButton
+                Image(systemName: "square.and.arrow.up")
+                    .foregroundStyle(Tokens.Color.textSecondary)
+                    .accessibilityLabel("Share")
+                if let safetyService {
+                    SafetyMenu(user: post.author, kind: .post, targetID: post.id,
+                               preview: post.title ?? post.body, community: post.community,
+                               service: safetyService)
+                }
             }
         }
     }
