@@ -19,8 +19,8 @@ compatibility_date = "2024-12-01"
 CURRENCY = "usd"
 # Success/cancel URLs the hosted Checkout returns to. The web shop can
 # override these per-request; these are the safe defaults.
-SUCCESS_URL = "https://auctionbaby.app/purchase/success"
-CANCEL_URL = "https://auctionbaby.app/purchase/cancel"
+SUCCESS_URL = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/index.html#/store?paid=1"
+CANCEL_URL = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/index.html#/store"
 # "Reserve the date" real-world booking fee. Platform-kept; never credits
 # Gavels and never reaches the other person. RESERVE_TIERS_CENTS is the
 # allow-list of chargeable amounts (a client can't POST an arbitrary one):
@@ -48,8 +48,10 @@ name = "auctionbaby-consumables-staging"
 
 [env.staging.vars]
 CURRENCY = "usd"
-SUCCESS_URL = "https://auctionbaby.app/purchase/success"
-CANCEL_URL = "https://auctionbaby.app/purchase/cancel"
+SUCCESS_URL = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/index.html#/store?paid=1"
+CANCEL_URL = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/index.html#/store"
+RESERVE_ENABLED = "false"
+RESERVE_TIERS_CENTS = "1000,1500,2500,5000,10000"
 RESERVE_FEE_CENTS = "500"
 
 # ⚠️  Same rule: create + paste, or credits silently drop.
