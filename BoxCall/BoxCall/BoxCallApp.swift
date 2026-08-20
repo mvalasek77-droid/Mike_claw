@@ -12,11 +12,14 @@ struct BoxCallApp: App {
     @StateObject private var auth = AuthService.shared
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("passedAgeGate") private var passedAgeGate: Bool = false
 
     var body: some Scene {
         WindowGroup {
             Group {
-                if hasCompletedOnboarding {
+                if !passedAgeGate {
+                    AgeGateView(passed: $passedAgeGate)
+                } else if hasCompletedOnboarding {
                     RootView()
                 } else {
                     OnboardingView(hasCompleted: $hasCompletedOnboarding)

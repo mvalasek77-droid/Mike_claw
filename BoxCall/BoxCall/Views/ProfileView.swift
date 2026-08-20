@@ -141,6 +141,18 @@ struct ProfileView: View {
                          subtitle: "Manage the handles whose posts, reviews, and comments won't show up in your feed.")
             }
             NavigationLink {
+                LegalView(kind: .terms)
+            } label: {
+                learnRow(icon: "doc.text", title: "Terms of Service",
+                         subtitle: "The rules of the app in plain English.")
+            }
+            NavigationLink {
+                LegalView(kind: .privacy)
+            } label: {
+                learnRow(icon: "lock.shield", title: "Privacy Policy",
+                         subtitle: "What we collect and, more importantly, what we don't.")
+            }
+            NavigationLink {
                 LearnView(initialSection: .glossary)
             } label: {
                 learnRow(icon: "text.book.closed", title: "Glossary",
