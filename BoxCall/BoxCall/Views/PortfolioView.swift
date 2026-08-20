@@ -107,6 +107,13 @@ struct PositionRow: View {
                     infoPair("Entry", position.entryPremium)
                     infoPair("Mark", currentMark)
                     Spacer()
+                    Button {
+                        sharePosition()
+                    } label: {
+                        Image(systemName: "square.and.arrow.up").font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     Button("Close") {
                         portfolio.closeAtMark(position: position)
                         portfolio.refreshLeaderboard()
@@ -116,12 +123,46 @@ struct PositionRow: View {
                 }
                 .font(.caption)
             } else if let actual = position.actualOWMillions {
-                Text("Settled at $\(actual, specifier: "%.1f")M opening")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("Settled at $\(actual, specifier: "%.1f")M opening")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        sharePosition()
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up").font(.caption2)
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.orange)
+                }
             }
         }
         .padding(.vertical, 4)
+    }
+
+    @MainActor
+    private func sharePosition() {
+        let outcomeText: String? = {
+            guard let payout = position.settledPayout else { return nil }
+            let net = payout - position.cost
+            return net >= 0
+                ? "Called it. +\(Int(net)) RC"
+                : "Missed by \(Int(-net)) RC"
+        }()
+        let card = ShareCard(
+            title: movie?.title ?? "—",
+            side: position.side,
+            strikeMillions: position.strikeMillions,
+            quantity: position.quantity,
+            entryPremium: position.entryPremium,
+            handle: portfolio.user.handle,
+            tier: portfolio.user.tier,
+            outcomeText: outcomeText,
+            poster: movie?.posterEmoji ?? "🎬"
+        )
+        let message = "\(position.side.display) $\(Int(position.strikeMillions))M on \(movie?.title ?? "a movie") — via BoxCall"
+        Sharer.share(card, message: message)
     }
 
     private var pnlBadge: some View {

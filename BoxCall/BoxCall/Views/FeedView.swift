@@ -181,11 +181,18 @@ struct PostCard: View {
             Button {
                 if !coordinator.requestCopy(fromPost: post) { onCopyBlocked() }
             } label: {
-                Label("Copy call", systemImage: "arrow.triangle.branch")
+                Label("Copy", systemImage: "arrow.triangle.branch")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(post.outcome == nil ? .orange : .secondary)
             }
             .disabled(post.outcome != nil)
+            Button {
+                sharePost()
+            } label: {
+                Label("Share", systemImage: "square.and.arrow.up")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
         }
         .font(.caption)
         .buttonStyle(.plain)
@@ -204,6 +211,28 @@ struct PostCard: View {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .short
         return f.localizedString(for: date, relativeTo: Date())
+    }
+
+    @MainActor
+    private func sharePost() {
+        let outcomeText: String? = post.outcome.map {
+            $0.netProfit >= 0
+                ? "Called it. +\(Int($0.netProfit)) RC"
+                : "Missed by \(Int(-$0.netProfit)) RC"
+        }
+        let card = ShareCard(
+            title: post.movieTitle,
+            side: post.side,
+            strikeMillions: post.strikeMillions,
+            quantity: post.quantity,
+            entryPremium: post.entryPremium,
+            handle: post.authorHandle,
+            tier: post.authorTier,
+            outcomeText: outcomeText,
+            poster: post.moviePosterEmoji
+        )
+        let message = "\(post.side.display) $\(Int(post.strikeMillions))M on \(post.movieTitle) — via BoxCall"
+        Sharer.share(card, message: message)
     }
 }
 
