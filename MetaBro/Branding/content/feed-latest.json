@@ -1,112 +1,27 @@
 {
-  "generated_for": "2026-08-20T03",
+  "generated_for": "2026-08-20T06",
   "posts": [
     {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 49,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 37
-        },
-        {
-          "kind": "like",
-          "count": 5
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "73c37dae-f0a4-43f4-d0c7-4930dad08c19",
-      "author": {
-        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
-        "handle": "@ironbro",
-        "display_name": "Marcus",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
-        "bro_cred": 4820
-      },
-      "image_url": null,
-      "comment_count": 48,
-      "created_at": "2026-08-20T01:19:52+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 53,
-      "reactions": [
-        {
-          "kind": "strong",
-          "count": 31
-        },
-        {
-          "kind": "like",
-          "count": 4
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "005526d0-9ea9-cf5c-93ca-3a7f5278f8ec",
-      "author": {
-        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
-        "handle": "@you",
-        "display_name": "You",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
-        "bro_cred": 1280
-      },
-      "image_url": null,
-      "comment_count": 14,
-      "created_at": "2026-08-20T02:41:52+00:00",
-      "my_vote": 0
-    },
-    {
       "community": {
-        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
-        "name": "Garage Gearheads",
-        "slug": "cars",
-        "member_count": 141200,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Finally finished the brake job",
-      "body": "New rotors, pads, fresh fluid. Pedal feel is night and day.",
-      "score": 148,
+      "title": "PSA: warm up your rotator cuffs, bros",
+      "body": "Saved my bench after years of nagging pain. Here's the routine.",
+      "score": 174,
       "reactions": [],
       "my_reaction": null,
-      "awards": [],
-      "id": "b2ac6674-3747-61d7-2024-235c7ac128fc",
-      "author": {
-        "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
-        "handle": "@coachdave",
-        "display_name": "Dave",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/coachdave.png",
-        "bro_cred": 9300
-      },
-      "image_url": null,
-      "comment_count": 108,
-      "created_at": "2026-08-19T23:08:52+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Anyone up for a sunrise hike this weekend?",
-      "score": 70,
-      "reactions": [
+      "awards": [
         {
-          "kind": "strong",
-          "count": 5
-        },
-        {
-          "kind": "like",
-          "count": 8
+          "kind": "champ",
+          "count": 1
         }
       ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "686b2c4c-94c1-7d38-0271-1176f7866ce3",
+      "id": "0e12a63c-43db-9c9a-0063-56be303ddbe1",
       "author": {
         "id": "88da342c-12c1-951a-f0bc-99247785f086",
         "handle": "@theoknows",
@@ -115,8 +30,38 @@
         "bro_cred": 1120
       },
       "image_url": null,
-      "comment_count": 40,
-      "created_at": "2026-08-20T01:21:52+00:00",
+      "comment_count": 117,
+      "created_at": "2026-08-20T03:12:11+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 54,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 10
+        },
+        {
+          "kind": "strong",
+          "count": 18
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "bbf8a96b-a541-a4e6-83ed-9e668721c09e",
+      "author": {
+        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
+        "handle": "@leobuilds",
+        "display_name": "Leo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
+        "bro_cred": 760
+      },
+      "image_url": null,
+      "comment_count": 54,
+      "created_at": "2026-08-20T02:04:11+00:00",
       "my_vote": 0
     },
     {
@@ -130,16 +75,41 @@
       },
       "title": "Manual or auto for a first project car?",
       "body": "Want something I can wrench on cheaply. Thoughts?",
-      "score": 136,
+      "score": 188,
       "reactions": [],
       "my_reaction": null,
-      "awards": [
+      "awards": [],
+      "id": "8a3ecaf1-2a90-3f84-50b8-67b67e005808",
+      "author": {
+        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
+        "handle": "@leobuilds",
+        "display_name": "Leo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
+        "bro_cred": 760
+      },
+      "image_url": null,
+      "comment_count": 93,
+      "created_at": "2026-08-20T02:56:11+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Anyone up for a sunrise hike this weekend?",
+      "score": 81,
+      "reactions": [
         {
-          "kind": "champ",
-          "count": 3
+          "kind": "strong",
+          "count": 20
+        },
+        {
+          "kind": "like",
+          "count": 26
         }
       ],
-      "id": "e1b5b469-36b7-7d0b-10f5-a6ba97306bca",
+      "my_reaction": null,
+      "awards": [],
+      "id": "e063d40f-623a-67bf-c3cf-bc4690095569",
       "author": {
         "id": "550c58e9-f006-03d7-e005-01cf109b1c20",
         "handle": "@coachmike",
@@ -148,8 +118,8 @@
         "bro_cred": 4200
       },
       "image_url": null,
-      "comment_count": 110,
-      "created_at": "2026-08-19T22:04:52+00:00",
+      "comment_count": 40,
+      "created_at": "2026-08-20T04:02:11+00:00",
       "my_vote": 0
     },
     {
@@ -161,28 +131,56 @@
         "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
         "is_joined": true
       },
-      "title": "Low and slow brisket \u2014 14 hours",
-      "body": "Wrapped at 165, pulled at 203. Bark was unreal. AMA.",
-      "score": 201,
+      "title": "Best cheap smoker under $300?",
+      "body": "Looking to upgrade from the kettle. What are you bros running?",
+      "score": 247,
       "reactions": [],
       "my_reaction": null,
       "awards": [
         {
           "kind": "champ",
-          "count": 1
+          "count": 2
         }
       ],
-      "id": "352f79f2-7a06-0430-41b7-3a124859c363",
+      "id": "220d5f7f-0ec5-0eb7-585f-e6d94518012b",
       "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
       },
       "image_url": null,
-      "comment_count": 34,
-      "created_at": "2026-08-19T23:09:52+00:00",
+      "comment_count": 46,
+      "created_at": "2026-08-20T00:41:11+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "is_joined": true
+      },
+      "title": "Detailing Sunday",
+      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
+      "score": 147,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "2d4957c9-e9a3-7e91-c05b-04b79b000202",
+      "author": {
+        "id": "337023ca-f0d6-6b4b-335e-42aa37ae608b",
+        "handle": "@you",
+        "display_name": "You",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/you.png",
+        "bro_cred": 1280
+      },
+      "image_url": null,
+      "comment_count": 76,
+      "created_at": "2026-08-20T02:18:11+00:00",
       "my_vote": 0
     }
   ],
