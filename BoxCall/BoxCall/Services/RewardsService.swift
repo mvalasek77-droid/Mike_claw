@@ -25,7 +25,10 @@ final class RewardsService: ObservableObject {
         PortfolioService.shared.mutateUser { $0.xp += amount }
         toast("+\(amount) XP", subtitle: reason, emoji: "⚡️")
         let after = PortfolioService.shared.user.tier
-        if after > before { NotificationsService.shared.notifyTier(after) }
+        if after > before {
+            NotificationsService.shared.notifyTier(after)
+            AnalyticsService.shared.track(.tierPromoted(to: after.name))
+        }
     }
 
     func award(badge: Badge) {
@@ -39,6 +42,7 @@ final class RewardsService: ObservableObject {
         if wasNew {
             toast("Badge unlocked", subtitle: "\(badge.name) — \(badge.blurb)", emoji: badge.emoji)
             NotificationsService.shared.notifyBadge(badge)
+            AnalyticsService.shared.track(.badgeUnlocked(id: badge.id))
         }
     }
 

@@ -47,6 +47,7 @@ final class PortfolioService: ObservableObject {
             RewardsService.shared.grant(
                 xp: 50,
                 reason: "Welcome to \(new.displayName) — +\(Int(new.startingBonus)) RC")
+            AnalyticsService.shared.track(.membershipPurchased(tier: new.rawValue))
         }
     }
 
@@ -100,6 +101,9 @@ final class PortfolioService: ObservableObject {
             actualOWMillions: nil
         ))
         MarketService.shared.recordBuy(contractId: contract.id, quantity: quantity)
+        AnalyticsService.shared.track(.tradePlaced(
+            movieId: contract.movieId, side: contract.side.rawValue,
+            strike: contract.strikeMillions, qty: quantity, cost: cost))
         RewardsService.shared.grant(xp: 10, reason: "Placed a trade")
         if user.badges.first(where: { $0.id == "first_call" }) == nil,
            let badge = Badge.make("first_call") {
@@ -116,6 +120,8 @@ final class PortfolioService: ObservableObject {
         user.reelCoins += proceeds
         user.lifetimePnL += proceeds - position.cost
         MarketService.shared.recordSell(contractId: position.contractId, quantity: position.quantity)
+        AnalyticsService.shared.track(.tradeClosed(
+            movieId: position.movieId, pnl: proceeds - position.cost))
         positions.removeAll { $0.id == position.id }
     }
 

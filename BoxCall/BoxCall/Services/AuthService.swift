@@ -74,6 +74,7 @@ final class AuthService: NSObject, ObservableObject {
         UserDefaults.standard.removeObject(forKey: userIdKey)
         UserDefaults.standard.removeObject(forKey: emailKey)
         PortfolioService.shared.mutateUser { $0.appleUserId = nil }
+        AnalyticsService.shared.track(.signOut)
     }
 
     private func checkExistingCredential() {

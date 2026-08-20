@@ -36,6 +36,8 @@ struct BoxCallApp: App {
             .preferredColorScheme(.dark)
             .overlay(alignment: .top) { RewardToastOverlay() }
             .task {
+                AnalyticsService.shared.installCrashHandler()
+                AnalyticsService.shared.track(.appOpen)
                 if hasCompletedOnboarding { notifications.requestAuthorizationIfNeeded() }
                 market.startMarket()
                 await market.refreshCatalog()

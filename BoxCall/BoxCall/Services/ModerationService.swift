@@ -74,6 +74,7 @@ final class ModerationService: ObservableObject {
         case .review:
             if let uuid = UUID(uuidString: id) { hide(reviewId: uuid) }
         }
+        AnalyticsService.shared.track(.reportSubmitted(kind: kind.rawValue, reason: reason.rawValue))
         // TODO: POST to /moderate/report on the backend.
     }
 
