@@ -129,6 +129,12 @@ struct ProfileView: View {
                          subtitle: "What happens when a trade goes wrong. Max loss, weekly refills, no negative balance.")
             }
             NavigationLink {
+                ReferralView()
+            } label: {
+                learnRow(icon: "person.2.badge.gearshape", title: "Invite friends",
+                         subtitle: "Share your code — both sides get 500 Reel Coins.")
+            }
+            NavigationLink {
                 DataSourcesView()
             } label: {
                 learnRow(icon: "server.rack", title: "Data sources",
