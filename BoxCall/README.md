@@ -78,6 +78,35 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## Market makers + support / resistance
+
+Random NPC noise is out; real market-maker behavior is in.
+
+`MarketMaker.swift` computes rolling support and resistance for every contract each tick:
+- Rolling window: last 30 price points (~90s at the 3s tick rate)
+- **Support** = 20th percentile of the window
+- **Resistance** = 80th percentile of the window
+- The band between them is the current fair-value zone
+
+Every tick, for every contract:
+- If mark is within a `touchZone` of support → MM steps in as a **buyer** (positive demand delta). The next tick reprices the mark up.
+- If mark is within a `touchZone` of resistance → MM steps in as a **seller** (negative demand delta). The next tick reprices the mark down.
+- **Aggression scales linearly with depth into the zone.** A tiny dip gets a small bid; a full flush past support gets a size buyer.
+- Inside the band, small drift noise (±1.5 demand units) keeps the tape alive.
+
+This makes the chart look *chart-shaped*: bouncing off levels, mean-reverting inside a band, and only breaking out when real flow (a user trade, a news event, or shifted sentiment) overpowers the MM.
+
+**Charts (`PriceChart.swift`)** — the Trade Sheet's live chart now draws:
+- Green dashed **support** line with `S xx.xx` label to the right
+- Red dashed **resistance** line with `R xx.xx` label
+- Shaded band between them
+- The area under the price curve as before
+- A readout row below: two color-coded S/R pills + a "zone" label ("At support — MMs likely bidding" / "At resistance — MMs likely offering" / "Inside the band — free to drift")
+
+`MarketService.srLevels` publishes the current S/R for every contract; any view can look up `market.srLevel(contractId:)` and get the current band.
+
+**LearnView** live-market section now explains the MMs, the S/R bands, and gives the strategy hint: "Enter at support and exit at resistance for the cleanest edges."
+
 ## Pre-trade scenario primer
 
 Before a user can hit Buy on any contract, they see the mechanics of THAT specific trade in plain English.

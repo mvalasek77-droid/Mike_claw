@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// Full-width live price chart for a single contract.
+/// Full-width live price chart for a single contract, with optional
+/// support / resistance overlay showing where market makers are stepping in.
 struct PriceChart: View {
     let points: [PricePoint]
     let color: Color
-    var height: CGFloat = 140
+    var sr: SRLevel? = nil
+    var height: CGFloat = 160
 
     var body: some View {
         Canvas { ctx, size in
@@ -13,28 +15,66 @@ struct PriceChart: View {
                 ctx.draw(msg, at: CGPoint(x: size.width / 2, y: size.height / 2))
                 return
             }
-            let inset: CGFloat = 30
+            let inset: CGFloat = 34
             let plot = CGRect(x: inset, y: 8,
-                              width: size.width - inset - 8,
+                              width: size.width - inset - 40,
                               height: size.height - 26)
 
             let marks = points.map(\.mark)
-            let minV = marks.min() ?? 0
-            let maxV = marks.max() ?? 1
-            let pad = max(0.05, (maxV - minV) * 0.15)
-            let lo = max(0, minV - pad)
-            let hi = maxV + pad
+            var lo = marks.min() ?? 0
+            var hi = marks.max() ?? 1
+
+            // Expand y-range to include S/R lines so they always render.
+            if let sr {
+                lo = min(lo, sr.support)
+                hi = max(hi, sr.resistance)
+            }
+            let pad = max(0.05, (hi - lo) * 0.15)
+            lo = max(0, lo - pad)
+            hi = hi + pad
             let range = max(hi - lo, 0.01)
 
-            let dx = plot.width / CGFloat(points.count - 1)
+            func px(_ y: Double) -> CGFloat {
+                plot.maxY - CGFloat((y - lo) / range) * plot.height
+            }
 
-            // Fill area under the curve
+            // MM band (shaded between support and resistance)
+            if let sr {
+                let bandRect = CGRect(x: plot.minX,
+                                      y: px(sr.resistance),
+                                      width: plot.width,
+                                      height: max(1, px(sr.support) - px(sr.resistance)))
+                ctx.fill(Path(bandRect), with: .color(color.opacity(0.06)))
+
+                // Support line (green)
+                var supportLine = Path()
+                supportLine.move(to: CGPoint(x: plot.minX, y: px(sr.support)))
+                supportLine.addLine(to: CGPoint(x: plot.maxX, y: px(sr.support)))
+                ctx.stroke(supportLine, with: .color(.green.opacity(0.7)),
+                           style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+
+                // Resistance line (red)
+                var resistanceLine = Path()
+                resistanceLine.move(to: CGPoint(x: plot.minX, y: px(sr.resistance)))
+                resistanceLine.addLine(to: CGPoint(x: plot.maxX, y: px(sr.resistance)))
+                ctx.stroke(resistanceLine, with: .color(.red.opacity(0.7)),
+                           style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+
+                // Labels to the right of the plot
+                ctx.draw(Text("R \(sr.resistance, specifier: "%.2f")")
+                            .font(.caption2.weight(.semibold)).foregroundColor(.red),
+                         at: CGPoint(x: plot.maxX + 22, y: px(sr.resistance)))
+                ctx.draw(Text("S \(sr.support, specifier: "%.2f")")
+                            .font(.caption2.weight(.semibold)).foregroundColor(.green),
+                         at: CGPoint(x: plot.maxX + 22, y: px(sr.support)))
+            }
+
+            // Area under the price curve
+            let dx = plot.width / CGFloat(points.count - 1)
             var area = Path()
             area.move(to: CGPoint(x: plot.minX, y: plot.maxY))
             for (i, p) in points.enumerated() {
-                let x = plot.minX + CGFloat(i) * dx
-                let y = plot.maxY - CGFloat((p.mark - lo) / range) * plot.height
-                area.addLine(to: CGPoint(x: x, y: y))
+                area.addLine(to: CGPoint(x: plot.minX + CGFloat(i) * dx, y: px(p.mark)))
             }
             area.addLine(to: CGPoint(x: plot.maxX, y: plot.maxY))
             area.closeSubpath()
@@ -43,13 +83,11 @@ struct PriceChart: View {
                 startPoint: CGPoint(x: 0, y: plot.minY),
                 endPoint: CGPoint(x: 0, y: plot.maxY)))
 
-            // Line
+            // Price line
             var line = Path()
             for (i, p) in points.enumerated() {
-                let x = plot.minX + CGFloat(i) * dx
-                let y = plot.maxY - CGFloat((p.mark - lo) / range) * plot.height
-                if i == 0 { line.move(to: CGPoint(x: x, y: y)) }
-                else      { line.addLine(to: CGPoint(x: x, y: y)) }
+                let pt = CGPoint(x: plot.minX + CGFloat(i) * dx, y: px(p.mark))
+                if i == 0 { line.move(to: pt) } else { line.addLine(to: pt) }
             }
             ctx.stroke(line, with: .color(color),
                        style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
@@ -57,9 +95,9 @@ struct PriceChart: View {
             // Latest-value dot
             if let last = points.last {
                 let x = plot.maxX
-                let y = plot.maxY - CGFloat((last.mark - lo) / range) * plot.height
-                let dot = CGRect(x: x - 3, y: y - 3, width: 6, height: 6)
-                ctx.fill(Path(ellipseIn: dot), with: .color(color))
+                let y = px(last.mark)
+                ctx.fill(Path(ellipseIn: CGRect(x: x - 3, y: y - 3, width: 6, height: 6)),
+                         with: .color(color))
             }
 
             // Y-axis labels

@@ -24,6 +24,9 @@ final class MarketService: ObservableObject {
     @Published private(set) var refreshInFlight: Bool = false
     @Published private(set) var lastRefreshError: String?
 
+    /// Rolling support / resistance per contract, refreshed each tick.
+    @Published private(set) var srLevels: [String: SRLevel] = [:]
+
     var provider: MovieDataProvider = Config.preferredProvider
     private var refreshTimer: Timer?
 
@@ -147,6 +150,7 @@ final class MarketService: ObservableObject {
     func events(for movieId: String) -> [MarketEvent] {
         recentEvents.filter { $0.movieId == movieId }
     }
+    func srLevel(contractId: String) -> SRLevel? { srLevels[contractId] }
 
     /// The current crowd-forecast opening. Base tracker × movie sentiment,
     /// where sentiment is nudged by every buy/sell/news event on the movie.
@@ -195,8 +199,8 @@ final class MarketService: ObservableObject {
     private func tickImmediate() { tick() }
 
     private func tick() {
-        // 1. NPC trader activity across a small random slice of contracts.
-        simulateNPCTraders()
+        // 1. Market makers step in at support / resistance across the book.
+        runMarketMakers()
 
         // 2. Occasionally inject a news event that shocks a random movie.
         maybeInjectEvent()
@@ -239,6 +243,17 @@ final class MarketService: ObservableObject {
         }
         chains = newChains
 
+        // 5. Recompute S/R per contract now that history has one more point.
+        var newSR: [String: SRLevel] = [:]
+        for chain in chains.values {
+            for c in chain {
+                if let lvl = MarketMaker.levels(from: history[c.id] ?? []) {
+                    newSR[c.id] = lvl
+                }
+            }
+        }
+        srLevels = newSR
+
         // Append consensus point per movie.
         for m in movies {
             let c = impliedConsensus(for: m.id)
@@ -258,16 +273,21 @@ final class MarketService: ObservableObject {
         history[contractId] = pts
     }
 
-    private func simulateNPCTraders() {
-        // Pick a few contracts at random and nudge demand up or down.
-        let allIds = chains.values.flatMap { $0 }.map(\.id)
-        guard !allIds.isEmpty else { return }
-        let hits = Int.random(in: 2...5)
-        for _ in 0..<hits {
-            guard let id = allIds.randomElement() else { break }
-            let dir: Double = Bool.random() ? 1 : -1
-            let size = Double.random(in: 1...6)
-            demand[id, default: 0] += dir * size
+    /// Market makers run on every contract every tick. For contracts with
+    /// enough history, they compute S/R from recent prices and step in as
+    /// buyers near support or sellers near resistance. Contracts with too
+    /// little history get a mild random nudge so they can build a book.
+    private func runMarketMakers() {
+        for chain in chains.values {
+            for c in chain {
+                let hist = history[c.id] ?? []
+                if let level = MarketMaker.levels(from: hist) {
+                    let delta = MarketMaker.demandDelta(mark: c.premium, level: level)
+                    demand[c.id, default: 0] += delta
+                } else {
+                    demand[c.id, default: 0] += Double.random(in: -2...2)
+                }
+            }
         }
     }
 

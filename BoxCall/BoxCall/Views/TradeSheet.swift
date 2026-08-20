@@ -48,8 +48,12 @@ struct TradeSheet: View {
 
                 Section {
                     PriceChart(points: market.priceHistory(contractId: contract.id),
-                               color: contract.side == .call ? .green : .red)
+                               color: contract.side == .call ? .green : .red,
+                               sr: market.srLevel(contractId: contract.id))
                         .padding(.vertical, 4)
+                    if let sr = market.srLevel(contractId: contract.id) {
+                        srReadout(sr: sr, mark: liveContract.premium)
+                    }
                 } header: {
                     HStack(spacing: 6) {
                         LivePulse()
@@ -59,6 +63,10 @@ struct TradeSheet: View {
                             .font(.caption.monospacedDigit().weight(.bold))
                             .foregroundStyle(contract.side == .call ? .green : .red)
                     }
+                } footer: {
+                    Text("Green dashed = support (MMs buy). Red dashed = resistance (MMs sell). Price mean-reverts inside the band.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section {
@@ -243,6 +251,32 @@ struct TradeSheet: View {
             Text(net, format: .number.precision(.fractionLength(2)).sign(strategy: .always()))
                 .monospacedDigit()
                 .foregroundStyle(net >= 0 ? .green : .red)
+        }
+    }
+
+    @ViewBuilder
+    private func srReadout(sr: SRLevel, mark: Double) -> some View {
+        let zone: String = {
+            let band = sr.band
+            let touch = band * MarketMaker.touchZone
+            if mark <= sr.support + touch    { return "At support — MMs likely bidding" }
+            if mark >= sr.resistance - touch { return "At resistance — MMs likely offering" }
+            return "Inside the band — free to drift"
+        }()
+        HStack(spacing: 10) {
+            srPill("Support",    sr.support,    .green)
+            srPill("Resistance", sr.resistance, .red)
+            Spacer()
+            Text(zone).font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
+    private func srPill(_ label: String, _ value: Double, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Text(value, format: .number.precision(.fractionLength(2)))
+                .font(.caption.weight(.bold).monospacedDigit())
+                .foregroundStyle(color)
         }
     }
 }

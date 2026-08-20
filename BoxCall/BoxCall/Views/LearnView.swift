@@ -305,8 +305,10 @@ struct LiveMarketSection: View {
                    "Closing a position at the mark removes demand and drops the price for the next buyer.")
             bullet("News moves the whole chain.",
                    "A bullish event (great reviews, presales spike, viral trailer) lifts the movie's sentiment multiplier — every Call mark goes up, every Put mark goes down. Bearish news does the reverse. Events land in the news ticker on each movie page.")
-            bullet("Background NPC activity keeps the tape moving.",
-                   "Even when no human is trading a strike, small bot orders drift the mark so the sparkline always has a story. In a live version, these are replaced by real user orders and market-maker liquidity.")
+            bullet("Market makers buy support, sell resistance.",
+                   "Automated market makers compute rolling support and resistance for every contract from the last ~30 ticks. When the mark drops toward support they step in as buyers, adding a floor. When it rises toward resistance they hit as sellers, adding a ceiling. Aggression scales with how far the price is pushed INTO the zone — a small dip gets a small bid, a deep flush gets a size buyer. Result: charts mean-revert inside a band instead of random-walking, which is exactly how real options books trade.")
+            bullet("You can see the levels on every contract chart.",
+                   "The Trade Sheet's price chart draws the support line in green and resistance in red, with the band shaded between. A readout below labels whether the current mark is at support, at resistance, or free-drifting inside. Enter at support and exit at resistance for the cleanest edges.")
             LearnParagraph("The takeaway: entering early — when consensus is stable and news hasn't broken — usually gets you a better fill than piling in after the crowd. And you can trade the news itself: buy the dip on an overreaction, take profit into a spike.")
         }
     }
