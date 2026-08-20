@@ -197,10 +197,6 @@ enum Config {
         return ""
     }
 
-    static var preferredProvider: MovieDataProvider {
-        if !tmdbAPIKey.isEmpty {
-            return TMDBMovieProvider(apiKey: tmdbAPIKey)
-        }
-        return MockMovieProvider()
-    }
+    /// Legacy single-provider path. Prefer `Config.compositeProvider`.
+    static var preferredProvider: MovieDataProvider { compositeProvider }
 }

@@ -78,6 +78,31 @@ Since real-money wagering is off the table, revenue stacks:
 4. **Data licensing to studios** — aggregate crowd-forecast time series is a real product. Studios spend millions on tracking (NRG); this could rival it.
 5. **In-app video ads** — interstitials between trades.
 
+## Data sources + PriceSetter
+
+Two swappable abstractions handle upcoming releases and the initial premium anchor:
+
+**Upcoming-movies sources** — `MovieDataProvider` protocol; `CompositeMovieProvider` merges multiple:
+- `TMDBMovieProvider` — free official /movie/upcoming, called directly from the client (titles, posters, dates, studios, genres)
+- `BoxCallBackendUpcomingProvider` — hits `api.boxcall.com/upcoming` which aggregates IMDb Coming Soon, The Numbers release schedule, and Deadline calendars via server-side scrapers. Stubbed today — returns [] until the backend ships — and degrades gracefully so TMDB alone still fills the catalog. Dedup by lowercased title + release-week bucket; later sources win the tie so richer backend metadata beats TMDB baseline.
+- `MockMovieProvider` — hand-curated 8-title seed for offline / demo
+
+**Tracking sources** — `TrackingDataSource` protocol; `CompositeTrackingSource` tries in order:
+- `BoxCallBackendTrackingSource` — hits `api.boxcall.com/tracking?movie_id=...` which aggregates Deadline + NRG-style pre-release numbers. Stubbed.
+- `AlgorithmicTrackingSource` — always-on fallback derived from the movie's own popularity-based estimate.
+
+**PriceSetter** (`Services/PriceSetter.swift`) — pure struct that owns *initial* chain pricing. Given a Movie + Tracking, it emits a 5-strikes-per-side chain of Contracts with theoretical premiums using:
+```
+intrinsic = max(consensus − K, 0)     for Call
+            max(K − consensus, 0)     for Put
+moneyness = |consensus − K| / consensus
+timeValue = consensus × IV × √(DTE/30) × exp(−moneyness × 1.8) × 0.5
+premium   = max(0.25, intrinsic + timeValue)
+```
+Once the chain is live, `MarketMaker` and user flow take over — PriceSetter's job is done. When a newly added movie's real tracking arrives from the backend, `MarketService.enrichTracking` calls `PriceSetter.chain(...)` again to re-anchor the strikes.
+
+DataSourcesView on the Profile now separates all sources into four sections — Upcoming Releases, Pre-release Tracking, Settlement, and Pricing — each with LIVE / PLANNED status badges so it's obvious what's real today and what's wired to arrive.
+
 ## Market makers + support / resistance
 
 Random NPC noise is out; real market-maker behavior is in.

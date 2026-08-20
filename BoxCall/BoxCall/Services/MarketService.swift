@@ -28,6 +28,8 @@ final class MarketService: ObservableObject {
     @Published private(set) var srLevels: [String: SRLevel] = [:]
 
     var provider: MovieDataProvider = Config.preferredProvider
+    var trackingSource: TrackingDataSource = Config.trackingSource
+    var priceSetter: PriceSetter = PriceSetter()
     private var refreshTimer: Timer?
 
     // Per-contract signed demand imbalance (unitless).
@@ -58,9 +60,12 @@ final class MarketService: ObservableObject {
         defer { refreshInFlight = false }
         do {
             let fetched = try await provider.fetchUpcoming(windowDays: windowDays)
-            merge(remote: fetched)
+            let newlyAddedIds = merge(remote: fetched)
             lastRefreshAt = Date()
             lastRefreshError = nil
+            if !newlyAddedIds.isEmpty {
+                await enrichTracking(for: newlyAddedIds)
+            }
         } catch {
             lastRefreshError = error.localizedDescription
         }
@@ -72,7 +77,8 @@ final class MarketService: ObservableObject {
     /// - New ids get freshly generated chains and are marked as NEW.
     /// - Local-only movies (mock seeds not in remote) are kept as long as
     ///   they haven't opened yet OR the user has an open position on them.
-    private func merge(remote: [Movie]) {
+    @discardableResult
+    private func merge(remote: [Movie]) -> Set<String> {
         var byId: [String: Movie] = Dictionary(uniqueKeysWithValues: movies.map { ($0.id, $0) })
         var chainsById = chains
         var addedIds: Set<String> = []
@@ -112,6 +118,7 @@ final class MarketService: ObservableObject {
         // Publish. Sort by release date so the Slate lists soonest first.
         movies = Array(byId.values).sorted { $0.releaseDate < $1.releaseDate }
         chains = chainsById
+        return addedIds
     }
 
     // MARK: - Auto-refresh timer
@@ -337,37 +344,33 @@ final class MarketService: ObservableObject {
         chains = built
     }
 
+    /// Build the initial chain for a movie via PriceSetter, sourcing
+    /// tracking synchronously from the movie's own estimate (the
+    /// algorithmic path). Async enrichment from the backend is opt-in
+    /// via `enrichTracking(for:)`.
     private func generateChain(for movie: Movie) -> [Contract] {
-        let center = movie.consensusOpeningMillions
-        let step = max(1.0, (center * 0.10).rounded())
-        let strikes: [Double] = [-2, -1, 0, 1, 2].map { (center + Double($0) * step).rounded() }
-        let mult = 1.0
-        let iv = movie.impliedVolPct / 100.0
-        let dte = max(1, movie.daysToRelease)
+        let fallback = Tracking(
+            openingWeekendMillions: movie.consensusOpeningMillions,
+            impliedVolPct: movie.impliedVolPct
+        )
+        return priceSetter.chain(for: movie, tracking: fallback)
+    }
 
-        var out: [Contract] = []
-        for side in ContractSide.allCases {
-            for k in strikes {
-                let intrinsic = side == .call
-                    ? max(center - k, 0)
-                    : max(k - center, 0)
-                let moneyness = abs(center - k) / max(1, center)
-                let timeValue = center * iv * sqrt(Double(dte) / 30.0) * exp(-moneyness * 1.8) * 0.5
-                let fair = max(0.25, (intrinsic + timeValue))
-                let rounded = (fair * 100).rounded() / 100
-                out.append(.init(
-                    id: "\(movie.id)_\(side.rawValue)_\(Int(k))",
-                    movieId: movie.id,
-                    side: side,
-                    strikeMillions: k,
-                    basePremium: rounded,
-                    premium: rounded,
-                    multiplier: mult,
-                    openInterest: Int.random(in: 40...900)
-                ))
-            }
+    /// Optional post-merge step: hit the backend tracking source for
+    /// a real number and, if it differs materially, re-seed the chain.
+    /// Only fires on movies newly added this refresh.
+    @MainActor
+    func enrichTracking(for movieIds: Set<String>) async {
+        for id in movieIds {
+            guard let m = movie(id: id),
+                  let t = await trackingSource.tracking(for: m) else { continue }
+            let hasMeaningfulChange =
+                abs(t.openingWeekendMillions - m.consensusOpeningMillions) > 0.5
+                || abs(t.impliedVolPct - m.impliedVolPct) > 3
+            guard hasMeaningfulChange else { continue }
+            // Re-seed the chain against the real tracking.
+            chains[id] = priceSetter.chain(for: m, tracking: t)
         }
-        return out.sorted { ($0.side.rawValue, $0.strikeMillions) < ($1.side.rawValue, $1.strikeMillions) }
     }
 
     // MARK: - Settlement demo

@@ -58,30 +58,62 @@ struct DataSourcesView: View {
     }
 
     private var sources: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Aggregated sources").font(.headline)
-            SourceRow(name: "TMDB — The Movie Database",
-                      role: "Upcoming releases, posters, studios, release dates, genres, taglines.",
-                      status: Config.tmdbAPIKey.isEmpty
-                        ? "Not configured (add TMDB_API_KEY in Info.plist)"
-                        : "Connected — fetched client-side.",
-                      wired: !Config.tmdbAPIKey.isEmpty)
-            SourceRow(name: "Box Office Mojo (IMDb)",
-                      role: "Actual opening-weekend grosses. Drives Monday settlement.",
-                      status: "Backend-only in production. No public API — pulled via server-side scraper on the boxcall.com API.",
-                      wired: false)
-            SourceRow(name: "The Numbers",
-                      role: "Historical opening-weekend history for IV calibration.",
-                      status: "Backend-only. Same scraping strategy.",
-                      wired: false)
-            SourceRow(name: "Deadline Hollywood",
-                      role: "Pre-release tracking (consensus estimates from NRG-style reports).",
-                      status: "Backend-only. Server pulls headline tracking numbers each morning.",
-                      wired: false)
-            SourceRow(name: "IMDb",
-                      role: "Cast / crew metadata for review context.",
-                      status: "Paid data licensing — reserved for a later phase.",
-                      wired: false)
+        VStack(alignment: .leading, spacing: 14) {
+            Group {
+                Text("Upcoming releases").font(.headline)
+                SourceRow(name: "TMDB — The Movie Database",
+                          role: "Titles, posters, release dates, genres, studios, taglines.",
+                          status: Config.tmdbAPIKey.isEmpty
+                            ? "Not configured (add TMDB_API_KEY in Info.plist)"
+                            : "Connected — fetched client-side, no proxy.",
+                          wired: !Config.tmdbAPIKey.isEmpty)
+                SourceRow(name: "IMDb Coming Soon",
+                          role: "Broader upcoming calendar, especially indies TMDB is late on.",
+                          status: "Aggregated by the backend at api.boxcall.com/upcoming (server-side scraper). Backend endpoint stubbed; degrades gracefully to TMDB.",
+                          wired: false)
+                SourceRow(name: "The Numbers — release schedule",
+                          role: "Weekend-by-weekend slate + wide vs limited flags.",
+                          status: "Same backend aggregator. Server-side scraper.",
+                          wired: false)
+            }
+            Group {
+                Text("Pre-release tracking (feeds the price setter)")
+                    .font(.headline).padding(.top, 4)
+                SourceRow(name: "Algorithmic estimate",
+                          role: "Consensus opening + IV derived from TMDB popularity when nothing better is available. Always on as a fallback.",
+                          status: "Live — powers the initial chain when the backend tracking endpoint has no data.",
+                          wired: true)
+                SourceRow(name: "Deadline Hollywood + NRG",
+                          role: "Real pre-release tracking numbers.",
+                          status: "Backend-only. Server pulls headline tracking each morning and serves it to the app via /tracking. Endpoint stubbed.",
+                          wired: false)
+                SourceRow(name: "The Numbers — historical grosses",
+                          role: "Genre / budget cohorts for IV calibration.",
+                          status: "Backend-only. Scraper feeds a per-genre volatility model.",
+                          wired: false)
+            }
+            Group {
+                Text("Settlement").font(.headline).padding(.top, 4)
+                SourceRow(name: "Box Office Mojo (IMDb)",
+                          role: "Actual reported Fri–Sun domestic gross. Drives Monday settlement of every open position.",
+                          status: "Backend-only in production. No public API — scraped by the server, then applied via settle() on Monday morning.",
+                          wired: false)
+                SourceRow(name: "IMDb",
+                          role: "Cast / crew metadata for review context.",
+                          status: "Paid data licensing — reserved for a later phase.",
+                          wired: false)
+            }
+            Group {
+                Text("Pricing").font(.headline).padding(.top, 4)
+                SourceRow(name: "PriceSetter",
+                          role: "Sets the theoretical premium for each strike from consensus + IV + days-to-expiry. Emits a 5-strike-per-side chain when a new movie is added, or re-anchors an existing chain when real tracking arrives.",
+                          status: "Live. Formula: intrinsic + consensus × IV × √(DTE/30) × exp(-|moneyness| × 1.8) × 0.5.",
+                          wired: true)
+                SourceRow(name: "MarketMaker",
+                          role: "Once the chain is live, market makers step in at rolling support/resistance so premiums mean-revert inside a band. Real user flow overrides.",
+                          status: "Live. See the Learn section on the live market.",
+                          wired: true)
+            }
         }
     }
 
