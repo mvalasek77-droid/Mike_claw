@@ -2,9 +2,10 @@ import SwiftUI
 
 struct FeaturedCritics: View {
     @EnvironmentObject var social: SocialService
+    @ObservedObject var moderation = ModerationService.shared
     @State private var expanded: Review?
 
-    var spotlight: [Review] { social.spotlightedReviews() }
+    var spotlight: [Review] { moderation.filter(reviews: social.spotlightedReviews()) }
     var winner: Review? { spotlight.first }
     var supporting: [Review] { Array(spotlight.dropFirst()) }
 
@@ -151,7 +152,9 @@ private func rankBadge(_ n: Int) -> some View {
 struct ReviewDetailSheet: View {
     let review: Review
     @EnvironmentObject var social: SocialService
+    @ObservedObject var moderation = ModerationService.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var showReport = false
 
     var live: Review {
         social.reviews.first(where: { $0.id == review.id }) ?? review
@@ -204,6 +207,29 @@ struct ReviewDetailSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
+                if !review.authorIsCurrentUser {
+                    ToolbarItem(placement: .primaryAction) {
+                        Menu {
+                            Button {
+                                showReport = true
+                            } label: {
+                                Label("Report review", systemImage: "flag")
+                            }
+                            Button(role: .destructive) {
+                                moderation.block(handle: review.authorHandle)
+                                dismiss()
+                            } label: {
+                                Label("Block @\(review.authorHandle)", systemImage: "hand.raised")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showReport) {
+                ReportSheet(kind: .review, targetId: review.id.uuidString,
+                            authorHandle: review.authorHandle)
             }
         }
     }

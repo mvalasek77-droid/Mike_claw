@@ -4,9 +4,12 @@ struct FeedView: View {
     @EnvironmentObject var social: SocialService
     @EnvironmentObject var portfolio: PortfolioService
     @EnvironmentObject var notifications: NotificationsService
+    @ObservedObject var moderation = ModerationService.shared
     @State private var commentSheet: SocialPost?
     @State private var showInbox = false
     @State private var copyBlocked = false
+
+    var visibleFeed: [SocialPost] { moderation.filter(feed: social.feed) }
 
     var body: some View {
         NavigationStack {
@@ -16,7 +19,7 @@ struct FeedView: View {
                         .padding(.horizontal)
                         .padding(.top, 4)
                     Divider().padding(.horizontal)
-                    ForEach(social.feed) { post in
+                    ForEach(visibleFeed) { post in
                         PostCard(post: post,
                                  onComment: { commentSheet = post },
                                  onCopyBlocked: { copyBlocked = true })
@@ -67,6 +70,8 @@ struct PostCard: View {
     let onCopyBlocked: () -> Void
     @EnvironmentObject var social: SocialService
     @EnvironmentObject var coordinator: TradeCoordinator
+    @ObservedObject var moderation = ModerationService.shared
+    @State private var showReport = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -105,7 +110,32 @@ struct PostCard: View {
             Spacer()
             if !post.authorIsCurrentUser {
                 followButton
+                Menu {
+                    Button {
+                        showReport = true
+                    } label: {
+                        Label("Report", systemImage: "flag")
+                    }
+                    Button(role: .destructive) {
+                        moderation.block(handle: post.authorHandle)
+                    } label: {
+                        Label("Block @\(post.authorHandle)", systemImage: "hand.raised")
+                    }
+                    Button {
+                        moderation.hide(postId: post.id)
+                    } label: {
+                        Label("Not interested", systemImage: "eye.slash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 4)
+                }
             }
+        }
+        .sheet(isPresented: $showReport) {
+            ReportSheet(kind: .post, targetId: post.id.uuidString,
+                        authorHandle: post.authorHandle)
         }
     }
 

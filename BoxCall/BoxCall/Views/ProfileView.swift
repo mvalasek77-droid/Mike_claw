@@ -135,6 +135,12 @@ struct ProfileView: View {
                          subtitle: "Where the catalog and settlement numbers come from. TMDB, Box Office Mojo, and more.")
             }
             NavigationLink {
+                BlockedUsersView()
+            } label: {
+                learnRow(icon: "hand.raised", title: "Blocked users",
+                         subtitle: "Manage the handles whose posts, reviews, and comments won't show up in your feed.")
+            }
+            NavigationLink {
                 LearnView(initialSection: .glossary)
             } label: {
                 learnRow(icon: "text.book.closed", title: "Glossary",
