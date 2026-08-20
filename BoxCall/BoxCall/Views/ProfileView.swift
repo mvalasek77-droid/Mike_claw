@@ -135,6 +135,12 @@ struct ProfileView: View {
                          subtitle: "Share your code — both sides get 500 Reel Coins.")
             }
             NavigationLink {
+                CustomMarketsView()
+            } label: {
+                learnRow(icon: "text.bubble", title: "Prop markets",
+                         subtitle: "User-proposed prop markets. Mogul-tier users can create their own.")
+            }
+            NavigationLink {
                 DataSourcesView()
             } label: {
                 learnRow(icon: "server.rack", title: "Data sources",
