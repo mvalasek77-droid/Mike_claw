@@ -20,6 +20,8 @@ targets:
       - sdk: StoreKit.framework
       - sdk: UserNotifications.framework
       - sdk: AuthenticationServices.framework
+      - sdk: WidgetKit.framework
+      - target: BoxCallWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app
@@ -32,11 +34,25 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_PREVIEWS: YES
         DEVELOPMENT_ASSET_PATHS: '"BoxCall/Preview Content"'
+  BoxCallWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: BoxCallWidget
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.widget
+        INFOPLIST_KEY_CFBundleDisplayName: "BoxCall"
+        INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
 schemes:
   BoxCall:
     build:
       targets:
         BoxCall: all
+        BoxCallWidget: all
     run:
       config: Debug
       storeKitConfiguration: BoxCall/Products.storekit

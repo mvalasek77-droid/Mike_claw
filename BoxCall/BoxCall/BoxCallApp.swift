@@ -42,6 +42,7 @@ struct BoxCallApp: App {
                 market.startMarket()
                 await market.refreshCatalog()
                 market.startAutoRefresh()
+                WidgetSyncService.sync()
             }
             .sheet(item: $coordinator.pendingCopy) { intent in
                 TradeSheet(contract: intent.contract, movie: intent.movie)
