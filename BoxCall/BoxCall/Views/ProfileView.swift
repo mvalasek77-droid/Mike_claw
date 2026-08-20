@@ -15,6 +15,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     identityCard
+                    AuthCard()
                     membershipCard
                     tierProgressCard
                     statsRow

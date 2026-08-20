@@ -19,6 +19,7 @@ targets:
     dependencies:
       - sdk: StoreKit.framework
       - sdk: UserNotifications.framework
+      - sdk: AuthenticationServices.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app

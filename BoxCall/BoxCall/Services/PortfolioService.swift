@@ -24,7 +24,8 @@ final class PortfolioService: ObservableObject {
             badges: [],
             trophies: [],
             bio: "Long the mid-budget original. Short the fifth sequel.",
-            membership: .free
+            membership: .free,
+            appleUserId: nil
         )
         seedLeaderboard()
         redeemWeeklyIfDue()

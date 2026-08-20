@@ -9,6 +9,7 @@ struct BoxCallApp: App {
     @StateObject private var notifications = NotificationsService.shared
     @StateObject private var coordinator = TradeCoordinator.shared
     @StateObject private var store = StoreService.shared
+    @StateObject private var auth = AuthService.shared
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
 
@@ -28,6 +29,7 @@ struct BoxCallApp: App {
             .environmentObject(notifications)
             .environmentObject(coordinator)
             .environmentObject(store)
+            .environmentObject(auth)
             .preferredColorScheme(.dark)
             .overlay(alignment: .top) { RewardToastOverlay() }
             .task {

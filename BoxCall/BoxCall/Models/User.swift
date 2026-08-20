@@ -20,6 +20,9 @@ struct User: Codable, Hashable {
     // Subscription
     var membership: Membership
 
+    // Identity (nil when browsing as a guest)
+    var appleUserId: String?
+
     var tier: Tier { Tier.forXP(xp) }
 
     /// XP progress inside the current tier (0.0 - 1.0).
