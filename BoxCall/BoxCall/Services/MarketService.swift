@@ -28,7 +28,7 @@ final class MarketService: ObservableObject {
     @Published private(set) var srLevels: [String: SRLevel] = [:]
 
     var provider: MovieDataProvider = Config.preferredProvider
-    var trackingSource: TrackingDataSource = Config.trackingSource
+    var trackingSource: TrackingDataSource = Config.enrichedTrackingSource
     var priceSetter: PriceSetter = PriceSetter()
     private var refreshTimer: Timer?
 

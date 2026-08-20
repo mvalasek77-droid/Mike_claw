@@ -93,6 +93,20 @@ struct DataSourcesView: View {
                           wired: false)
             }
             Group {
+                Text("Social signals (adjusts consensus ±30%)")
+                    .font(.headline).padding(.top, 4)
+                SourceRow(name: "YouTube trailer engagement",
+                          role: "Trailer views (7-day) and like ratio via YouTube Data API v3. Bullish trailer stats shift consensus up and tighten IV.",
+                          status: Config.youtubeAPIKey.isEmpty
+                            ? "Not configured (add YOUTUBE_API_KEY in Info.plist)"
+                            : "Connected — fetched client-side.",
+                          wired: !Config.youtubeAPIKey.isEmpty)
+                SourceRow(name: "X (Twitter) mention velocity + sentiment",
+                          role: "24h mention volume + sentiment score. High velocity + positive sentiment lifts the crowd forecast.",
+                          status: "Backend-only. Paid X API tier proxied through api.boxcall.com/x-signal. Endpoint stubbed.",
+                          wired: false)
+            }
+            Group {
                 Text("Settlement").font(.headline).padding(.top, 4)
                 SourceRow(name: "Box Office Mojo (IMDb)",
                           role: "Actual reported Fri–Sun domestic gross. Drives Monday settlement of every open position.",
