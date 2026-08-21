@@ -21,6 +21,7 @@ targets:
       - sdk: UserNotifications.framework
       - sdk: AuthenticationServices.framework
       - sdk: WidgetKit.framework
+      - sdk: ActivityKit.framework
       - target: BoxCallWidget
     settings:
       base:
@@ -42,9 +43,11 @@ targets:
     dependencies:
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
+      - sdk: ActivityKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.widget
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
         INFOPLIST_KEY_CFBundleDisplayName: "BoxCall"
         INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
   BoxCallTests:

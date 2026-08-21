@@ -101,6 +101,12 @@ final class PortfolioService: ObservableObject {
             actualOWMillions: nil
         ))
         MarketService.shared.recordBuy(contractId: contract.id, quantity: quantity)
+        // If the movie opens in the next 24h, kick off a Live Activity.
+        if let m = MarketService.shared.movie(id: contract.movieId),
+           m.releaseDate.timeIntervalSinceNow < 24 * 3600,
+           let placed = positions.last {
+            LiveActivityService.start(movie: m, position: placed)
+        }
         AnalyticsService.shared.track(.tradePlaced(
             movieId: contract.movieId, side: contract.side.rawValue,
             strike: contract.strikeMillions, qty: quantity, cost: cost))

@@ -6,5 +6,6 @@ struct BoxCallWidgetBundle: WidgetBundle {
     var body: some Widget {
         NextOpeningWidget()
         TopPositionWidget()
+        OpeningLiveActivity()
     }
 }
