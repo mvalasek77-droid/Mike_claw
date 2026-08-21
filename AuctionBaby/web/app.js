@@ -1341,6 +1341,30 @@
   }
 
   // ---- boot ----
+  // Ensure existing women have their me_lot on the floor (fixes registrations
+  // from before the me_lot fix — onboarding only runs once).
+  if (S.registered && S.role === "woman" && !(CONFIGURED() && SIGNED_IN())) {
+    const hasMyLot = (S.floor || []).some(l => l.id === "me_lot");
+    if (!hasMyLot) {
+      const prompts = [];
+      if (S.me.winMe) prompts.push({ q: "The way to win me over is", a: S.me.winMe });
+      if (S.me.simplePleasure) prompts.push({ q: "My simple pleasure", a: S.me.simplePleasure });
+      const myLot = {
+        id: "me_lot",
+        name: S.me.name || "Me", age: S.me.age || 27, city: S.me.city || "",
+        startingBid: 100, bio: S.me.bio || "",
+        prompts, icebreakers: prompts.map(p => p.a),
+        hue: hueFrom(S.me.name || "me"),
+        verified: !!S.me.verified, masterpiece: false, copycat: false,
+        photo: S.me.photo || null, photos: S.me.photo ? [S.me.photo] : [],
+        interests: S.me.interests || [], lifestyle: {}, showcase: 480,
+        marketValue: 200, isMe: true,
+      };
+      S.floor = (S.floor || []).filter(l => l.id !== "me_lot");
+      S.floor.unshift(myLot);
+      save();
+    }
+  }
   if (!location.hash) go(S.registered ? "/floor" : "/");
   render();
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
