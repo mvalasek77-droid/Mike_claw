@@ -357,12 +357,17 @@
       if (S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
       // When a woman registers, add her to the floor as a lot so bidders can find her.
       // In demo mode this sits alongside the seed floor; in live mode the server handles it.
-      if (S.role === "woman" && !CONFIGURED()) {
+      // Always add the woman's own lot to the floor in demo mode OR when
+      // configured-but-not-signed-in (the server handles it when signed in live).
+      if (S.role === "woman" && !(CONFIGURED() && SIGNED_IN())) {
+        const prompts = [];
+        if (S.me.winMe) prompts.push({ q: "The way to win me over is", a: S.me.winMe });
+        if (S.me.simplePleasure) prompts.push({ q: "My simple pleasure", a: S.me.simplePleasure });
         const myLot = {
           id: "me_lot",
           name: S.me.name, age: S.me.age, city: S.me.city,
           startingBid: 100, bio: S.me.bio || "",
-          prompts: [], icebreakers: [],
+          prompts, icebreakers: prompts.map(p => p.a),
           hue: hueFrom(S.me.name),
           verified: !!S.me.verified, masterpiece: false, copycat: false,
           photo: S.me.photo, photos: S.me.photo ? [S.me.photo] : [],
@@ -878,9 +883,23 @@
   function incoming() {
     tab = "floor";
     const bids = S.incoming || [];
+    // Find the woman's own lot on the floor
+    const myLot = (S.floor || []).find(l => l.id === "me_lot");
+    const profileCard = myLot ? `
+      <div class="card" style="margin-bottom:14px;border-color:rgba(224,96,122,.4);background:rgba(224,96,122,.06)">
+        <div class="row" style="margin-bottom:8px">
+          <div class="grow">
+            <div class="kicker" style="color:var(--rose)">Your profile on the floor</div>
+            <div style="font-family:var(--serif);font-weight:800;font-size:18px;margin-top:4px">${esc(myLot.name)} <span class="muted" style="font-size:14px">${myLot.age}</span></div>
+            <div class="faint">${esc(myLot.city || "")} · Floor ${money(myLot.startingBid)}</div>
+          </div>
+        </div>
+        <button class="chip rose" data-lot="me_lot" style="width:100%;justify-content:center">View my listing</button>
+      </div>` : "";
     app.innerHTML = `<div class="screen">
       <div class="topbar"><h1 class="display" style="font-size:30px">Your bids</h1><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
       <div class="faint" style="margin:-6px 0 14px">Men bidding for a date. Accept the one you like — his photo unlocks when you do.</div>
+      ${profileCard}
       ${bids.length ? bids.map(b => `
         <div class="card" style="margin-bottom:12px">
           <div class="row">${gradSm(b.hue, b.name)}<div class="grow">
