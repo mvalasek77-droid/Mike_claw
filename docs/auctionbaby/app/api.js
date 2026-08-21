@@ -22,7 +22,10 @@
   }
   const auth = (p, o) => call(C.AUTH_URL, p, o);
   const match = (p, o) => call(C.MATCHING_URL, p, o);
-  const shop = (p, o) => call(C.CONSUMABLES_URL, p, o);
+  // shop() calls don't need auth — checkout/status endpoints are public in the
+  // Worker (they only create Stripe sessions, no balance mutation). Balance and
+  // consume endpoints still require the shared secret (iOS-only).
+  const shop = (p, o) => call(C.CONSUMABLES_URL, p, { auth: false, ...o });
 
   window.AB_API = {
     // ── session ──
@@ -79,7 +82,7 @@
     declineBid: (id) => match(`/bids/${id}/decline`, { method: "POST" }),
     matches: () => match("/matches"),
     matchDetail: (id) => match(`/matches/${id}`),
-    sendMessage: (id, text) => match(`/matches/${id}/messages`, { method: "POST", body: { text } }),
+    sendMessage: (id, text, photo) => match(`/matches/${id}/messages`, { method: "POST", body: photo ? { text: text || "", photo } : { text } }),
     markSeen: (id) => match(`/matches/${id}/mark-seen`, { method: "POST" }),
 
     // ── safety ──
@@ -144,6 +147,37 @@
       return data;
     },
     subscriptionStatus: (userId) => shop("/subscription?userId=" + encodeURIComponent(userId)),
+
+    // ── Spotlight Boost (one-time Stripe Checkout) ──
+    async buyBoost(userId) {
+      const data = await shop("/boost/checkout", {
+        method: "POST",
+        body: { userId,
+                successUrl: C.CHECKOUT_SUCCESS_URL || location.href,
+                cancelUrl: C.CHECKOUT_CANCEL_URL || location.href },
+      });
+      if (data.url) location.href = data.url;
+      return data;
+    },
+    boostStatus: (userId) => shop("/boost/status?userId=" + encodeURIComponent(userId)),
+
+    // ── Status Archetypes (one-time Stripe Checkout, owned forever) ──
+    async buyStatus(statusId, userId) {
+      const data = await shop("/status/checkout", {
+        method: "POST",
+        body: { statusId, userId,
+                successUrl: C.CHECKOUT_SUCCESS_URL || location.href,
+                cancelUrl: C.CHECKOUT_CANCEL_URL || location.href },
+      });
+      if (data.url) location.href = data.url;
+      return data;
+    },
+    statusOwned: (userId) => shop("/status/owned?userId=" + encodeURIComponent(userId)),
+
+    // ── Verification (face match + liveness via auth Worker) ──
+    verifyStart: () => auth("/verify/start", { method: "POST", body: {} }),
+    verifySubmit: (selfieScore, livenessPassed, faceMatchScore) =>
+      auth("/verify/submit", { method: "POST", body: { selfieScore, livenessPassed, faceMatchScore } }),
   };
 
   function urlB64ToUint8(base64) {

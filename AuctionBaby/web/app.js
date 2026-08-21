@@ -73,7 +73,7 @@
         hue: hueFrom(m.id || m.name), amount: m.amount || m.bidAmount || 0,
         seen: !!m.seenByOther, unread: !!(m.unreadCount || m.unread),
         lastTs: m.updatedAt || m.lastMessageAt || 0,
-        messages: (m.messages || []).map(x => ({ id: x.id, me: !!x.fromMe, text: x.text, reaction: x.reaction || null })),
+        messages: (m.messages || []).map(x => ({ id: x.id, me: !!x.fromMe, text: x.text || "", photo: x.photo || null, reaction: x.reaction || null })),
       }));
       save(); if (tab === "matches") matches();
     } catch (e) { /* keep local */ }
@@ -942,7 +942,8 @@
       if (msg.sys) return `<div class="bub sys">${esc(msg.text)}</div>`;
       const rx = msg.reaction ? `<span class="rx">${msg.reaction}</span>` : "";
       const receipt = (i === lastMe) ? `<div class="receipt">${m.seen ? "Seen" : "Delivered"}</div>` : "";
-      return `<div class="bub ${msg.me ? "me" : "them"}" data-mid="${i}">${esc(msg.text)}${rx}</div>${receipt}`;
+      const photoTag = msg.photo ? `<img class="photo-msg" src="${esc(msg.photo)}" alt="Photo" loading="lazy">` : "";
+      return `<div class="bub ${msg.me ? "me" : "them"}${photoTag ? " photo" : ""}" data-mid="${i}">${photoTag}${msg.text ? esc(msg.text) : ""}${rx}</div>${receipt}`;
     }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
       <div class="topbar"><button class="chip" data-back>‹</button>
@@ -952,8 +953,13 @@
           <button class="chip" id="report" title="Report & block">⚑</button>
         </div></div>
       <div class="msgs" id="msgs">${bubbles}</div></div>
-      <div class="composer"><input id="ci" placeholder="Message…" autocomplete="off">
-        <button class="iconbtn" id="send">↑</button></div>`;
+      <div class="composer">
+        <button class="cbtn" id="photo-btn" title="Send photo">📷</button>
+        <input id="ci" placeholder="Message…" autocomplete="off">
+        <button class="cbtn" id="emoji-btn" title="Emoji">😊</button>
+        <button class="iconbtn" id="send">↑</button>
+      </div>
+      <div class="emoji-bar" id="emoji-bar" style="display:none">${["😀","😂","❤️","🔥","👍","👎","😢","😡","🙏","👏","💋","🎉","💯","🤔","😘","😍","😎","😭","😅","😉","😴","🥳","😇","🤯","😬","💪","🌹","💎","🍷","🍽","✨","⚡","🙋","🥰","😏","🤩","😋","🫶","💥","🎯","👑","❤️‍🔥","🕺","💃","🥂","📸","🏖","🌙","🍕","☕","🎁","🚀","🌈","🦋","🎵","💌","🤗","😬"].map(e => `<button class="emoji-cell" data-emoji="${e}">${e}</button>`).join("")}</div>`;
     app.querySelector("[data-back]").onclick = () => go("/matches");
     const rz = $("#reserve"); if (rz) rz.onclick = () => reserveSheet(id);
     const rp = $("#report"); if (rp) rp.onclick = () => reportSheet(id);
@@ -968,23 +974,55 @@
       b.addEventListener("pointerup", stop);
       b.addEventListener("pointerleave", stop);
     });
-    const send = () => {
-      const i = $("#ci"), tx = i.value.trim(); if (!tx) return;
-      m.messages.push({ me: true, text: tx }); m.seen = false; m.lastTs = Date.now(); i.value = ""; save(); chat(id);
-      if (CONFIGURED() && SIGNED_IN()) {
-        API.sendMessage(id, tx).catch(e => toast("Send failed: " + e.message));
-        return; // the real other side replies via syncMatches
-      }
+    function pushMsg(msg) {
+      m.messages.push(msg); m.seen = false; m.lastTs = Date.now(); save(); chat(id);
+    }
+    function demoReply() {
       m.typing = true; save(); chat(id);
       setTimeout(() => {
-        const replies = ["So where are you taking me?", "Bold. I like it.", "Prove it — pick the place.", "You had me at the bid.", "Friday, then?"];
+        const replies = ["So where are you taking me? 🍽", "Bold. I like it 😏", "Prove it — pick the place 🍷", "You had me at the bid 😍", "Friday, then? 🎉", "Love the confidence 🔥", "You're interesting 💯", "Tell me more 🤔", "Hmm, you might be my favorite 🥰", "Don't make me wait 😘"];
         m.typing = false; m.seen = true; m.lastTs = Date.now();
         m.messages.push({ me: false, text: replies[Math.floor(Math.random() * replies.length)] });
         save(); if (location.hash.includes("chat/" + id)) chat(id);
       }, 1100 + Math.random() * 900);
+    }
+    const send = () => {
+      const i = $("#ci"), tx = i.value.trim(); if (!tx) return;
+      pushMsg({ me: true, text: tx }); i.value = "";
+      if (CONFIGURED() && SIGNED_IN()) {
+        API.sendMessage(id, tx).catch(e => toast("Send failed: " + e.message));
+        return;
+      }
+      demoReply();
     };
     $("#send").onclick = send;
     $("#ci").addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+    // Photo button — pick, downscale, send
+    $("#photo-btn").onclick = () => {
+      pickPhoto(({ blob, dataURL }) => {
+        if (CONFIGURED() && SIGNED_IN()) {
+          API.uploadPhoto(blob).then(d => {
+            const url = (d.photo && d.photo.url) || d.url || dataURL;
+            pushMsg({ me: true, photo: url, text: "" });
+            API.sendMessage(id, "", url).catch(e => toast("Photo send failed: " + e.message));
+          }).catch(e => { pushMsg({ me: true, photo: dataURL, text: "" }); toast("Photo saved locally (upload: " + e.message + ")"); });
+        } else {
+          pushMsg({ me: true, photo: dataURL, text: "" });
+          demoReply();
+        }
+      });
+    };
+    // Emoji picker toggle
+    const ebar = $("#emoji-bar");
+    $("#emoji-btn").onclick = (e) => { e.stopPropagation(); ebar.style.display = ebar.style.display === "none" ? "flex" : "none"; };
+    ebar.querySelectorAll(".emoji-cell").forEach(b => b.onclick = () => {
+      const i = $("#ci"); i.value += b.dataset.emoji; i.focus(); ebar.style.display = "none";
+    });
+    document.addEventListener("click", function closeEmoji(e) {
+      if (!e.target.closest("#emoji-bar") && !e.target.closest("#emoji-btn")) {
+        ebar.style.display = "none"; document.removeEventListener("click", closeEmoji);
+      }
+    });
   }
 
   function react(id, mid, emoji) {

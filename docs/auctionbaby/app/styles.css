@@ -154,6 +154,11 @@ a{color:var(--gold)}
 .house-rules-text{font-size:13px;line-height:1.45;color:var(--ink-soft)}
 
 /* verified badge (blue checkmark seal) */
+  --gold:#e6b800; --gold-soft:#f5d67b; --rose:#e0607a; --verify:#4fb0c6; --success:#5cc98a; --warning:#e8a838;
+  .bid-toggle { display:flex; align-items:center; gap:10px; padding:14px; border-radius:var(--corner-m,12px); background:rgba(255,255,255,.05); border:1px solid var(--hairline,rgba(255,255,255,.08)); cursor:pointer; transition:all .15s; }
+  .bid-toggle.on { background:rgba(230,184,0,.12); border-color:rgba(230,184,0,.5); }
+  .bid-toggle[data-insure].on { background:rgba(79,176,198,.12); border-color:rgba(79,176,198,.5); }
+  .lot .art { position:relative; }
 .vbadge{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
   width:20px;height:20px;border-radius:50%;background:var(--verify);color:#fff;
   box-shadow:0 2px 6px rgba(79,176,198,.4);margin-left:5px;flex:none}
@@ -221,3 +226,27 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .sticky-bid{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;z-index:40;
   padding:12px 18px calc(12px + env(safe-area-inset-bottom));
   background:linear-gradient(to bottom,transparent,var(--bg) 30%)}
+
+/* paywall tier picker */
+.paywall-tier{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:14px 8px;border-radius:16px;background:rgba(255,255,255,.04);
+  border:1px solid var(--line);transition:all .2s;min-height:44px}
+.paywall-tier.on{background:rgba(230,184,0,.12);border-color:var(--gold);
+  transform:scale(1.03)}
+
+/* emoji picker + photo messages in chat */
+.cbtn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(255,255,255,.08);border:0;color:var(--ink);font-size:18px;flex:none;cursor:pointer;
+  transition:background .15s}
+.cbtn:active{background:rgba(255,255,255,.16)}
+.emoji-bar{position:fixed;bottom:76px;left:0;right:0;max-width:520px;margin:0 auto;
+  display:flex;flex-wrap:wrap;gap:2px;padding:10px;background:rgba(20,17,9,.97);
+  border-top:1px solid var(--line);z-index:55;max-height:220px;overflow:auto;
+  animation:up .2s ease}
+.emoji-cell{width:38px;height:38px;display:grid;place-items:center;font-size:22px;
+  border-radius:8px;border:0;background:none;cursor:pointer;transition:background .1s}
+.emoji-cell:active{background:rgba(255,255,255,.12)}
+.photo-msg{max-width:240px;border-radius:14px;display:block;margin:2px 0}
+.bub.photo{padding:4px 4px 6px}
+.bub.photo .photo-msg{max-width:220px}

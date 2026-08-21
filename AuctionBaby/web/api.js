@@ -82,7 +82,7 @@
     declineBid: (id) => match(`/bids/${id}/decline`, { method: "POST" }),
     matches: () => match("/matches"),
     matchDetail: (id) => match(`/matches/${id}`),
-    sendMessage: (id, text) => match(`/matches/${id}/messages`, { method: "POST", body: { text } }),
+    sendMessage: (id, text, photo) => match(`/matches/${id}/messages`, { method: "POST", body: photo ? { text: text || "", photo } : { text } }),
     markSeen: (id) => match(`/matches/${id}/mark-seen`, { method: "POST" }),
 
     // ── safety ──

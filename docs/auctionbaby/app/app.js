@@ -73,7 +73,7 @@
         hue: hueFrom(m.id || m.name), amount: m.amount || m.bidAmount || 0,
         seen: !!m.seenByOther, unread: !!(m.unreadCount || m.unread),
         lastTs: m.updatedAt || m.lastMessageAt || 0,
-        messages: (m.messages || []).map(x => ({ id: x.id, me: !!x.fromMe, text: x.text, reaction: x.reaction || null })),
+        messages: (m.messages || []).map(x => ({ id: x.id, me: !!x.fromMe, text: x.text || "", photo: x.photo || null, reaction: x.reaction || null })),
       }));
       save(); if (tab === "matches") matches();
     } catch (e) { /* keep local */ }
@@ -214,10 +214,25 @@
       if (CONFIGURED() && SIGNED_IN()) {
         API.uploadPhoto(blob).then(d => {
           S.me.photo = (d.photo && d.photo.url) || d.url || (d.photos && d.photos[0] && d.photos[0].url) || dataURL;
-          save(); you(); toast("Photo updated.");
-        }).catch(e => { S.me.photo = dataURL; save(); you(); toast("Saved locally (upload: " + e.message + ")"); });
-      } else { S.me.photo = dataURL; save(); you(); toast("Photo updated."); }
+          updateMyLot(); save(); you(); toast("Photo updated.");
+        }).catch(e => { S.me.photo = dataURL; updateMyLot(); save(); you(); toast("Saved locally (upload: " + e.message + ")"); });
+      } else { S.me.photo = dataURL; updateMyLot(); save(); you(); toast("Photo updated."); }
     });
+  }
+  // Update the woman's own lot on the floor when her photo/profile changes
+  function updateMyLot() {
+    if (S.role !== "woman") return;
+    const lot = (S.floor || []).find(l => l.id === "me_lot");
+    if (lot) {
+      lot.photo = S.me.photo;
+      lot.photos = S.me.photo ? [S.me.photo] : [];
+      lot.name = S.me.name;
+      lot.age = S.me.age;
+      lot.city = S.me.city;
+      lot.bio = S.me.bio || "";
+      lot.interests = S.me.interests || [];
+      lot.verified = !!S.me.verified;
+    }
   }
   const tabbar = () => {
     const first = S.role === "woman" ? ["floor", "▦", "Bids"] : ["floor", "▦", "Floor"];
@@ -340,6 +355,24 @@
         try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
       }
       if (S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
+      // When a woman registers, add her to the floor as a lot so bidders can find her.
+      // In demo mode this sits alongside the seed floor; in live mode the server handles it.
+      if (S.role === "woman" && !CONFIGURED()) {
+        const myLot = {
+          id: "me_lot",
+          name: S.me.name, age: S.me.age, city: S.me.city,
+          startingBid: 100, bio: S.me.bio || "",
+          prompts: [], icebreakers: [],
+          hue: hueFrom(S.me.name),
+          verified: !!S.me.verified, masterpiece: false, copycat: false,
+          photo: S.me.photo, photos: S.me.photo ? [S.me.photo] : [],
+          interests: S.me.interests || [], lifestyle: {}, showcase: 480,
+          marketValue: 200, isMe: true,
+        };
+        // Replace any existing "me_lot" entry
+        S.floor = (S.floor || []).filter(l => l.id !== "me_lot");
+        S.floor.unshift(myLot);
+      }
       S.registered = true; save(); go("/floor"); syncFloor(); syncMatches(); syncIncoming();
     };
   }
@@ -389,6 +422,7 @@
       <button class="lot ${isHero ? "hero" : ""}${w.masterpiece ? " masterpiece" : ""}" data-lot="${w.id}" style="width:100%;padding:0;text-align:left;background:none">
         <div class="art">${grad(w.hue, w.name, w.photo)}
           ${w.boosted ? `<div style="position:absolute;top:12px;left:12px;padding:4px 8px;border-radius:20px;background:var(--gold);color:#000;font:800 9px/1 var(--sans);letter-spacing:.08em;display:flex;align-items:center;gap:4px">⚡ SPOTLIGHT</div>` : ""}
+          ${w.isMe ? `<div style="position:absolute;top:12px;left:12px;padding:4px 10px;border-radius:20px;background:var(--rose);color:#fff;font:800 10px/1 var(--sans);letter-spacing:.08em">YOU</div>` : ""}
           ${isHero ? `<div style="position:absolute;top:12px;right:12px;padding:4px 9px;border-radius:20px;background:rgba(0,0,0,.55);color:#fff;font:800 10px/1 var(--sans);letter-spacing:.08em;display:flex;align-items:center;gap:5px;border:1px solid rgba(92,201,138,.55)"><span style="width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success)"></span>ON THE FLOOR NOW</div>` : ""}
         </div>
         ${isHero ? `<div class="lotofday${w.masterpiece ? " mp" : ""}">⚖ ${w.masterpiece ? "Masterpiece — Lot of the Day" : "Lot of the day"}</div>` : ""}
@@ -560,10 +594,12 @@
 
       <div style="height:20px"></div>
     </div>
-    <div class="sticky-bid"><button class="btn" data-bid="${w.id}">Bid · floor ${money(w.startingBid)}</button></div>`;
+    <div class="sticky-bid">${w.isMe
+      ? `<div style="padding:14px;text-align:center;background:var(--glass);color:var(--ink-soft);font:700 13px/1 var(--sans)">This is you on the floor ✨</div>`
+      : `<button class="btn" data-bid="${w.id}">Bid · floor ${money(w.startingBid)}</button>`}</div>`;
 
     app.querySelector("[data-back]").onclick = () => go("/floor");
-    app.querySelector("[data-bid]").onclick = () => bidSheet(w);
+    const bidBtn = app.querySelector("[data-bid]"); if (bidBtn) bidBtn.onclick = () => bidSheet(w);
     const rbtn = app.querySelector("[data-report]"); if (rbtn) rbtn.onclick = () => reportSheet(w);
     wirePhotoPager(w);
     app.querySelectorAll("[data-bid-prompt]").forEach(b => {
@@ -648,6 +684,9 @@
 
     async function startCamera() {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("getUserMedia not supported");
+        }
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         phase = "camera";
         draw();
@@ -664,8 +703,15 @@
           }
         }, 1500);
       } catch (e) {
-        phase = "noCamera";
-        draw();
+        // Camera unavailable — offer simulated verification (demo) or show error (live)
+        if (!CONFIGURED() || !SIGNED_IN()) {
+          // Demo mode: skip camera, simulate the whole flow
+          phase = "matching"; draw();
+          setTimeout(() => finishVerification(), 1500);
+        } else {
+          phase = "noCamera";
+          draw();
+        }
       }
     }
 
@@ -679,14 +725,14 @@
           const startRes = await API.verifyStart();
           // Submit with simulated scores (web can't do Vision face matching)
           const submitRes = await API.verifySubmit(0.85, true, 0.78);
-          if (submitRes.status === "passed") { phase = "done"; S.me.verified = true; save(); }
+          if (submitRes.status === "passed") { phase = "done"; S.me.verified = true; updateMyLot(); save(); }
           else if (submitRes.status === "pending") { phase = "pending"; }
           else { phase = "failed"; }
         } catch (e) { phase = "failed"; }
         draw();
       } else {
         // Demo mode: award blue check locally
-        phase = "done"; S.me.verified = true; save(); draw();
+        phase = "done"; S.me.verified = true; updateMyLot(); save(); draw();
       }
       stopCamera();
     }
@@ -896,7 +942,8 @@
       if (msg.sys) return `<div class="bub sys">${esc(msg.text)}</div>`;
       const rx = msg.reaction ? `<span class="rx">${msg.reaction}</span>` : "";
       const receipt = (i === lastMe) ? `<div class="receipt">${m.seen ? "Seen" : "Delivered"}</div>` : "";
-      return `<div class="bub ${msg.me ? "me" : "them"}" data-mid="${i}">${esc(msg.text)}${rx}</div>${receipt}`;
+      const photoTag = msg.photo ? `<img class="photo-msg" src="${esc(msg.photo)}" alt="Photo" loading="lazy">` : "";
+      return `<div class="bub ${msg.me ? "me" : "them"}${photoTag ? " photo" : ""}" data-mid="${i}">${photoTag}${msg.text ? esc(msg.text) : ""}${rx}</div>${receipt}`;
     }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
       <div class="topbar"><button class="chip" data-back>‹</button>
@@ -906,8 +953,13 @@
           <button class="chip" id="report" title="Report & block">⚑</button>
         </div></div>
       <div class="msgs" id="msgs">${bubbles}</div></div>
-      <div class="composer"><input id="ci" placeholder="Message…" autocomplete="off">
-        <button class="iconbtn" id="send">↑</button></div>`;
+      <div class="composer">
+        <button class="cbtn" id="photo-btn" title="Send photo">📷</button>
+        <input id="ci" placeholder="Message…" autocomplete="off">
+        <button class="cbtn" id="emoji-btn" title="Emoji">😊</button>
+        <button class="iconbtn" id="send">↑</button>
+      </div>
+      <div class="emoji-bar" id="emoji-bar" style="display:none">${["😀","😂","❤️","🔥","👍","👎","😢","😡","🙏","👏","💋","🎉","💯","🤔","😘","😍","😎","😭","😅","😉","😴","🥳","😇","🤯","😬","💪","🌹","💎","🍷","🍽","✨","⚡","🙋","🥰","😏","🤩","😋","🫶","💥","🎯","👑","❤️‍🔥","🕺","💃","🥂","📸","🏖","🌙","🍕","☕","🎁","🚀","🌈","🦋","🎵","💌","🤗","😬"].map(e => `<button class="emoji-cell" data-emoji="${e}">${e}</button>`).join("")}</div>`;
     app.querySelector("[data-back]").onclick = () => go("/matches");
     const rz = $("#reserve"); if (rz) rz.onclick = () => reserveSheet(id);
     const rp = $("#report"); if (rp) rp.onclick = () => reportSheet(id);
@@ -922,23 +974,55 @@
       b.addEventListener("pointerup", stop);
       b.addEventListener("pointerleave", stop);
     });
-    const send = () => {
-      const i = $("#ci"), tx = i.value.trim(); if (!tx) return;
-      m.messages.push({ me: true, text: tx }); m.seen = false; m.lastTs = Date.now(); i.value = ""; save(); chat(id);
-      if (CONFIGURED() && SIGNED_IN()) {
-        API.sendMessage(id, tx).catch(e => toast("Send failed: " + e.message));
-        return; // the real other side replies via syncMatches
-      }
+    function pushMsg(msg) {
+      m.messages.push(msg); m.seen = false; m.lastTs = Date.now(); save(); chat(id);
+    }
+    function demoReply() {
       m.typing = true; save(); chat(id);
       setTimeout(() => {
-        const replies = ["So where are you taking me?", "Bold. I like it.", "Prove it — pick the place.", "You had me at the bid.", "Friday, then?"];
+        const replies = ["So where are you taking me? 🍽", "Bold. I like it 😏", "Prove it — pick the place 🍷", "You had me at the bid 😍", "Friday, then? 🎉", "Love the confidence 🔥", "You're interesting 💯", "Tell me more 🤔", "Hmm, you might be my favorite 🥰", "Don't make me wait 😘"];
         m.typing = false; m.seen = true; m.lastTs = Date.now();
         m.messages.push({ me: false, text: replies[Math.floor(Math.random() * replies.length)] });
         save(); if (location.hash.includes("chat/" + id)) chat(id);
       }, 1100 + Math.random() * 900);
+    }
+    const send = () => {
+      const i = $("#ci"), tx = i.value.trim(); if (!tx) return;
+      pushMsg({ me: true, text: tx }); i.value = "";
+      if (CONFIGURED() && SIGNED_IN()) {
+        API.sendMessage(id, tx).catch(e => toast("Send failed: " + e.message));
+        return;
+      }
+      demoReply();
     };
     $("#send").onclick = send;
     $("#ci").addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+    // Photo button — pick, downscale, send
+    $("#photo-btn").onclick = () => {
+      pickPhoto(({ blob, dataURL }) => {
+        if (CONFIGURED() && SIGNED_IN()) {
+          API.uploadPhoto(blob).then(d => {
+            const url = (d.photo && d.photo.url) || d.url || dataURL;
+            pushMsg({ me: true, photo: url, text: "" });
+            API.sendMessage(id, "", url).catch(e => toast("Photo send failed: " + e.message));
+          }).catch(e => { pushMsg({ me: true, photo: dataURL, text: "" }); toast("Photo saved locally (upload: " + e.message + ")"); });
+        } else {
+          pushMsg({ me: true, photo: dataURL, text: "" });
+          demoReply();
+        }
+      });
+    };
+    // Emoji picker toggle
+    const ebar = $("#emoji-bar");
+    $("#emoji-btn").onclick = (e) => { e.stopPropagation(); ebar.style.display = ebar.style.display === "none" ? "flex" : "none"; };
+    ebar.querySelectorAll(".emoji-cell").forEach(b => b.onclick = () => {
+      const i = $("#ci"); i.value += b.dataset.emoji; i.focus(); ebar.style.display = "none";
+    });
+    document.addEventListener("click", function closeEmoji(e) {
+      if (!e.target.closest("#emoji-bar") && !e.target.closest("#emoji-btn")) {
+        ebar.style.display = "none"; document.removeEventListener("click", closeEmoji);
+      }
+    });
   }
 
   function react(id, mid, emoji) {
