@@ -1,0 +1,47 @@
+NOTES TO APP REVIEW
+
+This app is a PLAY-MONEY social prediction game — the same category as ESPN Fantasy Football's pick'em, Manifold Markets, and Metaculus. It is not gambling, not a securities offering, and not an event-contract exchange.
+
+Play-money mechanics:
+  - Users buy virtual "Call" and "Put" contracts on the opening-weekend
+    domestic box-office grosses of upcoming movies, using an in-app
+    virtual currency ("Reel Coins").
+  - Reel Coins CANNOT be purchased as a balance. Subscriptions grant a
+    bonus amount and a larger weekly refill, but the bonus is denominated
+    in the play currency and cannot be redeemed for cash, prizes, real
+    goods, or any consideration of value.
+  - Reel Coins CANNOT be transferred between users. No trading, no gifting.
+  - Winning contracts pay play currency at Monday settlement based on the
+    reported opening-weekend gross from Box Office Mojo. No real prize.
+
+App Store Guideline 5.3 (Gaming, Gambling & Lotteries) — we believe the
+app is compliant because none of the criteria for gambling apply: no
+real-money wagering, no cash prizes, no real property or thing of value.
+See ESPN Fantasy Football / DraftKings' free-to-play tier / Manifold
+Markets as precedent for the same design.
+
+Age rating: 12+ because the app includes user-generated content (feed
+posts, reviews, comments). Full moderation UI is mandatory-visible on
+every user-generated item: Report (with reason picker and optional block),
+Block user, Hide item. Blocked handles never appear in feed, reviews, or
+comments. Report queue is server-side.
+
+Test account: Not required — the entire app is usable in guest mode
+without sign-in. Sign in with Apple is optional and only used for
+cross-device sync.
+
+Demo mode notes:
+  - The paywall includes a demo fallback that activates a subscription
+    even when StoreKit hasn't loaded products, so App Review can
+    exercise every tier without configuring StoreKit Configuration.
+  - "Simulate opening weekends" button in the Portfolio tab triggers
+    settlement on a random opening within ±IV of the tracking estimate.
+
+Data sources: TMDB (client-side), plus server-side aggregation of IMDb
+Coming Soon, The Numbers, Deadline, and Box Office Mojo. All references
+to third-party trademarks are informational.
+
+Privacy: Comprehensive Privacy Policy shipped in-app under Profile → Privacy.
+No third-party ad networks. No cross-app tracking. Anonymous analytics only.
+
+Contact: privacy@boxcall.com / review@boxcall.com

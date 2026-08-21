@@ -1,0 +1,1 @@
+movie,box office,opening weekend,prediction,options,trading,call,put,cinema,film,tracker,fantasy,social,leaderboard,critics

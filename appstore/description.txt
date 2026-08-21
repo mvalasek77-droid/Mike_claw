@@ -1,0 +1,42 @@
+Trade the opening weekend.
+
+BoxCall is an options chain for movies about to open. Buy CALLs when you think a movie will beat tracking. Buy PUTs when you smell a bomb. Every account starts with 1,000 Reel Coins. Winning gets you status, not cash.
+
+WHY IT'S DIFFERENT
+Not a poll. Not a prediction market. A full continuous-payoff options chain with five strikes above and below the current implied consensus, live 24/7. Market makers work rolling support and resistance so the tape looks like a real chart, not a random walk.
+
+THE LIVE MARKET
+Every contract has a mark that moves in real time. Your buys and sells shift the price. News events (tracking updates, reviews, trailer spikes) shock the whole chain. The implied opening estimate — the "consensus" — is a live crowd forecast derived from base tracking, YouTube trailer engagement, X mention velocity, and actual trade flow.
+
+WIN STATUS, NOT CASH
+Six reputation tiers from Rookie to Oracle. Badges for feats: Bomb Caller, Rocket, Contrarian, Sniper. Weekly streaks. Season titles you keep forever. The top-5 traders each week get their movie reviews spotlighted at the top of the Feed — winning literally becomes editorial voice.
+
+MONDAY RESET
+Every account gets a fresh weekly allowance every Monday at midnight local time. Free tier is 500 Reel Coins per week, forever. Lose your last coin? Trading pauses. Come back Monday.
+
+SUBSCRIPTIONS UNLOCK MORE COINS, NOT MORE STATUS
+Three optional tiers add more Reel Coins and quality-of-life perks. Leaderboards, badges, and Featured Critics slots stay earned.
+
+  Backstage — $3.99/mo — 5,000 RC bonus + 1,500 RC weekly + ad-free
+  Producer's Pass — $9.99/mo — 15,000 RC bonus + 4,000 RC weekly + advanced analytics
+  Mogul — $24.99/mo — 40,000 RC bonus + 10,000 RC weekly + create custom prop markets
+
+WHAT'S IN THE APP
+• Slate — every upcoming release with its live implied opening and consensus sparkline
+• Chain — five CALL and five PUT strikes per movie with live marks and S/R lines
+• Feed — shared calls from the community, with likes, comments, follow, and copy-trade
+• Featured Critics — top-5 traders each week get their movie reviews at the top of the Feed
+• Portfolio — open positions with live P&L, working limit orders, and one-tap close
+• Leaderboard — season-long ranking with color-coded tiers
+• Home-screen widget — top position and next opening on your lock screen
+
+NOT REAL MONEY
+Reel Coins are play-money. They cannot be purchased as a balance, cannot be redeemed for cash, cannot be transferred. Nothing on BoxCall is a securities offering, event contract, or wager. BoxCall is entertainment.
+
+DATA SOURCES
+Upcoming releases from TMDB (in-app) plus IMDb Coming Soon and The Numbers (server-side). Settlement grosses from Box Office Mojo Monday mornings. Tracking numbers from Deadline / NRG. Full attribution in the Data Sources screen.
+
+PRIVACY
+No data selling. No ad networks. No cross-app tracking. Optional Sign in with Apple for cross-device sync. Anonymous product analytics only.
+
+Age 13+.

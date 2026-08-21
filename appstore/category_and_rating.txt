@@ -1,0 +1,28 @@
+Primary category:    Entertainment
+Secondary category:  Sports (optional — surfaces to fantasy-sports audience)
+
+Age rating: 12+
+  - Infrequent/Mild Simulated Gambling: No (play-money only, not redeemable)
+  - Infrequent/Mild Mature/Suggestive Themes: No
+  - User-Generated Content: Yes (feed posts, reviews, comments) — mitigated by
+    the mandatory Report + Block + Hide moderation UI shipped in the app.
+
+Content rights: BoxCall does not use third-party audio/video content
+requiring rights clearance. Movie titles, posters, and metadata come from
+TMDB / IMDb under their public terms and are used as informational
+references only.
+
+Copyright: © 2026 BoxCall.
+
+Contains ads: No.
+Uses ad tracking: No.
+Third-party ad networks: None.
+
+Privacy Practices — Data Not Collected:
+  Contact Info · Health & Fitness · Financial Info · Location · Sensitive Info
+  · Contacts · User Content (server-side moderation only) · Browsing History
+  · Search History · Identifiers used across other companies' apps
+
+Privacy Practices — Data Collected (Not Linked to You):
+  Apple User ID (only if user chooses Sign in with Apple)
+  Anonymous product analytics events (screen views, trade counts, tier progression)
