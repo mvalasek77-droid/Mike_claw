@@ -271,6 +271,10 @@ final class MarketService: ObservableObject {
         }
 
         lastTickAt = now
+
+        // 6. Match any resting limit orders whose limit is at or above
+        // the freshly-computed mark.
+        Task { @MainActor in OrderBookService.shared.tickMatch() }
     }
 
     private func appendHistory(contractId: String, mark: Double, at time: Date) {

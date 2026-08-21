@@ -208,6 +208,12 @@ final class PortfolioService: ObservableObject {
         transform(&user)
     }
 
+    /// Used by OrderBookService to spawn a position from a filled
+    /// limit order without re-charging the user.
+    func appendPosition(_ p: Position) {
+        positions.append(p)
+    }
+
     // MARK: - Leaderboard mock
 
     private func seedLeaderboard() {

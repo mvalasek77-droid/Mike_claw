@@ -19,6 +19,9 @@ struct TradeSheet: View {
     @AppStorage("seenPrimerCall") private var seenPrimerCall: Bool = false
     @AppStorage("seenPrimerPut")  private var seenPrimerPut:  Bool = false
 
+    @State private var useLimit: Bool = false
+    @State private var limitPrice: Double = 0
+
     /// Latest live contract from the market (mark ticks while sheet is open).
     var liveContract: Contract {
         market.chain(for: contract.movieId).first(where: { $0.id == contract.id }) ?? contract
@@ -107,6 +110,21 @@ struct TradeSheet: View {
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
                     }
+                    Toggle("Limit order", isOn: $useLimit)
+                    if useLimit {
+                        HStack {
+                            Text("Limit price").frame(width: 100, alignment: .leading)
+                            Slider(value: $limitPrice,
+                                   in: 0.25...max(0.25, liveContract.premium * 1.5),
+                                   step: 0.05)
+                            Text(limitPrice, format: .number.precision(.fractionLength(2)))
+                                .monospacedDigit()
+                                .frame(width: 55, alignment: .trailing)
+                        }
+                        .onAppear { if limitPrice == 0 { limitPrice = max(0.25, liveContract.premium * 0.95) } }
+                        Text("Fills only if mark drops to \(limitPrice, specifier: "%.2f") or better. Coins reserved until filled or cancelled.")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
 
                 Section {
@@ -165,13 +183,18 @@ struct TradeSheet: View {
                     Button {
                         do {
                             let live = liveContract
-                            let positionId = try portfolio.buy(contract: live, quantity: quantity)
-                            if shareAsPost {
-                                social.share(positionId: positionId, contract: live,
-                                             movie: movie, quantity: quantity, hotTake: hotTake)
-                            }
-                            if let placed = portfolio.positions.first(where: { $0.id == positionId }) {
-                                NotificationsService.shared.scheduleOpeningReminder(movie: movie, position: placed)
+                            if useLimit {
+                                _ = try OrderBookService.shared.placeBuyLimit(
+                                    contract: live, quantity: quantity, limitPrice: limitPrice)
+                            } else {
+                                let positionId = try portfolio.buy(contract: live, quantity: quantity)
+                                if shareAsPost {
+                                    social.share(positionId: positionId, contract: live,
+                                                 movie: movie, quantity: quantity, hotTake: hotTake)
+                                }
+                                if let placed = portfolio.positions.first(where: { $0.id == positionId }) {
+                                    NotificationsService.shared.scheduleOpeningReminder(movie: movie, position: placed)
+                                }
                             }
                             portfolio.refreshLeaderboard()
                             dismiss()
@@ -179,7 +202,9 @@ struct TradeSheet: View {
                             errorMessage = error.localizedDescription
                         }
                     } label: {
-                        Text("Buy \(quantity) \(contract.side.display) for \(cost, format: .number.precision(.fractionLength(2)))")
+                        Text(useLimit
+                             ? "Place buy-limit @ \(limitPrice, specifier: "%.2f") for \(limitPrice * Double(quantity), specifier: "%.2f")"
+                             : "Buy \(quantity) \(contract.side.display) for \(cost, format: .number.precision(.fractionLength(2)))")
                             .frame(maxWidth: .infinity)
                             .fontWeight(.semibold)
                     }

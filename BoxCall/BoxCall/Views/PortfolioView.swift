@@ -3,6 +3,7 @@ import SwiftUI
 struct PortfolioView: View {
     @EnvironmentObject var portfolio: PortfolioService
     @EnvironmentObject var market: MarketService
+    @ObservedObject var book = OrderBookService.shared
 
     var openPositions: [Position] { portfolio.positions.filter { $0.isOpen } }
     var settledPositions: [Position] { portfolio.positions.filter { !$0.isOpen } }
@@ -15,6 +16,26 @@ struct PortfolioView: View {
                     LowBalanceBanner()
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         .listRowBackground(Color.clear)
+                }
+                if !book.openOrders.isEmpty {
+                    Section("Working limit orders") {
+                        ForEach(book.openOrders) { order in
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "hourglass")
+                                    .foregroundStyle(.orange)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(order.side.display) $\(Int(order.strikeMillions))M · qty \(order.quantity)")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("Waiting for mark to drop to \(order.limitPrice, specifier: "%.2f")")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button("Cancel") { book.cancel(orderId: order.id) }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                            }
+                        }
+                    }
                 }
                 Section("Open positions") {
                     if openPositions.isEmpty {
