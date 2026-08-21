@@ -1,0 +1,51 @@
+/* Tabs */
+"tab.feed"         = "Muro";
+"tab.slate"        = "Cartelera";
+"tab.portfolio"    = "Cartera";
+"tab.leaders"      = "Líderes";
+"tab.profile"      = "Perfil";
+
+/* Common actions */
+"action.buy"       = "Comprar";
+"action.cancel"    = "Cancelar";
+"action.close"     = "Cerrar";
+"action.done"      = "Listo";
+"action.share"     = "Compartir";
+"action.copy"      = "Copiar";
+"action.report"    = "Reportar";
+"action.block"     = "Bloquear";
+"action.upgrade"   = "Mejorar";
+"action.follow"    = "Seguir";
+"action.following" = "Siguiendo";
+"action.redeem"    = "Canjear";
+"action.next"      = "Siguiente";
+"action.skip"      = "Omitir";
+
+/* Trading */
+"trade.title"            = "Operar";
+"trade.risk.header"      = "Riesgo";
+"trade.risk.maxLoss"     = "Puedes perder hasta %.0f RC";
+"trade.win.if.call"      = "GANAS si %@ abre por encima de $%dM.";
+"trade.win.if.put"       = "GANAS si %@ abre por debajo de $%dM.";
+"trade.lose.if.call"     = "PIERDES si %@ abre en o por debajo de $%dM.";
+"trade.lose.if.put"      = "PIERDES si %@ abre en o por encima de $%dM.";
+"trade.share.header"     = "Comparte esta apuesta";
+"trade.share.toggle"     = "Publicar en Hot Takes";
+"trade.hotTake.placeholder" = "Explica por qué — 280 caracteres";
+
+/* Portfolio */
+"portfolio.title"        = "Cartera";
+"portfolio.open"         = "Posiciones abiertas";
+"portfolio.settled"      = "Liquidadas";
+"portfolio.working"      = "Órdenes límite activas";
+"portfolio.empty"        = "Sin operaciones abiertas. Ve a Cartelera para hacer la primera.";
+
+/* Refill */
+"refill.next"            = "Próxima recarga: **Lunes** · en %@";
+"refill.broke.title"     = "Te has quedado sin Reel Coins.";
+"refill.low.title"       = "Pocas Reel Coins.";
+
+/* Sign-in */
+"auth.guest"             = "Jugando como invitado";
+"auth.signedIn"          = "Sesión iniciada con Apple";
+"auth.signOut"           = "Cerrar sesión";

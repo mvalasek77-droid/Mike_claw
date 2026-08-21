@@ -26,5 +26,14 @@ struct Sparkline: View {
                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
         }
         .frame(height: height)
+        .accessibleChart(a11ySummary)
+    }
+
+    private var a11ySummary: String {
+        guard let first = points.first?.mark, let last = points.last?.mark else {
+            return "Empty sparkline"
+        }
+        let dir = last >= first ? "up" : "down"
+        return "Sparkline \(dir) from \(String(format: "%.2f", first)) to \(String(format: "%.2f", last))"
     }
 }

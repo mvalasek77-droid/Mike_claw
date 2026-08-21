@@ -114,5 +114,22 @@ struct PriceChart: View {
                      at: CGPoint(x: plot.maxX - 20, y: plot.maxY + 12))
         }
         .frame(height: height)
+        .clampDynamicType(.accessibility1)
+        .accessibleChart(a11ySummary)
+    }
+
+    private var a11ySummary: String {
+        guard let first = points.first?.mark, let last = points.last?.mark else {
+            return "Empty price chart"
+        }
+        let delta = last - first
+        let pct = first > 0 ? (delta / first) * 100 : 0
+        var s = "Price chart. Started at \(String(format: "%.2f", first)), now \(String(format: "%.2f", last)). "
+              + (delta >= 0 ? "Up " : "Down ")
+              + String(format: "%.1f percent.", abs(pct))
+        if let sr {
+            s += " Support at \(String(format: "%.2f", sr.support)), resistance at \(String(format: "%.2f", sr.resistance))."
+        }
+        return s
     }
 }

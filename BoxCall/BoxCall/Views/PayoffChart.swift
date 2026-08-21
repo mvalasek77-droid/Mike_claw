@@ -141,5 +141,7 @@ struct PayoffChart: View {
                      at: CGPoint(x: plot.maxX - 14, y: plot.maxY + 12))
         }
         .frame(height: 180)
+        .clampDynamicType(.accessibility1)
+        .accessibleChart("Payoff diagram for a \(side.display) at strike $\(Int(strike))M with premium \(String(format: "%.2f", premium)). Break-even at $\(String(format: "%.1f", breakEven))M.")
     }
 }

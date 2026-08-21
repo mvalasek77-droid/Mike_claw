@@ -1,0 +1,51 @@
+/* Tabs */
+"tab.feed"         = "Feed";
+"tab.slate"        = "Slate";
+"tab.portfolio"    = "Portfolio";
+"tab.leaders"      = "Leaders";
+"tab.profile"      = "Profile";
+
+/* Common actions */
+"action.buy"       = "Buy";
+"action.cancel"    = "Cancel";
+"action.close"     = "Close";
+"action.done"      = "Done";
+"action.share"     = "Share";
+"action.copy"      = "Copy";
+"action.report"    = "Report";
+"action.block"     = "Block";
+"action.upgrade"   = "Upgrade";
+"action.follow"    = "Follow";
+"action.following" = "Following";
+"action.redeem"    = "Redeem";
+"action.next"      = "Next";
+"action.skip"      = "Skip";
+
+/* Trading */
+"trade.title"            = "Place Trade";
+"trade.risk.header"      = "Risk";
+"trade.risk.maxLoss"     = "You could lose up to %.0f RC";
+"trade.win.if.call"      = "You WIN if %@ opens above $%dM.";
+"trade.win.if.put"       = "You WIN if %@ opens below $%dM.";
+"trade.lose.if.call"     = "You LOSE if %@ opens at or below $%dM.";
+"trade.lose.if.put"      = "You LOSE if %@ opens at or above $%dM.";
+"trade.share.header"     = "Share this call";
+"trade.share.toggle"     = "Post to Hot Takes";
+"trade.hotTake.placeholder" = "Say why — 280 chars";
+
+/* Portfolio */
+"portfolio.title"        = "Portfolio";
+"portfolio.open"         = "Open positions";
+"portfolio.settled"      = "Settled";
+"portfolio.working"      = "Working limit orders";
+"portfolio.empty"        = "No open trades. Head to Slate to place your first one.";
+
+/* Refill */
+"refill.next"            = "Next refill: **Monday** · in %@";
+"refill.broke.title"     = "You're out of Reel Coins.";
+"refill.low.title"       = "Running low on Reel Coins.";
+
+/* Sign-in */
+"auth.guest"             = "Playing as a guest";
+"auth.signedIn"          = "Signed in with Apple";
+"auth.signOut"           = "Sign out";
