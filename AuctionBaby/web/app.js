@@ -455,6 +455,7 @@
     ];
   };
 
+  let floorSearch = "";
   function floor() {
     let floorData = S.floor;
     if (S.role === "woman") {
@@ -465,6 +466,11 @@
       }
     }
     if (!floorData || !floorData.length) { floorData = seedFloor(); }
+    const allCount = floorData.length;
+    if (floorSearch) {
+      const q = floorSearch.toLowerCase();
+      floorData = floorData.filter(w => w.name.toLowerCase().includes(q));
+    }
     const mp = floorData.find(w => w.masterpiece);
     const hero = mp || floorData[0];
     const rest = floorData.filter(w => w !== hero);
@@ -492,6 +498,10 @@
       ${isWomanBrowsing ? `<button class="btn ghost" data-go="" style="margin:-6px 0 10px;font-size:13px">◂ Back to bids</button>
       <div class="faint" style="margin:0 0 12px">See what men are seeing. This is how you look on the floor.</div>` :
       `<div class="faint" style="margin:-6px 0 12px">Bid what a date is worth. She unlocks your photo when she accepts.</div>`}
+      <div style="position:relative;margin-bottom:12px">
+        <input id="floorSearch" type="text" placeholder="Search by name…" value="${esc(floorSearch)}" style="width:100%;padding:10px 14px 10px 36px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:400 15px/1.4 var(--sans);box-sizing:border-box;outline:none">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);font-size:16px;pointer-events:none">&#128269;</span>
+      </div>
       <div class="ticker"><span class="dot"></span><span class="live">LIVE</span><span class="grow">${esc(tick)}</span></div>
       <div class="house-rules">
         <div class="house-rules-title">House Rules</div>
@@ -499,11 +509,15 @@
       </div>
       <div class="floor-header">
         <span class="floor-header-label">On the floor now</span>
-        <span class="floor-header-count">${floorData.length}</span>
+        <span class="floor-header-count">${floorSearch ? floorData.length + " / " + allCount : allCount}</span>
       </div>
-      ${lotCard(hero, true)}
-      ${rest.map(w => lotCard(w, false)).join("")}
+      ${floorData.length ? (hero ? lotCard(hero, !floorSearch) : "") + rest.map(w => lotCard(w, false)).join("") : `<div class="card muted">No results for "${esc(floorSearch)}"</div>`}
     </div>${tabbar()}`;
+    const si = $("#floorSearch");
+    if (si) {
+      si.addEventListener("input", () => { floorSearch = si.value; floor(); });
+      if (floorSearch) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
+    }
     wire();
   }
 
