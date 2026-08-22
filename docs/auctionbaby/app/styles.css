@@ -250,3 +250,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .photo-msg{max-width:240px;border-radius:14px;display:block;margin:2px 0}
 .bub.photo{padding:4px 4px 6px}
 .bub.photo .photo-msg{max-width:220px}
+
+/* admin panel */
+.adm-nav{display:flex;gap:6px;padding:10px 0 8px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto}
+.adm-nav button{font:700 13px/1 var(--sans);padding:8px 12px;border-radius:999px;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-faint);white-space:nowrap;min-height:36px}
+.adm-nav button.on{background:rgba(230,184,0,.14);border-color:var(--gold);color:var(--gold)}
+.adm-stat{padding:14px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:center}
+.adm-stat-n{font-family:var(--serif);font-weight:800;font-size:26px;color:var(--gold)}
+.adm-stat-l{font:700 11px/1 var(--sans);color:var(--ink-faint);margin-top:4px;text-transform:uppercase;letter-spacing:.08em}
+.adm-user-row{padding:14px 0;border-bottom:1px solid var(--line)}
+.adm-user-row:last-child{border-bottom:0}
+.adm-report-row{padding:14px 0;border-bottom:1px solid var(--line)}
+.adm-report-row:last-child{border-bottom:0}
+.adm-audit-list{display:flex;flex-direction:column;gap:0}
+.adm-audit-row{padding:10px 0;border-bottom:1px solid var(--line)}
+.adm-audit-row:last-child{border-bottom:0}
+.adm-bug-row{padding:12px 0;border-bottom:1px solid var(--line)}
+.adm-bug-row:last-child{border-bottom:0}

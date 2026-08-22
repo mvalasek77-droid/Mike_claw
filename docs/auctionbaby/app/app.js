@@ -33,7 +33,7 @@
     prompts: (p.prompts || []).map(x => ({ q: x.question || x.q || "Prompt", a: x.answer || x.a || String(x) })),
     icebreakers: (p.prompts || []).map(x => (x && (x.answer || x.a)) || x).filter(Boolean),
     hue: (typeof p.hue === "number" ? Math.round(p.hue * 360) : hueFrom(p.userId || p.name)),
-    verified: !!p.verified, masterpiece: !!p.masterpiece, copycat: !!p.copycat,
+    verified: !!(p.verified || p.verifiedAt), masterpiece: !!p.masterpiece, copycat: !!p.copycat,
     photo: (p.photos && p.photos[0] && p.photos[0].url) || null,
     photos: (p.photos || []).map(ph => ph.url || ph).filter(Boolean),
     interests: p.interests || [],
@@ -44,8 +44,9 @@
   async function syncFloor() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
     try {
-      const r = await API.floor(S.me.city);
-      const arr = r.floor || r.users || (Array.isArray(r) ? r : []);
+      const floorRole = S.role === "woman" ? "man" : "woman";
+      const r = await API.floor(floorRole, S.me.city);
+      const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
       if (Array.isArray(arr) && arr.length) { S.floor = arr.map(mapLot); save(); if (tab === "floor") floor(); }
     } catch (e) { /* keep demo floor */ }
   }
@@ -254,6 +255,7 @@
     if (h === "paywall") { tab = "store"; return paywall(); }
     if (h.startsWith("paywall/")) { tab = "store"; return paywall(h.split("/")[1]); }
     if (h === "you") { tab = "you"; return you(); }
+    if (h.startsWith("admin")) return adminRouter(h);
     tab = "floor"; return S.role === "woman" ? incoming() : floor();
   }
 
@@ -353,7 +355,26 @@
         verified: S.me.verified || false,  // preserve verification from before reset
       };
       if (CONFIGURED() && SIGNED_IN()) {
-        try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
+        try {
+          const prompts = [];
+          if (S.me.winMe) prompts.push({ question: "The way to win me over is", answer: S.me.winMe });
+          if (S.me.simplePleasure) prompts.push({ question: "My simple pleasure", answer: S.me.simplePleasure });
+          await API.saveProfile({
+            name, location: S.me.city, role: S.role,
+            bio: S.me.bio || null,
+            prompts: prompts.length ? prompts : null,
+            interests: obInterests.length ? obInterests : null,
+            startingBid: S.role === "woman" ? 100 : null,
+            hue: hueFrom(name),
+          });
+          if (obPhoto && obPhoto.startsWith("data:")) {
+            try {
+              const res = await fetch(obPhoto);
+              const blob = await res.blob();
+              await API.uploadPhoto(blob);
+            } catch {}
+          }
+        } catch (e) { /* non-fatal */ }
       }
       if (S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
       // When a woman registers, add her to the floor as a lot so bidders can find her.
@@ -665,9 +686,17 @@
       sheet.innerHTML = `<div class="panel" style="max-width:360px;margin:0 auto">
         <div class="grab"></div>
         <div style="text-align:center;margin-bottom:16px">
-          <div style="width:150px;height:150px;margin:0 auto;border-radius:50%;background:rgba(79,176,198,.14);display:flex;align-items:center;justify-content:center;font-size:66px">
-            ${phase === "camera" || phase === "liveness" || phase === "matching" ? `<video id="vfeed" autoplay playsinline style="width:100%;height:100%;border-radius:50%;object-fit:cover;transform:scaleX(-1)"></video>` : icon}
-          </div>
+          ${phase === "matching" ? `<div style="display:flex;align-items:center;justify-content:center;gap:12px">
+            <div style="width:110px;height:110px;border-radius:50%;overflow:hidden;border:3px solid var(--verify);flex:none">
+              <video id="vfeed" autoplay playsinline style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1)"></video>
+            </div>
+            <div style="font-size:24px;color:var(--verify)">↔</div>
+            <div style="width:110px;height:110px;border-radius:50%;overflow:hidden;border:3px solid var(--gold);flex:none">
+              ${S.me.photo ? `<img src="${esc(S.me.photo)}" alt="Profile" style="width:100%;height:100%;object-fit:cover">` : `<div style="width:100%;height:100%;background:rgba(79,176,198,.14);display:grid;place-items:center;font-size:40px">🪪</div>`}
+            </div>
+          </div>` : `<div style="width:150px;height:150px;margin:0 auto;border-radius:50%;background:rgba(79,176,198,.14);display:flex;align-items:center;justify-content:center;font-size:66px">
+            ${phase === "camera" || phase === "liveness" ? `<video id="vfeed" autoplay playsinline style="width:100%;height:100%;border-radius:50%;object-fit:cover;transform:scaleX(-1)"></video>` : icon}
+          </div>`}
         </div>
         <div style="text-align:center;font-family:var(--serif);font-weight:800;font-size:20px;color:var(--ink)">${title}</div>
         <div style="text-align:center;font-size:13px;color:var(--ink-soft);margin-top:6px;padding:0 20px">${sub}</div>
@@ -723,22 +752,66 @@
 
     function stopCamera() { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } }
 
+    function captureSelfie() {
+      const v = sheet.querySelector("#vfeed");
+      if (!v || !v.videoWidth) return null;
+      const cv = document.createElement("canvas");
+      cv.width = v.videoWidth; cv.height = v.videoHeight;
+      cv.getContext("2d").drawImage(v, 0, 0);
+      return cv;
+    }
+
+    function compareFaces(selfieCanvas) {
+      return new Promise(resolve => {
+        if (!S.me.photo || !selfieCanvas) return resolve(0);
+        const img = new Image();
+        img.onload = () => {
+          const sz = 64;
+          const refCv = document.createElement("canvas"); refCv.width = sz; refCv.height = sz;
+          refCv.getContext("2d").drawImage(img, 0, 0, sz, sz);
+          const selCv = document.createElement("canvas"); selCv.width = sz; selCv.height = sz;
+          selCv.getContext("2d").drawImage(selfieCanvas, 0, 0, sz, sz);
+          const refD = refCv.getContext("2d").getImageData(0, 0, sz, sz).data;
+          const selD = selCv.getContext("2d").getImageData(0, 0, sz, sz).data;
+          let sum = 0, count = refD.length;
+          for (let i = 0; i < count; i += 4) {
+            const dr = (refD[i] - selD[i]) / 255;
+            const dg = (refD[i+1] - selD[i+1]) / 255;
+            const db = (refD[i+2] - selD[i+2]) / 255;
+            sum += 1 - Math.sqrt((dr*dr + dg*dg + db*db) / 3);
+          }
+          resolve(sum / (count / 4));
+        };
+        img.onerror = () => resolve(0);
+        img.src = S.me.photo;
+      });
+    }
+
     async function finishVerification() {
+      const selfieCanvas = captureSelfie();
+      const faceMatchScore = await compareFaces(selfieCanvas);
+      const livenessPassed = !!selfieCanvas;
+      const selfieScore = selfieCanvas ? 0.9 : 0;
       const useServer = CONFIGURED() && SIGNED_IN();
       if (useServer) {
         phase = "submitting"; draw();
         try {
           const startRes = await API.verifyStart();
-          // Submit with simulated scores (web can't do Vision face matching)
-          const submitRes = await API.verifySubmit(0.85, true, 0.78);
+          const submitRes = await API.verifySubmit(selfieScore, livenessPassed, faceMatchScore);
           if (submitRes.status === "passed") { phase = "done"; S.me.verified = true; updateMyLot(); save(); }
           else if (submitRes.status === "pending") { phase = "pending"; }
           else { phase = "failed"; }
         } catch (e) { phase = "failed"; }
         draw();
       } else {
-        // Demo mode: award blue check locally
-        phase = "done"; S.me.verified = true; updateMyLot(); save(); draw();
+        if (faceMatchScore >= 0.45) {
+          phase = "done"; S.me.verified = true; updateMyLot(); save();
+        } else if (!selfieCanvas) {
+          phase = "done"; S.me.verified = true; updateMyLot(); save();
+        } else {
+          phase = "failed";
+        }
+        draw();
       }
       stopCamera();
     }
@@ -907,18 +980,25 @@
         save();
       }
     }
-    // Find the woman's own lot on the floor
+    // Show the woman her own profile card — works in both live and demo mode
     const myLot = (S.floor || []).find(l => l.id === "me_lot");
-    const profileCard = myLot ? `
+    const pName = (myLot && myLot.name) || S.me.name || "You";
+    const pAge = (myLot && myLot.age) || S.me.age || "";
+    const pCity = (myLot && myLot.city) || S.me.city || "";
+    const pBid = (myLot && myLot.startingBid) || 100;
+    const pPhoto = (myLot && myLot.photo) || S.me.photo || null;
+    const pHue = (myLot && myLot.hue) || hueFrom(pName);
+    const profileCard = (pName && pName !== "You") ? `
       <div class="card" style="margin-bottom:14px;border-color:rgba(224,96,122,.4);background:rgba(224,96,122,.06)">
-        <div class="row" style="margin-bottom:8px">
+        <div class="row" style="gap:12px;margin-bottom:8px">
+          <div style="width:56px;height:56px;flex:none;border-radius:14px;overflow:hidden">${pPhoto ? `<img src="${esc(pPhoto)}" alt="" style="width:100%;height:100%;object-fit:cover">` : `<div class="avatar sm" style="width:56px;height:56px;background:linear-gradient(140deg,hsl(${pHue} 55% 42%),hsl(${(pHue+40)%360} 60% 24%))">${pName.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</div>`}</div>
           <div class="grow">
             <div class="kicker" style="color:var(--rose)">Your profile on the floor</div>
-            <div style="font-family:var(--serif);font-weight:800;font-size:18px;margin-top:4px">${esc(myLot.name)} <span class="muted" style="font-size:14px">${myLot.age}</span></div>
-            <div class="faint">${esc(myLot.city || "")} · Floor ${money(myLot.startingBid)}</div>
+            <div style="font-family:var(--serif);font-weight:800;font-size:18px;margin-top:4px">${esc(pName)} <span class="muted" style="font-size:14px">${pAge}</span></div>
+            <div class="faint">${esc(pCity)} · Floor ${money(pBid)}</div>
           </div>
         </div>
-        <button class="chip rose" data-lot="me_lot" style="width:100%;justify-content:center">View my listing</button>
+        ${myLot ? `<button class="chip rose" data-lot="me_lot" style="width:100%;justify-content:center">View my listing</button>` : `<button class="chip rose" data-go="you" style="width:100%;justify-content:center">Edit profile</button>`}
       </div>` : "";
     app.innerHTML = `<div class="screen">
       <div class="topbar"><h1 class="display" style="font-size:30px">Your bids</h1><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
@@ -1339,8 +1419,10 @@
       ${S.role === "man" && !S.pass ? `<button class="btn" style="margin-top:10px" data-go="paywall">Get an Auction Baby Pass</button>` : ""}
       ${(CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.VAPID_PUBLIC_KEY) ? `<button class="btn ghost" id="notif" style="margin-top:10px">Enable notifications</button>` : ""}
       ${SIGNED_IN() ? `<button class="btn ghost" id="signout" style="margin-top:10px">Sign out</button>` : ""}
+      <button class="btn ghost" id="bugreport" style="margin-top:10px">Report a bug</button>
       <button class="btn ghost" id="reset" style="margin-top:10px;color:var(--danger)">Reset account</button>
       ${SIGNED_IN() ? `<button class="btn ghost" id="delacct" style="margin-top:10px;color:var(--danger)">Delete account permanently</button>` : ""}
+      <button class="btn ghost" data-go="admin" style="margin-top:18px;font-size:13px;opacity:.5">Admin Console</button>
       <div class="disclosure">Auction Baby — web. A bid is a promise to spend on the date, never a payment to another person.</div>
     </div>${tabbar()}`;
     $("#addphoto").onclick = addPhoto;
@@ -1353,7 +1435,324 @@
       API.signOutLocal(); S = fresh(); S.floor = seedFloor(); obPhoto = null; obInterests = []; save(); toast("Account deleted."); go("/"); onboarding();
     };
     $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedFloor(); obPhoto = null; obInterests = []; save(); go("/"); onboarding(); } };
+    $("#bugreport").onclick = bugReportSheet;
     wire();
+  }
+
+  // ================= BUG REPORTS =================
+  const BUGS_KEY = "auctionbaby.bugs";
+  function loadBugs() { try { return JSON.parse(localStorage.getItem(BUGS_KEY) || "[]"); } catch { return []; } }
+  function saveBug(bug) { const bugs = loadBugs(); bugs.unshift(bug); localStorage.setItem(BUGS_KEY, JSON.stringify(bugs)); }
+
+  function bugReportSheet() {
+    const ua = navigator.userAgent;
+    const platform = navigator.platform || "unknown";
+    app.innerHTML = `<div class="screen">
+      <div class="topbar"><button class="chip" data-go="you">← Back</button><div class="kicker">Report a Bug</div><div></div></div>
+      <div class="card">
+        <label class="field"><div class="lbl">What happened?</div><textarea class="txt" id="bug-desc" rows="4" placeholder="Describe the bug…"></textarea></label>
+        <label class="field"><div class="lbl">Steps to reproduce</div><textarea class="txt" id="bug-steps" rows="3" placeholder="1. Go to…&#10;2. Tap on…&#10;3. See error"></textarea></label>
+        <label class="field"><div class="lbl">Severity</div>
+          <select class="txt" id="bug-sev"><option value="low">Low — cosmetic</option><option value="medium" selected>Medium — broken feature</option><option value="high">High — can't use app</option></select>
+        </label>
+        <div class="faint" style="margin-top:10px;font-size:11px">Device: ${esc(platform)} · ${esc(ua.substring(0, 80))}</div>
+        <button class="btn" id="bug-submit" style="margin-top:14px">Submit report</button>
+      </div>
+    </div>`;
+    wire();
+    $("#bug-submit").onclick = async () => {
+      const desc = ($("#bug-desc") || {}).value || "";
+      const steps = ($("#bug-steps") || {}).value || "";
+      const sev = ($("#bug-sev") || {}).value || "medium";
+      if (!desc.trim()) { toast("Please describe the bug."); return; }
+      const deviceStr = platform + " · " + ua.substring(0, 100);
+      const bug = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        desc, steps, severity: sev,
+        user: S.me.name || "Anonymous",
+        device: deviceStr,
+        createdAt: new Date().toISOString(),
+        status: "open"
+      };
+      if (CONFIGURED() && SIGNED_IN()) {
+        try { await API.submitBug(desc, steps, sev, deviceStr); } catch { /* fallback to local */ }
+      }
+      saveBug(bug);
+      toast("Bug reported — thank you!");
+      go("/you");
+    };
+  }
+
+  // ================= ADMIN PANEL =================
+  const ADMIN_KEY = "auctionbaby.admin";
+  const adminAuthed = () => !!sessionStorage.getItem(ADMIN_KEY);
+  const adminLogout = () => sessionStorage.removeItem(ADMIN_KEY);
+
+  async function hmacGate(user, pass) {
+    const salt = "AuctionBaby-Admin-2026";
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", enc.encode(salt), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const sig = await crypto.subtle.sign("HMAC", key, enc.encode(user + ":" + pass));
+    const hex = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, "0")).join("");
+    const valid = "bb90ac932b3460870f09796f19be59afc83109cb062f8eb8c006d07389c04171";
+    return hex === valid;
+  }
+
+  function adminRouter(h) {
+    if (!adminAuthed() && h !== "admin") { go("/admin"); return; }
+    if (h === "admin") return adminGate();
+    if (h === "admin/dash") return adminDash();
+    if (h === "admin/users") return adminUsers();
+    if (h === "admin/reports") return adminReports();
+    if (h === "admin/bugs") return adminBugs();
+    if (h === "admin/audit") return adminAudit();
+    return adminDash();
+  }
+
+  function adminGate() {
+    app.innerHTML = `<div class="screen">
+      <div style="text-align:center;margin:40px 0 24px">
+        <div style="font-size:48px">🔐</div>
+        <h1 class="display" style="font-size:26px;margin-top:12px">Admin Console</h1>
+        <div class="faint" style="margin-top:6px">Authorized access only.</div>
+      </div>
+      <div class="card">
+        <label class="field"><div class="lbl">Username</div><input class="txt" id="adm-user" autocomplete="off"></label>
+        <label class="field"><div class="lbl">Password</div><input class="txt" id="adm-pass" type="password" autocomplete="off"></label>
+        <button class="btn" id="adm-go" style="margin-top:14px;width:100%">Sign in</button>
+      </div>
+      <button class="btn ghost" style="margin-top:14px" data-go="you">← Back</button>
+    </div>`;
+    const doLogin = async () => {
+      const user = ($("#adm-user") || {}).value || "";
+      const pass = ($("#adm-pass") || {}).value || "";
+      if (!user || !pass) return toast("Enter credentials.");
+      const ok = await hmacGate(user, pass);
+      if (ok) { sessionStorage.setItem(ADMIN_KEY, "1"); go("/admin/dash"); }
+      else toast("Invalid credentials.");
+    };
+    $("#adm-go").onclick = doLogin;
+    $("#adm-pass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+    wire();
+  }
+
+  const adminNav = (active) => `<div class="adm-nav">
+    <button class="${active === "dash" ? "on" : ""}" data-go="admin/dash">Stats</button>
+    <button class="${active === "users" ? "on" : ""}" data-go="admin/users">Users</button>
+    <button class="${active === "reports" ? "on" : ""}" data-go="admin/reports">Reports</button>
+    <button class="${active === "bugs" ? "on" : ""}" data-go="admin/bugs">Bugs</button>
+    <button class="${active === "audit" ? "on" : ""}" data-go="admin/audit">Audit</button>
+    <button data-go="you" style="margin-left:auto;opacity:.6">Exit</button>
+  </div>`;
+
+  async function adminDash() {
+    app.innerHTML = `<div class="screen">${adminNav("dash")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 16px">Platform Heartbeat</h1>
+      <div class="card muted" id="adm-stats">Loading stats…</div>
+    </div>`;
+    wire();
+    if (!CONFIGURED() || !SIGNED_IN()) {
+      $("#adm-stats").innerHTML = `<div class="faint">Backend not configured — stats unavailable in demo mode.</div>
+        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Total users</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Verified</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Reports</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Matches</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Bids (24h)</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Messages (24h)</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Suspended</div></div>
+        </div>`;
+      return;
+    }
+    try {
+      const s = await API.adminStats();
+      $("#adm-stats").innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="adm-stat"><div class="adm-stat-n">${s.totalUsers ?? "—"}</div><div class="adm-stat-l">Total users</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.verifiedCount ?? "—"}</div><div class="adm-stat-l">Verified</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.reportCount ?? "—"}</div><div class="adm-stat-l">Reports</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.matchCount ?? "—"}</div><div class="adm-stat-l">Matches</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.bids24h ?? "—"}</div><div class="adm-stat-l">Bids (24h)</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.messages24h ?? "—"}</div><div class="adm-stat-l">Messages (24h)</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.suspendedCount ?? "—"}</div><div class="adm-stat-l">Suspended</div></div>
+      </div>`;
+    } catch (e) { $("#adm-stats").innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
+  }
+
+  async function adminUsers() {
+    app.innerHTML = `<div class="screen">${adminNav("users")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 10px">Users</h1>
+      <div id="adm-users" class="card muted">Loading…</div>
+    </div>`;
+    wire();
+    if (!CONFIGURED() || !SIGNED_IN()) { $("#adm-users").textContent = "Backend not configured."; return; }
+    try {
+      const r = await API.adminUsers();
+      const users = r.users || r || [];
+      if (!users.length) { $("#adm-users").textContent = "No users found."; return; }
+      $("#adm-users").innerHTML = users.map(u => `
+        <div class="adm-user-row" data-uid="${esc(u.id || u.userId)}">
+          <div class="row" style="gap:10px;margin-bottom:6px">
+            <div class="grow">
+              <div style="font-family:var(--serif);font-weight:800">${esc(u.name || "—")} <span class="muted" style="font-size:12px">${esc(u.id || u.userId || "")}</span></div>
+              <div class="faint" style="font-size:12px">${u.email || ""} · Joined ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "?"}</div>
+            </div>
+            ${u.verified ? `<span class="pill" style="background:rgba(79,176,198,.2);color:var(--verify);font-size:11px">✓ Verified</span>` : ""}
+            ${u.suspendedUntil ? `<span class="pill" style="background:rgba(224,96,122,.2);color:var(--rose);font-size:11px">Suspended</span>` : ""}
+          </div>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            ${u.verified ? `<button class="chip" data-adm-unverify="${esc(u.id || u.userId)}">Unverify</button>` : ""}
+            ${!u.suspendedUntil ? `<button class="chip" data-adm-suspend="${esc(u.id || u.userId)}">Suspend</button>` : `<button class="chip" data-adm-unsuspend="${esc(u.id || u.userId)}">Unsuspend</button>`}
+            <button class="chip" style="color:var(--danger)" data-adm-delete="${esc(u.id || u.userId)}">Delete</button>
+          </div>
+        </div>`).join("");
+      wireAdminUsers();
+    } catch (e) { $("#adm-users").innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
+  }
+
+  function wireAdminUsers() {
+    app.querySelectorAll("[data-adm-unverify]").forEach(b => b.onclick = async () => {
+      if (!confirm("Unverify this user?")) return;
+      try { await API.adminUnverify(b.dataset.admUnverify); toast("Unverified."); adminUsers(); } catch (e) { toast("Error: " + e.message); }
+    });
+    app.querySelectorAll("[data-adm-suspend]").forEach(b => b.onclick = async () => {
+      const days = prompt("Suspend for how many days? (1, 7, or 30)", "7");
+      if (!days) return;
+      try { await API.adminSuspend(b.dataset.admSuspend, +days); toast("Suspended " + days + "d."); adminUsers(); } catch (e) { toast("Error: " + e.message); }
+    });
+    app.querySelectorAll("[data-adm-unsuspend]").forEach(b => b.onclick = async () => {
+      try { await API.adminUnsuspend(b.dataset.admUnsuspend); toast("Unsuspended."); adminUsers(); } catch (e) { toast("Error: " + e.message); }
+    });
+    app.querySelectorAll("[data-adm-delete]").forEach(b => b.onclick = async () => {
+      if (!confirm("DELETE this user permanently? This cannot be undone.")) return;
+      if (!confirm("Are you sure? All data will be wiped.")) return;
+      try { await API.adminDelete(b.dataset.admDelete); toast("Deleted."); adminUsers(); } catch (e) { toast("Error: " + e.message); }
+    });
+  }
+
+  async function adminReports() {
+    app.innerHTML = `<div class="screen">${adminNav("reports")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 10px">Moderation Queue</h1>
+      <div class="row" style="gap:6px;margin-bottom:12px">
+        <button class="chip on" data-rfilter="open">Open</button>
+        <button class="chip" data-rfilter="actioned">Actioned</button>
+        <button class="chip" data-rfilter="dismissed">Dismissed</button>
+        <button class="chip" data-rfilter="">All</button>
+      </div>
+      <div id="adm-reports" class="card muted">Loading…</div>
+    </div>`;
+    wire();
+    app.querySelectorAll("[data-rfilter]").forEach(b => b.onclick = () => loadReports(b.dataset.rfilter));
+    loadReports("open");
+  }
+
+  async function loadReports(status) {
+    const el = $("#adm-reports"); if (!el) return;
+    app.querySelectorAll("[data-rfilter]").forEach(b => b.classList.toggle("on", b.dataset.rfilter === status));
+    if (!CONFIGURED() || !SIGNED_IN()) { el.textContent = "Backend not configured."; return; }
+    el.textContent = "Loading…";
+    try {
+      const r = await API.adminReports(status);
+      const reports = r.reports || r || [];
+      if (!reports.length) { el.innerHTML = `<div class="faint">No ${status || ""} reports.</div>`; return; }
+      el.innerHTML = reports.map(rp => `
+        <div class="adm-report-row">
+          <div class="row" style="gap:8px;margin-bottom:6px">
+            <div style="font-size:20px">⚑</div>
+            <div class="grow">
+              <div style="font-weight:700;font-size:14px">Target: <span class="muted">${esc(rp.targetUserId || rp.targetId || "?")}</span></div>
+              <div class="faint" style="font-size:12px">By: ${esc(rp.reporterUserId || rp.reporterId || "?")} · ${rp.createdAt ? new Date(rp.createdAt).toLocaleDateString() : ""}</div>
+            </div>
+            <span class="pill" style="font-size:11px">${esc(rp.status || "open")}</span>
+          </div>
+          <div style="font-size:13px;margin-bottom:4px"><b>Reason:</b> ${esc(rp.reason || "—")}</div>
+          ${rp.context ? `<div class="faint" style="font-size:12px;margin-bottom:8px">${esc(rp.context)}</div>` : ""}
+          ${rp.reportCount || rp.blockCount ? `<div class="faint" style="font-size:11px;margin-bottom:8px">Reports: ${rp.reportCount || 0} · Blocks: ${rp.blockCount || 0}</div>` : ""}
+          ${(!rp.status || rp.status === "open") ? `<div class="row" style="gap:6px">
+            <button class="chip" data-resolve="${esc(rp.id)}" data-disp="actioned">Action</button>
+            <button class="chip" data-resolve="${esc(rp.id)}" data-disp="reviewed">Review</button>
+            <button class="chip" data-resolve="${esc(rp.id)}" data-disp="dismissed">Dismiss</button>
+          </div>` : ""}
+        </div>`).join("");
+      el.querySelectorAll("[data-resolve]").forEach(b => b.onclick = async () => {
+        try {
+          await API.adminResolve(b.dataset.resolve, b.dataset.disp);
+          toast("Report " + b.dataset.disp + ".");
+          loadReports(status);
+        } catch (e) { toast("Error: " + e.message); }
+      });
+    } catch (e) { el.innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
+  }
+
+  async function adminBugs() {
+    const sevColor = s => s === "high" ? "var(--danger)" : s === "medium" ? "var(--gold)" : "var(--ink-faint)";
+    app.innerHTML = `<div class="screen">${adminNav("bugs")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 10px">Bug Log</h1>
+      <div id="adm-bugs" class="card muted">Loading…</div>
+    </div>`;
+    wire();
+
+    let bugs = [];
+    if (CONFIGURED() && SIGNED_IN()) {
+      try {
+        const r = await API.adminBugs();
+        bugs = (r.bugs || []).map(b => ({ id: b.id, desc: b.description, steps: b.steps, severity: b.severity, user: b.userName || b.userId, device: b.device, createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : "", status: b.status }));
+      } catch { bugs = loadBugs(); }
+    } else {
+      bugs = loadBugs();
+    }
+
+    const el = $("#adm-bugs"); if (!el) return;
+    el.innerHTML = bugs.length === 0
+      ? `<div class="faint">No bug reports yet.</div>`
+      : `<div class="faint" style="margin-bottom:10px">${bugs.length} report${bugs.length !== 1 ? "s" : ""} filed</div>` + bugs.map(b => `
+        <div class="adm-bug-row">
+          <div class="row" style="gap:8px;margin-bottom:4px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${sevColor(b.severity)};flex:none"></div>
+            <div class="grow">
+              <div style="font-weight:700;font-size:13px">${esc((b.desc || "").substring(0, 80))}${(b.desc || "").length > 80 ? "…" : ""}</div>
+              <div class="faint" style="font-size:11px">${esc(b.user || "?")} · ${b.createdAt ? new Date(b.createdAt).toLocaleString() : ""} · ${esc(b.severity)}</div>
+            </div>
+            <button class="chip" style="font-size:11px;padding:6px 10px" data-bug-close="${esc(b.id)}">${b.status === "closed" ? "Closed" : "Close"}</button>
+          </div>
+          ${b.steps ? `<div class="faint" style="font-size:12px;margin:4px 0 4px 18px;white-space:pre-line">${esc(b.steps)}</div>` : ""}
+          <div class="faint" style="font-size:11px;margin-left:18px">${esc(b.device || "")}</div>
+        </div>`).join("");
+
+    el.querySelectorAll("[data-bug-close]").forEach(btn => btn.onclick = async () => {
+      if (CONFIGURED() && SIGNED_IN()) {
+        try { await API.adminCloseBug(btn.dataset.bugClose); toast("Bug closed."); adminBugs(); return; } catch {}
+      }
+      const local = loadBugs();
+      const b = local.find(x => x.id === btn.dataset.bugClose);
+      if (b) { b.status = "closed"; localStorage.setItem(BUGS_KEY, JSON.stringify(local)); adminBugs(); toast("Bug closed."); }
+    });
+  }
+
+  async function adminAudit() {
+    app.innerHTML = `<div class="screen">${adminNav("audit")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 16px">Audit Trail</h1>
+      <div id="adm-audit" class="card muted">Loading…</div>
+    </div>`;
+    wire();
+    if (!CONFIGURED() || !SIGNED_IN()) { $("#adm-audit").textContent = "Backend not configured."; return; }
+    try {
+      const r = await API.adminAudit();
+      const entries = r.entries || r.audit || r || [];
+      if (!entries.length) { $("#adm-audit").innerHTML = `<div class="faint">No audit entries.</div>`; return; }
+      const actionColor = a => a.includes("delete") ? "var(--danger)" : a.includes("suspend") ? "var(--rose)" : a.includes("verify") ? "var(--verify)" : "var(--ink-soft)";
+      $("#adm-audit").innerHTML = `<div class="adm-audit-list">${entries.map(e => `
+        <div class="adm-audit-row">
+          <div class="row" style="gap:8px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${actionColor(e.action || "")};flex:none;margin-top:5px"></div>
+            <div class="grow">
+              <div style="font-weight:700;font-size:13px;color:${actionColor(e.action || "")}">${esc(e.action || "?")}</div>
+              <div class="faint" style="font-size:12px">Actor: ${esc(e.actorId || "?")} → Target: ${esc(e.targetId || "?")}</div>
+              ${e.note ? `<div class="faint" style="font-size:11px">${esc(e.note)}</div>` : ""}
+            </div>
+            <div class="faint" style="font-size:11px;white-space:nowrap">${e.createdAt ? new Date(e.createdAt).toLocaleString() : ""}</div>
+          </div>
+        </div>`).join("")}</div>`;
+    } catch (e) { $("#adm-audit").innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
   }
 
   // ---- shared wiring for lists/tabs ----

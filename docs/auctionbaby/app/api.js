@@ -72,7 +72,11 @@
     deleteAccount: () => auth("/me", { method: "DELETE" }),
 
     // ── floor ──
-    floor: (location) => auth("/users/floor" + (location ? "?location=" + encodeURIComponent(location) : "")),
+    floor: (role, location) => {
+      const params = ["role=" + encodeURIComponent(role || "woman")];
+      if (location) params.push("location=" + encodeURIComponent(location));
+      return auth("/users/floor?" + params.join("&"));
+    },
 
     // ── bids / matches / messages (matching Worker) ──
     placeBid: (lotId, amount, note) => match("/bids", { method: "POST", body: { lotId, amount, note } }),
@@ -178,6 +182,22 @@
     verifyStart: () => auth("/verify/start", { method: "POST", body: {} }),
     verifySubmit: (selfieScore, livenessPassed, faceMatchScore) =>
       auth("/verify/submit", { method: "POST", body: { selfieScore, livenessPassed, faceMatchScore } }),
+
+    // ── Bug reports ──
+    submitBug: (description, steps, severity, device) => auth("/me/bugs", { method: "POST", body: { description, steps, severity, device } }),
+
+    // ── Admin (auth Worker — requires is_admin session) ──
+    adminStats: () => auth("/admin/stats"),
+    adminUsers: () => auth("/admin/users"),
+    adminUnverify: (id) => auth(`/admin/users/${id}/unverify`, { method: "POST" }),
+    adminSuspend: (id, days) => auth(`/admin/users/${id}/suspend`, { method: "POST", body: { days } }),
+    adminUnsuspend: (id) => auth(`/admin/users/${id}/unsuspend`, { method: "POST" }),
+    adminDelete: (id) => auth(`/admin/users/${id}`, { method: "DELETE" }),
+    adminReports: (status) => auth("/admin/reports" + (status ? "?status=" + encodeURIComponent(status) : "")),
+    adminResolve: (id, disposition, note) => auth(`/admin/reports/${id}/resolve`, { method: "POST", body: { disposition, note } }),
+    adminBugs: (status) => auth("/admin/bugs" + (status ? "?status=" + encodeURIComponent(status) : "")),
+    adminCloseBug: (id) => auth(`/admin/bugs/${id}/close`, { method: "POST" }),
+    adminAudit: () => auth("/admin/audit"),
   };
 
   function urlB64ToUint8(base64) {
