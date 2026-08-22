@@ -350,6 +350,7 @@
         simplePleasure: ($("#ob-pleasure") || {}).value.trim(),
         interests: obInterests,
         photo: obPhoto,
+        verified: S.me.verified || false,  // preserve verification from before reset
       };
       if (CONFIGURED() && SIGNED_IN()) {
         try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
