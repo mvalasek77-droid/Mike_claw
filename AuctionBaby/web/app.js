@@ -48,7 +48,10 @@
       const r = await API.floor(floorRole, S.me.city);
       const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
       if (Array.isArray(arr) && arr.length) {
-        S.floor = arr.map(mapLot); save();
+        const live = arr.map(mapLot);
+        const liveIds = new Set(live.map(l => l.id));
+        const seed = seedFloor().filter(s => !liveIds.has(s.id));
+        S.floor = [...live, ...seed]; save();
         if (tab === "floor" && S.role !== "woman") floor();
       }
     } catch (e) { /* keep demo floor */ }
@@ -60,7 +63,10 @@
       const r = await API.floor("woman", S.me.city);
       const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
       if (Array.isArray(arr) && arr.length) {
-        S.womenFloor = arr.map(mapLot); save();
+        const live = arr.map(mapLot);
+        const liveIds = new Set(live.map(l => l.id));
+        const seed = seedFloor().filter(s => !liveIds.has(s.id));
+        S.womenFloor = [...live, ...seed]; save();
         if (tab === "floor" && location.hash.replace(/^#\/?/, "") === "browse") floor();
       }
     } catch (e) { /* keep demo */ }
