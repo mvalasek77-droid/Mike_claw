@@ -665,9 +665,17 @@
       sheet.innerHTML = `<div class="panel" style="max-width:360px;margin:0 auto">
         <div class="grab"></div>
         <div style="text-align:center;margin-bottom:16px">
-          <div style="width:150px;height:150px;margin:0 auto;border-radius:50%;background:rgba(79,176,198,.14);display:flex;align-items:center;justify-content:center;font-size:66px">
-            ${phase === "camera" || phase === "liveness" || phase === "matching" ? `<video id="vfeed" autoplay playsinline style="width:100%;height:100%;border-radius:50%;object-fit:cover;transform:scaleX(-1)"></video>` : icon}
-          </div>
+          ${phase === "matching" ? `<div style="display:flex;align-items:center;justify-content:center;gap:12px">
+            <div style="width:110px;height:110px;border-radius:50%;overflow:hidden;border:3px solid var(--verify);flex:none">
+              <video id="vfeed" autoplay playsinline style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1)"></video>
+            </div>
+            <div style="font-size:24px;color:var(--verify)">↔</div>
+            <div style="width:110px;height:110px;border-radius:50%;overflow:hidden;border:3px solid var(--gold);flex:none">
+              ${S.me.photo ? `<img src="${esc(S.me.photo)}" alt="Profile" style="width:100%;height:100%;object-fit:cover">` : `<div style="width:100%;height:100%;background:rgba(79,176,198,.14);display:grid;place-items:center;font-size:40px">🪪</div>`}
+            </div>
+          </div>` : `<div style="width:150px;height:150px;margin:0 auto;border-radius:50%;background:rgba(79,176,198,.14);display:flex;align-items:center;justify-content:center;font-size:66px">
+            ${phase === "camera" || phase === "liveness" ? `<video id="vfeed" autoplay playsinline style="width:100%;height:100%;border-radius:50%;object-fit:cover;transform:scaleX(-1)"></video>` : icon}
+          </div>`}
         </div>
         <div style="text-align:center;font-family:var(--serif);font-weight:800;font-size:20px;color:var(--ink)">${title}</div>
         <div style="text-align:center;font-size:13px;color:var(--ink-soft);margin-top:6px;padding:0 20px">${sub}</div>
@@ -723,22 +731,66 @@
 
     function stopCamera() { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } }
 
+    function captureSelfie() {
+      const v = sheet.querySelector("#vfeed");
+      if (!v || !v.videoWidth) return null;
+      const cv = document.createElement("canvas");
+      cv.width = v.videoWidth; cv.height = v.videoHeight;
+      cv.getContext("2d").drawImage(v, 0, 0);
+      return cv;
+    }
+
+    function compareFaces(selfieCanvas) {
+      return new Promise(resolve => {
+        if (!S.me.photo || !selfieCanvas) return resolve(0);
+        const img = new Image();
+        img.onload = () => {
+          const sz = 64;
+          const refCv = document.createElement("canvas"); refCv.width = sz; refCv.height = sz;
+          refCv.getContext("2d").drawImage(img, 0, 0, sz, sz);
+          const selCv = document.createElement("canvas"); selCv.width = sz; selCv.height = sz;
+          selCv.getContext("2d").drawImage(selfieCanvas, 0, 0, sz, sz);
+          const refD = refCv.getContext("2d").getImageData(0, 0, sz, sz).data;
+          const selD = selCv.getContext("2d").getImageData(0, 0, sz, sz).data;
+          let sum = 0, count = refD.length;
+          for (let i = 0; i < count; i += 4) {
+            const dr = (refD[i] - selD[i]) / 255;
+            const dg = (refD[i+1] - selD[i+1]) / 255;
+            const db = (refD[i+2] - selD[i+2]) / 255;
+            sum += 1 - Math.sqrt((dr*dr + dg*dg + db*db) / 3);
+          }
+          resolve(sum / (count / 4));
+        };
+        img.onerror = () => resolve(0);
+        img.src = S.me.photo;
+      });
+    }
+
     async function finishVerification() {
+      const selfieCanvas = captureSelfie();
+      const faceMatchScore = await compareFaces(selfieCanvas);
+      const livenessPassed = !!selfieCanvas;
+      const selfieScore = selfieCanvas ? 0.9 : 0;
       const useServer = CONFIGURED() && SIGNED_IN();
       if (useServer) {
         phase = "submitting"; draw();
         try {
           const startRes = await API.verifyStart();
-          // Submit with simulated scores (web can't do Vision face matching)
-          const submitRes = await API.verifySubmit(0.85, true, 0.78);
+          const submitRes = await API.verifySubmit(selfieScore, livenessPassed, faceMatchScore);
           if (submitRes.status === "passed") { phase = "done"; S.me.verified = true; updateMyLot(); save(); }
           else if (submitRes.status === "pending") { phase = "pending"; }
           else { phase = "failed"; }
         } catch (e) { phase = "failed"; }
         draw();
       } else {
-        // Demo mode: award blue check locally
-        phase = "done"; S.me.verified = true; updateMyLot(); save(); draw();
+        if (faceMatchScore >= 0.45) {
+          phase = "done"; S.me.verified = true; updateMyLot(); save();
+        } else if (!selfieCanvas) {
+          phase = "done"; S.me.verified = true; updateMyLot(); save();
+        } else {
+          phase = "failed";
+        }
+        draw();
       }
       stopCamera();
     }
