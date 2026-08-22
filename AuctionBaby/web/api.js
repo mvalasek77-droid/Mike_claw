@@ -179,6 +179,9 @@
     verifySubmit: (selfieScore, livenessPassed, faceMatchScore) =>
       auth("/verify/submit", { method: "POST", body: { selfieScore, livenessPassed, faceMatchScore } }),
 
+    // ── Bug reports ──
+    submitBug: (description, steps, severity, device) => auth("/me/bugs", { method: "POST", body: { description, steps, severity, device } }),
+
     // ── Admin (auth Worker — requires is_admin session) ──
     adminStats: () => auth("/admin/stats"),
     adminUsers: () => auth("/admin/users"),
@@ -188,6 +191,8 @@
     adminDelete: (id) => auth(`/admin/users/${id}`, { method: "DELETE" }),
     adminReports: (status) => auth("/admin/reports" + (status ? "?status=" + encodeURIComponent(status) : "")),
     adminResolve: (id, disposition, note) => auth(`/admin/reports/${id}/resolve`, { method: "POST", body: { disposition, note } }),
+    adminBugs: (status) => auth("/admin/bugs" + (status ? "?status=" + encodeURIComponent(status) : "")),
+    adminCloseBug: (id) => auth(`/admin/bugs/${id}/close`, { method: "POST" }),
     adminAudit: () => auth("/admin/audit"),
   };
 

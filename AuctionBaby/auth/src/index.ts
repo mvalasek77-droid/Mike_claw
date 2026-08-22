@@ -1756,6 +1756,91 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
   });
 }
 
+// ── Bug reports ─────────────────────────────────────────────────────────────
+
+/** POST /me/bugs  [auth]
+ *  Submit a bug report. Rate-limited to 10 per day per user. */
+async function handleCreateBug(request: Request, env: Env): Promise<Response> {
+  const me = await authenticate(request, env);
+  if (!me) return err("Unauthorized", 401);
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const description = String(body?.description ?? "").trim().slice(0, 2000);
+  const steps = body?.steps ? String(body.steps).trim().slice(0, 2000) : null;
+  const severity = ["low", "medium", "high"].includes(body?.severity) ? body.severity : "medium";
+  const device = body?.device ? String(body.device).trim().slice(0, 200) : null;
+  if (!description) return err("description is required");
+
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const windowStart = Math.floor(now / dayMs) * dayMs;
+  const rateRow = await env.DB.prepare(
+    `INSERT INTO rate_counters (key, window_ms, count) VALUES (?, ?, 1)
+     ON CONFLICT(key, window_ms) DO UPDATE SET count = count + 1
+     RETURNING count AS count`,
+  ).bind(`bug.create:${me}`, windowStart).first<{ count: number }>();
+  if ((rateRow?.count ?? 1) > 10) return err("Too many bug reports today.", 429);
+
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO bug_reports (id, user_id, description, steps, severity, device, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'open', ?)`,
+  ).bind(id, me, description, steps, severity, device, now).run();
+  return json({ bug: { id, userId: me, description, steps, severity, device, status: "open", createdAt: now } }, 201);
+}
+
+/** GET /admin/bugs?status=open&limit=50&cursor=  [admin]
+ *  Paginated bug log for the admin console. */
+async function handleAdminListBugs(request: Request, env: Env): Promise<Response> {
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
+  const url = new URL(request.url);
+  const status = url.searchParams.get("status") ?? "all";
+  if (!["open", "closed", "all"].includes(status)) return err("status must be open|closed|all");
+  const limitRaw = Number(url.searchParams.get("limit") ?? 50);
+  const limit = Math.min(200, Math.max(1, Number.isFinite(limitRaw) ? Math.floor(limitRaw) : 50));
+  const cursorRaw = url.searchParams.get("cursor");
+  const cursor = cursorRaw != null && cursorRaw !== "" ? Number(cursorRaw) : null;
+
+  let sql = "SELECT b.*, u.name AS user_name FROM bug_reports b LEFT JOIN users u ON u.id = b.user_id";
+  const params: unknown[] = [];
+  const where: string[] = [];
+  if (status !== "all") { where.push("b.status = ?"); params.push(status); }
+  if (cursor != null && Number.isFinite(cursor)) { where.push("b.created_at < ?"); params.push(cursor); }
+  if (where.length > 0) sql += " WHERE " + where.join(" AND ");
+  sql += " ORDER BY b.created_at DESC LIMIT ?";
+  params.push(limit);
+
+  type BugRow = { id: string; user_id: string; user_name: string | null; description: string; steps: string | null; severity: string; device: string | null; status: string; created_at: number; closed_at: number | null; closed_by: string | null };
+  const rows = await env.DB.prepare(sql).bind(...params).all<BugRow>();
+  const list = rows.results ?? [];
+  const nextCursor = list.length === limit ? list[list.length - 1].created_at : null;
+  return json({
+    bugs: list.map((b) => ({
+      id: b.id, userId: b.user_id, userName: b.user_name,
+      description: b.description, steps: b.steps, severity: b.severity,
+      device: b.device, status: b.status, createdAt: b.created_at,
+      closedAt: b.closed_at, closedBy: b.closed_by,
+    })),
+    nextCursor,
+  });
+}
+
+/** POST /admin/bugs/:id/close  [admin]
+ *  Mark a bug report as closed. */
+async function handleAdminCloseBug(id: string, request: Request, env: Env): Promise<Response> {
+  const gate = await ensureAdminSession(request, env);
+  if (gate.denied) return gate.denied;
+  const row = await env.DB.prepare("SELECT status FROM bug_reports WHERE id = ?").bind(id).first<{ status: string }>();
+  if (!row) return err("Bug not found", 404);
+  if (row.status === "closed") return json({ ok: true, alreadyClosed: true });
+  const now = Date.now();
+  await env.DB.prepare("UPDATE bug_reports SET status = 'closed', closed_at = ?, closed_by = ? WHERE id = ?")
+    .bind(now, gate.ok, id).run();
+  await writeAudit(env, gate.ok, "bug.close", id, null);
+  return json({ ok: true });
+}
+
 // ── Batch U: R2 profile photos ───────────────────────────────────────────────
 //
 // Three endpoints:
@@ -1949,6 +2034,12 @@ export default {
     if (pathname === "/admin/reports" && m === "GET") return handleAdminListReports(request, env);
     const reportResolve = pathname.match(/^\/admin\/reports\/([A-Za-z0-9-]{36})\/resolve$/);
     if (reportResolve && m === "POST") return handleAdminResolveReport(reportResolve[1], request, env);
+
+    // Bug reports
+    if (pathname === "/me/bugs" && m === "POST") return handleCreateBug(request, env);
+    if (pathname === "/admin/bugs" && m === "GET") return handleAdminListBugs(request, env);
+    const bugClose = pathname.match(/^\/admin\/bugs\/([A-Za-z0-9-]{36})\/close$/);
+    if (bugClose && m === "POST") return handleAdminCloseBug(bugClose[1], request, env);
 
     // Admin user actions
     if (pathname === "/admin/stats" && m === "GET") return handleAdminStats(request, env);

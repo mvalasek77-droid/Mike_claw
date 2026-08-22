@@ -1440,19 +1440,23 @@
       </div>
     </div>`;
     wire();
-    $("#bug-submit").onclick = () => {
+    $("#bug-submit").onclick = async () => {
       const desc = ($("#bug-desc") || {}).value || "";
       const steps = ($("#bug-steps") || {}).value || "";
       const sev = ($("#bug-sev") || {}).value || "medium";
       if (!desc.trim()) { toast("Please describe the bug."); return; }
+      const deviceStr = platform + " · " + ua.substring(0, 100);
       const bug = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         desc, steps, severity: sev,
         user: S.me.name || "Anonymous",
-        device: platform + " · " + ua.substring(0, 100),
+        device: deviceStr,
         createdAt: new Date().toISOString(),
         status: "open"
       };
+      if (CONFIGURED() && SIGNED_IN()) {
+        try { await API.submitBug(desc, steps, sev, deviceStr); } catch { /* fallback to local */ }
+      }
       saveBug(bug);
       toast("Bug reported — thank you!");
       go("/you");
@@ -1659,35 +1663,49 @@
     } catch (e) { el.innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
   }
 
-  function adminBugs() {
-    const bugs = loadBugs();
+  async function adminBugs() {
     const sevColor = s => s === "high" ? "var(--danger)" : s === "medium" ? "var(--gold)" : "var(--ink-faint)";
     app.innerHTML = `<div class="screen">${adminNav("bugs")}
       <h1 class="display" style="font-size:24px;margin:14px 0 10px">Bug Log</h1>
-      <div class="faint" style="margin-bottom:12px">${bugs.length} report${bugs.length !== 1 ? "s" : ""} filed</div>
-      ${bugs.length === 0 ? `<div class="card muted"><div class="faint">No bug reports yet.</div></div>` : `<div class="card">${bugs.map(b => `
+      <div id="adm-bugs" class="card muted">Loading…</div>
+    </div>`;
+    wire();
+
+    let bugs = [];
+    if (CONFIGURED() && SIGNED_IN()) {
+      try {
+        const r = await API.adminBugs();
+        bugs = (r.bugs || []).map(b => ({ id: b.id, desc: b.description, steps: b.steps, severity: b.severity, user: b.userName || b.userId, device: b.device, createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : "", status: b.status }));
+      } catch { bugs = loadBugs(); }
+    } else {
+      bugs = loadBugs();
+    }
+
+    const el = $("#adm-bugs"); if (!el) return;
+    el.innerHTML = bugs.length === 0
+      ? `<div class="faint">No bug reports yet.</div>`
+      : `<div class="faint" style="margin-bottom:10px">${bugs.length} report${bugs.length !== 1 ? "s" : ""} filed</div>` + bugs.map(b => `
         <div class="adm-bug-row">
           <div class="row" style="gap:8px;margin-bottom:4px">
             <div style="width:10px;height:10px;border-radius:50%;background:${sevColor(b.severity)};flex:none"></div>
             <div class="grow">
-              <div style="font-weight:700;font-size:13px">${esc(b.desc.substring(0, 80))}${b.desc.length > 80 ? "…" : ""}</div>
-              <div class="faint" style="font-size:11px">${esc(b.user)} · ${b.createdAt ? new Date(b.createdAt).toLocaleString() : ""} · ${esc(b.severity)}</div>
+              <div style="font-weight:700;font-size:13px">${esc((b.desc || "").substring(0, 80))}${(b.desc || "").length > 80 ? "…" : ""}</div>
+              <div class="faint" style="font-size:11px">${esc(b.user || "?")} · ${b.createdAt ? new Date(b.createdAt).toLocaleString() : ""} · ${esc(b.severity)}</div>
             </div>
             <button class="chip" style="font-size:11px;padding:6px 10px" data-bug-close="${esc(b.id)}">${b.status === "closed" ? "Closed" : "Close"}</button>
           </div>
           ${b.steps ? `<div class="faint" style="font-size:12px;margin:4px 0 4px 18px;white-space:pre-line">${esc(b.steps)}</div>` : ""}
           <div class="faint" style="font-size:11px;margin-left:18px">${esc(b.device || "")}</div>
-        </div>`).join("")}</div>`}
-      ${bugs.length > 0 ? `<button class="btn ghost" id="clear-bugs" style="margin-top:12px;color:var(--danger);font-size:13px">Clear all bug reports</button>` : ""}
-    </div>`;
-    wire();
-    app.querySelectorAll("[data-bug-close]").forEach(btn => btn.onclick = () => {
-      const bugs = loadBugs();
-      const b = bugs.find(x => x.id === btn.dataset.bugClose);
-      if (b) { b.status = "closed"; localStorage.setItem(BUGS_KEY, JSON.stringify(bugs)); adminBugs(); toast("Bug closed."); }
+        </div>`).join("");
+
+    el.querySelectorAll("[data-bug-close]").forEach(btn => btn.onclick = async () => {
+      if (CONFIGURED() && SIGNED_IN()) {
+        try { await API.adminCloseBug(btn.dataset.bugClose); toast("Bug closed."); adminBugs(); return; } catch {}
+      }
+      const local = loadBugs();
+      const b = local.find(x => x.id === btn.dataset.bugClose);
+      if (b) { b.status = "closed"; localStorage.setItem(BUGS_KEY, JSON.stringify(local)); adminBugs(); toast("Bug closed."); }
     });
-    const clr = $("#clear-bugs");
-    if (clr) clr.onclick = () => { if (confirm("Delete all bug reports?")) { localStorage.removeItem(BUGS_KEY); adminBugs(); toast("Cleared."); } };
   }
 
   async function adminAudit() {
