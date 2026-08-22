@@ -74,6 +74,7 @@
         id: b.id, name: (b.man && b.man.name) || b.name || "Bidder",
         age: b.age, amount: b.amount || b.bidAmount || 0, note: b.note || "",
         hue: hueFrom(b.id || b.name),
+        verified: !!(b.verified || (b.man && b.man.verifiedAt)),
       }));
       save(); if (tab === "floor" && S.role === "woman") incoming();
     } catch (e) { /* keep local */ }
@@ -88,6 +89,7 @@
         otherId: (m.other && m.other.userId) || m.otherUserId || m.otherId || null,
         hue: hueFrom(m.id || m.name), amount: m.amount || m.bidAmount || 0,
         seen: !!m.seenByOther, unread: !!(m.unreadCount || m.unread),
+        verified: !!(m.verified || (m.other && m.other.verifiedAt)),
         lastTs: m.updatedAt || m.lastMessageAt || 0,
         messages: (m.messages || []).map(x => ({ id: x.id, me: !!x.fromMe, text: x.text || "", photo: x.photo || null, reaction: x.reaction || null })),
       }));
@@ -1066,7 +1068,7 @@
       ${bids.length ? bids.map(b => `
         <div class="card" style="margin-bottom:12px">
           <div class="row">${gradSm(b.hue, b.name)}<div class="grow">
-            <div style="font-family:var(--serif);font-weight:800">${esc(b.name)} <span class="muted">${b.age || ""}</span></div>
+            <div style="font-family:var(--serif);font-weight:800">${esc(b.name)} <span class="muted">${b.age || ""}</span>${b.verified ? verifiedBadge("sm") : ""}</div>
             <div class="gold" style="font-weight:800;font-size:18px">${money(b.amount)}</div></div></div>
           ${b.note ? `<p class="muted" style="margin:10px 0 0">${esc(b.note)}</p>` : ""}
           <div class="row" style="gap:8px;margin-top:12px">
@@ -1106,7 +1108,7 @@
       ${S.matches.length ? [...S.matches].sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0)).map(m => {
         const last = m.messages[m.messages.length - 1];
         return `<button class="card row" data-chat="${m.id}" style="width:100%;text-align:left;margin-bottom:10px">
-          ${gradSm(m.hue, m.name)}<div class="grow"><div style="font-family:var(--serif);font-weight:800">${esc(m.name)}</div>
+          ${gradSm(m.hue, m.name)}<div class="grow"><div style="font-family:var(--serif);font-weight:800">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</div>
           <div class="faint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${m.unread ? "color:var(--ink);font-weight:600" : ""}">${esc(last ? (last.photo ? "📷 Photo" : (last.text || "Say hello")) : "Say hello")}</div></div>
           ${m.unread ? `<span class="udot"></span>` : `<span class="pill">${money(m.amount)}</span>`}</button>`;
       }).join("") : `<div class="card muted">No matches yet. Win a bid on the floor.</div>`}
@@ -1129,7 +1131,7 @@
     }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
       <div class="topbar"><button class="chip" data-back>‹</button>
-        <div class="row">${gradSm(m.hue, m.name)}<b style="font-family:var(--serif)">${esc(m.name)}</b></div>
+        <div class="row">${gradSm(m.hue, m.name)}<b style="font-family:var(--serif)">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</b></div>
         <div class="row" style="gap:6px">
           ${S.role === "man" ? (m.reserved ? `<span class="chip on">✓ Reserved</span>` : `<button class="chip" id="reserve">Reserve</button>`) : ""}
           <button class="chip" id="report" title="Report & block">⚑</button>
@@ -1460,7 +1462,7 @@
     app.innerHTML = `<div class="screen">
       <div class="card" style="text-align:center;padding:24px">
         <div style="width:96px;margin:0 auto 12px">${grad(210, me.name || "You", me.photo)}</div>
-        <div style="font-family:var(--serif);font-weight:800;font-size:22px">${esc(me.name || "You")} <span class="muted">${me.age}</span></div>
+        <div style="font-family:var(--serif);font-weight:800;font-size:22px">${esc(me.name || "You")} <span class="muted">${me.age}</span>${S.me.verified ? verifiedBadge() : ""}</div>
         <div class="faint">${esc(me.city || "")} · ${S.role === "man" ? "Bidder" : "Lot"}</div>
         <div class="pill" style="margin-top:12px">⚖ ${S.wallet.toLocaleString()} Gavels</div>
         ${typeof S.reputation === "number" ? `<div class="faint" style="margin-top:8px">Reputation: ${S.reputation}%</div>` : ""}
@@ -1860,5 +1862,11 @@
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
   // demo woman returning with no bids left → reseed so the screen isn't empty
   if (S.registered && S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); if (tab === "floor") incoming(); }
-  if (S.registered && CONFIGURED() && SIGNED_IN()) { syncFloor(); syncMatches(); syncIncoming(); }
+  if (S.registered && CONFIGURED() && SIGNED_IN()) {
+    syncFloor(); syncMatches(); syncIncoming();
+    API.myProfile().then(r => {
+      const p = r.profile || r;
+      if (p.verifiedAt && !S.me.verified) { S.me.verified = true; save(); if (tab === "you") you(); }
+    }).catch(() => {});
+  }
 })();
