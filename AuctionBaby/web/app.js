@@ -254,6 +254,7 @@
     if (h === "paywall") { tab = "store"; return paywall(); }
     if (h.startsWith("paywall/")) { tab = "store"; return paywall(h.split("/")[1]); }
     if (h === "you") { tab = "you"; return you(); }
+    if (h.startsWith("admin")) return adminRouter(h);
     tab = "floor"; return S.role === "woman" ? incoming() : floor();
   }
 
@@ -1400,6 +1401,7 @@
       ${SIGNED_IN() ? `<button class="btn ghost" id="signout" style="margin-top:10px">Sign out</button>` : ""}
       <button class="btn ghost" id="reset" style="margin-top:10px;color:var(--danger)">Reset account</button>
       ${SIGNED_IN() ? `<button class="btn ghost" id="delacct" style="margin-top:10px;color:var(--danger)">Delete account permanently</button>` : ""}
+      <button class="btn ghost" data-go="admin" style="margin-top:18px;font-size:13px;opacity:.5">Admin Console</button>
       <div class="disclosure">Auction Baby — web. A bid is a promise to spend on the date, never a payment to another person.</div>
     </div>${tabbar()}`;
     $("#addphoto").onclick = addPhoto;
@@ -1413,6 +1415,231 @@
     };
     $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedFloor(); obPhoto = null; obInterests = []; save(); go("/"); onboarding(); } };
     wire();
+  }
+
+  // ================= ADMIN PANEL =================
+  const ADMIN_KEY = "auctionbaby.admin";
+  const adminAuthed = () => !!sessionStorage.getItem(ADMIN_KEY);
+  const adminLogout = () => sessionStorage.removeItem(ADMIN_KEY);
+
+  async function hmacGate(user, pass) {
+    const salt = "AuctionBaby-Admin-2026";
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", enc.encode(salt), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const sig = await crypto.subtle.sign("HMAC", key, enc.encode(user + ":" + pass));
+    const hex = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, "0")).join("");
+    const valid = "a6c1db19c4b4e2f94b0f5e6c8d7a3e12f9b0d1c5a4e3f2b1c0d9e8f7a6b5c4d3";
+    return hex === valid;
+  }
+
+  function adminRouter(h) {
+    if (!adminAuthed() && h !== "admin") { go("/admin"); return; }
+    if (h === "admin") return adminGate();
+    if (h === "admin/dash") return adminDash();
+    if (h === "admin/users") return adminUsers();
+    if (h === "admin/reports") return adminReports();
+    if (h === "admin/audit") return adminAudit();
+    return adminDash();
+  }
+
+  function adminGate() {
+    app.innerHTML = `<div class="screen">
+      <div style="text-align:center;margin:40px 0 24px">
+        <div style="font-size:48px">🔐</div>
+        <h1 class="display" style="font-size:26px;margin-top:12px">Admin Console</h1>
+        <div class="faint" style="margin-top:6px">Authorized access only.</div>
+      </div>
+      <div class="card">
+        <label class="field"><div class="lbl">Username</div><input class="txt" id="adm-user" autocomplete="off"></label>
+        <label class="field"><div class="lbl">Password</div><input class="txt" id="adm-pass" type="password" autocomplete="off"></label>
+        <button class="btn" id="adm-go" style="margin-top:14px;width:100%">Sign in</button>
+      </div>
+      <button class="btn ghost" style="margin-top:14px" data-go="you">← Back</button>
+    </div>`;
+    const doLogin = async () => {
+      const user = ($("#adm-user") || {}).value || "";
+      const pass = ($("#adm-pass") || {}).value || "";
+      if (!user || !pass) return toast("Enter credentials.");
+      const ok = await hmacGate(user, pass);
+      if (ok) { sessionStorage.setItem(ADMIN_KEY, "1"); go("/admin/dash"); }
+      else toast("Invalid credentials.");
+    };
+    $("#adm-go").onclick = doLogin;
+    $("#adm-pass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+    wire();
+  }
+
+  const adminNav = (active) => `<div class="adm-nav">
+    <button class="${active === "dash" ? "on" : ""}" data-go="admin/dash">Stats</button>
+    <button class="${active === "users" ? "on" : ""}" data-go="admin/users">Users</button>
+    <button class="${active === "reports" ? "on" : ""}" data-go="admin/reports">Reports</button>
+    <button class="${active === "audit" ? "on" : ""}" data-go="admin/audit">Audit</button>
+    <button data-go="you" style="margin-left:auto;opacity:.6">Exit</button>
+  </div>`;
+
+  async function adminDash() {
+    app.innerHTML = `<div class="screen">${adminNav("dash")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 16px">Platform Heartbeat</h1>
+      <div class="card muted" id="adm-stats">Loading stats…</div>
+    </div>`;
+    wire();
+    if (!CONFIGURED() || !SIGNED_IN()) {
+      $("#adm-stats").innerHTML = `<div class="faint">Backend not configured — stats unavailable in demo mode.</div>
+        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Total users</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Verified</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Reports</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Matches</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Bids (24h)</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Messages (24h)</div></div>
+          <div class="adm-stat"><div class="adm-stat-n">—</div><div class="adm-stat-l">Suspended</div></div>
+        </div>`;
+      return;
+    }
+    try {
+      const s = await API.adminStats();
+      $("#adm-stats").innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="adm-stat"><div class="adm-stat-n">${s.totalUsers ?? "—"}</div><div class="adm-stat-l">Total users</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.verifiedCount ?? "—"}</div><div class="adm-stat-l">Verified</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.reportCount ?? "—"}</div><div class="adm-stat-l">Reports</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.matchCount ?? "—"}</div><div class="adm-stat-l">Matches</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.bids24h ?? "—"}</div><div class="adm-stat-l">Bids (24h)</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.messages24h ?? "—"}</div><div class="adm-stat-l">Messages (24h)</div></div>
+        <div class="adm-stat"><div class="adm-stat-n">${s.suspendedCount ?? "—"}</div><div class="adm-stat-l">Suspended</div></div>
+      </div>`;
+    } catch (e) { $("#adm-stats").innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
+  }
+
+  async function adminUsers() {
+    app.innerHTML = `<div class="screen">${adminNav("users")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 10px">Users</h1>
+      <div id="adm-users" class="card muted">Loading…</div>
+    </div>`;
+    wire();
+    if (!CONFIGURED() || !SIGNED_IN()) { $("#adm-users").textContent = "Backend not configured."; return; }
+    try {
+      const r = await API.adminUsers();
+      const users = r.users || r || [];
+      if (!users.length) { $("#adm-users").textContent = "No users found."; return; }
+      $("#adm-users").innerHTML = users.map(u => `
+        <div class="adm-user-row" data-uid="${esc(u.id || u.userId)}">
+          <div class="row" style="gap:10px;margin-bottom:6px">
+            <div class="grow">
+              <div style="font-family:var(--serif);font-weight:800">${esc(u.name || "—")} <span class="muted" style="font-size:12px">${esc(u.id || u.userId || "")}</span></div>
+              <div class="faint" style="font-size:12px">${u.email || ""} · Joined ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "?"}</div>
+            </div>
+            ${u.verified ? `<span class="pill" style="background:rgba(79,176,198,.2);color:var(--verify);font-size:11px">✓ Verified</span>` : ""}
+            ${u.suspendedUntil ? `<span class="pill" style="background:rgba(224,96,122,.2);color:var(--rose);font-size:11px">Suspended</span>` : ""}
+          </div>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            ${u.verified ? `<button class="chip" data-adm-unverify="${esc(u.id || u.userId)}">Unverify</button>` : ""}
+            ${!u.suspendedUntil ? `<button class="chip" data-adm-suspend="${esc(u.id || u.userId)}">Suspend</button>` : `<button class="chip" data-adm-unsuspend="${esc(u.id || u.userId)}">Unsuspend</button>`}
+            <button class="chip" style="color:var(--danger)" data-adm-delete="${esc(u.id || u.userId)}">Delete</button>
+          </div>
+        </div>`).join("");
+      wireAdminUsers();
+    } catch (e) { $("#adm-users").innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
+  }
+
+  function wireAdminUsers() {
+    app.querySelectorAll("[data-adm-unverify]").forEach(b => b.onclick = async () => {
+      if (!confirm("Unverify this user?")) return;
+      try { await API.adminUnverify(b.dataset.admUnverify); toast("Unverified."); adminUsers(); } catch (e) { toast("Error: " + e.message); }
+    });
+    app.querySelectorAll("[data-adm-suspend]").forEach(b => b.onclick = async () => {
+      const days = prompt("Suspend for how many days? (1, 7, or 30)", "7");
+      if (!days) return;
+      try { await API.adminSuspend(b.dataset.admSuspend, +days); toast("Suspended " + days + "d."); adminUsers(); } catch (e) { toast("Error: " + e.message); }
+    });
+    app.querySelectorAll("[data-adm-unsuspend]").forEach(b => b.onclick = async () => {
+      try { await API.adminUnsuspend(b.dataset.admUnsuspend); toast("Unsuspended."); adminUsers(); } catch (e) { toast("Error: " + e.message); }
+    });
+    app.querySelectorAll("[data-adm-delete]").forEach(b => b.onclick = async () => {
+      if (!confirm("DELETE this user permanently? This cannot be undone.")) return;
+      if (!confirm("Are you sure? All data will be wiped.")) return;
+      try { await API.adminDelete(b.dataset.admDelete); toast("Deleted."); adminUsers(); } catch (e) { toast("Error: " + e.message); }
+    });
+  }
+
+  async function adminReports() {
+    app.innerHTML = `<div class="screen">${adminNav("reports")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 10px">Moderation Queue</h1>
+      <div class="row" style="gap:6px;margin-bottom:12px">
+        <button class="chip on" data-rfilter="open">Open</button>
+        <button class="chip" data-rfilter="actioned">Actioned</button>
+        <button class="chip" data-rfilter="dismissed">Dismissed</button>
+        <button class="chip" data-rfilter="">All</button>
+      </div>
+      <div id="adm-reports" class="card muted">Loading…</div>
+    </div>`;
+    wire();
+    app.querySelectorAll("[data-rfilter]").forEach(b => b.onclick = () => loadReports(b.dataset.rfilter));
+    loadReports("open");
+  }
+
+  async function loadReports(status) {
+    const el = $("#adm-reports"); if (!el) return;
+    app.querySelectorAll("[data-rfilter]").forEach(b => b.classList.toggle("on", b.dataset.rfilter === status));
+    if (!CONFIGURED() || !SIGNED_IN()) { el.textContent = "Backend not configured."; return; }
+    el.textContent = "Loading…";
+    try {
+      const r = await API.adminReports(status);
+      const reports = r.reports || r || [];
+      if (!reports.length) { el.innerHTML = `<div class="faint">No ${status || ""} reports.</div>`; return; }
+      el.innerHTML = reports.map(rp => `
+        <div class="adm-report-row">
+          <div class="row" style="gap:8px;margin-bottom:6px">
+            <div style="font-size:20px">⚑</div>
+            <div class="grow">
+              <div style="font-weight:700;font-size:14px">Target: <span class="muted">${esc(rp.targetUserId || rp.targetId || "?")}</span></div>
+              <div class="faint" style="font-size:12px">By: ${esc(rp.reporterUserId || rp.reporterId || "?")} · ${rp.createdAt ? new Date(rp.createdAt).toLocaleDateString() : ""}</div>
+            </div>
+            <span class="pill" style="font-size:11px">${esc(rp.status || "open")}</span>
+          </div>
+          <div style="font-size:13px;margin-bottom:4px"><b>Reason:</b> ${esc(rp.reason || "—")}</div>
+          ${rp.context ? `<div class="faint" style="font-size:12px;margin-bottom:8px">${esc(rp.context)}</div>` : ""}
+          ${rp.reportCount || rp.blockCount ? `<div class="faint" style="font-size:11px;margin-bottom:8px">Reports: ${rp.reportCount || 0} · Blocks: ${rp.blockCount || 0}</div>` : ""}
+          ${(!rp.status || rp.status === "open") ? `<div class="row" style="gap:6px">
+            <button class="chip" data-resolve="${esc(rp.id)}" data-disp="actioned">Action</button>
+            <button class="chip" data-resolve="${esc(rp.id)}" data-disp="reviewed">Review</button>
+            <button class="chip" data-resolve="${esc(rp.id)}" data-disp="dismissed">Dismiss</button>
+          </div>` : ""}
+        </div>`).join("");
+      el.querySelectorAll("[data-resolve]").forEach(b => b.onclick = async () => {
+        try {
+          await API.adminResolve(b.dataset.resolve, b.dataset.disp);
+          toast("Report " + b.dataset.disp + ".");
+          loadReports(status);
+        } catch (e) { toast("Error: " + e.message); }
+      });
+    } catch (e) { el.innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
+  }
+
+  async function adminAudit() {
+    app.innerHTML = `<div class="screen">${adminNav("audit")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 16px">Audit Trail</h1>
+      <div id="adm-audit" class="card muted">Loading…</div>
+    </div>`;
+    wire();
+    if (!CONFIGURED() || !SIGNED_IN()) { $("#adm-audit").textContent = "Backend not configured."; return; }
+    try {
+      const r = await API.adminAudit();
+      const entries = r.entries || r.audit || r || [];
+      if (!entries.length) { $("#adm-audit").innerHTML = `<div class="faint">No audit entries.</div>`; return; }
+      const actionColor = a => a.includes("delete") ? "var(--danger)" : a.includes("suspend") ? "var(--rose)" : a.includes("verify") ? "var(--verify)" : "var(--ink-soft)";
+      $("#adm-audit").innerHTML = `<div class="adm-audit-list">${entries.map(e => `
+        <div class="adm-audit-row">
+          <div class="row" style="gap:8px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${actionColor(e.action || "")};flex:none;margin-top:5px"></div>
+            <div class="grow">
+              <div style="font-weight:700;font-size:13px;color:${actionColor(e.action || "")}">${esc(e.action || "?")}</div>
+              <div class="faint" style="font-size:12px">Actor: ${esc(e.actorId || "?")} → Target: ${esc(e.targetId || "?")}</div>
+              ${e.note ? `<div class="faint" style="font-size:11px">${esc(e.note)}</div>` : ""}
+            </div>
+            <div class="faint" style="font-size:11px;white-space:nowrap">${e.createdAt ? new Date(e.createdAt).toLocaleString() : ""}</div>
+          </div>
+        </div>`).join("")}</div>`;
+    } catch (e) { $("#adm-audit").innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
   }
 
   // ---- shared wiring for lists/tabs ----

@@ -178,6 +178,17 @@
     verifyStart: () => auth("/verify/start", { method: "POST", body: {} }),
     verifySubmit: (selfieScore, livenessPassed, faceMatchScore) =>
       auth("/verify/submit", { method: "POST", body: { selfieScore, livenessPassed, faceMatchScore } }),
+
+    // ── Admin (auth Worker — requires is_admin session) ──
+    adminStats: () => auth("/admin/stats"),
+    adminUsers: () => auth("/admin/users"),
+    adminUnverify: (id) => auth(`/admin/users/${id}/unverify`, { method: "POST" }),
+    adminSuspend: (id, days) => auth(`/admin/users/${id}/suspend`, { method: "POST", body: { days } }),
+    adminUnsuspend: (id) => auth(`/admin/users/${id}/unsuspend`, { method: "POST" }),
+    adminDelete: (id) => auth(`/admin/users/${id}`, { method: "DELETE" }),
+    adminReports: (status) => auth("/admin/reports" + (status ? "?status=" + encodeURIComponent(status) : "")),
+    adminResolve: (id, disposition, note) => auth(`/admin/reports/${id}/resolve`, { method: "POST", body: { disposition, note } }),
+    adminAudit: () => auth("/admin/audit"),
   };
 
   function urlB64ToUint8(base64) {
