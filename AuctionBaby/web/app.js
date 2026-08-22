@@ -907,18 +907,25 @@
         save();
       }
     }
-    // Find the woman's own lot on the floor
+    // Show the woman her own profile card — works in both live and demo mode
     const myLot = (S.floor || []).find(l => l.id === "me_lot");
-    const profileCard = myLot ? `
+    const pName = (myLot && myLot.name) || S.me.name || "You";
+    const pAge = (myLot && myLot.age) || S.me.age || "";
+    const pCity = (myLot && myLot.city) || S.me.city || "";
+    const pBid = (myLot && myLot.startingBid) || 100;
+    const pPhoto = (myLot && myLot.photo) || S.me.photo || null;
+    const pHue = (myLot && myLot.hue) || hueFrom(pName);
+    const profileCard = (pName && pName !== "You") ? `
       <div class="card" style="margin-bottom:14px;border-color:rgba(224,96,122,.4);background:rgba(224,96,122,.06)">
-        <div class="row" style="margin-bottom:8px">
+        <div class="row" style="gap:12px;margin-bottom:8px">
+          <div style="width:56px;height:56px;flex:none;border-radius:14px;overflow:hidden">${pPhoto ? `<img src="${esc(pPhoto)}" alt="" style="width:100%;height:100%;object-fit:cover">` : `<div class="avatar sm" style="width:56px;height:56px;background:linear-gradient(140deg,hsl(${pHue} 55% 42%),hsl(${(pHue+40)%360} 60% 24%))">${pName.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</div>`}</div>
           <div class="grow">
             <div class="kicker" style="color:var(--rose)">Your profile on the floor</div>
-            <div style="font-family:var(--serif);font-weight:800;font-size:18px;margin-top:4px">${esc(myLot.name)} <span class="muted" style="font-size:14px">${myLot.age}</span></div>
-            <div class="faint">${esc(myLot.city || "")} · Floor ${money(myLot.startingBid)}</div>
+            <div style="font-family:var(--serif);font-weight:800;font-size:18px;margin-top:4px">${esc(pName)} <span class="muted" style="font-size:14px">${pAge}</span></div>
+            <div class="faint">${esc(pCity)} · Floor ${money(pBid)}</div>
           </div>
         </div>
-        <button class="chip rose" data-lot="me_lot" style="width:100%;justify-content:center">View my listing</button>
+        ${myLot ? `<button class="chip rose" data-lot="me_lot" style="width:100%;justify-content:center">View my listing</button>` : `<button class="chip rose" data-go="you" style="width:100%;justify-content:center">Edit profile</button>`}
       </div>` : "";
     app.innerHTML = `<div class="screen">
       <div class="topbar"><h1 class="display" style="font-size:30px">Your bids</h1><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
