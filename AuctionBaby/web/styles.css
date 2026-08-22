@@ -266,3 +266,5 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .adm-audit-list{display:flex;flex-direction:column;gap:0}
 .adm-audit-row{padding:10px 0;border-bottom:1px solid var(--line)}
 .adm-audit-row:last-child{border-bottom:0}
+.adm-bug-row{padding:12px 0;border-bottom:1px solid var(--line)}
+.adm-bug-row:last-child{border-bottom:0}

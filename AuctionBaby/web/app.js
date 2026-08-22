@@ -1399,6 +1399,7 @@
       ${S.role === "man" && !S.pass ? `<button class="btn" style="margin-top:10px" data-go="paywall">Get an Auction Baby Pass</button>` : ""}
       ${(CONFIGURED() && SIGNED_IN() && window.AB_CONFIG.VAPID_PUBLIC_KEY) ? `<button class="btn ghost" id="notif" style="margin-top:10px">Enable notifications</button>` : ""}
       ${SIGNED_IN() ? `<button class="btn ghost" id="signout" style="margin-top:10px">Sign out</button>` : ""}
+      <button class="btn ghost" id="bugreport" style="margin-top:10px">Report a bug</button>
       <button class="btn ghost" id="reset" style="margin-top:10px;color:var(--danger)">Reset account</button>
       ${SIGNED_IN() ? `<button class="btn ghost" id="delacct" style="margin-top:10px;color:var(--danger)">Delete account permanently</button>` : ""}
       <button class="btn ghost" data-go="admin" style="margin-top:18px;font-size:13px;opacity:.5">Admin Console</button>
@@ -1414,7 +1415,48 @@
       API.signOutLocal(); S = fresh(); S.floor = seedFloor(); obPhoto = null; obInterests = []; save(); toast("Account deleted."); go("/"); onboarding();
     };
     $("#reset").onclick = () => { if (confirm("Reset everything?")) { S = fresh(); S.floor = seedFloor(); obPhoto = null; obInterests = []; save(); go("/"); onboarding(); } };
+    $("#bugreport").onclick = bugReportSheet;
     wire();
+  }
+
+  // ================= BUG REPORTS =================
+  const BUGS_KEY = "auctionbaby.bugs";
+  function loadBugs() { try { return JSON.parse(localStorage.getItem(BUGS_KEY) || "[]"); } catch { return []; } }
+  function saveBug(bug) { const bugs = loadBugs(); bugs.unshift(bug); localStorage.setItem(BUGS_KEY, JSON.stringify(bugs)); }
+
+  function bugReportSheet() {
+    const ua = navigator.userAgent;
+    const platform = navigator.platform || "unknown";
+    app.innerHTML = `<div class="screen">
+      <div class="topbar"><button class="chip" data-go="you">← Back</button><div class="kicker">Report a Bug</div><div></div></div>
+      <div class="card">
+        <label class="field"><div class="lbl">What happened?</div><textarea class="txt" id="bug-desc" rows="4" placeholder="Describe the bug…"></textarea></label>
+        <label class="field"><div class="lbl">Steps to reproduce</div><textarea class="txt" id="bug-steps" rows="3" placeholder="1. Go to…&#10;2. Tap on…&#10;3. See error"></textarea></label>
+        <label class="field"><div class="lbl">Severity</div>
+          <select class="txt" id="bug-sev"><option value="low">Low — cosmetic</option><option value="medium" selected>Medium — broken feature</option><option value="high">High — can't use app</option></select>
+        </label>
+        <div class="faint" style="margin-top:10px;font-size:11px">Device: ${esc(platform)} · ${esc(ua.substring(0, 80))}</div>
+        <button class="btn" id="bug-submit" style="margin-top:14px">Submit report</button>
+      </div>
+    </div>`;
+    wire();
+    $("#bug-submit").onclick = () => {
+      const desc = ($("#bug-desc") || {}).value || "";
+      const steps = ($("#bug-steps") || {}).value || "";
+      const sev = ($("#bug-sev") || {}).value || "medium";
+      if (!desc.trim()) { toast("Please describe the bug."); return; }
+      const bug = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        desc, steps, severity: sev,
+        user: S.me.name || "Anonymous",
+        device: platform + " · " + ua.substring(0, 100),
+        createdAt: new Date().toISOString(),
+        status: "open"
+      };
+      saveBug(bug);
+      toast("Bug reported — thank you!");
+      go("/you");
+    };
   }
 
   // ================= ADMIN PANEL =================
@@ -1438,6 +1480,7 @@
     if (h === "admin/dash") return adminDash();
     if (h === "admin/users") return adminUsers();
     if (h === "admin/reports") return adminReports();
+    if (h === "admin/bugs") return adminBugs();
     if (h === "admin/audit") return adminAudit();
     return adminDash();
   }
@@ -1473,6 +1516,7 @@
     <button class="${active === "dash" ? "on" : ""}" data-go="admin/dash">Stats</button>
     <button class="${active === "users" ? "on" : ""}" data-go="admin/users">Users</button>
     <button class="${active === "reports" ? "on" : ""}" data-go="admin/reports">Reports</button>
+    <button class="${active === "bugs" ? "on" : ""}" data-go="admin/bugs">Bugs</button>
     <button class="${active === "audit" ? "on" : ""}" data-go="admin/audit">Audit</button>
     <button data-go="you" style="margin-left:auto;opacity:.6">Exit</button>
   </div>`;
@@ -1613,6 +1657,37 @@
         } catch (e) { toast("Error: " + e.message); }
       });
     } catch (e) { el.innerHTML = `<div class="faint">Error: ${esc(e.message)}</div>`; }
+  }
+
+  function adminBugs() {
+    const bugs = loadBugs();
+    const sevColor = s => s === "high" ? "var(--danger)" : s === "medium" ? "var(--gold)" : "var(--ink-faint)";
+    app.innerHTML = `<div class="screen">${adminNav("bugs")}
+      <h1 class="display" style="font-size:24px;margin:14px 0 10px">Bug Log</h1>
+      <div class="faint" style="margin-bottom:12px">${bugs.length} report${bugs.length !== 1 ? "s" : ""} filed</div>
+      ${bugs.length === 0 ? `<div class="card muted"><div class="faint">No bug reports yet.</div></div>` : `<div class="card">${bugs.map(b => `
+        <div class="adm-bug-row">
+          <div class="row" style="gap:8px;margin-bottom:4px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${sevColor(b.severity)};flex:none"></div>
+            <div class="grow">
+              <div style="font-weight:700;font-size:13px">${esc(b.desc.substring(0, 80))}${b.desc.length > 80 ? "…" : ""}</div>
+              <div class="faint" style="font-size:11px">${esc(b.user)} · ${b.createdAt ? new Date(b.createdAt).toLocaleString() : ""} · ${esc(b.severity)}</div>
+            </div>
+            <button class="chip" style="font-size:11px;padding:6px 10px" data-bug-close="${esc(b.id)}">${b.status === "closed" ? "Closed" : "Close"}</button>
+          </div>
+          ${b.steps ? `<div class="faint" style="font-size:12px;margin:4px 0 4px 18px;white-space:pre-line">${esc(b.steps)}</div>` : ""}
+          <div class="faint" style="font-size:11px;margin-left:18px">${esc(b.device || "")}</div>
+        </div>`).join("")}</div>`}
+      ${bugs.length > 0 ? `<button class="btn ghost" id="clear-bugs" style="margin-top:12px;color:var(--danger);font-size:13px">Clear all bug reports</button>` : ""}
+    </div>`;
+    wire();
+    app.querySelectorAll("[data-bug-close]").forEach(btn => btn.onclick = () => {
+      const bugs = loadBugs();
+      const b = bugs.find(x => x.id === btn.dataset.bugClose);
+      if (b) { b.status = "closed"; localStorage.setItem(BUGS_KEY, JSON.stringify(bugs)); adminBugs(); toast("Bug closed."); }
+    });
+    const clr = $("#clear-bugs");
+    if (clr) clr.onclick = () => { if (confirm("Delete all bug reports?")) { localStorage.removeItem(BUGS_KEY); adminBugs(); toast("Cleared."); } };
   }
 
   async function adminAudit() {
