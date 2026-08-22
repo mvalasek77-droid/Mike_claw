@@ -372,6 +372,7 @@
       };
       if (CONFIGURED() && SIGNED_IN()) {
         try {
+          await API.setDob(dob);
           const prompts = [];
           if (S.me.winMe) prompts.push({ question: "The way to win me over is", answer: S.me.winMe });
           if (S.me.simplePleasure) prompts.push({ question: "My simple pleasure", answer: S.me.simplePleasure });

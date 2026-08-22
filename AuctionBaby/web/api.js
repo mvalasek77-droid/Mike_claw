@@ -68,7 +68,7 @@
       return d; // { photo: { id, url }, ... } (shape may vary)
     },
     async saveProfile(p) { return auth("/me/profile", { method: "PUT", body: p }); },
-    async setDob(dob) { return auth("/me/dob", { method: "POST", body: { dob } }); },
+    async setDob(dob) { return auth("/me/dob", { method: "POST", body: { dateOfBirth: dob } }); },
     deleteAccount: () => auth("/me", { method: "DELETE" }),
 
     // ── floor ──
