@@ -72,7 +72,11 @@
     deleteAccount: () => auth("/me", { method: "DELETE" }),
 
     // ── floor ──
-    floor: (location) => auth("/users/floor" + (location ? "?location=" + encodeURIComponent(location) : "")),
+    floor: (role, location) => {
+      const params = ["role=" + encodeURIComponent(role || "woman")];
+      if (location) params.push("location=" + encodeURIComponent(location));
+      return auth("/users/floor?" + params.join("&"));
+    },
 
     // ── bids / matches / messages (matching Worker) ──
     placeBid: (lotId, amount, note) => match("/bids", { method: "POST", body: { lotId, amount, note } }),

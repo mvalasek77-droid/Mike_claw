@@ -33,7 +33,7 @@
     prompts: (p.prompts || []).map(x => ({ q: x.question || x.q || "Prompt", a: x.answer || x.a || String(x) })),
     icebreakers: (p.prompts || []).map(x => (x && (x.answer || x.a)) || x).filter(Boolean),
     hue: (typeof p.hue === "number" ? Math.round(p.hue * 360) : hueFrom(p.userId || p.name)),
-    verified: !!p.verified, masterpiece: !!p.masterpiece, copycat: !!p.copycat,
+    verified: !!(p.verified || p.verifiedAt), masterpiece: !!p.masterpiece, copycat: !!p.copycat,
     photo: (p.photos && p.photos[0] && p.photos[0].url) || null,
     photos: (p.photos || []).map(ph => ph.url || ph).filter(Boolean),
     interests: p.interests || [],
@@ -44,8 +44,9 @@
   async function syncFloor() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
     try {
-      const r = await API.floor(S.me.city);
-      const arr = r.floor || r.users || (Array.isArray(r) ? r : []);
+      const floorRole = S.role === "woman" ? "man" : "woman";
+      const r = await API.floor(floorRole, S.me.city);
+      const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
       if (Array.isArray(arr) && arr.length) { S.floor = arr.map(mapLot); save(); if (tab === "floor") floor(); }
     } catch (e) { /* keep demo floor */ }
   }
@@ -354,7 +355,26 @@
         verified: S.me.verified || false,  // preserve verification from before reset
       };
       if (CONFIGURED() && SIGNED_IN()) {
-        try { await API.saveProfile({ name, location: S.me.city, role: S.role }); } catch (e) { /* non-fatal */ }
+        try {
+          const prompts = [];
+          if (S.me.winMe) prompts.push({ question: "The way to win me over is", answer: S.me.winMe });
+          if (S.me.simplePleasure) prompts.push({ question: "My simple pleasure", answer: S.me.simplePleasure });
+          await API.saveProfile({
+            name, location: S.me.city, role: S.role,
+            bio: S.me.bio || null,
+            prompts: prompts.length ? prompts : null,
+            interests: obInterests.length ? obInterests : null,
+            startingBid: S.role === "woman" ? 100 : null,
+            hue: hueFrom(name),
+          });
+          if (obPhoto && obPhoto.startsWith("data:")) {
+            try {
+              const res = await fetch(obPhoto);
+              const blob = await res.blob();
+              await API.uploadPhoto(blob);
+            } catch {}
+          }
+        } catch (e) { /* non-fatal */ }
       }
       if (S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
       // When a woman registers, add her to the floor as a lot so bidders can find her.
