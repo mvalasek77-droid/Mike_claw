@@ -49,9 +49,21 @@
       const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
       if (Array.isArray(arr) && arr.length) {
         S.floor = arr.map(mapLot); save();
-        if (tab === "floor") { const h = location.hash.replace(/^#\/?/, ""); if (h === "browse" || S.role !== "woman") floor(); }
+        if (tab === "floor" && S.role !== "woman") floor();
       }
     } catch (e) { /* keep demo floor */ }
+    if (S.role === "woman") syncWomenFloor();
+  }
+  async function syncWomenFloor() {
+    if (!CONFIGURED() || !SIGNED_IN()) return;
+    try {
+      const r = await API.floor("woman", S.me.city);
+      const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
+      if (Array.isArray(arr) && arr.length) {
+        S.womenFloor = arr.map(mapLot); save();
+        if (tab === "floor" && location.hash.replace(/^#\/?/, "") === "browse") floor();
+      }
+    } catch (e) { /* keep demo */ }
   }
   async function syncIncoming() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
@@ -156,20 +168,6 @@
     W("Ava Sinclair",27,"Martha's Vineyard, MA",200,"Music journalist. I interview people for a living, so expect good questions and zero awkward silence.",[P("The way to win me over is","Skip the small talk — tell me the thing you never tell people on the first date.")],202,false,false,false,"photo-ava",["Music","Art","Film","Wine"],{height:"5'6\"",drinks:"Regularly"},540),
     W("Kai Williams",29,"Outer Banks, North Carolina",200,"Fitness coach and beach volleyball captain. My laugh carries, my standards are higher.",[P("I'm looking for","Show up with energy. Match mine. Don't try to dim it.")],302,false,false,true,"photo-kai",["Fitness","Travel","Food","Nightlife"],{height:"5'10\"",drinks:"Socially"},530),
   ]);
-  const M = (name,age,city,bio,prompts,hue,verified,photo,interests) => ({
-    id:uid(),name,age,city,startingBid:0,bio,prompts,icebreakers:prompts.map(p=>p.a),hue,verified,masterpiece:false,copycat:false,
-    photo:"photos/"+photo+".jpg",photos:["photos/"+photo+".jpg"],interests:interests||[],lifestyle:{},showcase:480,marketValue:0
-  });
-  const seedMenFloor = () => ([
-    M("Marcus Bell",34,"Tribeca, New York","Finance. Early mornings, late dinners, and the best espresso machine money can buy.",[P("I'm looking for","Someone who makes me put my phone down.")],220,true,"photo-marcus",["Food","Wine","Fitness","Startups"]),
-    M("Julian Reyes",31,"West Hollywood, LA","Architect. I design buildings people live in and restaurants nobody can get into.",[P("My ideal date","Rooftop with a view, no menu — chef's choice.")],85,false,"photo-julian",["Design","Art","Travel","Food"]),
-    M("Theo Adler",38,"Upper East Side, New York","Art collector. Three galleries, one dog, zero patience for games.",[P("The way to win me over is","Be genuinely curious about something. Anything.")],310,true,"photo-theo",["Art","Wine","Travel","Reading"]),
-    M("Dominic Cross",29,"Venice, Los Angeles","Director. I tell stories for a living and listen for fun.",[P("Together we could","Skip the movie and make our own.")],145,false,"photo-dominic",["Film","Music","Travel","Food"]),
-    M("Sebastian Cole",33,"Nolita, New York","Surgeon. Steady hands, early bedtime, terrible taste in TV — great taste in restaurants.",[P("I geek out on","Winemaking, surgical innovation, and why nobody makes a decent croissant outside Paris.")],52,true,"photo-sebastian",["Food","Wine","Fitness","Reading"]),
-    M("Kai Nakamura",28,"Mission District, SF","Founder, Series B. Building something meaningful during the week — free on weekends.",[P("Green flags I look for","She has her own thing going. She texts back. She picks the place sometimes.")],190,false,"photo-kai-m",["Startups","Fitness","Travel","Music"]),
-    M("Luca Romano",30,"South Beach, Miami","Restaurateur. Two spots open, a third on the way. I cook better than my chefs — don't tell them.",[P("My love language","Cooking for you at midnight after you've had a long day.")],340,false,"photo-luca",["Food","Wine","Travel","Nightlife"]),
-    M("Ethan Caldwell",35,"Pacific Heights, SF","VC partner. I back founders all week; weekends I disappear to the coast with a book.",[P("Best first date","Hole-in-the-wall, no reservations, we stay until they kick us out.")],270,true,"photo-ethan",["Startups","Reading","Wine","Travel"]),
-  ]);
 
   // ---- state ----
   const KEY = "auctionbaby.web.v1";
@@ -184,7 +182,7 @@
   function fresh() {
     return { registered: false, role: null,
              me: { name: "", dob: "", age: 27, city: "", bio: "", portrait: "", winMe: "", simplePleasure: "", interests: [], photo: null, verified: false },
-             wallet: 750, floor: [], menFloor: [], matches: [], incoming: [], seenSplash: false, reputation: 100,
+             wallet: 750, floor: [], womenFloor: [], matches: [], incoming: [], seenSplash: false, reputation: 100,
              ownedStatus: [], pass: null, pendingBids: 0 };
   }
   // demo suitors (men bidding on a woman) — used when no backend is configured
@@ -461,13 +459,12 @@
     let floorData = S.floor;
     if (S.role === "woman") {
       if (CONFIGURED() && SIGNED_IN()) {
-        floorData = (S.floor || []).filter(l => l.id !== "me_lot");
+        floorData = S.womenFloor || [];
       } else {
-        if (!S.menFloor || !S.menFloor.length) { S.menFloor = seedMenFloor(); save(); }
-        floorData = S.menFloor;
+        floorData = seedFloor();
       }
     }
-    if (!floorData || !floorData.length) { floorData = S.role === "woman" ? seedMenFloor() : seedFloor(); }
+    if (!floorData || !floorData.length) { floorData = seedFloor(); }
     const mp = floorData.find(w => w.masterpiece);
     const hero = mp || floorData[0];
     const rest = floorData.filter(w => w !== hero);
@@ -493,7 +490,7 @@
       <div class="topbar"><h1 class="display" style="font-size:30px">The Floor</h1>
         <span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
       ${isWomanBrowsing ? `<button class="btn ghost" data-go="" style="margin:-6px 0 10px;font-size:13px">◂ Back to bids</button>
-      <div class="faint" style="margin:0 0 12px">See who's bidding. Tap a profile to learn more.</div>` :
+      <div class="faint" style="margin:0 0 12px">See what men are seeing. This is how you look on the floor.</div>` :
       `<div class="faint" style="margin:-6px 0 12px">Bid what a date is worth. She unlocks your photo when she accepts.</div>`}
       <div class="ticker"><span class="dot"></span><span class="live">LIVE</span><span class="grow">${esc(tick)}</span></div>
       <div class="house-rules">
