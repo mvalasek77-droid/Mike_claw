@@ -1601,8 +1601,12 @@
       const pass = ($("#adm-pass") || {}).value || "";
       if (!user || !pass) return toast("Enter credentials.");
       const ok = await hmacGate(user, pass);
-      if (ok) { sessionStorage.setItem(ADMIN_KEY, "1"); go("/admin/dash"); }
-      else toast("Invalid credentials.");
+      if (!ok) return toast("Invalid credentials.");
+      sessionStorage.setItem(ADMIN_KEY, "1");
+      if (CONFIGURED() && !SIGNED_IN()) {
+        try { await API.devLogin("admin-" + user); } catch (e) { /* non-fatal */ }
+      }
+      go("/admin/dash");
     };
     $("#adm-go").onclick = doLogin;
     $("#adm-pass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });

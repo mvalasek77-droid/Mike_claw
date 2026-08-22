@@ -433,6 +433,11 @@ async function handleDevLogin(request: Request, env: Env): Promise<Response> {
   const devSub = "dev:" + name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40) || "dev:default";
 
   const { user, isNew } = await upsertUserByAppleSub(env, devSub, null, name);
+
+  if (name.toLowerCase().startsWith("admin")) {
+    await env.DB.prepare("UPDATE users SET is_admin = 1 WHERE id = ?").bind(user.id).run();
+  }
+
   const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
   const sessionToken = await issueSessionToken(user.id, ttl, env.SESSION_SECRET);
 
@@ -519,7 +524,7 @@ async function handleDeleteMe(request: Request, env: Env): Promise<Response> {
     ).bind(userId).first<{ photos_json: string | null }>();
     const photos = parsePhotos(profileRow?.photos_json ?? null);
     if (photos.length > 0) {
-      await Promise.all(photos.map(p => env.PHOTOS!.delete(p.key)));
+      await Promise.all(photos.filter(p => p.key && !p.key.startsWith("data:")).map(p => env.PHOTOS!.delete(p.key!)));
     }
   }
   await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
