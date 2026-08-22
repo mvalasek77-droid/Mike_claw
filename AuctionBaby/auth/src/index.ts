@@ -135,6 +135,12 @@ function base64UrlDecode(s: string): Uint8Array {
   return out;
 }
 
+/** Standard base64 encode (not URL-safe) for data URLs. */
+function base64Encode(bytes: Uint8Array): string {
+  const bin = String.fromCharCode(...bytes);
+  return btoa(bin);
+}
+
 async function hmacSha256(key: string, message: string): Promise<Uint8Array> {
   const enc = new TextEncoder();
   const cryptoKey = await crypto.subtle.importKey(
@@ -383,32 +389,6 @@ async function handleAppleAuth(request: Request, env: Env): Promise<Response> {
   });
 }
 
-/** POST /auth/dev-login  { name }  →  { userId, sessionToken, isNew, user }
- *  Dev-only shortcut: creates/looks up a user by synthetic "dev:<name>" sub
- *  and issues a real session token. No Apple Sign-In required. */
-async function handleDevLogin(request: Request, env: Env): Promise<Response> {
-  let body: any;
-  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
-  const name = String(body?.name ?? "").trim().slice(0, 80);
-  if (!name) return err("name is required");
-  if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
-  if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
-
-  const syntheticSub = `dev:${name.toLowerCase().replace(/\s+/g, "-")}`;
-  const { user, isNew } = await upsertUserByAppleSub(env, syntheticSub, null, name);
-
-  const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
-  const sessionToken = await issueSessionToken(user.id, ttl, env.SESSION_SECRET);
-
-  return json({
-    userId: user.id,
-    sessionToken,
-    expiresInSeconds: ttl,
-    isNew,
-    user: publicUser(user),
-  });
-}
-
 /** Apple only gives us the full name on the FIRST sign-in ever; the client
  *  passes it through as `name`. Prefer whatever the client supplied; fall
  *  back to nothing (never guess from the email). */
@@ -435,6 +415,34 @@ async function handleMe(request: Request, env: Env): Promise<Response> {
   // Refresh last_seen_at on every /me hit — cheapest heartbeat we've got.
   await env.DB.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").bind(Date.now(), userId).run();
   return json({ user: publicUser(user) });
+}
+
+/** POST /auth/dev-login  { name? }  →  { userId, sessionToken, isNew, user }
+ *
+ *  DEV ONLY — creates or looks up a user by a synthetic apple_sub ("dev:<name>")
+ *  and issues a real session token. Lets the web app test the full flow
+ *  (profile, photos, floor) without Apple Sign-In configured. The client
+ *  gates this button behind a config flag so it never shows in prod. */
+async function handleDevLogin(request: Request, env: Env): Promise<Response> {
+  if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
+  if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
+
+  let body: any = {};
+  try { body = await request.json(); } catch { /* empty body is fine */ }
+  const name = body?.name ? String(body.name).trim().slice(0, 60) : "Test User";
+  const devSub = "dev:" + name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40) || "dev:default";
+
+  const { user, isNew } = await upsertUserByAppleSub(env, devSub, null, name);
+  const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
+  const sessionToken = await issueSessionToken(user.id, ttl, env.SESSION_SECRET);
+
+  return json({
+    userId: user.id,
+    sessionToken,
+    expiresInSeconds: ttl,
+    isNew,
+    user: publicUser(user),
+  });
 }
 
 /** POST /auth/logout  [auth] — client-side hint. Stateless tokens can't be
@@ -1086,15 +1094,25 @@ function photosBase(env: Env): string | undefined {
  *  configured), the `photos` array stays empty and the client falls back to the
  *  monogram. */
 function publicProfile(p: ProfileWithAge, photosBaseUrl?: string) {
-  const rawPhotos = safeParseJsonArray(p.photos_json) as Array<{ id: string; key: string }>;
+  const rawPhotos = safeParseJsonArray(p.photos_json) as Array<{ id: string; key?: string; dataUrl?: string }>;
   const photos = rawPhotos
-    .filter(e => e && typeof e.key === "string")
+    .filter(e => e && typeof e.id === "string")
     .map(e => {
-      if (e.key.startsWith("data:")) return { id: e.id, url: e.key };
-      if (photosBaseUrl) return { id: e.id, url: `${photosBaseUrl}/${e.key}` };
+      // R2 path: resolve key to full URL via photosBaseUrl.
+      if (e.key && photosBaseUrl) {
+        return { id: e.id, url: `${photosBaseUrl}/${e.key}` };
+      }
+      // Fallback path: data URL stored directly in photos_json.
+      if (e.dataUrl) {
+        return { id: e.id, url: e.dataUrl };
+      }
+      // R2 key but no public URL configured — no usable URL.
+      if (e.key) {
+        return { id: e.id, url: `${photosBaseUrl || ""}/${e.key}` };
+      }
       return null;
     })
-    .filter(Boolean) as Array<{ id: string; url: string }>;
+    .filter(Boolean);
   return {
     userId: p.user_id,
     role: p.role,
@@ -1888,7 +1906,7 @@ async function handleAdminCloseBug(id: string, request: Request, env: Env): Prom
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB
 
-interface PhotoEntry { id: string; key: string }
+interface PhotoEntry { id: string; key?: string; dataUrl?: string }
 
 function parsePhotos(raw: string | null): PhotoEntry[] {
   if (!raw) return [];
@@ -1917,47 +1935,44 @@ async function handleUploadPhoto(request: Request, env: Env): Promise<Response> 
 
   const photoId = crypto.randomUUID();
   const body = await request.arrayBuffer();
-  if (body.byteLength < 100) return err("Photo too small");
+  if (body.byteLength < 100) return err("Photo too small (min 100 bytes)");
   if (body.byteLength > MAX_PHOTO_BYTES) return err("Photo exceeds 5 MB limit", 413);
 
-  let photoUrl: string;
-
+  // R2 path: store bytes in R2, reference by key.
   if (env.PHOTOS) {
     const key = `photos/${userId}/${photoId}.jpg`;
     await env.PHOTOS.put(key, body, {
-      httpMetadata: { contentType: ct.split(";")[0] },
+      httpMetadata: { contentType: ct || "image/jpeg" },
     });
     existing.push({ id: photoId, key });
     const base = photosBase(env);
-    photoUrl = base ? `${base}/${key}` : key;
-  } else {
-    const bytes = new Uint8Array(body);
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-    const b64 = btoa(binary);
-    const dataUrl = `data:${ct.split(";")[0]};base64,${b64}`;
-    existing.push({ id: photoId, key: dataUrl });
-    photoUrl = dataUrl;
+    const now = Date.now();
+    await env.DB.prepare(
+      "UPDATE profiles SET photos_json = ?, updated_at = ? WHERE user_id = ?"
+    ).bind(JSON.stringify(existing), now, userId).run();
+    return json({
+      photo: { id: photoId, url: base ? `${base}/${key}` : key },
+      photos: existing.map(e => ({ id: e.id, url: base ? `${base}/${e.key}` : e.key })),
+    }, 201);
   }
 
+  // Fallback path (no R2): store as base64 data URL directly in photos_json.
+  // Format: { id, dataUrl } — publicProfile() returns { id, url: dataUrl }.
+  const b64 = base64Encode(new Uint8Array(body));
+  const dataUrl = `data:${ct};base64,${b64}`;
+  existing.push({ id: photoId, dataUrl } as any);
   const now = Date.now();
   await env.DB.prepare(
     "UPDATE profiles SET photos_json = ?, updated_at = ? WHERE user_id = ?"
   ).bind(JSON.stringify(existing), now, userId).run();
-
-  const base = photosBase(env);
   return json({
-    photo: { id: photoId, url: photoUrl },
-    photos: existing.map(e => ({
-      id: e.id,
-      url: e.key.startsWith("data:") ? e.key : (base ? `${base}/${e.key}` : e.key),
-    })),
+    photo: { id: photoId, url: dataUrl },
+    photos: existing.map(e => ({ id: e.id, url: (e as any).dataUrl || `${photosBase(env)}/${e.key}` })),
   }, 201);
 }
 
 // DELETE /me/photos/:photoId  [auth]
 async function handleDeletePhoto(photoId: string, request: Request, env: Env): Promise<Response> {
-  if (!env.PHOTOS) return err("Photo uploads are not configured", 501);
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
 
@@ -1972,17 +1987,20 @@ async function handleDeletePhoto(photoId: string, request: Request, env: Env): P
 
   const removed = existing.splice(idx, 1)[0];
 
-  // Delete from R2 + update D1 in parallel
-  await Promise.all([
-    env.PHOTOS.delete(removed.key),
+  // Delete from R2 if configured + update D1
+  const tasks: Promise<unknown>[] = [
     env.DB.prepare(
       "UPDATE profiles SET photos_json = ?, updated_at = ? WHERE user_id = ?"
     ).bind(JSON.stringify(existing), Date.now(), userId).run(),
-  ]);
+  ];
+  if (env.PHOTOS && removed.key) {
+    tasks.push(env.PHOTOS.delete(removed.key));
+  }
+  await Promise.all(tasks);
 
   const base = photosBase(env);
   return json({
-    photos: existing.map(e => ({ id: e.id, url: base ? `${base}/${e.key}` : e.key })),
+    photos: existing.map(e => ({ id: e.id, url: (e as any).dataUrl || (base ? `${base}/${e.key}` : e.key) })),
   });
 }
 
@@ -2025,7 +2043,7 @@ async function handleReorderPhotos(request: Request, env: Env): Promise<Response
 
   const base = photosBase(env);
   return json({
-    photos: reordered.map(e => ({ id: e.id, url: base ? `${base}/${e.key}` : e.key })),
+    photos: reordered.map(e => ({ id: e.id, url: (e as any).dataUrl || (base ? `${base}/${e.key}` : e.key) })),
   });
 }
 
