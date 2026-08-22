@@ -176,12 +176,12 @@
     ["Theo Adler", 38, 750, "Gallery opening, then a late dinner. I'll make it worth the yes."],
     ["Dominic Cross", 29, 300, "Coffee that turns into a long walk. Low pressure, high effort."],
   ].map(([name, age, amount, note]) => ({ id: uid(), name, age, amount, note, hue: hueFrom(name) })));
-  const save = () => localStorage.setItem(KEY, JSON.stringify(S));
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) { console.warn("save failed (quota?):", e.message); } };
   if (!S.floor || !S.floor.length) { S.floor = seedFloor(); save(); }
 
   // ---- router ----
   const go = h => { location.hash = h; };
-  window.addEventListener("hashchange", render);
+  window.addEventListener("hashchange", () => { try { render(); } catch(e) { console.error("render error:", e); app.innerHTML = `<div class="screen" style="padding:40px 20px;text-align:center"><div style="font-family:var(--serif);font-weight:800;font-size:22px;margin-bottom:10px">Something went wrong</div><div class="faint" style="margin-bottom:20px">${esc(e.message||"Unknown error")}</div><button class="btn" onclick="localStorage.removeItem('${KEY}');location.reload()">Reset and reload</button></div>`; } });
 
   // ---- UI helpers ----
   let tab = "floor";
@@ -1390,7 +1390,15 @@
     }
   }
   if (!location.hash) go(S.registered ? "/floor" : "/");
-  render();
+  // Error boundary — never show a blank screen
+  try { render(); } catch(e) {
+    console.error("render error:", e);
+    app.innerHTML = `<div class="screen" style="padding:40px 20px;text-align:center">
+      <div style="font-family:var(--serif);font-weight:800;font-size:22px;margin-bottom:10px">Something went wrong</div>
+      <div class="faint" style="margin-bottom:20px">${esc(e.message || "Unknown error")}</div>
+      <button class="btn" onclick="localStorage.removeItem('${KEY}');location.reload()">Reset and reload</button>
+    </div>`;
+  }
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
   // demo woman returning with no bids left → reseed so the screen isn't empty
   if (S.registered && S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); if (tab === "floor") incoming(); }
