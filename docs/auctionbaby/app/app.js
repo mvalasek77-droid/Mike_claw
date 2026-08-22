@@ -47,8 +47,23 @@
       const floorRole = S.role === "woman" ? "man" : "woman";
       const r = await API.floor(floorRole, S.me.city);
       const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
-      if (Array.isArray(arr) && arr.length) { S.floor = arr.map(mapLot); save(); if (tab === "floor") floor(); }
+      if (Array.isArray(arr) && arr.length) {
+        S.floor = arr.map(mapLot); save();
+        if (tab === "floor" && S.role !== "woman") floor();
+      }
     } catch (e) { /* keep demo floor */ }
+    if (S.role === "woman") syncWomenFloor();
+  }
+  async function syncWomenFloor() {
+    if (!CONFIGURED() || !SIGNED_IN()) return;
+    try {
+      const r = await API.floor("woman", S.me.city);
+      const arr = r.profiles || r.floor || r.users || (Array.isArray(r) ? r : []);
+      if (Array.isArray(arr) && arr.length) {
+        S.womenFloor = arr.map(mapLot); save();
+        if (tab === "floor" && location.hash.replace(/^#\/?/, "") === "browse") floor();
+      }
+    } catch (e) { /* keep demo */ }
   }
   async function syncIncoming() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
@@ -59,6 +74,7 @@
         id: b.id, name: (b.man && b.man.name) || b.name || "Bidder",
         age: b.age, amount: b.amount || b.bidAmount || 0, note: b.note || "",
         hue: hueFrom(b.id || b.name),
+        verified: !!(b.verified || (b.man && b.man.verifiedAt)),
       }));
       save(); if (tab === "floor" && S.role === "woman") incoming();
     } catch (e) { /* keep local */ }
@@ -73,6 +89,7 @@
         otherId: (m.other && m.other.userId) || m.otherUserId || m.otherId || null,
         hue: hueFrom(m.id || m.name), amount: m.amount || m.bidAmount || 0,
         seen: !!m.seenByOther, unread: !!(m.unreadCount || m.unread),
+        verified: !!(m.verified || (m.other && m.other.verifiedAt)),
         lastTs: m.updatedAt || m.lastMessageAt || 0,
         messages: (m.messages || []).map(x => ({ id: x.id, me: !!x.fromMe, text: x.text || "", photo: x.photo || null, reaction: x.reaction || null })),
       }));
@@ -167,7 +184,7 @@
   function fresh() {
     return { registered: false, role: null,
              me: { name: "", dob: "", age: 27, city: "", bio: "", portrait: "", winMe: "", simplePleasure: "", interests: [], photo: null, verified: false },
-             wallet: 750, floor: [], matches: [], incoming: [], seenSplash: false, reputation: 100,
+             wallet: 750, floor: [], womenFloor: [], matches: [], incoming: [], seenSplash: false, reputation: 100,
              ownedStatus: [], pass: null, pendingBids: 0 };
   }
   // demo suitors (men bidding on a woman) — used when no backend is configured
@@ -236,7 +253,7 @@
     }
   }
   const tabbar = () => {
-    const first = S.role === "woman" ? ["floor", "▦", "Bids"] : ["floor", "▦", "Floor"];
+    const first = ["floor", "▦", "Floor"];
     const unread = (S.matches || []).filter(m => m.unread).length;
     return `<div class="tabbar">
       ${[first, ["matches", "❤", "Matches"], ["store", "⚖", "Store"], ["you", "◉", "You"]]
@@ -256,6 +273,7 @@
     if (h.startsWith("paywall/")) { tab = "store"; return paywall(h.split("/")[1]); }
     if (h === "you") { tab = "you"; return you(); }
     if (h.startsWith("admin")) return adminRouter(h);
+    if (h === "browse") { tab = "floor"; return floor(); }
     tab = "floor"; return S.role === "woman" ? incoming() : floor();
   }
 
@@ -313,6 +331,8 @@
 
       ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-top:14px"> Sign in with Apple</button>
         <div class="faint" style="text-align:center;margin-top:6px">Optional — keeps your account across devices.</div>` : ""}
+      ${(CONFIGURED() && !SIGNED_IN() && !APPLE_ON()) ? `<button class="btn ghost" id="ob-dev" style="margin-top:14px;background:#e8364f;color:#fff;border-color:#e8364f"> Sign in (Dev Test)</button>
+        <div class="faint" style="text-align:center;margin-top:6px">Dev mode — creates a test account on the server.</div>` : ""}
       <button class="btn" id="ob-go" style="margin-top:18px">Step onto the floor</button>
       <div class="disclosure">A bid is the budget you commit to spend on the date itself — dinner, drinks, the evening. It is never a payment to another person.</div>
     </div>`;
@@ -335,6 +355,16 @@
         toast("Signed in with Apple.");
       } catch (e) { toast("Apple sign-in: " + e.message); }
     };
+    const dv = $("#ob-dev");
+    if (dv) dv.onclick = async () => {
+      const name = ($("#ob-name") || {}).value || "TestUser";
+      try {
+        const d = await API.devLogin(name.trim() || "TestUser");
+        const nm = d && d.user && d.user.name;
+        if (nm && !$("#ob-name").value) $("#ob-name").value = nm;
+        toast("Dev signed in as " + (nm || name));
+      } catch (e) { toast("Dev login: " + e.message); }
+    };
     $("#ob-go").onclick = async () => {
       const name = $("#ob-name").value.trim();
       const dob = ($("#ob-dob") || {}).value || "";
@@ -356,6 +386,7 @@
       };
       if (CONFIGURED() && SIGNED_IN()) {
         try {
+          await API.setDob(dob);
           const prompts = [];
           if (S.me.winMe) prompts.push({ question: "The way to win me over is", answer: S.me.winMe });
           if (S.me.simplePleasure) prompts.push({ question: "My simple pleasure", answer: S.me.simplePleasure });
@@ -439,10 +470,25 @@
     ];
   };
 
+  let floorSearch = "";
   function floor() {
-    const mp = S.floor.find(w => w.masterpiece);
-    const hero = mp || S.floor[0];
-    const rest = S.floor.filter(w => w !== hero);
+    let floorData = S.floor;
+    if (S.role === "woman") {
+      if (CONFIGURED() && SIGNED_IN()) {
+        floorData = S.womenFloor || [];
+      } else {
+        floorData = seedFloor();
+      }
+    }
+    if (!floorData || !floorData.length) { floorData = seedFloor(); }
+    const allCount = floorData.length;
+    if (floorSearch) {
+      const q = floorSearch.toLowerCase();
+      floorData = floorData.filter(w => w.name.toLowerCase().includes(q));
+    }
+    const mp = floorData.find(w => w.masterpiece);
+    const hero = mp || floorData[0];
+    const rest = floorData.filter(w => w !== hero);
     const tickers = ["Marcus B. was outbid on Nova Ray — rebid incoming", "3 bidders are watching Mara Quinn", "A Vault of Gavels was just claimed"];
     const tick = tickers[Math.floor(Date.now() / 6000) % tickers.length];
     const lotCard = (w, isHero) => `
@@ -460,10 +506,17 @@
           <div class="tags"><span class="chip">${esc(w.city)}</span><span class="chip on">${money(w.startingBid)} floor</span></div>
         </div>
       </button>`;
+    const isWomanBrowsing = S.role === "woman";
     app.innerHTML = `<div class="screen">
       <div class="topbar"><h1 class="display" style="font-size:30px">The Floor</h1>
         <span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
-      <div class="faint" style="margin:-6px 0 12px">Bid what a date is worth. She unlocks your photo when she accepts.</div>
+      ${isWomanBrowsing ? `<button class="btn ghost" data-go="" style="margin:-6px 0 10px;font-size:13px">◂ Back to bids</button>
+      <div class="faint" style="margin:0 0 12px">See what men are seeing. This is how you look on the floor.</div>` :
+      `<div class="faint" style="margin:-6px 0 12px">Bid what a date is worth. She unlocks your photo when she accepts.</div>`}
+      <div style="position:relative;margin-bottom:12px">
+        <input id="floorSearch" type="text" placeholder="Search by name…" value="${esc(floorSearch)}" style="width:100%;padding:10px 14px 10px 36px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:400 15px/1.4 var(--sans);box-sizing:border-box;outline:none">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);font-size:16px;pointer-events:none">&#128269;</span>
+      </div>
       <div class="ticker"><span class="dot"></span><span class="live">LIVE</span><span class="grow">${esc(tick)}</span></div>
       <div class="house-rules">
         <div class="house-rules-title">House Rules</div>
@@ -471,11 +524,15 @@
       </div>
       <div class="floor-header">
         <span class="floor-header-label">On the floor now</span>
-        <span class="floor-header-count">${S.floor.length}</span>
+        <span class="floor-header-count">${floorSearch ? floorData.length + " / " + allCount : allCount}</span>
       </div>
-      ${lotCard(hero, true)}
-      ${rest.map(w => lotCard(w, false)).join("")}
+      ${floorData.length ? (hero ? lotCard(hero, !floorSearch) : "") + rest.map(w => lotCard(w, false)).join("") : `<div class="card muted">No results for "${esc(floorSearch)}"</div>`}
     </div>${tabbar()}`;
+    const si = $("#floorSearch");
+    if (si) {
+      si.addEventListener("input", () => { floorSearch = si.value; floor(); });
+      if (floorSearch) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
+    }
     wire();
   }
 
@@ -676,7 +733,7 @@
       noCamera: "Camera access is required for verification. Enable it in your browser settings." };
     const icons = { idle: "🪪", camera: "📹", liveness: "👁️", matching: "🔍", submitting: "⏳",
       pending: "⏳", done: "✅", failed: "⚠️", noCamera: "📷" };
-    let stream = null, video = null, blinkDetected = false;
+    let stream = null, video = null, blinkDetected = false, serverPhoto = S.me.photo;
 
     const draw = () => {
       const title = titles[phase] || "", sub = subs[phase] || "", icon = icons[phase] || "🪪";
@@ -692,7 +749,7 @@
             </div>
             <div style="font-size:24px;color:var(--verify)">↔</div>
             <div style="width:110px;height:110px;border-radius:50%;overflow:hidden;border:3px solid var(--gold);flex:none">
-              ${S.me.photo ? `<img src="${esc(S.me.photo)}" alt="Profile" style="width:100%;height:100%;object-fit:cover">` : `<div style="width:100%;height:100%;background:rgba(79,176,198,.14);display:grid;place-items:center;font-size:40px">🪪</div>`}
+              ${serverPhoto ? `<img src="${esc(serverPhoto)}" alt="Profile" style="width:100%;height:100%;object-fit:cover">` : `<div style="width:100%;height:100%;background:rgba(79,176,198,.14);display:grid;place-items:center;font-size:40px">🪪</div>`}
             </div>
           </div>` : `<div style="width:150px;height:150px;margin:0 auto;border-radius:50%;background:rgba(79,176,198,.14);display:flex;align-items:center;justify-content:center;font-size:66px">
             ${phase === "camera" || phase === "liveness" ? `<video id="vfeed" autoplay playsinline style="width:100%;height:100%;border-radius:50%;object-fit:cover;transform:scaleX(-1)"></video>` : icon}
@@ -761,10 +818,22 @@
       return cv;
     }
 
-    function compareFaces(selfieCanvas) {
+    async function getServerProfilePhoto() {
+      if (!CONFIGURED() || !SIGNED_IN()) return S.me.photo || null;
+      try {
+        const r = await API.myProfile();
+        const profile = r.profile || r;
+        const photos = profile.photos || [];
+        if (photos.length && photos[0].url) return photos[0].url;
+      } catch {}
+      return S.me.photo || null;
+    }
+
+    function compareFaces(selfieCanvas, profilePhotoUrl) {
       return new Promise(resolve => {
-        if (!S.me.photo || !selfieCanvas) return resolve(0);
+        if (!profilePhotoUrl || !selfieCanvas) return resolve(0);
         const img = new Image();
+        img.crossOrigin = "anonymous";
         img.onload = () => {
           const sz = 64;
           const refCv = document.createElement("canvas"); refCv.width = sz; refCv.height = sz;
@@ -783,13 +852,16 @@
           resolve(sum / (count / 4));
         };
         img.onerror = () => resolve(0);
-        img.src = S.me.photo;
+        img.src = profilePhotoUrl;
       });
     }
 
     async function finishVerification() {
       const selfieCanvas = captureSelfie();
-      const faceMatchScore = await compareFaces(selfieCanvas);
+      const profilePhotoUrl = await getServerProfilePhoto();
+      serverPhoto = profilePhotoUrl;
+      draw();
+      const faceMatchScore = await compareFaces(selfieCanvas, profilePhotoUrl);
       const livenessPassed = !!selfieCanvas;
       const selfieScore = selfieCanvas ? 0.9 : 0;
       const useServer = CONFIGURED() && SIGNED_IN();
@@ -1003,11 +1075,12 @@
     app.innerHTML = `<div class="screen">
       <div class="topbar"><h1 class="display" style="font-size:30px">Your bids</h1><span class="pill">⚖ ${S.wallet.toLocaleString()}</span></div>
       <div class="faint" style="margin:-6px 0 14px">Men bidding for a date. Accept the one you like — his photo unlocks when you do.</div>
+      <button class="btn ghost" data-go="browse" style="margin-bottom:14px;width:100%;justify-content:center">Browse the Floor ▸</button>
       ${profileCard}
       ${bids.length ? bids.map(b => `
         <div class="card" style="margin-bottom:12px">
           <div class="row">${gradSm(b.hue, b.name)}<div class="grow">
-            <div style="font-family:var(--serif);font-weight:800">${esc(b.name)} <span class="muted">${b.age || ""}</span></div>
+            <div style="font-family:var(--serif);font-weight:800">${esc(b.name)} <span class="muted">${b.age || ""}</span>${b.verified ? verifiedBadge("sm") : ""}</div>
             <div class="gold" style="font-weight:800;font-size:18px">${money(b.amount)}</div></div></div>
           ${b.note ? `<p class="muted" style="margin:10px 0 0">${esc(b.note)}</p>` : ""}
           <div class="row" style="gap:8px;margin-top:12px">
@@ -1047,7 +1120,7 @@
       ${S.matches.length ? [...S.matches].sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0)).map(m => {
         const last = m.messages[m.messages.length - 1];
         return `<button class="card row" data-chat="${m.id}" style="width:100%;text-align:left;margin-bottom:10px">
-          ${gradSm(m.hue, m.name)}<div class="grow"><div style="font-family:var(--serif);font-weight:800">${esc(m.name)}</div>
+          ${gradSm(m.hue, m.name)}<div class="grow"><div style="font-family:var(--serif);font-weight:800">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</div>
           <div class="faint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${m.unread ? "color:var(--ink);font-weight:600" : ""}">${esc(last ? (last.photo ? "📷 Photo" : (last.text || "Say hello")) : "Say hello")}</div></div>
           ${m.unread ? `<span class="udot"></span>` : `<span class="pill">${money(m.amount)}</span>`}</button>`;
       }).join("") : `<div class="card muted">No matches yet. Win a bid on the floor.</div>`}
@@ -1070,7 +1143,7 @@
     }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
       <div class="topbar"><button class="chip" data-back>‹</button>
-        <div class="row">${gradSm(m.hue, m.name)}<b style="font-family:var(--serif)">${esc(m.name)}</b></div>
+        <div class="row">${gradSm(m.hue, m.name)}<b style="font-family:var(--serif)">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</b></div>
         <div class="row" style="gap:6px">
           ${S.role === "man" ? (m.reserved ? `<span class="chip on">✓ Reserved</span>` : `<button class="chip" id="reserve">Reserve</button>`) : ""}
           <button class="chip" id="report" title="Report & block">⚑</button>
@@ -1401,7 +1474,7 @@
     app.innerHTML = `<div class="screen">
       <div class="card" style="text-align:center;padding:24px">
         <div style="width:96px;margin:0 auto 12px">${grad(210, me.name || "You", me.photo)}</div>
-        <div style="font-family:var(--serif);font-weight:800;font-size:22px">${esc(me.name || "You")} <span class="muted">${me.age}</span></div>
+        <div style="font-family:var(--serif);font-weight:800;font-size:22px">${esc(me.name || "You")} <span class="muted">${me.age}</span>${S.me.verified ? verifiedBadge() : ""}</div>
         <div class="faint">${esc(me.city || "")} · ${S.role === "man" ? "Bidder" : "Lot"}</div>
         <div class="pill" style="margin-top:12px">⚖ ${S.wallet.toLocaleString()} Gavels</div>
         ${typeof S.reputation === "number" ? `<div class="faint" style="margin-top:8px">Reputation: ${S.reputation}%</div>` : ""}
@@ -1801,5 +1874,11 @@
   if (location.hash.includes("paid=1")) toast("Payment complete — Gavels added.");
   // demo woman returning with no bids left → reseed so the screen isn't empty
   if (S.registered && S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) { S.incoming = seedIncoming(); save(); if (tab === "floor") incoming(); }
-  if (S.registered && CONFIGURED() && SIGNED_IN()) { syncFloor(); syncMatches(); syncIncoming(); }
+  if (S.registered && CONFIGURED() && SIGNED_IN()) {
+    syncFloor(); syncMatches(); syncIncoming();
+    API.myProfile().then(r => {
+      const p = r.profile || r;
+      if (p.verifiedAt && !S.me.verified) { S.me.verified = true; save(); if (tab === "you") you(); }
+    }).catch(() => {});
+  }
 })();

@@ -331,6 +331,8 @@
 
       ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-top:14px"> Sign in with Apple</button>
         <div class="faint" style="text-align:center;margin-top:6px">Optional — keeps your account across devices.</div>` : ""}
+      ${(CONFIGURED() && !SIGNED_IN() && !APPLE_ON()) ? `<button class="btn ghost" id="ob-dev" style="margin-top:14px;background:#e8364f;color:#fff;border-color:#e8364f"> Sign in (Dev Test)</button>
+        <div class="faint" style="text-align:center;margin-top:6px">Dev mode — creates a test account on the server.</div>` : ""}
       <button class="btn" id="ob-go" style="margin-top:18px">Step onto the floor</button>
       <div class="disclosure">A bid is the budget you commit to spend on the date itself — dinner, drinks, the evening. It is never a payment to another person.</div>
     </div>`;
@@ -352,6 +354,16 @@
         if (nm && !$("#ob-name").value) $("#ob-name").value = nm;
         toast("Signed in with Apple.");
       } catch (e) { toast("Apple sign-in: " + e.message); }
+    };
+    const dv = $("#ob-dev");
+    if (dv) dv.onclick = async () => {
+      const name = ($("#ob-name") || {}).value || "TestUser";
+      try {
+        const d = await API.devLogin(name.trim() || "TestUser");
+        const nm = d && d.user && d.user.name;
+        if (nm && !$("#ob-name").value) $("#ob-name").value = nm;
+        toast("Dev signed in as " + (nm || name));
+      } catch (e) { toast("Dev login: " + e.message); }
     };
     $("#ob-go").onclick = async () => {
       const name = $("#ob-name").value.trim();

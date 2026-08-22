@@ -383,6 +383,32 @@ async function handleAppleAuth(request: Request, env: Env): Promise<Response> {
   });
 }
 
+/** POST /auth/dev-login  { name }  →  { userId, sessionToken, isNew, user }
+ *  Dev-only shortcut: creates/looks up a user by synthetic "dev:<name>" sub
+ *  and issues a real session token. No Apple Sign-In required. */
+async function handleDevLogin(request: Request, env: Env): Promise<Response> {
+  let body: any;
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const name = String(body?.name ?? "").trim().slice(0, 80);
+  if (!name) return err("name is required");
+  if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
+  if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
+
+  const syntheticSub = `dev:${name.toLowerCase().replace(/\s+/g, "-")}`;
+  const { user, isNew } = await upsertUserByAppleSub(env, syntheticSub, null, name);
+
+  const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
+  const sessionToken = await issueSessionToken(user.id, ttl, env.SESSION_SECRET);
+
+  return json({
+    userId: user.id,
+    sessionToken,
+    expiresInSeconds: ttl,
+    isNew,
+    user: publicUser(user),
+  });
+}
+
 /** Apple only gives us the full name on the FIRST sign-in ever; the client
  *  passes it through as `name`. Prefer whatever the client supplied; fall
  *  back to nothing (never guess from the email). */
@@ -1061,11 +1087,14 @@ function photosBase(env: Env): string | undefined {
  *  monogram. */
 function publicProfile(p: ProfileWithAge, photosBaseUrl?: string) {
   const rawPhotos = safeParseJsonArray(p.photos_json) as Array<{ id: string; key: string }>;
-  const photos = photosBaseUrl
-    ? rawPhotos
-        .filter(e => e && typeof e.key === "string")
-        .map(e => ({ id: e.id, url: `${photosBaseUrl}/${e.key}` }))
-    : [];
+  const photos = rawPhotos
+    .filter(e => e && typeof e.key === "string")
+    .map(e => {
+      if (e.key.startsWith("data:")) return { id: e.id, url: e.key };
+      if (photosBaseUrl) return { id: e.id, url: `${photosBaseUrl}/${e.key}` };
+      return null;
+    })
+    .filter(Boolean) as Array<{ id: string; url: string }>;
   return {
     userId: p.user_id,
     role: p.role,
@@ -1868,12 +1897,13 @@ function parsePhotos(raw: string | null): PhotoEntry[] {
 
 // POST /me/photos  [auth]  — body is raw JPEG bytes
 async function handleUploadPhoto(request: Request, env: Env): Promise<Response> {
-  if (!env.PHOTOS) return err("Photo uploads are not configured", 501);
   const userId = await authenticate(request, env);
   if (!userId) return err("Unauthorized", 401);
 
   const ct = (request.headers.get("Content-Type") ?? "").toLowerCase();
-  if (!ct.startsWith("image/jpeg")) return err("Content-Type must be image/jpeg");
+  if (!ct.startsWith("image/jpeg") && !ct.startsWith("image/png") && !ct.startsWith("image/webp")) {
+    return err("Content-Type must be image/jpeg, image/png, or image/webp");
+  }
   const length = Number(request.headers.get("Content-Length") ?? 0);
   if (length > MAX_PHOTO_BYTES) return err("Photo exceeds 5 MB limit", 413);
 
@@ -1886,17 +1916,30 @@ async function handleUploadPhoto(request: Request, env: Env): Promise<Response> 
   if (existing.length >= MAX_PHOTOS) return err(`Max ${MAX_PHOTOS} photos`, 400);
 
   const photoId = crypto.randomUUID();
-  const key = `photos/${userId}/${photoId}.jpg`;
-
   const body = await request.arrayBuffer();
-  if (body.byteLength < 30 * 1024) return err("Photo too small (min ~30 KB)");
+  if (body.byteLength < 100) return err("Photo too small");
   if (body.byteLength > MAX_PHOTO_BYTES) return err("Photo exceeds 5 MB limit", 413);
 
-  await env.PHOTOS.put(key, body, {
-    httpMetadata: { contentType: "image/jpeg" },
-  });
+  let photoUrl: string;
 
-  existing.push({ id: photoId, key });
+  if (env.PHOTOS) {
+    const key = `photos/${userId}/${photoId}.jpg`;
+    await env.PHOTOS.put(key, body, {
+      httpMetadata: { contentType: ct.split(";")[0] },
+    });
+    existing.push({ id: photoId, key });
+    const base = photosBase(env);
+    photoUrl = base ? `${base}/${key}` : key;
+  } else {
+    const bytes = new Uint8Array(body);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const b64 = btoa(binary);
+    const dataUrl = `data:${ct.split(";")[0]};base64,${b64}`;
+    existing.push({ id: photoId, key: dataUrl });
+    photoUrl = dataUrl;
+  }
+
   const now = Date.now();
   await env.DB.prepare(
     "UPDATE profiles SET photos_json = ?, updated_at = ? WHERE user_id = ?"
@@ -1904,8 +1947,11 @@ async function handleUploadPhoto(request: Request, env: Env): Promise<Response> 
 
   const base = photosBase(env);
   return json({
-    photo: { id: photoId, url: base ? `${base}/${key}` : key },
-    photos: existing.map(e => ({ id: e.id, url: base ? `${base}/${e.key}` : e.key })),
+    photo: { id: photoId, url: photoUrl },
+    photos: existing.map(e => ({
+      id: e.id,
+      url: e.key.startsWith("data:") ? e.key : (base ? `${base}/${e.key}` : e.key),
+    })),
   }, 201);
 }
 
@@ -1994,6 +2040,7 @@ export default {
 
     if (pathname === "/health" && m === "GET") return handleHealth(env);
     if (pathname === "/auth/apple" && m === "POST") return handleAppleAuth(request, env);
+    if (pathname === "/auth/dev-login" && m === "POST") return handleDevLogin(request, env);
     if (pathname === "/me" && m === "GET") return handleMe(request, env);
     if (pathname === "/me" && m === "DELETE") return handleDeleteMe(request, env);
     if (pathname === "/me/dob" && m === "POST") return handleSetDob(request, env);

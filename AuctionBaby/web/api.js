@@ -54,12 +54,22 @@
       if (data.token) setToken(data.token);
       return data; // { token, user }
     },
+    // Dev-only: create/login with a synthetic user (no Apple Sign-In needed).
+    async devLogin(name) {
+      const data = await auth("/auth/dev-login", {
+        method: "POST", auth: false,
+        body: { name },
+      });
+      if (data.sessionToken) setToken(data.sessionToken);
+      return data; // { userId, sessionToken, isNew, user }
+    },
     me: () => auth("/me"),
-    // Upload a profile photo (raw JPEG binary) to the auth Worker → R2.
+    // Upload a profile photo to the auth Worker → R2 (or data URL fallback).
     async uploadPhoto(blob) {
+      const ct = (blob && blob.type) ? blob.type : "image/jpeg";
       const res = await fetch((C.AUTH_URL || "").replace(/\/$/, "") + "/me/photos", {
         method: "POST",
-        headers: { "Content-Type": "image/jpeg", Authorization: "Bearer " + token() },
+        headers: { "Content-Type": ct, Authorization: "Bearer " + token() },
         body: blob,
       });
       const t = await res.text();
