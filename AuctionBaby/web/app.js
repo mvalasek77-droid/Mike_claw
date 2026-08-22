@@ -1603,7 +1603,7 @@
       const ok = await hmacGate(user, pass);
       if (!ok) return toast("Invalid credentials.");
       sessionStorage.setItem(ADMIN_KEY, "1");
-      if (CONFIGURED() && !SIGNED_IN()) {
+      if (CONFIGURED()) {
         try { await API.devLogin("admin-" + user); } catch (e) { /* non-fatal */ }
       }
       go("/admin/dash");
