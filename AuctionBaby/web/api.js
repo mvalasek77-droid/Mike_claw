@@ -67,6 +67,7 @@
       if (!res.ok) throw new Error(d.error || ("HTTP " + res.status));
       return d; // { photo: { id, url }, ... } (shape may vary)
     },
+    myProfile: () => auth("/me/profile"),
     async saveProfile(p) { return auth("/me/profile", { method: "PUT", body: p }); },
     async setDob(dob) { return auth("/me/dob", { method: "POST", body: { dateOfBirth: dob } }); },
     deleteAccount: () => auth("/me", { method: "DELETE" }),

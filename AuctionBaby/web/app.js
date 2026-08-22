@@ -719,7 +719,7 @@
       noCamera: "Camera access is required for verification. Enable it in your browser settings." };
     const icons = { idle: "🪪", camera: "📹", liveness: "👁️", matching: "🔍", submitting: "⏳",
       pending: "⏳", done: "✅", failed: "⚠️", noCamera: "📷" };
-    let stream = null, video = null, blinkDetected = false;
+    let stream = null, video = null, blinkDetected = false, serverPhoto = S.me.photo;
 
     const draw = () => {
       const title = titles[phase] || "", sub = subs[phase] || "", icon = icons[phase] || "🪪";
@@ -735,7 +735,7 @@
             </div>
             <div style="font-size:24px;color:var(--verify)">↔</div>
             <div style="width:110px;height:110px;border-radius:50%;overflow:hidden;border:3px solid var(--gold);flex:none">
-              ${S.me.photo ? `<img src="${esc(S.me.photo)}" alt="Profile" style="width:100%;height:100%;object-fit:cover">` : `<div style="width:100%;height:100%;background:rgba(79,176,198,.14);display:grid;place-items:center;font-size:40px">🪪</div>`}
+              ${serverPhoto ? `<img src="${esc(serverPhoto)}" alt="Profile" style="width:100%;height:100%;object-fit:cover">` : `<div style="width:100%;height:100%;background:rgba(79,176,198,.14);display:grid;place-items:center;font-size:40px">🪪</div>`}
             </div>
           </div>` : `<div style="width:150px;height:150px;margin:0 auto;border-radius:50%;background:rgba(79,176,198,.14);display:flex;align-items:center;justify-content:center;font-size:66px">
             ${phase === "camera" || phase === "liveness" ? `<video id="vfeed" autoplay playsinline style="width:100%;height:100%;border-radius:50%;object-fit:cover;transform:scaleX(-1)"></video>` : icon}
@@ -804,10 +804,22 @@
       return cv;
     }
 
-    function compareFaces(selfieCanvas) {
+    async function getServerProfilePhoto() {
+      if (!CONFIGURED() || !SIGNED_IN()) return S.me.photo || null;
+      try {
+        const r = await API.myProfile();
+        const profile = r.profile || r;
+        const photos = profile.photos || [];
+        if (photos.length && photos[0].url) return photos[0].url;
+      } catch {}
+      return S.me.photo || null;
+    }
+
+    function compareFaces(selfieCanvas, profilePhotoUrl) {
       return new Promise(resolve => {
-        if (!S.me.photo || !selfieCanvas) return resolve(0);
+        if (!profilePhotoUrl || !selfieCanvas) return resolve(0);
         const img = new Image();
+        img.crossOrigin = "anonymous";
         img.onload = () => {
           const sz = 64;
           const refCv = document.createElement("canvas"); refCv.width = sz; refCv.height = sz;
@@ -826,13 +838,16 @@
           resolve(sum / (count / 4));
         };
         img.onerror = () => resolve(0);
-        img.src = S.me.photo;
+        img.src = profilePhotoUrl;
       });
     }
 
     async function finishVerification() {
       const selfieCanvas = captureSelfie();
-      const faceMatchScore = await compareFaces(selfieCanvas);
+      const profilePhotoUrl = await getServerProfilePhoto();
+      serverPhoto = profilePhotoUrl;
+      draw();
+      const faceMatchScore = await compareFaces(selfieCanvas, profilePhotoUrl);
       const livenessPassed = !!selfieCanvas;
       const selfieScore = selfieCanvas ? 0.9 : 0;
       const useServer = CONFIGURED() && SIGNED_IN();
