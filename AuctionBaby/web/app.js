@@ -1428,7 +1428,7 @@
     const key = await crypto.subtle.importKey("raw", enc.encode(salt), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const sig = await crypto.subtle.sign("HMAC", key, enc.encode(user + ":" + pass));
     const hex = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, "0")).join("");
-    const valid = "a6c1db19c4b4e2f94b0f5e6c8d7a3e12f9b0d1c5a4e3f2b1c0d9e8f7a6b5c4d3";
+    const valid = "bb90ac932b3460870f09796f19be59afc83109cb062f8eb8c006d07389c04171";
     return hex === valid;
   }
 
