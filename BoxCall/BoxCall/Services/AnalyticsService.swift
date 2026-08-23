@@ -41,10 +41,28 @@ final class AnalyticsService {
             ))
         }
         // Also catch common signals (best-effort; real crash reporting
-        // uses PLCrashReporter or Sentry).
-        signal(SIGABRT) { _ in AnalyticsService.shared.track(.appSignal(name: "SIGABRT")); raise(SIGABRT) }
-        signal(SIGSEGV) { _ in AnalyticsService.shared.track(.appSignal(name: "SIGSEGV")); raise(SIGSEGV) }
-        signal(SIGBUS)  { _ in AnalyticsService.shared.track(.appSignal(name: "SIGBUS"));  raise(SIGBUS) }
+        // uses PLCrashReporter or Sentry). We MUST reset to the default
+        // handler before re-raising, otherwise `raise(sig)` reruns our
+        // own handler and infinite-loops until the process is killed
+        // by the OS instead of dumping a clean crash report.
+        for sig in [SIGABRT, SIGSEGV, SIGBUS, SIGILL, SIGFPE] {
+            signal(sig) { s in
+                AnalyticsService.shared.track(.appSignal(name: name(for: s)))
+                signal(s, SIG_DFL)
+                raise(s)
+            }
+        }
+    }
+}
+
+private func name(for signal: Int32) -> String {
+    switch signal {
+    case SIGABRT: return "SIGABRT"
+    case SIGSEGV: return "SIGSEGV"
+    case SIGBUS:  return "SIGBUS"
+    case SIGILL:  return "SIGILL"
+    case SIGFPE:  return "SIGFPE"
+    default:      return "SIG\(signal)"
     }
 }
 

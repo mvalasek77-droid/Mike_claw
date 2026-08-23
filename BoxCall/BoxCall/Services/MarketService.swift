@@ -11,6 +11,7 @@ import Combine
 /// A single movie-wide sentiment multiplier moves ALL of a movie's strikes
 /// in one direction when a news event lands — bullish news lifts Calls
 /// and drops Puts; bearish news does the reverse.
+@MainActor
 final class MarketService: ObservableObject {
     static let shared = MarketService()
 
@@ -135,12 +136,19 @@ final class MarketService: ObservableObject {
     // MARK: - Lifecycle
 
     func startMarket() {
-        guard updateTimer == nil else { return }
+        // Idempotent: invalidate any prior timer before starting a new
+        // one so foreground/background cycles don't spawn duplicates
+        // that all fire on the same run loop.
+        updateTimer?.invalidate()
         // First tick immediately so charts have >1 point on first render.
         tick()
-        updateTimer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { [weak self] _ in
+        let t = Timer(timeInterval: tickInterval, repeats: true) { [weak self] _ in
             self?.tick()
         }
+        // Attach to the common run-loop mode so ticks keep firing while
+        // the user is dragging a scroll view.
+        RunLoop.main.add(t, forMode: .common)
+        updateTimer = t
     }
 
     func stopMarket() {

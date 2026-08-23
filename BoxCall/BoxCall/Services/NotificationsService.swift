@@ -80,7 +80,7 @@ final class NotificationsService: NSObject, ObservableObject, UNUserNotification
         deliver(id: "broke_\(UUID().uuidString.prefix(8))",
                 title: "You're out of Reel Coins.",
                 body: "Trading pauses until Monday morning. Your allowance will land automatically.",
-                kind: .reminder(movieId: ""))
+                kind: .outOfCoins)
     }
 
     func notifyMarketEvent(_ event: MarketEvent) {
@@ -183,6 +183,7 @@ struct InboxItem: Identifiable, Hashable {
         case comment(handle: String)
         case reminder(movieId: String)
         case marketEvent(movieId: String, positive: Bool)
+        case outOfCoins
 
         var emoji: String {
             switch self {
@@ -193,6 +194,7 @@ struct InboxItem: Identifiable, Hashable {
             case .comment:                 return "💬"
             case .reminder:                return "🎬"
             case .marketEvent(_, let pos): return pos ? "📈" : "📰"
+            case .outOfCoins:              return "🪙"
             }
         }
     }

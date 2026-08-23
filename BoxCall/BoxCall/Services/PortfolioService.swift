@@ -102,9 +102,11 @@ final class PortfolioService: ObservableObject {
         ))
         MarketService.shared.recordBuy(contractId: contract.id, quantity: quantity)
         // If the movie opens in the next 24h, kick off a Live Activity.
+        // Use the id we just captured — `positions.last` is only correct
+        // when nothing else appended concurrently.
         if let m = MarketService.shared.movie(id: contract.movieId),
            m.releaseDate.timeIntervalSinceNow < 24 * 3600,
-           let placed = positions.last {
+           let placed = positions.first(where: { $0.id == pid }) {
             LiveActivityService.start(movie: m, position: placed)
         }
         AnalyticsService.shared.track(.tradePlaced(

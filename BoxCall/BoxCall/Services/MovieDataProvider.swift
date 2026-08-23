@@ -79,7 +79,10 @@ final class TMDBMovieProvider: MovieDataProvider {
             .init(name: "region", value: "US"),
             .init(name: "page", value: "1")
         ]
-        let (data, resp) = try await session.data(from: comps.url!)
+        guard let url = comps.url else { throw URLError(.badURL) }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        let (data, resp) = try await session.data(for: request)
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.badServerResponse)
         }

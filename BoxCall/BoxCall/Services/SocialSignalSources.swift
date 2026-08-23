@@ -58,7 +58,12 @@ final class YouTubeSignalSource: SocialSignalSource {
         ]
         guard let url = comps.url else { return nil }
         do {
-            let (data, _) = try await session.data(from: url)
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 8
+            let (data, resp) = try await session.data(for: request)
+            guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                return nil
+            }
             let env = try JSONDecoder().decode(YTSearchResponse.self, from: data)
             return env.items.first?.id.videoId
         } catch {
@@ -75,7 +80,12 @@ final class YouTubeSignalSource: SocialSignalSource {
         ]
         guard let url = comps.url else { return nil }
         do {
-            let (data, _) = try await session.data(from: url)
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 8
+            let (data, resp) = try await session.data(for: request)
+            guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                return nil
+            }
             let env = try JSONDecoder().decode(YTVideosResponse.self, from: data)
             return env.items.first?.statistics
         } catch {

@@ -92,16 +92,19 @@ final class StoreService: ObservableObject {
     func restore() async {
         do {
             try await AppStore.sync()
-            var highest: Membership = .free
+            // Pick the RICHEST entitlement, not the longest-named one.
+            // Membership.paidTiers is ordered ascending — cheapest first.
+            var best: Membership = .free
             for await result in Transaction.currentEntitlements {
-                if case .verified(let tx) = result,
-                   let tier = Membership.paidTiers.first(where: { $0.productId == tx.productID }),
-                   tier.rawValue.count > highest.rawValue.count {
-                    highest = tier
-                }
+                guard case .verified(let tx) = result,
+                      let tier = Membership.paidTiers.first(where: { $0.productId == tx.productID })
+                else { continue }
+                let bestIndex = Membership.paidTiers.firstIndex(of: best) ?? -1
+                let thisIndex = Membership.paidTiers.firstIndex(of: tier) ?? -1
+                if thisIndex > bestIndex { best = tier }
             }
-            if highest.isPaid {
-                PortfolioService.shared.activateMembership(highest, grantStartingBonus: false)
+            if best.isPaid {
+                PortfolioService.shared.activateMembership(best, grantStartingBonus: false)
             }
         } catch {
             lastError = error.localizedDescription
