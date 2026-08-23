@@ -849,58 +849,94 @@
             selCv.getContext("2d").drawImage(selfieCanvas, 0, 0, sz, sz);
             const refD = refCv.getContext("2d").getImageData(0, 0, sz, sz).data;
             const selD = selCv.getContext("2d").getImageData(0, 0, sz, sz).data;
-            // Use color histogram comparison — more robust than per-pixel
-            // Build 8-bin histograms for R, G, B channels for each image
-            const bins = 8;
-            const refHist = [new Float32Array(bins), new Float32Array(bins), new Float32Array(bins)];
-            const selHist = [new Float32Array(bins), new Float32Array(bins), new Float32Array(bins)];
             const total = sz * sz;
-            for (let i = 0; i < total * 4; i += 4) {
-              for (let c = 0; c < 3; c++) {
-                refHist[c][Math.min(Math.floor(refD[i + c] / 32), bins - 1)]++;
-                selHist[c][Math.min(Math.floor(selD[i + c] / 32), bins - 1)]++;
-              }
-            }
-            // Histogram intersection (normalized)
-            let histScore = 0;
-            for (let c = 0; c < 3; c++) {
-              let inter = 0;
-              for (let b = 0; b < bins; b++) inter += Math.min(refHist[c][b], selHist[c][b]);
-              histScore += inter / total;
-            }
-            histScore /= 3; // 0-1, higher = more similar color distribution
 
-            // Also do spatial comparison on center region
-            const margin = Math.floor(sz * 0.25);
-            let spatialSum = 0, pixels = 0;
+            // 1) Mean luminance check — reject obvious mismatches early
+            //    (e.g. dark night scene vs bright face)
+            let refLum = 0, selLum = 0;
+            for (let i = 0; i < total * 4; i += 4) {
+              refLum += refD[i] * 0.299 + refD[i+1] * 0.587 + refD[i+2] * 0.114;
+              selLum += selD[i] * 0.299 + selD[i+1] * 0.587 + selD[i+2] * 0.114;
+            }
+            refLum /= total; selLum /= total;
+            const lumDiff = Math.abs(refLum - selLum) / 255;
+            if (lumDiff > 0.35) { resolve(0.1); return; }
+
+            // 2) Skin-tone check on profile photo center — if no skin tones
+            //    detected, it's probably not a face photo
+            const margin = Math.floor(sz * 0.2);
+            let skinPixels = 0, centerPixels = 0;
             for (let y = margin; y < sz - margin; y++) {
               for (let x = margin; x < sz - margin; x++) {
                 const i = (y * sz + x) * 4;
-                const dr = (refD[i] - selD[i]) / 255;
-                const dg = (refD[i+1] - selD[i+1]) / 255;
-                const db = (refD[i+2] - selD[i+2]) / 255;
-                spatialSum += 1 - Math.sqrt((dr*dr + dg*dg + db*db) / 3);
-                pixels++;
+                const r = refD[i], g = refD[i+1], b = refD[i+2];
+                centerPixels++;
+                if (r > 60 && g > 40 && b > 20 && r > g && g > b &&
+                    (r - g) > 10 && (r - b) > 15 && r < 250) skinPixels++;
               }
             }
-            const spatialScore = pixels > 0 ? spatialSum / pixels : 0;
+            const skinRatio = skinPixels / centerPixels;
+            if (skinRatio < 0.08) { resolve(0.15); return; }
 
-            // Combined: 40% histogram + 60% spatial — histogram catches
-            // gross color mismatches, spatial catches structural differences
-            const score = histScore * 0.4 + spatialScore * 0.6;
+            // 3) Grid-based structural comparison (4x4 grid)
+            //    Compare brightness PATTERN, not absolute values
+            const grid = 4;
+            const cellSz = sz / grid;
+            const refGrid = [], selGrid = [];
+            for (let gy = 0; gy < grid; gy++) {
+              for (let gx = 0; gx < grid; gx++) {
+                let rSum = 0, sSum = 0, cnt = 0;
+                for (let y = Math.floor(gy * cellSz); y < Math.floor((gy+1) * cellSz); y++) {
+                  for (let x = Math.floor(gx * cellSz); x < Math.floor((gx+1) * cellSz); x++) {
+                    const i = (y * sz + x) * 4;
+                    rSum += (refD[i] + refD[i+1] + refD[i+2]) / 3;
+                    sSum += (selD[i] + selD[i+1] + selD[i+2]) / 3;
+                    cnt++;
+                  }
+                }
+                refGrid.push(rSum / cnt);
+                selGrid.push(sSum / cnt);
+              }
+            }
+            // Normalize grids to zero-mean
+            const refMean = refGrid.reduce((a,b) => a+b, 0) / refGrid.length;
+            const selMean = selGrid.reduce((a,b) => a+b, 0) / selGrid.length;
+            let num = 0, denR = 0, denS = 0;
+            for (let i = 0; i < refGrid.length; i++) {
+              const rr = refGrid[i] - refMean;
+              const ss = selGrid[i] - selMean;
+              num += rr * ss;
+              denR += rr * rr;
+              denS += ss * ss;
+            }
+            const denom = Math.sqrt(denR * denS);
+            // Pearson correlation: -1 to 1; same structure → ~0.7-1.0
+            const correlation = denom > 0 ? num / denom : 0;
+            // Map correlation to 0-1 score (negative correlation = 0)
+            const structScore = Math.max(0, correlation);
+
+            // 4) Color distribution similarity (cosine similarity of RGB means)
+            let refR = 0, refG = 0, refB = 0, selR = 0, selG = 0, selB = 0;
+            for (let i = 0; i < total * 4; i += 4) {
+              refR += refD[i]; refG += refD[i+1]; refB += refD[i+2];
+              selR += selD[i]; selG += selD[i+1]; selB += selD[i+2];
+            }
+            refR /= total; refG /= total; refB /= total;
+            selR /= total; selG /= total; selB /= total;
+            const dot = refR*selR + refG*selG + refB*selB;
+            const magR = Math.sqrt(refR*refR + refG*refG + refB*refB);
+            const magS = Math.sqrt(selR*selR + selG*selG + selB*selB);
+            const colorSim = (magR > 0 && magS > 0) ? dot / (magR * magS) : 0;
+
+            // Final score: structure correlation is the main signal (70%)
+            // Color similarity is secondary (30%)
+            const score = structScore * 0.7 + colorSim * 0.3;
             resolve(score);
           } catch (e) {
             resolve(0);
           }
         };
-        img.onerror = () => {
-          if (img.crossOrigin) {
-            const retry = new Image();
-            retry.onload = () => resolve(0);
-            retry.onerror = () => resolve(0);
-            retry.src = profilePhotoUrl;
-          } else { resolve(0); }
-        };
+        img.onerror = () => resolve(0);
         img.src = profilePhotoUrl;
       });
     }
