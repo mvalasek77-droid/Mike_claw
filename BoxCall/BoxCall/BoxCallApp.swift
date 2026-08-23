@@ -38,6 +38,7 @@ struct BoxCallApp: App {
             .task {
                 AnalyticsService.shared.installCrashHandler()
                 AnalyticsService.shared.track(.appOpen)
+                Haptics.warmUp()
                 if hasCompletedOnboarding { notifications.requestAuthorizationIfNeeded() }
                 market.startMarket()
                 await market.refreshCatalog()
@@ -63,14 +64,19 @@ struct RewardToastOverlay: View {
                 }
                 Spacer()
             }
-            .padding(12)
-            .background(RoundedRectangle(cornerRadius: 12).fill(.thinMaterial))
-            .padding(.horizontal, 20)
-            .padding(.top, 6)
-            .transition(.move(edge: .top).combined(with: .opacity))
+            .padding(Theme.Space.md)
+            .glassSurface(radius: Theme.Radius.md,
+                          stroke: Theme.accent.opacity(0.35))
+            .padding(.horizontal, Theme.Space.xl)
+            .padding(.top, Theme.Space.sm)
+            .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
+            .transition(.asymmetric(
+                insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.9)),
+                removal: .move(edge: .top).combined(with: .opacity)))
+            .animation(Theme.Motion.toast, value: toast.id)
             .task(id: toast.id) {
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
-                withAnimation { rewards.dismissToast() }
+                withAnimation(Theme.Motion.toast) { rewards.dismissToast() }
             }
         }
     }

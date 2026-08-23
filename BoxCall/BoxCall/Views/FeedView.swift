@@ -74,7 +74,7 @@ struct PostCard: View {
     @State private var showReport = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.sm + 2) {
             headerRow
             callLine
             if let take = post.hotTake {
@@ -82,11 +82,15 @@ struct PostCard: View {
             }
             if let outcome = post.outcome {
                 outcomeBanner(outcome)
+                    .transition(.scale(scale: 0.95).combined(with: .opacity))
             }
             actionBar
         }
-        .padding()
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color(.secondarySystemBackground)))
+        .padding(Theme.Space.lg)
+        .glassSurface(radius: Theme.Radius.md,
+                      tint: post.side == .call ? Theme.bull : Theme.bear)
+        .animation(Theme.Motion.smooth, value: post.outcome)
+        .animation(Theme.Motion.snap, value: post.isLikedByMe)
     }
 
     private var headerRow: some View {

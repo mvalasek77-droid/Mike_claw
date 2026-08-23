@@ -101,6 +101,7 @@ final class PortfolioService: ObservableObject {
             actualOWMillions: nil
         ))
         MarketService.shared.recordBuy(contractId: contract.id, quantity: quantity)
+        Haptics.trade()
         // If the movie opens in the next 24h, kick off a Live Activity.
         // Use the id we just captured — `positions.last` is only correct
         // when nothing else appended concurrently.
@@ -128,6 +129,7 @@ final class PortfolioService: ObservableObject {
         user.reelCoins += proceeds
         user.lifetimePnL += proceeds - position.cost
         MarketService.shared.recordSell(contractId: position.contractId, quantity: position.quantity)
+        Haptics.closeTrade()
         AnalyticsService.shared.track(.tradeClosed(
             movieId: position.movieId, pnl: proceeds - position.cost))
         positions.removeAll { $0.id == position.id }
@@ -157,6 +159,7 @@ final class PortfolioService: ObservableObject {
 
             if net > 0 {
                 wonAny = true
+                Haptics.won(large: net > 100)
                 RewardsService.shared.recordWin(position: p, actual: actualMillions, netProfit: net)
                 SocialService.shared.attachOutcome(
                     positionId: p.id,
@@ -166,6 +169,7 @@ final class PortfolioService: ObservableObject {
                 )
             } else {
                 lostAny = true
+                Haptics.lost()
                 RewardsService.shared.recordLoss(position: p)
                 SocialService.shared.attachOutcome(
                     positionId: p.id,

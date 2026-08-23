@@ -28,6 +28,7 @@ final class RewardsService: ObservableObject {
         if after > before {
             NotificationsService.shared.notifyTier(after)
             AnalyticsService.shared.track(.tierPromoted(to: after.name))
+            Haptics.tierUp()
         }
     }
 
@@ -43,6 +44,7 @@ final class RewardsService: ObservableObject {
             toast("Badge unlocked", subtitle: "\(badge.name) — \(badge.blurb)", emoji: badge.emoji)
             NotificationsService.shared.notifyBadge(badge)
             AnalyticsService.shared.track(.badgeUnlocked(id: badge.id))
+            Haptics.badge()
         }
     }
 
