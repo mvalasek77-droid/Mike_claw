@@ -184,6 +184,20 @@
   // Migrate: ensure new fields exist on older saved states
   if (!S.ownedStatus) S.ownedStatus = [];
   if (S.pass === undefined) S.pass = null;
+  if (S.boostUntil && S.boostUntil > Date.now()) {
+    const lot = (S.floor || []).find(l => l.id === "me_lot");
+    if (lot) lot.boosted = true;
+    setTimeout(() => {
+      const l = (S.floor || []).find(x => x.id === "me_lot");
+      if (l) l.boosted = false;
+      delete S.boostUntil;
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
+    }, S.boostUntil - Date.now());
+  } else if (S.boostUntil) {
+    const lot = (S.floor || []).find(l => l.id === "me_lot");
+    if (lot) lot.boosted = false;
+    delete S.boostUntil;
+  }
   function load() {
     try { return JSON.parse(localStorage.getItem(KEY)) || fresh(); }
     catch { return fresh(); }
@@ -493,6 +507,7 @@
       const q = floorSearch.toLowerCase();
       floorData = floorData.filter(w => w.name.toLowerCase().includes(q));
     }
+    floorData.sort((a, b) => (b.boosted ? 1 : 0) - (a.boosted ? 1 : 0));
     const mp = floorData.find(w => w.masterpiece);
     const hero = mp || floorData[0];
     const rest = floorData.filter(w => w !== hero);
@@ -1315,9 +1330,9 @@
       ` : `
       <div class="kicker" style="margin:8px 0">Spotlight Boost</div>
       <div class="card row" style="margin-bottom:10px"><div class="grow">
-        <div style="font-family:var(--serif);font-weight:800">Spotlight Boost</div>
+        <div style="font-family:var(--serif);font-weight:800">⚡ Spotlight Boost</div>
         <div class="faint">30 minutes at the very top of the floor.</div></div>
-        <button class="chip rose" data-boost>$4.99</button></div>
+        ${S.boostUntil && S.boostUntil > Date.now() ? `<span class="chip" style="background:rgba(92,201,138,.14);color:var(--success);font-weight:800">Active</span>` : `<button class="chip rose" data-boost>$4.99</button>`}</div>
       `}
       <div class="disclosure">Payments on the web are processed by Stripe. Gavels are in-app status currency and are never a payment to another user. Passes auto-renew monthly until canceled.</div>
     </div>${tabbar()}`;
@@ -1419,7 +1434,7 @@
     }
     // DEMO fallback (no charge).
     if (kind === "gavels") { S.wallet += a; save(); toast(`Demo: +${a.toLocaleString()} Gavels (configure Stripe for live).`); store(); }
-    else if (kind === "boost") { toast("Demo: Boost active for 30 min (configure Stripe for live)."); }
+    else if (kind === "boost") { activateBoost(); toast("Spotlight active for 30 minutes!"); }
     else if (kind === "status") {
       S.ownedStatus = S.ownedStatus || [];
       if (!S.ownedStatus.includes(a)) S.ownedStatus.push(a);
@@ -1427,6 +1442,24 @@
     }
     else if (kind === "pass") { S.pass = a; save(); toast(`Demo: ${a} Pass active (configure Stripe for live).`); store(); }
     else toast(`Demo: ${a} active (configure Stripe for live).`);
+  }
+
+  let boostTimer = null;
+  function activateBoost() {
+    const lot = (S.floor || []).find(l => l.id === "me_lot");
+    if (lot) lot.boosted = true;
+    S.boostUntil = Date.now() + 30 * 60 * 1000;
+    save();
+    if (boostTimer) clearTimeout(boostTimer);
+    boostTimer = setTimeout(() => {
+      const l = (S.floor || []).find(x => x.id === "me_lot");
+      if (l) l.boosted = false;
+      delete S.boostUntil;
+      save();
+      toast("Spotlight expired.");
+      if (location.hash === "#/browse" || location.hash === "") floor();
+    }, 30 * 60 * 1000);
+    if (location.hash === "#/browse" || location.hash === "") floor();
   }
 
   function you() {
