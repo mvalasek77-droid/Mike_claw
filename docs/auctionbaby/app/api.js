@@ -90,7 +90,7 @@
     },
 
     // ── bids / matches / messages (matching Worker) ──
-    placeBid: (lotId, amount, note) => match("/bids", { method: "POST", body: { lotId, amount, note } }),
+    placeBid: (lotId, amount, note, opts) => match("/bids", { method: "POST", body: { lotId, amount, note, ...opts } }),
     outgoingBids: () => match("/bids/outgoing"),
     incomingBids: () => match("/bids/incoming"),
     acceptBid: (id) => match(`/bids/${id}/accept`, { method: "POST" }),

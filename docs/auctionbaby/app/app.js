@@ -81,6 +81,7 @@
         age: b.age, amount: b.amount || b.bidAmount || 0, note: b.note || "",
         hue: hueFrom(b.id || b.name),
         verified: !!(b.verified || (b.man && b.man.verifiedAt)),
+        gilded: !!b.gilded,
       }));
       save(); if (tab === "floor" && S.role === "woman") incoming();
     } catch (e) { /* keep local */ }
@@ -112,7 +113,7 @@
   };
   const gradSm = (hue, name, photo) => grad(hue, name, photo).replace('class="avatar"', 'class="avatar sm"');
 
-  // ---- demo floor (all 56 women from the iOS app with photos) ----
+  // ---- demo floor (54 women with photos) ----
   const W = (name,age,city,bid,bio,prompts,hue,verified,masterpiece,copycat,photo,interests,lifestyle,showcase) => ({
     id:uid(),name,age,city,startingBid:bid,bio,prompts,icebreakers:prompts.map(p=>p.a),hue,verified,masterpiece,copycat,
     photo:"photos/"+photo+".jpg",photos:["photos/"+photo+".jpg"],interests:interests||[],lifestyle:lifestyle||{},showcase:showcase||480,marketValue:Math.round(bid*1.2+((showcase||480)-300)*2)
@@ -955,7 +956,7 @@
     if (insure && !w.copycat) { if (S.wallet >= BID_INSURANCE_COST) { S.wallet -= BID_INSURANCE_COST; gavelCost += BID_INSURANCE_COST; } else insure = false; }
     if (gavelCost > 0) save();
     if (CONFIGURED() && SIGNED_IN()) {
-      API.placeBid(w.id, amount, note || "")
+      API.placeBid(w.id, amount, note || "", { gilded: !!gild, insured: !!insure })
         .then(() => { toast(gild ? "Gilded bid placed — she'll see it first." : "Bid placed — you'll be notified if she accepts."); syncMatches(); })
         .catch(e => { if (gavelCost) { S.wallet += gavelCost; save(); } toast("Bid failed: " + e.message); });
       return;
@@ -1055,10 +1056,10 @@
       <div class="faint" style="margin:-6px 0 14px">Men bidding for a date. Accept the one you like — his photo unlocks when you do.</div>
       <button class="btn ghost" data-go="browse" style="margin-bottom:14px;width:100%;justify-content:center">Browse the Floor ▸</button>
       ${profileCard}
-      ${bids.length ? bids.map(b => `
-        <div class="card" style="margin-bottom:12px">
+      ${bids.length ? [...bids].sort((a, b) => (b.gilded ? 1 : 0) - (a.gilded ? 1 : 0)).map(b => `
+        <div class="card" style="margin-bottom:12px${b.gilded ? ";border-color:rgba(230,184,0,.5);box-shadow:0 0 0 1px rgba(230,184,0,.15)" : ""}">
           <div class="row">${gradSm(b.hue, b.name)}<div class="grow">
-            <div style="font-family:var(--serif);font-weight:800">${esc(b.name)} <span class="muted">${b.age || ""}</span>${b.verified ? verifiedBadge("sm") : ""}</div>
+            <div style="font-family:var(--serif);font-weight:800">${esc(b.name)} <span class="muted">${b.age || ""}</span>${b.verified ? verifiedBadge("sm") : ""}${b.gilded ? ' <span class="pill" style="background:rgba(230,184,0,.2);color:var(--gold);font-size:10px">🥇 Gilded</span>' : ""}</div>
             <div class="gold" style="font-weight:800;font-size:18px">${money(b.amount)}</div></div></div>
           ${b.note ? `<p class="muted" style="margin:10px 0 0">${esc(b.note)}</p>` : ""}
           <div class="row" style="gap:8px;margin-top:12px">
