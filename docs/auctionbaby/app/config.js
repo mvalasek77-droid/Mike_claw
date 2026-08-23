@@ -14,8 +14,8 @@ window.AB_CONFIG = {
   // id), enable "Sign in with Apple", add your web domain + a Return URL of
   // <your-domain>/index.html. Put that Services ID here, and set the same value
   // as WEB_CLIENT_ID in the auth Worker so it accepts the web token audience.
-  APPLE_SERVICE_ID: "",           // e.g. "com.valasek.auctionbaby.web"
-  APPLE_REDIRECT_URI: "",         // e.g. "https://auctionbaby.pages.dev/index.html"
+  APPLE_SERVICE_ID: "com.valasek.auctionbaby.web",
+  APPLE_REDIRECT_URI: "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/index.html",
 
   // ── Payments (Stripe, via the consumables Worker) ────────────────────────
   // The consumables Worker holds the Stripe secret; the web only needs the
