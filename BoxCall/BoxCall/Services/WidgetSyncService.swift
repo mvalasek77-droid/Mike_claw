@@ -72,5 +72,6 @@ enum WidgetSyncService {
               let data = try? JSONEncoder().encode(snapshot) else { return }
         defaults.set(data, forKey: key)
         WidgetCenter.shared.reloadAllTimelines()
+        WatchSyncService.shared.push()
     }
 }

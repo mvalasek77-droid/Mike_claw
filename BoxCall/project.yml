@@ -24,7 +24,9 @@ targets:
       - sdk: AuthenticationServices.framework
       - sdk: WidgetKit.framework
       - sdk: ActivityKit.framework
+      - sdk: WatchConnectivity.framework
       - target: BoxCallWidget
+      - target: BoxCallWatch
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app
@@ -52,6 +54,37 @@ targets:
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
         INFOPLIST_KEY_CFBundleDisplayName: "BoxCall"
         INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  BoxCallWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget:
+      watchOS: "10.0"
+    sources:
+      - path: BoxCallWatch
+    dependencies:
+      - sdk: SwiftUI.framework
+      - sdk: WatchConnectivity.framework
+      - target: BoxCallWatchComplication
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.watchkitapp
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.boxcall.app
+        INFOPLIST_KEY_WKWatchOnly: NO
+  BoxCallWatchComplication:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget:
+      watchOS: "10.0"
+    sources:
+      - path: BoxCallWatchComplication
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: WatchConnectivity.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boxcall.app.watchkitapp.complication
+        INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
   BoxCallTests:
     type: bundle.unit-test
     platform: iOS
@@ -70,6 +103,8 @@ schemes:
       targets:
         BoxCall: all
         BoxCallWidget: all
+        BoxCallWatch: all
+        BoxCallWatchComplication: all
         BoxCallTests: [test]
     run:
       config: Debug
