@@ -1115,7 +1115,7 @@
     const bubbles = m.messages.map((msg, i) => {
       if (msg.sys) return `<div class="bub sys">${esc(msg.text)}</div>`;
       const rx = msg.reaction ? `<span class="rx">${msg.reaction}</span>` : "";
-      const receipt = (i === lastMe) ? `<div class="receipt">${m.seen ? "Seen" : "Delivered"}</div>` : "";
+      const receipt = (i === lastMe && S.pass === "Black Card") ? `<div class="receipt">${m.seen ? "Seen" : "Delivered"}</div>` : "";
       const photoTag = msg.photo ? `<img class="photo-msg" src="${esc(msg.photo)}" alt="Photo" loading="lazy">` : "";
       return `<div class="bub ${msg.me ? "me" : "them"}${photoTag ? " photo" : ""}" data-mid="${i}">${photoTag}${msg.text ? esc(msg.text) : ""}${rx}</div>${receipt}`;
     }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
@@ -1275,28 +1275,19 @@
     { id: "status_trillionaire", name: "Trillionaire",         price: 1000,    blurb: "Can mint a Masterpiece. The whole floor turns.",        icon: "👑", tint: "var(--gold-soft)", prestige: true },
   ];
   const PASS_TIERS = [
-    { id: "Paddle",     price: 19.99, icon: "✋", perks: ["Unlimited bids", "See if you're the top bid"] },
-    { id: "Reserve",    price: 39.99, icon: "🔓", perks: ["Everything in Paddle", "Reveal her reserve price", "Auto-rebid to stay on top", "Rewind your last bid"] },
-    { id: "Black Card", price: 99.99, icon: "💳", perks: ["Everything in Reserve", "Priority placement on every lot", "Read receipts"] },
+    { id: "Paddle",     price: 19.99, icon: "✋", perks: ["Unlimited bids"] },
+    { id: "Reserve",    price: 39.99, icon: "🔓", perks: ["Everything in Paddle", "Reveal her reserve price"] },
+    { id: "Black Card", price: 99.99, icon: "💳", perks: ["Everything in Reserve", "Read receipts"] },
   ];
   // Benefits matrix for the paywall: (label, lowest tier index that includes it)
   const PAYWALL_BENEFITS = [
     ["Unlimited live bids", 0],
-    ["See if you're the top bid", 0],
-
     ["Reveal her reserve price", 1],
-    ["Auto-rebid to stay on top", 1],
-    ["Advanced filters (verified-only, interests)", 1],
-    ["Rewind your last bid", 1],
     ["Read receipts — Seen / Delivered", 2],
-    ["Priority placement in every inbox", 2],
   ];
   const PAYWALL_TRIGGERS = {
-    rankReveal:   { headline: "She's comparing bids.<br>See where you stand.", icon: "📊", suggested: 0 },
     bidLimit:     { headline: "Out of free bids.<br>The floor doesn't wait.", icon: "🚫", suggested: 0 },
-    filters:      { headline: "Cut the noise.<br>Bid only on your type.", icon: "🎛", suggested: 1 },
     readReceipts: { headline: "She read it.<br>Know the moment she does.", icon: "✓", suggested: 2 },
-    rewind:       { headline: "Bid too soon?<br>Take it back.", icon: "↩", suggested: 1 },
     general:      { headline: "Win the bid<br>you can't see.", icon: "👑", suggested: 0 },
   };
 
