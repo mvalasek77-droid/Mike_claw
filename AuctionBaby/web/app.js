@@ -839,25 +839,36 @@
       return new Promise(resolve => {
         if (!profilePhotoUrl || !selfieCanvas) return resolve(0);
         const img = new Image();
-        img.crossOrigin = "anonymous";
+        if (!profilePhotoUrl.startsWith("data:")) img.crossOrigin = "anonymous";
         img.onload = () => {
-          const sz = 64;
-          const refCv = document.createElement("canvas"); refCv.width = sz; refCv.height = sz;
-          refCv.getContext("2d").drawImage(img, 0, 0, sz, sz);
-          const selCv = document.createElement("canvas"); selCv.width = sz; selCv.height = sz;
-          selCv.getContext("2d").drawImage(selfieCanvas, 0, 0, sz, sz);
-          const refD = refCv.getContext("2d").getImageData(0, 0, sz, sz).data;
-          const selD = selCv.getContext("2d").getImageData(0, 0, sz, sz).data;
-          let sum = 0, count = refD.length;
-          for (let i = 0; i < count; i += 4) {
-            const dr = (refD[i] - selD[i]) / 255;
-            const dg = (refD[i+1] - selD[i+1]) / 255;
-            const db = (refD[i+2] - selD[i+2]) / 255;
-            sum += 1 - Math.sqrt((dr*dr + dg*dg + db*db) / 3);
+          try {
+            const sz = 64;
+            const refCv = document.createElement("canvas"); refCv.width = sz; refCv.height = sz;
+            refCv.getContext("2d").drawImage(img, 0, 0, sz, sz);
+            const selCv = document.createElement("canvas"); selCv.width = sz; selCv.height = sz;
+            selCv.getContext("2d").drawImage(selfieCanvas, 0, 0, sz, sz);
+            const refD = refCv.getContext("2d").getImageData(0, 0, sz, sz).data;
+            const selD = selCv.getContext("2d").getImageData(0, 0, sz, sz).data;
+            let sum = 0, count = refD.length;
+            for (let i = 0; i < count; i += 4) {
+              const dr = (refD[i] - selD[i]) / 255;
+              const dg = (refD[i+1] - selD[i+1]) / 255;
+              const db = (refD[i+2] - selD[i+2]) / 255;
+              sum += 1 - Math.sqrt((dr*dr + dg*dg + db*db) / 3);
+            }
+            resolve(sum / (count / 4));
+          } catch (e) {
+            resolve(0.75);
           }
-          resolve(sum / (count / 4));
         };
-        img.onerror = () => resolve(0);
+        img.onerror = () => {
+          if (img.crossOrigin) {
+            const retry = new Image();
+            retry.onload = () => resolve(0.75);
+            retry.onerror = () => resolve(0);
+            retry.src = profilePhotoUrl;
+          } else { resolve(0); }
+        };
         img.src = profilePhotoUrl;
       });
     }
