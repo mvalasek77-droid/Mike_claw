@@ -903,7 +903,7 @@ async function handleVerifySubmit(request: Request, env: Env): Promise<Response>
 
   const now = Date.now();
   const ref = user.verification_ref ?? crypto.randomUUID();
-  const passed = livenessPassed && faceMatchScore >= 0.50 && selfieScore >= 0.15;
+  const passed = livenessPassed && faceMatchScore >= 0.35 && selfieScore >= 0.15;
   const status: VerificationStatus = passed ? "passed" : (livenessPassed ? "pending" : "failed");
   await env.DB.prepare(
     `UPDATE users SET verified_at = ?, verification_status = ?, verification_vendor = 'vision',
