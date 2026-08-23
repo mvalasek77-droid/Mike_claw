@@ -1275,7 +1275,7 @@
     { id: "status_trillionaire", name: "Trillionaire",         price: 1000,    blurb: "Can mint a Masterpiece. The whole floor turns.",        icon: "👑", tint: "var(--gold-soft)", prestige: true },
   ];
   const PASS_TIERS = [
-    { id: "Paddle",     price: 19.99, icon: "✋", perks: ["Unlimited bids", "See if you're the top bid", "1 Boost / week"] },
+    { id: "Paddle",     price: 19.99, icon: "✋", perks: ["Unlimited bids", "See if you're the top bid"] },
     { id: "Reserve",    price: 39.99, icon: "🔓", perks: ["Everything in Paddle", "Reveal her reserve price", "Auto-rebid to stay on top", "Rewind your last bid"] },
     { id: "Black Card", price: 99.99, icon: "💳", perks: ["Everything in Reserve", "Priority placement on every lot", "Read receipts"] },
   ];
@@ -1283,7 +1283,7 @@
   const PAYWALL_BENEFITS = [
     ["Unlimited live bids", 0],
     ["See if you're the top bid", 0],
-    ["1 Spotlight Boost every week", 0],
+
     ["Reveal her reserve price", 1],
     ["Auto-rebid to stay on top", 1],
     ["Advanced filters (verified-only, interests)", 1],
@@ -1310,11 +1310,6 @@
       ${packs.map(([n, g, p], i) => `<div class="card row" style="margin-bottom:10px"><div class="grow">
         <div style="font-family:var(--serif);font-weight:800">${g.toLocaleString()} Gavels ${i === packs.length - 1 ? '<span class="pill">BEST VALUE</span>' : ""}</div>
         <div class="faint">${n} of Gavels</div></div><button class="chip on" data-buy="${g}" data-price="${p}">$${p}</button></div>`).join("")}
-      <div class="kicker" style="margin:16px 0 8px">Spotlight Boost</div>
-      <div class="card row" style="margin-bottom:10px"><div class="grow">
-        <div style="font-family:var(--serif);font-weight:800">Spotlight Boost</div>
-        <div class="faint">30 minutes at the very top of the floor.</div></div>
-        <button class="chip rose" data-boost>$4.99</button></div>
       <div class="kicker" style="margin:16px 0 8px">Status</div>
       ${STATUS_TIERS.map(t => `<div class="card row" style="margin-bottom:10px${t.prestige ? ";border-color:rgba(230,184,0,.5);box-shadow:0 0 0 1px rgba(230,184,0,.15)" : ""}"><div class="grow">
         <div style="font-family:var(--serif);font-weight:800">${t.icon} ${t.name}${t.prestige ? ' <span class="pill">TOP TIER</span>' : ""}</div>
