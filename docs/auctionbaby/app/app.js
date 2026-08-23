@@ -1651,11 +1651,11 @@
               <div style="font-family:var(--serif);font-weight:800">${esc(u.name || "—")} <span class="muted" style="font-size:12px">${esc(u.id || u.userId || "")}</span></div>
               <div class="faint" style="font-size:12px">${u.email || ""} · Joined ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "?"}</div>
             </div>
-            ${u.verified ? `<span class="pill" style="background:rgba(79,176,198,.2);color:var(--verify);font-size:11px">✓ Verified</span>` : ""}
-            ${u.suspendedUntil ? `<span class="pill" style="background:rgba(224,96,122,.2);color:var(--rose);font-size:11px">Suspended</span>` : ""}
+            ${u.verifiedAt ? `<span class="pill" style="background:rgba(79,176,198,.2);color:var(--verify);font-size:11px">✓ Verified</span>` : ""}
+            ${u.suspendedUntil ? `<span class="pill" style="background:rgba(224,96,122,.2);color:var(--rose);font-size:11px">Suspended until ${new Date(u.suspendedUntil).toLocaleDateString()}</span>` : ""}
           </div>
           <div class="row" style="gap:6px;flex-wrap:wrap">
-            ${u.verified ? `<button class="chip" data-adm-unverify="${esc(u.id || u.userId)}">Unverify</button>` : ""}
+            ${u.verifiedAt ? `<button class="chip" data-adm-unverify="${esc(u.id || u.userId)}">Unverify</button>` : ""}
             ${!u.suspendedUntil ? `<button class="chip" data-adm-suspend="${esc(u.id || u.userId)}">Suspend</button>` : `<button class="chip" data-adm-unsuspend="${esc(u.id || u.userId)}">Unsuspend</button>`}
             <button class="chip" style="color:var(--danger)" data-adm-delete="${esc(u.id || u.userId)}">Delete</button>
           </div>

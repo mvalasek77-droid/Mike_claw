@@ -1684,6 +1684,7 @@ async function handleAdminUnverifyUser(userId: string, request: Request, env: En
 async function handleAdminDeleteUser(userId: string, request: Request, env: Env): Promise<Response> {
   const gate = await ensureAdminSession(request, env);
   if (gate.denied) return gate.denied;
+  if (userId === gate.ok) return err("Cannot delete your own admin account", 400);
   const result = await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
   // Audit AFTER success so a failed delete never leaves a bogus log entry.
   // `admin_audit.target_id` has no FK (deliberate — TEXT column only), so a
@@ -1700,11 +1701,19 @@ async function handleAdminDeleteUser(userId: string, request: Request, env: Env)
 async function handleAdminSuspendUser(userId: string, request: Request, env: Env): Promise<Response> {
   const gate = await ensureAdminSession(request, env);
   if (gate.denied) return gate.denied;
+  if (userId === gate.ok) return err("Cannot suspend your own admin account", 400);
   let body: any;
   try { body = await request.json(); } catch { return err("Invalid JSON body"); }
-  const untilMs = Number(body?.untilMs ?? 0);
-  if (!Number.isFinite(untilMs) || untilMs <= Date.now()) {
-    return err("untilMs must be an epoch ms in the future");
+  let untilMs: number;
+  if (body?.days != null) {
+    const days = Number(body.days);
+    if (!Number.isFinite(days) || days < 1) return err("days must be >= 1");
+    untilMs = Date.now() + days * 86_400_000;
+  } else {
+    untilMs = Number(body?.untilMs ?? 0);
+    if (!Number.isFinite(untilMs) || untilMs <= Date.now()) {
+      return err("Provide days (number of days) or untilMs (epoch ms in the future)");
+    }
   }
   const note = body?.note ? String(body.note).slice(0, 200) : null;
   const result = await env.DB.prepare(
