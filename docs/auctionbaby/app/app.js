@@ -849,32 +849,54 @@
             selCv.getContext("2d").drawImage(selfieCanvas, 0, 0, sz, sz);
             const refD = refCv.getContext("2d").getImageData(0, 0, sz, sz).data;
             const selD = selCv.getContext("2d").getImageData(0, 0, sz, sz).data;
-            // Compare center 50% of image (face region) for better accuracy
+            // Use color histogram comparison — more robust than per-pixel
+            // Build 8-bin histograms for R, G, B channels for each image
+            const bins = 8;
+            const refHist = [new Float32Array(bins), new Float32Array(bins), new Float32Array(bins)];
+            const selHist = [new Float32Array(bins), new Float32Array(bins), new Float32Array(bins)];
+            const total = sz * sz;
+            for (let i = 0; i < total * 4; i += 4) {
+              for (let c = 0; c < 3; c++) {
+                refHist[c][Math.min(Math.floor(refD[i + c] / 32), bins - 1)]++;
+                selHist[c][Math.min(Math.floor(selD[i + c] / 32), bins - 1)]++;
+              }
+            }
+            // Histogram intersection (normalized)
+            let histScore = 0;
+            for (let c = 0; c < 3; c++) {
+              let inter = 0;
+              for (let b = 0; b < bins; b++) inter += Math.min(refHist[c][b], selHist[c][b]);
+              histScore += inter / total;
+            }
+            histScore /= 3; // 0-1, higher = more similar color distribution
+
+            // Also do spatial comparison on center region
             const margin = Math.floor(sz * 0.25);
-            let sum = 0, pixels = 0;
+            let spatialSum = 0, pixels = 0;
             for (let y = margin; y < sz - margin; y++) {
               for (let x = margin; x < sz - margin; x++) {
                 const i = (y * sz + x) * 4;
                 const dr = (refD[i] - selD[i]) / 255;
                 const dg = (refD[i+1] - selD[i+1]) / 255;
                 const db = (refD[i+2] - selD[i+2]) / 255;
-                sum += 1 - Math.sqrt((dr*dr + dg*dg + db*db) / 3);
+                spatialSum += 1 - Math.sqrt((dr*dr + dg*dg + db*db) / 3);
                 pixels++;
               }
             }
-            const raw = pixels > 0 ? sum / pixels : 0;
-            // Boost: raw pixel comparison of different photos of same person
-            // typically scores 0.3-0.6; scale up so real matches pass 0.50
-            const boosted = Math.min(1, raw * 1.4);
-            resolve(boosted);
+            const spatialScore = pixels > 0 ? spatialSum / pixels : 0;
+
+            // Combined: 40% histogram + 60% spatial — histogram catches
+            // gross color mismatches, spatial catches structural differences
+            const score = histScore * 0.4 + spatialScore * 0.6;
+            resolve(score);
           } catch (e) {
-            resolve(0.75);
+            resolve(0);
           }
         };
         img.onerror = () => {
           if (img.crossOrigin) {
             const retry = new Image();
-            retry.onload = () => resolve(0.75);
+            retry.onload = () => resolve(0);
             retry.onerror = () => resolve(0);
             retry.src = profilePhotoUrl;
           } else { resolve(0); }
@@ -903,7 +925,7 @@
         } catch (e) { phase = "failed"; }
         draw();
       } else {
-        if (faceMatchScore >= 0.35) {
+        if (faceMatchScore >= 0.50) {
           phase = "done"; S.me.verified = true; updateMyLot(); save();
         } else if (!selfieCanvas) {
           phase = "done"; S.me.verified = true; updateMyLot(); save();
