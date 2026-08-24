@@ -23,7 +23,7 @@ struct ReactionControl: View {
     let onReact: (ReactionKind?) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var pulse = false
+    @State private var popped = false
 
     var body: some View {
         HStack(spacing: Tokens.Spacing.md) {
@@ -34,20 +34,27 @@ struct ReactionControl: View {
 
     private var primaryButton: some View {
         Button {
-            // Tap clears your current reaction, or applies the default Respect.
             onReact(summary.mine == nil ? .respect : nil)
-            if !reduceMotion { pulse.toggle() }
+            if !reduceMotion {
+                withAnimation(Tokens.Motion.pop) { popped = true }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(220))
+                    withAnimation(Tokens.Motion.pop) { popped = false }
+                }
+            }
         } label: {
             HStack(spacing: Tokens.Spacing.xs) {
                 Text(summary.mine?.emoji ?? ReactionKind.respect.emoji)
-                    .scaleEffect(pulse ? 1.25 : 1.0)
-                    .animation(Tokens.Motion.pop, value: pulse)
+                    .scaleEffect(popped ? 1.2 : 1.0)
+                    .frame(width: 20, height: 20)
                 Text(summary.mine?.label ?? "React")
                     .font(Tokens.Typography.caption.weight(.semibold))
+                    .lineLimit(1)
             }
             .foregroundStyle(summary.mine?.tint ?? Tokens.Color.textSecondary)
             .padding(.horizontal, Tokens.Spacing.md)
             .padding(.vertical, Tokens.Spacing.sm)
+            .fixedSize()
             .liquidGlass(radius: Tokens.Radius.pill)
         }
         .buttonStyle(.plain)
@@ -74,7 +81,9 @@ struct ReactionControl: View {
             Text("\(summary.total)")
                 .font(Tokens.Typography.caption)
                 .foregroundStyle(Tokens.Color.textSecondary)
+                .lineLimit(1)
         }
+        .fixedSize()
         .accessibilityLabel("\(summary.total) reactions")
     }
 }
