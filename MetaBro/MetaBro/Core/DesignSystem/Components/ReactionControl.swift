@@ -54,7 +54,6 @@ struct ReactionControl: View {
             .foregroundStyle(summary.mine?.tint ?? Tokens.Color.textSecondary)
             .padding(.horizontal, Tokens.Spacing.md)
             .padding(.vertical, Tokens.Spacing.sm)
-            .fixedSize()
             .liquidGlass(radius: Tokens.Radius.pill)
         }
         .buttonStyle(.plain)
