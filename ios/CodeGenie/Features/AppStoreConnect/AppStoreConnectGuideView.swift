@@ -202,7 +202,7 @@ struct AppStoreConnectGuideView: View {
         }
         .sheet(isPresented: $showSubmitBlocked) {
             ASCReadinessBlockedSheet(
-                readiness: readiness,
+                readiness: $readiness,
                 onRecheck: { await runReadinessCheck() }
             )
             .presentationDetents([.medium, .large])
@@ -1020,7 +1020,10 @@ struct AppStoreConnectGuideView: View {
 /// backend's readiness audit already writes — no separate copy to keep
 /// in sync.
 private struct ASCReadinessBlockedSheet: View {
-    let readiness: ReleaseReadinessRun?
+    // A binding, not a snapshot — `onRecheck` mutates the parent's
+    // readiness state, and the dismiss condition below must see the
+    // fresh value, not whatever was true the moment this sheet opened.
+    @Binding var readiness: ReleaseReadinessRun?
     let onRecheck: () async -> Void
 
     @Environment(\.dismiss) private var dismiss
