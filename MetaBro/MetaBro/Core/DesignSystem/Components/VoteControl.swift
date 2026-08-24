@@ -17,11 +17,12 @@ struct VoteControl: View {
                 .font(Tokens.Typography.score)
                 .foregroundStyle(scoreColor)
                 .contentTransition(.numericText(value: Double(score)))
-                .frame(minWidth: 24)
+                .lineLimit(1)
             arrow(.down, system: "chevron.down")
         }
         .padding(.horizontal, Tokens.Spacing.md)
         .padding(.vertical, Tokens.Spacing.sm)
+        .fixedSize()
         .liquidGlass(radius: Tokens.Radius.pill)
     }
 
