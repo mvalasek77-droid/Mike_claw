@@ -228,9 +228,15 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         screenshot("14-reopen-step")
     }
 
-    // MARK: - Submission
+    // MARK: - Submission is gated, not self-reported
 
-    func test15_finalSubmitAsksForConfirmation() {
+    /// Demo builds have no live backend job, so the release-readiness
+    /// recheck `attemptFinalSubmit()` runs before showing the
+    /// confirmation alert can never come back "ready" — the button
+    /// must show the blocked sheet instead of trusting the user's
+    /// word. This is the second hard gate: CodeGenie re-verifies at
+    /// the moment of truth rather than letting stale state through.
+    func test15_finalSubmitIsBlockedWithoutVerifiedReadiness() {
         openASCGuide()
         scrollDown(times: 8)
         let submitted = app.buttons.matching(
@@ -239,9 +245,9 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         guard submitted.waitForExistence(timeout: 4) else { return }
         submitted.tap()
 
-        assertExists(app.alerts.firstMatch,
-                     "Marking submitted must confirm — it's not reversible in Apple's UI")
-        screenshot("15-submit-confirmation")
+        assertExists(app.navigationBars["Not quite ready"],
+                     "Submit must re-verify the release checklist and block on what's outstanding, not just ask the user to confirm")
+        screenshot("15-submit-blocked")
     }
 
     func test16_progressBarReflectsCompletedSteps() {
@@ -251,6 +257,50 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         ).firstMatch
         assertExists(progress, "Progress should be announced for VoiceOver")
         screenshot("16-progress")
+    }
+
+    // MARK: - Pre-flight gate (proactive, hard-blocking on entry)
+
+    func test17_preflightChecksBeforeAnythingElseIsShown() {
+        openBuildSuccessOverlay()
+        let walkthrough = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Walk me through'")
+        ).firstMatch
+        guard walkthrough.waitForExistence(timeout: 10) else { return }
+        walkthrough.tap()
+
+        // The AI narrates that it is actively checking, before any step
+        // content — this is the "proactive" requirement: no button the
+        // user has to remember to press.
+        let checking = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Checking your app'")
+        ).firstMatch
+        let reachedGate = checking.waitForExistence(timeout: 3)
+            || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] \"Can't verify\"")).firstMatch.waitForExistence(timeout: 3)
+        XCTAssertTrue(reachedGate, "Opening the guide must immediately run a check, not show step 1 first")
+        screenshot("17-preflight-checking")
+    }
+
+    func test18_unverifiableBuildOffersExplicitEscapeHatch() {
+        openBuildSuccessOverlay()
+        let walkthrough = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Walk me through'")
+        ).firstMatch
+        guard walkthrough.waitForExistence(timeout: 10) else { return }
+        walkthrough.tap()
+
+        // Demo builds have no live backend job to check against.
+        let skip = app.buttons["Continue without verification"]
+        guard skip.waitForExistence(timeout: 6) else {
+            XCTFail("Expected the unverifiable state for a demo build with no backend job")
+            return
+        }
+        screenshot("18-unverifiable-escape-hatch")
+        skip.tap()
+
+        assertExists(app.otherElements.matching(
+            NSPredicate(format: "label BEGINSWITH 'Coach:'")
+        ).firstMatch, "Explicitly skipping verification should reach the normal guide")
     }
 
     // MARK: - Helpers
@@ -273,16 +323,25 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         }
     }
 
+    /// Opens the guide and clears the pre-flight gate. Demo builds have
+    /// no live backend job, so the gate always lands on "unverifiable"
+    /// rather than "checking" or "blocked" — tests that need to reach
+    /// the normal step list use the explicit escape hatch, exactly as
+    /// a real device tester would when offline.
     private func openASCGuide() {
         openBuildSuccessOverlay()
         let walkthrough = app.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] 'Walk me through'")
         ).firstMatch
-        if walkthrough.waitForExistence(timeout: 10) {
-            walkthrough.tap()
-            _ = app.staticTexts.matching(
-                NSPredicate(format: "label CONTAINS[c] 'Submit '")
-            ).firstMatch.waitForExistence(timeout: 5)
+        guard walkthrough.waitForExistence(timeout: 10) else { return }
+        walkthrough.tap()
+
+        let skip = app.buttons["Continue without verification"]
+        if skip.waitForExistence(timeout: 6) {
+            skip.tap()
         }
+        _ = app.otherElements.matching(
+            NSPredicate(format: "label BEGINSWITH 'Coach:'")
+        ).firstMatch.waitForExistence(timeout: 5)
     }
 }
