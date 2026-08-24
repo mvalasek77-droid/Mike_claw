@@ -8,7 +8,7 @@ struct VoteControl: View {
     let onVote: (VoteDirection) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var bounce = false
+    @State private var poppedDirection: VoteDirection? = nil
 
     var body: some View {
         HStack(spacing: Tokens.Spacing.sm) {
@@ -17,6 +17,7 @@ struct VoteControl: View {
                 .font(Tokens.Typography.score)
                 .foregroundStyle(scoreColor)
                 .contentTransition(.numericText(value: Double(score)))
+                .frame(minWidth: 24)
             arrow(.down, system: "chevron.down")
         }
         .padding(.horizontal, Tokens.Spacing.md)
@@ -26,17 +27,22 @@ struct VoteControl: View {
 
     private func arrow(_ direction: VoteDirection, system: String) -> some View {
         Button {
-            // Tapping the active direction toggles the vote off.
             let next: VoteDirection = (myVote == direction) ? .none : direction
             HapticsEngine.shared.play(.vote)
-            if !reduceMotion { bounce.toggle() }
+            if !reduceMotion {
+                withAnimation(Tokens.Motion.pop) { poppedDirection = direction }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(220))
+                    withAnimation(Tokens.Motion.pop) { poppedDirection = nil }
+                }
+            }
             onVote(next)
         } label: {
             Image(systemName: system)
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(myVote == direction ? direction.tint : Tokens.Color.textSecondary)
-                .scaleEffect(myVote == direction && bounce ? 1.25 : 1.0)
-                .animation(Tokens.Motion.pop, value: bounce)
+                .scaleEffect(poppedDirection == direction ? 1.2 : 1.0)
+                .frame(width: 22, height: 22)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(direction == .up ? "Upvote" : "Downvote")
