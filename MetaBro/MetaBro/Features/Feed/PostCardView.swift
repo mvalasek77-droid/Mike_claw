@@ -61,9 +61,11 @@ struct PostCardView: View {
                 HStack(spacing: 2) {
                     Text(kind.emoji).font(.caption)
                     Text("\(count)").font(.caption2).foregroundStyle(Tokens.Color.textSecondary)
+                        .lineLimit(1)
                 }
                 .padding(.horizontal, Tokens.Spacing.sm)
                 .padding(.vertical, 4)
+                .fixedSize()
                 .liquidGlass(radius: Tokens.Radius.pill)
                 .accessibilityLabel("\(count) \(kind.label) award\(count == 1 ? "" : "s")")
             }
