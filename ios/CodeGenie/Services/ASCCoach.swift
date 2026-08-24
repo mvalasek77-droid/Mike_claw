@@ -235,29 +235,33 @@ enum ASCCoach {
                 ? "Tap below and CodeGenie will open App Store Connect in your Mac's Safari. Sign in there — we never see your password or 2FA codes."
                 : "Open appstoreconnect.apple.com and sign in. Pair a Mac in Settings and CodeGenie can open it for you next time."
         case 2:
-            return "Click + → New App. Use the exact bundle ID below — if it doesn't match your Xcode target, the upload in step 8 will be rejected."
+            return "Click + → New App. Use the exact bundle ID below — if it doesn't match your Xcode target, the upload in the next step will be rejected."
         case 3:
-            return "Your icon must be exactly 1024×1024, PNG, no transparency, no rounded corners. Apple rejects anything else outright."
+            return buildUploaded
+                ? "Build uploaded. Apple is processing it — move to the next step."
+                : "CodeGenie checks your Apple credentials and the build itself, then runs Apple's validate-then-upload flow. No listing or screenshots needed for this — just a signed build and the app record from step 2."
         case 4:
-            return "You need screenshots for at least one iPhone size. Review each one before uploading — Apple rejects screenshots showing placeholder or lorem-ipsum content."
+            return "Usually 5–30 minutes. You don't need to keep the app open — come back when you like."
         case 5:
+            return "Apple emails the account holder once the build is ready. Accept the invite, then TestFlight installs the real app on this phone."
+        case 6:
+            return "Internal testers (your ASC team) get instant access. External testers need one quick automated review the first time, then it's instant for every build after."
+        case 7:
+            return "Your icon must be exactly 1024×1024, PNG, no transparency, no rounded corners. Apple rejects anything else outright."
+        case 8:
+            return "You need screenshots for at least one iPhone size. Review each one before uploading — Apple rejects screenshots showing placeholder or lorem-ipsum content."
+        case 9:
             let blocking = blockingIssues(metadata)
             if blocking.isEmpty {
                 return "Your listing passes every length check. Copy each field below into App Store Connect, or let CodeGenie fill them on your Mac."
             }
             return "Fix \(blocking.count) problem\(blocking.count == 1 ? "" : "s") in the listing before you paste anything into App Store Connect — Apple will reject or silently truncate these."
-        case 6:
-            return "Answer honestly. If your app stores anything on-device only and sends nothing anywhere, the answer to 'do you collect data' is No — but if you added analytics, it's Yes."
-        case 7:
-            return "Free with all territories is the safe default. You can change price later without a new review."
-        case 8:
-            return buildUploaded
-                ? "Build uploaded. Apple is processing it — move to the next step."
-                : "This needs a signed App Store build. CodeGenie runs Apple's validate-then-upload flow and streams every line so you see failures immediately."
-        case 9:
-            return "Processing usually takes 5–30 minutes. You can close CodeGenie — your progress is saved and we'll be here when you come back."
         case 10:
-            return "Final step, and it has to be you: Apple requires the account holder to press Submit. Everything below is a checklist of what that screen will ask."
+            return "Answer honestly. If your app stores anything on-device only and sends nothing anywhere, the answer to 'do you collect data' is No — but if you added analytics, it's Yes."
+        case 11:
+            return "Free with all territories is the safe default. You can change price later without a new review."
+        case 12:
+            return "Final step, and it has to be you: Apple requires the account holder to press Submit. CodeGenie re-checks the full release checklist first and tells you if anything's still missing."
         default:
             return step.body
         }
@@ -271,23 +275,24 @@ enum ASCCoach {
         macPaired: Bool
     ) -> NextAction {
         let blocking = blockingIssues(metadata)
+        let listingStep = 9
 
         // Listing problems outrank step order — there is no point
-        // walking someone to step 8 with a name that won't save.
-        if !blocking.isEmpty, completed.contains(5) == false {
+        // walking someone to the upload step with a name that won't save.
+        if !blocking.isEmpty, completed.contains(listingStep) == false, completed.contains(6) {
             return NextAction(
                 headline: "Fix your listing first",
                 detail: blocking.first!.message + " " + blocking.first!.fix,
-                stepNumber: 5,
+                stepNumber: listingStep,
                 isBlocking: true
             )
         }
 
-        let nextIncomplete = (1...10).first { !completed.contains($0) }
+        let nextIncomplete = ASCStep.all.map(\.number).first { !completed.contains($0) }
         guard let next = nextIncomplete else {
             return NextAction(
                 headline: "Everything's done",
-                detail: "You've completed all ten steps. Once Apple finishes review you'll get an email.",
+                detail: "You've completed every step. Once Apple finishes review you'll get an email.",
                 stepNumber: nil,
                 isBlocking: false
             )
@@ -297,7 +302,7 @@ enum ASCCoach {
         return NextAction(
             headline: "Next: \(step?.title ?? "Step \(next)")",
             detail: step.map {
-                guidance(for: $0, metadata: metadata, macPaired: macPaired, buildUploaded: completed.contains(8))
+                guidance(for: $0, metadata: metadata, macPaired: macPaired, buildUploaded: completed.contains(3))
             } ?? "",
             stepNumber: next,
             isBlocking: false
@@ -309,6 +314,51 @@ enum ASCCoach {
         let detail: String
         let stepNumber: Int?
         let isBlocking: Bool
+    }
+
+    // MARK: - Scoped readiness gates
+    //
+    // The backend's release-readiness audit returns one flat list of
+    // items, but TestFlight and full App Store submission need
+    // different subsets of it — TestFlight only needs a build,
+    // credentials, and the privacy manifest; the public listing,
+    // screenshots, and privacy policy doc are App-Store-only. Rather
+    // than teach the backend two gates, we filter client-side: it's
+    // the same data, read two different ways.
+
+    private static let testFlightUploadKeys: Set<String> = [
+        "workspace", "xcode_project", "ipa", "apple_credentials",
+        "testflight_upload", "privacy_manifest",
+    ]
+
+    private static let doneStatuses: Set<String> = ["automated", "assisted", "user_confirmation"]
+
+    /// A `nil` run reads as "nothing outstanding" rather than "unknown"
+    /// — callers that can't rule out a missing/failed fetch (as
+    /// opposed to a genuinely absent backend job, which they should
+    /// check first) should treat a `nil` readiness result as
+    /// unverified, not as a pass.
+    static func outstandingForTestFlightUpload(_ run: ReleaseReadinessRun?) -> [ReleaseReadinessItem] {
+        guard let run else { return [] }
+        return run.items.filter {
+            $0.required && testFlightUploadKeys.contains($0.key) && !doneStatuses.contains($0.status)
+        }
+    }
+
+    static func isReadyForTestFlightUpload(_ run: ReleaseReadinessRun?) -> Bool {
+        run != nil && outstandingForTestFlightUpload(run).isEmpty
+    }
+
+    /// Full App Store submission needs everything the backend marks
+    /// required — this is exactly what `releaseGate` already computes,
+    /// so we just read it rather than re-deriving the same logic.
+    static func isReadyForAppStoreSubmission(_ run: ReleaseReadinessRun?) -> Bool {
+        run?.isReadyForTestFlight == true
+    }
+
+    static func outstandingForAppStoreSubmission(_ run: ReleaseReadinessRun?) -> [ReleaseReadinessItem] {
+        guard let run else { return [] }
+        return run.items.filter { $0.required && !doneStatuses.contains($0.status) }
     }
 
     // MARK: - URL heuristics

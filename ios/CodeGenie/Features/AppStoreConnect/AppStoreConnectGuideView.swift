@@ -1,9 +1,31 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Step model
+
+/// The submission journey has two honest phases, because Apple's own
+/// process has two honest phases: TestFlight only needs an app record
+/// and a processed build — no icon, no screenshots, no listing copy,
+/// no pricing. Those are only required for the public App Store. This
+/// used to be a single flat 10-step list that made a first-timer write
+/// App Store copy before they could even run their app on a real
+/// device; now testing comes first.
+enum ASCPhase: String, CaseIterable {
+    case testflight = "Get it testable"
+    case appStore = "Publish to the App Store"
+
+    var subtitle: String {
+        switch self {
+        case .testflight: "The minimum Apple needs before you (or friends) can install a real build."
+        case .appStore: "Only needed when you're ready for the public App Store."
+        }
+    }
+}
+
 struct ASCStep: Identifiable, Hashable {
     let id = UUID()
     let number: Int
+    let phase: ASCPhase
     let title: String
     let body: String
     let action: ActionKind
@@ -12,6 +34,12 @@ struct ASCStep: Identifiable, Hashable {
     enum ActionKind: Hashable {
         /// CodeGenie opens the URL in the paired Mac's Safari.
         case openSafariOnMac(String)
+        /// CodeGenie actually performs the TestFlight upload itself.
+        case uploadToTestFlight
+        /// Tells the user exactly where to look for the install invite.
+        case openTestFlightApp
+        /// Explains internal vs. external testers and the public link.
+        case inviteTesters
         /// CodeGenie types the listing fields into the open ASC page.
         case fillForm
         /// The user prepares an asset outside CodeGenie.
@@ -25,10 +53,9 @@ struct ASCStep: Identifiable, Hashable {
     /// Who actually performs the work. Drives the Auto/Hybrid/You badge.
     var ownership: Ownership {
         switch action {
-        case .openSafariOnMac, .fillForm: return .hybrid
-        case .prepareAsset:               return .you
-        case .wait:                       return .apple
-        case .manual:                     return .you
+        case .openSafariOnMac, .fillForm, .uploadToTestFlight: return .hybrid
+        case .prepareAsset, .openTestFlightApp, .inviteTesters, .manual: return .you
+        case .wait: return .apple
         }
     }
 
@@ -45,7 +72,7 @@ struct ASCStep: Identifiable, Hashable {
 
         var explanation: String {
             switch self {
-            case .hybrid: "CodeGenie opens the page and fills the fields. You review and save."
+            case .hybrid: "CodeGenie does the heavy lifting. You review and confirm."
             case .you:    "You do this — CodeGenie can't tap buttons in your Apple account."
             case .apple:  "Apple's servers do this. Nothing for you to do but wait."
             }
@@ -55,66 +82,82 @@ struct ASCStep: Identifiable, Hashable {
 
 extension ASCStep {
     static let all: [ASCStep] = [
-        .init(number: 1,
+        // ---- Phase 1: Get it testable ----
+        .init(number: 1, phase: .testflight,
               title: "Sign in to App Store Connect",
               body: "CodeGenie opens appstoreconnect.apple.com in your Mac's Safari. You sign in there — your password and 2-factor codes never touch CodeGenie.",
               action: .openSafariOnMac("https://appstoreconnect.apple.com"),
               safariRoute: "https://appstoreconnect.apple.com"),
 
-        .init(number: 2,
+        .init(number: 2, phase: .testflight,
               title: "Create the app record",
-              body: "Click + → New App. Platform iOS, and the bundle ID must match your Xcode target exactly or the upload in step 8 fails.",
+              body: "Click + → New App. Platform iOS, and the bundle ID must match your Xcode target exactly or the upload in the next step fails.",
               action: .openSafariOnMac("https://appstoreconnect.apple.com/apps"),
               safariRoute: "https://appstoreconnect.apple.com/apps"),
 
-        .init(number: 3,
+        .init(number: 3, phase: .testflight,
+              title: "Upload your build",
+              body: "CodeGenie runs Apple's validate-then-upload flow itself. No listing, no screenshots, no pricing needed yet — just the app record from step 2 and a signed build.",
+              action: .uploadToTestFlight,
+              safariRoute: nil),
+
+        .init(number: 4, phase: .testflight,
+              title: "Wait for Apple to process it",
+              body: "Usually 5–30 minutes. You'll see the status update here — no need to keep the app open.",
+              action: .wait("Apple is processing your build"),
+              safariRoute: nil),
+
+        .init(number: 5, phase: .testflight,
+              title: "Open TestFlight on your iPhone",
+              body: "Apple emails the account holder an invite once the build finishes processing. Accept it, then TestFlight installs your real app.",
+              action: .openTestFlightApp,
+              safariRoute: nil),
+
+        .init(number: 6, phase: .testflight,
+              title: "Invite testers",
+              body: "Internal testers (your ASC team, up to 100) get it instantly. External testers (up to 10,000, via a public link or email) need one quick automated Apple review the first time — usually under a day.",
+              action: .inviteTesters,
+              safariRoute: nil),
+
+        // ---- Phase 2: Publish to the App Store ----
+        .init(number: 7, phase: .appStore,
               title: "Prepare your 1024×1024 icon",
               body: "Exactly 1024×1024, PNG, no alpha channel, no pre-rounded corners. Apple rejects anything else without review.",
               action: .prepareAsset("icon-1024.png"),
               safariRoute: nil),
 
-        .init(number: 4,
+        .init(number: 8, phase: .appStore,
               title: "Prepare screenshots",
               body: "At least one iPhone display size. Screenshots showing placeholder or lorem-ipsum content are a common rejection reason.",
               action: .prepareAsset("screenshots"),
               safariRoute: nil),
 
-        .init(number: 5,
+        .init(number: 9, phase: .appStore,
               title: "Fill in the listing",
               body: "Name, subtitle, keywords, description and URLs. CodeGenie checks every field against Apple's length limits before you paste anything.",
               action: .fillForm,
               safariRoute: "https://appstoreconnect.apple.com/apps"),
 
-        .init(number: 6,
+        .init(number: 10, phase: .appStore,
               title: "Answer the privacy questions",
               body: "Apple asks what data you collect. Answer honestly — this is audited, and a wrong answer here pulls a live app.",
               action: .manual,
               safariRoute: nil),
 
-        .init(number: 7,
+        .init(number: 11, phase: .appStore,
               title: "Set pricing and availability",
               body: "Free in all territories is the safe default. Price can change later without a new review.",
               action: .manual,
               safariRoute: nil),
 
-        .init(number: 8,
-              title: "Upload the build",
-              body: "Needs a signed App Store build. CodeGenie runs Apple's validate-then-upload flow and streams every line so failures surface immediately.",
-              action: .manual,
-              safariRoute: nil),
-
-        .init(number: 9,
-              title: "Wait for processing",
-              body: "Apple takes 5–30 minutes to process a binary. Close CodeGenie if you like — your progress is saved.",
-              action: .wait("Apple is processing your build"),
-              safariRoute: nil),
-
-        .init(number: 10,
+        .init(number: 12, phase: .appStore,
               title: "Submit for review",
               body: "Pick the processed build, confirm export compliance and content rights, then press Submit. Apple requires the account holder to do this.",
               action: .manual,
               safariRoute: nil)
     ]
+
+    static func steps(in phase: ASCPhase) -> [ASCStep] { all.filter { $0.phase == phase } }
 }
 
 // MARK: - Guide
@@ -135,7 +178,10 @@ struct AppStoreConnectGuideView: View {
     @State private var banner: Banner?
     @State private var showMetadataEditor = false
     @State private var showSubmitConfirm = false
-    @State private var showSubmitBlocked = false
+    @State private var showTestFlightUploading = false
+    @State private var testFlightErrorMessage: String?
+    @State private var showTestFlightErrorAlert = false
+    @State private var blockedGate: BlockedGate?
     @State private var didLoad = false
 
     /// AI-proactive pre-flight gate. Nothing runs the guide's steps
@@ -152,6 +198,19 @@ struct AppStoreConnectGuideView: View {
         case clear
     }
 
+    /// A blocking readiness sheet, scoped to whichever gate triggered
+    /// it — the TestFlight upload gate (step 3) or the final App Store
+    /// submit gate (step 12). Two different requirement sets, same UI;
+    /// `kind` says which scoped helper to re-run on "Recheck now"
+    /// rather than guessing from the item list.
+    struct BlockedGate: Identifiable {
+        enum Kind { case testflightUpload, appStoreSubmit }
+        let id = UUID()
+        let kind: Kind
+        let title: String
+        let items: [ReleaseReadinessItem]
+    }
+
     private struct Banner: Identifiable, Equatable {
         let id = UUID()
         let text: String
@@ -165,6 +224,14 @@ struct AppStoreConnectGuideView: View {
 
     private var nextAction: ASCCoach.NextAction {
         ASCCoach.nextAction(completed: completed, metadata: metadata, macPaired: macPaired)
+    }
+
+    /// The milestone moment: TestFlight phase finished, App Store phase
+    /// not started. Worth calling out explicitly — a first-timer should
+    /// know they already have a real, testable app and can stop here.
+    private var justBecameTestable: Bool {
+        ASCStep.steps(in: .testflight).allSatisfy { completed.contains($0.number) }
+            && !ASCStep.steps(in: .appStore).contains { completed.contains($0.number) }
     }
 
     var body: some View {
@@ -193,17 +260,23 @@ struct AppStoreConnectGuideView: View {
             Button("Not yet", role: .cancel) { }
             Button("Yes, I submitted") {
                 store.markSubmitted(for: job.id)
-                completed = Set(1...ASCStep.all.count)
+                completed = Set(ASCStep.all.map(\.number))
                 banner = Banner(text: "Submission recorded. Apple emails you when review finishes — usually 24–48 hours.", tone: .success)
                 Haptics.success()
             }
         } message: {
             Text("Only mark this done once Apple has actually accepted the submission. We'll keep your record so you can come back to it.")
         }
-        .sheet(isPresented: $showSubmitBlocked) {
+        .alert("Couldn't upload", isPresented: $showTestFlightErrorAlert) {
+            Button("OK") { testFlightErrorMessage = nil }
+        } message: {
+            Text(testFlightErrorMessage ?? "")
+        }
+        .sheet(item: $blockedGate) { gate in
             ASCReadinessBlockedSheet(
-                readiness: $readiness,
-                onRecheck: { await runReadinessCheck() }
+                title: gate.title,
+                items: gate.items,
+                onRecheck: { await recheckBlockedGate() }
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -249,11 +322,9 @@ struct AppStoreConnectGuideView: View {
             if run.isReady {
                 preflight = .clear
                 banner = Banner(
-                    text: "Pre-flight passed — \(Int(run.score))/100 on Apple's automated quality bar. Moving to the walkthrough.",
+                    text: "Pre-flight passed — \(Int(run.score))/100 on Apple's automated quality bar. Let's get this into your hands.",
                     tone: .success
                 )
-                // Kick off the process-readiness check in the background —
-                // it's informational here and becomes a hard gate at step 10.
                 await runReadinessCheck()
             } else {
                 preflight = .blocked(run)
@@ -263,12 +334,11 @@ struct AppStoreConnectGuideView: View {
         }
     }
 
-    /// Process-readiness (assets, credentials, IPA, GitHub). Unlike
-    /// the pre-flight gate, this is not blocking at guide-entry —
-    /// several of its items (the IPA, Apple credentials) are exactly
-    /// what steps 1–8 exist to produce. It becomes a hard gate only at
-    /// step 10, immediately before the user is allowed to say they
-    /// submitted.
+    /// Process-readiness (assets, credentials, IPA, GitHub). Runs in
+    /// the background once pre-flight passes, and again on demand
+    /// whenever a phase gate needs a fresh answer (step 3's upload,
+    /// step 12's submit) — the two gates just read different subsets
+    /// of the same result via `ASCCoach`'s scoped helpers.
     private func runReadinessCheck() async {
         guard let backendID = session.backendJobIDs[job.id] else { return }
         let cfg = ShipConfig.fromCredentials(bundleID: defaultBundleID(for: job.description.title))
@@ -471,16 +541,19 @@ struct AppStoreConnectGuideView: View {
 
     private var guideBody: some View {
         VStack(spacing: 0) {
-            progressBar
+            phaseProgress
             ScrollView {
                 VStack(spacing: 16) {
                     coachCard
                     if let banner { bannerCard(banner) }
-                    listingCard
+                    if justBecameTestable { testableMilestoneCard }
                     macStatusCard
-                    if let readiness { readinessCard(readiness) }
-                    ForEach(ASCStep.all) { step in
-                        stepCard(step)
+                    ForEach(ASCPhase.allCases, id: \.self) { phase in
+                        phaseHeader(phase)
+                        if phase == .appStore { listingCard }
+                        ForEach(ASCStep.steps(in: phase)) { step in
+                            stepCard(step)
+                        }
                     }
                     Color.clear.frame(height: 30)
                 }
@@ -491,23 +564,25 @@ struct AppStoreConnectGuideView: View {
         }
     }
 
-    private var progressBar: some View {
+    /// Two-segment progress instead of one flat bar — "testable" and
+    /// "published" are different finish lines, and conflating them
+    /// into "4 of 12" hides that the user is already at a real
+    /// milestone once the first six are done.
+    private var phaseProgress: some View {
         VStack(spacing: 6) {
             HStack {
-                Text("Step \(current) of \(ASCStep.all.count)")
+                Text(testflightDone ? "Testable ✓" : "Phase 1 — Get it testable")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    .foregroundStyle(testflightDone ? LiquidGlass.success : LiquidGlass.primaryText.opacity(0.7))
                 Spacer()
-                Text("\(completed.count) complete")
+                Text("\(completed.count) of \(ASCStep.all.count) complete")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlass.success)
             }
             GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.1))
-                    Capsule().fill(LiquidGlass.auroraGradient)
-                        .frame(width: proxy.size.width * Double(completed.count) / Double(ASCStep.all.count))
-                        .motion(.spring(response: 0.5), value: completed.count)
+                HStack(spacing: 3) {
+                    segment(proxy: proxy, phase: .testflight)
+                    segment(proxy: proxy, phase: .appStore)
                 }
             }
             .frame(height: 6)
@@ -515,14 +590,63 @@ struct AppStoreConnectGuideView: View {
         .padding(.horizontal, 18)
         .padding(.bottom, 6)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(completed.count) of \(ASCStep.all.count) steps complete")
+        .accessibilityLabel("\(completed.count) of \(ASCStep.all.count) steps complete. \(testflightDone ? "Testable phase finished." : "Working on the testable phase.")")
+    }
+
+    private var testflightDone: Bool {
+        ASCStep.steps(in: .testflight).allSatisfy { completed.contains($0.number) }
+    }
+
+    private func segment(proxy: GeometryProxy, phase: ASCPhase) -> some View {
+        let steps = ASCStep.steps(in: phase)
+        let done = steps.filter { completed.contains($0.number) }.count
+        let width = proxy.size.width * (Double(steps.count) / Double(ASCStep.all.count)) - 1.5
+        return ZStack(alignment: .leading) {
+            Capsule().fill(.white.opacity(0.1))
+            Capsule().fill(phase == .testflight ? LiquidGlass.auroraGradient : LinearGradient(colors: [LiquidGlass.accentSecondary], startPoint: .leading, endPoint: .trailing))
+                .frame(width: max(0, width) * (Double(done) / Double(max(steps.count, 1))))
+                .motion(.spring(response: 0.5), value: done)
+        }
+        .frame(width: max(0, width))
+    }
+
+    private func phaseHeader(_ phase: ASCPhase) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(phase.rawValue)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText)
+            Text(phase.subtitle)
+                .font(.system(size: 12, weight: .regular, design: .rounded))
+                .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, phase == .appStore ? 8 : 0)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private var testableMilestoneCard: some View {
+        GlassSurface(tier: .deep, corner: 18) {
+            HStack(spacing: 12) {
+                Text("🎉").font(.system(size: 28))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Your app is testable")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText)
+                    Text("Anyone you invited can install it right now. The App Store steps below are only needed when you want it public.")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(14)
+        }
     }
 
     // MARK: Coach
 
     /// The always-visible "what do I do right now" panel. This is the
     /// difference between a checklist and a guide — the user should
-    /// never have to work out which of ten steps applies to them.
+    /// never have to work out which of twelve steps applies to them.
     private var coachCard: some View {
         GlassSurface(tier: .deep, corner: 20) {
             VStack(alignment: .leading, spacing: 12) {
@@ -588,7 +712,7 @@ struct AppStoreConnectGuideView: View {
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(tint.opacity(0.3)))
     }
 
-    // MARK: Listing
+    // MARK: Listing (App Store phase only)
 
     private var listingCard: some View {
         GlassCard(title: "Your listing", icon: "doc.text.fill", tint: LiquidGlass.accentSecondary) {
@@ -719,45 +843,6 @@ struct AppStoreConnectGuideView: View {
         .accessibilityLabel(macPaired ? "Mac connected" : "No Mac paired. Manual steps still available.")
     }
 
-    // MARK: Release readiness (live, informational; gates step 10)
-
-    private func readinessCard(_ run: ReleaseReadinessRun) -> some View {
-        let required = run.items.filter { $0.required }
-        let outstanding = required.filter { $0.status != "automated" && $0.status != "assisted" && $0.status != "user_confirmation" }
-        return GlassCard(title: "Release checklist", icon: "checklist", tint: run.isReadyForTestFlight ? LiquidGlass.success : LiquidGlass.accent) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: run.isReadyForTestFlight ? "checkmark.circle.fill" : "clock.fill")
-                        .foregroundStyle(run.isReadyForTestFlight ? LiquidGlass.success : LiquidGlass.accent)
-                        .accessibilityHidden(true)
-                    Text(run.summary)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.9))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if !outstanding.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(outstanding.prefix(4)) { item in
-                            Text("• \(item.title): \(item.detail)")
-                                .font(.system(size: 12, weight: .regular, design: .rounded))
-                                .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                }
-                Button {
-                    Task { await runReadinessCheck() }
-                } label: {
-                    Text("Recheck")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LiquidGlass.accent)
-                }
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Release checklist: \(run.summary)")
-    }
-
     // MARK: Steps
 
     private func stepCard(_ step: ASCStep) -> some View {
@@ -785,7 +870,7 @@ struct AppStoreConnectGuideView: View {
 
                 Text(isCurrent
                      ? ASCCoach.guidance(for: step, metadata: metadata,
-                                         macPaired: macPaired, buildUploaded: completed.contains(8))
+                                         macPaired: macPaired, buildUploaded: completed.contains(3))
                      : step.body)
                     .font(.system(size: 14, weight: .regular, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.8))
@@ -864,6 +949,57 @@ struct AppStoreConnectGuideView: View {
                     advance(step)
                 }
 
+            case .uploadToTestFlight:
+                PrimaryButton(
+                    title: showTestFlightUploading ? "Uploading..." : "Upload to TestFlight",
+                    systemImage: "icloud.and.arrow.up.fill",
+                    style: .filled
+                ) {
+                    Task { await uploadToTestFlight(step: step) }
+                }
+                .disabled(showTestFlightUploading)
+                .accessibilityHint("CodeGenie validates and uploads the build to Apple")
+                Text("CodeGenie checks your Apple credentials and the build itself first — if anything's missing, it'll tell you exactly what.")
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+
+            case .openTestFlightApp:
+                PrimaryButton(title: "Open TestFlight", systemImage: "arrow.up.forward.app.fill", style: .filled) {
+                    openTestFlight()
+                }
+                Text("Look for an email from Apple titled \"You're invited to test \(job.description.title)\" if it hasn't opened automatically.")
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(LiquidGlass.primaryText.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+                markDoneButton(step, title: "I installed it")
+
+            case .inviteTesters:
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Internal testers: add teammates in App Store Connect → TestFlight → Internal Testing. No review, instant access.")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
+                    Text("External testers: create a group, add emails or turn on the public link. First build needs a quick automated Apple review.")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(LiquidGlass.primaryText.opacity(0.75))
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if macPaired {
+                    PrimaryButton(title: "Open TestFlight tab on my Mac", systemImage: "macbook", style: .filled) {
+                        Task { await openOnMac("https://appstoreconnect.apple.com/apps", step: step) }
+                    }
+                }
+                PrimaryButton(
+                    title: macPaired ? "Open here instead" : "Open in Safari",
+                    systemImage: "safari",
+                    style: macPaired ? .glass : .filled
+                ) {
+                    if let u = URL(string: "https://appstoreconnect.apple.com/apps") { openURL(u) }
+                    advance(step)
+                }
+                markDoneButton(step, title: "I invited testers")
+
             case .fillForm:
                 if macPaired {
                     PrimaryButton(
@@ -905,7 +1041,7 @@ struct AppStoreConnectGuideView: View {
                 markDoneButton(step, title: "Build finished processing")
 
             case .manual:
-                if step.number == 10 {
+                if step.number == ASCStep.all.count {
                     PrimaryButton(title: "I submitted for review", systemImage: "paperplane.fill", style: .filled) {
                         Task { await attemptFinalSubmit() }
                     }
@@ -928,8 +1064,8 @@ struct AppStoreConnectGuideView: View {
         store.markStepComplete(step.number, for: job.id)
         completed.insert(step.number)
         Haptics.success()
-        if step.number < ASCStep.all.count {
-            Motion.run(.spring(response: 0.4)) { current = step.number + 1 }
+        if let next = ASCStep.all.first(where: { $0.number > step.number }) {
+            Motion.run(.spring(response: 0.4)) { current = next.number }
         }
     }
 
@@ -944,6 +1080,20 @@ struct AppStoreConnectGuideView: View {
                 tone: .warning
             )
             Haptics.warning()
+        }
+    }
+
+    /// The account holder's Apple TestFlight invite is delivered by
+    /// email, and Apple doesn't publish a documented URL scheme for
+    /// jumping straight to a specific app inside TestFlight — so this
+    /// opens the TestFlight app itself if installed, and falls back to
+    /// its App Store page (a stable, public app id) if not.
+    private func openTestFlight() {
+        guard let deepLink = URL(string: "itms-beta://") else { return }
+        openURL(deepLink) { accepted in
+            if !accepted, let storeURL = URL(string: "https://apps.apple.com/app/testflight/id899247664") {
+                openURL(storeURL)
+            }
         }
     }
 
@@ -994,36 +1144,91 @@ struct AppStoreConnectGuideView: View {
         }
     }
 
-    /// The second hard gate. Perfection Mode already guaranteed the
-    /// code and listing are sound before the guide even opened; this
-    /// one guarantees the *process* is actually finished — a real IPA
-    /// uploaded, Apple credentials on file, privacy manifest present —
-    /// before the user is allowed to tell CodeGenie they pressed
-    /// Submit. Re-checks live rather than trusting a stale snapshot,
-    /// since steps 1–9 happen in between.
+    /// The first hard process gate: CodeGenie won't attempt the actual
+    /// TestFlight upload against Apple's servers until the narrow set
+    /// of things an upload truly needs — a build, Apple credentials,
+    /// and the privacy manifest — are in place. Rechecks live rather
+    /// than trusting whatever the pre-flight pass found minutes ago.
+    private func uploadToTestFlight(step: ASCStep) async {
+        showTestFlightUploading = true
+        defer { showTestFlightUploading = false }
+
+        guard let backendID = session.backendJobIDs[job.id] else {
+            testFlightErrorMessage = "This build has no live backend job to upload — CodeGenie can't reach Apple's servers for it."
+            showTestFlightErrorAlert = true
+            return
+        }
+
+        await runReadinessCheck()
+        let outstanding = ASCCoach.outstandingForTestFlightUpload(readiness)
+        guard outstanding.isEmpty else {
+            blockedGate = BlockedGate(kind: .testflightUpload, title: "Not ready to upload yet", items: outstanding)
+            Haptics.warning()
+            return
+        }
+
+        guard let cfg = ShipConfig.fromCredentials(bundleID: defaultBundleID(for: job.description.title)) else {
+            testFlightErrorMessage = "Missing Apple Developer credentials. Add them in Settings, then try again."
+            showTestFlightErrorAlert = true
+            return
+        }
+        do {
+            try await swarm.ship(jobID: backendID, config: cfg)
+            banner = Banner(text: "Uploaded. Apple is validating and processing it now.", tone: .success)
+            Haptics.success()
+            advance(step)
+        } catch {
+            testFlightErrorMessage = "\(error)"
+            showTestFlightErrorAlert = true
+            Haptics.error()
+        }
+    }
+
+    /// The second hard gate, at the very end: re-verifies the full
+    /// App Store checklist (icon, screenshots, listing, privacy
+    /// policy, GitHub backup) immediately before letting the user say
+    /// they pressed Submit — rather than trusting a self-report that
+    /// might already be stale.
     private func attemptFinalSubmit() async {
         await runReadinessCheck()
-        if readiness?.isReadyForTestFlight == true {
+        if ASCCoach.isReadyForAppStoreSubmission(readiness) {
             showSubmitConfirm = true
         } else {
-            showSubmitBlocked = true
+            blockedGate = BlockedGate(
+                kind: .appStoreSubmit,
+                title: "A few things are still missing",
+                items: ASCCoach.outstandingForAppStoreSubmission(readiness)
+            )
             Haptics.warning()
         }
     }
+
+    /// Re-runs the readiness check and refreshes (or clears) whichever
+    /// gate is currently open, using the gate's own `kind` rather than
+    /// inferring it from the item list — the two scopes can otherwise
+    /// overlap (e.g. a missing IPA blocks both).
+    private func recheckBlockedGate() async {
+        await runReadinessCheck()
+        guard let gate = blockedGate else { return }
+        let refreshed = gate.kind == .testflightUpload
+            ? ASCCoach.outstandingForTestFlightUpload(readiness)
+            : ASCCoach.outstandingForAppStoreSubmission(readiness)
+        blockedGate = refreshed.isEmpty ? nil : BlockedGate(kind: gate.kind, title: gate.title, items: refreshed)
+    }
 }
 
-// MARK: - Blocked-at-submit sheet
+// MARK: - Blocked-gate sheet
 
-/// Shown when the user tries to confirm submission but the release
-/// checklist still has required items outstanding. Enumerates exactly
-/// what's missing using the same plain-English detail/action text the
-/// backend's readiness audit already writes — no separate copy to keep
-/// in sync.
+/// Shared by both hard gates (TestFlight upload and final App Store
+/// submit). Enumerates exactly what's missing using the same
+/// plain-English detail/action text the backend's readiness audit
+/// already writes — no separate copy to keep in sync. Takes a plain
+/// snapshot of items rather than reaching into shared state, so a
+/// recheck's result is whatever the caller hands it next, not a stale
+/// capture from when the sheet opened.
 private struct ASCReadinessBlockedSheet: View {
-    // A binding, not a snapshot — `onRecheck` mutates the parent's
-    // readiness state, and the dismiss condition below must see the
-    // fresh value, not whatever was true the moment this sheet opened.
-    @Binding var readiness: ReleaseReadinessRun?
+    let title: String
+    let items: [ReleaseReadinessItem]
     let onRecheck: () async -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -1035,11 +1240,10 @@ private struct ASCReadinessBlockedSheet: View {
                 LiquidGlassBackground().ignoresSafeArea()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("A few things are still missing before this can go to Apple.")
+                        Text("Here's exactly what's left:")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(LiquidGlass.primaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                        ForEach(outstandingItems) { item in
+                        ForEach(items) { item in
                             GlassSurface(tier: .raised, corner: 14) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(item.title)
@@ -1066,7 +1270,6 @@ private struct ASCReadinessBlockedSheet: View {
                                 rechecking = true
                                 await onRecheck()
                                 rechecking = false
-                                if readiness?.isReadyForTestFlight == true { dismiss() }
                             }
                         }
                         .disabled(rechecking)
@@ -1075,19 +1278,13 @@ private struct ASCReadinessBlockedSheet: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .navigationTitle("Not quite ready")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
             }
-        }
-    }
-
-    private var outstandingItems: [ReleaseReadinessItem] {
-        (readiness?.items ?? []).filter {
-            $0.required && $0.status != "automated" && $0.status != "assisted" && $0.status != "user_confirmation"
         }
     }
 }

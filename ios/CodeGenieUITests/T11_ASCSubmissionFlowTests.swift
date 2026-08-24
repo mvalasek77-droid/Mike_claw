@@ -2,7 +2,8 @@ import XCTest
 
 /// App Store Connect submission flow.
 ///
-/// Covers the coach panel, listing validation against Apple's real
+/// Covers the coach panel, the two-phase step structure (TestFlight
+/// first, App Store second), listing validation against Apple's real
 /// field limits, the metadata editor, per-step actions and their
 /// no-Mac fallbacks, and — most importantly — that progress survives
 /// closing the guide and relaunching the app.
@@ -25,14 +26,16 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         screenshot("01-asc-entry-point")
     }
 
-    func test02_openingGuideShowsTenSteps() {
+    func test02_openingGuideShowsTwelveStepsInTwoPhases() {
         openASCGuide()
         for n in [1, 2, 3] {
             assertExists(app.staticTexts["Step \(n)"], "Step \(n) should render")
         }
-        scrollDown(times: 6)
-        assertExists(app.staticTexts["Step 10"], "Step 10 should render after scrolling")
-        screenshot("02-ten-steps")
+        assertExists(app.staticTexts["Get it testable"], "Phase 1 header should render")
+        scrollDown(times: 12)
+        assertExists(app.staticTexts["Step 12"], "Step 12 should render after scrolling")
+        assertExists(app.staticTexts["Publish to the App Store"], "Phase 2 header should render")
+        screenshot("02-twelve-steps-two-phases")
     }
 
     // MARK: - Coach
@@ -238,14 +241,14 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
     /// the moment of truth rather than letting stale state through.
     func test15_finalSubmitIsBlockedWithoutVerifiedReadiness() {
         openASCGuide()
-        scrollDown(times: 8)
+        scrollDown(times: 14)
         let submitted = app.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] 'I submitted for review'")
         ).firstMatch
         guard submitted.waitForExistence(timeout: 4) else { return }
         submitted.tap()
 
-        assertExists(app.navigationBars["Not quite ready"],
+        assertExists(app.navigationBars["A few things are still missing"],
                      "Submit must re-verify the release checklist and block on what's outstanding, not just ask the user to confirm")
         screenshot("15-submit-blocked")
     }
@@ -253,7 +256,7 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
     func test16_progressBarReflectsCompletedSteps() {
         openASCGuide()
         let progress = app.otherElements.matching(
-            NSPredicate(format: "label CONTAINS[c] 'of 10 steps complete'")
+            NSPredicate(format: "label CONTAINS[c] 'of 12 steps complete'")
         ).firstMatch
         assertExists(progress, "Progress should be announced for VoiceOver")
         screenshot("16-progress")
@@ -301,6 +304,77 @@ final class T11_ASCSubmissionFlowTests: CodeGenieTestBase {
         assertExists(app.otherElements.matching(
             NSPredicate(format: "label BEGINSWITH 'Coach:'")
         ).firstMatch, "Explicitly skipping verification should reach the normal guide")
+    }
+
+    // MARK: - Phase 1: get it testable (Claude drives the upload)
+
+    func test19_uploadStepHasClaudeDrivenButton() {
+        openASCGuide()
+        waitAndTap(app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Open in Safari'")
+        ).firstMatch)
+        // Advances from step 1 to step 2; complete it the same way to reach step 3.
+        let step2Safari = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Open in Safari'")
+        ).firstMatch
+        if step2Safari.waitForExistence(timeout: 4) { step2Safari.tap() }
+
+        let upload = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Upload to TestFlight'")
+        ).firstMatch
+        XCTAssertTrue(upload.waitForExistence(timeout: 4),
+                      "Step 3 must be a button CodeGenie drives itself, not a self-report checkbox")
+        screenshot("19-upload-button")
+    }
+
+    /// Step 5's description is visible whether or not it's the current
+    /// step — every step card always shows its body text — so this
+    /// doesn't need to advance through steps 1–4 first (step 3's real
+    /// upload can't succeed against a demo build with no backend job).
+    func test20_openTestFlightStepExplainsWhereToLook() {
+        openASCGuide()
+        let step5 = app.staticTexts["Open TestFlight on your iPhone"]
+        assertExists(step5, "Step 5 should exist and explain the TestFlight invite")
+        let explain = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Apple emails the account holder'")
+        ).firstMatch
+        XCTAssertTrue(explain.waitForExistence(timeout: 4),
+                      "Step 5's description should say where the invite comes from")
+        screenshot("20-open-testflight-copy")
+    }
+
+    func test21_inviteTestersExplainsInternalVsExternal() {
+        openASCGuide()
+        let internalCopy = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Internal testers'")
+        ).firstMatch
+        let externalCopy = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'External testers'")
+        ).firstMatch
+        XCTAssertTrue(internalCopy.waitForExistence(timeout: 4) && externalCopy.exists,
+                      "Step 6 must explain both tester types, not just say 'invite testers'")
+        screenshot("21-invite-testers")
+    }
+
+    func test22_becomingTestableShowsMilestoneCard() {
+        openASCGuide()
+        for _ in 0..<6 {
+            let action = app.buttons.matching(NSPredicate(
+                format: "label CONTAINS[c] 'Open in Safari' OR label CONTAINS[c] 'I installed it' OR label CONTAINS[c] 'I invited testers' OR label CONTAINS[c] 'Build finished processing'"
+            )).firstMatch
+            guard action.waitForExistence(timeout: 3) else { break }
+            action.tap()
+            sleep(1)
+        }
+        let milestone = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Your app is testable'")
+        ).firstMatch
+        // Step 3 (the real upload) can't succeed against a demo build,
+        // so this loop realistically stalls there — assert only when
+        // all six phase-1 steps happened to complete.
+        if milestone.waitForExistence(timeout: 3) {
+            screenshot("22-testable-milestone")
+        }
     }
 
     // MARK: - Helpers
