@@ -1,0 +1,148 @@
+name: PromptCoach
+
+options:
+  bundleIdPrefix: com.codegenie
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEVELOPMENT_TEAM: "UDM4W27W9V"
+
+targets:
+  PromptCoach:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PromptCoach
+    info:
+      path: PromptCoach/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Prompt Coach
+        CFBundleName: PromptCoach
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: AccentColor
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIUserInterfaceStyle: Automatic
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codegenie.promptcoach
+        PRODUCT_NAME: PromptCoach
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+      configs:
+        Debug:
+          DEBUG_INFORMATION_FORMAT: dwarf
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        Release:
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+          SWIFT_COMPILATION_MODE: wholemodule
+
+  # Free, stripped-down listing. Same sources as PromptCoach, compiled with
+  # the LITE flag so AppTier.isLite is true — see App/AppTier.swift for what
+  # that gates. No IAP: the upgrade path is linking out to the paid app's own
+  # App Store page (AppTier.paidAppStoreURL), not a paywall in this binary.
+  PromptCoachLite:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PromptCoach
+    info:
+      path: PromptCoach/Resources/Info-Lite.plist
+      properties:
+        CFBundleDisplayName: Prompt Coach Lite
+        CFBundleName: PromptCoachLite
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: AccentColor
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIUserInterfaceStyle: Automatic
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codegenie.promptcoach.lite
+        PRODUCT_NAME: PromptCoachLite
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIconLite
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+      configs:
+        Debug:
+          DEBUG_INFORMATION_FORMAT: dwarf
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG LITE"
+        Release:
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+          SWIFT_COMPILATION_MODE: wholemodule
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "LITE"
+
+  PromptCoachTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Tests/PromptCoachTests
+    # The engine tests load the real pack, so bundle a copy with the tests.
+    resources:
+      - path: PromptCoach/Resources/model-pack.json
+    dependencies:
+      - target: PromptCoach
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codegenie.promptcoach.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  PromptCoach:
+    build:
+      targets:
+        PromptCoach: all
+        PromptCoachTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - PromptCoachTests
+    archive:
+      config: Release
+
+  PromptCoachLite:
+    build:
+      targets:
+        PromptCoachLite: all
+    run:
+      config: Debug
+    archive:
+      config: Release
