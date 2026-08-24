@@ -17,12 +17,14 @@ struct HomeView: View {
     @State private var showAppOfYearDNA = false
     @State private var showAutomationAudit = false
     @State private var showFirstBuildPrompt = false
+    @StateObject private var ascStore = ASCSubmissionStore.shared
 
     var body: some View {
         ScrollView {
             VStack(spacing: 22) {
                 hero
                 if let record = session.pendingResume { resumeCallout(record) }
+                if let submission = ascStore.inFlight.first { submissionCallout(submission) }
                 primaryAction
                 shipReadinessCard
                 quickGrid
@@ -311,6 +313,53 @@ struct HomeView: View {
                     }
                     .accessibilityLabel("Dismiss resume callout")
                 }
+            }
+            .padding(14)
+        }
+    }
+
+    /// Half-finished App Store submissions are the easiest thing in the
+    /// whole product to lose track of — step 9 alone parks the user for
+    /// half an hour. Surfacing it on Home means "continue where I left
+    /// off" is one tap, not a hunt through the Apps tab.
+    private func submissionCallout(_ record: ASCSubmissionStore.Record) -> some View {
+        GlassSurface(tier: .raised, corner: 18) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "paperplane.circle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(LiquidGlass.accentSecondary)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Submission in progress")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText)
+                        Text("\(record.appTitle) — step \(record.resumeStep) of \(ASCStep.all.count)")
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(LiquidGlass.primaryText.opacity(0.7))
+                    }
+                    Spacer(minLength: 0)
+                }
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(.white.opacity(0.1))
+                        Capsule().fill(LiquidGlass.auroraGradient)
+                            .frame(width: proxy.size.width * record.progressFraction)
+                    }
+                }
+                .frame(height: 5)
+                Button {
+                    if let job = session.recentJobs.first(where: { $0.id == record.jobID }) {
+                        session.openAppStoreConnect(for: job)
+                    }
+                } label: {
+                    Text("Continue submission")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(LiquidGlass.accentSecondary, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .accessibilityLabel("Continue submitting \(record.appTitle), step \(record.resumeStep) of \(ASCStep.all.count)")
             }
             .padding(14)
         }

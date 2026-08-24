@@ -10,7 +10,7 @@ import SwiftUI
 /// Both end at the same place: a stored bearer token + a green
 /// "connected" status pill.
 struct PairMacView: View {
-    @StateObject private var bridge = CompanionBridge()
+    @StateObject private var bridge = CompanionBridge.shared
     @State private var pasteURL: String = ""
     @State private var manualHost: String = ""
     @State private var manualPort: String = ""

@@ -584,7 +584,18 @@ struct BuildScreen: View {
                             let job = BuildJob(description: initialJob.description, stage: .readyForTest)
                             session.openPreview(for: job)
                         }
-                        PrimaryButton(title: "Submit to App Store", systemImage: "paperplane.fill", style: .glass) {
+                        PrimaryButton(title: "Walk me through submitting", systemImage: "list.number", style: .filled) {
+                            // Keep the original id — ASCSubmissionStore keys
+                            // its saved progress on it, and Home looks the
+                            // job back up in recentJobs by the same id.
+                            session.openAppStoreConnect(
+                                for: BuildJob(id: initialJob.id,
+                                              description: initialJob.description,
+                                              stage: .readyForTest)
+                            )
+                        }
+                        .accessibilityHint("Opens the ten-step App Store Connect guide. Your progress is saved.")
+                        PrimaryButton(title: "Upload build to TestFlight", systemImage: "paperplane.fill", style: .glass) {
                             Task { await submitToAppStore() }
                         }
                         PrimaryButton(

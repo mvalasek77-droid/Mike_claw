@@ -18,9 +18,19 @@ import Network
 @MainActor
 final class CompanionBridge: ObservableObject {
 
+    /// Shared instance so a pairing survives the screen that made it.
+    /// `PairMacView` used to own the only bridge as a `@StateObject`,
+    /// which meant the TCP connection died the moment that sheet
+    /// dismissed — every other feature that wanted the Mac (the App
+    /// Store Connect guide, Xcode handoff) found nothing connected.
+    static let shared = CompanionBridge()
+
     @Published private(set) var discovered: [Discovered] = []
     @Published private(set) var status: Status = .idle
     @Published private(set) var lastError: String?
+
+    /// True when a Mac is paired and reachable right now.
+    var isConnected: Bool { status == .connected }
 
     enum Status: Equatable {
         case idle, browsing, connecting, authenticating, connected, failed(String)
@@ -136,6 +146,31 @@ final class CompanionBridge: ObservableObject {
     func ping() async throws -> Bool {
         let r = try await request(type: "ping", payload: [:])
         return (r["pong"] as? Bool) ?? false
+    }
+
+    /// Ask the Mac to type one App Store Connect field into the
+    /// frontmost Safari tab.
+    ///
+    /// The daemon has shipped `app_store_connect.fill` since the
+    /// companion was written, but nothing on iOS ever called it — the
+    /// guide's "Auto-fill" button just marked the step done. This is
+    /// the missing wire.
+    ///
+    /// The Mac side always shows an Approve/Reject dialog before
+    /// touching the page and refuses to run on any domain other than
+    /// appstoreconnect.apple.com, so the human stays in the loop even
+    /// though the request originates from the phone.
+    ///
+    /// Returns `false` when the user rejected the prompt on the Mac.
+    /// Throws when Safari isn't on App Store Connect or the field
+    /// can't be found on the current page.
+    @discardableResult
+    func fillASCField(field: String, value: String) async throws -> Bool {
+        let r = try await request(
+            type: "app_store_connect.fill",
+            payload: ["field": field, "value": value]
+        )
+        return (r["filled"] as? Bool) ?? false
     }
 
     // MARK: - Internals
