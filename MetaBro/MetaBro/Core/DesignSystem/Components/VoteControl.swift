@@ -22,7 +22,6 @@ struct VoteControl: View {
         }
         .padding(.horizontal, Tokens.Spacing.md)
         .padding(.vertical, Tokens.Spacing.sm)
-        .fixedSize()
         .liquidGlass(radius: Tokens.Radius.pill)
     }
 
