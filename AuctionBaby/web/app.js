@@ -372,9 +372,17 @@
     if (ap) ap.onclick = async () => {
       try {
         const d = await API.signInWithApple();
-        const nm = d && d.user && d.user.name;
-        if (nm && !$("#ob-name").value) $("#ob-name").value = nm;
-        toast("Signed in with Apple.");
+        const u = d && d.user;
+        if (u) {
+          // Pre-fill onboarding fields from the Apple/server user data
+          if (u.name && !$("#ob-name").value) $("#ob-name").value = u.name;
+          // Persist to local state so it survives re-renders
+          if (u.name) S.me.name = u.name;
+          if (u.email) S.me.email = u.email;
+          save();
+        }
+        toast("Signed in with Apple." + (u && u.name ? " Welcome, " + u.name + "!" : ""));
+        onboarding(); // re-render to show filled fields
       } catch (e) { toast("Apple sign-in: " + e.message); }
     };
     const dv = $("#ob-dev");
