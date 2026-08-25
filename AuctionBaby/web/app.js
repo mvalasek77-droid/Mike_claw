@@ -1602,7 +1602,10 @@
       if (!ok) return toast("Invalid credentials.");
       sessionStorage.setItem(ADMIN_KEY, "1");
       if (CONFIGURED()) {
-        try { await API.devLogin("admin-" + user); } catch (e) { /* non-fatal */ }
+        // Use a fixed "admin-console" dev-login so the admin's own session
+        // account is NOT the same as any real user they need to delete.
+        // The "admin-" prefix grants is_admin=1 on the server.
+        try { await API.devLogin("admin-console"); } catch (e) { /* non-fatal */ }
       }
       go("/admin/dash");
     };
