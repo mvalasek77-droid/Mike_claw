@@ -30,6 +30,9 @@ struct CostBadge: View {
             .overlay(Capsule().strokeBorder(tracker.capHit ? LiquidGlass.warning.opacity(0.5) : .white.opacity(0.15)))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Build cost \(spendLabel)")
+        .accessibilityHint(tracker.capHit ? "Cost cap reached" : "Tap for per-agent breakdown")
         .popover(isPresented: $expanded, arrowEdge: .bottom) {
             breakdown
                 .padding(16)

@@ -65,6 +65,8 @@ private struct TranscriptRow: View {
             }
             Spacer(minLength: 0)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(event.agent ?? event.type): \(eventBody)")
     }
 
     private var icon: String {

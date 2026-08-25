@@ -17,6 +17,7 @@ struct GlassCard<Content: View>: View {
                                 .foregroundStyle(tint)
                                 .frame(width: 32, height: 32)
                                 .background(Circle().fill(tint.opacity(0.18)))
+                                .accessibilityHidden(true)
                         }
                         if let title {
                             Text(title)
@@ -52,5 +53,7 @@ struct StatPill: View {
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(.white.opacity(0.08), in: Capsule())
         .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }

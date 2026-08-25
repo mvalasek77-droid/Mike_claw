@@ -91,6 +91,7 @@ struct IconForgeView: View {
                                 .foregroundStyle(LiquidGlass.primaryText)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("\(Self.styles[i].label) style\(i == styleIndex ? ", selected" : "")")
                     }
                 }
                 .padding(.horizontal, 2)
@@ -142,6 +143,7 @@ struct IconForgeView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Icon candidate \(forge.candidates.firstIndex(where: { $0.id == candidate.id }).map { $0 + 1 } ?? 0)\(forge.chosen?.id == candidate.id ? ", selected" : "")")
                 }
             }
         }

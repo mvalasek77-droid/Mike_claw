@@ -488,6 +488,8 @@ struct HomeView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Xcode instructions. Project, Simulator, Device, App Store.")
     }
 
     private var checklistCard: some View {
@@ -535,6 +537,8 @@ private struct QuickTile: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(subtitle)")
     }
 }
 
@@ -563,6 +567,8 @@ private struct JobRow: View {
             }
             .padding(12)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(job.description.title), \(job.stage.rawValue), \(Int(job.stage.progress * 100)) percent")
     }
 }
 
@@ -578,5 +584,7 @@ private struct ChecklistRow: View {
                 .strikethrough(done, color: LiquidGlass.primaryText.opacity(0.3))
             Spacer()
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(text), \(done ? "complete" : "pending")")
     }
 }
