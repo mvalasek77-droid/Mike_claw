@@ -20,9 +20,11 @@ struct CostBadge: View {
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(LiquidGlass.primaryText)
                         .contentTransition(.numericText())
+                        .minimumScaleFactor(0.7)
                     Text(capCaption)
                         .font(.caption2)
                         .foregroundStyle(LiquidGlass.primaryText.opacity(0.6))
+                        .minimumScaleFactor(0.7)
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 6)

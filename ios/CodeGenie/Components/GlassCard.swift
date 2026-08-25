@@ -46,8 +46,10 @@ struct StatPill: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(.caption2).foregroundStyle(LiquidGlass.primaryText.opacity(0.65))
+                    .minimumScaleFactor(0.7)
                 Text(value).font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
+                    .minimumScaleFactor(0.7)
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 8)

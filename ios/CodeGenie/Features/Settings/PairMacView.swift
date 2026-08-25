@@ -253,7 +253,7 @@ struct PairMacView: View {
         switch bridge.status {
         case .connected:                       LiquidGlass.success
         case .connecting, .authenticating, .browsing: LiquidGlass.warning
-        case .failed:                          .red
+        case .failed:                          LiquidGlass.error
         case .idle:                            LiquidGlass.primaryText.opacity(0.4)
         }
     }

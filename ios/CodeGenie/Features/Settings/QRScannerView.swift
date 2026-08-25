@@ -79,7 +79,7 @@ struct QRScannerView: View {
                 if let err = lastError {
                     Text(err)
                         .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(.red.opacity(0.9))
+                        .foregroundStyle(LiquidGlass.error.opacity(0.9))
                 }
             }
             .padding(.bottom, 36)

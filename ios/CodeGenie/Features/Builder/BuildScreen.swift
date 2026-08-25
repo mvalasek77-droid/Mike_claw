@@ -400,7 +400,7 @@ struct BuildScreen: View {
                     VStack(spacing: 14) {
                         Image(systemName: "xmark.octagon.fill")
                             .font(.system(size: 56, weight: .bold))
-                            .foregroundStyle(.red.opacity(0.85))
+                            .foregroundStyle(LiquidGlass.error.opacity(0.85))
                             .accessibilityHidden(true)
                         Text("Build failed")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
@@ -576,7 +576,7 @@ struct BuildScreen: View {
                         if let perfectionError {
                             Text(perfectionError)
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.red.opacity(0.9))
+                                .foregroundStyle(LiquidGlass.error.opacity(0.9))
                                 .multilineTextAlignment(.center)
                                 .accessibilityLabel("Perfection Mode failed: \(perfectionError)")
                         }
@@ -1049,7 +1049,7 @@ struct BuildScreen: View {
                 case .accent: return LiquidGlass.accent
                 case .ok: return LiquidGlass.success
                 case .warn: return LiquidGlass.warning
-                case .err: return .red
+                case .err: return LiquidGlass.error
                 case .dim: return LiquidGlass.primaryText.opacity(0.55)
                 }
             }

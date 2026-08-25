@@ -205,7 +205,7 @@ private struct AgentCard: View {
                     Spacer()
                     Button("Delete", role: .destructive, action: onDelete)
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.red.opacity(0.85))
+                        .foregroundStyle(LiquidGlass.error.opacity(0.85))
                 }
             }
             .padding(14)

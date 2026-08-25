@@ -59,6 +59,7 @@ struct ProgressOrb: View {
                     .font(.system(size: 38, weight: .bold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText)
                     .contentTransition(.numericText())
+                    .minimumScaleFactor(0.6)
                 Text(label)
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))

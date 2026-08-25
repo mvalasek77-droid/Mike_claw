@@ -178,7 +178,7 @@ struct CompareJobsView: View {
                     HStack(spacing: 10) {
                         countPill(label: "Modified", value: counts["modified"] ?? 0, color: LiquidGlass.accent)
                         countPill(label: "Added",    value: counts["added"]    ?? 0, color: LiquidGlass.success)
-                        countPill(label: "Removed",  value: counts["removed"]  ?? 0, color: .red.opacity(0.85))
+                        countPill(label: "Removed",  value: counts["removed"]  ?? 0, color: LiquidGlass.error.opacity(0.85))
                     }
                 }
             }
@@ -234,7 +234,7 @@ struct CompareJobsView: View {
     }
 
     private func errorCard(_ message: String) -> some View {
-        GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: .red) {
+        GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: LiquidGlass.error) {
             Text(message)
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(.white.opacity(0.85))
@@ -321,7 +321,7 @@ struct CompareJobsView: View {
         switch status {
         case "modified": LiquidGlass.accent
         case "added":    LiquidGlass.success
-        case "removed":  .red.opacity(0.85)
+        case "removed":  LiquidGlass.error.opacity(0.85)
         case "same":     .white.opacity(0.5)
         default:         LiquidGlass.accent
         }

@@ -81,7 +81,7 @@ struct CrashLogView: View {
     }
 
     private func errorCard(_ message: String) -> some View {
-        GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: .red) {
+        GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: LiquidGlass.error) {
             Text(message)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
@@ -131,7 +131,7 @@ private struct FailureCard: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 10) {
                         Image(systemName: "xmark.octagon.fill")
-                            .foregroundStyle(.red.opacity(0.85))
+                            .foregroundStyle(LiquidGlass.error.opacity(0.85))
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(project.title)

@@ -12,6 +12,7 @@ enum LiquidGlass {
     static let accentSecondary = Color(red: 0.71, green: 0.41, blue: 1.0)
     static let success = Color(red: 0.30, green: 0.84, blue: 0.55)
     static let warning = Color(red: 1.00, green: 0.71, blue: 0.20)
+    static let error = Color(red: 1.0, green: 0.27, blue: 0.27)
     static let primaryText = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .light
             ? UIColor(red: 0.07, green: 0.08, blue: 0.12, alpha: 1.0)

@@ -179,7 +179,7 @@ private struct DiffCard: View {
         switch diff.operation {
         case .create: LiquidGlass.success
         case .modify: LiquidGlass.accent
-        case .delete: .red
+        case .delete: LiquidGlass.error
         }
     }
 
@@ -193,7 +193,7 @@ private struct DiffCard: View {
                 .foregroundStyle(LiquidGlass.success)
         case .rejected:
             Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(.red.opacity(0.85))
+                .foregroundStyle(LiquidGlass.error.opacity(0.85))
         }
     }
 
@@ -239,7 +239,7 @@ private struct DiffBodyView: View {
         switch k { case .added: "+"; case .removed: "−"; case .same: " " }
     }
     private func tint(_ k: FileDiff.Hunk.Kind) -> Color {
-        switch k { case .added: LiquidGlass.success; case .removed: .red.opacity(0.9); case .same: LiquidGlass.primaryText.opacity(0.4) }
+        switch k { case .added: LiquidGlass.success; case .removed: LiquidGlass.error.opacity(0.9); case .same: LiquidGlass.primaryText.opacity(0.4) }
     }
     private func textTint(_ k: FileDiff.Hunk.Kind) -> Color {
         switch k { case .added: LiquidGlass.primaryText; case .removed: LiquidGlass.primaryText.opacity(0.85); case .same: LiquidGlass.primaryText.opacity(0.7) }
@@ -247,7 +247,7 @@ private struct DiffBodyView: View {
     private func background(_ k: FileDiff.Hunk.Kind) -> Color {
         switch k {
         case .added:   LiquidGlass.success.opacity(0.18)
-        case .removed: Color.red.opacity(0.18)
+        case .removed: LiquidGlass.error.opacity(0.18)
         case .same:    .clear
         }
     }

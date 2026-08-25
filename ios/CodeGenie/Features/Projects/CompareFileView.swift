@@ -71,7 +71,7 @@ struct CompareFileView: View {
     }
 
     private func errorCard(_ message: String) -> some View {
-        GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: .red) {
+        GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: LiquidGlass.error) {
             Text(message)
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(.white.opacity(0.85))
@@ -105,7 +105,7 @@ struct CompareFileView: View {
         switch entry.status {
         case "modified": LiquidGlass.accent
         case "added":    LiquidGlass.success
-        case "removed":  .red.opacity(0.85)
+        case "removed":  LiquidGlass.error.opacity(0.85)
         default:         .white.opacity(0.5)
         }
     }
@@ -157,7 +157,7 @@ private struct DiffBodyView: View {
     private func tint(_ k: FileDiff.Hunk.Kind) -> Color {
         switch k {
         case .added:   LiquidGlass.success
-        case .removed: .red.opacity(0.9)
+        case .removed: LiquidGlass.error.opacity(0.9)
         case .same:    .white.opacity(0.4)
         }
     }
@@ -171,7 +171,7 @@ private struct DiffBodyView: View {
     private func background(_ k: FileDiff.Hunk.Kind) -> Color {
         switch k {
         case .added:   LiquidGlass.success.opacity(0.18)
-        case .removed: Color.red.opacity(0.18)
+        case .removed: LiquidGlass.error.opacity(0.18)
         case .same:    .clear
         }
     }

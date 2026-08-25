@@ -465,7 +465,7 @@ struct AppStoreConnectGuideView: View {
 
     private func preflightFindingRow(_ finding: PerfectionFinding) -> some View {
         let tint: Color = switch finding.severity {
-        case "critical": .red
+        case "critical": LiquidGlass.error
         case "error": LiquidGlass.warning
         case "warning": LiquidGlass.accent
         default: LiquidGlass.primaryText.opacity(0.5)

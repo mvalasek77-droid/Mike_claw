@@ -93,7 +93,7 @@ struct DecisionSearchView: View {
     }
 
     private func errorCard(_ message: String) -> some View {
-        GlassCard(title: "Search failed", icon: "exclamationmark.triangle.fill", tint: .red) {
+        GlassCard(title: "Search failed", icon: "exclamationmark.triangle.fill", tint: LiquidGlass.error) {
             Text(message)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))

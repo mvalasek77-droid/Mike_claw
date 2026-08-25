@@ -104,7 +104,7 @@ private struct TranscriptRow: View {
         case "retry.attempt":     LiquidGlass.warning
         case "memory.briefing":   LiquidGlass.accentSecondary
         case "testflight.upload", "testflight.upload.progress", "testflight.status": LiquidGlass.accent
-        case "error":             .red
+        case "error":             LiquidGlass.error
         case "job.state":         LiquidGlass.accent
         case "done":              LiquidGlass.success
         default:                  LiquidGlass.primaryText.opacity(0.6)

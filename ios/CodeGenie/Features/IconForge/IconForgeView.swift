@@ -111,7 +111,7 @@ struct IconForgeView: View {
             }
             .disabled(forge.isGenerating)
             if let err = forge.errorMessage {
-                Text(err).font(.caption).foregroundStyle(.red)
+                Text(err).font(.caption).foregroundStyle(LiquidGlass.error)
             }
             Text("ChatGPT image-1 · ~$0.04 per icon · stripped to App-Store-safe before export")
                 .font(.system(size: 11, weight: .regular, design: .rounded))

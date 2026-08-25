@@ -80,7 +80,7 @@ struct ArchivedJobsView: View {
     }
 
     private func errorCard(_ message: String) -> some View {
-        GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: .red) {
+        GlassCard(title: "Couldn't load", icon: "exclamationmark.triangle.fill", tint: LiquidGlass.error) {
             Text(message)
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(LiquidGlass.primaryText.opacity(0.85))
