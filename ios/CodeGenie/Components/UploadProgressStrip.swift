@@ -49,7 +49,7 @@ struct UploadProgressStrip: View {
             if tracker.finished {
                 Image(systemName: tracker.ok ? "checkmark.seal.fill" : "xmark.octagon.fill")
                     .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(tracker.ok ? LiquidGlass.success : .red.opacity(0.85))
+                    .foregroundStyle(tracker.ok ? LiquidGlass.success : LiquidGlass.error.opacity(0.85))
             } else {
                 Image(systemName: "icloud.and.arrow.up.fill")
                     .font(.system(size: 18, weight: .bold))
@@ -80,7 +80,7 @@ struct UploadProgressStrip: View {
     }
 
     private var tint: Color {
-        if tracker.finished { return tracker.ok ? LiquidGlass.success : .red }
+        if tracker.finished { return tracker.ok ? LiquidGlass.success : LiquidGlass.error }
         return LiquidGlass.accent
     }
 }
