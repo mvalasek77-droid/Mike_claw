@@ -324,6 +324,11 @@
         <h1 class="display" style="margin-top:8px">Bid what a<br>date is worth.</h1>
         <div class="faint" style="margin-top:10px">Find a high-value match — and set the night up right.</div>
       </div>
+      ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-bottom:16px;width:100%"> Sign in with Apple</button>
+        <div class="faint" style="text-align:center;margin-bottom:16px">Optional — keeps your account across devices.</div>` : ""}
+      ${(CONFIGURED() && !SIGNED_IN() && !APPLE_ON()) ? `<button class="btn ghost" id="ob-dev" style="margin-bottom:16px;width:100%;background:#e8364f;color:#fff;border-color:#e8364f"> Sign in (Dev Test)</button>
+        <div class="faint" style="text-align:center;margin-bottom:16px">Dev mode — creates a test account on the server.</div>` : ""}
+
       <div class="kicker" style="margin:6px 0 8px">Your side of the floor</div>
       ${roleCard("man", "I'm bidding", "Browse the floor and place bids on dates.")}
       ${roleCard("woman", "I'm a lot", "Field bids; accept the one you like.")}
@@ -350,10 +355,6 @@
       <div class="kicker" style="margin:18px 0 8px">Interests</div>
       <div class="card"><div style="display:flex;flex-wrap:wrap;gap:8px">${interestChips}</div></div>
 
-      ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-top:14px"> Sign in with Apple</button>
-        <div class="faint" style="text-align:center;margin-top:6px">Optional — keeps your account across devices.</div>` : ""}
-      ${(CONFIGURED() && !SIGNED_IN() && !APPLE_ON()) ? `<button class="btn ghost" id="ob-dev" style="margin-top:14px;background:#e8364f;color:#fff;border-color:#e8364f"> Sign in (Dev Test)</button>
-        <div class="faint" style="text-align:center;margin-top:6px">Dev mode — creates a test account on the server.</div>` : ""}
       <button class="btn" id="ob-go" style="margin-top:18px">Step onto the floor</button>
       <div class="disclosure">A bid is the budget you commit to spend on the date itself — dinner, drinks, the evening. It is never a payment to another person.</div>
     </div>`;
