@@ -13,7 +13,7 @@ struct SafetyMenu: View {
     let service: SafetyService
 
     @State private var isReportSheetPresented = false
-    @State private var lastAction: String?
+    @State private var confirmationText: String?
 
     var body: some View {
         Menu {
@@ -35,28 +35,19 @@ struct SafetyMenu: View {
             ReportSheet(user: user, kind: kind, targetID: targetID, preview: preview,
                         community: community, service: service)
         }
-        .overlay(alignment: .top) {
-            if let lastAction {
-                Text(lastAction)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Tokens.Color.accent, in: Capsule())
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .offset(y: -36)
-                    .allowsHitTesting(false)
-            }
+        .alert(confirmationText ?? "", isPresented: .init(
+            get: { confirmationText != nil },
+            set: { if !$0 { confirmationText = nil } }
+        )) {
+            Button("OK", role: .cancel) { confirmationText = nil }
         }
-        .animation(Tokens.Motion.gentle, value: lastAction)
     }
 
     private func mute() async {
         HapticsEngine.shared.play(.selectionChanged)
         do {
             try await service.mute(user)
-            lastAction = "\(user.displayName) muted"
-            dismissConfirmation()
+            confirmationText = "\(user.displayName) muted"
         } catch { BroLog.error(error, category: "safety") }
     }
 
@@ -64,16 +55,8 @@ struct SafetyMenu: View {
         HapticsEngine.shared.play(.selectionChanged)
         do {
             try await service.block(user)
-            lastAction = "\(user.displayName) blocked"
-            dismissConfirmation()
+            confirmationText = "\(user.displayName) blocked"
         } catch { BroLog.error(error, category: "safety") }
-    }
-
-    private func dismissConfirmation() {
-        Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            lastAction = nil
-        }
     }
 }
 
