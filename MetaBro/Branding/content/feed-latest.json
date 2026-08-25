@@ -1,171 +1,22 @@
 {
-  "generated_for": "2026-08-25T09",
+  "generated_for": "2026-08-25T12",
   "posts": [
     {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 38,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 13
-        },
-        {
-          "kind": "strong",
-          "count": 24
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "b0e48aa1-9113-17a7-96c4-01fd1066f74a",
-      "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
-      },
-      "image_url": null,
-      "comment_count": 1,
-      "created_at": "2026-08-25T09:20:18+00:00",
-      "my_vote": 0
-    },
-    {
       "community": {
-        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
-        "name": "Grill Masters",
-        "slug": "bbq",
-        "member_count": 96400,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
         "is_joined": true
       },
-      "title": "Low and slow brisket \u2014 14 hours",
-      "body": "Wrapped at 165, pulled at 203. Bark was unreal. AMA.",
-      "score": 90,
+      "title": "Hit a new deadlift PR today",
+      "body": "405 for a clean triple. Sleep and protein, that's the whole secret.",
+      "score": 262,
       "reactions": [],
       "my_reaction": null,
       "awards": [],
-      "id": "b704eaf2-905e-9c4b-0c89-82e81a4def8d",
-      "author": {
-        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
-        "handle": "@rajlifts",
-        "display_name": "Raj",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
-        "bro_cred": 3050
-      },
-      "image_url": null,
-      "comment_count": 24,
-      "created_at": "2026-08-25T06:02:18+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": null,
-      "title": null,
-      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
-      "score": 64,
-      "reactions": [
-        {
-          "kind": "respect",
-          "count": 14
-        },
-        {
-          "kind": "strong",
-          "count": 27
-        }
-      ],
-      "my_reaction": null,
-      "awards": [],
-      "id": "02f0d94a-f5ef-f6ce-93d3-f3bba470dc4b",
-      "author": {
-        "id": "88da342c-12c1-951a-f0bc-99247785f086",
-        "handle": "@theoknows",
-        "display_name": "Theo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
-        "bro_cred": 1120
-      },
-      "image_url": null,
-      "comment_count": 4,
-      "created_at": "2026-08-25T06:43:18+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "369ccbe1-980c-cd6b-4b8b-e6cb2c492438",
-        "name": "Grill Masters",
-        "slug": "bbq",
-        "member_count": 96400,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/bbq.png",
-        "is_joined": true
-      },
-      "title": "Best cheap smoker under $300?",
-      "body": "Looking to upgrade from the kettle. What are you bros running?",
-      "score": 221,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "576a9165-3e85-b247-3823-449876865d86",
-      "author": {
-        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
-        "handle": "@leobuilds",
-        "display_name": "Leo",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
-        "bro_cred": 760
-      },
-      "image_url": null,
-      "comment_count": 4,
-      "created_at": "2026-08-25T05:47:18+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Built a treehouse this weekend",
-      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
-      "score": 150,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [
-        {
-          "kind": "champ",
-          "count": 3
-        }
-      ],
-      "id": "32bc62f2-f621-c935-32ed-585ecb1b5c2b",
-      "author": {
-        "id": "39afdd34-fdd2-0dc6-e62a-fc60a8ba35fe",
-        "handle": "@newbro",
-        "display_name": "Sam",
-        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/newbro.png",
-        "bro_cred": 40
-      },
-      "image_url": null,
-      "comment_count": 112,
-      "created_at": "2026-08-25T05:13:18+00:00",
-      "my_vote": 0
-    },
-    {
-      "community": {
-        "id": "ad1f28f2-deee-3630-ebff-760d7a720f9e",
-        "name": "Dad Mode",
-        "slug": "fatherhood",
-        "member_count": 58700,
-        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fatherhood.png",
-        "is_joined": true
-      },
-      "title": "Built a treehouse this weekend",
-      "body": "Kid 'helped'. Took twice as long. Best two days of the year.",
-      "score": 287,
-      "reactions": [],
-      "my_reaction": null,
-      "awards": [],
-      "id": "e0e3d8a9-b816-7e12-d752-7e163cc1f2b0",
+      "id": "d965f0f5-40e1-9f92-9446-c56a1ab3c598",
       "author": {
         "id": "34e85d83-2d0c-2dc3-b063-5adb5a885989",
         "handle": "@coachdave",
@@ -174,8 +25,166 @@
         "bro_cred": 9300
       },
       "image_url": null,
+      "comment_count": 69,
+      "created_at": "2026-08-25T11:55:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Just hit a year sober. Grateful for this crew.",
+      "score": 67,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 31
+        },
+        {
+          "kind": "strong",
+          "count": 14
+        },
+        {
+          "kind": "like",
+          "count": 17
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "e1941332-881e-0f1b-f679-23177c724d97",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 0,
+      "created_at": "2026-08-25T07:44:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "22aca3d4-e132-fb9a-d97f-d6efb9771f45",
+        "name": "Iron Bro-hood",
+        "slug": "fitness",
+        "member_count": 182000,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/fitness.png",
+        "is_joined": true
+      },
+      "title": "Cutting without losing strength",
+      "body": "Higher protein, slower deficit, keep the heavy sets. Worked for me.",
+      "score": 139,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 2
+        }
+      ],
+      "id": "a9da6339-212a-677f-1069-5a08dbef9129",
+      "author": {
+        "id": "43f16f34-9942-cb48-49d9-122dc9237e11",
+        "handle": "@leobuilds",
+        "display_name": "Leo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/leobuilds.png",
+        "bro_cred": 760
+      },
+      "image_url": null,
+      "comment_count": 41,
+      "created_at": "2026-08-25T10:29:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "e6e12bde-c99f-f89a-5f96-3cfdd3839629",
+        "name": "Stoic Bros",
+        "slug": "philosophy",
+        "member_count": 22300,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/philosophy.png",
+        "is_joined": true
+      },
+      "title": "On discipline vs motivation",
+      "body": "Motivation gets you started. Discipline is what shows up at 5am.",
+      "score": 124,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [],
+      "id": "d250388d-dbcf-a183-1adf-e912afa75293",
+      "author": {
+        "id": "88da342c-12c1-951a-f0bc-99247785f086",
+        "handle": "@theoknows",
+        "display_name": "Theo",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/theoknows.png",
+        "bro_cred": 1120
+      },
+      "image_url": null,
+      "comment_count": 59,
+      "created_at": "2026-08-25T10:42:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": {
+        "id": "1e27fcd8-c8ff-7cac-af7b-60a88268cbe1",
+        "name": "Garage Gearheads",
+        "slug": "cars",
+        "member_count": 141200,
+        "icon_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/cars.png",
+        "is_joined": true
+      },
+      "title": "Detailing Sunday",
+      "body": "Clay bar, two-stage polish, ceramic. Paint looks wet. Worth it.",
+      "score": 98,
+      "reactions": [],
+      "my_reaction": null,
+      "awards": [
+        {
+          "kind": "champ",
+          "count": 1
+        }
+      ],
+      "id": "def1824e-92ad-1821-5299-8fcc4e995831",
+      "author": {
+        "id": "bb5a2bd9-5ff6-b2d4-8c47-662f9908097f",
+        "handle": "@rajlifts",
+        "display_name": "Raj",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/rajlifts.png",
+        "bro_cred": 3050
+      },
+      "image_url": null,
       "comment_count": 3,
-      "created_at": "2026-08-25T03:12:18+00:00",
+      "created_at": "2026-08-25T07:49:54+00:00",
+      "my_vote": 0
+    },
+    {
+      "community": null,
+      "title": null,
+      "body": "Grilling at my place Sunday \u2014 bring a chair and a story.",
+      "score": 60,
+      "reactions": [
+        {
+          "kind": "respect",
+          "count": 18
+        },
+        {
+          "kind": "strong",
+          "count": 15
+        }
+      ],
+      "my_reaction": null,
+      "awards": [],
+      "id": "4790fe0c-f2b4-ba7e-9174-7f474fd833de",
+      "author": {
+        "id": "4910abf1-790e-e4ee-5e7a-48c6a8175462",
+        "handle": "@ironbro",
+        "display_name": "Marcus",
+        "avatar_url": "https://raw.githubusercontent.com/mvalasek77-droid/Mike_claw/claude/metabro-facebook-reddit-hybrid-it80pk/MetaBro/Branding/avatars/ironbro.png",
+        "bro_cred": 4820
+      },
+      "image_url": null,
+      "comment_count": 60,
+      "created_at": "2026-08-25T09:00:54+00:00",
       "my_vote": 0
     }
   ],
