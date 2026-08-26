@@ -756,14 +756,17 @@
 
     app.querySelector("[data-back]").onclick = () => go("/floor");
     const bidBtn = app.querySelector("[data-bid]"); if (bidBtn) bidBtn.onclick = () => bidSheet(w);
-    const rbtn = app.querySelector("[data-report]"); if (rbtn) rbtn.onclick = () => reportSheet(w);
+    const rbtn = app.querySelector("[data-report]"); if (rbtn) rbtn.onclick = () => reportLotSheet(w);
     wirePhotoPager(w);
     app.querySelectorAll("[data-bid-prompt]").forEach(b => {
       b.onclick = () => bidSheet(w, prompts[+b.dataset.bidPrompt]);
     });
   }
 
-  function reportSheet(w) {
+  // Reporting a lot from its profile. Distinct from reportMatchSheet() below,
+  // which reports someone you're already matched with — these were both named
+  // reportSheet, so the later declaration silently won and this one never ran.
+  function reportLotSheet(w) {
     const reasons = ["Fake / not a real person", "Inappropriate content", "Harassment or abuse", "Didn't pay the bid (deadbeat)", "Spam or scam", "Something else"];
     const sheet = document.createElement("div"); sheet.className = "sheet";
     sheet.innerHTML = `<div class="panel">
@@ -1189,7 +1192,7 @@
       <div class="emoji-bar" id="emoji-bar" style="display:none">${["😀","😂","❤️","🔥","👍","👎","😢","😡","🙏","👏","💋","🎉","💯","🤔","😘","😍","😎","😭","😅","😉","😴","🥳","😇","🤯","😬","💪","🌹","💎","🍷","🍽","✨","⚡","🙋","🥰","😏","🤩","😋","🫶","💥","🎯","👑","❤️‍🔥","🕺","💃","🥂","📸","🏖","🌙","🍕","☕","🎁","🚀","🌈","🦋","🎵","💌","🤗","😬"].map(e => `<button class="emoji-cell" data-emoji="${e}">${e}</button>`).join("")}</div>`;
     app.querySelector("[data-back]").onclick = () => go("/matches");
     const rz = $("#reserve"); if (rz) rz.onclick = () => reserveSheet(id);
-    const rp = $("#report"); if (rp) rp.onclick = () => reportSheet(id);
+    const rp = $("#report"); if (rp) rp.onclick = () => reportMatchSheet(id);
     const box = $("#msgs"); box.scrollTop = box.scrollHeight;
     // reactions: double-tap → ❤️, long-press → picker
     app.querySelectorAll(".bub[data-mid]").forEach(b => {
@@ -1268,7 +1271,7 @@
   }
 
   // ---- report & block ----
-  function reportSheet(matchId) {
+  function reportMatchSheet(matchId) {
     const m = S.matches.find(x => x.id === matchId); if (!m) return;
     const sheet = document.createElement("div"); sheet.className = "sheet";
     sheet.innerHTML = `<div class="panel"><div class="grab"></div>
@@ -1471,7 +1474,7 @@
     }
     // DEMO fallback (no charge).
     if (kind === "gavels") { S.wallet += a; save(); toast(`Demo: +${a.toLocaleString()} Gavels (configure Stripe for live).`); store(); }
-    else if (kind === "boost") { activateBoost(); toast("Spotlight active for 30 minutes!"); }
+    else if (kind === "boost") { activateBoost(); toast("Spotlight active for 30 minutes!"); store(); }
     else if (kind === "status") {
       S.ownedStatus = S.ownedStatus || [];
       if (!S.ownedStatus.includes(a)) S.ownedStatus.push(a);

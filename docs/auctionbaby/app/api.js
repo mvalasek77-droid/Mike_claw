@@ -47,9 +47,12 @@
       const identityToken = r.authorization && r.authorization.id_token;
       const fullName = r.user && r.user.name
         ? [r.user.name.firstName, r.user.name.lastName].filter(Boolean).join(" ") : null;
+      // The Worker reads this as `name` (see POST /auth/apple). Sending it as
+      // `fullName` meant the name was silently dropped on the one and only
+      // sign-in where Apple provides it.
       const data = await auth("/auth/apple", {
         method: "POST", auth: false,
-        body: { identityToken, fullName },
+        body: { identityToken, name: fullName },
       });
       if (data.sessionToken) setToken(data.sessionToken);
       return data; // { userId, sessionToken, isNew, user }
@@ -63,7 +66,13 @@
       if (data.sessionToken) setToken(data.sessionToken);
       return data; // { userId, sessionToken, isNew, user }
     },
-    me: () => auth("/me"),
+    // The Worker wraps the row as { user: {...} }. Unwrap it so callers get the
+    // user directly — reading `.id` off the wrapper yielded undefined, which is
+    // what every Stripe checkout was passing as its userId.
+    me: async () => {
+      const d = await auth("/me");
+      return (d && d.user) ? d.user : d;
+    },
     // Upload a profile photo to the auth Worker → R2 (or data URL fallback).
     async uploadPhoto(blob) {
       const ct = (blob && blob.type) ? blob.type : "image/jpeg";
