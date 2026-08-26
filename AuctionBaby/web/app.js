@@ -387,7 +387,7 @@
         if (u && !u.name && API.hasSession()) {
           try {
             const me = await API.me();
-            if (me && me.user) u = me.user;
+            if (me && me.name) u = me;
           } catch (e) { /* non-fatal */ }
         }
         if (u) {
