@@ -193,20 +193,6 @@
   // Migrate: ensure new fields exist on older saved states
   if (!S.ownedStatus) S.ownedStatus = [];
   if (S.pass === undefined) S.pass = null;
-  if (S.boostUntil && S.boostUntil > Date.now()) {
-    const lot = (S.floor || []).find(l => l.id === "me_lot");
-    if (lot) lot.boosted = true;
-    setTimeout(() => {
-      const l = (S.floor || []).find(x => x.id === "me_lot");
-      if (l) l.boosted = false;
-      delete S.boostUntil;
-      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
-    }, S.boostUntil - Date.now());
-  } else if (S.boostUntil) {
-    const lot = (S.floor || []).find(l => l.id === "me_lot");
-    if (lot) lot.boosted = false;
-    delete S.boostUntil;
-  }
   function load() {
     try { return JSON.parse(localStorage.getItem(KEY)) || fresh(); }
     catch { return fresh(); }
@@ -226,6 +212,24 @@
   ].map(([name, age, amount, note]) => ({ id: uid(), name, age, amount, note, hue: hueFrom(name) })));
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) { console.warn("save failed (quota?):", e.message); } };
   if (!S.floor || !S.floor.length) { S.floor = seedFloor(); save(); }
+  // Restore or retire a Spotlight Boost left over from a previous session.
+  // This sits below `save` deliberately — it needs to persist the cleanup, and
+  // `save` is a const that isn't initialised any earlier.
+  if (S.boostUntil && S.boostUntil > Date.now()) {
+    const lot = (S.floor || []).find(l => l.id === "me_lot");
+    if (lot) lot.boosted = true;
+    setTimeout(() => {
+      const l = (S.floor || []).find(x => x.id === "me_lot");
+      if (l) l.boosted = false;
+      delete S.boostUntil;
+      save();
+    }, S.boostUntil - Date.now());
+  } else if (S.boostUntil) {
+    const lot = (S.floor || []).find(l => l.id === "me_lot");
+    if (lot) lot.boosted = false;
+    delete S.boostUntil;
+    save();
+  }
 
   // ---- router ----
   const go = h => { location.hash = h; };
