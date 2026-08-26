@@ -85,13 +85,19 @@
     try {
       const r = await API.incomingBids();
       const arr = r.bids || (Array.isArray(r) ? r : []);
-      S.incoming = arr.map(b => ({
-        id: b.id, name: (b.man && b.man.name) || b.name || "Bidder",
-        age: b.age, amount: b.amount || b.bidAmount || 0, note: b.note || "",
-        hue: hueFrom(b.id || b.name),
-        verified: !!(b.verified || (b.man && b.man.verifiedAt)),
-        gilded: !!b.gilded,
-      }));
+      // The matching Worker nests the other party under `bidder` (see
+      // publicPeer). Reading `b.man` found nothing, so every bid in the inbox
+      // rendered as an unnamed, unverified "Bidder".
+      S.incoming = arr.map(b => {
+        const peer = b.bidder || b.man || {};
+        return {
+          id: b.id, name: peer.name || b.name || "Bidder",
+          age: peer.age || b.age, amount: b.amount || b.bidAmount || 0, note: b.note || "",
+          hue: typeof peer.hue === "number" ? Math.round(peer.hue * 360) : hueFrom(peer.id || b.id),
+          verified: !!(peer.verifiedAt || b.verified),
+          gilded: !!b.gilded,
+        };
+      });
       save(); if (tab === "floor" && S.role === "woman") incoming();
     } catch (e) { /* keep local */ }
   }
@@ -100,15 +106,26 @@
     try {
       const r = await API.matches();
       const arr = r.matches || (Array.isArray(r) ? r : []);
-      S.matches = arr.map(m => ({
-        id: m.id, lotId: m.lotId, name: (m.other && m.other.name) || m.name || "Match",
-        otherId: (m.other && m.other.userId) || m.otherUserId || m.otherId || null,
-        hue: hueFrom(m.id || m.name), amount: m.amount || m.bidAmount || 0,
-        seen: !!m.seenByOther, unread: !!(m.unreadCount || m.unread),
-        verified: !!(m.verified || (m.other && m.other.verifiedAt)),
-        lastTs: m.updatedAt || m.lastMessageAt || 0,
-        messages: (m.messages || []).map(x => ({ id: x.id, me: !!x.fromMe, text: x.text || "", photo: x.photo || null, reaction: x.reaction || null })),
-      }));
+      // Same nesting as the inbox: the Worker returns the other party as
+      // `peer`, not `other`, so every match used to render as "Match".
+      // /matches carries no messages either — those come from /matches/:id,
+      // which syncMatchDetail() fetches when a chat is opened.
+      const prev = S.matches || [];
+      S.matches = arr.map(m => {
+        const peer = m.peer || m.other || {};
+        const before = prev.find(x => x.id === m.id);
+        return {
+          id: m.id, lotId: m.lotId, name: peer.name || m.name || "Match",
+          otherId: peer.id || peer.userId || m.otherUserId || m.otherId || null,
+          hue: typeof peer.hue === "number" ? Math.round(peer.hue * 360) : hueFrom(peer.id || m.id),
+          amount: m.amount || m.bidAmount || 0,
+          seen: !!m.seenByOther, unread: !!(m.unreadCount || m.unread),
+          verified: !!(peer.verifiedAt || m.verified),
+          lastTs: m.updatedAt || m.lastMessageAt || m.createdAt || 0,
+          reserved: !!(before && before.reserved) || m.reservedAt != null,
+          messages: (before && before.messages) || [],
+        };
+      });
       save(); if (tab === "matches") matches();
     } catch (e) { /* keep local */ }
   }
@@ -1166,10 +1183,40 @@
     wire();
   }
 
+  // /matches returns no message bodies — only /matches/:id does. Without this
+  // neither side ever saw what the other actually wrote.
+  async function syncMatchDetail(id) {
+    if (!CONFIGURED() || !SIGNED_IN()) return;
+    try {
+      const r = await API.matchDetail(id);
+      const detail = r.match || r;
+      const msgs = r.messages || detail.messages || [];
+      const me = S.myUserId || (await API.me().then(u => u.id).catch(() => null));
+      if (me) S.myUserId = me;
+      const target = S.matches.find(x => x.id === id);
+      if (!target) return;
+      const peer = detail.peer || detail.other;
+      if (peer && peer.name) target.name = peer.name;
+      target.messages = msgs.map(x => ({
+        id: x.id,
+        me: x.fromId != null ? x.fromId === me : !!x.fromMe,
+        text: x.text || "", photo: x.photo || null,
+        reaction: x.reaction || null, seenAt: x.seenAt || null,
+      }));
+      // Read receipts read off the other side having seen my last message.
+      target.seen = target.messages.some(x => x.me && x.seenAt);
+      save();
+      if (location.hash.includes("chat/" + id)) chat(id);
+    } catch (e) { /* keep whatever we already have */ }
+  }
+
   function chat(id) {
     const m = S.matches.find(x => x.id === id); if (!m) return go("/matches");
     if (m.unread) { m.unread = false; save(); }
-    if (CONFIGURED() && SIGNED_IN()) API.markSeen(id).catch(() => {});
+    if (CONFIGURED() && SIGNED_IN()) {
+      API.markSeen(id).catch(() => {});
+      if (!chat._loading || chat._loading !== id) { chat._loading = id; syncMatchDetail(id).finally(() => { chat._loading = null; }); }
+    }
     let lastMe = -1;
     for (let i = m.messages.length - 1; i >= 0; i--) { const x = m.messages[i]; if (x.me && !x.sys) { lastMe = i; break; } }
     const bubbles = m.messages.map((msg, i) => {

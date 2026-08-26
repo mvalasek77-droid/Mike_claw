@@ -1,7 +1,7 @@
 /* Auction Baby PWA service worker — network-first for code, cache-first for images.
    This means updates are picked up automatically on every page load without
    the user needing to hard-reload. Falls back to cache when offline. */
-const CACHE = "auctionbaby-v30";
+const CACHE = "auctionbaby-v31";
 const ASSETS = [
   "./", "./index.html", "./styles.css", "./app.js", "./api.js", "./config.js",
   "./manifest.webmanifest", "./icons/icon.svg", "./icons/icon-180.png",
@@ -47,6 +47,15 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
+
+  // Never touch the API. Worker paths (/bids/incoming, /matches, /users/floor,
+  // /me/profile …) match none of CODE_EXT, so they used to land in the
+  // cache-first branch below — which froze every GET at its first response.
+  // An inbox fetched once while empty stayed empty forever, so a lot never saw
+  // new bids and a bidder never saw replies. Let all cross-origin traffic go
+  // straight to the network, uncached.
+  if (url.origin !== self.location.origin) return;
+
   const isCode = CODE_EXT.some(ext => url.pathname.endsWith(ext));
 
   if (isCode) {
