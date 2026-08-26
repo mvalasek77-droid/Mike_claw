@@ -51,8 +51,8 @@
         method: "POST", auth: false,
         body: { identityToken, fullName },
       });
-      if (data.token) setToken(data.token);
-      return data; // { token, user }
+      if (data.sessionToken) setToken(data.sessionToken);
+      return data; // { userId, sessionToken, isNew, user }
     },
     // Dev-only: create/login with a synthetic user (no Apple Sign-In needed).
     async devLogin(name) {

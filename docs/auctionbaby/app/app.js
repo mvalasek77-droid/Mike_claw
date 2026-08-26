@@ -333,6 +333,11 @@
         <h1 class="display" style="margin-top:8px">Bid what a<br>date is worth.</h1>
         <div class="faint" style="margin-top:10px">Find a high-value match — and set the night up right.</div>
       </div>
+      ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-bottom:16px;width:100%"> Sign in with Apple</button>
+        <div class="faint" style="text-align:center;margin-bottom:16px">Optional — keeps your account across devices.</div>` : ""}
+      ${(CONFIGURED() && !SIGNED_IN() && !APPLE_ON()) ? `<button class="btn ghost" id="ob-dev" style="margin-bottom:16px;width:100%;background:#e8364f;color:#fff;border-color:#e8364f"> Sign in (Dev Test)</button>
+        <div class="faint" style="text-align:center;margin-bottom:16px">Dev mode — creates a test account on the server.</div>` : ""}
+
       <div class="kicker" style="margin:6px 0 8px">Your side of the floor</div>
       ${roleCard("man", "I'm bidding", "Browse the floor and place bids on dates.")}
       ${roleCard("woman", "I'm a lot", "Field bids; accept the one you like.")}
@@ -359,10 +364,6 @@
       <div class="kicker" style="margin:18px 0 8px">Interests</div>
       <div class="card"><div style="display:flex;flex-wrap:wrap;gap:8px">${interestChips}</div></div>
 
-      ${APPLE_ON() ? `<button class="btn ghost" id="ob-apple" style="margin-top:14px"> Sign in with Apple</button>
-        <div class="faint" style="text-align:center;margin-top:6px">Optional — keeps your account across devices.</div>` : ""}
-      ${(CONFIGURED() && !SIGNED_IN() && !APPLE_ON()) ? `<button class="btn ghost" id="ob-dev" style="margin-top:14px;background:#e8364f;color:#fff;border-color:#e8364f"> Sign in (Dev Test)</button>
-        <div class="faint" style="text-align:center;margin-top:6px">Dev mode — creates a test account on the server.</div>` : ""}
       <button class="btn" id="ob-go" style="margin-top:18px">Step onto the floor</button>
       <div class="disclosure">A bid is the budget you commit to spend on the date itself — dinner, drinks, the evening. It is never a payment to another person.</div>
     </div>`;
@@ -380,9 +381,24 @@
     if (ap) ap.onclick = async () => {
       try {
         const d = await API.signInWithApple();
-        const nm = d && d.user && d.user.name;
-        if (nm && !$("#ob-name").value) $("#ob-name").value = nm;
-        toast("Signed in with Apple.");
+        let u = d && d.user;
+        // If the server didn't return a name (Apple only gives it on first
+        // sign-in), fetch the full profile from /me which may have it stored.
+        if (u && !u.name && API.hasSession()) {
+          try {
+            const me = await API.me();
+            if (me && me.user) u = me.user;
+          } catch (e) { /* non-fatal */ }
+        }
+        if (u) {
+          // Pre-fill onboarding fields from the Apple/server user data
+          if (u.name) S.me.name = u.name;
+          if (u.email) S.me.email = u.email;
+          if (u.dateOfBirth) S.me.dob = u.dateOfBirth;
+          save();
+        }
+        toast("Signed in with Apple." + (u && u.name ? " Welcome, " + u.name + "!" : ""));
+        onboarding(); // re-render to show filled fields
       } catch (e) { toast("Apple sign-in: " + e.message); }
     };
     const dv = $("#ob-dev");
@@ -1623,7 +1639,10 @@
       if (!ok) return toast("Invalid credentials.");
       sessionStorage.setItem(ADMIN_KEY, "1");
       if (CONFIGURED()) {
-        try { await API.devLogin("admin-" + user); } catch (e) { /* non-fatal */ }
+        // Use a fixed "admin-console" dev-login so the admin's own session
+        // account is NOT the same as any real user they need to delete.
+        // The "admin-" prefix grants is_admin=1 on the server.
+        try { await API.devLogin("admin-console"); } catch (e) { /* non-fatal */ }
       }
       go("/admin/dash");
     };
