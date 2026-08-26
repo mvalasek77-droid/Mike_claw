@@ -41,6 +41,15 @@
     showcase: Number(p.showcase) || Number(p.showcaseCredit) || 480,
     marketValue: Number(p.marketValue) || Math.round((Number(p.startingBid) || 100) * 1.2 + (480 - 300) * 2),
   });
+  // Live users who haven't uploaded a photo yet render as initials-only tiles.
+  // Putting them ahead of the seeded floor made the whole floor look photoless,
+  // so real profiles with photos lead, the seed floor follows, and photoless
+  // accounts sit at the back rather than being dropped.
+  function mergeFloor(live, seed) {
+    const withPhoto = live.filter(l => l.photo);
+    const withoutPhoto = live.filter(l => !l.photo);
+    return [...withPhoto, ...seed, ...withoutPhoto];
+  }
   async function syncFloor() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
     try {
@@ -51,7 +60,7 @@
         const live = arr.map(mapLot);
         const liveIds = new Set(live.map(l => l.id));
         const seed = seedFloor().filter(s => !liveIds.has(s.id));
-        S.floor = [...live, ...seed]; save();
+        S.floor = mergeFloor(live, seed); save();
         if (tab === "floor" && S.role !== "woman") floor();
       }
     } catch (e) { /* keep demo floor */ }
@@ -66,7 +75,7 @@
         const live = arr.map(mapLot);
         const liveIds = new Set(live.map(l => l.id));
         const seed = seedFloor().filter(s => !liveIds.has(s.id));
-        S.womenFloor = [...live, ...seed]; save();
+        S.womenFloor = mergeFloor(live, seed); save();
         if (tab === "floor" && location.hash.replace(/^#\/?/, "") === "browse") floor();
       }
     } catch (e) { /* keep demo */ }
@@ -406,11 +415,18 @@
         verified: S.me.verified || false,  // preserve verification from before reset
       };
       if (CONFIGURED() && SIGNED_IN()) {
+        // Registration failures used to be swallowed silently, so a woman whose
+        // profile never reached the server saw a "successful" signup and no
+        // listing. Report what actually failed instead.
         try {
           await API.setDob(dob);
-          const prompts = [];
-          if (S.me.winMe) prompts.push({ question: "The way to win me over is", answer: S.me.winMe });
-          if (S.me.simplePleasure) prompts.push({ question: "My simple pleasure", answer: S.me.simplePleasure });
+        } catch (e) {
+          return toast("Couldn't save your date of birth: " + e.message);
+        }
+        const prompts = [];
+        if (S.me.winMe) prompts.push({ question: "The way to win me over is", answer: S.me.winMe });
+        if (S.me.simplePleasure) prompts.push({ question: "My simple pleasure", answer: S.me.simplePleasure });
+        try {
           await API.saveProfile({
             name, location: S.me.city, role: S.role,
             bio: S.me.bio || null,
@@ -419,40 +435,50 @@
             startingBid: S.role === "woman" ? 100 : null,
             hue: hueFrom(name),
           });
-          if (obPhoto && obPhoto.startsWith("data:")) {
-            try {
-              const res = await fetch(obPhoto);
-              const blob = await res.blob();
-              await API.uploadPhoto(blob);
-            } catch {}
-          }
-        } catch (e) { /* non-fatal */ }
+        } catch (e) {
+          return toast("Couldn't save your profile: " + e.message);
+        }
+        // A failed photo upload shouldn't block signup — the local copy still
+        // renders — but she should know it didn't reach the server.
+        if (obPhoto && obPhoto.startsWith("data:")) {
+          try {
+            const res = await fetch(obPhoto);
+            const blob = await res.blob();
+            await API.uploadPhoto(blob);
+          } catch (e) { toast("Photo didn't upload: " + e.message); }
+        }
       }
       if (S.role === "woman" && (!CONFIGURED() || !SIGNED_IN()) && !(S.incoming && S.incoming.length)) S.incoming = seedIncoming();
-      // When a woman registers, add her to the floor as a lot so bidders can find her.
-      // In demo mode this sits alongside the seed floor; in live mode the server handles it.
-      // Always add the woman's own lot to the floor in demo mode OR when
-      // configured-but-not-signed-in (the server handles it when signed in live).
-      if (S.role === "woman" && !(CONFIGURED() && SIGNED_IN())) {
-        const prompts = [];
-        if (S.me.winMe) prompts.push({ q: "The way to win me over is", a: S.me.winMe });
-        if (S.me.simplePleasure) prompts.push({ q: "My simple pleasure", a: S.me.simplePleasure });
-        const myLot = {
-          id: "me_lot",
-          name: S.me.name, age: S.me.age, city: S.me.city,
-          startingBid: 100, bio: S.me.bio || "",
-          prompts, icebreakers: prompts.map(p => p.a),
-          hue: hueFrom(S.me.name),
-          verified: !!S.me.verified, masterpiece: false, copycat: false,
-          photo: S.me.photo, photos: S.me.photo ? [S.me.photo] : [],
-          interests: S.me.interests || [], lifestyle: {}, showcase: 480,
-          marketValue: 200, isMe: true,
-        };
-        // Replace any existing "me_lot" entry
+      // Keep the woman's own lot in state in every mode. Bidders find her via
+      // the server when live, but her own floor view and Spotlight Boost both
+      // read this local copy.
+      if (S.role === "woman") {
         S.floor = (S.floor || []).filter(l => l.id !== "me_lot");
-        S.floor.unshift(myLot);
+        S.floor.unshift(buildMyLot());
       }
       S.registered = true; save(); go("/floor"); syncFloor(); syncMatches(); syncIncoming();
+    };
+  }
+
+  // The woman's own listing, built from her profile. The server's /users/floor
+  // deliberately excludes the caller, so the client injects this itself —
+  // otherwise she'd never see how she looks on the floor.
+  function buildMyLot() {
+    const prompts = [];
+    if (S.me.winMe) prompts.push({ q: "The way to win me over is", a: S.me.winMe });
+    if (S.me.simplePleasure) prompts.push({ q: "My simple pleasure", a: S.me.simplePleasure });
+    const existing = (S.floor || []).find(l => l.id === "me_lot");
+    return {
+      id: "me_lot",
+      name: S.me.name || "You", age: S.me.age || 27, city: S.me.city || "",
+      startingBid: 100, bio: S.me.bio || "",
+      prompts, icebreakers: prompts.map(p => p.a),
+      hue: hueFrom(S.me.name || "You"),
+      verified: !!S.me.verified, masterpiece: false, copycat: false,
+      photo: S.me.photo || null, photos: S.me.photo ? [S.me.photo] : [],
+      interests: S.me.interests || [], lifestyle: {}, showcase: 480,
+      marketValue: 200, isMe: true,
+      boosted: !!(existing && existing.boosted),
     };
   }
 
@@ -502,6 +528,14 @@
       }
     }
     if (!floorData || !floorData.length) { floorData = seedFloor(); }
+    // Work on a copy — never reorder the persisted floor in place.
+    floorData = floorData.slice();
+    // A woman always sees her own listing on the floor. The server omits the
+    // caller from /users/floor, so drop any stale copy and inject a fresh one.
+    if (S.role === "woman" && S.registered) {
+      floorData = floorData.filter(w => w.id !== "me_lot" && !w.isMe);
+      floorData.unshift(buildMyLot());
+    }
     const allCount = floorData.length;
     if (floorSearch) {
       const q = floorSearch.toLowerCase();
@@ -1025,24 +1059,11 @@
     const bids = S.incoming || [];
     // Ensure the woman's me_lot exists on the floor (self-healing — works even
     // if onboarding or boot-time creation was missed due to stale cache).
-    if (S.role === "woman" && !(CONFIGURED() && SIGNED_IN())) {
+    if (S.role === "woman") {
       const hasMyLot = (S.floor || []).some(l => l.id === "me_lot");
       if (!hasMyLot) {
-        const prompts = [];
-        if (S.me.winMe) prompts.push({ q: "The way to win me over is", a: S.me.winMe });
-        if (S.me.simplePleasure) prompts.push({ q: "My simple pleasure", a: S.me.simplePleasure });
         S.floor = (S.floor || []).filter(l => l.id !== "me_lot");
-        S.floor.unshift({
-          id: "me_lot",
-          name: S.me.name || "Me", age: S.me.age || 27, city: S.me.city || "",
-          startingBid: 100, bio: S.me.bio || "",
-          prompts, icebreakers: prompts.map(p => p.a),
-          hue: hueFrom(S.me.name || "me"),
-          verified: !!S.me.verified, masterpiece: false, copycat: false,
-          photo: S.me.photo || null, photos: S.me.photo ? [S.me.photo] : [],
-          interests: S.me.interests || [], lifestyle: {}, showcase: 480,
-          marketValue: 200, isMe: true,
-        });
+        S.floor.unshift(buildMyLot());
         save();
       }
     }
@@ -1841,25 +1862,11 @@
   // ---- boot ----
   // Ensure existing women have their me_lot on the floor (fixes registrations
   // from before the me_lot fix — onboarding only runs once).
-  if (S.registered && S.role === "woman" && !(CONFIGURED() && SIGNED_IN())) {
+  if (S.registered && S.role === "woman") {
     const hasMyLot = (S.floor || []).some(l => l.id === "me_lot");
     if (!hasMyLot) {
-      const prompts = [];
-      if (S.me.winMe) prompts.push({ q: "The way to win me over is", a: S.me.winMe });
-      if (S.me.simplePleasure) prompts.push({ q: "My simple pleasure", a: S.me.simplePleasure });
-      const myLot = {
-        id: "me_lot",
-        name: S.me.name || "Me", age: S.me.age || 27, city: S.me.city || "",
-        startingBid: 100, bio: S.me.bio || "",
-        prompts, icebreakers: prompts.map(p => p.a),
-        hue: hueFrom(S.me.name || "me"),
-        verified: !!S.me.verified, masterpiece: false, copycat: false,
-        photo: S.me.photo || null, photos: S.me.photo ? [S.me.photo] : [],
-        interests: S.me.interests || [], lifestyle: {}, showcase: 480,
-        marketValue: 200, isMe: true,
-      };
       S.floor = (S.floor || []).filter(l => l.id !== "me_lot");
-      S.floor.unshift(myLot);
+      S.floor.unshift(buildMyLot());
       save();
     }
   }
