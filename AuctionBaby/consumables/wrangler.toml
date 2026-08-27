@@ -28,7 +28,8 @@ CANCEL_URL = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/index
 # turn the whole feature off fleet-wide with no app update (kill-switch).
 # App Store v1 review posture: keep external checkout disabled. Enable only
 # after a policy/legal review and a deliberate production configuration change.
-RESERVE_ENABLED = "false"
+# LIVE 2026-08-26: user approved going live. Kill-switch: "false" + redeploy.
+RESERVE_ENABLED = "true"
 RESERVE_TIERS_CENTS = "1000,1500,2500,5000,10000"
 
 # KV: user Gavel balances + processed-event set (webhook idempotency) +
