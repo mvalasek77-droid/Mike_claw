@@ -821,7 +821,7 @@ enum PromptBrief {
 
         sections.append("""
         <app_identity>
-        <title>\(title.trimmed.isEmpty ? "(unset — agents must propose one)" : title.trimmed)</title>
+        <title>\(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "(unset — agents must propose one)" : title.trimmingCharacters(in: .whitespacesAndNewlines))</title>
         <category>\(category.rawValue)</category>
         <category_hint>\(categoryHint(category))</category_hint>
         </app_identity>
