@@ -403,12 +403,14 @@
       try {
         const d = await API.signInWithApple();
         let u = d && d.user;
-        // If the server didn't return a name (Apple only gives it on first
-        // sign-in), fetch the full profile from /me which may have it stored.
-        if (u && !u.name && API.hasSession()) {
+        // Apple only returns the name on FIRST sign-in, and never returns DOB.
+        // Anything stored server-side (name from a previous sign-in, DOB saved
+        // when onboarding completed) has to come from /me — so fetch whenever
+        // any prefillable field is missing, not just the name.
+        if (u && API.hasSession() && (!u.name || !u.dateOfBirth)) {
           try {
             const me = await API.me();
-            if (me && me.name) u = me;
+            if (me && (me.name || me.dateOfBirth)) u = me;
           } catch (e) { /* non-fatal */ }
         }
         if (u) {
