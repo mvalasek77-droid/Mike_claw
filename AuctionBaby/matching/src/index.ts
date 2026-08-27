@@ -157,6 +157,7 @@ interface MatchRow {
 interface MessageRow {
   id: string; match_id: string; from_id: string; text: string;
   created_at: number; seen_at: number | null; reaction: string | null;
+  photo?: string | null;
 }
 
 /** Public bid shape — booleans instead of 0/1, no extra fields to leak. */
@@ -181,6 +182,7 @@ function publicMessage(m: MessageRow) {
   return {
     id: m.id, matchId: m.match_id, fromId: m.from_id, text: m.text,
     createdAt: m.created_at, seenAt: m.seen_at, reaction: m.reaction,
+    photo: m.photo ?? null,
   };
 }
 
@@ -694,7 +696,21 @@ async function handleSendMessage(matchId: string, request: Request, env: Env): P
   let body: any;
   try { body = await request.json(); } catch { return err("Invalid JSON body"); }
   const text = String(body?.text ?? "").trim().slice(0, 2000);
-  if (!text) return err("text is required");
+  // Photo messages: { text, photo } — at least one must be present. The
+  // messages table keeps text NOT NULL, so a photo-only message stores "".
+  let photo: string | null = null;
+  const rawPhoto = body?.photo != null ? String(body.photo).trim() : "";
+  if (rawPhoto) {
+    // Only accept https URLs (R2 public URL or data-URL fallback is https/http).
+    if (!/^https:\/\//.test(rawPhoto) && !/^data:image\//.test(rawPhoto)) {
+      return err("photo must be an https URL");
+    }
+    if (rawPhoto.length > 2048 && !rawPhoto.startsWith("data:")) {
+      return err("photo URL too long");
+    }
+    photo = rawPhoto;
+  }
+  if (!text && !photo) return err("text or photo is required");
 
   const match = await fetchMatchIfParticipant(env, matchId, userId);
   if (!match) return err("Match not found", 404);
@@ -728,13 +744,13 @@ async function handleSendMessage(matchId: string, request: Request, env: Env): P
   const now = Date.now();
   const msg: MessageRow = {
     id: crypto.randomUUID(), match_id: matchId, from_id: userId,
-    text, created_at: now, seen_at: null, reaction: null,
+    text, created_at: now, seen_at: null, reaction: null, photo,
   };
   // Sending clears the freshness clock — the ball moves to the other side.
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO messages (id, match_id, from_id, text, created_at, seen_at) VALUES (?, ?, ?, ?, ?, NULL)",
-    ).bind(msg.id, msg.match_id, msg.from_id, msg.text, msg.created_at),
+      "INSERT INTO messages (id, match_id, from_id, text, created_at, seen_at, photo) VALUES (?, ?, ?, ?, ?, NULL, ?)",
+    ).bind(msg.id, msg.match_id, msg.from_id, msg.text, msg.created_at, msg.photo ?? null),
     env.DB.prepare("UPDATE matches SET expires_at = NULL WHERE id = ?").bind(matchId),
   ]);
 
@@ -743,7 +759,7 @@ async function handleSendMessage(matchId: string, request: Request, env: Env): P
   await firePush(env, {
     userId: otherId,
     title: senderName,
-    body: text.length > 120 ? text.slice(0, 117) + "…" : text,
+    body: photo ? (text || "📷 Photo") : (text.length > 120 ? text.slice(0, 117) + "…" : text),
     data: { type: "message.received", matchId, messageId: msg.id },
   });
 

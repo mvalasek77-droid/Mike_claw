@@ -677,10 +677,22 @@ async function handleRegisterDevice(request: Request, env: Env): Promise<Respons
   let body: any;
   try { body = await request.json(); } catch { return err("Invalid JSON body"); }
 
-  const token = String(body?.token ?? "").trim();
-  const platformIn = String(body?.platform ?? "apns").trim().toLowerCase();
-  if (!token || token.length < 32 || token.length > 200) return err("token is required (hex string)");
-  const platform = platformIn === "apns_sandbox" ? "apns_sandbox" : "apns";
+  // Web Push subscriptions arrive as a JSON PushSubscription object — store it
+  // (JSON-encoded) as the token with platform 'web'. APNs keeps its hex token
+  // path. sendPushToUser skips non-APNs platforms until a Web Push sender lands.
+  let token = "";
+  let platform = "apns";
+  if (body?.subscription && typeof body.subscription === "object") {
+    const ep = String(body.subscription.endpoint ?? "");
+    if (!/^https:\/\//.test(ep) || ep.length > 500) return err("subscription.endpoint must be an https URL");
+    token = JSON.stringify(body.subscription);
+    platform = "web";
+  } else {
+    token = String(body?.token ?? "").trim();
+    const platformIn = String(body?.platform ?? "apns").trim().toLowerCase();
+    if (!token || token.length < 32 || token.length > 200) return err("token is required (hex string)");
+    platform = platformIn === "apns_sandbox" ? "apns_sandbox" : "apns";
+  }
 
   const now = Date.now();
   // Upsert on the primary key so this endpoint is safe to call repeatedly.

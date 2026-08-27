@@ -400,6 +400,17 @@
     };
     const ap = $("#ob-apple");
     if (ap) ap.onclick = async () => {
+      // The Apple popup + the onboarding() re-render below wipe any values the
+      // user typed but hadn't submitted yet — harvest them into S.me first.
+      const grab = (sel) => { const el = $(sel); return el ? el.value.trim() : ""; };
+      if (grab("#ob-name")) S.me.name = grab("#ob-name");
+      if (grab("#ob-city")) S.me.city = grab("#ob-city");
+      if (grab("#ob-dob")) S.me.dob = grab("#ob-dob");
+      if (grab("#ob-portrait")) S.me.portrait = grab("#ob-portrait");
+      if (grab("#ob-bio")) S.me.bio = grab("#ob-bio");
+      if (grab("#ob-winme")) S.me.winMe = grab("#ob-winme");
+      if (grab("#ob-pleasure")) S.me.simplePleasure = grab("#ob-pleasure");
+      save();
       try {
         const d = await API.signInWithApple();
         let u = d && d.user;
@@ -451,6 +462,7 @@
         simplePleasure: ($("#ob-pleasure") || {}).value.trim(),
         interests: obInterests,
         photo: obPhoto,
+        email: S.me.email || "",        // preserve SIWA email across the rebuild
         verified: S.me.verified || false,  // preserve verification from before reset
       };
       if (CONFIGURED() && SIGNED_IN()) {
@@ -472,7 +484,7 @@
             prompts: prompts.length ? prompts : null,
             interests: obInterests.length ? obInterests : null,
             startingBid: S.role === "woman" ? 100 : null,
-            hue: hueFrom(name),
+            hue: hueFrom(name) / 360,  // Worker clamps hue to 0–1; client renders hue×360
           });
         } catch (e) {
           return toast("Couldn't save your profile: " + e.message);
@@ -1364,7 +1376,7 @@
       const b = e.target.closest("[data-cents]"); if (!b) return;
       const cents = +b.dataset.cents; sheet.remove();
       if (CONFIGURED() && SIGNED_IN()) {
-        API.reserveDate(matchId, cents)
+        API.me().then(u => API.reserveDate(matchId, cents, u.id || u.userId))
           .then(d => { if (d.reserved || d.url === "about:blank") markReserved(matchId); }) // else it redirected to Stripe
           .catch(er => toast("Reserve: " + er.message));
       } else { markReserved(matchId); toast("Demo: date reserved."); }

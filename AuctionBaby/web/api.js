@@ -132,10 +132,13 @@
     // ── reserve the date (Stripe booking fee via consumables Worker) ──
     reserveInfo: () => shop("/reserve/info", { auth: false }),
     reserveStatus: (matchId) => shop("/reserve/status?matchId=" + encodeURIComponent(matchId)),
-    async reserveDate(matchId, amountCents) {
+    async reserveDate(matchId, amountCents, userId) {
+      // The consumables Worker requires userId (the appAccountToken used as
+      // the Stripe metadata key) — omitting it 400s every reservation.
+      if (!userId) throw new Error("Sign in first — userId is required to reserve");
       const data = await shop("/reserve/checkout", {
         method: "POST",
-        body: { matchId, amountCents,
+        body: { userId, matchId, amountCents,
                 successUrl: C.CHECKOUT_SUCCESS_URL || location.href,
                 cancelUrl: C.CHECKOUT_CANCEL_URL || location.href },
       });
@@ -155,7 +158,10 @@
         userVisibleOnly: true,
         applicationServerKey: urlB64ToUint8(C.VAPID_PUBLIC_KEY),
       });
-      await auth("/devices/register-web", { method: "POST", body: { subscription: sub.toJSON() } });
+      // The Worker's /devices/register accepts either an APNs hex token or a
+      // Web Push subscription object (platform 'web') — same route, no
+      // /devices/register-web endpoint exists.
+      await auth("/devices/register", { method: "POST", body: { subscription: sub.toJSON() } });
       return true;
     },
 
@@ -214,7 +220,8 @@
     adminUnsuspend: (id) => auth(`/admin/users/${id}/unsuspend`, { method: "POST" }),
     adminDelete: (id) => auth(`/admin/users/${id}`, { method: "DELETE" }),
     adminReports: (status) => auth("/admin/reports" + (status ? "?status=" + encodeURIComponent(status) : "")),
-    adminResolve: (id, disposition, note) => auth(`/admin/reports/${id}/resolve`, { method: "POST", body: { disposition, note } }),
+    // Worker reads { status } ∈ reviewed|actioned|dismissed (not "disposition").
+    adminResolve: (id, status, note) => auth(`/admin/reports/${id}/resolve`, { method: "POST", body: { status, note } }),
     adminBugs: (status) => auth("/admin/bugs" + (status ? "?status=" + encodeURIComponent(status) : "")),
     adminCloseBug: (id) => auth(`/admin/bugs/${id}/close`, { method: "POST" }),
     adminAudit: () => auth("/admin/audit"),
