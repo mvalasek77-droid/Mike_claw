@@ -265,15 +265,50 @@
   // one for the browser, or the per-site one — makes the picker silently do
   // nothing, and no change event ever arrives. Without this the button just
   // appears dead, and onboarding used to have no way past it.
-  function pickPhoto(cb, onNoFile) {
+  // Canvas.toBlob is missing on some older Android browsers; rebuild the blob
+  // from the data URL there so callers always get one.
+  function dataURLToBlob(dataURL) {
+    try {
+      const [head, b64] = dataURL.split(",");
+      const mime = (head.match(/:(.*?);/) || [])[1] || "image/jpeg";
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], { type: mime });
+    } catch { return null; }
+  }
+
+  // `onNoFile` fires when nothing comes back: the picker was cancelled, or it
+  // never opened at all. A denied camera/files permission — the Android one for
+  // the browser, or the per-site one — makes the picker silently do nothing and
+  // no change event ever arrives.
+  //
+  // opts.filesOnly drops the accept filter. Samsung Internet routes
+  // accept="image/*" through a chooser that offers the camera, and a denied
+  // camera permission can kill the whole intent even when the user only wants
+  // a file from their gallery. Without the filter it opens plain file storage.
+  function pickPhoto(cb, onNoFile, opts) {
     const inp = document.createElement("input");
-    inp.type = "file"; inp.accept = "image/*";
+    inp.type = "file";
+    if (!(opts && opts.filesOnly)) inp.accept = "image/*";
+    // Samsung Internet and older Android WebViews will not open a chooser for
+    // an input that isn't in the document — Chrome opens one either way. Keep
+    // it in the DOM (off-screen, not display:none, which some engines also
+    // treat as non-interactive) for the lifetime of the pick.
+    inp.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0";
+    document.body.appendChild(inp);
+
     let handled = false;
-    const bail = msg => { if (handled) return; handled = true; if (onNoFile) onNoFile(msg); };
+    const cleanup = () => {
+      window.removeEventListener("focus", onFocus);
+      if (inp.parentNode) inp.parentNode.removeChild(inp);
+    };
+    const bail = msg => { if (handled) return; handled = true; cleanup(); if (onNoFile) onNoFile(msg); };
+    const done = payload => { if (handled) return; handled = true; cleanup(); cb(payload); };
+
     inp.onchange = () => {
       const file = inp.files && inp.files[0];
       if (!file) return bail();
-      handled = true;
       const img = new Image();
       img.onload = () => {
         URL.revokeObjectURL(img.src);
@@ -281,24 +316,34 @@
         const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
         const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
         cv.getContext("2d").drawImage(img, 0, 0, w, h);
-        cv.toBlob(blob => cb({ blob, dataURL: cv.toDataURL("image/jpeg", 0.82) }), "image/jpeg", 0.82);
+        const dataURL = cv.toDataURL("image/jpeg", 0.82);
+        if (cv.toBlob) {
+          cv.toBlob(blob => done({ blob: blob || dataURLToBlob(dataURL), dataURL }), "image/jpeg", 0.82);
+        } else {
+          done({ blob: dataURLToBlob(dataURL), dataURL });
+        }
       };
       img.onerror = () => {
         URL.revokeObjectURL(img.src);
-        handled = false; bail("That file couldn't be read as an image. Try a JPG or PNG.");
+        bail("That photo couldn't be read. Try a JPG or PNG from your gallery.");
       };
       img.src = URL.createObjectURL(file);
     };
-    // Focus returns to the page when the picker closes — or immediately, if it
-    // never opened. Give any pending change event a moment to land first.
+    // Fired by newer browsers when the chooser is dismissed — more reliable
+    // than the focus heuristic below, which is the fallback for the rest.
+    inp.addEventListener("cancel", () => setTimeout(() => bail(), 300));
     const onFocus = () => {
       window.removeEventListener("focus", onFocus);
-      setTimeout(() => bail(), 800);
+      // Give a real selection time to land; Samsung Internet can be slow to
+      // deliver the change event after the chooser closes.
+      setTimeout(() => bail(), 1200);
     };
     window.addEventListener("focus", onFocus);
     inp.click();
   }
-  function addPhoto() {
+  // `opts` is forwarded to pickPhoto so the profile can offer the files-only
+  // retry when the camera-backed chooser is blocked.
+  function addPhoto(opts) {
     pickPhoto(({ blob, dataURL }) => {
       if (CONFIGURED() && SIGNED_IN()) {
         API.uploadPhoto(blob).then(d => {
@@ -306,7 +351,11 @@
           updateMyLot(); save(); you(); toast("Photo updated.");
         }).catch(e => { S.me.photo = dataURL; updateMyLot(); save(); you(); toast("Saved locally (upload: " + e.message + ")"); });
       } else { S.me.photo = dataURL; updateMyLot(); save(); you(); toast("Photo updated."); }
-    }, msg => toast(msg || "No photo selected. If the picker didn't open, check your browser's camera and files permission for this site."));
+    }, msg => {
+      photoBlockedOnProfile = true;
+      you();
+      toast(msg || "No photo came back. Try Browse files, or allow the camera permission.");
+    }, opts);
   }
   // Update the woman's own lot on the floor when her photo/profile changes
   function updateMyLot() {
@@ -355,6 +404,7 @@
   // button looked dead and offer a way past it.
   let obPhotoBlocked = false;
   let obPhotoNagged = false;   // photo prompt is shown once, then not enforced
+  let photoBlockedOnProfile = false;  // same recovery offer on the profile screen
 
   function ageFromDOB(dob) {
     if (!dob) return 0;
@@ -394,8 +444,13 @@
         </div>
         <button class="btn ghost" id="ob-add-photo" style="max-width:200px;margin:0 auto">${obPhoto ? "Change photo" : "Add a photo"}</button>
         ${obPhotoBlocked && !obPhoto ? `<div style="margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(230,184,0,.1);border:1px solid rgba(230,184,0,.35);text-align:left">
-          <div style="font:700 13px/1.3 var(--sans);color:var(--gold);margin-bottom:6px">No photo came back</div>
-          <div class="faint" style="font-size:12.5px;line-height:1.5">If the picker didn't open, your browser's camera or photo permission is off. On Android: tap the icon left of the web address → Permissions → allow Camera and Files, then try again. You can also continue without a photo and add one later from your profile.</div>
+          <div style="font:700 13px/1.3 var(--sans);color:var(--gold);margin-bottom:8px">No photo came back</div>
+          <div class="faint" style="font-size:12.5px;line-height:1.5;margin-bottom:10px">Try browsing your files directly — that skips the camera, which is usually what's blocked.</div>
+          <button class="btn ghost" id="ob-photo-files" style="font-size:13px;padding:9px 12px">Browse files instead</button>
+          <div class="faint" style="font-size:12px;line-height:1.5;margin-top:10px">Still nothing? Allow the permission, then try again:<br>
+            <b>Samsung Internet</b> — Settings → Sites and downloads → Site permissions → Camera, or Android Settings → Apps → Samsung Internet → Permissions.<br>
+            <b>Chrome</b> — tap the icon left of the web address → Permissions.<br>
+            Or just continue without a photo and add one later from your profile.</div>
         </div>` : ""}
       </div>
 
@@ -423,12 +478,14 @@
       else obInterests.push(i);
       onboarding();
     });
-    $("#ob-add-photo").onclick = () => {
-      pickPhoto(
-        ({ dataURL }) => { obPhoto = dataURL; obPhotoBlocked = false; onboarding(); },
-        msg => { obPhotoBlocked = true; onboarding(); if (msg) toast(msg); },
-      );
-    };
+    const takePhoto = opts => pickPhoto(
+      ({ dataURL }) => { obPhoto = dataURL; obPhotoBlocked = false; onboarding(); },
+      msg => { obPhotoBlocked = true; onboarding(); if (msg) toast(msg); },
+      opts,
+    );
+    $("#ob-add-photo").onclick = () => takePhoto();
+    const filesBtn = $("#ob-photo-files");
+    if (filesBtn) filesBtn.onclick = () => takePhoto({ filesOnly: true });
     const ap = $("#ob-apple");
     if (ap) ap.onclick = async () => {
       // The Apple popup + the onboarding() re-render below wipe any values the
@@ -1628,6 +1685,8 @@
       ${me.simplePleasure ? `<div class="card" style="margin-top:10px"><div class="faint">My simple pleasure</div><div style="font-family:var(--serif);font-weight:700;margin-top:4px">${esc(me.simplePleasure)}</div></div>` : ""}
       ${interests ? `<div class="card" style="margin-top:10px"><div class="kicker" style="margin-bottom:8px">Interests</div><div style="display:flex;flex-wrap:wrap;gap:8px">${interests}</div></div>` : ""}
       <button class="btn ghost" id="addphoto" style="margin-top:14px">${me.photo ? "Change photo" : "Add a photo"}</button>
+      ${photoBlockedOnProfile && !me.photo ? `<button class="btn ghost" id="addphoto-files" style="margin-top:8px">Browse files instead</button>
+      <div class="faint" style="font-size:12px;line-height:1.5;margin-top:8px;text-align:left">Camera blocked? Samsung Internet → Settings → Sites and downloads → Site permissions → Camera. Or Android Settings → Apps → your browser → Permissions.</div>` : ""}
       <button class="btn ghost" id="verify" style="margin-top:10px;color:var(--verify);border-color:var(--verify)">${S.me.verified ? "✓ Verified" : "Verify me"}</button>
       <button class="btn ghost" data-tab="store" style="margin-top:10px">Open the Store</button>
       ${S.role === "man" && !S.pass ? `<button class="btn" style="margin-top:10px" data-go="paywall">Get an Auction Baby Pass</button>` : ""}
@@ -1639,7 +1698,9 @@
       <button class="btn ghost" data-go="admin" style="margin-top:18px;font-size:13px;opacity:.5">Admin Console</button>
       <div class="disclosure">Auction Baby — web. A bid is a promise to spend on the date, never a payment to another person.</div>
     </div>${tabbar()}`;
-    $("#addphoto").onclick = addPhoto;
+    $("#addphoto").onclick = () => addPhoto();
+    const apFiles = $("#addphoto-files");
+    if (apFiles) apFiles.onclick = () => addPhoto({ filesOnly: true });
     const vb = $("#verify"); if (vb) vb.onclick = () => verificationSheet();
     const notif = $("#notif"); if (notif) notif.onclick = () => API.enableWebPush().then(() => toast("Notifications on.")).catch(e => toast("Notifications: " + e.message));
     const so = $("#signout"); if (so) so.onclick = () => { API.signOutLocal(); S.registered = false; save(); toast("Signed out."); go("/"); onboarding(); };
