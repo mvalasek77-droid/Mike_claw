@@ -137,7 +137,11 @@ CREATE TABLE IF NOT EXISTS messages (
   seen_at      INTEGER,
   -- Single-slot emoji reaction (either party writes; overwrites are visible
   -- to both). Nil = no reaction. Matches ChatMessage.reaction on the client.
-  reaction     TEXT
+  reaction     TEXT,
+  -- Photo messages (migration 015, 2026-08): optional R2/public photo URL.
+  -- Client sends { text: "", photo: "<url>" }; at least one of text/photo
+  -- must be non-empty. text stays NOT NULL ("" = photo-only).
+  photo        TEXT
 );
 -- The chat-view query — "messages in this match, oldest first" — is the hot path.
 CREATE INDEX IF NOT EXISTS idx_messages_match ON messages(match_id, created_at);

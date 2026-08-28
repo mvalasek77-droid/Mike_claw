@@ -29,6 +29,8 @@ CANCEL_URL = "https://mvalasek77-droid.github.io/Mike_claw/auctionbaby/app/index
 # App Store v1 review posture: keep external checkout disabled. Enable only
 # after a policy/legal review and a deliberate production configuration change.
 # LIVE 2026-08-26: user approved going live. Kill-switch: "false" + redeploy.
+# NOTE: iOS external-checkout exposure must still be confirmed before the next
+# iOS submission — this var enables the WEB/Checkout flow only.
 RESERVE_ENABLED = "true"
 RESERVE_TIERS_CENTS = "1000,1500,2500,5000,10000"
 

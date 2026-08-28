@@ -24,9 +24,11 @@ crons = ["17 */6 * * *"]
 # a bid, accept, or message needs to notify a user. If unset, matching still
 # works but nothing wakes the other phone — set it as soon as auth is deployed.
 AUTH_URL = "https://auctionbaby-auth.mvalasek77.workers.dev"
-# CDN base for R2 profile photos (same value as auth Worker's PHOTOS_PUBLIC_URL).
-# Peer snapshots on bids/matches resolve photo keys to full URLs when set.
-PHOTOS_PUBLIC_URL = ""
+# CDN base for R2 profile photos — MUST match the auth Worker's
+# PHOTOS_PUBLIC_URL. Was "" until 2026-08-28, which made publicPeer() return
+# zero photos: every bidder photo in the inbox and every peer photo in
+# matches rendered blank (the floor looked fine — that's the auth Worker).
+PHOTOS_PUBLIC_URL = "https://pub-732c2a22bb184407b82f1e067c040132.r2.dev"
 
 # ── D1: SHARED WITH THE AUTH WORKER ──────────────────────────────────────────
 # Bidders/lots FK into `users` (from auth), so bids/matches/messages must live
@@ -43,7 +45,9 @@ database_id = "5ee09895-b80a-4a06-994f-45d45668cd55"
 name = "auctionbaby-matching-staging"
 
 [env.staging.vars]
-AUTH_URL = "https://auctionbaby-auth-staging.YOUR-SUBDOMAIN.workers.dev"
+AUTH_URL = "https://auctionbaby-auth.mvalasek77.workers.dev"
+# Keep staging photo-less until a staging R2 bucket + dev URL exists.
+PHOTOS_PUBLIC_URL = ""
 
 [[env.staging.d1_databases]]
 binding = "DB"

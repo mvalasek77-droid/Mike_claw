@@ -272,7 +272,7 @@ interface UserRow {
 const USER_COLS =
   "id, apple_sub, email, name, date_of_birth, created_at, last_seen_at, " +
   "verified_at, verification_vendor, verification_ref, verification_status, " +
-  "suspended_until";
+  "suspended_until, is_admin";
 
 /** Look up a user by Apple sub; create if missing. Returns the user + whether
  *  the caller was newly registered (drives an onboarding hint in the client). */
@@ -320,6 +320,9 @@ function publicUser(u: UserRow) {
     createdAt: u.created_at, lastSeenAt: u.last_seen_at,
     verifiedAt: u.verified_at,
     verificationStatus: u.verification_status ?? "unstarted",
+    // Only ever surfaces on /me-style self responses — safe to expose to the
+    // subject. The web admin console uses it to confirm a session is admin.
+    isAdmin: u.is_admin === 1,
   };
 }
 
@@ -417,15 +420,113 @@ async function handleMe(request: Request, env: Env): Promise<Response> {
   return json({ user: publicUser(user) });
 }
 
+/** POST /auth/admin-login  { username, password }  →  { userId, sessionToken, … }
+ *
+ *  Server-side credential check for the web admin console (2026-08-28). This
+ *  replaces the old behaviour where any dev-login whose name started with
+ *  "admin" was silently granted is_admin = 1 — that endpoint had NO auth on
+ *  it and was proven exploitable in production.
+ *
+ *  Flow: rate-limit per IP → verify HMAC-SHA256(salt, username:password)
+ *  against the console's credential hash (same scheme the console has always
+ *  used client-side; now ALSO enforced here so the browser is no longer the
+ *  only gate) → require the matching dev: account to already have
+ *  users.is_admin = 1 (set once manually in D1 — this endpoint never grants
+ *  admin, it only recognizes it). No account is created here. Generic error
+ *  messages, no user enumeration.
+ */
+const ADMIN_LOGIN_SALT = "AuctionBaby-Admin-2026";
+const ADMIN_LOGIN_HASH_HEX =
+  "bb90ac932b3460870f09796f19be59afc83109cb062f8eb8c006d07389c04171";
+
+// Per-isolate failure throttle keyed by client IP. Resets on cold start and is
+// per-colo — not a hard ceiling, but enough to make online guessing of the
+// console credential impractical for a single-admin console.
+const adminLoginFailures = new Map<string, { n: number; blockedUntil: number }>();
+const ADMIN_LOGIN_MAX_FAILS = 10;
+const ADMIN_LOGIN_WINDOW_MS = 5 * 60_000;
+
+async function handleAdminLogin(request: Request, env: Env): Promise<Response> {
+  if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
+  if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
+  if (!env.APP_SHARED_SECRET) return err("Server misconfigured: APP_SHARED_SECRET unset", 500);
+
+  let body: any = {};
+  try { body = await request.json(); } catch { return err("Invalid JSON body"); }
+  const username = String(body?.username ?? "").trim().slice(0, 60);
+  const password = String(body?.password ?? "");
+  if (!username || !password) return err("Invalid credentials", 401);
+
+  // Rate limit BEFORE doing any lookup work.
+  const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+  const now = Date.now();
+  const entry = adminLoginFailures.get(ip);
+  if (entry && entry.blockedUntil > now && entry.n >= ADMIN_LOGIN_MAX_FAILS) {
+    return err("Too many attempts — try again shortly", 429);
+  }
+  if (adminLoginFailures.size > 5000) {
+    // Cheap prune so a distributed pen-test can't grow the isolate's Map forever.
+    for (const [k, v] of adminLoginFailures) {
+      if (v.blockedUntil <= now) adminLoginFailures.delete(k);
+    }
+  }
+
+  const sig = await hmacSha256(ADMIN_LOGIN_SALT, `${username}:${password}`);
+  const hex = [...sig].map(b => b.toString(16).padStart(2, "0")).join("");
+  if (!(await constantTimeEqual(hex, ADMIN_LOGIN_HASH_HEX))) {
+    const rec = adminLoginFailures.get(ip) ?? { n: 0, blockedUntil: 0 };
+    rec.n += 1;
+    rec.blockedUntil = now + ADMIN_LOGIN_WINDOW_MS;
+    adminLoginFailures.set(ip, rec);
+    return err("Invalid credentials", 401);
+  }
+  adminLoginFailures.delete(ip);
+
+  // Credential confirmed — now the account gate. Look up (never upsert) the
+  // dev: account this console credential maps to; it must already be an admin.
+  const devSub = "dev:" + username.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40);
+  const adminRow = await env.DB.prepare(
+    "SELECT id FROM users WHERE apple_sub = ? AND is_admin = 1",
+  ).bind(devSub).first<{ id: string }>();
+  if (!adminRow) return err("Admin not provisioned for this account", 403);
+
+  const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
+  const sessionToken = await issueSessionToken(adminRow.id, ttl, env.SESSION_SECRET);
+  await env.DB.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").bind(Date.now(), adminRow.id).run();
+
+  const user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`)
+    .bind(adminRow.id).first<UserRow>();
+
+  return json({
+    userId: adminRow.id,
+    sessionToken,
+    expiresInSeconds: ttl,
+    isNew: false,
+    user: user ? publicUser(user) : null,
+  });
+}
+
 /** POST /auth/dev-login  { name? }  →  { userId, sessionToken, isNew, user }
  *
- *  DEV ONLY — creates or looks up a user by a synthetic apple_sub ("dev:<name>")
- *  and issues a real session token. Lets the web app test the full flow
- *  (profile, photos, floor) without Apple Sign-In configured. The client
- *  gates this button behind a config flag so it never shows in prod. */
+ *  DEV/E2E ONLY — creates or looks up a user by a synthetic apple_sub
+ *  ("dev:<name>") and issues a real session token. Lets the web app test the
+ *  full flow (profile, photos, floor) without Apple Sign-In configured.
+ *
+ *  2026-08-28 SECURITY FIX: this endpoint previously required NO
+ *  authentication and promoted any name starting with "admin" to
+ *  is_admin = 1 — a single unauthenticated request granted a working admin
+ *  session (confirmed exploited: two rogue rows existed, one of which deleted
+ *  two users). It is now gated behind APP_SHARED_SECRET exactly like the other
+ *  Worker-to-Worker endpoints, the admin-prefix promotion is deleted entirely,
+ *  and admin access goes through POST /auth/admin-login instead. Seed/test
+ *  accounts that legitimately need is_admin = 1 get it via a manual D1
+ *  statement, never from an HTTP path. */
 async function handleDevLogin(request: Request, env: Env): Promise<Response> {
   if (!env.SESSION_SECRET) return err("Server misconfigured: SESSION_SECRET unset", 500);
   if (!env.DB) return err("Server misconfigured: D1 not bound", 500);
+
+  const gateFail = await ensureAdmin(request, env);
+  if (gateFail) return err("Not found", 404); // don't reveal the route's shape
 
   let body: any = {};
   try { body = await request.json(); } catch { /* empty body is fine */ }
@@ -433,10 +534,6 @@ async function handleDevLogin(request: Request, env: Env): Promise<Response> {
   const devSub = "dev:" + name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40) || "dev:default";
 
   const { user, isNew } = await upsertUserByAppleSub(env, devSub, null, name);
-
-  if (name.toLowerCase().startsWith("admin")) {
-    await env.DB.prepare("UPDATE users SET is_admin = 1 WHERE id = ?").bind(user.id).run();
-  }
 
   const ttl = Number(env.SESSION_TTL_SECONDS ?? 60 * 60 * 24 * 30);
   const sessionToken = await issueSessionToken(user.id, ttl, env.SESSION_SECRET);
@@ -2084,6 +2181,7 @@ export default {
 
     if (pathname === "/health" && m === "GET") return handleHealth(env);
     if (pathname === "/auth/apple" && m === "POST") return handleAppleAuth(request, env);
+    if (pathname === "/auth/admin-login" && m === "POST") return handleAdminLogin(request, env);
     if (pathname === "/auth/dev-login" && m === "POST") return handleDevLogin(request, env);
     if (pathname === "/me" && m === "GET") return handleMe(request, env);
     if (pathname === "/me" && m === "DELETE") return handleDeleteMe(request, env);
