@@ -260,11 +260,20 @@
   };
 
   // Pick an image, downscale to <=1024px, return { blob, dataURL } (JPEG 0.82).
-  function pickPhoto(cb) {
+  // `onNoFile` fires when nothing comes back: the picker was cancelled, or it
+  // never opened at all. On Android a denied camera/files permission — the OS
+  // one for the browser, or the per-site one — makes the picker silently do
+  // nothing, and no change event ever arrives. Without this the button just
+  // appears dead, and onboarding used to have no way past it.
+  function pickPhoto(cb, onNoFile) {
     const inp = document.createElement("input");
     inp.type = "file"; inp.accept = "image/*";
+    let handled = false;
+    const bail = msg => { if (handled) return; handled = true; if (onNoFile) onNoFile(msg); };
     inp.onchange = () => {
-      const file = inp.files && inp.files[0]; if (!file) return;
+      const file = inp.files && inp.files[0];
+      if (!file) return bail();
+      handled = true;
       const img = new Image();
       img.onload = () => {
         URL.revokeObjectURL(img.src);
@@ -274,8 +283,19 @@
         cv.getContext("2d").drawImage(img, 0, 0, w, h);
         cv.toBlob(blob => cb({ blob, dataURL: cv.toDataURL("image/jpeg", 0.82) }), "image/jpeg", 0.82);
       };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        handled = false; bail("That file couldn't be read as an image. Try a JPG or PNG.");
+      };
       img.src = URL.createObjectURL(file);
     };
+    // Focus returns to the page when the picker closes — or immediately, if it
+    // never opened. Give any pending change event a moment to land first.
+    const onFocus = () => {
+      window.removeEventListener("focus", onFocus);
+      setTimeout(() => bail(), 800);
+    };
+    window.addEventListener("focus", onFocus);
     inp.click();
   }
   function addPhoto() {
@@ -286,7 +306,7 @@
           updateMyLot(); save(); you(); toast("Photo updated.");
         }).catch(e => { S.me.photo = dataURL; updateMyLot(); save(); you(); toast("Saved locally (upload: " + e.message + ")"); });
       } else { S.me.photo = dataURL; updateMyLot(); save(); you(); toast("Photo updated."); }
-    });
+    }, msg => toast(msg || "No photo selected. If the picker didn't open, check your browser's camera and files permission for this site."));
   }
   // Update the woman's own lot on the floor when her photo/profile changes
   function updateMyLot() {
@@ -331,6 +351,10 @@
   const ALL_INTERESTS = ["Art","Travel","Fitness","Music","Film","Food","Startups","Reading","Wine","Dogs","Nightlife","Design"];
   let obPhoto = S.me.photo || null;
   let obInterests = [...(S.me.interests || [])];
+  // Set when the picker came back empty, so onboarding can explain why the
+  // button looked dead and offer a way past it.
+  let obPhotoBlocked = false;
+  let obPhotoNagged = false;   // photo prompt is shown once, then not enforced
 
   function ageFromDOB(dob) {
     if (!dob) return 0;
@@ -369,6 +393,10 @@
           ${obPhoto ? `<img src="${esc(obPhoto)}" alt="" style="width:100%;height:100%;object-fit:cover">` : `<span class="faint" style="font-size:13px">No photo yet</span>`}
         </div>
         <button class="btn ghost" id="ob-add-photo" style="max-width:200px;margin:0 auto">${obPhoto ? "Change photo" : "Add a photo"}</button>
+        ${obPhotoBlocked && !obPhoto ? `<div style="margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(230,184,0,.1);border:1px solid rgba(230,184,0,.35);text-align:left">
+          <div style="font:700 13px/1.3 var(--sans);color:var(--gold);margin-bottom:6px">No photo came back</div>
+          <div class="faint" style="font-size:12.5px;line-height:1.5">If the picker didn't open, your browser's camera or photo permission is off. On Android: tap the icon left of the web address → Permissions → allow Camera and Files, then try again. You can also continue without a photo and add one later from your profile.</div>
+        </div>` : ""}
       </div>
 
       <div class="kicker" style="margin:18px 0 8px">Basics</div>
@@ -396,7 +424,10 @@
       onboarding();
     });
     $("#ob-add-photo").onclick = () => {
-      pickPhoto(({ dataURL }) => { obPhoto = dataURL; onboarding(); });
+      pickPhoto(
+        ({ dataURL }) => { obPhoto = dataURL; obPhotoBlocked = false; onboarding(); },
+        msg => { obPhotoBlocked = true; onboarding(); if (msg) toast(msg); },
+      );
     };
     const ap = $("#ob-apple");
     if (ap) ap.onclick = async () => {
@@ -450,7 +481,14 @@
       const dob = ($("#ob-dob") || {}).value || "";
       const age = ageFromDOB(dob);
       if (!S.role) return toast("Pick a side first.");
-      if (!obPhoto) return toast("Add a photo to continue.");
+      // A photo is strongly wanted but never mandatory: the picker can fail for
+      // reasons the user can't fix from here (a denied Android permission), and
+      // a hard block there left them with no way to finish signing up at all.
+      // Warn once, then let them through and add it from their profile later.
+      if (!obPhoto && !obPhotoNagged) {
+        obPhotoNagged = true;
+        return toast("A photo gets far more bids. Tap again to continue without one.");
+      }
       if (!name) return toast("Add your name.");
       if (!dob) return toast("Add your date of birth.");
       if (age < 18) return toast("You must be 18 or older.");
@@ -1305,7 +1343,7 @@
           pushMsg({ me: true, photo: dataURL, text: "" });
           demoReply();
         }
-      });
+      }, msg => toast(msg || "No photo selected. If the picker didn't open, check your browser's camera and files permission for this site."));
     };
     // Emoji picker toggle
     const ebar = $("#emoji-bar");
