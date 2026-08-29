@@ -8,6 +8,9 @@ compatibility_date = "2024-12-01"
 #   APP_SHARED_SECRET    gates the admin push-send endpoint (POST /push/send).
 #                        Same convention as the other Workers so ops uses ONE
 #                        secret across every backend.
+#   RESEND_API_KEY       optional; enables signup alert email. Create at
+#                        https://resend.com/api-keys then run:
+#                          npx wrangler secret put RESEND_API_KEY
 #   APNS_AUTH_KEY_P8     Apple Push Auth Key contents (multi-line PEM,
 #                        -----BEGIN PRIVATE KEY-----…). Get this .p8 from
 #                        Apple Developer → Keys → + → APNs. Upload it via:
@@ -48,6 +51,9 @@ ADMIN_EMAIL = "mvalasek77@gmail.com"
 # to disable the photo upload endpoints; the app already tolerates no
 # photos and shows the monogram fallback.
 PHOTOS_PUBLIC_URL = "https://pub-732c2a22bb184407b82f1e067c040132.r2.dev"
+# Recipient for signup alerts. Alerts remain a silent no-op until both this
+# value and the RESEND_API_KEY secret are set.
+ADMIN_EMAIL = "mvalasek77@gmail.com"
 
 # D1: the users table. `wrangler d1 create auctionbaby-users` gives you an id;
 # paste it in below. Schema lives in ./schema.sql — apply it with:

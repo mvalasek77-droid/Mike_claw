@@ -2069,7 +2069,7 @@
           <div class="row" style="gap:10px;margin-bottom:6px">
             <div class="grow">
               <div style="font-family:var(--serif);font-weight:800">${esc(u.name || "—")} <span class="muted" style="font-size:12px">${esc(u.id || u.userId || "")}</span></div>
-              <div class="faint" style="font-size:12px">${u.email || ""} · Joined ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "?"}${u.location ? " · " + esc(u.location) : ""}</div>
+              <div class="faint" style="font-size:12px">${esc(u.email || "")} · Joined ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "?"}${u.location ? ` · ${esc(u.location)}` : ""}</div>
             </div>
             ${u.role === "woman" ? `<span class="pill" style="background:rgba(224,96,122,.18);color:var(--rose);font-size:11px">Lot</span>`
               : u.role === "man" ? `<span class="pill" style="background:rgba(230,184,0,.18);color:var(--gold);font-size:11px">Bidder</span>`
