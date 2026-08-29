@@ -84,6 +84,15 @@
       }
     } catch (e) { /* keep demo */ }
   }
+  // publicPeer sends photos as [{ id, url }]. Pulled out here because the
+  // unlock depends on it: a bidder's photo is deliberately withheld from the
+  // inbox and only read once a match exists.
+  const peerPhoto = peer => {
+    const first = peer && peer.photos && peer.photos[0];
+    if (!first) return null;
+    return (typeof first === "string" ? first : first.url) || null;
+  };
+
   async function syncIncoming() {
     if (!CONFIGURED() || !SIGNED_IN()) return;
     try {
@@ -122,6 +131,10 @@
           id: m.id, lotId: m.lotId, name: peer.name || m.name || "Match",
           otherId: peer.id || peer.userId || m.otherUserId || m.otherId || null,
           hue: typeof peer.hue === "number" ? Math.round(peer.hue * 360) : hueFrom(peer.id || m.id),
+          // The unlock: accepting a bid is what earns her his picture. The
+          // Worker has always sent it; the client just never read it, so the
+          // reveal the app promises three times over never happened.
+          photo: peerPhoto(peer) || (before && before.photo) || null,
           amount: m.amount || m.bidAmount || 0,
           seen: !!m.seenByOther, unread: !!(m.unreadCount || m.unread),
           verified: !!(peer.verifiedAt || m.verified),
@@ -1295,7 +1308,7 @@
       ${S.matches.length ? [...S.matches].sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0)).map(m => {
         const last = m.messages[m.messages.length - 1];
         return `<button class="card row" data-chat="${m.id}" style="width:100%;text-align:left;margin-bottom:10px">
-          ${gradSm(m.hue, m.name)}<div class="grow"><div style="font-family:var(--serif);font-weight:800">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</div>
+          ${gradSm(m.hue, m.name, m.photo)}<div class="grow"><div style="font-family:var(--serif);font-weight:800">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</div>
           <div class="faint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${m.unread ? "color:var(--ink);font-weight:600" : ""}">${esc(last ? (last.photo ? "📷 Photo" : (last.text || "Say hello")) : "Say hello")}</div></div>
           ${m.unread ? `<span class="udot"></span>` : `<span class="pill">${money(m.amount)}</span>`}</button>`;
       }).join("") : `<div class="card muted">No matches yet. Win a bid on the floor.</div>`}
@@ -1317,6 +1330,7 @@
       if (!target) return;
       const peer = detail.peer || detail.other;
       if (peer && peer.name) target.name = peer.name;
+      if (peerPhoto(peer)) target.photo = peerPhoto(peer);
       target.messages = msgs.map(x => ({
         id: x.id,
         me: x.fromId != null ? x.fromId === me : !!x.fromMe,
@@ -1348,7 +1362,7 @@
     }).join("") + (m.typing ? `<div class="bub them typing">•••</div>` : "");
     app.innerHTML = `<div class="screen" style="padding-bottom:0">
       <div class="topbar"><button class="chip" data-back>‹</button>
-        <div class="row">${gradSm(m.hue, m.name)}<b style="font-family:var(--serif)">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</b></div>
+        <div class="row">${gradSm(m.hue, m.name, m.photo)}<b style="font-family:var(--serif)">${esc(m.name)}${m.verified ? verifiedBadge("sm") : ""}</b></div>
         <div class="row" style="gap:6px">
           ${S.role === "man" ? (m.reserved ? `<span class="chip on">✓ Reserved</span>` : `<button class="chip" id="reserve">Reserve</button>`) : ""}
           <button class="chip" id="report" title="Report & block">⚑</button>
